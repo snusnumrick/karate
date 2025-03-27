@@ -32,40 +32,49 @@ export function ThemeProvider({
   disableTransitionOnChange = false,
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  )
+  const [theme, setTheme] = useState<Theme>(defaultTheme)
 
   useEffect(() => {
-    const root = window.document.documentElement
+    if (typeof window === 'undefined') return;
+    
+    const storedTheme = localStorage.getItem(storageKey) as Theme;
+    setTheme(storedTheme || defaultTheme);
+  }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const root = window.document.documentElement;
+    
     if (disableTransitionOnChange) {
-      root.classList.add("transition-none")
+      root.classList.add("transition-none");
       window.setTimeout(() => {
-        root.classList.remove("transition-none")
-      }, 0)
+        root.classList.remove("transition-none");
+      }, 0);
     }
 
-    if (theme === "system" && enableSystem) {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light"
+    const applyTheme = (themeToApply: Theme) => {
+      if (themeToApply === "system" && enableSystem) {
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+          .matches ? "dark" : "light";
+        root.setAttribute(attribute, systemTheme);
+      } else {
+        root.setAttribute(attribute, themeToApply);
+      }
+    };
 
-      root.setAttribute(attribute, systemTheme)
-      return
-    }
-
-    root.setAttribute(attribute, theme)
-  }, [theme, attribute, enableSystem, disableTransitionOnChange])
+    applyTheme(theme);
+  }, [theme, attribute, enableSystem, disableTransitionOnChange, storageKey]);
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
+    setTheme: (newTheme: Theme) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(storageKey, newTheme);
+      }
+      setTheme(newTheme);
     },
-  }
+  };
 
   return (
     <ThemeProviderContext.Provider {...props} value={value}>
