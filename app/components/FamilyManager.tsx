@@ -280,11 +280,20 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
           <div key={index} className="mt-4 p-4 border rounded">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium">Name</label>
+                <label className="block text-sm font-medium">First Name</label>
                 <input
                   type="text"
-                  value={guardian.name}
-                  onChange={(e) => updateGuardian(index, { name: e.target.value })}
+                  value={guardian.firstName}
+                  onChange={(e) => updateGuardian(index, { firstName: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Last Name</label>
+                <input
+                  type="text"
+                  value={guardian.lastName}
+                  onChange={(e) => updateGuardian(index, { lastName: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 />
               </div>
@@ -342,11 +351,20 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
           <div key={index} className="mt-4 p-4 border rounded">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium">Name</label>
+                <label className="block text-sm font-medium">First Name</label>
                 <input
                   type="text"
-                  value={student.name}
-                  onChange={(e) => updateStudent(index, { name: e.target.value })}
+                  value={student.firstName}
+                  onChange={(e) => updateStudent(index, { firstName: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Last Name</label>
+                <input
+                  type="text"
+                  value={student.lastName}
+                  onChange={(e) => updateStudent(index, { lastName: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 />
               </div>
