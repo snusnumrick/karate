@@ -60,6 +60,10 @@ function handleBotRequest(
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
+          responseHeaders.set("Content-Security-Policy", "default-src 'self'");
+          responseHeaders.set("X-Content-Type-Options", "nosniff");
+          responseHeaders.set("Referrer-Policy", "strict-origin-when-cross-origin");
+          responseHeaders.set("Permissions-Policy", "geolocation=(self)");
 
           resolve(
             new Response(stream, {
@@ -110,6 +114,10 @@ function handleBrowserRequest(
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
+          responseHeaders.set("Content-Security-Policy", "default-src 'self'");
+          responseHeaders.set("X-Content-Type-Options", "nosniff");
+          responseHeaders.set("Referrer-Policy", "strict-origin-when-cross-origin");
+          responseHeaders.set("Permissions-Policy", "geolocation=(self)");
 
           resolve(
             new Response(stream, {

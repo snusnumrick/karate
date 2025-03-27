@@ -9,10 +9,16 @@ import { startTransition, StrictMode } from "react";
 import { hydrateRoot } from "react-dom/client";
 
 startTransition(() => {
-  hydrateRoot(
+  const hydrate = RemixBrowser.hydrate || hydrateRoot;
+  hydrate(
     document,
     <StrictMode>
       <RemixBrowser />
-    </StrictMode>
+    </StrictMode>,
+    {
+      onRecoverableError: (error) => {
+        console.error("React hydration error:", error);
+      }
+    }
   );
 });
