@@ -46,6 +46,7 @@ export interface Student {
   immunizationsUpToDate: boolean;
   immunizationNotes?: string;
   beltRank: string;
+  familyId: string;
   achievements?: Achievement[];
   attendanceRecords?: AttendanceRecord[];
 }

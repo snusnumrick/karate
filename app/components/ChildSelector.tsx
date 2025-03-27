@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '~/utils/supabase.client';
 import type { Student } from '~/types/models';
+import { mapStudentFromSupabase } from '~/utils/mappers';
 
 interface ChildSelectorProps {
   familyId?: string;
@@ -46,7 +47,8 @@ export default function ChildSelector({
         
       if (error) throw error;
       
-      setStudents(data || []);
+      // Map database rows to Student objects
+      setStudents(data?.map(mapStudentFromSupabase) || []);
     } catch (err) {
       console.error('Error loading students:', err);
       setError('Failed to load students');
@@ -103,7 +105,7 @@ export default function ChildSelector({
               className="h-4 w-4 text-blue-600 rounded"
             />
             <label htmlFor={`student-${student.id}`} className="ml-2">
-              {student.name} ({student.beltRank} belt)
+              {student.firstName} {student.lastName} ({student.beltRank} belt)
             </label>
           </div>
         ))}
