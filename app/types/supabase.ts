@@ -244,25 +244,61 @@ export interface Database {
       }
       students: {
         Row: {
+          allergies: string | null
           belt_rank: string
           birth_date: string
+          cell_phone: string | null
+          email: string | null
           family_id: string
+          first_name: string
+          gender: string
+          grade_level: string
           id: string
-          name: string
+          immunization_notes: string | null
+          immunizations_up_to_date: boolean
+          last_name: string
+          medications: string | null
+          school: string
+          special_needs: string | null
+          t_shirt_size: string
         }
         Insert: {
+          allergies?: string | null
           belt_rank?: string
           birth_date: string
+          cell_phone?: string | null
+          email?: string | null
           family_id: string
+          first_name: string
+          gender: string
+          grade_level: string
           id?: string
-          name: string
+          immunization_notes?: string | null
+          immunizations_up_to_date?: boolean
+          last_name: string
+          medications?: string | null
+          school: string
+          special_needs?: string | null
+          t_shirt_size: string
         }
         Update: {
+          allergies?: string | null
           belt_rank?: string
           birth_date?: string
+          cell_phone?: string | null
+          email?: string | null
           family_id?: string
+          first_name?: string
+          gender?: string
+          grade_level?: string
           id?: string
-          name?: string
+          immunization_notes?: string | null
+          immunizations_up_to_date?: boolean
+          last_name?: string
+          medications?: string | null
+          school?: string
+          special_needs?: string | null
+          t_shirt_size?: string
         }
         Relationships: [
           {
