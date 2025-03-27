@@ -10,7 +10,7 @@ import {isbot} from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import {createReadableStreamFromReadable, EntryContext} from "@remix-run/node";
 
-const ABORT_DELAY = 5_000;
+export const streamTimeout = 5_000; // Replaces ABORT_DELAY
 
 export default function handleRequest(
   request: Request,
@@ -79,7 +79,7 @@ function handleBotRequest(
       }
     );
 
-    setTimeout(abort, ABORT_DELAY);
+    setTimeout(abort, streamTimeout + 1_000);
   });
 }
 
@@ -129,6 +129,6 @@ function handleBrowserRequest(
       }
     );
 
-    setTimeout(abort, ABORT_DELAY);
+    setTimeout(abort, streamTimeout + 1_000);
   });
 }
