@@ -1,40 +1,85 @@
-# Welcome to Remix!
+# Karate Class Website
 
-- 📖 [Remix docs](https://remix.run/docs)
+## Project Overview
 
-## Development
+Develop a comprehensive and user-friendly karate class management website for 
+Sensei Negin's classes at Lighthouse Christian Academy, 
+incorporating efficient family-oriented registration, 
+achievement tracking, attendance monitoring, payment integration, and waiver management.
 
-Run the dev server:
+## Website Functionality
 
-```shellscript
-npm run dev
-```
+### User-facing Features:
 
-## Deployment
+- Home Page:
 
-First, build your app for production:
+    - Introduction to karate emphasizing personal growth and defense techniques.
+    - Class schedule: Monday & Wednesday at 6 p.m. for ages 6-12.
 
-```sh
-npm run build
-```
+- Instructor Profile:
 
-Then run the app in production mode:
+  - Comprehensive bio for Sensei Negin detailing certifications and achievements.
 
-```sh
-npm start
-```
+- Registration and Family Management:
 
-Now you'll need to pick a host to deploy it to.
+    - Family-centric registration allowing multiple children per family.
+    - Secure login and family account management.
+    - Detailed input fields for family information, guardian(s), and student details.
 
-### DIY
+- Attendance and Achievement Tracking:
 
-If you're familiar with deploying Node applications, the built-in Remix app server is production-ready.
+    - Automated attendance tracking system.
+    - Real-time reporting to identify absentees.
+    - Achievement logging for each student to track progress and milestones.
 
-Make sure to deploy the output of `npm run build`
+- Payment Integration:
 
-- `build/server`
-- `build/client`
+  - Linking parent payments directly to individual children, accommodating multiple children per family.
+  - Secure payment processing with transaction records for families.
 
-## Styling
+- Online Waivers and Policies:
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever css framework you prefer. See the [Vite docs on css](https://vitejs.dev/guide/features.html#css) for more information.
+    - Digitally accessible and signable waivers including:
+      - Liability Release
+      - Code of Conduct
+      - Photo/Video consent
+      - Payment and Dress Code agreement
+
+### Administrative Features:
+- Secure and intuitive admin interface for managing families, students, attendance, payments, and waivers.
+- Detailed reporting tools for attendance, financials, and student achievements.
+- Notification system for attendance irregularities.
+
+## Technology Stack
+
+- **Frontend**: Remix framework for optimal user experience, server-side rendering, and modern web practices.
+- **Backend**: Supabase for scalable database solutions, authentication, and real-time functionalities.
+- **UI Library**: Shadcn for clean, modern, and consistent UI components ensuring high usability.
+- **Payments**: Stripe or PayPal integration for robust payment processing.
+- **Deployment**: Cloud-based deployment solutions (e.g., Vercel or Netlify).
+
+## Development Timeline
+
+- Week 1-2:
+
+    - Project setup, database schema design, and initial configuration.
+    - User authentication and basic registration functionalities.
+
+- Week 3-4:
+  - Homepage and instructor profile page development.
+  - Development of detailed family and student registration forms.
+  - Payment integration setup and testing.
+
+- Week 5-6:
+    - Attendance and achievement tracking systems implementation.
+    - Admin dashboard creation.
+    - Additional informational and policy pages setup.
+
+- Week 7:
+
+    - Waivers management system integration.
+    - Initial internal testing.
+
+- Week 8:
+    - Comprehensive system testing, bug fixes, and user feedback incorporation.
+    - Preparation for launch, final security checks, and deployment.did you update readmre
