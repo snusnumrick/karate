@@ -10,7 +10,7 @@ import {isbot} from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import {createReadableStreamFromReadable, EntryContext} from "@remix-run/node";
 
-export const streamTimeout = 5_000; // Replaces ABORT_DELAY
+export const streamTimeout = 5_000;
 
 export default function handleRequest(
   request: Request,
@@ -45,7 +45,7 @@ function handleBotRequest(
       <RemixServer
         context={remixContext}
         url={request.url}
-        abortDelay={ABORT_DELAY}
+        abortDelay={streamTimeout}
       />,
       {
         onAllReady() {
@@ -95,7 +95,7 @@ function handleBrowserRequest(
       <RemixServer
         context={remixContext}
         url={request.url}
-        abortDelay={ABORT_DELAY}
+        abortDelay={streamTimeout}
       />,
       {
         onShellReady() {

@@ -17,9 +17,9 @@ export default function Index() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
               <div className="flex items-center mb-6">
-                <img src="/logo.svg" alt="Karate Green Logo" className="h-24 w-24 mr-4" />
+                <img src="/logo.svg" alt="Karate Greenegin Logo" className="h-24 w-24 mr-4" />
                 <h1 className="text-4xl md:text-5xl font-bold">
-                  DISCOVER THE ART OF THE &ldquo;EMPTY HAND&rdquo;
+                  DISCOVER <br/> THE ART OF <br/> THE &ldquo;EMPTY HAND&rdquo;
                 </h1>
               </div>
               <p className="text-xl mb-8">
@@ -37,7 +37,8 @@ export default function Index() {
               <div className="relative h-96 w-full">
                 <div className="absolute left-10 right-0 top-0 h-full w-full bg-green-700 transform -skew-x-12 origin-top-right z-0"></div>
                 <div className="absolute right-8 top-8 h-80 w-80 flex items-center justify-center z-10">
-                  <div className="text-right flex items-center">
+                  <div className="text-right flex items-left">
+
                     <div>
                       <h2 className="text-5xl font-bold">KARATE <br/>GREENEGIN</h2>
                     </div>
