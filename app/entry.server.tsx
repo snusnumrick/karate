@@ -60,10 +60,11 @@ function handleBotRequest(
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
-          responseHeaders.set("Content-Security-Policy", "default-src 'self'");
+          responseHeaders.set("Content-Security-Policy", "default-src 'self' https://*.stripe.com https://*.paypal.com;");
           responseHeaders.set("X-Content-Type-Options", "nosniff");
           responseHeaders.set("Referrer-Policy", "strict-origin-when-cross-origin");
           responseHeaders.set("Permissions-Policy", "geolocation=(self)");
+          responseHeaders.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
 
           resolve(
             new Response(stream, {
@@ -114,10 +115,11 @@ function handleBrowserRequest(
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
-          responseHeaders.set("Content-Security-Policy", "default-src 'self'");
+          responseHeaders.set("Content-Security-Policy", "default-src 'self' https://*.stripe.com https://*.paypal.com;");
           responseHeaders.set("X-Content-Type-Options", "nosniff");
           responseHeaders.set("Referrer-Policy", "strict-origin-when-cross-origin");
           responseHeaders.set("Permissions-Policy", "geolocation=(self)");
+          responseHeaders.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
 
           resolve(
             new Response(stream, {
