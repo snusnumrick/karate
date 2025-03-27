@@ -4,24 +4,47 @@ export interface Family {
   id: string;
   name: string;
   address: string;
-  phone: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  primaryPhone: string;
   email: string;
+  referralSource?: string;
+  referralName?: string;
   guardians: Guardian[];
   students: Student[];
 }
 
 export interface Guardian {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   relationship: string;
-  phone: string;
+  homePhone: string;
+  workPhone?: string;
+  cellPhone: string;
   email: string;
+  employer?: string;
+  employerPhone?: string;
+  employerNotes?: string;
 }
 
 export interface Student {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  gender: string;
   birthDate: string;
+  cellPhone?: string;
+  email?: string;
+  tShirtSize: string;
+  school: string;
+  gradeLevel: string;
+  specialNeeds?: string;
+  allergies?: string;
+  medications?: string;
+  immunizationsUpToDate: boolean;
+  immunizationNotes?: string;
   beltRank: string;
   achievements?: Achievement[];
   attendanceRecords?: AttendanceRecord[];
