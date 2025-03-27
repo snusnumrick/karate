@@ -256,9 +256,9 @@ export default function SignWaiver() {
         </div>
         
         {(error || actionData?.error) && (
-          <div className="mb-4 p-3 bg-red-100 text-red-800 rounded">
-            {error || actionData?.error}
-          </div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error || actionData?.error}</AlertDescription>
+          </Alert>
         )}
         
         <div className="flex justify-end space-x-4">
