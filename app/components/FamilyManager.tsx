@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '~/utils/supabase.client';
 import type { Family, Guardian, Student } from '~/types/models';
+import { mapFamilyFromSupabase, mapGuardianFromSupabase, mapStudentFromSupabase } from '~/utils/mappers';
+import { mapFamilyToSupabase, mapGuardianToSupabase, mapStudentToSupabase } from '~/utils/mappers';
 
 interface FamilyManagerProps {
   familyId?: string;
@@ -12,7 +14,10 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
     id: '',
     name: '',
     address: '',
-    phone: '',
+    city: '',
+    province: '',
+    postalCode: '',
+    primaryPhone: '',
     email: '',
     guardians: [],
     students: [],
@@ -43,15 +48,25 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
         
       if (error) throw error;
       
-      setFamily(data || {
-        id: '',
-        name: '',
-        address: '',
-        phone: '',
-        email: '',
-        guardians: [],
-        students: [],
-      });
+      if (data) {
+        const mappedFamily = mapFamilyFromSupabase(data);
+        mappedFamily.guardians = data.guardians.map(mapGuardianFromSupabase);
+        mappedFamily.students = data.students.map(mapStudentFromSupabase);
+        setFamily(mappedFamily);
+      } else {
+        setFamily({
+          id: '',
+          name: '',
+          address: '',
+          city: '',
+          province: '',
+          postalCode: '',
+          primaryPhone: '',
+          email: '',
+          guardians: [],
+          students: [],
+        });
+      }
     } catch (err) {
       console.error('Error loading family:', err);
       setError('Failed to load family information');
@@ -65,39 +80,83 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
     setError(null);
     
     try {
+      // Convert to Supabase format
+      const dbFamily = mapFamilyToSupabase(family);
+      
       // Save family record
       const { data: familyData, error: familyError } = familyId 
         ? await supabaseClient
             .from('families')
-            .update({
-              name: family.name,
-              address: family.address,
-              phone: family.phone,
-              email: family.email,
-            })
+            .update(dbFamily)
             .eq('id', familyId)
             .select()
             .single()
         : await supabaseClient
             .from('families')
-            .insert({
-              name: family.name,
-              address: family.address,
-              phone: family.phone,
-              email: family.email,
-            })
+            .insert(dbFamily)
             .select()
             .single();
             
       if (familyError) throw familyError;
       
-      const newFamilyId = familyData?.id || '';
+      const newFamilyId = familyData?.id || familyId || '';
       
-      // Process guardians and students
-      // This is simplified - in a real app you'd handle updates, deletions, etc.
+      // Save guardians
+      const guardianPromises = family.guardians.map(async (guardian) => {
+        const dbGuardian = mapGuardianToSupabase({
+          ...guardian,
+          familyId: newFamilyId
+        });
+        
+        if (guardian.id) {
+          return supabaseClient
+            .from('guardians')
+            .update(dbGuardian)
+            .eq('id', guardian.id);
+        } else {
+          return supabaseClient
+            .from('guardians')
+            .insert(dbGuardian);
+        }
+      });
+      
+      // Save students
+      const studentPromises = family.students.map(async (student) => {
+        const dbStudent = mapStudentToSupabase({
+          ...student,
+          familyId: newFamilyId
+        });
+        
+        if (student.id) {
+          return supabaseClient
+            .from('students')
+            .update(dbStudent)
+            .eq('id', student.id);
+        } else {
+          return supabaseClient
+            .from('students')
+            .insert(dbStudent);
+        }
+      });
+      
+      // Execute all operations
+      const results = await Promise.all([
+        ...guardianPromises,
+        ...studentPromises
+      ]);
+      
+      // Check for errors
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        throw new Error(`Failed to save ${errors.length} related records`);
+      }
       
       if (onSave) {
-        onSave(familyData);
+        onSave({
+          ...mapFamilyFromSupabase(familyData),
+          guardians: family.guardians,
+          students: family.students
+        });
       }
     } catch (err) {
       console.error('Error saving family:', err);
@@ -112,7 +171,19 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
       ...family,
       guardians: [
         ...family.guardians,
-        { id: '', name: '', relationship: '', phone: '', email: '' }
+        {
+          id: '',
+          firstName: '',
+          lastName: '',
+          relationship: '',
+          homePhone: '',
+          cellPhone: '',
+          email: '',
+          employer: '',
+          employerPhone: '',
+          employerNotes: '',
+          workPhone: ''
+        }
       ]
     });
   }
@@ -122,7 +193,19 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
       ...family,
       students: [
         ...family.students,
-        { id: '', name: '', birthDate: '', beltRank: 'white' }
+        {
+          id: '',
+          firstName: '',
+          lastName: '',
+          gender: '',
+          birthDate: '',
+          tShirtSize: '',
+          school: '',
+          gradeLevel: '',
+          immunizationsUpToDate: false,
+          beltRank: 'white',
+          familyId: family.id
+        }
       ]
     });
   }
@@ -174,8 +257,8 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
           <label className="block text-sm font-medium">Phone</label>
           <input
             type="tel"
-            value={family.phone}
-            onChange={(e) => setFamily({ ...family, phone: e.target.value })}
+            value={family.primaryPhone}
+            onChange={(e) => setFamily({ ...family, primaryPhone: e.target.value })}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
           />
         </div>
@@ -215,11 +298,20 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium">Phone</label>
+                <label className="block text-sm font-medium">Home Phone</label>
                 <input
                   type="tel"
-                  value={guardian.phone}
-                  onChange={(e) => updateGuardian(index, { phone: e.target.value })}
+                  value={guardian.homePhone}
+                  onChange={(e) => updateGuardian(index, { homePhone: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Cell Phone</label>
+                <input
+                  type="tel"
+                  value={guardian.cellPhone}
+                  onChange={(e) => updateGuardian(index, { cellPhone: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 />
               </div>
@@ -283,6 +375,37 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   <option value="brown">Brown</option>
                   <option value="black">Black</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Gender</label>
+                <select
+                  value={student.gender}
+                  onChange={(e) => updateStudent(index, { gender: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                >
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium">School</label>
+                <input
+                  type="text"
+                  value={student.school}
+                  onChange={(e) => updateStudent(index, { school: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Grade Level</label>
+                <input
+                  type="text"
+                  value={student.gradeLevel}
+                  onChange={(e) => updateStudent(index, { gradeLevel: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                />
               </div>
             </div>
           </div>
