@@ -4,7 +4,7 @@ import { useLoaderData, useActionData, Form, useSubmit } from "@remix-run/react"
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const waiverId = params.id;
+  const waiverId = params.id!;
   const { supabaseServer } = getSupabaseServerClient(request);
   
   // Get the current user
@@ -41,7 +41,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const waiverId = params.id;
+  const waiverId = params.id!;
   const { supabaseServer } = getSupabaseServerClient(request);
   
   // Get the current user

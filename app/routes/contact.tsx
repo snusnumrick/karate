@@ -36,7 +36,7 @@ export default function ContactPage() {
             <div>
               <h2 className="text-xl font-semibold mb-4">Class Schedule</h2>
               <div className="bg-green-50 p-4 rounded-md">
-                <p className="font-medium mb-2">Children's Classes (Ages 6-12)</p>
+                <p className="font-medium mb-2">Children&apos;s Classes (Ages 6-12)</p>
                 <ul className="space-y-2">
                   <li className="flex items-center">
                     <span className="text-green-600 mr-2">•</span>

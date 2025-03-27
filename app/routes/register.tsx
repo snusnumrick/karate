@@ -611,7 +611,7 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label htmlFor={`student${index}FirstName`} className="block text-sm font-medium text-gray-700 mb-1">
-                          Student's First Name<span className="text-red-500">*</span>
+                          Student&apos;s First Name<span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -1045,13 +1045,6 @@ export default function RegisterPage() {
                   </button>
                 </div>
                 
-                <div className="mt-8 text-center text-sm text-gray-500">
-                  <p>
-                    Jackrabbit Technologies' class management platform & registration portal is trusted by
-                    1000s of dance studios, gyms, swim schools, music schools, cheer gyms, childcare centers,
-                    and more.
-                  </p>
-                </div>
               </div>
             )}
           </Form>

@@ -9,7 +9,7 @@ export default function ClassesPage() {
             Karate Classes for Children
           </h1>
           <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 sm:mt-4">
-            Discover the art of the "empty hand" with Sensei Negin
+            Discover the art of the &ldquo;empty hand&rdquo; with Sensei Negin
           </p>
         </div>
 
@@ -17,7 +17,8 @@ export default function ClassesPage() {
           <div className="p-8">
             <h2 className="text-2xl font-bold text-green-600 mb-6">Class Schedule</h2>
             <div className="bg-green-50 p-6 rounded-lg mb-8">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Children's Classes (Ages 6-12)</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Children&apos;s Classes (Ages 6-12)</h3>
               <ul className="space-y-4">
                 <li className="flex items-start">
                   <span className="text-green-600 font-bold mr-3">Monday:</span>
@@ -98,7 +99,7 @@ export default function ClassesPage() {
               <h2 className="text-xl font-bold mb-4">Ready to Join?</h2>
               <p className="mb-6">
                 Whether for transformative or competitive purposes, karate nurtures champions in all aspects of life!
-                Join Sensei Negin's karate class and begin your journey in the art of karate.
+                Join Sensei Negin&apos;s karate class and begin your journey in the art of karate.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link

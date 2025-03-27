@@ -6,9 +6,10 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-lg font-semibold mb-4">KARATE GREEN</h3>
+            <h3 className="text-lg font-semibold mb-4">KARATE GREENEGIN</h3>
             <p className="text-gray-300 mb-4">
-              Discover the art of the "empty hand" with Sensei Negin's karate classes for children ages 6-12.
+              Discover the art of the &ldquo;empty hand&rdquo;
+              with Sensei Negin&apos;s karate classes for children ages 6-12.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-300 hover:text-white">

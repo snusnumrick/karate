@@ -23,7 +23,7 @@ export default function AboutPage() {
                 principles with the next generation.
               </p>
               <p className="text-gray-600 mb-6">
-                With a Master's degree in Sport Psychology, Sensei Negin brings a unique perspective to her teaching, 
+                With a Master&apos;s degree in Sport Psychology, Sensei Negin brings a unique perspective to her teaching,
                 focusing not just on physical techniques but also on mental strength, discipline, and personal growth.
               </p>
               <p className="text-gray-600 mb-6">
@@ -46,15 +46,16 @@ export default function AboutPage() {
             <div className="bg-green-600 p-8 md:p-12 text-white flex flex-col justify-center">
               <h2 className="text-2xl font-bold mb-4">Teaching Philosophy</h2>
               <p className="mb-6">
-                "This class is an introduction to one of the most sophisticated martial arts ‒ the Art of Karate.
-                While karate focuses on defence techniques, its teaching goes far beyond fighting."
+                &ldquo;This class is an introduction to one of the most sophisticated martial arts ‒ the Art of Karate.
+                While karate focuses on defence techniques, its teaching goes far beyond fighting.&rdquo;
               </p>
               <p className="mb-6">
-                "Whether for transformative or competitive purposes, karate nurtures champions in all aspects of life!"
+                &ldquo;Whether for transformative or competitive purposes,
+                karate nurtures champions in all aspects of life!&rdquo;
               </p>
               <p className="mb-6">
-                "My goal is to help each student develop not just physical skills, but also mental strength, 
-                discipline, respect, and confidence that will serve them throughout their lives."
+                &ldquo;My goal is to help each student develop not just physical skills, but also mental strength,
+                discipline, respect, and confidence that will serve them throughout their lives.&rdquo;
               </p>
               <div className="mt-8">
                 <h3 className="text-xl font-semibold mb-4">Join us! OSS!</h3>
