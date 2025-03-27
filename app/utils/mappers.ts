@@ -20,6 +20,7 @@ export function mapStudentFromSupabase(row: Database['public']['Tables']['studen
     immunizationsUpToDate: row.immunizations_up_to_date,
     immunizationNotes: row.immunization_notes || undefined,
     beltRank: row.belt_rank,
+    familyId: row.family_id,
     // Relationships are loaded separately
     achievements: [],
     attendanceRecords: []
@@ -74,7 +75,7 @@ export function mapFamilyFromSupabase(row: Database['public']['Tables']['familie
     city: row.city,
     province: row.province,
     postalCode: row.postal_code,
-    primaryPhone: row.primary_phone,
+    primaryPhone: row.phone,
     email: row.email,
     referralSource: row.referral_source || undefined,
     referralName: row.referral_name || undefined,
