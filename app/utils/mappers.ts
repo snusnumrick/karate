@@ -1,5 +1,5 @@
 import type { Database } from '~/types/supabase';
-import type { Family, Guardian, Student, Payment, WaiverSignature } from '~/types/models';
+import type { Family, Guardian, Student, Payment, WaiverSignature, Achievement, AttendanceRecord, Waiver } from '~/types/models';
 
 // Convert database student row to Student type
 export function mapStudentFromSupabase(row: Database['public']['Tables']['students']['Row']): Student {
@@ -81,6 +81,146 @@ export function mapFamilyFromSupabase(row: Database['public']['Tables']['familie
     referralName: row.referral_name || undefined,
     guardians: [],
     students: []
+  };
+}
+
+export function mapFamilyToSupabase(family: Family): Database['public']['Tables']['families']['Insert'] {
+  return {
+    id: family.id,
+    name: family.name,
+    address: family.address,
+    city: family.city,
+    province: family.province,
+    postal_code: family.postalCode,
+    phone: family.primaryPhone,
+    email: family.email,
+    referral_source: family.referralSource,
+    referral_name: family.referralName
+  };
+}
+
+export function mapGuardianToSupabase(guardian: Guardian & { familyId: string }): Database['public']['Tables']['guardians']['Insert'] {
+  return {
+    id: guardian.id,
+    first_name: guardian.firstName,
+    last_name: guardian.lastName,
+    relationship: guardian.relationship,
+    home_phone: guardian.homePhone,
+    cell_phone: guardian.cellPhone,
+    work_phone: guardian.workPhone,
+    email: guardian.email,
+    employer: guardian.employer,
+    employer_phone: guardian.employerPhone,
+    employer_notes: guardian.employerNotes,
+    family_id: guardian.familyId
+  };
+}
+
+// Payment mappers
+export function mapPaymentFromSupabase(row: Database['public']['Tables']['payments']['Row'], studentIds: string[] = []): Payment {
+  return {
+    id: row.id,
+    familyId: row.family_id,
+    amount: row.amount,
+    paymentDate: row.payment_date,
+    paymentMethod: row.payment_method,
+    status: row.status,
+    studentIds: studentIds
+  };
+}
+
+export function mapPaymentToSupabase(payment: Payment): Database['public']['Tables']['payments']['Insert'] {
+  return {
+    id: payment.id,
+    family_id: payment.familyId,
+    amount: payment.amount,
+    payment_date: payment.paymentDate,
+    payment_method: payment.paymentMethod,
+    status: payment.status
+  };
+}
+
+// Achievement mappers
+export function mapAchievementFromSupabase(row: Database['public']['Tables']['achievements']['Row']): Achievement {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    type: row.type,
+    description: row.description,
+    awardedDate: row.awarded_date
+  };
+}
+
+export function mapAchievementToSupabase(achievement: Achievement): Database['public']['Tables']['achievements']['Insert'] {
+  return {
+    id: achievement.id,
+    student_id: achievement.studentId,
+    type: achievement.type,
+    description: achievement.description,
+    awarded_date: achievement.awardedDate
+  };
+}
+
+// Attendance mappers
+export function mapAttendanceFromSupabase(row: Database['public']['Tables']['attendance']['Row']): AttendanceRecord {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    classDate: row.class_date,
+    present: row.present,
+    notes: row.notes || undefined
+  };
+}
+
+export function mapAttendanceToSupabase(record: AttendanceRecord): Database['public']['Tables']['attendance']['Insert'] {
+  return {
+    id: record.id,
+    student_id: record.studentId,
+    class_date: record.classDate,
+    present: record.present,
+    notes: record.notes
+  };
+}
+
+// Waiver mappers
+export function mapWaiverFromSupabase(row: Database['public']['Tables']['waivers']['Row']): Waiver {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    content: row.content,
+    required: row.required
+  };
+}
+
+export function mapWaiverToSupabase(waiver: Waiver): Database['public']['Tables']['waivers']['Insert'] {
+  return {
+    id: waiver.id,
+    title: waiver.title,
+    description: waiver.description,
+    content: waiver.content,
+    required: waiver.required
+  };
+}
+
+// Waiver signature mappers
+export function mapWaiverSignatureFromSupabase(row: Database['public']['Tables']['waiver_signatures']['Row']): WaiverSignature {
+  return {
+    id: row.id,
+    waiverId: row.waiver_id,
+    userId: row.user_id,
+    signatureData: row.signature_data,
+    signedAt: row.signed_at
+  };
+}
+
+export function mapWaiverSignatureToSupabase(signature: WaiverSignature): Database['public']['Tables']['waiver_signatures']['Insert'] {
+  return {
+    id: signature.id,
+    waiver_id: signature.waiverId,
+    user_id: signature.userId,
+    signature_data: signature.signatureData,
+    signed_at: signature.signedAt
   };
 }
 
