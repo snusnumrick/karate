@@ -9,7 +9,7 @@
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "start": "remix-serve ./build/server/index.js",
     "typecheck": "tsc",
-    "render-mermaid": "mmdc -i README.md -o diagrams/README-with-charts.md --outputFormat markdown"
+    "render-mermaid": "mkdir -p diagrams && mmdc -i README.md -o diagrams/README-charts.svg --outputFormat svg --configFile mermaid-config.json"
   },
   "dependencies": {
     "@remix-run/node": "^2.16.2",
