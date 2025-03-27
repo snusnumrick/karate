@@ -1,5 +1,10 @@
 // Define the core data models for the application
 
+// Helper type for when we need a Student with its Family data
+export type StudentWithFamily = Student & {
+  family: Omit<Family, 'students' | 'guardians'> // Prevent recursion
+}
+
 export interface Family {
   id: string;
   name: string;
