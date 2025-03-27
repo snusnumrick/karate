@@ -9,3 +9,4 @@ node_modules
 .DS_Store
 coverage/
 .vscode/
+/diagrams/  # Add this line to exclude generated diagrams
