@@ -10,7 +10,7 @@ export const meta: MetaFunction = () => {
 
 export default function Index() {
   return (
-    <div className="bg-amber-50">
+    <div className="bg-amber-50 dark:bg-gray-800">
       {/* Hero Section */}
       <div className="bg-green-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
@@ -52,8 +52,8 @@ export default function Index() {
       {/* Class Info Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="bg-white p-8 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold text-green-600 mb-4">Class Details</h2>
+          <div className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-4">Class Details</h2>
             <ul className="space-y-4 text-lg">
               <li className="flex items-center">
                 <span className="mr-2">📍</span>
@@ -79,7 +79,7 @@ export default function Index() {
           </div>
           
           <div>
-            <h2 className="text-2xl font-bold text-green-600 mb-6">
+            <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-6">
               DISCOVER THE HANDS BEHIND THE ART
             </h2>
             <div className="bg-green-600 text-white p-8 rounded-lg shadow-md">
@@ -112,24 +112,24 @@ export default function Index() {
       </div>
 
       {/* Benefits Section */}
-      <div className="bg-green-50 py-16">
+      <div className="bg-green-50 dark:bg-gray-700 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-green-600 mb-12">
+          <h2 className="text-3xl font-bold text-center text-green-600 dark:text-green-400 mb-12">
             Benefits of Karate Training
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl text-green-600 mb-4">🧠</div>
+            <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
+              <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🧠</div>
               <h3 className="text-xl font-bold mb-2">Mental Strength</h3>
               <p>Develop focus, discipline, and confidence through consistent practice and achievement.</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl text-green-600 mb-4">🥋</div>
+            <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
+              <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🥋</div>
               <h3 className="text-xl font-bold mb-2">Self-Defense</h3>
               <p>Learn practical defense techniques while understanding the responsibility that comes with them.</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl text-green-600 mb-4">🏆</div>
+            <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
+              <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🏆</div>
               <h3 className="text-xl font-bold mb-2">Personal Growth</h3>
               <p>Whether for transformative or competitive purposes, karate nurtures champions in all aspects of life!</p>
             </div>
