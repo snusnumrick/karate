@@ -2,6 +2,10 @@ import { useState, useRef } from 'react';
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, useActionData, Form, useSubmit } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Label } from "~/components/ui/label";
+import { Alert, AlertDescription } from "~/components/ui/alert";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const waiverId = params.id!;
@@ -238,18 +242,17 @@ export default function SignWaiver() {
         </div>
         
         <div className="mb-6">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="agreement"
               name="agreement"
               checked={isAgreed}
-              onChange={(e) => setIsAgreed(e.target.checked)}
-              className="h-4 w-4 text-blue-600 rounded"
+              onCheckedChange={(checked) => setIsAgreed(Boolean(checked))}
             />
-            <span className="ml-2">
+            <Label htmlFor="agreement">
               I, {userId}, have read and agree to the terms outlined in this document.
-            </span>
-          </label>
+            </Label>
+          </div>
         </div>
         
         {(error || actionData?.error) && (
@@ -259,18 +262,15 @@ export default function SignWaiver() {
         )}
         
         <div className="flex justify-end space-x-4">
-          <a
-            href="/waivers"
-            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-          >
-            Cancel
-          </a>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          <Button asChild variant="outline">
+            <a href="/waivers">Cancel</a>
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={!isAgreed || !signatureData}
           >
             Submit Signature
-          </button>
+          </Button>
         </div>
       </Form>
     </div>
