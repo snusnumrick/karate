@@ -201,11 +201,11 @@ export default function SignWaiver() {
   }
   
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto py-8 px-4 dark:text-gray-100">
       <h1 className="text-3xl font-bold mb-6">Sign: {waiver.title}</h1>
       
-      <div className="mb-8 p-6 border rounded bg-gray-50">
-        <div dangerouslySetInnerHTML={{ __html: waiver.content }} />
+      <div className="mb-8 p-6 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+        <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: waiver.content }} />
       </div>
       
       <Form method="post" onSubmit={handleSubmit}>
@@ -215,12 +215,12 @@ export default function SignWaiver() {
             Please sign below using your mouse or finger on touch devices.
           </p>
           
-          <div className="border rounded p-1 bg-white">
+          <div className="border rounded p-1 bg-white dark:bg-gray-800 dark:border-gray-700">
             <canvas
               ref={canvasRef}
               width={600}
               height={150}
-              className="w-full border border-gray-300 touch-none"
+              className="w-full border border-gray-300 dark:border-gray-600 touch-none dark:bg-gray-700"
               onMouseDown={startDrawing}
               onMouseMove={draw}
               onMouseUp={stopDrawing}
@@ -236,7 +236,7 @@ export default function SignWaiver() {
           <button
             type="button"
             onClick={clearSignature}
-            className="mt-2 text-sm text-blue-600 hover:underline"
+            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
             aria-label="Clear signature"
           >
             Clear Signature
@@ -252,14 +252,14 @@ export default function SignWaiver() {
               onCheckedChange={(checked) => setIsAgreed(Boolean(checked))}
             />
             <Label htmlFor="agreement">
-              I, {userId}, have read and agree to the terms outlined in this document.
+              <span className="dark:text-gray-300">I, {userId}, have read and agree to the terms outlined in this document.</span>
             </Label>
           </div>
         </div>
         
         {(error || actionData?.error) && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error || actionData?.error}</AlertDescription>
+          <Alert variant="destructive" className="mb-4 dark:border-red-800 dark:bg-red-900/20">
+            <AlertDescription className="dark:text-red-300">{error || actionData?.error}</AlertDescription>
           </Alert>
         )}
         

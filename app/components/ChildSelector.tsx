@@ -94,7 +94,7 @@ export default function ChildSelector({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 dark:text-gray-100">
       <h3 className="text-lg font-medium">Select Children</h3>
       
       <div className="space-y-2">
@@ -105,10 +105,10 @@ export default function ChildSelector({
               id={`student-${student.id}`}
               checked={selectedStudents.some(s => s.id === student.id)}
               onChange={() => handleStudentToggle(student)}
-              className="h-4 w-4 text-blue-600 rounded"
+              className="h-4 w-4 text-blue-600 dark:text-blue-400 rounded dark:bg-gray-700 dark:border-gray-600"
               aria-label={`Select ${student.firstName} ${student.lastName}`}
             />
-            <label htmlFor={`student-${student.id}`} className="ml-2">
+            <label htmlFor={`student-${student.id}`} className="ml-2 dark:text-gray-200">
               {student.firstName} {student.lastName} ({student.beltRank} belt)
             </label>
           </div>
@@ -116,7 +116,7 @@ export default function ChildSelector({
       </div>
       
       {maxSelections > 0 && (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
           Selected {selectedStudents.length} of {maxSelections} maximum
         </div>
       )}

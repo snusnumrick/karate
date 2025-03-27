@@ -228,11 +228,11 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 dark:text-gray-100">
       <h2 className="text-2xl font-bold">{familyId ? 'Edit Family' : 'New Family'}</h2>
       
       {error && (
-        <div className="p-4 bg-red-100 text-red-800 rounded">
+        <div className="p-4 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100 rounded">
           {error}
         </div>
       )}
@@ -244,7 +244,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
             type="text"
             value={family.name}
             onChange={(e) => setFamily({ ...family, name: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
           />
         </div>
         
@@ -254,7 +254,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
             type="text"
             value={family.address}
             onChange={(e) => setFamily({ ...family, address: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
           />
         </div>
         
@@ -264,7 +264,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
             type="tel"
             value={family.primaryPhone}
             onChange={(e) => setFamily({ ...family, primaryPhone: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
           />
         </div>
         
@@ -274,7 +274,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
             type="email"
             value={family.email}
             onChange={(e) => setFamily({ ...family, email: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
           />
         </div>
       </div>
@@ -282,7 +282,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
       <div>
         <h3 className="text-xl font-semibold">Guardians</h3>
         {family.guardians.map((guardian, index) => (
-          <div key={index} className="mt-4 p-4 border rounded">
+          <div key={index} className="mt-4 p-4 border rounded dark:border-gray-600 dark:bg-gray-800">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium">First Name</label>
@@ -290,7 +290,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="text"
                   value={guardian.firstName}
                   onChange={(e) => updateGuardian(index, { firstName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -299,7 +299,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="text"
                   value={guardian.lastName}
                   onChange={(e) => updateGuardian(index, { lastName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -308,7 +308,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="text"
                   value={guardian.relationship}
                   onChange={(e) => updateGuardian(index, { relationship: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -317,7 +317,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="tel"
                   value={guardian.homePhone}
                   onChange={(e) => updateGuardian(index, { homePhone: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -326,7 +326,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="tel"
                   value={guardian.cellPhone}
                   onChange={(e) => updateGuardian(index, { cellPhone: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -335,7 +335,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="email"
                   value={guardian.email}
                   onChange={(e) => updateGuardian(index, { email: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
             </div>
@@ -344,7 +344,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
         <button
           type="button"
           onClick={addGuardian}
-          className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded"
+          className="mt-2 px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-100 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
         >
           Add Guardian
         </button>
@@ -353,7 +353,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
       <div>
         <h3 className="text-xl font-semibold">Students</h3>
         {family.students.map((student, index) => (
-          <div key={index} className="mt-4 p-4 border rounded">
+          <div key={index} className="mt-4 p-4 border rounded dark:border-gray-600 dark:bg-gray-800">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium">First Name</label>
@@ -361,7 +361,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="text"
                   value={student.firstName}
                   onChange={(e) => updateStudent(index, { firstName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -370,7 +370,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="text"
                   value={student.lastName}
                   onChange={(e) => updateStudent(index, { lastName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -379,7 +379,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="date"
                   value={student.birthDate}
                   onChange={(e) => updateStudent(index, { birthDate: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -387,7 +387,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                 <select
                   value={student.beltRank}
                   onChange={(e) => updateStudent(index, { beltRank: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 >
                   <option value="white">White</option>
                   <option value="yellow">Yellow</option>
@@ -404,7 +404,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                 <select
                   value={student.gender}
                   onChange={(e) => updateStudent(index, { gender: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 >
                   <option value="">Select</option>
                   <option value="male">Male</option>
@@ -418,7 +418,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="text"
                   value={student.school}
                   onChange={(e) => updateStudent(index, { school: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
               <div>
@@ -427,7 +427,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
                   type="text"
                   value={student.gradeLevel}
                   onChange={(e) => updateStudent(index, { gradeLevel: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
             </div>
@@ -436,7 +436,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
         <button
           type="button"
           onClick={addStudent}
-          className="mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded"
+          className="mt-2 px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-100 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
         >
           Add Student
         </button>
@@ -447,7 +447,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
           type="button"
           onClick={saveFamily}
           disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
         >
           {loading ? 'Saving...' : 'Save Family'}
         </button>
