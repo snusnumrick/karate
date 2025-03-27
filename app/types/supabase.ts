@@ -76,57 +76,90 @@ export interface Database {
       families: {
         Row: {
           address: string
+          city: string
           created_at: string
           email: string
           id: string
           name: string
           phone: string
+          postal_code: string
+          province: string
+          referral_name: string | null
+          referral_source: string | null
           updated_at: string
         }
         Insert: {
           address: string
+          city: string
           created_at?: string
           email: string
           id?: string
           name: string
           phone: string
+          postal_code: string
+          province: string
+          referral_name?: string | null
+          referral_source?: string | null
           updated_at?: string
         }
         Update: {
           address?: string
+          city?: string
           created_at?: string
           email?: string
           id?: string
           name?: string
           phone?: string
+          postal_code?: string
+          province?: string
+          referral_name?: string | null
+          referral_source?: string | null
           updated_at?: string
         }
         Relationships: []
       }
       guardians: {
         Row: {
+          cell_phone: string
           email: string
+          employer: string | null
+          employer_notes: string | null
+          employer_phone: string | null
           family_id: string
+          first_name: string
+          home_phone: string
           id: string
-          name: string
-          phone: string
+          last_name: string
           relationship: string
+          work_phone: string | null
         }
         Insert: {
+          cell_phone: string
           email: string
+          employer?: string | null
+          employer_notes?: string | null
+          employer_phone?: string | null
           family_id: string
+          first_name: string
+          home_phone: string
           id?: string
-          name: string
-          phone: string
+          last_name: string
           relationship: string
+          work_phone?: string | null
         }
         Update: {
+          cell_phone?: string
           email?: string
+          employer?: string | null
+          employer_notes?: string | null
+          employer_phone?: string | null
           family_id?: string
+          first_name?: string
+          home_phone?: string
           id?: string
-          name?: string
-          phone?: string
+          last_name?: string
           relationship?: string
+          work_phone?: string | null
         }
         Relationships: [
           {
@@ -145,7 +178,7 @@ export interface Database {
           id: string
           payment_date: string
           payment_method: string
-          status: string
+          status: 'pending' | 'completed' | 'failed'
         }
         Insert: {
           amount: number
@@ -153,7 +186,7 @@ export interface Database {
           id?: string
           payment_date: string
           payment_method: string
-          status: string
+          status: 'pending' | 'completed' | 'failed'
         }
         Update: {
           amount?: number
@@ -161,7 +194,7 @@ export interface Database {
           id?: string
           payment_date?: string
           payment_method?: string
-          status?: string
+          status?: 'pending' | 'completed' | 'failed'
         }
         Relationships: [
           {
@@ -211,19 +244,19 @@ export interface Database {
           email: string
           family_id: string | null
           id: string
-          role: string
+          role: 'user' | 'admin' | 'instructor'
         }
         Insert: {
           email: string
           family_id?: string | null
           id: string
-          role?: string
+          role?: 'user' | 'admin' | 'instructor'
         }
         Update: {
           email?: string
           family_id?: string | null
           id?: string
-          role?: string
+          role?: 'user' | 'admin' | 'instructor'
         }
         Relationships: [
           {
