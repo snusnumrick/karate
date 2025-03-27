@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [
     remix({
       future: {
-        v3_fetcherPersist: true
+        v3_fetcherPersist: true,
+        v3_lazyRouteDiscovery: true
       }
     }),
     tsconfigPaths(),
