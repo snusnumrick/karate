@@ -41,12 +41,14 @@ export default function ChildSelector({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabaseClient]);
 
   useEffect(() => {
+    let isMounted = true;
     if (familyId) {
       loadStudents(familyId);
     }
+    return () => { isMounted = false; };
   }, [familyId, loadStudents]);
 
   useEffect(() => {
