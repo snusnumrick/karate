@@ -16,9 +16,12 @@ export default function Index() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                DISCOVER THE ART OF THE "EMPTY HAND"
-              </h1>
+              <div className="flex items-center mb-6">
+                <img src="/logo.svg" alt="Karate Green Logo" className="h-24 w-24 mr-4" />
+                <h1 className="text-4xl md:text-5xl font-bold">
+                  DISCOVER THE ART OF THE "EMPTY HAND"
+                </h1>
+              </div>
               <p className="text-xl mb-8">
                 "This class is an introduction to one of the most sophisticated martial arts ‒ the Art of Karate.
                 While karate focuses on defence techniques, its teaching goes far beyond fighting"
@@ -34,9 +37,12 @@ export default function Index() {
               <div className="relative h-96 w-full">
                 <div className="absolute right-0 top-0 h-full w-full bg-green-700 transform -skew-x-12 origin-top-right z-0"></div>
                 <div className="absolute right-8 top-8 h-80 w-80 flex items-center justify-center z-10">
-                  <div className="text-right">
-                    <h2 className="text-3xl font-bold mb-2">KARATE</h2>
-                    <h3 className="text-2xl font-bold mb-4">GREEN</h3>
+                  <div className="text-right flex items-center">
+                    <img src="/logo.svg" alt="Karate Green Logo" className="h-28 w-28 mr-4" />
+                    <div>
+                      <h2 className="text-3xl font-bold mb-2">KARATE</h2>
+                      <h3 className="text-2xl font-bold mb-4">GREEN</h3>
+                    </div>
                   </div>
                 </div>
               </div>
