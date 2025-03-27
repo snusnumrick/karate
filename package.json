@@ -9,13 +9,14 @@
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "start": "remix-serve ./build/server/index.js",
     "typecheck": "tsc",
-    "render-mermaid": "mkdir -p diagrams && mmdc -i README.md -o diagrams/README-charts.svg --outputFormat svg --configFile mermaid-config.json --timeout 60000"
+    "render-mermaid": "mkdir -p diagrams && mmdc -i README.md -o diagrams/README-charts.svg --outputFormat svg --configFile mermaid-config.json"
   },
   "dependencies": {
     "@remix-run/node": "^2.16.2",
     "@remix-run/react": "^2.16.2",
     "@remix-run/serve": "^2.16.2",
     "isbot": "^4.1.0",
+    "puppeteer": "^24.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
