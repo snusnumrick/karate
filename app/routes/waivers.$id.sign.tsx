@@ -170,7 +170,8 @@ export default function SignWaiver() {
     }
   }
   
-  function clearSignature() {
+  function clearSignature(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -236,6 +237,7 @@ export default function SignWaiver() {
             type="button"
             onClick={clearSignature}
             className="mt-2 text-sm text-blue-600 hover:underline"
+            aria-label="Clear signature"
           >
             Clear Signature
           </button>

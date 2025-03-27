@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabaseClient } from '~/utils/supabase.client';
 import type { Family, Guardian, Student } from '~/types/models';
 import { mapFamilyFromSupabase, mapGuardianFromSupabase, mapStudentFromSupabase } from '~/utils/mappers';
@@ -25,13 +25,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (familyId) {
-      loadFamily(familyId);
-    }
-  }, [familyId]);
-
-  async function loadFamily(id: string) {
+  const loadFamily = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     
@@ -73,7 +67,18 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (familyId) {
+      loadFamily(familyId).then(() => {
+        if (!isMounted) return;
+      });
+    }
+    return () => { isMounted = false; };
+  }, [familyId, loadFamily]);
+
 
   async function saveFamily() {
     setLoading(true);

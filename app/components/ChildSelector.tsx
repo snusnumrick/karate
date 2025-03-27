@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabaseClient } from '~/utils/supabase.client';
 import type { Student } from '~/types/models';
 import { mapStudentFromSupabase } from '~/utils/mappers';
@@ -21,21 +21,7 @@ export default function ChildSelector({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (familyId) {
-      loadStudents(familyId);
-    }
-  }, [familyId]);
-
-  useEffect(() => {
-    // Initialize selected students based on selectedIds
-    if (selectedIds.length > 0 && students.length > 0) {
-      const selected = students.filter(student => selectedIds.includes(student.id));
-      setSelectedStudents(selected);
-    }
-  }, [selectedIds, students]);
-
-  async function loadStudents(id: string) {
+  const loadStudents = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     
@@ -55,7 +41,22 @@ export default function ChildSelector({
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (familyId) {
+      loadStudents(familyId);
+    }
+  }, [familyId, loadStudents]);
+
+  useEffect(() => {
+    // Initialize selected students based on selectedIds
+    if (selectedIds.length > 0 && students.length > 0) {
+      const selected = students.filter(student => selectedIds.includes(student.id));
+      setSelectedStudents(selected);
+    }
+  }, [selectedIds, students]);
+
 
   function handleStudentToggle(student: Student) {
     let updatedSelection;
@@ -103,6 +104,7 @@ export default function ChildSelector({
               checked={selectedStudents.some(s => s.id === student.id)}
               onChange={() => handleStudentToggle(student)}
               className="h-4 w-4 text-blue-600 rounded"
+              aria-label={`Select ${student.firstName} ${student.lastName}`}
             />
             <label htmlFor={`student-${student.id}`} className="ml-2">
               {student.firstName} {student.lastName} ({student.beltRank} belt)
