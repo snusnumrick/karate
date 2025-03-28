@@ -46,7 +46,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body className="h-full bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
+      <body className="h-full bg-background text-foreground">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

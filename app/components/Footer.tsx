@@ -3,7 +3,7 @@ import { Button } from "~/components/ui/button";
 
 export default function Footer() {
   return (
-    <footer className="bg-background text-foreground">
+    <footer className="bg-background/90 text-foreground border-t backdrop-blur-lg">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>

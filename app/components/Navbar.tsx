@@ -101,7 +101,7 @@ export default function Navbar() {
       </div>
 
       {isMenuOpen && (
-        <div className="sm:hidden">
+        <div className="sm:hidden z-50">
           <div className="pt-2 pb-3 space-y-1">
             <Link
               to="/"
