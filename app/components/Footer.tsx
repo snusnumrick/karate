@@ -49,7 +49,7 @@ export default function Footer() {
           
           <div>
             <h3 className="text-lg font-semibold mb-4">Contact Us</h3>
-            <ul className="space-y-2 text-muted-foreground">
+            <ul className="space-y-2 text-green-100 dark:text-gray-300">
               <li className="flex items-start">
                 <span className="mr-2">📍</span>
                 <span>Lighthouse Christian Academy</span>
