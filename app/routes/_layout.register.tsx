@@ -155,7 +155,7 @@ export default function RegisterPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ADDITIONAL INFO</h2>
                   {/* ... rest of step 2 ... */}
-                   </div>
+                  {/* The actual content for step 2 should be here */}
                   
                   <div className="flex justify-between mt-8">
                     <Button
@@ -181,7 +181,7 @@ export default function RegisterPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT #2</h2>
                   {/* ... rest of step 3 ... */}
-                   </div>
+                  {/* The actual content for step 3 should be here */}
                   
                   <div className="flex justify-between mt-8">
                     <Button
@@ -209,7 +209,7 @@ export default function RegisterPage() {
                     <div key={student.id} className="mb-8 pb-8 border-b border-border dark:border-gray-700">
                       <h2 className="text-xl font-semibold text-foreground mb-4">STUDENT #{index + 1}</h2>
                       {/* ... rest of student fields ... */}
-                       </div>
+                      {/* The actual content for student fields should be here */}
                       
                       <div>
                         <Label htmlFor={`student${index}BeltRank`} className="block text-sm font-medium mb-1">
@@ -272,10 +272,8 @@ export default function RegisterPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
                   {/* ... rest of step 5 ... */}
-                     />
-                    </div>
-                  </div>
-                  
+                  {/* The actual content for step 5 should be here */}
+
                   <div className="flex justify-between mt-8">
                     <Button
                       type="button"
