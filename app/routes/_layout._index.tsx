@@ -155,7 +155,7 @@ export default function Index() {
               Register Now
             </Link>
             <Link 
-              to="/contact" 
+              to="/app/routes/_layout.contact"
               className="inline-block bg-transparent border-2 border-white text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-white hover:text-green-600 transition"
             >
               Contact Us

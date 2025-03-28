@@ -109,7 +109,7 @@ export default function ClassesPage() {
                   Register Now
                 </Link>
                 <Link
-                  to="/contact"
+                  to="/app/routes/_layout.contact"
                   className="inline-block bg-transparent border-2 border-white text-white font-bold py-2 px-6 rounded-lg text-center hover:bg-white hover:text-green-600 transition"
                 >
                   Contact Us
