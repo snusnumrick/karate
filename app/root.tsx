@@ -63,7 +63,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Outlet />
+    </div>
+  );
 }
 
 export function ErrorBoundary() {
