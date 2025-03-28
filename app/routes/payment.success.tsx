@@ -31,7 +31,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function PaymentSuccess() {
-  const { payment } = useLoaderData<typeof loader>();
+  const { payment } = useLoaderData() as { payment: { amount: number; family_id: string; id: string; payment_date: string; payment_method: string; status: "pending" | "completed" | "failed"; family: { name: string } | null; receipt_url?: string } };
   
   return (
     <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">

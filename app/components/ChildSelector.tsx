@@ -44,11 +44,9 @@ export default function ChildSelector({
   }, [supabaseClient]);
 
   useEffect(() => {
-    let isMounted = true;
     if (familyId) {
       loadStudents(familyId);
     }
-    return () => { isMounted = false; };
   }, [familyId, loadStudents]);
 
   useEffect(() => {

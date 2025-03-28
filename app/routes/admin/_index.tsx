@@ -75,7 +75,7 @@ export default function AdminDashboard() {
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-medium text-gray-500">Today's Attendance</h2>
+          <h2 className="text-lg font-medium text-gray-500">Today&apos;s Attendance</h2>
           <p className="text-3xl font-bold">{attendanceToday}</p>
           <Link to="/admin/attendance" className="text-blue-600 text-sm hover:underline mt-2 inline-block">
             Manage attendance →
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
               to="/admin/attendance/record" 
               className="block p-3 bg-green-50 text-green-700 rounded hover:bg-green-100"
             >
-              Record Today's Attendance
+              Record Today&apos;s Attendance
             </Link>
             <Link 
               to="/admin/payments/new" 

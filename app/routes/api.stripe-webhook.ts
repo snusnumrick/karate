@@ -5,7 +5,7 @@ import { updatePaymentStatus } from '~/utils/supabase.server';
 
 export async function action({ request }: ActionFunctionArgs) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2023-10-16',
+    apiVersion: '2025-02-24.acacia',
   });
   
   const payload = await request.text();
@@ -21,13 +21,13 @@ export async function action({ request }: ActionFunctionArgs) {
     
     // Handle the checkout.session.completed event
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
+      const session = event.data.object as Stripe.Checkout.Session & { receipt_url?: string };
       
       // Update payment status in database
       await updatePaymentStatus(
         session.id,
         'completed',
-        (session as any).receipt_url
+        session.receipt_url
       );
     }
     
