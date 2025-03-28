@@ -103,7 +103,7 @@ export default function ClassesPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
-                  to="/register"
+                  to="/app/routes/_layout.register"
                   className="inline-block bg-white text-green-600 font-bold py-2 px-6 rounded-lg text-center hover:bg-gray-100 transition"
                 >
                   Register Now

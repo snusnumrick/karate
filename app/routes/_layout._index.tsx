@@ -27,7 +27,7 @@ export default function Index() {
                 While karate focuses on defence techniques, its teaching goes far beyond fighting&rdquo;
               </p>
               <Link 
-                to="/register" 
+                to="/app/routes/_layout.register"
                 className="inline-block bg-white text-green-600 font-bold py-3 px-8 rounded-lg text-lg hover:bg-gray-100 transition"
               >
                 Join us! OSS!
@@ -149,7 +149,7 @@ export default function Index() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link 
-              to="/register" 
+              to="/app/routes/_layout.register"
               className="inline-block bg-white text-green-600 font-bold py-3 px-8 rounded-lg text-lg hover:bg-gray-100 transition"
             >
               Register Now

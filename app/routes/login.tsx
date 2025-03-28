@@ -13,7 +13,7 @@ export default function LoginPage() {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Or{" "}
-          <Link to="/register" className="font-medium text-green-600 hover:text-green-500">
+          <Link to="/app/routes/_layout.register" className="font-medium text-green-600 hover:text-green-500">
             register for classes
           </Link>
         </p>
