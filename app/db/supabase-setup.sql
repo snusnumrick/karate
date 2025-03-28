@@ -23,6 +23,14 @@ create table families (
 );
 
 alter table families enable row level security;
+create policy "Families are viewable by members" on families
+  for select using (
+    exists (
+      select 1 from profiles 
+      where profiles.family_id = families.id
+      and profiles.id = auth.uid()
+    )
+  );
 
 -- Guardians table
 create table guardians (
@@ -42,6 +50,14 @@ create table guardians (
 
 create index idx_guardians_family_id on guardians (family_id);
 alter table guardians enable row level security;
+create policy "Guardians are viewable by family members" on guardians
+  for select using (
+    exists (
+      select 1 from profiles 
+      where profiles.family_id = guardians.family_id
+      and profiles.id = auth.uid()
+    )
+  );
 
 -- Students table
 create table students (
@@ -66,6 +82,14 @@ create table students (
 
 create index idx_students_family_id on students (family_id);
 alter table students enable row level security;
+create policy "Students are viewable by family members" on students
+  for select using (
+    exists (
+      select 1 from profiles 
+      where profiles.family_id = students.family_id
+      and profiles.id = auth.uid()
+    )
+  );
 
 -- Payments table
 create type payment_status as enum ('pending', 'completed', 'failed');
@@ -81,6 +105,14 @@ create table payments (
 
 create index idx_payments_family_id on payments (family_id);
 alter table payments enable row level security;
+create policy "Payments are viewable by family members" on payments
+  for select using (
+    exists (
+      select 1 from profiles 
+      where profiles.family_id = payments.family_id
+      and profiles.id = auth.uid()
+    )
+  );
 
 -- Payment-Students junction table
 create table payment_students (
@@ -92,6 +124,15 @@ create table payment_students (
 create index idx_payment_students_payment_id on payment_students (payment_id);
 create index idx_payment_students_student_id on payment_students (student_id);
 alter table payment_students enable row level security;
+create policy "Payment_students are viewable by related users" on payment_students
+  for select using (
+    exists (
+      select 1 from payments
+      join profiles on profiles.family_id = payments.family_id
+      where payment_students.payment_id = payments.id
+      and profiles.id = auth.uid()
+    )
+  );
 
 -- Achievements table
 create table achievements (
@@ -104,6 +145,15 @@ create table achievements (
 
 create index idx_achievements_student_id on achievements (student_id);
 alter table achievements enable row level security;
+create policy "Achievements are viewable by family members" on achievements
+  for select using (
+    exists (
+      select 1 from students
+      join profiles on profiles.family_id = students.family_id
+      where achievements.student_id = students.id
+      and profiles.id = auth.uid()
+    )
+  );
 
 -- Attendance table
 create table attendance (
@@ -116,6 +166,15 @@ create table attendance (
 
 create index idx_attendance_student_id on attendance (student_id);
 alter table attendance enable row level security;
+create policy "Attendance is viewable by family members" on attendance
+  for select using (
+    exists (
+      select 1 from students
+      join profiles on profiles.family_id = students.family_id
+      where attendance.student_id = students.id
+      and profiles.id = auth.uid()
+    )
+  );
 
 -- Waivers table
 create table waivers (
@@ -127,6 +186,8 @@ create table waivers (
 );
 
 alter table waivers enable row level security;
+create policy "Waivers are viewable by all authenticated users" on waivers
+  for select using (auth.role() = 'authenticated');
 
 -- Waiver Signatures table
 create table waiver_signatures (
@@ -140,6 +201,8 @@ create table waiver_signatures (
 create index idx_waiver_signatures_user_id on waiver_signatures (user_id);
 create index idx_waiver_signatures_waiver_id on waiver_signatures (waiver_id);
 alter table waiver_signatures enable row level security;
+create policy "Waiver signatures are viewable by the signer" on waiver_signatures
+  for select using (auth.uid() = user_id);
 
 -- Profiles table
 create table profiles (
@@ -156,8 +219,6 @@ alter table profiles enable row level security;
 -- Example policies - adjust according to your security needs
 create policy "Profiles are viewable by user" on profiles
   for select using (auth.uid() = id);
-
-create policy "Families are viewable by members" on families
   for select using (
     exists (
       select 1 from profiles 
