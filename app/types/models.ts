@@ -82,6 +82,16 @@ export interface Payment {
   studentIds: string[]; // Which students this payment covers
 }
 
+export interface CheckoutSession {
+  id: string;
+  userId: string;
+  paymentId?: string;
+  sessionId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Waiver {
   id: string;
   title: string;
