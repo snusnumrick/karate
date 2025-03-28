@@ -50,7 +50,7 @@ export default function Navbar() {
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             <Link
               to="/login"
-              className="inline-flex items-center px-8 py-3 border border-transparent text-lg font-bold rounded-lg text-green-600 bg-white hover:bg-green-50"
+              className="inline-flex items-center px-8 py-3 h-12 border border-transparent text-lg font-bold rounded-lg text-green-600 bg-white hover:bg-green-50"
             >
               Login
             </Link>
