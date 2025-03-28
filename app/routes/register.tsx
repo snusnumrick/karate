@@ -1,5 +1,17 @@
 import { useState } from "react";
 import { Link, Form } from "@remix-run/react";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Checkbox } from "~/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
 
 export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -39,11 +51,11 @@ export default function RegisterPage() {
           <div className="mb-6">
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div 
-                className="bg-green-600 h-2.5 rounded-full" 
+                className="bg-primary h-2.5 rounded-full" 
                 style={{ width: `${(currentStep / 5) * 100}%` }}
               ></div>
             </div>
-            <p className="text-center mt-2 text-sm text-gray-600">Step {currentStep} of 5</p>
+            <p className="text-center mt-2 text-sm text-muted-foreground">Step {currentStep} of 5</p>
           </div>
           
           <Form method="post" className="space-y-8">
@@ -52,142 +64,140 @@ export default function RegisterPage() {
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">REFERRAL INFORMATION</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="referralSource" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="referralSource" className="text-sm font-medium mb-1">
                       How did you hear about us?<span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="referralSource"
-                      name="referralSource"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    >
-                      <option value="">Select an option</option>
-                      <option value="friend">Friend</option>
-                      <option value="social">Social Media</option>
-                      <option value="search">Search Engine</option>
-                      <option value="flyer">Flyer</option>
-                      <option value="event">Event</option>
-                      <option value="other">Other</option>
-                    </select>
+                    </Label>
+                    <Select name="referralSource" required>
+                      <SelectTrigger id="referralSource" className="w-full">
+                        <SelectValue placeholder="Select an option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="friend">Friend</SelectItem>
+                        <SelectItem value="social">Social Media</SelectItem>
+                        <SelectItem value="search">Search Engine</SelectItem>
+                        <SelectItem value="flyer">Flyer</SelectItem>
+                        <SelectItem value="event">Event</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div>
-                    <label htmlFor="referralName" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="referralName" className="text-sm font-medium mb-1">
                       Referral Name
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="referralName"
                       name="referralName"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                 </div>
                 
                 <h2 className="text-xl font-semibold text-gray-800 mt-8 mb-4 pb-2 border-b">FAMILY INFORMATION</h2>
                 <div>
-                  <label htmlFor="familyName" className="block text-sm font-medium text-gray-700 mb-1">
+                  <Label htmlFor="familyName" className="text-sm font-medium mb-1">
                     Family Last Name<span className="text-red-500">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     id="familyName"
                     name="familyName"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="focus:ring-green-500"
                   />
                 </div>
                 
                 <h2 className="text-xl font-semibold text-gray-800 mt-8 mb-4 pb-2 border-b">WHERE DO YOU LIVE?</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
-                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="address" className="text-sm font-medium mb-1">
                       Home Address<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="address"
                       name="address"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="city" className="text-sm font-medium mb-1">
                       City<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="city"
                       name="city"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="province" className="text-sm font-medium mb-1">
                       Province<span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="province"
-                      name="province"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    >
-                      <option value="">Select a province</option>
-                      <option value="AB">Alberta</option>
-                      <option value="BC">British Columbia</option>
-                      <option value="MB">Manitoba</option>
-                      <option value="NB">New Brunswick</option>
-                      <option value="NL">Newfoundland and Labrador</option>
-                      <option value="NS">Nova Scotia</option>
-                      <option value="ON">Ontario</option>
-                      <option value="PE">Prince Edward Island</option>
-                      <option value="QC">Quebec</option>
-                      <option value="SK">Saskatchewan</option>
-                      <option value="NT">Northwest Territories</option>
-                      <option value="NU">Nunavut</option>
-                      <option value="YT">Yukon</option>
-                    </select>
+                    </Label>
+                    <Select name="province" required>
+                      <SelectTrigger id="province" className="w-full">
+                        <SelectValue placeholder="Select a province" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="AB">Alberta</SelectItem>
+                        <SelectItem value="BC">British Columbia</SelectItem>
+                        <SelectItem value="MB">Manitoba</SelectItem>
+                        <SelectItem value="NB">New Brunswick</SelectItem>
+                        <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
+                        <SelectItem value="NS">Nova Scotia</SelectItem>
+                        <SelectItem value="ON">Ontario</SelectItem>
+                        <SelectItem value="PE">Prince Edward Island</SelectItem>
+                        <SelectItem value="QC">Quebec</SelectItem>
+                        <SelectItem value="SK">Saskatchewan</SelectItem>
+                        <SelectItem value="NT">Northwest Territories</SelectItem>
+                        <SelectItem value="NU">Nunavut</SelectItem>
+                        <SelectItem value="YT">Yukon</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div>
-                    <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="postalCode" className="text-sm font-medium mb-1">
                       Postal Code<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="postalCode"
                       name="postalCode"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="primaryPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="primaryPhone" className="text-sm font-medium mb-1">
                       Primary Phone<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="primaryPhone"
                       name="primaryPhone"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                 </div>
                 
                 <div className="mt-8">
-                  <button
+                  <Button
                     type="button"
                     onClick={nextStep}
-                    className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition"
+                    className="w-full font-bold py-3 px-4"
                   >
                     Continue to Additional Info
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -197,28 +207,28 @@ export default function RegisterPage() {
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">ADDITIONAL INFO</h2>
                 <div className="space-y-6">
                   <div>
-                    <label htmlFor="emergencyContact" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
                       Emergency Contact Info (Not Contact #1 or #2)<span className="text-red-500">*</span>
-                    </label>
-                    <textarea
+                    </Label>
+                    <Textarea
                       id="emergencyContact"
                       name="emergencyContact"
                       required
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    ></textarea>
+                      className="focus:ring-green-500"
+                    />
                   </div>
                   
                   <div>
-                    <label htmlFor="healthNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="healthNumber" className="text-sm font-medium mb-1">
                       Personal Health Number
-                    </label>
-                    <textarea
+                    </Label>
+                    <Textarea
                       id="healthNumber"
                       name="healthNumber"
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    ></textarea>
+                      className="focus:ring-green-500"
+                    />
                   </div>
                 </div>
                 
@@ -408,20 +418,21 @@ export default function RegisterPage() {
                 </div>
                 
                 <div className="flex justify-between mt-8">
-                  <button
+                  <Button
                     type="button"
                     onClick={prevStep}
-                    className="bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-400 transition"
+                    variant="secondary"
+                    className="font-bold py-3 px-6"
                   >
                     Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={nextStep}
-                    className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition"
+                    className="font-bold py-3 px-6"
                   >
                     Continue
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -842,16 +853,17 @@ export default function RegisterPage() {
                 ))}
                 
                 <div className="mt-4 mb-8">
-                  <button
+                  <Button 
                     type="button"
                     onClick={addStudent}
-                    className="flex items-center justify-center w-full py-2 px-4 border border-green-600 text-green-600 rounded-md hover:bg-green-50 transition"
+                    variant="outline"
+                    className="w-full flex items-center justify-center"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
                     </svg>
                     ADD ANOTHER STUDENT
-                  </button>
+                  </Button>
                 </div>
                 
                 <div className="flex justify-between mt-8">
@@ -878,20 +890,14 @@ export default function RegisterPage() {
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">REQUIRED POLICIES</h2>
                 
                 <div className="space-y-6">
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <div className="flex items-start">
-                      <div className="flex items-center h-5">
-                        <input
-                          id="photoRelease"
-                          name="photoRelease"
-                          type="checkbox"
-                          required
-                          className="h-4 w-4 text-green-600 border-gray-300 rounded"
-                        />
-                      </div>
-                      <div className="ml-3">
-                        <label htmlFor="photoRelease" className="font-medium text-gray-700">Photo / Video Release</label>
-                        <p className="text-gray-500 text-sm">
+                  <div className="bg-muted p-4 rounded-md">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox id="photoRelease" name="photoRelease" required />
+                      <div>
+                        <Label htmlFor="photoRelease" className="font-medium">
+                          Photo / Video Release
+                        </Label>
+                        <p className="text-muted-foreground text-sm mt-2">
                           I give permission for my child to be photographed or videotaped during karate activities. 
                           I understand these images may be used for promotional purposes including social media, website, and printed materials.
                         </p>
@@ -899,20 +905,14 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <div className="flex items-start">
-                      <div className="flex items-center h-5">
-                        <input
-                          id="liability"
-                          name="liability"
-                          type="checkbox"
-                          required
-                          className="h-4 w-4 text-green-600 border-gray-300 rounded"
-                        />
-                      </div>
-                      <div className="ml-3">
-                        <label htmlFor="liability" className="font-medium text-gray-700">Release of Liability & Assumption of Risk</label>
-                        <p className="text-gray-500 text-sm">
+                  <div className="bg-muted p-4 rounded-md">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox id="liability" name="liability" required />
+                      <div>
+                        <Label htmlFor="liability" className="font-medium">
+                          Release of Liability & Assumption of Risk
+                        </Label>
+                        <p className="text-muted-foreground text-sm mt-2">
                           I understand that participation in karate involves physical activity and carries inherent risks. 
                           I release Karate Greenegin, its instructors, and staff from liability for injuries sustained during participation.
                         </p>
@@ -920,20 +920,14 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <div className="flex items-start">
-                      <div className="flex items-center h-5">
-                        <input
-                          id="conduct"
-                          name="conduct"
-                          type="checkbox"
-                          required
-                          className="h-4 w-4 text-green-600 border-gray-300 rounded"
-                        />
-                      </div>
-                      <div className="ml-3">
-                        <label htmlFor="conduct" className="font-medium text-gray-700">Code Of Conduct Agreement</label>
-                        <p className="text-gray-500 text-sm">
+                  <div className="bg-muted p-4 rounded-md">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox id="conduct" name="conduct" required />
+                      <div>
+                        <Label htmlFor="conduct" className="font-medium">
+                          Code Of Conduct Agreement
+                        </Label>
+                        <p className="text-muted-foreground text-sm mt-2">
                           I agree that my child will follow all rules and guidelines set by the instructors, 
                           show respect to all participants, and maintain appropriate behavior during all activities.
                         </p>
@@ -941,20 +935,14 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <div className="flex items-start">
-                      <div className="flex items-center h-5">
-                        <input
-                          id="payment"
-                          name="payment"
-                          type="checkbox"
-                          required
-                          className="h-4 w-4 text-green-600 border-gray-300 rounded"
-                        />
-                      </div>
-                      <div className="ml-3">
-                        <label htmlFor="payment" className="font-medium text-gray-700">Payment Policy</label>
-                        <p className="text-gray-500 text-sm">
+                  <div className="bg-muted p-4 rounded-md">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox id="payment" name="payment" required />
+                      <div>
+                        <Label htmlFor="payment" className="font-medium">
+                          Payment Policy
+                        </Label>
+                        <p className="text-muted-foreground text-sm mt-2">
                           I understand the payment schedule and agree to make timely payments. 
                           I acknowledge that fees are non-refundable and that missed classes cannot be credited.
                         </p>
@@ -962,20 +950,14 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <div className="flex items-start">
-                      <div className="flex items-center h-5">
-                        <input
-                          id="attire"
-                          name="attire"
-                          type="checkbox"
-                          required
-                          className="h-4 w-4 text-green-600 border-gray-300 rounded"
-                        />
-                      </div>
-                      <div className="ml-3">
-                        <label htmlFor="attire" className="font-medium text-gray-700">Attire / Dress Code Agreement</label>
-                        <p className="text-gray-500 text-sm">
+                  <div className="bg-muted p-4 rounded-md">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox id="attire" name="attire" required />
+                      <div>
+                        <Label htmlFor="attire" className="font-medium">
+                          Attire / Dress Code Agreement
+                        </Label>
+                        <p className="text-muted-foreground text-sm mt-2">
                           I agree that my child will wear the appropriate karate uniform (gi) to all classes 
                           and will maintain proper hygiene and appearance according to dojo guidelines.
                         </p>
@@ -983,33 +965,25 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <div className="flex items-start">
-                      <div className="flex items-center h-5">
-                        <input
-                          id="agreeAll"
-                          name="agreeAll"
-                          type="checkbox"
-                          required
-                          className="h-4 w-4 text-green-600 border-gray-300 rounded"
-                        />
-                      </div>
-                      <div className="ml-3">
-                        <label htmlFor="agreeAll" className="font-medium text-gray-700">I AGREE TO ALL OF THE ABOVE</label>
-                      </div>
+                  <div className="bg-muted p-4 rounded-md">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox id="agreeAll" name="agreeAll" required />
+                      <Label htmlFor="agreeAll" className="font-medium">
+                        I AGREE TO ALL OF THE ABOVE
+                      </Label>
                     </div>
                   </div>
                   
                   <div>
-                    <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="fullName" className="text-sm font-medium mb-1">
                       Enter your Full Name<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="fullName"
                       name="fullName"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                     <p className="text-sm text-gray-500 mt-1">
                       {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -1017,32 +991,33 @@ export default function RegisterPage() {
                   </div>
                   
                   <div>
-                    <label htmlFor="comments" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="comments" className="text-sm font-medium mb-1">
                       Comments
-                    </label>
-                    <textarea
+                    </Label>
+                    <Textarea
                       id="comments"
                       name="comments"
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    ></textarea>
+                      className="focus:ring-green-500"
+                    />
                   </div>
                 </div>
                 
                 <div className="flex justify-between mt-8">
-                  <button
+                  <Button
                     type="button"
                     onClick={prevStep}
-                    className="bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-400 transition"
+                    variant="secondary"
+                    className="font-bold py-3 px-6"
                   >
                     Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
-                    className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition"
+                    className="font-bold py-3 px-6"
                   >
                     SUBMIT REGISTRATION
-                  </button>
+                  </Button>
                 </div>
                 
               </div>
