@@ -4,6 +4,18 @@ import { supabaseClient } from '~/utils/supabase.client';
 import type { Family, Guardian, Student } from '~/types/models';
 import { mapFamilyFromSupabase, mapGuardianFromSupabase, mapStudentFromSupabase } from '~/utils/mappers';
 import { mapFamilyToSupabase, mapGuardianToSupabase, mapStudentToSupabase } from '~/utils/mappers';
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Card } from "~/components/ui/card";
+import { Alert, AlertDescription } from "~/components/ui/alert";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "~/components/ui/select";
 
 interface FamilyManagerProps {
   familyId?: string;
@@ -233,49 +245,49 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
       <h2 className="text-2xl font-bold">{familyId ? 'Edit Family' : 'New Family'}</h2>
       
       {error && (
-        <div className="p-4 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100 rounded">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Family Name</label>
-          <input
+        <div className="grid gap-2">
+          <Label htmlFor="family-name">Family Name</Label>
+          <Input
+            id="family-name"
             type="text"
             value={family.name}
             onChange={(e) => setFamily({ ...family, name: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
           />
         </div>
         
-        <div>
-          <label className="block text-sm font-medium">Address</label>
-          <input
+        <div className="grid gap-2">
+          <Label htmlFor="address">Address</Label>
+          <Input
+            id="address"
             type="text"
             value={family.address}
             onChange={(e) => setFamily({ ...family, address: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
           />
         </div>
         
-        <div>
-          <label className="block text-sm font-medium">Phone</label>
-          <input
+        <div className="grid gap-2">
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
             type="tel"
             value={family.primaryPhone}
             onChange={(e) => setFamily({ ...family, primaryPhone: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
           />
         </div>
         
-        <div>
-          <label className="block text-sm font-medium">Email</label>
-          <input
+        <div className="grid gap-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
             type="email"
             value={family.email}
             onChange={(e) => setFamily({ ...family, email: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
           />
         </div>
       </div>
@@ -283,175 +295,183 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
       <div>
         <h3 className="text-xl font-semibold">Guardians</h3>
         {family.guardians.map((guardian, index) => (
-          <div key={index} className="mt-4 p-4 border rounded dark:border-gray-600 dark:bg-gray-800">
+          <Card key={index} className="mt-4 p-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium">First Name</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`guardian-first-name-${index}`}>First Name</Label>
+                <Input
+                  id={`guardian-first-name-${index}`}
                   type="text"
                   value={guardian.firstName}
                   onChange={(e) => updateGuardian(index, { firstName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Last Name</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`guardian-last-name-${index}`}>Last Name</Label>
+                <Input
+                  id={`guardian-last-name-${index}`}
                   type="text"
                   value={guardian.lastName}
                   onChange={(e) => updateGuardian(index, { lastName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Relationship</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`guardian-relationship-${index}`}>Relationship</Label>
+                <Input
+                  id={`guardian-relationship-${index}`}
                   type="text"
                   value={guardian.relationship}
                   onChange={(e) => updateGuardian(index, { relationship: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Home Phone</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`guardian-home-phone-${index}`}>Home Phone</Label>
+                <Input
+                  id={`guardian-home-phone-${index}`}
                   type="tel"
                   value={guardian.homePhone}
                   onChange={(e) => updateGuardian(index, { homePhone: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Cell Phone</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`guardian-cell-phone-${index}`}>Cell Phone</Label>
+                <Input
+                  id={`guardian-cell-phone-${index}`}
                   type="tel"
                   value={guardian.cellPhone}
                   onChange={(e) => updateGuardian(index, { cellPhone: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Email</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`guardian-email-${index}`}>Email</Label>
+                <Input
+                  id={`guardian-email-${index}`}
                   type="email"
                   value={guardian.email}
                   onChange={(e) => updateGuardian(index, { email: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
             </div>
-          </div>
+          </Card>
         ))}
-        <button
-          type="button"
+        <Button 
+          type="button" 
           onClick={addGuardian}
-          className="mt-2 px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-100 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+          variant="outline"
+          className="mt-2"
         >
           Add Guardian
-        </button>
+        </Button>
       </div>
       
       <div>
         <h3 className="text-xl font-semibold">Students</h3>
         {family.students.map((student, index) => (
-          <div key={index} className="mt-4 p-4 border rounded dark:border-gray-600 dark:bg-gray-800">
+          <Card key={index} className="mt-4 p-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium">First Name</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`student-first-name-${index}`}>First Name</Label>
+                <Input
+                  id={`student-first-name-${index}`}
                   type="text"
                   value={student.firstName}
                   onChange={(e) => updateStudent(index, { firstName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Last Name</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`student-last-name-${index}`}>Last Name</Label>
+                <Input
+                  id={`student-last-name-${index}`}
                   type="text"
                   value={student.lastName}
                   onChange={(e) => updateStudent(index, { lastName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Birth Date</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`student-birth-date-${index}`}>Birth Date</Label>
+                <Input
+                  id={`student-birth-date-${index}`}
                   type="date"
                   value={student.birthDate}
                   onChange={(e) => updateStudent(index, { birthDate: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Belt Rank</label>
-                <select
+              <div className="grid gap-2">
+                <Label htmlFor={`student-belt-rank-${index}`}>Belt Rank</Label>
+                <Select
                   value={student.beltRank}
-                  onChange={(e) => updateStudent(index, { beltRank: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
+                  onValueChange={(value) => updateStudent(index, { beltRank: value })}
                 >
-                  <option value="white">White</option>
-                  <option value="yellow">Yellow</option>
-                  <option value="orange">Orange</option>
-                  <option value="green">Green</option>
-                  <option value="blue">Blue</option>
-                  <option value="purple">Purple</option>
-                  <option value="brown">Brown</option>
-                  <option value="black">Black</option>
-                </select>
+                  <SelectTrigger id={`student-belt-rank-${index}`}>
+                    <SelectValue placeholder="Select belt rank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="white">White</SelectItem>
+                    <SelectItem value="yellow">Yellow</SelectItem>
+                    <SelectItem value="orange">Orange</SelectItem>
+                    <SelectItem value="green">Green</SelectItem>
+                    <SelectItem value="blue">Blue</SelectItem>
+                    <SelectItem value="purple">Purple</SelectItem>
+                    <SelectItem value="brown">Brown</SelectItem>
+                    <SelectItem value="black">Black</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <label className="block text-sm font-medium">Gender</label>
-                <select
+              <div className="grid gap-2">
+                <Label htmlFor={`student-gender-${index}`}>Gender</Label>
+                <Select
                   value={student.gender}
-                  onChange={(e) => updateStudent(index, { gender: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
+                  onValueChange={(value) => updateStudent(index, { gender: value })}
                 >
-                  <option value="">Select</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
+                  <SelectTrigger id={`student-gender-${index}`}>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <label className="block text-sm font-medium">School</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`student-school-${index}`}>School</Label>
+                <Input
+                  id={`student-school-${index}`}
                   type="text"
                   value={student.school}
                   onChange={(e) => updateStudent(index, { school: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium">Grade Level</label>
-                <input
+              <div className="grid gap-2">
+                <Label htmlFor={`student-grade-level-${index}`}>Grade Level</Label>
+                <Input
+                  id={`student-grade-level-${index}`}
                   type="text"
                   value={student.gradeLevel}
                   onChange={(e) => updateStudent(index, { gradeLevel: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm dark:bg-gray-700 dark:text-gray-100 focus:ring-green-500 dark:focus:ring-green-400"
                 />
               </div>
             </div>
-          </div>
+          </Card>
         ))}
-        <button
-          type="button"
+        <Button 
+          type="button" 
           onClick={addStudent}
-          className="mt-2 px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-100 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+          variant="outline"
+          className="mt-2"
         >
           Add Student
-        </button>
+        </Button>
       </div>
       
       <div className="flex justify-between">
-        <button
+        <Button
           type="button"
           onClick={saveFamily}
           disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
         >
           {loading ? 'Saving...' : 'Save Family'}
-        </button>
+        </Button>
         
         {family.id && (
           <Form method="post" action="/api/create-checkout-session">
@@ -460,12 +480,13 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
             <input type="hidden" name="studentIds" 
                   value={JSON.stringify(family.students.map(s => s.id))} />
                   
-            <button
+            <Button
               type="submit"
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              variant="default"
+              className="bg-green-600 hover:bg-green-700"
             >
               Pay Registration Fee ($99)
-            </button>
+            </Button>
           </Form>
         )}
       </div>
