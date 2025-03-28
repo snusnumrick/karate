@@ -34,7 +34,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-green-50 py-12 text-foreground">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white p-8 rounded-lg shadow-md">
+        <div className="bg-white dark:bg-background p-8 rounded-lg shadow-md">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-green-600">Registration</h1>
             <Link to="/login" className="text-green-600 hover:underline">
@@ -49,7 +49,7 @@ export default function RegisterPage() {
           </p>
           
           <div className="mb-6">
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="w-full bg-gray-200 dark:bg-muted rounded-full h-2.5">
               <div 
                 className="bg-primary h-2.5 rounded-full" 
                 style={{ width: `${(currentStep / 5) * 100}%` }}
@@ -61,7 +61,7 @@ export default function RegisterPage() {
           <Form method="post" className="space-y-8">
             {currentStep === 1 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4 pb-2 border-b">REFERRAL INFORMATION</h2>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL INFORMATION</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="referralSource" className="text-sm font-medium mb-1">
@@ -95,7 +95,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mt-8 mb-4 pb-2 border-b">FAMILY INFORMATION</h2>
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">FAMILY INFORMATION</h2>
                 <div>
                   <Label htmlFor="familyName" className="text-sm font-medium mb-1">
                     Family Last Name<span className="text-red-500">*</span>
@@ -109,7 +109,7 @@ export default function RegisterPage() {
                   />
                 </div>
                 
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mt-8 mb-4 pb-2 border-b">WHERE DO YOU LIVE?</h2>
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">WHERE DO YOU LIVE?</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <Label htmlFor="address" className="text-sm font-medium mb-1">
@@ -204,7 +204,7 @@ export default function RegisterPage() {
             
             {currentStep === 2 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4 pb-2 border-b">ADDITIONAL INFO</h2>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ADDITIONAL INFO</h2>
                 <div className="space-y-6">
                   <div>
                     <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
@@ -232,7 +232,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mt-8 mb-4 pb-2 border-b">CONTACT #1</h2>
+                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">CONTACT #1</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label htmlFor="contact1FirstName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -439,7 +439,7 @@ export default function RegisterPage() {
             
             {currentStep === 3 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4 pb-2 border-b">CONTACT #2</h2>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT #2</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label htmlFor="contact2FirstName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -618,7 +618,7 @@ export default function RegisterPage() {
             {currentStep === 4 && (
               <div>
                 {students.map((student, index) => (
-                  <div key={student.id} className="mb-8 pb-8 border-b border-gray-200">
+                  <div key={student.id} className="mb-8 pb-8 border-b border-border">
                     <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4">STUDENT #{index + 1}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
@@ -866,27 +866,28 @@ export default function RegisterPage() {
                 </div>
                 
                 <div className="flex justify-between mt-8">
-                  <button
+                  <Button
                     type="button"
                     onClick={prevStep}
-                    className="bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-400 transition"
+                    variant="secondary"
+                    className="font-bold py-3 px-6"
                   >
                     Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={nextStep}
-                    className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition"
+                    className="font-bold py-3 px-6"
                   >
                     Continue
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
             
             {currentStep === 5 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4 pb-2 border-b">REQUIRED POLICIES</h2>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
                 
                 <div className="space-y-6">
                   <div className="bg-muted p-4 rounded-md text-foreground">
@@ -904,7 +905,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted p-4 rounded-md">
+                  <div className="bg-muted p-4 rounded-md text-foreground">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="liability" name="liability" required />
                       <div>
