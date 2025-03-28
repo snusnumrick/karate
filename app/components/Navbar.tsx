@@ -37,7 +37,7 @@ export default function Navbar() {
             </Link>
             
             {/* Mobile Menu Button */}
-            <Sheet>
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild className="md:hidden">
                 <Button
                   variant="outline"
@@ -48,7 +48,10 @@ export default function Navbar() {
                 </Button>
               </SheetTrigger>
 
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+              <SheetContent 
+                side="right" 
+                className="w-[300px] sm:w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
+              >
                 <div className="flex flex-col space-y-4 mt-6">
                   <MobileNavLink to="/" onClick={() => setIsOpen(false)}>
                     Home
