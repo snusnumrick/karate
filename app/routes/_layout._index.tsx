@@ -4,7 +4,8 @@ import { Link } from "@remix-run/react";
 export const meta: MetaFunction = () => {
   return [
     { title: "Karate Classes - Sensei Negin" },
-    { name: "description", content: "Discover the art of karate with Sensei Negin at Lighthouse Christian Academy. Classes for children ages 6-12." },
+    { name: "description", content: "Discover the art of karate with Sensei Negin at Lighthouse Christian Academy. " +
+          "Classes for children ages 6-12." },
   ];
 };
 
