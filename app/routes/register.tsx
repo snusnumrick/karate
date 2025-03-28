@@ -32,7 +32,7 @@ export default function RegisterPage() {
   };
   
   return (
-    <div className="min-h-screen bg-green-50 py-12">
+    <div className="min-h-screen bg-green-50 py-12 text-foreground">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white p-8 rounded-lg shadow-md">
           <div className="flex justify-between items-center mb-6">
@@ -55,13 +55,13 @@ export default function RegisterPage() {
                 style={{ width: `${(currentStep / 5) * 100}%` }}
               ></div>
             </div>
-            <p className="text-center mt-2 text-sm text-muted-foreground">Step {currentStep} of 5</p>
+            <p className="text-center mt-2 text-sm text-muted-foreground dark:text-muted-foreground">Step {currentStep} of 5</p>
           </div>
           
           <Form method="post" className="space-y-8">
             {currentStep === 1 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">REFERRAL INFORMATION</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4 pb-2 border-b">REFERRAL INFORMATION</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="referralSource" className="text-sm font-medium mb-1">
@@ -95,7 +95,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h2 className="text-xl font-semibold text-gray-800 mt-8 mb-4 pb-2 border-b">FAMILY INFORMATION</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mt-8 mb-4 pb-2 border-b">FAMILY INFORMATION</h2>
                 <div>
                   <Label htmlFor="familyName" className="text-sm font-medium mb-1">
                     Family Last Name<span className="text-red-500">*</span>
@@ -109,7 +109,7 @@ export default function RegisterPage() {
                   />
                 </div>
                 
-                <h2 className="text-xl font-semibold text-gray-800 mt-8 mb-4 pb-2 border-b">WHERE DO YOU LIVE?</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mt-8 mb-4 pb-2 border-b">WHERE DO YOU LIVE?</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <Label htmlFor="address" className="text-sm font-medium mb-1">
@@ -204,7 +204,7 @@ export default function RegisterPage() {
             
             {currentStep === 2 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">ADDITIONAL INFO</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4 pb-2 border-b">ADDITIONAL INFO</h2>
                 <div className="space-y-6">
                   <div>
                     <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
@@ -232,7 +232,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h2 className="text-xl font-semibold text-gray-800 mt-8 mb-4 pb-2 border-b">CONTACT #1</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mt-8 mb-4 pb-2 border-b">CONTACT #1</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label htmlFor="contact1FirstName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -279,7 +279,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 mt-6 mb-3">HOW CAN WE CONTACT YOU?</h3>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">HOW CAN WE CONTACT YOU?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label htmlFor="contact1HomePhone" className="block text-sm font-medium text-gray-700 mb-1">
@@ -320,7 +320,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 mt-6 mb-3">PORTAL ACCESS (YOUR EMAIL IS YOUR LOGIN)</h3>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">PORTAL ACCESS (YOUR EMAIL IS YOUR LOGIN)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="contact1Email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -378,7 +378,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="contact1Employer" className="block text-sm font-medium text-gray-700 mb-1">
@@ -439,7 +439,7 @@ export default function RegisterPage() {
             
             {currentStep === 3 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">CONTACT #2</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4 pb-2 border-b">CONTACT #2</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label htmlFor="contact2FirstName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -486,7 +486,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 mt-6 mb-3">HOW CAN WE CONTACT YOU?</h3>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">HOW CAN WE CONTACT YOU?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label htmlFor="contact2HomePhone" className="block text-sm font-medium text-gray-700 mb-1">
@@ -556,7 +556,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="contact2Employer" className="block text-sm font-medium text-gray-700 mb-1">
@@ -596,20 +596,21 @@ export default function RegisterPage() {
                 </div>
                 
                 <div className="flex justify-between mt-8">
-                  <button
+                  <Button
                     type="button"
                     onClick={prevStep}
-                    className="bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-400 transition"
+                    variant="secondary"
+                    className="font-bold py-3 px-6"
                   >
                     Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={nextStep}
-                    className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition"
+                    className="font-bold py-3 px-6"
                   >
                     Continue
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -618,113 +619,111 @@ export default function RegisterPage() {
               <div>
                 {students.map((student, index) => (
                   <div key={student.id} className="mb-8 pb-8 border-b border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">STUDENT #{index + 1}</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4">STUDENT #{index + 1}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label htmlFor={`student${index}FirstName`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}FirstName`} className="block text-sm font-medium mb-1">
                           Student&apos;s First Name<span className="text-red-500">*</span>
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="text"
                           id={`student${index}FirstName`}
                           name={`students[${index}].firstName`}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="focus:ring-green-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}LastName`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}LastName`} className="block text-sm font-medium mb-1">
                           Last Name<span className="text-red-500">*</span>
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="text"
                           id={`student${index}LastName`}
                           name={`students[${index}].lastName`}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="focus:ring-green-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}Gender`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}Gender`} className="block text-sm font-medium mb-1">
                           Student Gender<span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          id={`student${index}Gender`}
-                          name={`students[${index}].gender`}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value="">Select gender</option>
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                          <option value="Other">Other</option>
-                        </select>
+                        </Label>
+                        <Select name={`students[${index}].gender`} required>
+                          <SelectTrigger id={`student${index}Gender`} className="w-full">
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}BirthDate`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}BirthDate`} className="block text-sm font-medium mb-1">
                           Birth Date<span className="text-red-500">*</span>
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="date"
                           id={`student${index}BirthDate`}
                           name={`students[${index}].birthDate`}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="focus:ring-green-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}Cell`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}Cell`} className="block text-sm font-medium mb-1">
                           Cell #
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="tel"
                           id={`student${index}Cell`}
                           name={`students[${index}].cellPhone`}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="focus:ring-green-500"
                         />
                       </div>
                     </div>
                     
-                    <h3 className="text-lg font-medium text-gray-800 mt-6 mb-3">ADDITIONAL INFO</h3>
+                    <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">ADDITIONAL INFO</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label htmlFor={`student${index}Email`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}Email`} className="block text-sm font-medium mb-1">
                           Student Email
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="email"
                           id={`student${index}Email`}
                           name={`students[${index}].email`}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="focus:ring-green-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}TShirtSize`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}TShirtSize`} className="block text-sm font-medium mb-1">
                           T-Shirt Size<span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          id={`student${index}TShirtSize`}
-                          name={`students[${index}].tShirtSize`}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value="">Select size</option>
-                          <option value="YXS">Youth XS</option>
-                          <option value="YS">Youth S</option>
-                          <option value="YM">Youth M</option>
-                          <option value="YL">Youth L</option>
-                          <option value="YXL">Youth XL</option>
-                          <option value="AS">Adult S</option>
-                          <option value="AM">Adult M</option>
-                          <option value="AL">Adult L</option>
-                          <option value="AXL">Adult XL</option>
-                          <option value="A2XL">Adult 2XL</option>
-                        </select>
+                        </Label>
+                        <Select name={`students[${index}].tShirtSize`} required>
+                          <SelectTrigger id={`student${index}TShirtSize`} className="w-full">
+                            <SelectValue placeholder="Select size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="YXS">Youth XS</SelectItem>
+                            <SelectItem value="YS">Youth S</SelectItem>
+                            <SelectItem value="YM">Youth M</SelectItem>
+                            <SelectItem value="YL">Youth L</SelectItem>
+                            <SelectItem value="YXL">Youth XL</SelectItem>
+                            <SelectItem value="AS">Adult S</SelectItem>
+                            <SelectItem value="AM">Adult M</SelectItem>
+                            <SelectItem value="AL">Adult L</SelectItem>
+                            <SelectItem value="AXL">Adult XL</SelectItem>
+                            <SelectItem value="A2XL">Adult 2XL</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       
                       <div>
@@ -857,7 +856,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={addStudent}
                     variant="outline"
-                    className="w-full flex items-center justify-center"
+                    className="w-full flex items-center justify-center text-foreground"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
@@ -887,10 +886,10 @@ export default function RegisterPage() {
             
             {currentStep === 5 && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b">REQUIRED POLICIES</h2>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4 pb-2 border-b">REQUIRED POLICIES</h2>
                 
                 <div className="space-y-6">
-                  <div className="bg-muted p-4 rounded-md">
+                  <div className="bg-muted p-4 rounded-md text-foreground">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="photoRelease" name="photoRelease" required />
                       <div>
