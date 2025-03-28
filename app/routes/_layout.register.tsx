@@ -441,156 +441,155 @@ export default function RegisterPage() {
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT #2</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label htmlFor="contact2FirstName" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2FirstName" className="block text-sm font-medium mb-1">
                       Contact #2 First Name<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="contact2FirstName"
                       name="contact2FirstName"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact2LastName" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2LastName" className="block text-sm font-medium mb-1">
                       Last Name<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="contact2LastName"
                       name="contact2LastName"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact2Type" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2Type" className="block text-sm font-medium mb-1">
                       Type<span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="contact2Type"
-                      name="contact2Type"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    >
-                      <option value="">Select relationship</option>
-                      <option value="Father">Father</option>
-                      <option value="Mother">Mother</option>
-                      <option value="Guardian">Guardian</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    </Label>
+                    <Select name="contact2Type" required>
+                      <SelectTrigger id="contact2Type" className="w-full">
+                        <SelectValue placeholder="Select relationship" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Father">Father</SelectItem>
+                        <SelectItem value="Mother">Mother</SelectItem>
+                        <SelectItem value="Guardian">Guardian</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">HOW CAN WE CONTACT YOU?</h3>
+                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">HOW CAN WE CONTACT YOU?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label htmlFor="contact2HomePhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2HomePhone" className="block text-sm font-medium mb-1">
                       Home Phone<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="contact2HomePhone"
                       name="contact2HomePhone"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact2WorkPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2WorkPhone" className="block text-sm font-medium mb-1">
                       Work #
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="contact2WorkPhone"
                       name="contact2WorkPhone"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact2CellPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2CellPhone" className="block text-sm font-medium mb-1">
                       Cell #<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="contact2CellPhone"
                       name="contact2CellPhone"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                   <div>
-                    <label htmlFor="contact2Email" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2Email" className="block text-sm font-medium mb-1">
                       Email<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="email"
                       id="contact2Email"
                       name="contact2Email"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">(Emails are kept confidential)</p>
+                    <p className="text-xs text-muted-foreground mt-1">(Emails are kept confidential)</p>
                   </div>
                   
                   <div>
-                    <label htmlFor="contact2EmailConfirm" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2EmailConfirm" className="block text-sm font-medium mb-1">
                       Confirm Email<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="email"
                       id="contact2EmailConfirm"
                       name="contact2EmailConfirm"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
+                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="contact2Employer" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2Employer" className="block text-sm font-medium mb-1">
                       Employer
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="contact2Employer"
                       name="contact2Employer"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact2EmployerPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2EmployerPhone" className="block text-sm font-medium mb-1">
                       Employer Phone
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="contact2EmployerPhone"
                       name="contact2EmployerPhone"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div className="md:col-span-2">
-                    <label htmlFor="contact2EmployerNotes" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact2EmployerNotes" className="block text-sm font-medium mb-1">
                       Employer Notes
-                    </label>
-                    <textarea
+                    </Label>
+                    <Textarea
                       id="contact2EmployerNotes"
                       name="contact2EmployerNotes"
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    ></textarea>
+                      className="focus:ring-green-500"
+                    />
                   </div>
                 </div>
                 
@@ -598,15 +597,15 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={prevStep}
-                    variant="secondary"
-                    className="font-bold py-3 px-6"
+                    variant="outline"
+                    className="font-bold py-3 px-6 border-green-600 text-green-600 hover:bg-green-50"
                   >
                     Back
                   </Button>
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="font-bold py-3 px-6"
+                    className="font-bold py-3 px-6 bg-green-600 hover:bg-green-700 text-white"
                   >
                     Continue
                   </Button>
