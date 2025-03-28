@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteError,
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/node";
 import { ThemeProvider } from "~/components/theme-provider";
@@ -71,17 +72,42 @@ export default function App() {
 }
 
 export function ErrorBoundary() {
+  const error = useRouteError();
+  const status = (error as any)?.status || 500;
+  const errorMessage = (error as any)?.data?.message || (error as any)?.message || "Unknown error occurred";
+
   return (
-    <html lang="en">
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
-        <title>Oh no!</title>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta 
+          httpEquiv="Content-Security-Policy" 
+          content={`
+            default-src 'self';
+            script-src 'self' 'unsafe-inline' https://js.stripe.com 'unsafe-eval';
+            style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+            font-src 'self' https://fonts.gstatic.com;
+            img-src 'self' data:;
+            connect-src 'self' https://api.stripe.com ws:;
+            frame-src https://js.stripe.com https://hooks.stripe.com;
+            base-uri 'self';
+            form-action 'self';
+          `.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()}
+        />
+        <title>{`${status} Error`}</title>
         <Meta />
         <Links />
       </head>
-      <body>
-        <div className="p-4 bg-red-100 text-red-800">
-          <h1 className="text-xl font-bold">Application Error</h1>
-          <p>Something went wrong. Please try again later.</p>
+      <body className="h-full bg-background text-foreground">
+        <div className="flex flex-col min-h-screen items-center justify-center gap-4 p-4">
+          <h1 className="text-4xl font-bold">{status} Error</h1>
+          <p className="text-lg text-muted-foreground">{errorMessage}</p>
+          {process.env.NODE_ENV === "development" && (
+            <pre className="mt-4 p-4 bg-accent text-accent-foreground rounded-md max-w-2xl overflow-auto">
+              {JSON.stringify(error, null, 2)}
+            </pre>
+          )}
         </div>
         <Scripts />
       </body>
