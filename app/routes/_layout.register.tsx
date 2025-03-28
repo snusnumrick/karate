@@ -55,7 +55,7 @@ export async function action({ request }: ActionFunctionArgs) {
     // Create family record
     const familyId = uuidv4();
     const { error: familyError } = await supabaseServer.from('families').insert({
-      family_id: familyId,
+      id: familyId,
       name: formData.get('familyName'),
       address: formData.get('address'),
       city: formData.get('city'),

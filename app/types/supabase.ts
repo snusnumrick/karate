@@ -81,11 +81,12 @@ export interface Database {
           email: string
           id: string
           name: string
-          phone: string
+          primary_phone: string
           postal_code: string
           province: string
-          referral_name: string | null
           referral_source: string | null
+          emergency_contact: string | null
+          health_info: string | null
           updated_at: string
         }
         Insert: {
@@ -95,11 +96,12 @@ export interface Database {
           email: string
           id?: string
           name: string
-          phone: string
+          primary_phone: string
           postal_code: string
           province: string
-          referral_name?: string | null
           referral_source?: string | null
+          emergency_contact?: string | null
+          health_info?: string | null
           updated_at?: string
         }
         Update: {
@@ -109,11 +111,12 @@ export interface Database {
           email?: string
           id?: string
           name?: string
-          phone?: string
+          primary_phone?: string
           postal_code?: string
           province?: string
-          referral_name?: string | null
           referral_source?: string | null
+          emergency_contact?: string | null
+          health_info?: string | null
           updated_at?: string
         }
         Relationships: []

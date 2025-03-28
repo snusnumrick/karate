@@ -15,7 +15,8 @@ export interface Family {
   primaryPhone: string;
   email: string;
   referralSource?: string;
-  referralName?: string;
+  emergencyContact?: string;
+  healthInfo?: string;
   guardians: Guardian[];
   students: Student[];
 }
@@ -48,7 +49,7 @@ export interface Student {
   specialNeeds?: string;
   allergies?: string;
   medications?: string;
-  immunizationsUpToDate: boolean;
+  immunizationsUpToDate: string;
   immunizationNotes?: string;
   beltRank: string;
   familyId: string;
