@@ -32,12 +32,12 @@ export default function RegisterPage() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-[#020617] dark:to-[#0f172a] py-12 text-foreground">
+    <div className="min-h-screen bg-gradient-to-b from-green-100 to-white dark:from-[#020617] dark:to-[#0f172a] py-12 text-foreground">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white dark:bg-gray-900/50 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-800">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-green-600">Registration</h1>
-            <Link to="/login" className="text-green-600 hover:underline">
+            <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Registration</h1>
+            <Link to="/login" className="text-green-600 dark:text-green-400 hover:underline">
               Already a customer? Click here to login.
             </Link>
           </div>
@@ -194,7 +194,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="w-full font-bold py-3 px-4"
+                    className="w-full font-bold py-3 px-4 bg-green-600 hover:bg-green-700 text-white"
                   >
                     Continue to Additional Info
                   </Button>
@@ -420,15 +420,15 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={prevStep}
-                    variant="secondary"
-                    className="font-bold py-3 px-6"
+                    variant="outline"
+                    className="font-bold py-3 px-6 border-green-600 text-green-600 hover:bg-green-50"
                   >
                     Back
                   </Button>
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="font-bold py-3 px-6"
+                    className="font-bold py-3 px-6 bg-green-600 hover:bg-green-700 text-white"
                   >
                     Continue
                   </Button>
