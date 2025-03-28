@@ -68,7 +68,7 @@ export default function RegisterPage() {
                       How did you hear about us?<span className="text-red-500">*</span>
                     </Label>
                     <Select name="referralSource" required>
-                      <SelectTrigger id="referralSource" className="w-full focus:ring-green-500">
+                      <SelectTrigger id="referralSource" className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                         <SelectValue placeholder="Select an option" />
                       </SelectTrigger>
                       <SelectContent>
@@ -90,7 +90,7 @@ export default function RegisterPage() {
                       type="text"
                       id="referralName"
                       name="referralName"
-                      className="focus:ring-green-500"
+                      className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
                     />
                   </div>
                 </div>
@@ -142,7 +142,7 @@ export default function RegisterPage() {
                       Province<span className="text-red-500">*</span>
                     </Label>
                     <Select name="province" required>
-                      <SelectTrigger id="province" className="w-full focus:ring-green-500">
+                      <SelectTrigger id="province" className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                         <SelectValue placeholder="Select a province" />
                       </SelectTrigger>
                       <SelectContent>
@@ -215,7 +215,7 @@ export default function RegisterPage() {
                       name="emergencyContact"
                       required
                       rows={3}
-                      className="focus:ring-green-500"
+                      className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
                     />
                   </div>
                   
@@ -265,7 +265,7 @@ export default function RegisterPage() {
                       Type<span className="text-red-500">*</span>
                     </Label>
                     <Select name="contact1Type" required>
-                      <SelectTrigger id="contact1Type" className="w-full focus:ring-green-500">
+                      <SelectTrigger id="contact1Type" className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                       <SelectContent>
@@ -330,9 +330,9 @@ export default function RegisterPage() {
                       id="contact1Email"
                       name="contact1Email"
                       required
-                      className="focus:ring-green-500"
+                      className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
                     />
-                    <p className="text-xs text-gray-500 mt-1">(Emails are kept confidential)</p>
+                    <p className="text-xs text-muted-foreground mt-1">(Emails are kept confidential)</p>
                   </div>
                   
                   <div>
@@ -471,7 +471,7 @@ export default function RegisterPage() {
                       Type<span className="text-red-500">*</span>
                     </Label>
                     <Select name="contact2Type" required>
-                      <SelectTrigger id="contact2Type" className="w-full focus:ring-green-500">
+                      <SelectTrigger id="contact2Type" className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                       <SelectContent>
@@ -650,7 +650,7 @@ export default function RegisterPage() {
                           Student Gender<span className="text-red-500">*</span>
                         </Label>
                         <Select name={`students[${index}].gender`} required>
-                          <SelectTrigger id={`student${index}Gender`} className="w-full focus:ring-green-500">
+                          <SelectTrigger id={`student${index}Gender`} className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                             <SelectValue placeholder="Select gender" />
                           </SelectTrigger>
                           <SelectContent>
@@ -706,7 +706,7 @@ export default function RegisterPage() {
                           T-Shirt Size<span className="text-red-500">*</span>
                         </Label>
                         <Select name={`students[${index}].tShirtSize`} required>
-                          <SelectTrigger id={`student${index}TShirtSize`} className="w-full focus:ring-green-500">
+                          <SelectTrigger id={`student${index}TShirtSize`} className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                             <SelectValue placeholder="Select size" />
                           </SelectTrigger>
                           <SelectContent>
@@ -742,7 +742,7 @@ export default function RegisterPage() {
                           Grade Level<span className="text-red-500">*</span>
                         </Label>
                         <Select name={`students[${index}].gradeLevel`} required>
-                          <SelectTrigger id={`student${index}GradeLevel`} className="w-full focus:ring-green-500">
+                          <SelectTrigger id={`student${index}GradeLevel`} className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                             <SelectValue placeholder="Select grade" />
                           </SelectTrigger>
                           <SelectContent>
@@ -804,7 +804,7 @@ export default function RegisterPage() {
                           Immunizations YN
                         </Label>
                         <Select name={`students[${index}].immunizationsUpToDate`}>
-                          <SelectTrigger id={`student${index}Immunizations`} className="w-full focus:ring-green-500">
+                          <SelectTrigger id={`student${index}Immunizations`} className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                             <SelectValue placeholder="Select option" />
                           </SelectTrigger>
                           <SelectContent>
@@ -831,7 +831,7 @@ export default function RegisterPage() {
                           Belt Rank
                         </Label>
                         <Select name={`students[${index}].beltRank`}>
-                          <SelectTrigger id={`student${index}BeltRank`} className="w-full focus:ring-green-500">
+                          <SelectTrigger id={`student${index}BeltRank`} className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
                             <SelectValue placeholder="Select belt rank" />
                           </SelectTrigger>
                           <SelectContent>
@@ -891,7 +891,7 @@ export default function RegisterPage() {
                 <div className="space-y-6">
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="photoRelease" name="photoRelease" required />
+                      <Checkbox id="photoRelease" name="photoRelease" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
                       <div>
                         <Label htmlFor="photoRelease" className="font-medium">
                           Photo / Video Release
@@ -906,7 +906,7 @@ export default function RegisterPage() {
                   
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="liability" name="liability" required />
+                      <Checkbox id="liability" name="liability" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
                       <div>
                         <Label htmlFor="liability" className="font-medium">
                           Release of Liability & Assumption of Risk
@@ -921,7 +921,7 @@ export default function RegisterPage() {
                   
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="conduct" name="conduct" required />
+                      <Checkbox id="conduct" name="conduct" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
                       <div>
                         <Label htmlFor="conduct" className="font-medium">
                           Code Of Conduct Agreement
@@ -936,7 +936,7 @@ export default function RegisterPage() {
                   
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="payment" name="payment" required />
+                      <Checkbox id="payment" name="payment" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
                       <div>
                         <Label htmlFor="payment" className="font-medium">
                           Payment Policy
@@ -951,7 +951,7 @@ export default function RegisterPage() {
                   
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="attire" name="attire" required />
+                      <Checkbox id="attire" name="attire" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
                       <div>
                         <Label htmlFor="attire" className="font-medium">
                           Attire / Dress Code Agreement
@@ -966,7 +966,7 @@ export default function RegisterPage() {
                   
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="agreeAll" name="agreeAll" required />
+                      <Checkbox id="agreeAll" name="agreeAll" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
                       <Label htmlFor="agreeAll" className="font-medium">
                         I AGREE TO ALL OF THE ABOVE
                       </Label>
