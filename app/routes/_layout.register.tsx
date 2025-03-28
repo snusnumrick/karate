@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Link, Form, useRouteError, isRouteErrorResponse, Outlet, useLocation } from "@remix-run/react"; // Import Outlet and useLocation
+import { Link, Form, useRouteError, isRouteErrorResponse, Outlet, useLocation, useActionData } from "@remix-run/react"; // Import Outlet and useLocation
 import type { ActionFunctionArgs } from "@remix-run/node"; // or cloudflare/deno
 import { json, redirect } from "@remix-run/node"; // or cloudflare/deno
+import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { v4 as uuidv4 } from 'uuid';
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -19,23 +21,158 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // 
 // Action function to handle form submission
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  const data = Object.fromEntries(formData);
+  const { supabaseServer } = getSupabaseServerClient(request);
+  const session = await supabaseServer.auth.getSession();
 
-  // TODO: Add validation logic here
-  // TODO: Add logic to save data to Supabase (create user, family, students, etc.)
-  
-  console.log("Registration form data:", data);
+  // Validate matching emails and passwords
+  const contact1Email = formData.get('contact1Email') as string;
+  const contact1EmailConfirm = formData.get('contact1EmailConfirm') as string;
+  const password = formData.get('portalPassword') as string;
+  const passwordConfirm = formData.get('portalPasswordConfirm') as string;
 
-  // For now, just redirect to a success page or home page after submission
-  // Replace '/register/success' with your actual success route if different
-  return redirect('/register/success'); 
-  
-  // Or return json if staying on the page or showing a message
-  // return json({ success: true, message: "Registration submitted (data logged)." });
+  if (contact1Email !== contact1EmailConfirm) {
+    return json({ error: 'Emails do not match' }, { status: 400 });
+  }
+
+  if (password !== passwordConfirm) {
+    return json({ error: 'Passwords do not match' }, { status: 400 });
+  }
+
+  try {
+    // Create auth user
+    const { data: { user }, error: authError } = await supabaseServer.auth.signUp({
+      email: contact1Email,
+      password,
+      options: {
+        data: {
+          role: 'user'
+        }
+      }
+    });
+
+    if (authError || !user) throw authError || new Error('User creation failed');
+
+    // Create family record
+    const familyId = uuidv4();
+    const { error: familyError } = await supabaseServer.from('families').insert({
+      id: familyId,
+      name: formData.get('familyName'),
+      address: formData.get('address'),
+      city: formData.get('city'),
+      province: formData.get('province'),
+      postal_code: formData.get('postalCode'),
+      primary_phone: formData.get('primaryPhone'),
+      email: contact1Email,
+      referral_source: formData.get('referralSource'),
+      emergency_contact: formData.get('emergencyContact'),
+      health_info: formData.get('healthNumber')
+    });
+
+    if (familyError) throw familyError;
+
+    // Create user profile
+    const { error: profileError } = await supabaseServer.from('profiles').insert({
+      id: user.id,
+      email: contact1Email,
+      role: 'user',
+      family_id: familyId
+    });
+
+    if (profileError) throw profileError;
+
+    // Process Contact #1
+    const contact1Id = uuidv4();
+    await supabaseServer.from('guardians').insert({
+      id: contact1Id,
+      family_id: familyId,
+      first_name: formData.get('contact1FirstName'),
+      last_name: formData.get('contact1LastName'),
+      relationship: formData.get('contact1Type'),
+      home_phone: formData.get('contact1HomePhone'),
+      work_phone: formData.get('contact1WorkPhone'),
+      cell_phone: formData.get('contact1CellPhone'),
+      email: contact1Email,
+      employer: formData.get('contact1Employer'),
+      employer_phone: formData.get('contact1EmployerPhone'),
+      employer_notes: formData.get('contact1EmployerNotes')
+    });
+
+    // Process Contact #2
+    const contact2Id = uuidv4();
+    await supabaseServer.from('guardians').insert({
+      id: contact2Id,
+      family_id: familyId,
+      first_name: formData.get('contact2FirstName'),
+      last_name: formData.get('contact2LastName'),
+      relationship: formData.get('contact2Type'),
+      home_phone: formData.get('contact2HomePhone'),
+      work_phone: formData.get('contact2WorkPhone'),
+      cell_phone: formData.get('contact2CellPhone'),
+      email: formData.get('contact2Email'),
+      employer: formData.get('contact2Employer'),
+      employer_phone: formData.get('contact2EmployerPhone'),
+      employer_notes: formData.get('contact2EmployerNotes')
+    });
+
+    // Process Students
+    const studentEntries = Array.from(formData.entries())
+      .filter(([key]) => key.startsWith('students['));
+
+    const studentIndices = new Set<string>();
+    studentEntries.forEach(([key]) => {
+      const match = key.match(/students\[(\d+)\]/);
+      if (match) {
+        studentIndices.add(match[1]);
+      }
+    });
+
+    for (const index of studentIndices) {
+      const studentId = uuidv4();
+      await supabaseServer.from('students').insert({
+        id: studentId,
+        family_id: familyId,
+        first_name: formData.get(`students[${index}].firstName`),
+        last_name: formData.get(`students[${index}].lastName`),
+        gender: formData.get(`students[${index}].gender`),
+        birth_date: formData.get(`students[${index}].birthDate`),
+        t_shirt_size: formData.get(`students[${index}].tShirtSize`),
+        school: formData.get(`students[${index}].school`),
+        grade_level: formData.get(`students[${index}].gradeLevel`),
+        special_needs: formData.get(`students[${index}].specialNeeds`),
+        allergies: formData.get(`students[${index}].allergies`),
+        medications: formData.get(`students[${index}].medications`),
+        immunizations: formData.get(`students[${index}].immunizationsUpToDate`),
+        immunization_notes: formData.get(`students[${index}].immunizationNotes`),
+        belt_rank: formData.get(`students[${index}].beltRank`)
+      });
+    }
+
+    // Record policy agreements
+    await supabaseServer.from('policy_agreements').insert({
+      family_id: familyId,
+      full_name: formData.get('fullName'),
+      photo_release: formData.has('photoRelease'),
+      liability_release: formData.has('liability'),
+      code_of_conduct: formData.has('conduct'),
+      payment_policy: formData.has('payment'),
+      attire_agreement: formData.has('attire'),
+      signature_date: new Date().toISOString()
+    });
+
+    return redirect('/register/success');
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    return json({ 
+      error: error instanceof Error ? error.message : 'Registration failed',
+      formData: Object.fromEntries(formData)
+    }, { status: 500 });
+  }
 }
 
 
 export default function RegisterPage() {
+  const actionData = useActionData<typeof action>();
   const [currentStep, setCurrentStep] = useState(1);
   const [students, setStudents] = useState([{ id: Date.now().toString() }]);
   const [familyName, setFamilyName] = useState(""); // State for family name
@@ -1129,6 +1266,12 @@ export default function RegisterPage() {
                     </div>
                   </div>
 
+                  {actionData?.error && (
+                    <div className="text-red-500 text-sm mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                      Error: {actionData.error}
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between mt-8">
                     <Button
                       type="button"
