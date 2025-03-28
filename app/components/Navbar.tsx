@@ -50,7 +50,7 @@ export default function Navbar() {
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             <Link
               to="/login"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-600 bg-white hover:bg-green-50"
+              className="inline-flex items-center px-8 py-3 border border-transparent text-lg font-bold rounded-lg text-green-600 bg-white hover:bg-green-50"
             >
               Login
             </Link>
@@ -140,7 +140,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/login"
-              className="block w-full text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-green-600 bg-white hover:bg-green-50 mt-4 mx-2"
+              className="block w-full text-center px-8 py-3 border border-transparent text-lg font-bold rounded-lg text-green-600 bg-white hover:bg-green-50 mt-4 mx-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Login
