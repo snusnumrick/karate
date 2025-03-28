@@ -17,6 +17,41 @@ export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [students, setStudents] = useState([{ id: Date.now().toString() }]);
   
+  // State for policy checkboxes
+  const [photoReleaseChecked, setPhotoReleaseChecked] = useState(false);
+  const [liabilityChecked, setLiabilityChecked] = useState(false);
+  const [conductChecked, setConductChecked] = useState(false);
+  const [paymentChecked, setPaymentChecked] = useState(false);
+  const [attireChecked, setAttireChecked] = useState(false);
+  const [agreeAllChecked, setAgreeAllChecked] = useState(false);
+
+  const policyCheckboxes = [
+    { state: photoReleaseChecked, setState: setPhotoReleaseChecked },
+    { state: liabilityChecked, setState: setLiabilityChecked },
+    { state: conductChecked, setState: setConductChecked },
+    { state: paymentChecked, setState: setPaymentChecked },
+    { state: attireChecked, setState: setAttireChecked },
+  ];
+
+  const handleAgreeAllChange = (checked: boolean) => {
+    setAgreeAllChecked(checked);
+    policyCheckboxes.forEach(cb => cb.setState(checked));
+  };
+
+  const handleIndividualPolicyChange = (setState: React.Dispatch<React.SetStateAction<boolean>>, checked: boolean) => {
+    setState(checked);
+    // Check if all individual policies are now checked
+    const allChecked = policyCheckboxes.every(cb => (cb.setState === setState ? checked : cb.state));
+    const noneChecked = policyCheckboxes.every(cb => (cb.setState === setState ? !checked : !cb.state));
+
+    if (allChecked) {
+      setAgreeAllChecked(true);
+    } else {
+      setAgreeAllChecked(false);
+    }
+  };
+
+
   const addStudent = () => {
     setStudents([...students, { id: Date.now().toString() }]);
   };
@@ -889,9 +924,17 @@ export default function RegisterPage() {
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
                 
                 <div className="space-y-6">
+                  {/* Photo Release */}
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="photoRelease" name="photoRelease" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
+                      <Checkbox 
+                        id="photoRelease" 
+                        name="photoRelease" 
+                        required 
+                        checked={photoReleaseChecked}
+                        onCheckedChange={(checked) => handleIndividualPolicyChange(setPhotoReleaseChecked, Boolean(checked))}
+                        className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
+                      />
                       <div>
                         <Label htmlFor="photoRelease" className="font-medium">
                           Photo / Video Release
@@ -904,9 +947,17 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
+                  {/* Liability */}
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="liability" name="liability" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
+                      <Checkbox 
+                        id="liability" 
+                        name="liability" 
+                        required 
+                        checked={liabilityChecked}
+                        onCheckedChange={(checked) => handleIndividualPolicyChange(setLiabilityChecked, Boolean(checked))}
+                        className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
+                      />
                       <div>
                         <Label htmlFor="liability" className="font-medium">
                           Release of Liability & Assumption of Risk
@@ -919,9 +970,17 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
+                  {/* Conduct */}
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="conduct" name="conduct" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
+                      <Checkbox 
+                        id="conduct" 
+                        name="conduct" 
+                        required 
+                        checked={conductChecked}
+                        onCheckedChange={(checked) => handleIndividualPolicyChange(setConductChecked, Boolean(checked))}
+                        className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
+                      />
                       <div>
                         <Label htmlFor="conduct" className="font-medium">
                           Code Of Conduct Agreement
@@ -934,9 +993,17 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
+                  {/* Payment */}
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="payment" name="payment" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
+                      <Checkbox 
+                        id="payment" 
+                        name="payment" 
+                        required 
+                        checked={paymentChecked}
+                        onCheckedChange={(checked) => handleIndividualPolicyChange(setPaymentChecked, Boolean(checked))}
+                        className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
+                      />
                       <div>
                         <Label htmlFor="payment" className="font-medium">
                           Payment Policy
@@ -949,9 +1016,17 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
+                  {/* Attire */}
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="attire" name="attire" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
+                      <Checkbox 
+                        id="attire" 
+                        name="attire" 
+                        required 
+                        checked={attireChecked}
+                        onCheckedChange={(checked) => handleIndividualPolicyChange(setAttireChecked, Boolean(checked))}
+                        className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
+                      />
                       <div>
                         <Label htmlFor="attire" className="font-medium">
                           Attire / Dress Code Agreement
@@ -964,9 +1039,17 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
+                  {/* Agree All */}
                   <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
                     <div className="flex items-start space-x-3">
-                      <Checkbox id="agreeAll" name="agreeAll" required className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" />
+                      <Checkbox 
+                        id="agreeAll" 
+                        name="agreeAll" 
+                        required 
+                        checked={agreeAllChecked}
+                        onCheckedChange={(checked) => handleAgreeAllChange(Boolean(checked))}
+                        className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
+                      />
                       <Label htmlFor="agreeAll" className="font-medium">
                         I AGREE TO ALL OF THE ABOVE
                       </Label>
