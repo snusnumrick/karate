@@ -37,7 +37,7 @@ export default function RegisterPage() {
         <div className="bg-white dark:bg-gray-900/50 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-800">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Registration</h1>
-            <Link to="/login" className="text-green-600 dark:text-green-400 hover:underline">
+            <Link to="/app/routes/_layout.login" className="text-green-600 dark:text-green-400 hover:underline">
               Already a customer? Click here to login.
             </Link>
           </div>
