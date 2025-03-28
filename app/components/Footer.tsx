@@ -41,7 +41,7 @@ export default function Footer() {
             <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
               Quick Links
             </Button>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0">
               {["/", "/about", "/classes", "/register", "/contact"].map((link) => (
                 <Button 
                   key={link}
@@ -86,7 +86,7 @@ export default function Footer() {
         
         <div className="text-center text-green-200 dark:text-gray-400 text-sm">
           <Button variant="link" className="text-green-200">
-            &copy; {new Date().getFullYear()} Karate Green. All rights reserved.
+            &copy; {new Date().getFullYear()} Ponto Studio. All rights reserved.
           </Button>
         </div>
       </div>
