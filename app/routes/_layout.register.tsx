@@ -53,22 +53,24 @@ export async function action({ request }: ActionFunctionArgs) {
     if (authError || !user) throw authError || new Error('User creation failed');
 
     // Create family record
-    const familyId = uuidv4();
-    const { error: familyError } = await supabaseServer.from('families').insert({
-      id: familyId,
-      name: formData.get('familyName'),
-      address: formData.get('address'),
-      city: formData.get('city'),
-      province: formData.get('province'),
-      postal_code: formData.get('postalCode'),
-      primary_phone: formData.get('primaryPhone'),
-      email: contact1Email,
-      referral_source: formData.get('referralSource'),
-      emergency_contact: formData.get('emergencyContact'),
-      health_info: formData.get('healthNumber')
-    });
+    const { data: familyData, error: familyError } = await supabaseServer.from('families')
+      .insert({
+        name: formData.get('familyName'),
+        address: formData.get('address'),
+        city: formData.get('city'),
+        province: formData.get('province'),
+        postal_code: formData.get('postalCode'),
+        primary_phone: formData.get('primaryPhone'),
+        email: contact1Email,
+        referral_source: formData.get('referralSource'),
+        emergency_contact: formData.get('emergencyContact'),
+        health_info: formData.get('healthNumber')
+      })
+      .select('id')
+      .single();
 
     if (familyError) throw familyError;
+    const familyId = familyData.id;
 
     // Create user profile
     const { error: profileError } = await supabaseServer.from('profiles').insert({
@@ -81,9 +83,7 @@ export async function action({ request }: ActionFunctionArgs) {
     if (profileError) throw profileError;
 
     // Process Contact #1
-    const contact1Id = uuidv4();
     await supabaseServer.from('guardians').insert({
-      id: contact1Id,
       family_id: familyId,
       first_name: formData.get('contact1FirstName'),
       last_name: formData.get('contact1LastName'),
@@ -98,9 +98,7 @@ export async function action({ request }: ActionFunctionArgs) {
     });
 
     // Process Contact #2
-    const contact2Id = uuidv4();
     await supabaseServer.from('guardians').insert({
-      id: contact2Id,
       family_id: familyId,
       first_name: formData.get('contact2FirstName'),
       last_name: formData.get('contact2LastName'),
@@ -127,9 +125,7 @@ export async function action({ request }: ActionFunctionArgs) {
     });
 
     for (const index of studentIndices) {
-      const studentId = uuidv4();
       await supabaseServer.from('students').insert({
-        id: studentId,
         family_id: familyId,
         first_name: formData.get(`students[${index}].firstName`),
         last_name: formData.get(`students[${index}].lastName`),
