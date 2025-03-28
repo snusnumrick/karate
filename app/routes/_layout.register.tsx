@@ -37,7 +37,7 @@ export default function RegisterPage() {
         <div className="bg-white dark:bg-gray-900/50 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-800">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Registration</h1>
-            <Link to="/app/routes/_layout.login" className="text-green-600 dark:text-green-400 hover:underline">
+            <Link to="/app/routes/_layout.login" className="text-primary hover:underline hover:text-primary/80">
               Already a customer? Click here to login.
             </Link>
           </div>
@@ -49,7 +49,7 @@ export default function RegisterPage() {
           </p>
           
           <div className="mb-6">
-            <div className="w-full bg-gray-200 dark:bg-muted rounded-full h-2.5">
+            <div className="w-full bg-muted rounded-full h-2.5">
               <div 
                 className="bg-primary h-2.5 rounded-full" 
                 style={{ width: `${(currentStep / 5) * 100}%` }}
@@ -68,7 +68,7 @@ export default function RegisterPage() {
                       How did you hear about us?<span className="text-red-500">*</span>
                     </Label>
                     <Select name="referralSource" required>
-                      <SelectTrigger id="referralSource" className="w-full">
+                      <SelectTrigger id="referralSource" className="w-full focus:ring-green-500">
                         <SelectValue placeholder="Select an option" />
                       </SelectTrigger>
                       <SelectContent>
@@ -142,7 +142,7 @@ export default function RegisterPage() {
                       Province<span className="text-red-500">*</span>
                     </Label>
                     <Select name="province" required>
-                      <SelectTrigger id="province" className="w-full">
+                      <SelectTrigger id="province" className="w-full focus:ring-green-500">
                         <SelectValue placeholder="Select a province" />
                       </SelectTrigger>
                       <SelectContent>
@@ -265,7 +265,7 @@ export default function RegisterPage() {
                       Type<span className="text-red-500">*</span>
                     </Label>
                     <Select name="contact1Type" required>
-                      <SelectTrigger id="contact1Type" className="w-full">
+                      <SelectTrigger id="contact1Type" className="w-full focus:ring-green-500">
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                       <SelectContent>
@@ -359,7 +359,7 @@ export default function RegisterPage() {
                       minLength={5}
                       className="focus:ring-green-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Minimum number of characters is 5</p>
+                    <p className="text-xs text-muted-foreground mt-1">Minimum number of characters is 5</p>
                   </div>
                   
                   <div>
@@ -373,7 +373,7 @@ export default function RegisterPage() {
                       minLength={5}
                       className="focus:ring-green-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Minimum number of characters is 5</p>
+                    <p className="text-xs text-muted-foreground mt-1">Minimum number of characters is 5</p>
                   </div>
                 </div>
                 
@@ -471,7 +471,7 @@ export default function RegisterPage() {
                       Type<span className="text-red-500">*</span>
                     </Label>
                     <Select name="contact2Type" required>
-                      <SelectTrigger id="contact2Type" className="w-full">
+                      <SelectTrigger id="contact2Type" className="w-full focus:ring-green-500">
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                       <SelectContent>
@@ -617,7 +617,7 @@ export default function RegisterPage() {
               <div>
                 {students.map((student, index) => (
                   <div key={student.id} className="mb-8 pb-8 border-b border-border dark:border-gray-700">
-                    <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4">STUDENT #{index + 1}</h2>
+                    <h2 className="text-xl font-semibold text-foreground mb-4">STUDENT #{index + 1}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <Label htmlFor={`student${index}FirstName`} className="block text-sm font-medium mb-1">
@@ -687,7 +687,7 @@ export default function RegisterPage() {
                       </div>
                     </div>
                     
-                    <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">ADDITIONAL INFO</h3>
+                    <h3 className="text-lg font-medium text-foreground mt-6 mb-3">ADDITIONAL INFO</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <Label htmlFor={`student${index}Email`} className="block text-sm font-medium mb-1">
@@ -868,15 +868,15 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={prevStep}
-                    variant="secondary"
-                    className="font-bold py-3 px-6"
+                    variant="outline"
+                    className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
                   >
                     Back
                   </Button>
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="font-bold py-3 px-6"
+                    className="font-bold py-3 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     Continue
                   </Button>
@@ -889,7 +889,7 @@ export default function RegisterPage() {
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
                 
                 <div className="space-y-6">
-                  <div className="bg-muted/50 dark:bg-gray-800 p-4 rounded-md border dark:border-gray-700 text-foreground">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="photoRelease" name="photoRelease" required />
                       <div>
@@ -904,7 +904,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted p-4 rounded-md text-foreground">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="liability" name="liability" required />
                       <div>
@@ -919,7 +919,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted/50 dark:bg-gray-800 p-4 rounded-md border dark:border-gray-700">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="conduct" name="conduct" required />
                       <div>
@@ -934,7 +934,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted p-4 rounded-md">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="payment" name="payment" required />
                       <div>
@@ -949,7 +949,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted p-4 rounded-md">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="attire" name="attire" required />
                       <div>
@@ -964,7 +964,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted p-4 rounded-md">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="agreeAll" name="agreeAll" required />
                       <Label htmlFor="agreeAll" className="font-medium">
@@ -984,7 +984,7 @@ export default function RegisterPage() {
                       required
                       className="focus:ring-green-500"
                     />
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
@@ -1006,14 +1006,14 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={prevStep}
-                    variant="secondary"
-                    className="font-bold py-3 px-6"
+                    variant="outline"
+                    className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
                   >
                     Back
                   </Button>
                   <Button
                     type="submit"
-                    className="font-bold py-3 px-6"
+                    className="font-bold py-3 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     SUBMIT REGISTRATION
                   </Button>
