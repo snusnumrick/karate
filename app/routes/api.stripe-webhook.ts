@@ -21,11 +21,14 @@ export async function action({ request }: ActionFunctionArgs) {
     
     // Handle the checkout.session.completed event
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session & { receipt_url?: string };
+      const session = event.data.object as Stripe.Checkout.Session & { 
+        receipt_url?: string;
+        metadata: { paymentId: string; familyId: string };
+      };
       
-      // Update payment status in database
+      // Update payment status in database using our internal paymentId from metadata
       await updatePaymentStatus(
-        session.id,
+        session.metadata.paymentId,
         'completed',
         session.receipt_url
       );
