@@ -6,7 +6,6 @@ import {
   ScrollRestoration,
   useRouteError,
 } from "@remix-run/react";
-import { Navbar } from "~/components/navbar";
 import type { LinksFunction } from "@remix-run/node";
 import { ThemeProvider } from "~/components/theme-provider";
 
@@ -67,16 +66,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar />
       <Outlet />
     </div>
   );
 }
 
 export function ErrorBoundary() {
-  const error = useRouteError();
-  const status = (error as any)?.status || 500;
-  const errorMessage = (error as any)?.data?.message || (error as any)?.message || "Unknown error occurred";
+     const error = useRouteError() as { status?: number; data?: { message?: string }; message?: string };
+     const status = error.status || 500;
+     const errorMessage = error.data?.message || error.message || "Unknown error occurred";
 
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>

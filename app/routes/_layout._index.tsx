@@ -35,13 +35,12 @@ export default function Index() {
             <div className="flex justify-center">
               <div className="relative h-96 w-full">
                 <div className="absolute left-10 right-0 top-0 h-full w-full bg-green-700 transform -skew-x-12 origin-top-right z-0"></div>
-                <div className="absolute right-8 top-8 h-80 w-80 flex items-center justify-center z-10">
-                  <div className="text-right flex items-left">
-
-                    <div>
-                      <h2 className="text-5xl font-bold">KARATE <br/>GREENEGIN</h2>
-                    </div>
-                  </div>
+                <div className="absolute h-full w-full flex items-center justify-center z-10">
+                  <img 
+                    src="/images/karate-pose.svg" 
+                    alt="Karate pose silhouette" 
+                    className="w-full h-full object-contain"
+                  />
                 </div>
               </div>
             </div>
