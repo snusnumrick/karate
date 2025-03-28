@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Form, useRouteError, isRouteErrorResponse } from "@remix-run/react";
+import { Link, Form, useRouteError, isRouteErrorResponse, Outlet, useLocation } from "@remix-run/react"; // Import Outlet and useLocation
 import type { ActionFunctionArgs } from "@remix-run/node"; // or cloudflare/deno
 import { json, redirect } from "@remix-run/node"; // or cloudflare/deno
 import { Button } from "~/components/ui/button";
@@ -96,14 +96,215 @@ export default function RegisterPage() {
     setCurrentStep(currentStep - 1);
     window.scrollTo(0, 0);
   };
+
+  const location = useLocation(); // Get the current location
+
+  // Determine if we are on the base /register route or a child route
+  const isBaseRegisterRoute = location.pathname === '/register';
   
   return (
     <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Registration</h1>
-            <Link to="/app/routes/_layout.login" className="text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300">
+        {isBaseRegisterRoute ? (
+          // Render the multi-step form only on /register
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Registration</h1>
+              <Link to="/login" className="text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300">
+                Already a customer? Click here to login.
+              </Link>
+            </div>
+            
+            <p className="mb-6 text-muted-foreground">
+              Welcome to Karate Greenegin! We are so excited to meet your performer and
+              family! Please complete the following registration form. Afterwards you will be able to
+              enroll in the classes of your choice!
+            </p>
+            
+            <div className="mb-6">
+              <div className="w-full bg-muted rounded-full h-2.5">
+                <div 
+                  className="bg-green-600 h-2.5 rounded-full" 
+                  style={{ width: `${(currentStep / 5) * 100}%` }}
+                ></div>
+              </div>
+              <p className="text-center mt-2 text-sm text-muted-foreground dark:text-muted-foreground">Step {currentStep} of 5</p>
+            </div>
+            
+            <Form method="post" noValidate className="space-y-8">
+              {/* --- All the step content (currentStep === 1, 2, 3, 4, 5) goes here --- */}
+              {currentStep === 1 && (
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL INFORMATION</h2>
+                  {/* ... rest of step 1 ... */}
+                   </div>
+                  
+                  <div className="mt-8">
+                    <Button
+                      type="button"
+                      onClick={nextStep}
+                      className="w-full font-bold py-3 px-4 bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Continue to Additional Info
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {currentStep === 2 && (
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ADDITIONAL INFO</h2>
+                  {/* ... rest of step 2 ... */}
+                   </div>
+                  
+                  <div className="flex justify-between mt-8">
+                    <Button
+                      type="button"
+                      onClick={prevStep}
+                      variant="outline"
+                      className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={nextStep}
+                      className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {currentStep === 3 && (
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT #2</h2>
+                  {/* ... rest of step 3 ... */}
+                   </div>
+                  
+                  <div className="flex justify-between mt-8">
+                    <Button
+                      type="button"
+                      onClick={prevStep}
+                      variant="outline"
+                      className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={nextStep}
+                      className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {currentStep === 4 && (
+                <div>
+                  {students.map((student, index) => (
+                    <div key={student.id} className="mb-8 pb-8 border-b border-border dark:border-gray-700">
+                      <h2 className="text-xl font-semibold text-foreground mb-4">STUDENT #{index + 1}</h2>
+                      {/* ... rest of student fields ... */}
+                       </div>
+                      
+                      <div>
+                        <Label htmlFor={`student${index}BeltRank`} className="block text-sm font-medium mb-1">
+                          Belt Rank
+                        </Label>
+                        <Select name={`students[${index}].beltRank`}>
+                          <SelectTrigger id={`student${index}BeltRank`} className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
+                            <SelectValue placeholder="Select belt rank" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="white">White</SelectItem>
+                            <SelectItem value="yellow">Yellow</SelectItem>
+                            <SelectItem value="orange">Orange</SelectItem>
+                            <SelectItem value="green">Green</SelectItem>
+                            <SelectItem value="blue">Blue</SelectItem>
+                            <SelectItem value="purple">Purple</SelectItem>
+                            <SelectItem value="brown">Brown</SelectItem>
+                            <SelectItem value="black">Black</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="mt-4 mb-8">
+                    <Button 
+                      type="button"
+                      onClick={addStudent}
+                      variant="outline"
+                      className="w-full flex items-center justify-center text-foreground"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-foreground" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                      </svg>
+                      ADD ANOTHER STUDENT
+                    </Button>
+                  </div>
+                  
+                  <div className="flex justify-between mt-8">
+                    <Button
+                      type="button"
+                      onClick={prevStep}
+                      variant="outline"
+                      className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={nextStep}
+                      className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {currentStep === 5 && (
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
+                  {/* ... rest of step 5 ... */}
+                     />
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between mt-8">
+                    <Button
+                      type="button"
+                      onClick={prevStep}
+                      variant="outline"
+                      className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
+                    >
+                      SUBMIT REGISTRATION
+                    </Button>
+                  </div>
+                  
+                </div>
+              )}
+            </Form>
+          </div>
+        ) : (
+          // Render the Outlet for child routes like /register/success
+          <Outlet />
+        )}
+      </div>
+    </div>
+  );
+}
               Already a customer? Click here to login.
             </Link>
           </div>
