@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Link, Form } from "@remix-run/react";
+import { Link, Form, useRouteError, isRouteErrorResponse } from "@remix-run/react";
+import type { ActionFunctionArgs } from "@remix-run/node"; // or cloudflare/deno
+import { json, redirect } from "@remix-run/node"; // or cloudflare/deno
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -12,6 +14,26 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // For ErrorBoundary
+
+// Action function to handle form submission
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const data = Object.fromEntries(formData);
+
+  // TODO: Add validation logic here
+  // TODO: Add logic to save data to Supabase (create user, family, students, etc.)
+  
+  console.log("Registration form data:", data);
+
+  // For now, just redirect to a success page or home page after submission
+  // Replace '/registration-success' with your actual success route
+  // return redirect('/registration-success'); 
+  
+  // Or return json if staying on the page or showing a message
+  return json({ success: true, message: "Registration submitted (data logged)." });
+}
+
 
 export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -1106,6 +1128,46 @@ export default function RegisterPage() {
             )}
           </Form>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Error Boundary for the registration route
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  // Log the error to the console
+  console.error("Registration Route Error:", error);
+
+  let title = "An Unexpected Error Occurred";
+  let message = "We encountered an unexpected issue. Please try again later.";
+  let status = 500;
+
+  if (isRouteErrorResponse(error)) {
+    title = `${error.status} ${error.statusText}`;
+    message = error.data?.message || error.data || "An error occurred processing your request.";
+    status = error.status;
+  } else if (error instanceof Error) {
+    // Keep generic message for users, but we logged the specific error
+    message = error.message; // Or keep the generic message above
+  }
+
+  return (
+    <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <Alert variant="destructive" className="bg-white dark:bg-gray-800 shadow-md border dark:border-gray-700">
+          <AlertTitle className="text-lg font-bold">{title}</AlertTitle>
+          <AlertDescription className="mt-2">
+            {message}
+            {status === 405 && <p className="mt-2 text-sm">It seems there was an issue submitting the form. Please check the form and try again.</p>}
+          </AlertDescription>
+          <div className="mt-4">
+            <Button asChild variant="outline">
+              <Link to="/register">Go back to Registration</Link>
+            </Button>
+          </div>
+        </Alert>
       </div>
     </div>
   );
