@@ -14,10 +14,11 @@ create table families (
   city text not null,
   province text not null,
   postal_code varchar(10) not null,
-  phone varchar(20) not null,
+  primary_phone varchar(20) not null,
   email text not null,
   referral_source text,
-  referral_name text,
+  emergency_contact text,
+  health_info text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -57,7 +58,7 @@ create table students (
   grade_level text,
   cell_phone varchar(20),
   email text,
-  immunizations_up_to_date boolean,
+  immunizations_up_to_date text,
   immunization_notes text,
   allergies text,
   medications text,
@@ -140,6 +141,22 @@ create table waiver_signatures (
 create index idx_waiver_signatures_user_id on waiver_signatures (user_id);
 create index idx_waiver_signatures_waiver_id on waiver_signatures (waiver_id);
 alter table waiver_signatures enable row level security;
+
+-- Policy Agreements table
+create table policy_agreements (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid references families(id) on delete cascade not null,
+  full_name text not null,
+  photo_release boolean not null,
+  liability_release boolean not null,
+  code_of_conduct boolean not null,
+  payment_policy boolean not null,
+  attire_agreement boolean not null,
+  signature_date timestamptz not null default now()
+);
+
+create index idx_policy_agreements_family_id on policy_agreements (family_id);
+alter table policy_agreements enable row level security;
 
 -- Profiles table
 create table profiles (
@@ -244,3 +261,32 @@ create policy "Waivers are viewable by all authenticated users" on waivers
 
 create policy "Waiver signatures are viewable by the signer" on waiver_signatures
   for select using (auth.uid() = user_id);
+
+create policy "Policy agreements are viewable by family members" on policy_agreements
+  for select using (
+    exists (
+      select 1 from profiles 
+      where profiles.family_id = policy_agreements.family_id
+      and profiles.id = auth.uid()
+    )
+  );
+
+-- Add validation constraints
+alter table families
+add constraint valid_province 
+check (province in ('AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'));
+
+alter table students
+add constraint valid_t_shirt_size
+check (t_shirt_size in ('YXS','YS','YM','YL','YXL','AS','AM','AL','AXL','A2XL'));
+
+-- Add update timestamp triggers
+create or replace function update_modified_column()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger families_updated before update on families for each row execute function update_modified_column();
