@@ -219,13 +219,6 @@ alter table profiles enable row level security;
 -- Example policies - adjust according to your security needs
 create policy "Profiles are viewable by user" on profiles
   for select using (auth.uid() = id);
-  for select using (
-    exists (
-      select 1 from profiles 
-      where profiles.family_id = families.id
-      and profiles.id = auth.uid()
-    )
-  );
 
 -- Create trigger for profile creation
 create or replace function public.handle_new_user()
