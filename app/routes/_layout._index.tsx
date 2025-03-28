@@ -35,7 +35,7 @@ export default function Index() {
             </div>
             <div className="flex justify-center">
               <div className="relative h-96 w-full">
-                <div className="absolute left-4 md:left-10 top-0 h-full w-[110%] md:w-full bg-green-700 transform -skew-x-6 md:-skew-x-12 origin-top-right z-0"></div>
+                <div className="absolute left-0 md:left-10 top-0 h-full w-full bg-green-700 transform skew-x-0 md:-skew-x-12 origin-top-right z-0"></div>
                 <div className="absolute h-full w-full flex items-center justify-center z-10">
                   <img 
                     src="/images/karate-pose.svg" 
