@@ -32,9 +32,9 @@ export default function RegisterPage() {
   };
   
   return (
-    <div className="min-h-screen bg-green-50 dark:bg-background py-12 text-foreground">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-[#020617] dark:to-[#0f172a] py-12 text-foreground">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-background p-8 rounded-lg shadow-md">
+        <div className="bg-white dark:bg-gray-900/50 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-800">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-green-600">Registration</h1>
             <Link to="/login" className="text-green-600 hover:underline">
@@ -42,7 +42,7 @@ export default function RegisterPage() {
             </Link>
           </div>
           
-          <p className="mb-6 text-gray-700">
+          <p className="mb-6 text-muted-foreground">
             Welcome to Karate Greenegin! We are so excited to meet your performer and
             family! Please complete the following registration form. Afterwards you will be able to
             enroll in the classes of your choice!
@@ -235,185 +235,184 @@ export default function RegisterPage() {
                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">CONTACT #1</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label htmlFor="contact1FirstName" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1FirstName" className="block text-sm font-medium mb-1">
                       Contact #1 First Name<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="contact1FirstName"
                       name="contact1FirstName"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact1LastName" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1LastName" className="block text-sm font-medium mb-1">
                       Last Name<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="contact1LastName"
                       name="contact1LastName"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact1Type" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1Type" className="block text-sm font-medium mb-1">
                       Type<span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="contact1Type"
-                      name="contact1Type"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    >
-                      <option value="">Select relationship</option>
-                      <option value="Mother">Mother</option>
-                      <option value="Father">Father</option>
-                      <option value="Guardian">Guardian</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    </Label>
+                    <Select name="contact1Type" required>
+                      <SelectTrigger id="contact1Type" className="w-full">
+                        <SelectValue placeholder="Select relationship" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Mother">Mother</SelectItem>
+                        <SelectItem value="Father">Father</SelectItem>
+                        <SelectItem value="Guardian">Guardian</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">HOW CAN WE CONTACT YOU?</h3>
+                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">HOW CAN WE CONTACT YOU?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label htmlFor="contact1HomePhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1HomePhone" className="block text-sm font-medium mb-1">
                       Home Phone<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="contact1HomePhone"
                       name="contact1HomePhone"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact1WorkPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1WorkPhone" className="block text-sm font-medium mb-1">
                       Work #
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="contact1WorkPhone"
                       name="contact1WorkPhone"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact1CellPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1CellPhone" className="block text-sm font-medium mb-1">
                       Cell #<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="contact1CellPhone"
                       name="contact1CellPhone"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">PORTAL ACCESS (YOUR EMAIL IS YOUR LOGIN)</h3>
+                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">PORTAL ACCESS (YOUR EMAIL IS YOUR LOGIN)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="contact1Email" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1Email" className="block text-sm font-medium mb-1">
                       Email<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="email"
                       id="contact1Email"
                       name="contact1Email"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">(Emails are kept confidential)</p>
                   </div>
                   
                   <div>
-                    <label htmlFor="contact1EmailConfirm" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1EmailConfirm" className="block text-sm font-medium mb-1">
                       Confirm Email<span className="text-red-500">*</span>
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="email"
                       id="contact1EmailConfirm"
                       name="contact1EmailConfirm"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="portalPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="portalPassword" className="block text-sm font-medium mb-1">
                       Portal Account Password
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="password"
                       id="portalPassword"
                       name="portalPassword"
                       minLength={5}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">Minimum number of characters is 5</p>
                   </div>
                   
                   <div>
-                    <label htmlFor="portalPasswordConfirm" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="portalPasswordConfirm" className="block text-sm font-medium mb-1">
                       Confirm Portal Account Password
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="password"
                       id="portalPasswordConfirm"
                       name="portalPasswordConfirm"
                       minLength={5}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">Minimum number of characters is 5</p>
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-800 dark:text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
+                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="contact1Employer" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1Employer" className="block text-sm font-medium mb-1">
                       Employer
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       id="contact1Employer"
                       name="contact1Employer"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="contact1EmployerPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1EmployerPhone" className="block text-sm font-medium mb-1">
                       Employer Phone
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       id="contact1EmployerPhone"
                       name="contact1EmployerPhone"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="focus:ring-green-500"
                     />
                   </div>
                   
                   <div className="md:col-span-2">
-                    <label htmlFor="contact1EmployerNotes" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Label htmlFor="contact1EmployerNotes" className="block text-sm font-medium mb-1">
                       Employer Notes
-                    </label>
-                    <textarea
+                    </Label>
+                    <Textarea
                       id="contact1EmployerNotes"
                       name="contact1EmployerNotes"
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    ></textarea>
+                      className="focus:ring-green-500"
+                    />
                   </div>
                 </div>
                 
@@ -618,7 +617,7 @@ export default function RegisterPage() {
             {currentStep === 4 && (
               <div>
                 {students.map((student, index) => (
-                  <div key={student.id} className="mb-8 pb-8 border-b border-border">
+                  <div key={student.id} className="mb-8 pb-8 border-b border-border dark:border-gray-700">
                     <h2 className="text-xl font-semibold text-gray-800 dark:text-foreground mb-4">STUDENT #{index + 1}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
@@ -727,125 +726,126 @@ export default function RegisterPage() {
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}School`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}School`} className="block text-sm font-medium mb-1">
                           School<span className="text-red-500">*</span>
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="text"
                           id={`student${index}School`}
                           name={`students[${index}].school`}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="focus:ring-green-500"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}GradeLevel`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}GradeLevel`} className="block text-sm font-medium mb-1">
                           Grade Level<span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          id={`student${index}GradeLevel`}
-                          name={`students[${index}].gradeLevel`}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value="">Select grade</option>
-                          <option value="K">Kindergarten</option>
-                          <option value="1">1st Grade</option>
-                          <option value="2">2nd Grade</option>
-                          <option value="3">3rd Grade</option>
-                          <option value="4">4th Grade</option>
-                          <option value="5">5th Grade</option>
-                          <option value="6">6th Grade</option>
-                          <option value="7">7th Grade</option>
-                          <option value="8">8th Grade</option>
-                          <option value="9">9th Grade</option>
-                          <option value="10">10th Grade</option>
-                          <option value="11">11th Grade</option>
-                          <option value="12">12th Grade</option>
-                        </select>
+                        </Label>
+                        <Select name={`students[${index}].gradeLevel`} required>
+                          <SelectTrigger id={`student${index}GradeLevel`} className="w-full">
+                            <SelectValue placeholder="Select grade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="K">Kindergarten</SelectItem>
+                            <SelectItem value="1">1st Grade</SelectItem>
+                            <SelectItem value="2">2nd Grade</SelectItem>
+                            <SelectItem value="3">3rd Grade</SelectItem>
+                            <SelectItem value="4">4th Grade</SelectItem>
+                            <SelectItem value="5">5th Grade</SelectItem>
+                            <SelectItem value="6">6th Grade</SelectItem>
+                            <SelectItem value="7">7th Grade</SelectItem>
+                            <SelectItem value="8">8th Grade</SelectItem>
+                            <SelectItem value="9">9th Grade</SelectItem>
+                            <SelectItem value="10">10th Grade</SelectItem>
+                            <SelectItem value="11">11th Grade</SelectItem>
+                            <SelectItem value="12">12th Grade</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       
                       <div className="md:col-span-2">
-                        <label htmlFor={`student${index}SpecialNeeds`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}SpecialNeeds`} className="block text-sm font-medium mb-1">
                           Special Needs (Leave blank if NONE)
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="text"
                           id={`student${index}SpecialNeeds`}
                           name={`students[${index}].specialNeeds`}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="focus:ring-green-500"
                         />
                       </div>
                       
                       <div className="md:col-span-2">
-                        <label htmlFor={`student${index}Allergies`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}Allergies`} className="block text-sm font-medium mb-1">
                           Allergies (Leave blank if NONE)
-                        </label>
-                        <textarea
+                        </Label>
+                        <Textarea
                           id={`student${index}Allergies`}
                           name={`students[${index}].allergies`}
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        ></textarea>
+                          className="focus:ring-green-500"
+                        />
                       </div>
                       
                       <div className="md:col-span-2">
-                        <label htmlFor={`student${index}Medications`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}Medications`} className="block text-sm font-medium mb-1">
                           Medications (Leave blank if NONE)
-                        </label>
-                        <textarea
+                        </Label>
+                        <Textarea
                           id={`student${index}Medications`}
                           name={`students[${index}].medications`}
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        ></textarea>
+                          className="focus:ring-green-500"
+                        />
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}Immunizations`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}Immunizations`} className="block text-sm font-medium mb-1">
                           Immunizations YN
-                        </label>
-                        <select
-                          id={`student${index}Immunizations`}
-                          name={`students[${index}].immunizationsUpToDate`}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value="No">No</option>
-                          <option value="Yes">Yes</option>
-                        </select>
+                        </Label>
+                        <Select name={`students[${index}].immunizationsUpToDate`}>
+                          <SelectTrigger id={`student${index}Immunizations`} className="w-full">
+                            <SelectValue placeholder="Select option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="No">No</SelectItem>
+                            <SelectItem value="Yes">Yes</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       
                       <div className="md:col-span-2">
-                        <label htmlFor={`student${index}ImmunizationNotes`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}ImmunizationNotes`} className="block text-sm font-medium mb-1">
                           Immunization Notes
-                        </label>
-                        <textarea
+                        </Label>
+                        <Textarea
                           id={`student${index}ImmunizationNotes`}
                           name={`students[${index}].immunizationNotes`}
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        ></textarea>
+                          className="focus:ring-green-500"
+                        />
                       </div>
                       
                       <div>
-                        <label htmlFor={`student${index}BeltRank`} className="block text-sm font-medium text-gray-700 mb-1">
+                        <Label htmlFor={`student${index}BeltRank`} className="block text-sm font-medium mb-1">
                           Belt Rank
-                        </label>
-                        <select
-                          id={`student${index}BeltRank`}
-                          name={`students[${index}].beltRank`}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value="white">White</option>
-                          <option value="yellow">Yellow</option>
-                          <option value="orange">Orange</option>
-                          <option value="green">Green</option>
-                          <option value="blue">Blue</option>
-                          <option value="purple">Purple</option>
-                          <option value="brown">Brown</option>
-                          <option value="black">Black</option>
-                        </select>
+                        </Label>
+                        <Select name={`students[${index}].beltRank`}>
+                          <SelectTrigger id={`student${index}BeltRank`} className="w-full">
+                            <SelectValue placeholder="Select belt rank" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="white">White</SelectItem>
+                            <SelectItem value="yellow">Yellow</SelectItem>
+                            <SelectItem value="orange">Orange</SelectItem>
+                            <SelectItem value="green">Green</SelectItem>
+                            <SelectItem value="blue">Blue</SelectItem>
+                            <SelectItem value="purple">Purple</SelectItem>
+                            <SelectItem value="brown">Brown</SelectItem>
+                            <SelectItem value="black">Black</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
@@ -890,7 +890,7 @@ export default function RegisterPage() {
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
                 
                 <div className="space-y-6">
-                  <div className="bg-muted p-4 rounded-md text-foreground">
+                  <div className="bg-muted/50 dark:bg-gray-800 p-4 rounded-md border dark:border-gray-700 text-foreground">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="photoRelease" name="photoRelease" required />
                       <div>
@@ -920,7 +920,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted p-4 rounded-md">
+                  <div className="bg-muted/50 dark:bg-gray-800 p-4 rounded-md border dark:border-gray-700">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="conduct" name="conduct" required />
                       <div>
