@@ -124,7 +124,7 @@ export default function RegisterPage() {
             <p className="text-center mt-2 text-sm text-muted-foreground dark:text-muted-foreground">Step {currentStep} of 5</p>
           </div>
           
-          <Form method="post" className="space-y-8">
+          <Form method="post" noValidate className="space-y-8">
             {currentStep === 1 && (
               <div>
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL INFORMATION</h2>
