@@ -32,7 +32,7 @@ export default function RegisterPage() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-100 to-white dark:from-[#020617] dark:to-[#0f172a] py-12 text-foreground">
+    <div className="min-h-screen bg-background py-12 text-foreground">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white dark:bg-gray-900/50 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-800">
           <div className="flex justify-between items-center mb-6">
@@ -194,7 +194,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="w-full font-bold py-3 px-4 bg-green-600 hover:bg-green-700 text-white"
+                    className="w-full font-bold py-3 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     Continue to Additional Info
                   </Button>
@@ -421,14 +421,14 @@ export default function RegisterPage() {
                     type="button"
                     onClick={prevStep}
                     variant="outline"
-                    className="font-bold py-3 px-6 border-green-600 text-green-600 hover:bg-green-50"
+                    className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
                   >
                     Back
                   </Button>
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="font-bold py-3 px-6 bg-green-600 hover:bg-green-700 text-white"
+                    className="font-bold py-3 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     Continue
                   </Button>
@@ -598,14 +598,14 @@ export default function RegisterPage() {
                     type="button"
                     onClick={prevStep}
                     variant="outline"
-                    className="font-bold py-3 px-6 border-green-600 text-green-600 hover:bg-green-50"
+                    className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
                   >
                     Back
                   </Button>
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="font-bold py-3 px-6 bg-green-600 hover:bg-green-700 text-white"
+                    className="font-bold py-3 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     Continue
                   </Button>
@@ -650,7 +650,7 @@ export default function RegisterPage() {
                           Student Gender<span className="text-red-500">*</span>
                         </Label>
                         <Select name={`students[${index}].gender`} required>
-                          <SelectTrigger id={`student${index}Gender`} className="w-full">
+                          <SelectTrigger id={`student${index}Gender`} className="w-full focus:ring-green-500">
                             <SelectValue placeholder="Select gender" />
                           </SelectTrigger>
                           <SelectContent>
@@ -706,7 +706,7 @@ export default function RegisterPage() {
                           T-Shirt Size<span className="text-red-500">*</span>
                         </Label>
                         <Select name={`students[${index}].tShirtSize`} required>
-                          <SelectTrigger id={`student${index}TShirtSize`} className="w-full">
+                          <SelectTrigger id={`student${index}TShirtSize`} className="w-full focus:ring-green-500">
                             <SelectValue placeholder="Select size" />
                           </SelectTrigger>
                           <SelectContent>
@@ -742,7 +742,7 @@ export default function RegisterPage() {
                           Grade Level<span className="text-red-500">*</span>
                         </Label>
                         <Select name={`students[${index}].gradeLevel`} required>
-                          <SelectTrigger id={`student${index}GradeLevel`} className="w-full">
+                          <SelectTrigger id={`student${index}GradeLevel`} className="w-full focus:ring-green-500">
                             <SelectValue placeholder="Select grade" />
                           </SelectTrigger>
                           <SelectContent>
@@ -804,7 +804,7 @@ export default function RegisterPage() {
                           Immunizations YN
                         </Label>
                         <Select name={`students[${index}].immunizationsUpToDate`}>
-                          <SelectTrigger id={`student${index}Immunizations`} className="w-full">
+                          <SelectTrigger id={`student${index}Immunizations`} className="w-full focus:ring-green-500">
                             <SelectValue placeholder="Select option" />
                           </SelectTrigger>
                           <SelectContent>
@@ -831,7 +831,7 @@ export default function RegisterPage() {
                           Belt Rank
                         </Label>
                         <Select name={`students[${index}].beltRank`}>
-                          <SelectTrigger id={`student${index}BeltRank`} className="w-full">
+                          <SelectTrigger id={`student${index}BeltRank`} className="w-full focus:ring-green-500">
                             <SelectValue placeholder="Select belt rank" />
                           </SelectTrigger>
                           <SelectContent>
@@ -857,7 +857,7 @@ export default function RegisterPage() {
                     variant="outline"
                     className="w-full flex items-center justify-center text-foreground"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-foreground" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
                     </svg>
                     ADD ANOTHER STUDENT
@@ -919,7 +919,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="conduct" name="conduct" required />
                       <div>
@@ -934,7 +934,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="payment" name="payment" required />
                       <div>
@@ -949,7 +949,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
+                  <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                     <div className="flex items-start space-x-3">
                       <Checkbox id="attire" name="attire" required />
                       <div>
