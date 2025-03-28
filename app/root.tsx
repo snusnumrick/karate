@@ -6,6 +6,7 @@ import {
   ScrollRestoration,
   useRouteError,
 } from "@remix-run/react";
+import { Navbar } from "~/components/navbar";
 import type { LinksFunction } from "@remix-run/node";
 import { ThemeProvider } from "~/components/theme-provider";
 
@@ -66,6 +67,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <div className="flex flex-col min-h-screen">
+      <Navbar />
       <Outlet />
     </div>
   );

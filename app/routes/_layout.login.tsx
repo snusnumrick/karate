@@ -7,15 +7,6 @@ import { Checkbox } from "~/components/ui/checkbox";
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-amber-50 dark:bg-gray-800 flex flex-col">
-      {/* Green header matching index page */}
-      <div className="bg-green-600 text-white py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center">
-            <img src="/logo.svg" alt="Karate Greenegin Logo" className="h-16 w-16" />
-          </div>
-        </div>
-      </div>
-
       {/* Login form container */}
       <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
