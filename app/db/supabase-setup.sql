@@ -23,8 +23,6 @@ create table families (
   updated_at timestamptz default now()
 );
 
-alter table families enable row level security;
-
 -- Guardians table
 create table guardians (
   id uuid primary key default gen_random_uuid(),
@@ -42,7 +40,6 @@ create table guardians (
 );
 
 create index idx_guardians_family_id on guardians (family_id);
-alter table guardians enable row level security;
 
 -- Students table
 create table students (
@@ -66,7 +63,6 @@ create table students (
 );
 
 create index idx_students_family_id on students (family_id);
-alter table students enable row level security;
 
 -- Payments table
 create type payment_status as enum ('pending', 'completed', 'failed');
@@ -81,7 +77,6 @@ create table payments (
 );
 
 create index idx_payments_family_id on payments (family_id);
-alter table payments enable row level security;
 
 -- Payment-Students junction table
 create table payment_students (
@@ -92,7 +87,6 @@ create table payment_students (
 
 create index idx_payment_students_payment_id on payment_students (payment_id);
 create index idx_payment_students_student_id on payment_students (student_id);
-alter table payment_students enable row level security;
 
 -- Achievements table
 create table achievements (
@@ -104,7 +98,6 @@ create table achievements (
 );
 
 create index idx_achievements_student_id on achievements (student_id);
-alter table achievements enable row level security;
 
 -- Attendance table
 create table attendance (
@@ -116,7 +109,6 @@ create table attendance (
 );
 
 create index idx_attendance_student_id on attendance (student_id);
-alter table attendance enable row level security;
 
 -- Waivers table
 create table waivers (
@@ -126,8 +118,6 @@ create table waivers (
   content text not null,
   required boolean not null default false
 );
-
-alter table waivers enable row level security;
 
 -- Waiver Signatures table
 create table waiver_signatures (
@@ -140,7 +130,6 @@ create table waiver_signatures (
 
 create index idx_waiver_signatures_user_id on waiver_signatures (user_id);
 create index idx_waiver_signatures_waiver_id on waiver_signatures (waiver_id);
-alter table waiver_signatures enable row level security;
 
 -- Policy Agreements table
 create table policy_agreements (
@@ -156,7 +145,6 @@ create table policy_agreements (
 );
 
 create index idx_policy_agreements_family_id on policy_agreements (family_id);
-alter table policy_agreements enable row level security;
 
 -- Profiles table
 create table profiles (
@@ -167,22 +155,6 @@ create table profiles (
 );
 
 create index idx_profiles_family_id on profiles (family_id);
-alter table profiles enable row level security;
-
--- Create RLS policies
--- Example policies - adjust according to your security needs
-create policy "Profiles are viewable by user" on profiles
-  for select using (auth.uid() = id);
-
--- Now that profiles table exists, we can create policies that reference it
-create policy "Families are viewable by members" on families
-  for select using (
-    exists (
-      select 1 from profiles 
-      where profiles.family_id = families.id
-      and profiles.id = auth.uid()
-    )
-  );
 
 -- Create trigger for profile creation
 create or replace function public.handle_new_user()
@@ -198,7 +170,32 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Now add all the RLS policies after all tables are created
+-- Now enable row level security on all tables
+alter table families enable row level security;
+alter table guardians enable row level security;
+alter table students enable row level security;
+alter table payments enable row level security;
+alter table payment_students enable row level security;
+alter table achievements enable row level security;
+alter table attendance enable row level security;
+alter table waivers enable row level security;
+alter table waiver_signatures enable row level security;
+alter table policy_agreements enable row level security;
+alter table profiles enable row level security;
+
+-- Now add all the RLS policies after all tables are created and RLS is enabled
+create policy "Profiles are viewable by user" on profiles
+  for select using (auth.uid() = id);
+
+create policy "Families are viewable by members" on families
+  for select using (
+    exists (
+      select 1 from profiles 
+      where profiles.family_id = families.id
+      and profiles.id = auth.uid()
+    )
+  );
+
 create policy "Guardians are viewable by family members" on guardians
   for select using (
     exists (

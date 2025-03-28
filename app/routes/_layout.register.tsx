@@ -141,7 +141,7 @@ export async function action({ request }: ActionFunctionArgs) {
         special_needs: formData.get(`students[${index}].specialNeeds`),
         allergies: formData.get(`students[${index}].allergies`),
         medications: formData.get(`students[${index}].medications`),
-        immunizations: formData.get(`students[${index}].immunizationsUpToDate`),
+        immunizations_up_to_date: formData.get(`students[${index}].immunizationsUpToDate`),
         immunization_notes: formData.get(`students[${index}].immunizationNotes`),
         belt_rank: formData.get(`students[${index}].beltRank`)
       });
