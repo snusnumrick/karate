@@ -137,7 +137,7 @@ export default function RegisterPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL INFORMATION</h2>
                   {/* ... rest of step 1 ... */}
-                   </div>
+                  {/* The actual content for step 1 should be here */}
                   
                   <div className="mt-8">
                     <Button
