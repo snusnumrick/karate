@@ -11,8 +11,7 @@ export default function LoginPage() {
       <div className="bg-green-600 text-white py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center">
-            <img src="/logo.svg" alt="Karate Greenegin Logo" className="h-16 w-16 mr-4" />
-            <h1 className="text-2xl font-bold">KARATE GREENEGIN</h1>
+            <img src="/logo.svg" alt="Karate Greenegin Logo" className="h-16 w-16" />
           </div>
         </div>
       </div>
