@@ -27,11 +27,11 @@ export async function action({ request }: ActionFunctionArgs) {
   console.log("Registration form data:", data);
 
   // For now, just redirect to a success page or home page after submission
-  // Replace '/registration-success' with your actual success route
-  // return redirect('/registration-success'); 
+  // Replace '/register/success' with your actual success route if different
+  return redirect('/register/success'); 
   
   // Or return json if staying on the page or showing a message
-  return json({ success: true, message: "Registration submitted (data logged)." });
+  // return json({ success: true, message: "Registration submitted (data logged)." });
 }
 
 
