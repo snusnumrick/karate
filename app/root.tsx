@@ -29,7 +29,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta httpEquiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; connect-src 'self' https://api.stripe.com;" />
+        <meta 
+          httpEquiv="Content-Security-Policy" 
+          content={`
+            default-src 'self';
+            script-src 'self' 'unsafe-inline' https://js.stripe.com 'unsafe-eval';
+            style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+            font-src 'self' https://fonts.gstatic.com;
+            img-src 'self' data:;
+            connect-src 'self' https://api.stripe.com ws:;
+            frame-src https://js.stripe.com https://hooks.stripe.com;
+            base-uri 'self';
+            form-action 'self';
+          `.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()}
+        />
         <Meta />
         <Links />
       </head>
