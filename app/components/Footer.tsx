@@ -1,18 +1,22 @@
 import { Link } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
+import { Separator } from "~/components/ui/separator";
 
 export default function Footer() {
   return (
-    <footer className="bg-green-600 text-white border-t backdrop-blur-lg dark:bg-gray-800">
+    <footer className="bg-green-600 text-white dark:bg-gray-800">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div>
-            <h3 className="text-lg font-semibold mb-4">KARATE GREENEGIN</h3>
-            <p className="text-green-100 dark:text-gray-300 mb-4">
+          {/* Social Links Section */}
+          <div className="space-y-4">
+            <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
+              KARATE GREENEGIN
+            </Button>
+            <p className="text-green-100 dark:text-gray-300">
               Discover the art of the &ldquo;empty hand&rdquo;
               with Sensei Negin&apos;s karate classes for children ages 6-12.
             </p>
-            <div className="flex space-x-4">
+            <div className="flex gap-4">
               <Button variant="secondary" size="icon" asChild>
                 <a href="https://facebook.com" className="bg-white text-green-600 hover:bg-green-50">
                   <span className="sr-only">Facebook</span>
@@ -31,47 +35,59 @@ export default function Footer() {
               </Button>
             </div>
           </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-            <ul className="space-y-2">
+
+          {/* Quick Links */}
+          <div className="space-y-4">
+            <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
+              Quick Links
+            </Button>
+            <div className="flex flex-col gap-2">
               {["/", "/about", "/classes", "/register", "/contact"].map((link) => (
-                <li key={link}>
-                  <Button asChild variant="link" className="text-green-100 hover:text-white">
-                    <Link to={link}>
-                      {link === "/" ? "Home" : link.slice(1).charAt(0).toUpperCase() + link.slice(2)}
-                    </Link>
-                  </Button>
-                </li>
+                <Button 
+                  key={link}
+                  asChild
+                  variant="link"
+                  className="text-green-100 justify-start hover:text-white"
+                >
+                  <Link to={link}>
+                    {link === "/" ? "Home" : link.slice(1).charAt(0).toUpperCase() + link.slice(2)}
+                  </Link>
+                </Button>
               ))}
-            </ul>
+            </div>
           </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Contact Us</h3>
-            <ul className="space-y-2 text-green-100 dark:text-gray-300">
-              <li className="flex items-start">
-                <span className="mr-2">📍</span>
-                <span>Lighthouse Christian Academy</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">📞</span>
-                <span>(604) 690-7121</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">✉️</span>
-                <span>info@greenegin.ca</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">🕒</span>
-                <span>Mon & Wed: 6:00 PM - 7:00 PM</span>
-              </li>
-            </ul>
+
+          {/* Contact Info */}
+          <div className="space-y-4">
+            <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
+              Contact Us
+            </Button>
+            <div className="space-y-2 text-green-100 dark:text-gray-300">
+              {[
+                { icon: "📍", label: "Lighthouse Christian Academy" },
+                { icon: "📞", label: "(604) 690-7121" },
+                { icon: "✉️", label: "info@greenegin.ca" },
+                { icon: "🕒", label: "Mon & Wed: 6:00 PM - 7:00 PM" },
+              ].map((item) => (
+                <Button 
+                  key={item.label}
+                  variant="ghost"
+                  className="w-full justify-start text-green-100 hover:bg-green-700"
+                >
+                  <span className="mr-2">{item.icon}</span>
+                  {item.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
+
+        <Separator className="my-8 bg-green-700 dark:bg-gray-700" />
         
-        <div className="mt-8 pt-8 border-t border-green-700 dark:border-gray-700 text-center text-green-200 dark:text-gray-400">
-          <p>&copy; {new Date().getFullYear()} Karate Green. All rights reserved.</p>
+        <div className="text-center text-green-200 dark:text-gray-400">
+          <Button variant="link" className="text-green-200">
+            &copy; {new Date().getFullYear()} Karate Green. All rights reserved.
+          </Button>
         </div>
       </div>
     </footer>
