@@ -32,12 +32,12 @@ export default function RegisterPage() {
   };
   
   return (
-    <div className="min-h-screen bg-background py-12 text-foreground">
+    <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-gray-900/50 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-800">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Registration</h1>
-            <Link to="/app/routes/_layout.login" className="text-primary hover:underline hover:text-primary/80">
+            <Link to="/app/routes/_layout.login" className="text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300">
               Already a customer? Click here to login.
             </Link>
           </div>
@@ -51,7 +51,7 @@ export default function RegisterPage() {
           <div className="mb-6">
             <div className="w-full bg-muted rounded-full h-2.5">
               <div 
-                className="bg-primary h-2.5 rounded-full" 
+                className="bg-green-600 h-2.5 rounded-full" 
                 style={{ width: `${(currentStep / 5) * 100}%` }}
               ></div>
             </div>
@@ -194,7 +194,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="w-full font-bold py-3 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="w-full font-bold py-3 px-4 bg-green-600 text-white hover:bg-green-700"
                   >
                     Continue to Additional Info
                   </Button>
@@ -428,7 +428,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="font-bold py-3 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
                   >
                     Continue
                   </Button>
@@ -605,7 +605,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="font-bold py-3 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
                   >
                     Continue
                   </Button>
@@ -876,7 +876,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="font-bold py-3 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
                   >
                     Continue
                   </Button>
@@ -1013,7 +1013,7 @@ export default function RegisterPage() {
                   </Button>
                   <Button
                     type="submit"
-                    className="font-bold py-3 px-6 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
                   >
                     SUBMIT REGISTRATION
                   </Button>
