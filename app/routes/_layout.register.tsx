@@ -530,6 +530,7 @@ export default function RegisterPage() {
                       id="contact2LastName"
                       name="contact2LastName"
                       required
+                      defaultValue={familyName} // Prefill with family name
                       className="focus:ring-green-500"
                     />
                   </div>
@@ -563,6 +564,7 @@ export default function RegisterPage() {
                       id="contact2HomePhone"
                       name="contact2HomePhone"
                       required
+                      defaultValue={primaryPhone} // Prefill with primary phone
                       className="focus:ring-green-500"
                     />
                   </div>
