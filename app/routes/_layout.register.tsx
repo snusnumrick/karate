@@ -38,6 +38,8 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [students, setStudents] = useState([{ id: Date.now().toString() }]);
+  const [familyName, setFamilyName] = useState(""); // State for family name
+  const [primaryPhone, setPrimaryPhone] = useState(""); // State for primary phone
   
   // State for policy checkboxes
   const [photoReleaseChecked, setPhotoReleaseChecked] = useState(false);
@@ -79,6 +81,13 @@ export default function RegisterPage() {
   };
   
   const nextStep = () => {
+    // Capture family name and primary phone when moving from step 1
+    if (currentStep === 1) {
+      const familyNameInput = document.getElementById('familyName') as HTMLInputElement;
+      const primaryPhoneInput = document.getElementById('primaryPhone') as HTMLInputElement;
+      if (familyNameInput) setFamilyName(familyNameInput.value);
+      if (primaryPhoneInput) setPrimaryPhone(primaryPhoneInput.value);
+    }
     setCurrentStep(currentStep + 1);
     window.scrollTo(0, 0);
   };
@@ -313,6 +322,7 @@ export default function RegisterPage() {
                       id="contact1LastName"
                       name="contact1LastName"
                       required
+                      defaultValue={familyName} // Prefill with family name
                       className="focus:ring-green-500"
                     />
                   </div>
@@ -346,6 +356,7 @@ export default function RegisterPage() {
                       id="contact1HomePhone"
                       name="contact1HomePhone"
                       required
+                      defaultValue={primaryPhone} // Prefill with primary phone
                       className="focus:ring-green-500"
                     />
                   </div>
