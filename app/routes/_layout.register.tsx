@@ -711,6 +711,7 @@ export default function RegisterPage() {
                           id={`student${index}LastName`}
                           name={`students[${index}].lastName`}
                           required
+                          defaultValue={familyName} // Prefill with family name
                           className="focus:ring-green-500"
                         />
                       </div>
