@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/auth-helpers-remix";
 import type { Database } from "~/types/supabase";
+import type { Payment } from "~/types/models";
 
 export function getSupabaseServerClient(request: Request) {
   const response = new Response();
@@ -43,4 +44,44 @@ export async function isUserAdmin(userId: string) {
   }
   
   return data.role === 'admin';
+}
+
+export async function createPaymentSession(
+  familyId: string,
+  amount: number,
+  studentIds: string[]
+) {
+  const { supabaseServer } = getSupabaseServerClient(new Request(''));
+  
+  const { data, error } = await supabaseServer
+    .from('payments')
+    .insert({
+      family_id: familyId,
+      amount,
+      student_ids: studentIds,
+      status: 'pending'
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error('Payment session creation failed');
+  return data;
+}
+
+export async function updatePaymentStatus(
+  sessionId: string,
+  status: Payment['status'],
+  receiptUrl?: string
+) {
+  const { supabaseServer } = getSupabaseServerClient(new Request(''));
+  
+  const { data, error } = await supabaseServer
+    .from('payments')
+    .update({ status, receipt_url: receiptUrl })
+    .eq('session_id', sessionId)
+    .select()
+    .single();
+
+  if (error) throw new Error('Payment update failed');
+  return data;
 }

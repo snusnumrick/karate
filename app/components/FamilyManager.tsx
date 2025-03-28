@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Form } from '@remix-run/react';
 import { supabaseClient } from '~/utils/supabase.client';
 import type { Family, Guardian, Student } from '~/types/models';
 import { mapFamilyFromSupabase, mapGuardianFromSupabase, mapStudentFromSupabase } from '~/utils/mappers';
@@ -442,7 +443,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
         </button>
       </div>
       
-      <div className="flex justify-end">
+      <div className="flex justify-between">
         <button
           type="button"
           onClick={saveFamily}
@@ -451,6 +452,22 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
         >
           {loading ? 'Saving...' : 'Save Family'}
         </button>
+        
+        {family.id && (
+          <Form method="post" action="/api/create-checkout-session">
+            <input type="hidden" name="familyId" value={family.id} />
+            <input type="hidden" name="amount" value="9900" />
+            <input type="hidden" name="studentIds" 
+                  value={JSON.stringify(family.students.map(s => s.id))} />
+                  
+            <button
+              type="submit"
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Pay Registration Fee ($99)
+            </button>
+          </Form>
+        )}
       </div>
     </div>
   );
