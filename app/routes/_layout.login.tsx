@@ -1,4 +1,4 @@
-import { Link, useActionData } from "@remix-run/react";
+import { Link, useActionData, useFetcher } from "@remix-run/react";
 import { ActionFunctionArgs, json, redirect } from "@remix-run/node";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -27,7 +27,11 @@ export async function action({ request }: ActionFunctionArgs) {
     // Check for specific "Email not confirmed" error
     // Note: Relying on the exact error message string might be fragile if Supabase changes it.
     if (authError?.message === 'Email not confirmed') {
-      return json({ error: "Please check your inbox and confirm your email address before logging in." }, { status: 401, headers });
+      // Return the specific error and the email address
+      return json({
+        error: "Please check your inbox and confirm your email address before logging in.",
+        email: email // Include email for the resend action
+      }, { status: 401, headers });
     }
     // Generic error for other auth issues
     return json({ error: "Invalid login credentials." }, { status: 401, headers });
@@ -62,6 +66,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function LoginPage() {
   const actionData = useActionData<typeof action>();
+  const fetcher = useFetcher<typeof resendAction>(); // Typed fetcher for the resend action
+
+  // Define a type for the resend action data if needed, or use inline type
+  // type ResendActionData = { success?: boolean; error?: string };
+  // const fetcher = useFetcher<ResendActionData>();
+
+  const isUnconfirmedEmailError = actionData?.error === "Please check your inbox and confirm your email address before logging in.";
 
   return (
     <div className="min-h-screen bg-amber-50 dark:bg-gray-800 flex flex-col">
@@ -82,13 +93,42 @@ export default function LoginPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-gray-700 py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" method="post">
+            {/* Display Login Errors */}
             {actionData?.error && (
               <Alert variant="destructive">
-                {/* Added dark mode text colors for better visibility */}
                 <AlertTitle className="dark:text-red-200">Login Failed</AlertTitle>
-                <AlertDescription className="dark:text-red-300">{actionData.error}</AlertDescription>
+                <AlertDescription className="dark:text-red-300">
+                  {actionData.error}
+                  {/* Show Resend option only for the specific error and if email is available */}
+                  {isUnconfirmedEmailError && actionData.email && (
+                    <fetcher.Form method="post" action="/api/resend-confirmation" className="mt-2">
+                      <input type="hidden" name="email" value={actionData.email} />
+                      <Button
+                        type="submit"
+                        variant="link"
+                        className="p-0 h-auto text-red-300 hover:text-red-200 dark:text-red-300 dark:hover:text-red-200 underline"
+                        disabled={fetcher.state !== 'idle'}
+                      >
+                        {fetcher.state === 'submitting' ? 'Sending...' : 'Resend Confirmation Email'}
+                      </Button>
+                    </fetcher.Form>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
+
+            {/* Display Resend Feedback */}
+            {fetcher.data && (
+              <Alert variant={fetcher.data.error ? "destructive" : "default"} className="mt-4">
+                 <AlertTitle className={fetcher.data.error ? "dark:text-red-200" : "dark:text-green-200"}>
+                   {fetcher.data.error ? 'Resend Failed' : 'Email Sent'}
+                 </AlertTitle>
+                 <AlertDescription className={fetcher.data.error ? "dark:text-red-300" : "dark:text-green-300"}>
+                   {fetcher.data.error || 'Confirmation email has been resent. Please check your inbox.'}
+                 </AlertDescription>
+              </Alert>
+            )}
+
             <div className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="email" className="dark:text-gray-200">Email address</Label>
