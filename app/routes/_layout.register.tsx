@@ -262,7 +262,6 @@ export default function RegisterPage() {
             </div>
             
             <Form method="post" noValidate className="space-y-8">
-            <>
               {/* --- All the step content (currentStep === 1, 2, 3, 4, 5) goes here --- */}
               {/* Step 1: Referral & Family Info */}
               <div hidden={currentStep !== 1}>
@@ -1284,7 +1283,6 @@ export default function RegisterPage() {
                   
                 </div>
               </div>
-            </>
             </Form>
           </div>
         ) : (
