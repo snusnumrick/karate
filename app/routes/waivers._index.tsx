@@ -10,10 +10,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   if (!user) {
     return json({ waivers: [], userSignedWaivers: [] });
+    return json({ waivers: [], userSignedWaivers: [], isAuthenticated: false });
   }
   
   // Get all available waivers
-  const { data: waivers } = await supabaseServer
+  const { data: waivers, error: waiversError } = await supabaseServer
     .from('waivers')
     .select('*')
     .order('required', { ascending: false });
@@ -24,14 +25,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .select('waiver_id, signed_at')
     .eq('user_id', user.id);
     
+  // Basic error logging if waivers fetch fails
+  if (waiversError) {
+    console.error("Error fetching waivers:", waiversError);
+    // Depending on desired UX, you might want to throw an error or return an error state
+  }
+    
   return json({ 
     waivers: waivers || [], 
-    userSignedWaivers: userSignedWaivers || [] 
+    userSignedWaivers: userSignedWaivers || [],
+    isAuthenticated: true 
   });
 }
 
 export default function WaiversIndex() {
-  const { waivers, userSignedWaivers } = useLoaderData<typeof loader>();
+  const { waivers, userSignedWaivers, isAuthenticated } = useLoaderData<typeof loader>();
   
   // Create a map of waiver_id to signed status for quick lookup
   const signedWaiverMap = new Map();
@@ -47,10 +55,11 @@ export default function WaiversIndex() {
         The following waivers and agreements are required for participation in our karate classes.
         Please review and sign each document.
       </p>
-      
       <div className="space-y-4">
-        {waivers.length === 0 ? (
-          <p>No waivers are currently available.</p>
+        {!isAuthenticated ? (
+          <p>Please <Link to="/login?redirectTo=/waivers" className="text-blue-600 hover:underline">log in</Link> to view and sign waivers.</p>
+        ) : waivers.length === 0 ? (
+          <p>No waivers are currently available.</p> 
         ) : (
           waivers.map(waiver => {
             const isSigned = signedWaiverMap.has(waiver.id);
