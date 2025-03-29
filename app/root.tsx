@@ -82,19 +82,19 @@ export function ErrorBoundary() {
      const status = error.status || 500;
      const errorMessage = error.data?.message || error.message || "Unknown error occurred";
 
-  // Render the error content within the main Layout
-  // Render just the error content. Remix will place this inside the
-  // nearest Layout boundary (in this case, the one rendered by App).
+  // Render the error content within the main Layout to ensure styling
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center gap-4 p-4">
-      <h1 className="text-4xl font-bold">{status} Error</h1>
-      <p className="text-lg text-muted-foreground">{errorMessage}</p>
+    <Layout>
+      <div className="flex flex-col min-h-screen items-center justify-center gap-4 p-4">
+        <h1 className="text-4xl font-bold">{status} Error</h1>
+        <p className="text-lg text-muted-foreground">{errorMessage}</p>
       {process.env.NODE_ENV === "development" && (
         <pre className="mt-4 p-4 bg-accent text-accent-foreground rounded-md max-w-2xl overflow-auto">
           {JSON.stringify(error, null, 2)}
         </pre>
-      )}
-    </div>
-    // Note: Meta, Links, Scripts, ScrollRestoration are handled by the Layout in App
+        )}
+      </div>
+    </Layout>
+    // Note: Meta, Links, Scripts, ScrollRestoration are now handled by the Layout here
   );
 }
