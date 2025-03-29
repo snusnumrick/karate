@@ -68,7 +68,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-lg font-medium text-gray-500">Total Families</h2>
-          <p className="text-3xl font-bold">{familyCount}</p>
+          <p className="text-3xl font-bold">{data.familyCount}</p>
           <Link to="/admin/families" className="text-blue-600 text-sm hover:underline mt-2 inline-block">
             View all families →
           </Link>
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
         
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-lg font-medium text-gray-500">Total Students</h2>
-          <p className="text-3xl font-bold">{studentCount}</p>
+          <p className="text-3xl font-bold">{data.studentCount}</p>
           <Link to="/admin/students" className="text-blue-600 text-sm hover:underline mt-2 inline-block">
             View all students →
           </Link>
@@ -84,7 +84,7 @@ export default function AdminDashboard() {
         
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-lg font-medium text-gray-500">Total Payments</h2>
-          <p className="text-3xl font-bold">${totalPayments.toFixed(2)}</p>
+          <p className="text-3xl font-bold">${data.totalPayments.toFixed(2)}</p>
           <Link to="/admin/payments" className="text-blue-600 text-sm hover:underline mt-2 inline-block">
             View payment history →
           </Link>
@@ -92,7 +92,7 @@ export default function AdminDashboard() {
         
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-lg font-medium text-gray-500">Today&apos;s Attendance</h2>
-          <p className="text-3xl font-bold">{attendanceToday}</p>
+          <p className="text-3xl font-bold">{data.attendanceToday}</p>
           <Link to="/admin/attendance" className="text-blue-600 text-sm hover:underline mt-2 inline-block">
             Manage attendance →
           </Link>
