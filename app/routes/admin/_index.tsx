@@ -1,5 +1,5 @@
 import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link } from "@remix-run/react";
+import { useLoaderData, Link, useRouteError } from "@remix-run/react"; // Import useRouteError
 import { getSupabaseServerClient } from "~/utils/supabase.server"; // Removed isUserAdmin import
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -59,7 +59,8 @@ export default function AdminDashboard() {
   // const { familyCount, studentCount, totalPayments, attendanceToday } = useLoaderData<typeof loader>();
 
   return (
-    <div>
+    // Add a bright background to ensure it's not just invisible
+    <div className="bg-lime-300 p-5"> 
       <h1 className="text-4xl font-bold text-red-500 p-10">ADMIN DASHBOARD TEST</h1>
       {/* Original content commented out below for easy restoration */}
     </div>
@@ -166,5 +167,23 @@ export default function AdminDashboard() {
       </div>
     </div>
     */
+  );
+}
+
+// Add a specific ErrorBoundary for this route
+export function ErrorBoundary() {
+  const error = useRouteError() as Error; // Basic error type
+  console.error("Error caught in AdminDashboard ErrorBoundary:", error); // Log the specific error
+
+  return (
+    <div className="p-4 bg-pink-100 border border-pink-400 text-pink-700 rounded">
+      <h2 className="text-xl font-bold mb-2">Error Loading Admin Dashboard Content</h2>
+      <p>{error?.message || "An unknown error occurred within the dashboard component."}</p>
+      {process.env.NODE_ENV === "development" && (
+        <pre className="mt-4 p-2 bg-pink-50 text-pink-900 rounded-md max-w-full overflow-auto text-xs">
+          {error?.stack || JSON.stringify(error, null, 2)}
+        </pre>
+      )}
+    </div>
   );
 }
