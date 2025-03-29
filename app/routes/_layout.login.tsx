@@ -78,8 +78,9 @@ export default function LoginPage() {
           <form className="space-y-6" method="post">
             {actionData?.error && (
               <Alert variant="destructive">
-                <AlertTitle>Login Failed</AlertTitle>
-                <AlertDescription>{actionData.error}</AlertDescription>
+                {/* Added dark mode text colors for better visibility */}
+                <AlertTitle className="dark:text-red-200">Login Failed</AlertTitle>
+                <AlertDescription className="dark:text-red-300">{actionData.error}</AlertDescription>
               </Alert>
             )}
             <div className="space-y-4">
