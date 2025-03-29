@@ -74,7 +74,7 @@ export default function FamilyPortal() {
           <h2 className="text-xl font-semibold mb-4">Payments</h2>
           {/* TODO: Link to payment history and initiation */}
           <p className="text-gray-600 dark:text-gray-400">Payment history and options will appear here.</p>
-           <Button asChild className="mt-4" disabled>
+           <Button className="mt-4" disabled>
              {/* <Link to="/payment">Make Payment</Link> */}
              <span>Make Payment (Coming Soon)</span>
           </Button>
@@ -84,7 +84,7 @@ export default function FamilyPortal() {
           <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
           {/* TODO: Link to profile/account management */}
           <p className="text-gray-600 dark:text-gray-400">Links to update family/guardian info.</p>
-           <Button asChild className="mt-4" disabled>
+           <Button className="mt-4" disabled>
              {/* <Link to="/account">Manage Account</Link> */}
              <span>Manage Account (Coming Soon)</span>
           </Button>
