@@ -24,7 +24,8 @@ export const links: LinksFunction = () => [
   },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
+// This Layout component now serves as the root structure and renders the Outlet directly.
+export function Layout() {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
@@ -59,23 +60,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <Outlet /> {/* Render the matched route component directly */}
         </ThemeProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
     </html>
   );
-}
+// Make Layout the default export, removing the intermediate App component.
+export default Layout;
 
-// The default export renders the main application content within the Layout
-export default function App() {
-  return (
-    <Layout>
-      <Outlet />
-    </Layout>
-  );
-}
 
 export function ErrorBoundary() {
      const error = useRouteError() as { status?: number; data?: { message?: string }; message?: string };
