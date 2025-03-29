@@ -1,45 +1,57 @@
 import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
-import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
+import { getSupabaseServerClient } from "~/utils/supabase.server"; // Removed isUserAdmin import
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer } = getSupabaseServerClient(request);
-  
-  // Get the current user
-  const { data: { user } } = await supabaseServer.auth.getUser();
-  
-  if (!user) {
-    return redirect('/login?redirectTo=/admin');
+  console.log("Entering /admin/_index loader..."); // Add log
+
+  // Auth/Admin checks are handled by the parent admin.tsx loader.
+  // We assume if we reach here, the user is an authenticated admin.
+
+  const { supabaseServer, response } = getSupabaseServerClient(request); // Use response for headers
+  const headers = response.headers;
+
+  try {
+    // Get summary data for dashboard
+    console.log("Fetching dashboard data..."); // Add log
+    const [
+      { data: families, error: familiesError },
+      { data: students, error: studentsError },
+      { data: payments, error: paymentsError },
+      { data: attendanceToday, error: attendanceError }
+    ] = await Promise.all([
+      supabaseServer.from('families').select('id', { count: 'exact', head: true }), // More efficient count
+      supabaseServer.from('students').select('id', { count: 'exact', head: true }), // More efficient count
+      supabaseServer.from('payments').select('amount', { count: 'estimated' }), // Estimate count if exact is slow
+      supabaseServer.from('attendance')
+        .select('id', { count: 'exact', head: true }) // More efficient count
+        .eq('class_date', new Date().toISOString().split('T')[0])
+    ]);
+
+    // Basic error checking for fetches
+    if (familiesError) console.error("Error fetching families:", familiesError.message);
+    if (studentsError) console.error("Error fetching students:", studentsError.message);
+    if (paymentsError) console.error("Error fetching payments:", paymentsError.message);
+    if (attendanceError) console.error("Error fetching attendance:", attendanceError.message);
+
+    console.log("Dashboard data fetched."); // Add log
+
+    // Calculate total payments safely
+    const totalPaymentAmount = payments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
+
+    return json({
+      // Use count from Supabase response if available, otherwise fallback to length
+      familyCount: families?.count ?? 0,
+      studentCount: students?.count ?? 0,
+      totalPayments: totalPaymentAmount,
+      attendanceToday: attendanceToday?.count ?? 0
+    }, { headers }); // Pass headers back
+
+  } catch (error: any) {
+    console.error("Error in /admin/_index loader:", error.message);
+    // Throwing an error here should be caught by the parent ErrorBoundary
+    throw new Response("Failed to load dashboard data.", { status: 500 });
   }
-  
-  // Check if user is admin
-  const isAdmin = await isUserAdmin(user.id);
-  
-  if (!isAdmin) {
-    return redirect('/');
-  }
-  
-  // Get summary data for dashboard
-  const [
-    { data: families },
-    { data: students },
-    { data: payments },
-    { data: attendanceToday }
-  ] = await Promise.all([
-    supabaseServer.from('families').select('id').limit(1000),
-    supabaseServer.from('students').select('id').limit(1000),
-    supabaseServer.from('payments').select('amount').limit(1000),
-    supabaseServer.from('attendance')
-      .select('*')
-      .eq('class_date', new Date().toISOString().split('T')[0])
-  ]);
-  
-  return json({
-    familyCount: families?.length || 0,
-    studentCount: students?.length || 0,
-    totalPayments: payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0,
-    attendanceToday: attendanceToday?.length || 0
-  });
 }
 
 // Temporarily simplified for debugging
