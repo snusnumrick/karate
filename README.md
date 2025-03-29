@@ -87,29 +87,38 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 ## Project Status
 
 ### Implemented Core Features
-✅ **Completed Phase 1**  
+✅ **Completed Phase 1 & 2**
 - Family management system with guardians/children relationships
-- Secure authentication/authorization flow
+- Secure authentication/authorization flow (Login, Registration, Email Confirmation, Role-based Redirects)
+- **Family Portal** (`/family`) as main user dashboard after login
+  - Displays associated family name
+  - Lists registered students with links to detail pages
+  - Shows status of required waiver signatures
+  - Placeholders for Payments and Account Settings
+- **Student Detail Page** (`/family/student/:studentId`) displaying student info
 - Admin dashboard foundation
 - Waiver signing system with digital signatures
 - Production-ready security headers (CSP, HSTS)
-- Error boundary handling
-- Supabase database integration (initial setup, auth)
+- Error boundary handling & SSR/Hydration fixes
+- Supabase database integration (Auth, Families, Students, Waivers, Profiles)
 - Mobile-optimized responsive layout
 
-🛠 **Recent Additions**  
+🛠 **Recent Additions**
+- Dynamic data fetching for Family Portal (Family, Students, Waiver Status)
+- Dynamic data fetching for Student Detail Page
+- Login page enhancements (Resend confirmation email)
 - Payment gateway CSP pre-configuration
 - Font optimization with preconnect
-- React hydration error logging
 - Security audit workflow
 
 ### Next Priority Features
-1. Family dashboard / portal
-2. Stripe/PayPal payment integration
-3. Attendance tracking system
-4. Achievement badge functionality
-5. Automated notifications
-6. Instructor profile module
+1. **Student Edit/Delete Functionality** (on `/family/student/:studentId`)
+2. **Payment Integration** (Stripe/PayPal) - Add "Make Payment" button/flow to Family Portal
+3. **Account Settings** section in Family Portal (Manage guardians, family info)
+4. Attendance tracking system
+5. Achievement badge functionality
+6. Automated notifications
+7. Instructor profile module
 
 ### Development Progress
 ```mermaid
@@ -117,15 +126,17 @@ gantt
     title Project Timeline
     dateFormat  YYYY-MM-DD
     section Core
-    Authentication          :done, 2024-03-01, 14d
-    Family Management       :done, 2024-03-15, 21d
-    Security Implementation :done, 2024-04-05, 14d
+    Authentication          :done,    auth, 2024-03-01, 14d
+    Family Management       :done,    family, 2024-03-15, 21d
+    Family Portal           :done,    portal, 2024-03-29, 14d
+    Student Detail Page     :done,    student, after portal, 7d
+    Security Implementation :done,    sec, 2024-04-05, 14d
     section Payments
-    Gateway Integration     :active, 2024-04-20, 21d
-    Transaction Tracking    :        2024-05-10, 14d
+    Gateway Integration     :active,  pay, 2024-04-20, 21d
+    Transaction Tracking    :         pay_track, after pay, 14d
     section Reporting
-    Attendance System       :        2024-05-25, 21d
-    Achievement Tracking    :        2024-06-15, 21d
+    Attendance System       :         attend, 2024-05-25, 21d
+    Achievement Tracking    :         achieve, 2024-06-15, 21d
 ```
 
 ### Technical Health
