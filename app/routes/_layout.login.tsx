@@ -24,6 +24,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
   if (authError || !authData.user) {
     console.error("Login error:", authError?.message);
+    // Check for specific "Email not confirmed" error
+    // Note: Relying on the exact error message string might be fragile if Supabase changes it.
+    if (authError?.message === 'Email not confirmed') {
+      return json({ error: "Please check your inbox and confirm your email address before logging in." }, { status: 401, headers });
+    }
+    // Generic error for other auth issues
     return json({ error: "Invalid login credentials." }, { status: 401, headers });
   }
 
