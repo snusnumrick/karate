@@ -43,11 +43,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const { data: { user }, error: authError } = await supabaseServer.auth.signUp({
       email: contact1Email,
       password,
-      options: {
-        data: {
-          role: 'user'
-        }
-      }
+      // Profile data is explicitly inserted later
     });
     console.log('Auth user created:', user, authError);
 
