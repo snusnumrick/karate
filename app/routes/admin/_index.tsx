@@ -42,13 +42,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 }
 
+// Temporarily simplified for debugging
 export default function AdminDashboard() {
-  const { familyCount, studentCount, totalPayments, attendanceToday } = useLoaderData<typeof loader>();
-  
+  // const { familyCount, studentCount, totalPayments, attendanceToday } = useLoaderData<typeof loader>();
+
   return (
+    <div>
+      <h1 className="text-4xl font-bold text-red-500 p-10">ADMIN DASHBOARD TEST</h1>
+      {/* Original content commented out below for easy restoration */}
+    </div>
+    /*
     <div className="max-w-7xl mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-lg font-medium text-gray-500">Total Families</h2>
@@ -147,5 +153,6 @@ export default function AdminDashboard() {
         </div>
       </div>
     </div>
+    */
   );
 }
