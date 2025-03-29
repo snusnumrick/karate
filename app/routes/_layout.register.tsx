@@ -39,7 +39,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     // Create auth user
-    console.log('Creating auth user...');
+    console.log('Creating auth user w/o role...');
     const { data: { user }, error: authError } = await supabaseServer.auth.signUp({
       email: contact1Email,
       password,
