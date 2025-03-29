@@ -55,6 +55,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
 
 export default function LoginPage() {
+  const actionData = useActionData<typeof action>();
+
   return (
     <div className="min-h-screen bg-amber-50 dark:bg-gray-800 flex flex-col">
       {/* Login form container */}
