@@ -22,7 +22,6 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const { supabaseServer } = getSupabaseServerClient(request);
-  const session = await supabaseServer.auth.getSession();
 
   // Validate matching emails and passwords
   const contact1Email = formData.get('contact1Email') as string;
