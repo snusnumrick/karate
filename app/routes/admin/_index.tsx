@@ -1,32 +1,16 @@
-import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node"; // Re-add imports
-import { Link, useRouteError, useLoaderData } from "@remix-run/react"; // Re-add useLoaderData
-import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server"; // Re-add imports
+import { json, type LoaderFunctionArgs } from "@remix-run/node"; // Keep json, LoaderFunctionArgs
+import { Link, useRouteError, useLoaderData } from "@remix-run/react";
+import { getSupabaseServerClient } from "~/utils/supabase.server"; // Keep getSupabaseServerClient, remove isUserAdmin
 
-// Re-introduce loader with auth checks moved here
+// Loader now only fetches data, assumes auth handled by parent layout (_admin.tsx)
 export async function loader({ request }: LoaderFunctionArgs) {
-  console.log("Entering /admin/_index loader (with auth checks)..."); // Add log
+  console.log("Entering /admin/_index loader (data fetch only)..."); // Updated log
   const { supabaseServer, response } = getSupabaseServerClient(request);
   const headers = response.headers;
-  const { data: { user } } = await supabaseServer.auth.getUser();
-  console.log("Admin _index loader - User:", user?.id); // Add log
 
-  if (!user) {
-    console.log("Admin _index loader - No user found, redirecting to login."); // Add log
-    return redirect('/login?redirectTo=/admin', { headers });
-  }
-
-  const isAdmin = await isUserAdmin(user.id);
-  console.log(`Admin _index loader - User ${user.id} isAdmin: ${isAdmin}`); // Add log
-
-  if (!isAdmin) {
-    console.log(`Admin _index loader - User ${user.id} is not admin, redirecting to /family.`); // Add log
-    return redirect('/family', { headers });
-  }
-
-  console.log("Admin _index loader - User is admin, allowing access & fetching data."); // Add log
-
-  // --- Original data fetching logic (simplified counts) ---
+  // --- Data fetching logic ---
   try {
+    console.log("Admin _index loader - Fetching dashboard data..."); // Add log
     const [
       { count: familyCount, error: familiesError },
       { count: studentCount, error: studentsError },
@@ -60,6 +44,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   } catch (error: any) {
     console.error("Error in /admin/_index loader data fetch:", error.message);
+    // Let the error boundary in the layout handle this
     throw new Response("Failed to load dashboard data.", { status: 500 });
   }
   // --- End of data fetching ---
