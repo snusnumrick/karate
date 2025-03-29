@@ -90,10 +90,13 @@ export async function action({ request }: ActionFunctionArgs) {
     console.log('Profile created:', profileData);
 
     // Process Contact #1
+    const contact1FirstName = formData.get('contact1FirstName') as string;
+    const contact1LastName = formData.get('contact1LastName') as string;
+    console.log(`Attempting to insert Guardian 1: Name=${contact1FirstName} ${contact1LastName}, Email=${contact1Email}`); // Added logging
     const { data: contact1Data, error: contact1Error } = await supabaseServer.from('guardians').insert({
       family_id: familyId,
-      first_name: formData.get('contact1FirstName'),
-      last_name: formData.get('contact1LastName'),
+      first_name: contact1FirstName,
+      last_name: contact1LastName,
       relationship: formData.get('contact1Type'),
       home_phone: formData.get('contact1HomePhone'),
       work_phone: formData.get('contact1WorkPhone'),
@@ -105,13 +108,21 @@ export async function action({ request }: ActionFunctionArgs) {
     });
 
     if (contact1Error) throw contact1Error;
+    if (contact1Error) { // Log error if insertion failed
+        console.error('Error inserting Guardian 1:', contact1Error);
+        throw contact1Error;
+    }
     console.log('Contact #1 created:', contact1Data);
 
     // Process Contact #2
+    const contact2FirstName = formData.get('contact2FirstName') as string;
+    const contact2LastName = formData.get('contact2LastName') as string;
+    const contact2Email = formData.get('contact2Email') as string;
+    console.log(`Attempting to insert Guardian 2: Name=${contact2FirstName} ${contact2LastName}, Email=${contact2Email}`); // Added logging
     const { data: contact2Data, error: contact2Error } = await supabaseServer.from('guardians').insert({
       family_id: familyId,
-      first_name: formData.get('contact2FirstName'),
-      last_name: formData.get('contact2LastName'),
+      first_name: contact2FirstName,
+      last_name: contact2LastName,
       relationship: formData.get('contact2Type'),
       home_phone: formData.get('contact2HomePhone'),
       work_phone: formData.get('contact2WorkPhone'),
@@ -121,7 +132,10 @@ export async function action({ request }: ActionFunctionArgs) {
       employer_phone: formData.get('contact2EmployerPhone'),
       employer_notes: formData.get('contact2EmployerNotes')
     });
-    if (contact2Error) throw contact2Error;
+    if (contact2Error) { // Log error if insertion failed
+        console.error('Error inserting Guardian 2:', contact2Error);
+        throw contact2Error;
+    }
     console.log('Contact #2 created:', contact2Data);
 
     // Process Students
