@@ -179,6 +179,18 @@ CREATE TABLE IF NOT EXISTS waivers (
                                        CONSTRAINT waivers_title_unique UNIQUE (title) -- Ensure title is unique for ON CONFLICT
 );
 
+-- Ensure the unique constraint exists even if the table was created previously without it
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'waivers_title_unique' AND conrelid = 'public.waivers'::regclass
+    ) THEN
+        ALTER TABLE public.waivers ADD CONSTRAINT waivers_title_unique UNIQUE (title);
+    END IF;
+END;
+$$;
+
 -- Insert standard waivers (Use ON CONFLICT to make idempotent)
 -- IMPORTANT: Replace placeholder content with legally reviewed text for BC.
 INSERT INTO waivers (title, description, content, required) VALUES
