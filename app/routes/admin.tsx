@@ -32,17 +32,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return json({ isAdmin: true }, { headers }); // Return some data to confirm loader ran
 }
 
-// Basic layout component for the admin section
+// Temporarily simplified AdminLayout for debugging
 export default function AdminLayout() {
   return (
-    <div className="admin-layout bg-gray-100 dark:bg-gray-900 min-h-screen">
-      {/* You could add an admin-specific Navbar or Sidebar here */}
-      {/* <AdminNavbar /> */}
-      <main className="p-4 md:p-8">
-        <Outlet /> {/* Child routes like admin/_index.tsx will render here */}
-      </main>
-      {/* You could add an admin-specific Footer here */}
-    </div>
+    <>
+      <h1 className="text-2xl font-bold text-blue-500 p-4 border-b-2 border-blue-500">ADMIN LAYOUT TEST</h1>
+      <Outlet /> {/* Render the child route directly */}
+    </>
   );
 }
 
