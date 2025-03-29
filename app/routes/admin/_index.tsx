@@ -1,13 +1,76 @@
-// Removed loader function entirely for debugging outlet rendering
-// import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useRouteError } from "@remix-run/react"; // Removed useLoaderData
-// import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node"; // Re-add imports
+import { Link, useRouteError, useLoaderData } from "@remix-run/react"; // Re-add useLoaderData
+import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server"; // Re-add imports
+
+// Re-introduce loader with auth checks moved here
+export async function loader({ request }: LoaderFunctionArgs) {
+  console.log("Entering /admin/_index loader (with auth checks)..."); // Add log
+  const { supabaseServer, response } = getSupabaseServerClient(request);
+  const headers = response.headers;
+  const { data: { user } } = await supabaseServer.auth.getUser();
+  console.log("Admin _index loader - User:", user?.id); // Add log
+
+  if (!user) {
+    console.log("Admin _index loader - No user found, redirecting to login."); // Add log
+    return redirect('/login?redirectTo=/admin', { headers });
+  }
+
+  const isAdmin = await isUserAdmin(user.id);
+  console.log(`Admin _index loader - User ${user.id} isAdmin: ${isAdmin}`); // Add log
+
+  if (!isAdmin) {
+    console.log(`Admin _index loader - User ${user.id} is not admin, redirecting to /family.`); // Add log
+    return redirect('/family', { headers });
+  }
+
+  console.log("Admin _index loader - User is admin, allowing access & fetching data."); // Add log
+
+  // --- Original data fetching logic (simplified counts) ---
+  try {
+    const [
+      { count: familyCount, error: familiesError },
+      { count: studentCount, error: studentsError },
+      { data: payments, error: paymentsError }, // Fetch amounts to sum
+      { count: attendanceToday, error: attendanceError }
+    ] = await Promise.all([
+      supabaseServer.from('families').select('id', { count: 'exact', head: true }),
+      supabaseServer.from('students').select('id', { count: 'exact', head: true }),
+      supabaseServer.from('payments').select('amount').eq('status', 'completed'), // Only count completed payments
+      supabaseServer.from('attendance')
+        .select('id', { count: 'exact', head: true })
+        .eq('class_date', new Date().toISOString().split('T')[0])
+        .eq('present', true) // Only count present students
+    ]);
+
+    if (familiesError) console.error("Error fetching families count:", familiesError.message);
+    if (studentsError) console.error("Error fetching students count:", studentsError.message);
+    if (paymentsError) console.error("Error fetching payments:", paymentsError.message);
+    if (attendanceError) console.error("Error fetching attendance count:", attendanceError.message);
+
+    const totalPaymentAmount = payments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
+
+    console.log("Admin _index loader - Data fetched."); // Add log
+
+    return json({
+      familyCount: familyCount ?? 0,
+      studentCount: studentCount ?? 0,
+      totalPayments: totalPaymentAmount,
+      attendanceToday: attendanceToday ?? 0
+    }, { headers });
+
+  } catch (error: any) {
+    console.error("Error in /admin/_index loader data fetch:", error.message);
+    throw new Response("Failed to load dashboard data.", { status: 500 });
+  }
+  // --- End of data fetching ---
+}
 
 
 // Temporarily simplified for debugging
 export default function AdminDashboard() {
-  // Removed useLoaderData hook as loader is removed
-  // const { familyCount, studentCount, totalPayments, attendanceToday } = useLoaderData<typeof loader>();
+  // Re-add useLoaderData
+  const data = useLoaderData<typeof loader>();
+  console.log("Rendering AdminDashboard component, loader data:", data); // Add log
 
   return (
     // Add a bright background to ensure it's not just invisible
