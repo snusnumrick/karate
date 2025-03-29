@@ -27,7 +27,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   console.log("_Admin layout loader - User is admin, allowing access."); // Updated log
   // Return necessary data for the layout, or just null/{} if none needed yet
-  return json({ isAdmin: true }, { headers: Object.fromEntries(headers) });
+  // Convert headers to plain object for Response
+  const headersObj = Object.fromEntries(headers);
+  console.log('Final headers being sent:', headersObj);
+  return json({ isAdmin: true }, { headers: headersObj });
 }
 
 // The actual layout component

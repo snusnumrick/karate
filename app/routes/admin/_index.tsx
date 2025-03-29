@@ -45,7 +45,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   } catch (error: any) {
     console.error("Error in /admin/_index loader data fetch:", error.message);
     // Let the error boundary in the layout handle this
-    throw new Response("Failed to load dashboard data.", { status: 500 });
+    // Preserve headers in error response
+    console.error("Data fetch error - throwing 500 with headers");
+    throw new Response("Failed to load dashboard data.", { 
+      status: 500,
+      headers: Object.fromEntries(headers)
+    });
   }
   // --- End of data fetching ---
 }
