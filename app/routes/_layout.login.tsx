@@ -1,5 +1,5 @@
 import { Link, useActionData, useFetcher } from "@remix-run/react";
-import { ActionFunctionArgs, json, redirect } from "@remix-run/node";
+import {ActionFunctionArgs, json, redirect, TypedResponse} from "@remix-run/node";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -7,20 +7,28 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 
-export async function action({ request }: ActionFunctionArgs) {
+interface ActionResponse {
+  error?: string;
+  email?: string;
+}
+
+export async function action({ request }: ActionFunctionArgs)
+    : Promise<TypedResponse<ActionResponse>>{
   const formData = await request.formData();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const { supabaseServer, headers } = getSupabaseServerClient(request);
+  const { supabaseServer, response } = getSupabaseServerClient(request);
+  const headers = response.headers;
 
   if (!email || !password) {
-    return json({ error: "Email and password are required." }, { status: 400, headers });
+    return json({ error: "Email and password are required.", email: email }, { status: 400, headers });
   }
 
   const { data: authData, error: authError } = await supabaseServer.auth.signInWithPassword({
     email,
     password,
   });
+  console.log("Login attempt for:", email, "Result:", authData?.user, "Error:", authError?.message);
 
   if (authError || !authData.user) {
     console.error("Login error:", authError?.message);
