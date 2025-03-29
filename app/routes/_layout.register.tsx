@@ -39,6 +39,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     // Create auth user
+    console.log('Creating auth user...');
     const { data: { user }, error: authError } = await supabaseServer.auth.signUp({
       email: contact1Email,
       password,
@@ -48,6 +49,7 @@ export async function action({ request }: ActionFunctionArgs) {
         }
       }
     });
+    console.log('Auth user created:', user, authError);
 
     if (authError || !user) throw authError || new Error('User creation failed');
 
