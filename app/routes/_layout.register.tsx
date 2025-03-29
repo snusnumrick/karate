@@ -39,11 +39,19 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     // Create auth user
-    console.log('Creating auth user ...', contact1Email, password);
+    console.log('Creating auth user ...', contact1Email);
+    // Construct the redirect URL based on the request origin
+    const url = new URL(request.url);
+    const emailRedirectTo = `${url.origin}/auth/callback`;
+
     const { data: { user }, error: authError } = await supabaseServer.auth.signUp({
       email: contact1Email,
       password,
-      // Profile data is explicitly inserted later
+      options: {
+        // This tells Supabase where to redirect the user after email confirmation
+        emailRedirectTo: emailRedirectTo,
+        // Profile data is explicitly inserted later, so no 'data' option here
+      }
     });
     console.log('Auth user created:', user, authError);
 
