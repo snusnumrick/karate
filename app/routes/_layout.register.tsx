@@ -264,7 +264,7 @@ export default function RegisterPage() {
             <Form method="post" noValidate className="space-y-8">
               {/* --- All the step content (currentStep === 1, 2, 3, 4, 5) goes here --- */}
               {/* Step 1: Referral & Family Info */}
-              <div hidden={currentStep !== 1}>
+              <div className={currentStep === 1 ? '' : 'hidden'}>
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL INFORMATION</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -407,7 +407,7 @@ export default function RegisterPage() {
               </div>
               
               {/* Step 2: Additional Info & Contact 1 */}
-              <div hidden={currentStep !== 2}>
+              <div className={currentStep === 2 ? '' : 'hidden'}>
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ADDITIONAL INFO</h2>
                 <div className="space-y-6">
                   <div>
@@ -643,7 +643,7 @@ export default function RegisterPage() {
               </div>
               
               {/* Step 3: Contact 2 */}
-              <div hidden={currentStep !== 3}>
+              <div className={currentStep === 3 ? '' : 'hidden'}>
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT #2</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
@@ -822,7 +822,7 @@ export default function RegisterPage() {
               </div>
               
               {/* Step 4: Student Info */}
-              <div hidden={currentStep !== 4}>
+              <div className={currentStep === 4 ? '' : 'hidden'}>
                 {students.map((student, index) => (
                   <div key={student.id} className="mb-8 pb-8 border-b border-border dark:border-gray-700">
                     <h2 className="text-xl font-semibold text-foreground mb-4">STUDENT #{index + 1}</h2>
@@ -1093,7 +1093,7 @@ export default function RegisterPage() {
                 </div>
               
               {/* Step 5: Policies & Submit */}
-              <div hidden={currentStep !== 5}>
+              <div className={currentStep === 5 ? '' : 'hidden'}>
                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
                 
                 <div className="space-y-6">
