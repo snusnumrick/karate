@@ -171,8 +171,28 @@ CREATE TABLE IF NOT EXISTS waivers (
                                        title text NOT NULL,
                                        description text NOT NULL,
                                        content text NOT NULL,
-                                       required boolean NOT NULL DEFAULT false
+                                       required boolean NOT NULL DEFAULT false,
+                                       CONSTRAINT waivers_title_unique UNIQUE (title) -- Ensure title is unique for ON CONFLICT
 );
+
+-- Insert standard waivers (Use ON CONFLICT to make idempotent)
+-- IMPORTANT: Replace placeholder content with legally reviewed text for BC.
+INSERT INTO waivers (title, description, content, required) VALUES
+('Liability Release', 'Acknowledgement of Risks and Release of Liability', E'Placeholder Content: I, the undersigned parent/guardian, acknowledge the inherent risks associated with karate training, including but not limited to physical injury. I hereby release [Your Karate School Name], its instructors, and affiliates from any liability for injuries sustained by my child during participation.\n\n[Consult a legal professional in BC for appropriate wording]', true)
+ON CONFLICT (title) DO NOTHING;
+
+INSERT INTO waivers (title, description, content, required) VALUES
+('Code of Conduct Agreement', 'Agreement to Adhere to School Rules and Etiquette', E'Placeholder Content: I, the undersigned parent/guardian, and my child agree to abide by the rules, regulations, and code of conduct of [Your Karate School Name], promoting respect, discipline, and safety.\n\n[Consult a legal professional in BC for appropriate wording]', true)
+ON CONFLICT (title) DO NOTHING;
+
+INSERT INTO waivers (title, description, content, required) VALUES
+('Photo/Video Consent', 'Consent for Use of Images and Videos', E'Placeholder Content: I, the undersigned parent/guardian, grant [Your Karate School Name] permission to use photographs and/or videos of my child taken during classes or events for promotional purposes (website, social media, brochures) without compensation.\n\n[Consult a legal professional in BC for appropriate wording]', true)
+ON CONFLICT (title) DO NOTHING;
+
+INSERT INTO waivers (title, description, content, required) VALUES
+('Payment and Dress Code Agreement', 'Acknowledgement of Financial Obligations and Attire Requirements', E'Placeholder Content: I, the undersigned parent/guardian, understand and agree to the payment schedule, fees, and refund policy of [Your Karate School Name]. I also agree to ensure my child adheres to the required dress code/uniform policy.\n\n[Consult a legal professional in BC for appropriate wording]', true)
+ON CONFLICT (title) DO NOTHING;
+
 
 -- Waiver Signatures table
 CREATE TABLE IF NOT EXISTS waiver_signatures (
