@@ -36,10 +36,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return json({ profile: profileData, family: null, error: "No family associated with this account." }, { headers });
   }
 
-  // 2. Fetch the family data using the family_id from the profile
+  // 2. Fetch the family data *and* its related students using the family_id from the profile
   const { data: familyData, error: familyError } = await supabaseServer
     .from('families')
-    .select('*') // Select all columns from the families table
+    .select('*, students(*)') // Fetch all family columns AND all related students
     .eq('id', profileData.family_id)
     .single();
 
@@ -92,9 +92,20 @@ export default function FamilyPortal() {
         {/* TODO: Implement these sections using actual data */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">My Students</h2>
-          {/* TODO: List students associated with the family */}
-          <p className="text-gray-600 dark:text-gray-400">Student details will appear here.</p>
-          {/* Temporarily remove asChild to debug SSR error */}
+          {/* Display list of students or a message if none */}
+          {family.students && family.students.length > 0 ? (
+            <ul className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300">
+              {family.students.map((student) => (
+                <li key={student.id}>
+                  {student.first_name} {student.last_name}
+                  {/* TODO: Add link to student detail page later */}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-600 dark:text-gray-400">No students registered yet.</p>
+          )}
+          {/* TODO: Re-evaluate Button/Link structure after resolving SSR issues */}
           <Button className="mt-4">
             <Link to="/register">Add Student</Link> {/* Link might need adjustment */}
           </Button>
