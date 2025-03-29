@@ -97,8 +97,13 @@ export default function FamilyPortal() {
             <ul className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300">
               {family.students.map((student) => (
                 <li key={student.id}>
-                  {student.first_name} {student.last_name}
-                  {/* TODO: Add link to student detail page later */}
+                  <Link 
+                    to={`/family/student/${student.id}`} 
+                    className="text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {student.first_name} {student.last_name}
+                  </Link>
+                  {/* TODO: Implement the /family/student/:studentId route */}
                 </li>
               ))}
             </ul>
