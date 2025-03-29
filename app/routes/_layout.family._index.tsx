@@ -45,16 +45,50 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   if (familyError) {
     console.error("Error fetching family data:", familyError?.message);
-    return json({ profile: profileData, family: null, error: "Failed to load family data." }, { status: 500, headers });
+    return json({ profile: profileData, family: null, error: "Failed to load family data.", allWaiversSigned: false }, { status: 500, headers });
   }
 
-  // Return both profile and family data
-  return json({ profile: profileData, family: familyData }, { headers });
+  // 3. Fetch required waivers and user's signatures to determine status
+  let allWaiversSigned = false;
+  try {
+    const { data: requiredWaivers, error: requiredWaiversError } = await supabaseServer
+      .from('waivers')
+      .select('id')
+      .eq('required', true);
+
+    if (requiredWaiversError) throw requiredWaiversError;
+
+    // If there are no required waivers, consider them "signed"
+    if (!requiredWaivers || requiredWaivers.length === 0) {
+      allWaiversSigned = true;
+    } else {
+      const { data: signedWaivers, error: signedWaiversError } = await supabaseServer
+        .from('waiver_signatures')
+        .select('waiver_id')
+        .eq('user_id', user.id);
+
+      if (signedWaiversError) throw signedWaiversError;
+
+      const requiredWaiverIds = new Set(requiredWaivers.map(w => w.id));
+      const signedWaiverIds = new Set(signedWaivers.map(s => s.waiver_id));
+
+      // Check if every required waiver ID is present in the signed waiver IDs
+      allWaiversSigned = [...requiredWaiverIds].every(id => signedWaiverIds.has(id));
+    }
+  } catch (error: any) {
+    console.error("Error checking waiver status:", error.message);
+    // Default to false if there's an error checking status, but don't block portal load
+    allWaiversSigned = false;
+  }
+
+
+  // Return profile, family data, and waiver status
+  return json({ profile: profileData, family: familyData, allWaiversSigned }, { headers });
 }
 
 export default function FamilyPortal() {
-  // Now loader returns profile and family data
-  const { profile, family, error } = useLoaderData<typeof loader>();
+  // Now loader returns profile, family data, and waiver status
+  const { profile, family, error, allWaiversSigned } = useLoaderData<typeof loader>();
 
   // Handle specific error messages from the loader
   if (error) {
@@ -118,11 +152,15 @@ export default function FamilyPortal() {
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">Waivers</h2>
-          {/* TODO: Link to or embed waiver status/signing */}
-          <p className="text-gray-600 dark:text-gray-400">Waiver status and links will appear here.</p>
-           {/* Temporarily remove asChild to debug SSR error */}
+          {/* Display waiver status */}
+          {allWaiversSigned ? (
+            <p className="text-green-600 dark:text-green-400 mb-4">✅ All required waivers signed.</p>
+          ) : (
+            <p className="text-orange-600 dark:text-orange-400 mb-4">⚠️ Action required: Please sign all waivers.</p>
+          )}
+           {/* TODO: Re-evaluate Button/Link structure after resolving SSR issues */}
            <Button className="mt-4">
-            <Link to="/waivers">View Waivers</Link>
+            <Link to="/waivers">View/Sign Waivers</Link>
           </Button>
         </div>
 
