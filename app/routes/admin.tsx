@@ -34,10 +34,9 @@ export default function AdminLayout() {
   console.log("Rendering AdminLayout component"); // Updated log
   // You can add Admin-specific Navbars, sidebars etc. here later
   return (
-    <div className="admin-section"> {/* Add a wrapper if needed */}
-      {/* <AdminNavbar /> */}
-      <main>
-        <Outlet /> {/* Renders the matched route from the admin/ folder */}
+    <div className="min-h-screen bg-gray-50 p-4">
+      <main className="max-w-7xl mx-auto">
+        <Outlet />
       </main>
     </div>
   );

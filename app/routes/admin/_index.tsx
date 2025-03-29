@@ -58,12 +58,13 @@ export default function AdminDashboard() {
   console.log("Rendering AdminDashboard component, loader data:", data); // Add log
 
   return (
-    // Add a bright background to ensure it's not just invisible
-    <div className="bg-lime-300 p-5"> 
-      <h1 className="text-4xl font-bold text-red-500 p-10">ADMIN DASHBOARD TEST</h1>
-      {/* Original content commented out below for easy restoration */}
+    <div className="container mx-auto p-4">
+      <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
+      <div className="bg-red-500 p-4 text-white rounded-lg">
+        <p>Temporary debug view - Dashboard content visible</p>
+        <pre>{JSON.stringify(data, null, 2)}</pre>
+      </div>
     </div>
-    /*
     <div className="max-w-7xl mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
 
