@@ -68,11 +68,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+// The default export renders the main application content within the Layout
 export default function App() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <Layout>
       <Outlet />
-    </div>
+    </Layout>
   );
 }
 
