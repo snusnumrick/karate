@@ -56,7 +56,8 @@ export default function FamilyPortal() {
           <h2 className="text-xl font-semibold mb-4">My Students</h2>
           {/* TODO: List students associated with the family */}
           <p className="text-gray-600 dark:text-gray-400">Student details will appear here.</p>
-          <Button asChild className="mt-4">
+          {/* Temporarily remove asChild to debug SSR error */}
+          <Button className="mt-4">
             <Link to="/register">Add Student</Link> {/* Link might need adjustment */}
           </Button>
         </div>
@@ -65,7 +66,8 @@ export default function FamilyPortal() {
           <h2 className="text-xl font-semibold mb-4">Waivers</h2>
           {/* TODO: Link to or embed waiver status/signing */}
           <p className="text-gray-600 dark:text-gray-400">Waiver status and links will appear here.</p>
-           <Button asChild className="mt-4">
+           {/* Temporarily remove asChild to debug SSR error */}
+           <Button className="mt-4">
             <Link to="/waivers">View Waivers</Link>
           </Button>
         </div>
