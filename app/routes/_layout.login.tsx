@@ -37,6 +37,17 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: "Invalid login credentials." }, { status: 401, headers });
   }
 
+  // If signInWithPassword succeeded, double-check if the email is confirmed on the user object.
+  // There might be a slight delay, or the error check above might miss an edge case.
+  if (!authData.user.email_confirmed_at) {
+      console.warn(`Login successful for ${email}, but email_confirmed_at is still missing on the returned user object.`);
+      // Re-trigger the "Email not confirmed" flow
+      return json({
+        error: "Please check your inbox and confirm your email address before logging in.",
+        email: email // Include email for the resend action
+      }, { status: 401, headers });
+  }
+
   // Fetch user profile to check role
   // Ensure you have a 'profiles' table with 'id' (UUID matching auth.users.id) and 'role' columns.
   const { data: profile, error: profileError } = await supabaseServer
