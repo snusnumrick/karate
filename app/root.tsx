@@ -67,6 +67,8 @@ export function Layout() {
       </body>
     </html>
   );
+} // <-- Add the missing closing brace here
+
 // Make Layout the default export, removing the intermediate App component.
 export default Layout;
 
