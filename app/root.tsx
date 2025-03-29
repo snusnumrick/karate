@@ -26,6 +26,7 @@ export const links: LinksFunction = () => [
 
 // This Layout component now serves as the root structure and renders the Outlet directly.
 export function Layout() {
+  // Suppress hydration warnings at the root level to handle browser extension interference
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
@@ -53,12 +54,8 @@ export function Layout() {
         <Meta />
         <Links />
       </head>
-      {/* Add contentEditable and suppress warning to handle potential browser extension interference */}
-      <body 
-        className="h-full bg-background text-foreground" 
-        contentEditable="false" 
-        suppressContentEditableWarning={true}
-      >
+      {/* Removed contentEditable attributes as suppressHydrationWarning on <html> handles extension issues */}
+      <body className="h-full bg-background text-foreground">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
