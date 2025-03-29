@@ -817,7 +817,6 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
               
               {/* Step 4: Student Info */}
               <div className={currentStep === 4 ? '' : 'hidden'}>
