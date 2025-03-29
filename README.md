@@ -105,10 +105,11 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 
 ### Next Priority Features
 1. Stripe/PayPal payment integration
-2. Attendance tracking system
-3. Achievement badge functionality
-4. Automated notifications
-5. Instructor profile module
+2. Family dashboard
+3. Attendance tracking system
+4. Achievement badge functionality
+5. Automated notifications
+6. Instructor profile module
 
 ### Development Progress
 ```mermaid
