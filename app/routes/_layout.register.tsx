@@ -404,7 +404,6 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
               
               {/* Step 2: Additional Info & Contact 1 */}
               <div className={currentStep === 2 ? '' : 'hidden'}>
@@ -640,7 +639,6 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
               
               {/* Step 3: Contact 2 */}
               <div className={currentStep === 3 ? '' : 'hidden'}>
