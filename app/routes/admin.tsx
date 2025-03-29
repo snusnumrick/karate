@@ -7,8 +7,8 @@ import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server"; 
 export async function loader({ request }: LoaderFunctionArgs) {
   console.log("Entering /_admin layout loader..."); // Updated log
   const { supabaseServer, response } = getSupabaseServerClient(request);
-  const headers = response.headers;
   const { data: { user } } = await supabaseServer.auth.getUser();
+  const headers = response.headers;
   console.log("_Admin layout loader - User:", user?.id); // Updated log
 
   if (!user) {
@@ -17,8 +17,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   const isAdmin = await isUserAdmin(user.id);
-  console.log(`_Admin layout loader - User ${user.id} isAdmin: ${isAdmin}`); // Updated log
-
+  console.log(`_Admin layout loader - User ${user.id} isAdmin: ${isAdmin}`); 
+  console.log('Response headers:', Object.fromEntries(headers));
+  
   if (!isAdmin) {
     console.log(`_Admin layout loader - User ${user.id} is not admin, redirecting to /family.`); // Updated log
     return redirect('/family', { headers });
@@ -26,7 +27,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   console.log("_Admin layout loader - User is admin, allowing access."); // Updated log
   // Return necessary data for the layout, or just null/{} if none needed yet
-  return json({ isAdmin: true }, { headers });
+  return json({ isAdmin: true }, { headers: Object.fromEntries(headers) });
 }
 
 // The actual layout component
