@@ -1,8 +1,8 @@
 import { Outlet, useRouteError } from "@remix-run/react";
-import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node"; // Re-add imports
-import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server"; // Re-add imports
+import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
+import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
 
-// Pathless layout route for /admin/*
+// Regular layout route for /admin/*
 // Loader protects the entire section
 export async function loader({ request }: LoaderFunctionArgs) {
   console.log("Entering /_admin layout loader..."); // Updated log

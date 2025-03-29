@@ -10,7 +10,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   // --- Data fetching logic ---
   try {
-    console.log("Admin _index loader - Fetching dashboard data..."); // Add log
+    console.log("Admin index loader - Fetching dashboard data..."); // Add log
     const [
       { count: familyCount, error: familiesError },
       { count: studentCount, error: studentsError },
@@ -33,7 +33,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     const totalPaymentAmount = payments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
 
-    console.log("Admin _index loader - Data fetched."); // Add log
+    console.log("Admin index loader - Data fetched."); // Add log
 
     return json({
       familyCount: familyCount ?? 0,
@@ -43,7 +43,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }, { headers });
 
   } catch (error: any) {
-    console.error("Error in /admin/_index loader data fetch:", error.message);
+    console.error("Error in /admin/index loader data fetch:", error.message);
     // Let the error boundary in the layout handle this
     // Preserve headers in error response
     console.error("Data fetch error - throwing 500 with headers");
