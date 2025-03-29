@@ -13,45 +13,82 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // This shouldn't happen if the route is protected by the layout,
     // but good practice to handle it.
     // Consider redirecting to login if needed, depending on layout setup.
-    return json({ family: null, error: "User not authenticated" }, { status: 401, headers });
+    return json({ profile: null, family: null, error: "User not authenticated" }, { status: 401, headers });
   }
 
-  // TODO: Fetch actual family data based on user.id or associated familyId
-  // const { data: familyData, error } = await supabaseServer
-  //   .from('families') // Assuming a 'families' table linked to users
-  //   .select('*')
-  //   .eq('user_id', user.id) // Or based on a profile link
-  //   .single();
+  // 1. Get the user's profile to find their family_id
+  const { data: profileData, error: profileError } = await supabaseServer
+    .from('profiles')
+    .select('family_id, first_name, last_name') // Fetch names too if available on profile
+    .eq('id', user.id)
+    .single();
 
-  // if (error) {
-  //   console.error("Error fetching family data:", error);
-  //   return json({ family: null, error: "Failed to load family data" }, { status: 500, headers });
-  // }
+  if (profileError || !profileData) {
+    console.error("Error fetching profile:", profileError?.message);
+    // If profile doesn't exist, maybe redirect to a setup page or show an error
+    return json({ profile: null, family: null, error: "Failed to load user profile." }, { status: 500, headers });
+  }
 
-  // Placeholder data for now
-  const familyData = { name: "Example Family" };
+  if (!profileData.family_id) {
+    // User is logged in but not associated with a family yet
+    // This might happen after registration but before family creation/linking
+    // TODO: Consider redirecting to a family setup/linking page or showing a specific message
+    return json({ profile: profileData, family: null, error: "No family associated with this account." }, { headers });
+  }
 
-  return json({ family: familyData }, { headers });
+  // 2. Fetch the family data using the family_id from the profile
+  const { data: familyData, error: familyError } = await supabaseServer
+    .from('families')
+    .select('*') // Select all columns from the families table
+    .eq('id', profileData.family_id)
+    .single();
+
+  if (familyError) {
+    console.error("Error fetching family data:", familyError?.message);
+    return json({ profile: profileData, family: null, error: "Failed to load family data." }, { status: 500, headers });
+  }
+
+  // Return both profile and family data
+  return json({ profile: profileData, family: familyData }, { headers });
 }
 
 export default function FamilyPortal() {
-  const { family, error } = useLoaderData<typeof loader>();
+  // Now loader returns profile and family data
+  const { profile, family, error } = useLoaderData<typeof loader>();
 
+  // Handle specific error messages from the loader
   if (error) {
+     // Special handling if no family is associated yet
+     if (error === "No family associated with this account.") {
+       return (
+         <div className="container mx-auto px-4 py-8 text-center">
+           <h1 className="text-2xl font-semibold mb-4">Welcome!</h1>
+           <p className="text-gray-600 dark:text-gray-400 mb-6">
+             Your account isn't linked to a family yet. Please complete your registration or contact support.
+           </p>
+           {/* Optional: Add a link to registration or contact */}
+           {/* <Button asChild><Link to="/register/family-details">Complete Registration</Link></Button> */}
+         </div>
+       );
+     }
+     // Generic error display
     return <div className="text-red-500 p-4">Error loading family portal: {error}</div>;
   }
 
+  // If family data is still loading or wasn't fetched (should be handled by error above now)
   if (!family) {
-    // Handle case where family data couldn't be loaded or doesn't exist yet
-    return <div className="p-4">Loading family data or no family associated...</div>;
+    return <div className="p-4">Loading family data...</div>; // Or a loading spinner
   }
+
+  // Use the fetched family name
+  const familyDisplayName = family.name || `Family of ${profile?.first_name || 'User'}`;
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Family Portal: {family.name}</h1>
+      <h1 className="text-3xl font-bold mb-6">Family Portal: {familyDisplayName}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Placeholder sections - to be implemented */}
+        {/* TODO: Implement these sections using actual data */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">My Students</h2>
           {/* TODO: List students associated with the family */}

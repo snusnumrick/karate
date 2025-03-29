@@ -74,7 +74,7 @@ export async function action({ request }: ActionFunctionArgs)
   }
 
   // Determine redirect path
-  let redirectTo = "/waivers"; // Default redirect for non-admin users
+  let redirectTo = "/family"; // Default redirect for non-admin users
   if (profile?.role === 'admin') {
     redirectTo = "/admin";
   }
