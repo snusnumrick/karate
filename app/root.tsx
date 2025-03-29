@@ -53,7 +53,12 @@ export function Layout() {
         <Meta />
         <Links />
       </head>
-      <body className="h-full bg-background text-foreground">
+      {/* Add contentEditable and suppress warning to handle potential browser extension interference */}
+      <body 
+        className="h-full bg-background text-foreground" 
+        contentEditable="false" 
+        suppressContentEditableWarning={true}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
