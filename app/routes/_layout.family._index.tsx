@@ -19,7 +19,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // 1. Get the user's profile to find their family_id
   const { data: profileData, error: profileError } = await supabaseServer
     .from('profiles')
-    .select('family_id, first_name, last_name') // Fetch names too if available on profile
+    .select('family_id') // Only fetch family_id, as names are not on this table
     .eq('id', user.id)
     .single();
 
@@ -80,8 +80,9 @@ export default function FamilyPortal() {
     return <div className="p-4">Loading family data...</div>; // Or a loading spinner
   }
 
-  // Use the fetched family name
-  const familyDisplayName = family.name || `Family of ${profile?.first_name || 'User'}`;
+  // Use the fetched family name or a generic fallback
+  // We don't have profile.first_name here anymore
+  const familyDisplayName = family.name || `Your Family Portal`;
 
   return (
     <div className="container mx-auto px-4 py-8">
