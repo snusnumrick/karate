@@ -3,7 +3,6 @@ import { Link, Form, useRouteError, isRouteErrorResponse, Outlet, useLocation, u
 import type { ActionFunctionArgs } from "@remix-run/node"; // or cloudflare/deno
 import { json, redirect } from "@remix-run/node"; // or cloudflare/deno
 import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { v4 as uuidv4 } from 'uuid';
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -264,11 +263,11 @@ export default function RegisterPage() {
             
             <Form method="post" noValidate className="space-y-8">
               {/* --- All the step content (currentStep === 1, 2, 3, 4, 5) goes here --- */}
-              {currentStep === 1 && (
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL INFORMATION</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
+              {/* Step 1: Referral & Family Info */}
+              <div hidden={currentStep !== 1}>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL INFORMATION</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
                       <Label htmlFor="referralSource" className="text-sm font-medium mb-1">
                         How did you hear about us?<span className="text-red-500">*</span>
                       </Label>
@@ -405,13 +404,13 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              </div>
               
-              {currentStep === 2 && (
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ADDITIONAL INFO</h2>
-                  <div className="space-y-6">
-                    <div>
+              {/* Step 2: Additional Info & Contact 1 */}
+              <div hidden={currentStep !== 2}>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ADDITIONAL INFO</h2>
+                <div className="space-y-6">
+                  <div>
                       <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
                         Emergency Contact Info (Not Contact #1 or #2)<span className="text-red-500">*</span>
                       </Label>
@@ -641,13 +640,13 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              </div>
               
-              {currentStep === 3 && (
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT #2</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
+              {/* Step 3: Contact 2 */}
+              <div hidden={currentStep !== 3}>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT #2</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
                       <Label htmlFor="contact2FirstName" className="block text-sm font-medium mb-1">
                         Contact #2 First Name<span className="text-red-500">*</span>
                       </Label>
@@ -820,13 +819,13 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              </div>
               
-              {currentStep === 4 && (
-                <div>
-                  {students.map((student, index) => (
-                    <div key={student.id} className="mb-8 pb-8 border-b border-border dark:border-gray-700">
-                      <h2 className="text-xl font-semibold text-foreground mb-4">STUDENT #{index + 1}</h2>
+              {/* Step 4: Student Info */}
+              <div hidden={currentStep !== 4}>
+                {students.map((student, index) => (
+                  <div key={student.id} className="mb-8 pb-8 border-b border-border dark:border-gray-700">
+                    <h2 className="text-xl font-semibold text-foreground mb-4">STUDENT #{index + 1}</h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <Label htmlFor={`student${index}FirstName`} className="block text-sm font-medium mb-1">
@@ -1092,13 +1091,13 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              </div>
               
-              {currentStep === 5 && (
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
-                  
-                  <div className="space-y-6">
+              {/* Step 5: Policies & Submit */}
+              <div hidden={currentStep !== 5}>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
+                
+                <div className="space-y-6">
                     {/* Photo Release */}
                     <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
                       <div className="flex items-start space-x-3">
@@ -1284,7 +1283,7 @@ export default function RegisterPage() {
                   </div>
                   
                 </div>
-              )}
+              </div>
             </Form>
           </div>
         ) : (
