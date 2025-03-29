@@ -1,6 +1,6 @@
 import { Link } from "@remix-run/react";
 
-export default function PaymentCancel() {
+export default function _layoutPaymentCancel() {
   return (
     <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
       <div className="text-center">
