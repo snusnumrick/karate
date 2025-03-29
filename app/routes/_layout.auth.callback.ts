@@ -6,7 +6,8 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") || "/waivers"; // Default redirect after login
+  // Default redirect after login is now /family
+  const next = url.searchParams.get("next") || "/family";
 
   if (code) {
     const { supabaseServer, headers } = getSupabaseServerClient(request);

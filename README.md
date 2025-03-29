@@ -104,8 +104,8 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - Security audit workflow
 
 ### Next Priority Features
-1. Stripe/PayPal payment integration
-2. Family dashboard
+1. Family dashboard / portal
+2. Stripe/PayPal payment integration
 3. Attendance tracking system
 4. Achievement badge functionality
 5. Automated notifications
