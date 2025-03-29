@@ -67,10 +67,11 @@ export async function action({ request }: ActionFunctionArgs) {
       .single();
 
     if (familyError) throw familyError;
+    console.log('Family created:', familyData);
     const familyId = familyData.id;
 
     // Create user profile
-    const { error: profileError } = await supabaseServer.from('profiles').insert({
+    const { data: profileData, error: profileError } = await supabaseServer.from('profiles').insert({
       id: user.id,
       email: contact1Email,
       role: 'user',
@@ -78,9 +79,10 @@ export async function action({ request }: ActionFunctionArgs) {
     });
 
     if (profileError) throw profileError;
+    console.log('Profile created:', profileData);
 
     // Process Contact #1
-    await supabaseServer.from('guardians').insert({
+    const { data: contact1Data, error: contact1Error } = await supabaseServer.from('guardians').insert({
       family_id: familyId,
       first_name: formData.get('contact1FirstName'),
       last_name: formData.get('contact1LastName'),
@@ -94,8 +96,11 @@ export async function action({ request }: ActionFunctionArgs) {
       employer_notes: formData.get('contact1EmployerNotes')
     });
 
+    if (contact1Error) throw contact1Error;
+    console.log('Contact #1 created:', contact1Data);
+
     // Process Contact #2
-    await supabaseServer.from('guardians').insert({
+    const { data: contact2Data, error: contact2Error } = await supabaseServer.from('guardians').insert({
       family_id: familyId,
       first_name: formData.get('contact2FirstName'),
       last_name: formData.get('contact2LastName'),
@@ -108,6 +113,8 @@ export async function action({ request }: ActionFunctionArgs) {
       employer_phone: formData.get('contact2EmployerPhone'),
       employer_notes: formData.get('contact2EmployerNotes')
     });
+    if (contact2Error) throw contact2Error;
+    console.log('Contact #2 created:', contact2Data);
 
     // Process Students
     const studentEntries = Array.from(formData.entries())
@@ -122,7 +129,7 @@ export async function action({ request }: ActionFunctionArgs) {
     });
 
     for (const index of studentIndices) {
-      await supabaseServer.from('students').insert({
+      const { data: studentData, error: studentError } = await supabaseServer.from('students').insert({
         family_id: familyId,
         first_name: formData.get(`students[${index}].firstName`),
         last_name: formData.get(`students[${index}].lastName`),
@@ -138,10 +145,12 @@ export async function action({ request }: ActionFunctionArgs) {
         immunization_notes: formData.get(`students[${index}].immunizationNotes`),
         belt_rank: formData.get(`students[${index}].beltRank`)
       });
+      if (studentError) throw studentError;
+      console.log('Student created:', studentData);
     }
 
     // Record policy agreements
-    await supabaseServer.from('policy_agreements').insert({
+   const { data: policyData, error: policyError } = await supabaseServer.from('policy_agreements').insert({
       family_id: familyId,
       full_name: formData.get('fullName'),
       photo_release: formData.has('photoRelease'),
@@ -151,6 +160,8 @@ export async function action({ request }: ActionFunctionArgs) {
       attire_agreement: formData.has('attire'),
       signature_date: new Date().toISOString()
     });
+    if (policyError) throw policyError;
+    console.log('Policy agreement created:', policyData);
 
     return redirect('/register/success');
 
