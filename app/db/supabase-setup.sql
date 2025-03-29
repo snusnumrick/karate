@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS families (
                                         updated_at timestamptz DEFAULT now()
 );
 
+-- Example: Add a column to an existing table idempotently
+ALTER TABLE families ADD COLUMN IF NOT EXISTS notes text;
+
+
 -- Guardians table
 CREATE TABLE IF NOT EXISTS guardians (
                                          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

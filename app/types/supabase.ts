@@ -87,6 +87,7 @@ export interface Database {
           referral_source: string | null
           emergency_contact: string | null
           health_info: string | null
+          notes: string | null // Add the new optional notes column
           updated_at: string
         }
         Insert: {
@@ -102,6 +103,7 @@ export interface Database {
           referral_source?: string | null
           emergency_contact?: string | null
           health_info?: string | null
+          notes?: string | null // Add the new optional notes column
           updated_at?: string
         }
         Update: {
@@ -117,6 +119,7 @@ export interface Database {
           referral_source?: string | null
           emergency_contact?: string | null
           health_info?: string | null
+          notes?: string | null // Add the new optional notes column
           updated_at?: string
         }
         Relationships: []
