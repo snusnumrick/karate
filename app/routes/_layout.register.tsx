@@ -1091,7 +1091,6 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
               
               {/* Step 5: Policies & Submit */}
               <div hidden={currentStep !== 5}>
