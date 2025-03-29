@@ -4,7 +4,8 @@ import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
 
 // This loader protects the entire /admin section
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer, headers } = getSupabaseServerClient(request);
+  const { supabaseServer, response } = getSupabaseServerClient(request);
+  const headers = response.headers;
   const { data: { user } } = await supabaseServer.auth.getUser();
 
   if (!user) {
