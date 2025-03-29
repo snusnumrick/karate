@@ -64,6 +64,7 @@ export async function action({ request }: ActionFunctionArgs)
     .select('role')
     .eq('id', authData.user.id)
     .single();
+  console.log("Profile fetch result:", profile, "Error:", profileError?.message);
 
   // Handle cases where profile might not exist yet or error fetching
   if (profileError && profileError.code !== 'PGRST116') { // PGRST116: Row not found
