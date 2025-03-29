@@ -21,6 +21,7 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // 
 // Action function to handle form submission
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
+  console.log(formData);
   const { supabaseServer } = getSupabaseServerClient(request);
 
   // Validate matching emails and passwords
@@ -39,7 +40,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     // Create auth user
-    console.log('Creating auth user w/o role...');
+    console.log('Creating auth user ...', contact1Email, password);
     const { data: { user }, error: authError } = await supabaseServer.auth.signUp({
       email: contact1Email,
       password,
