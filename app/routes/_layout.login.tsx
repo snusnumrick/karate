@@ -6,6 +6,7 @@ import { Label } from "~/components/ui/label";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
+import type { ResendActionData } from "~/routes/api.resend-confirmation"; // Import the type
 
 interface ActionResponse {
   error?: string;
@@ -85,7 +86,7 @@ export async function action({ request }: ActionFunctionArgs)
 
 export default function LoginPage() {
   const actionData = useActionData<typeof action>();
-  const fetcher = useFetcher<typeof resendAction>(); // Typed fetcher for the resend action
+  const fetcher = useFetcher<ResendActionData>(); // Use the imported type
 
   // Define a type for the resend action data if needed, or use inline type
   // type ResendActionData = { success?: boolean; error?: string };
