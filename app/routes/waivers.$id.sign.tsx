@@ -17,7 +17,36 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!user) {
     return redirect('/login?redirectTo=/waivers');
   }
-  
+
+  // Fetch user profile to get family_id
+  const { data: profile, error: profileError } = await supabaseServer
+    .from('profiles')
+    .select('family_id')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile || !profile.family_id) {
+    console.error('Error fetching profile or family_id for user:', user.id, profileError);
+    // Handle appropriately - maybe redirect to a profile setup page or show an error
+    // For now, throw an error indicating profile issue
+    throw new Response("User profile or family association not found.", { status: 404 });
+  }
+
+  // Fetch the first guardian associated with the family to get the name
+  // Assumption: The logged-in user is one of the guardians. We take the first one found.
+  const { data: guardian, error: guardianError } = await supabaseServer
+    .from('guardians')
+    .select('first_name, last_name')
+    .eq('family_id', profile.family_id)
+    .limit(1) // Get the first guardian listed for the family
+    .single();
+
+  if (guardianError || !guardian) {
+    console.error('Error fetching guardian for family_id:', profile.family_id, guardianError);
+    // Handle appropriately - maybe show an error
+    throw new Response("Guardian information not found for this family.", { status: 404 });
+  }
+
   // Check if waiver exists
   const { data: waiver, error } = await supabaseServer
     .from('waivers')
@@ -41,7 +70,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     return redirect('/waivers');
   }
   
-  return json({ waiver, userId: user.id });
+  return json({ 
+    waiver, 
+    userId: user.id, 
+    firstName: guardian.first_name, 
+    lastName: guardian.last_name 
+  });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -86,9 +120,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function SignWaiver() {
-  const { waiver, userId } = useLoaderData<typeof loader>();
+  const { waiver, userId, firstName, lastName } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
+  
+  const fullName = `${firstName} ${lastName}`;
   
   const [signatureData, setSignatureData] = useState('');
   const [isAgreed, setIsAgreed] = useState(false);
@@ -250,9 +286,13 @@ export default function SignWaiver() {
               name="agreement"
               checked={isAgreed}
               onCheckedChange={(checked) => setIsAgreed(Boolean(checked))}
+              aria-describedby="agreement-description" // For accessibility
             />
-            <Label htmlFor="agreement">
-              <span className="dark:text-gray-300">I, {userId}, have read and agree to the terms outlined in this document.</span>
+            <Label 
+              htmlFor="agreement" 
+              id="agreement-description" // For accessibility
+            >
+              <span className="dark:text-gray-300">I, {fullName}, have read and agree to the terms outlined in this document.</span>
             </Label>
           </div>
         </div>
