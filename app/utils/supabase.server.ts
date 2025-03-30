@@ -92,7 +92,7 @@ export async function createInitialPaymentRecord(
 
 
   // Create a pending payment record in Supabase
-  const { data: paymentRecord, error: insertError } = await supabaseServer
+  const { data: paymentRecord, error: insertError } = await supabaseAdmin // Use supabaseAdmin here
     .from('payments')
     .insert({
       family_id: familyId,
