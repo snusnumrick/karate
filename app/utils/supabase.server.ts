@@ -127,15 +127,39 @@ export async function updatePaymentStatus(
     console.error('Missing Supabase environment variables for payment update.');
     throw new Error('Server configuration error for payment update.');
   }
-}
+  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-export async function updatePaymentStatus(
-  stripeSessionId: string, // Use Stripe session ID to find the record
-  status: Payment['status'],
-  receiptUrl?: string // Stripe might provide this in the webhook event
-) {
-  // Use the standard client with service role for webhooks/server-side updates
-  const supabaseUrl = process.env.SUPABASE_URL;
+
+  const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {
+    status,
+    receipt_url: receiptUrl,
+  };
+
+  // Set payment_date only when status becomes 'succeeded'
+  if (status === 'succeeded') {
+    updateData.payment_date = new Date().toISOString();
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('payments')
+    .update(updateData)
+    .eq('stripe_session_id', stripeSessionId) // Find record using the Stripe session ID
+    .select()
+    .single();
+
+  if (error) {
+    console.error(`Payment update failed for Stripe session ${stripeSessionId}:`, error.message);
+    // Decide how to handle webhook errors - retry? log?
+    throw new Error(`Payment update failed: ${error.message}`);
+  }
+  if (!data) {
+     console.error(`No payment record found for Stripe session ${stripeSessionId} during update.`);
+     throw new Error(`Payment record not found for session ${stripeSessionId}.`);
+  }
+
+  console.log(`Payment status updated successfully for Stripe session ${stripeSessionId} to ${status}`);
+  return data;
+}
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
