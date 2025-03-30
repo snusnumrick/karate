@@ -136,8 +136,9 @@ export async function createInitialPaymentRecord(
 
 export async function updatePaymentStatus(
   stripeSessionId: string, // Use Stripe session ID to find the record
-  status: Payment['status'],
-  receiptUrl?: string // Stripe might provide this in the webhook event
+  status: "pending" | "succeeded" | "failed", // Use the specific enum values
+  receiptUrl?: string | null, // Stripe might provide this in the webhook event
+  paymentMethod?: string | null // Added parameter for payment method
 ) {
   // Use the standard client with service role for webhooks/server-side updates
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -153,6 +154,7 @@ export async function updatePaymentStatus(
   const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {
     status,
     receipt_url: receiptUrl,
+    payment_method: paymentMethod, // Add paymentMethod to the update object
   };
 
   // Set payment_date only when status becomes 'succeeded'
