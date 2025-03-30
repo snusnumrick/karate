@@ -119,15 +119,20 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - View Today's Attendance page (`/admin/attendance`)
   - Record Attendance page (`/admin/attendance/record`) with upsert logic
   - Added unique constraint to `attendance` table for reliable upserts
-  
+
 ### Next Priority Features
-1. **Student Edit/Delete Functionality** (on `/family/student/:studentId`)
-2. **Payment Integration** (Stripe/PayPal) - Add "Make Payment" button/flow to Family Portal
-3. **Account Settings** section in Family Portal (Manage guardians, family info)
-4. Attendance tracking system
-5. Achievement badge functionality
-6. Automated notifications
-7. Instructor profile module
++1. **Payment Integration Enhancements**:
++    - Implement dynamic payment amount calculation (`_layout.family.payment.tsx`).
++    - Display payment history in the Family Portal (`_layout.family._index.tsx`).
++    - Implement robust error handling for payment linking and Stripe webhooks (`utils/supabase.server.ts`).
+       +2. **Account Settings**: Implement account management section/link in Family Portal (`_layout.family._index.tsx`).
+       +3. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId`.
+       +4. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`).
+       +5. **Attendance Tracking**: Implement core attendance tracking system features.
+       +6. **Achievement Badges**: Implement achievement badge functionality.
+       +7. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance).
+       +8. **Instructor Profile**: Develop the instructor profile module/page.
+       +9. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
 
 ### Development Progress
 ```mermaid
