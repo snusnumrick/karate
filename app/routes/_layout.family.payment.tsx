@@ -12,6 +12,7 @@ import { Link } from "@remix-run/react"; // Ensure Link is imported
 // Loader data interface
 export interface LoaderData {
     familyId: string;
+    familyName: string; // Add family name
     studentIds: string[];
     stripePublishableKey: string | null; // Add Stripe publishable key
     error?: string;
@@ -59,8 +60,23 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
     if (!students || students.length === 0) {
         // Redirect back if no students, maybe with a message?
         // Or handle this in the component. Let's handle in component for now.
-        return json({familyId, studentIds: [], error: "No students found in this family."}, {headers});
+        // Need family name here too
+        return json({familyId, familyName: "Unknown Family", studentIds: [], error: "No students found in this family."}, {headers});
     }
+
+    // Fetch family name along with student IDs
+    const { data: familyData, error: familyError } = await supabaseServer
+        .from('families')
+        .select('name')
+        .eq('id', familyId)
+        .single();
+
+    if (familyError || !familyData) {
+        console.error("Payment Loader Error: Failed to load family name", familyError?.message);
+        throw new Response("Could not load family details for payment.", { status: 500 });
+    }
+    const familyName = familyData.name;
+
 
     const studentIds = students.map(s => s.id);
     const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || null;
@@ -70,13 +86,13 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
         // Decide if this is a critical error. For now, pass null and handle in component.
     }
 
-    return json({ familyId, studentIds, stripePublishableKey }, { headers });
+    return json({ familyId, familyName, studentIds, stripePublishableKey }, { headers });
 }
 
 // Remove the action function entirely - logic moved to API route and client-side
 
 export default function FamilyPaymentPage() {
-    const { familyId, studentIds, stripePublishableKey, error: loaderError } = useLoaderData<typeof loader>();
+    const { familyId, familyName, studentIds, stripePublishableKey, error: loaderError } = useLoaderData<typeof loader>();
     const fetcher = useFetcher<{ sessionId?: string; error?: string }>(); // Fetcher for API call
     const [stripe, setStripe] = useState<Stripe | null>(null);
     const [clientError, setClientError] = useState<string | null>(null);
@@ -225,6 +241,7 @@ export default function FamilyPaymentPage() {
             {/* Use standard form and onSubmit handler */}
             <form onSubmit={handlePaymentSubmit}>
                 <input type="hidden" name="familyId" value={familyId} />
+                <input type="hidden" name="familyName" value={familyName} /> {/* Add hidden input for family name */}
                 {/* Pass student IDs as a comma-separated string */}
                 <input type="hidden" name="studentIds" value={studentIds.join(',')} />
                 {/* Amount is added dynamically in handleSubmit */}

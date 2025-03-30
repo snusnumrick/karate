@@ -7,12 +7,13 @@ import type { Database } from "~/types/supabase";
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const familyId = formData.get('familyId') as string;
+  const familyName = formData.get('familyName') as string; // Get family name from form data
   // Ensure amount is treated as cents (smallest currency unit)
   const amountInCents = Number(formData.get('amountInCents'));
   const studentIdsString = formData.get('studentIds') as string; // Expect comma-separated string
 
-  if (!familyId || !amountInCents || !studentIdsString || amountInCents <= 0) {
-    return json({ error: "Missing or invalid required information (familyId, amountInCents, studentIds)." }, { status: 400 });
+  if (!familyId || !familyName || !amountInCents || !studentIdsString || amountInCents <= 0) {
+    return json({ error: "Missing or invalid required information (familyId, familyName, amountInCents, studentIds)." }, { status: 400 });
   }
 
   const studentIds = studentIdsString.split(',');
@@ -56,7 +57,7 @@ export async function action({ request }: ActionFunctionArgs) {
           currency: 'usd', // Or your desired currency
           product_data: {
             name: 'Karate Class Fees', // Customize as needed
-            description: `Payment for family ID: ${familyId}`, // Optional
+            description: `Payment for ${familyName || 'Family ID: ' + familyId}`, // Use family name, fallback to ID
           },
           unit_amount: amountInCents, // Amount in cents
         },
