@@ -32,6 +32,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function PaymentSuccess() {
   const loaderData = useLoaderData<typeof loader>();
+  console.log('Loader data:', loaderData);
 
   // Handle case where loader returned an error
   if ('error' in loaderData) {
@@ -51,6 +52,7 @@ export default function PaymentSuccess() {
 
   // Now we know payment exists
   const { payment } = loaderData;
+  console.log('Payment:', payment);
 
   // Type assertion for easier access, matching the updated enum
   const typedPayment = payment as {
@@ -63,6 +65,7 @@ export default function PaymentSuccess() {
       family: { name: string } | null;
       receipt_url?: string | null;
   };
+  console.log('Typed Payment:', typedPayment);
 
   return (
     <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
@@ -72,31 +75,31 @@ export default function PaymentSuccess() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
-        
+
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Payment Successful!</h1>
         <p className="text-gray-600 dark:text-gray-300 mb-6">
-          Thank you for your payment of ${(payment.amount / 100).toFixed(2)}
+          Thank you for your payment of ${(typedPayment.amount / 100).toFixed(2)}
         </p>
-        
+
         <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded text-left">
           <p className="text-sm text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Family:</span> {payment.family?.name}
+            <span className="font-semibold">Family:</span> {typedPayment.family?.name ?? 'N/A'}
           </p>
           <p className="text-sm text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Transaction ID:</span> {payment.id}
+            <span className="font-semibold">Transaction ID:</span> {typedPayment.id}
           </p>
           <p className="text-sm text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">Date:</span> {new Date(payment.payment_date).toLocaleDateString()}
+            <span className="font-semibold">Date:</span> {typedPayment.payment_date ? new Date(typedPayment.payment_date).toLocaleDateString() : 'Processing...'}
           </p>
         </div>
-        
+
         <div className="flex justify-center space-x-4">
-          {payment.receipt_url && (
-            <a 
-              href={payment.receipt_url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          {typedPayment.receipt_url && (
+              <a
+                  href={typedPayment.receipt_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
               View Receipt
             </a>
