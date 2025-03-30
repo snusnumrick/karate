@@ -23,9 +23,20 @@ export default function AdminNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            {/* Simplified Logo/Title for Admin */}
+            {/* Use the same logo as the main navbar */}
+            <div className="relative h-10 w-10 mr-4">
+              <img
+                src="/logo-light.svg"
+                alt="Karate Greenegin Logo"
+                className="h-full w-full dark:hidden"
+              />
+              <img
+                src="/logo-dark.svg"
+                alt="Karate Greenegin Logo"
+                className="h-full w-full hidden dark:block"
+              />
+            </div>
             <Link to="/admin" className="flex-shrink-0 flex items-center">
-               <LayoutDashboard className="h-6 w-6 mr-2 text-green-600 dark:text-green-400" />
               <span className="text-green-600 dark:text-green-400 font-bold text-xl">ADMIN PANEL</span>
             </Link>
           </div>
