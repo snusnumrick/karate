@@ -122,11 +122,11 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 
 ### Next Priority Features
 1. **Payment Integration Enhancements**:
-   - Implement dynamic payment amount calculation (`_layout.family.payment.tsx`).
-   - Display recent payment in Family Portal, full history on separate page (`_layout.family.payment-history.tsx`) (Implemented).
-   - Implement robust error handling for payment linking and Stripe webhooks (`utils/supabase.server.ts`).
+  - Implement dynamic payment amount calculation (`_layout.family.payment.tsx`).
+  - Display recent payment in Family Portal, full history on separate page (`_layout.family.payment-history.tsx`) (Implemented).
+  - Implement robust error handling for payment linking and Stripe webhooks (`utils/supabase.server.ts`).
 2. **Account Settings**: Implement account management section/link in Family Portal (`_layout.family._index.tsx`).
-3. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId`.
+3. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId`. 
 4. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`).
 5. **Attendance Tracking**: Implement core attendance tracking system features.
 6. **Achievement Badges**: Implement achievement badge functionality.
@@ -144,13 +144,13 @@ gantt
     Family Management       :done,    family, 2024-03-15, 21d
     Family Portal           :done,    portal, 2024-03-29, 14d
     Student Detail Page     :done,    student, after portal, 7d
-    Security Implementation :done,    sec, 2024-04-05, 14d
-    section Payments
-    Gateway Integration     :active,  pay, 2024-04-20, 21d # Basic flow with Stripe.js/API route
-    Transaction Tracking    :done,    pay_track, after pay, 14d # History on separate page
-    section Reporting
-    Attendance System       :         attend, 2024-05-25, 21d
-    Achievement Tracking    :         achieve, 2024-06-15, 21d
+    Security Implementation :done,    sec, 2024-04-05, 14d     
+    section Payments                                                                                                                                                                                                    
+    Gateway Integration     :active,  pay, 2024-04-20, 21d # Basic flow with Stripe.js/API route                                                                                                                        
+    Transaction Tracking    :done,    pay_track, after pay, 14d # History on separate page                                                                                                                              
+    section Reporting                                                                                                                                                                                                   
+    Attendance System       :         attend, 2024-05-25, 21d                                                                                                                                                           
+    Achievement Tracking    :         achieve, 2024-06-15, 21d 
 ```
 
 ### Technical Health
