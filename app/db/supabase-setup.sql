@@ -97,10 +97,20 @@ CREATE TABLE IF NOT EXISTS payments (
                                         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                                         family_id uuid REFERENCES families(id) ON DELETE CASCADE NOT NULL,
                                         amount numeric(10,2) NOT NULL,
-                                        payment_date date NOT NULL,
-                                        payment_method text NOT NULL,
-                                        status payment_status NOT NULL DEFAULT 'pending'
+                                        payment_date date NULL, -- Set on successful completion
+                                        payment_method text NULL, -- Method might be determined by Stripe/provider
+                                        status payment_status NOT NULL DEFAULT 'pending',
+                                        stripe_session_id text NULL, -- Added for Stripe integration
+                                        receipt_url text NULL -- Added for Stripe integration
 );
+
+-- Add columns idempotently if table already exists
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_session_id text NULL;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_url text NULL;
+-- Modify existing columns to be nullable if needed (optional, depends on if script was run before)
+-- ALTER TABLE payments ALTER COLUMN payment_date DROP NOT NULL;
+-- ALTER TABLE payments ALTER COLUMN payment_method DROP NOT NULL;
+
 
 DO $$
     BEGIN

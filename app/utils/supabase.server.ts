@@ -97,9 +97,9 @@ export async function createInitialPaymentRecord(
     .insert({
       family_id: familyId,
       amount: amount, // Store amount in cents
-      student_ids: studentIds,
       status: 'pending',
-      // payment_date will be set on success by webhook/updatePaymentStatus
+      // payment_date and payment_method are nullable and set later
+      // stripe_session_id and receipt_url are nullable and set later
     })
     .select('id') // Select the ID of the newly created record
     .single();
@@ -109,8 +109,28 @@ export async function createInitialPaymentRecord(
     return { data: null, error: `Failed to create payment record: ${insertError.message}` };
   }
 
+  const paymentId = paymentRecord.id;
+
+  // 2. Insert records into the payment_students junction table
+  const studentInserts = studentIds.map(studentId => ({
+    payment_id: paymentId,
+    student_id: studentId,
+  }));
+
+  const { error: junctionError } = await supabaseAdmin
+    .from('payment_students')
+    .insert(studentInserts);
+
+  if (junctionError) {
+    console.error('Supabase payment_students insert error:', junctionError.message);
+    // Attempt to delete the payment record if linking students fails? Or just log?
+    // For now, log the error and return failure. The payment record exists but isn't linked.
+    // await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Optional cleanup
+    return { data: null, error: `Failed to link students to payment: ${junctionError.message}` };
+  }
+
   // Return the newly created payment record ID and null error
-  return { data: { id: paymentRecord.id }, error: null };
+  return { data: { id: paymentId }, error: null };
 }
 
 

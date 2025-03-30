@@ -179,31 +179,37 @@ export interface Database {
       }
       payments: {
         Row: {
-          amount: number
+          amount: number // Assumed to be in cents based on usage
           family_id: string
           id: string
-          payment_date: string
-          payment_method: string
-          status: 'pending' | 'completed' | 'failed'
-          notes: string | null // Add optional notes column
+          payment_date: string | null // Made nullable
+          payment_method: string | null // Made nullable
+          status: "pending" | "succeeded" | "failed" // Adjusted status enum values if needed
+          notes: string | null
+          receipt_url: string | null // Added
+          stripe_session_id: string | null // Added
         }
         Insert: {
           amount: number
           family_id: string
           id?: string
-          payment_date: string
-          payment_method: string
-          status: 'pending' | 'completed' | 'failed'
-          notes?: string | null // Add optional notes column
+          payment_date?: string | null // Made nullable
+          payment_method?: string | null // Made nullable
+          status?: "pending" | "succeeded" | "failed" // Default is 'pending' in DB
+          notes?: string | null
+          receipt_url?: string | null // Added
+          stripe_session_id?: string | null // Added
         }
         Update: {
           amount?: number
           family_id?: string
           id?: string
-          payment_date?: string
-          payment_method?: string
-          status?: 'pending' | 'completed' | 'failed'
-          notes?: string | null // Add optional notes column
+          payment_date?: string | null // Made nullable
+          payment_method?: string | null // Made nullable
+          status?: "pending" | "succeeded" | "failed"
+          notes?: string | null
+          receipt_url?: string | null // Added
+          stripe_session_id?: string | null // Added
         }
         Relationships: [
           {
