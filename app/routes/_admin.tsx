@@ -1,6 +1,8 @@
-import { Outlet, useRouteError } from "@remix-run/react";
+import { Outlet, useRouteError, Form } from "@remix-run/react"; // Added Form
 import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
 import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
+import AdminNavbar from "~/components/AdminNavbar"; // Import AdminNavbar
+import AdminFooter from "~/components/AdminFooter"; // Import AdminFooter
 
 // Regular layout route for /admin/*
 // Loader protects the entire section
@@ -35,13 +37,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 // The actual layout component
 export default function AdminLayout() {
-  console.log("Rendering AdminLayout component"); // Updated log
-  // You can add Admin-specific Navbars, sidebars etc. here later
+  console.log("Rendering AdminLayout component with Navbar and Footer"); // Updated log
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4"> {/* Added dark mode background */}
-      <main className="max-w-7xl mx-auto">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+      <AdminNavbar /> {/* Add the Admin Navbar */}
+      {/* Main content area with padding */}
+      <main className="flex-grow max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
         <Outlet />
       </main>
+      <AdminFooter /> {/* Add the Admin Footer */}
     </div>
   );
 }
