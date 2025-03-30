@@ -58,51 +58,61 @@ export async function loader({request}: LoaderFunctionArgs)
     }
 
     const studentIds = students.map(s => s.id);
+    const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || null;
 
-    return json({familyId, studentIds}, {headers});
-}
-
-// Action to create payment session and redirect
-export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<{ error?: string }>> {
-    const {response} = getSupabaseServerClient(request);
-    const headers = response.headers;
-    const formData = await request.formData();
-    const familyId = formData.get("familyId") as string;
-    const studentIdsString = formData.get("studentIds") as string; // Comma-separated string
-
-    if (!familyId || !studentIdsString) {
-        return json({error: "Missing required information."}, {status: 400, headers});
+    if (!stripePublishableKey) {
+        console.warn("STRIPE_PUBLISHABLE_KEY is not set in environment variables.");
+        // Decide if this is a critical error. For now, pass null and handle in component.
     }
 
-    const studentIds = studentIdsString.split(',');
-
-    // TODO: Determine the actual amount dynamically (e.g., based on number of students, selected plan, etc.)
-    // For now, using a placeholder amount. Ensure this is in the smallest currency unit (e.g., cents).
-    const amount = 5000; // Example: $50.00
-
-    try {
-        const {sessionUrl, error} = await createPaymentSession(familyId, amount, studentIds, request);
-
-        if (error || !sessionUrl) {
-            console.error("Error creating payment session:", error);
-            return json({error: "Failed to initiate payment session. Please try again later."}, {status: 500, headers});
-        }
-
-        // Redirect user to Stripe Checkout
-        return redirect(sessionUrl, {headers});
-
-    } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("Unexpected error during payment session creation:", errorMessage);
-        return json({error: "An unexpected error occurred. Please contact support."}, {status: 500, headers});
-    }
+    return json({ familyId, studentIds, stripePublishableKey }, { headers });
 }
+
+// Remove the action function entirely - logic moved to API route and client-side
 
 export default function FamilyPaymentPage() {
-    const {familyId, studentIds, error: loaderError} = useLoaderData<typeof loader>();
-    const actionData = useActionData<typeof action>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const { familyId, studentIds, stripePublishableKey, error: loaderError } = useLoaderData<typeof loader>();
+    const fetcher = useFetcher<{ sessionId?: string; error?: string }>(); // Fetcher for API call
+    const [stripe, setStripe] = useState<Stripe | null>(null);
+    const [clientError, setClientError] = useState<string | null>(null);
+
+    const isProcessing = fetcher.state !== 'idle';
+
+    // Effect to load Stripe.js
+    useEffect(() => {
+        if (stripePublishableKey) {
+            loadStripe(stripePublishableKey).then(stripeInstance => {
+                setStripe(stripeInstance);
+            }).catch(error => {
+                 console.error("Failed to load Stripe.js:", error);
+                 setClientError("Failed to load payment library. Please refresh the page.");
+            });
+        } else {
+            console.error("Stripe publishable key is missing.");
+            setClientError("Payment processing is not configured correctly. Please contact support.");
+        }
+    }, [stripePublishableKey]);
+
+    // Effect to handle redirect after fetcher gets sessionId
+    useEffect(() => {
+        if (fetcher.data?.sessionId && stripe) {
+            stripe.redirectToCheckout({ sessionId: fetcher.data.sessionId })
+                .then(result => {
+                    // If redirectToCheckout fails (e.g., network error), show error
+                    if (result.error) {
+                        console.error("Stripe redirectToCheckout error:", result.error);
+                        setClientError(result.error.message || "Failed to redirect to payment page. Please try again.");
+                    }
+                }).catch(error => {
+                    console.error("Error during Stripe redirect:", error);
+                    setClientError("An unexpected error occurred while redirecting to payment. Please try again.");
+                });
+        }
+        // Handle errors returned by the fetcher API call itself
+        if (fetcher.data?.error) {
+             setClientError(fetcher.data.error);
+        }
+    }, [fetcher.data, stripe]);
 
     // Handle case where loader found no students
     if (loaderError && loaderError === "No students found in this family.") {
@@ -162,18 +172,21 @@ export default function FamilyPaymentPage() {
                 </p>
             </div>
 
-            <Form method="post">
-                <input type="hidden" name="familyId" value={familyId}/>
+            {/* Use standard form and onSubmit handler */}
+            <form onSubmit={handlePaymentSubmit}>
+                <input type="hidden" name="familyId" value={familyId} />
                 {/* Pass student IDs as a comma-separated string */}
-                <input type="hidden" name="studentIds" value={studentIds.join(',')}/>
+                <input type="hidden" name="studentIds" value={studentIds.join(',')} />
+                {/* Amount is added dynamically in handleSubmit */}
                 <Button
                     type="submit"
                     className="w-full"
-                    disabled={isSubmitting || studentIds.length === 0} // Disable if no students
+                    // Disable while fetcher is working, Stripe is loading, or if no students
+                    disabled={isProcessing || !stripe || studentIds.length === 0}
                 >
-                    {isSubmitting ? "Processing..." : `Proceed to Pay ${paymentAmountDisplay}`}
+                    {isProcessing ? "Processing..." : `Proceed to Pay ${paymentAmountDisplay}`}
                 </Button>
-            </Form>
+            </form>
             <div className="mt-4 text-center">
                 <Link to="/family" className="text-sm text-blue-600 hover:underline dark:text-blue-400">
                     Cancel and return to Family Portal
