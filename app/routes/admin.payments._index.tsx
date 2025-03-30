@@ -1,6 +1,7 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useRouteError } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
+import { getSupabaseServerClient } from "~/utils/supabase.server"; // Import the missing function
 import { Database } from "~/types/supabase"; // Assuming your generated types
 import { Button } from "~/components/ui/button";
 import {
