@@ -1,8 +1,32 @@
 import { Link } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
+import { useRouteLoaderData } from "@remix-run/react"; // Import useRouteLoaderData
+import type { loader as rootLayoutLoader } from "~/routes/_layout"; // Import loader type
 
 export default function Footer() {
+  // Get loader data from the parent layout route
+  const data = useRouteLoaderData<typeof rootLayoutLoader>("routes/_layout");
+  const user = data?.session?.user; // Check if user exists in the session
+
+  // Define base links
+  const baseLinks = [
+    { path: "/", label: "Home" },
+    { path: "/about", label: "About" },
+    { path: "/classes", label: "Classes" },
+    { path: "/contact", label: "Contact" },
+  ];
+
+  // Conditionally add/remove links based on user state
+  let quickLinks = [...baseLinks];
+  if (user) {
+    // Add Family Portal for logged-in users
+    quickLinks.push({ path: "/family", label: "Family Portal" }); 
+  } else {
+    // Add Register for logged-out users
+    quickLinks.push({ path: "/register", label: "Register" }); 
+  }
+
   return (
     <footer className="bg-green-600 text-white dark:bg-gray-800">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -37,15 +61,15 @@ export default function Footer() {
               Quick Links
             </Button>
             <div className="flex flex-col gap-0">
-              {["/", "/about", "/classes", "/register", "/contact"].map((link) => (
+              {quickLinks.map((linkItem) => (
                 <Button 
-                  key={link}
+                  key={linkItem.path}
                   asChild
                   variant="link"
                   className="text-green-100 justify-start hover:text-white"
                 >
-                  <Link to={link}>
-                    {link === "/" ? "Home" : link.slice(1).charAt(0).toUpperCase() + link.slice(2)}
+                  <Link to={linkItem.path}>
+                    {linkItem.label}
                   </Link>
                 </Button>
               ))}

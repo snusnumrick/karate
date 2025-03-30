@@ -3,10 +3,15 @@ import { Link } from "@remix-run/react";
 import { ModeToggle } from "./mode-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { Button } from "./ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react"; // Import LogOut
+import { useRouteLoaderData, Form } from "@remix-run/react"; // Import useRouteLoaderData and Form
+import type { loader as rootLayoutLoader } from "~/routes/_layout"; // Import loader type
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  // Get loader data from the parent layout route
+  const data = useRouteLoaderData<typeof rootLayoutLoader>("routes/_layout");
+  const user = data?.session?.user; // Check if user exists in the session
 
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -40,12 +45,30 @@ export default function Navbar() {
 
           <div className="flex items-center space-x-4">
             <ModeToggle />
-            <Link
-              to="/login"
-              className="hidden md:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Login
-            </Link>
+            
+            {/* Desktop Auth Buttons */}
+            {user ? (
+              <div className="hidden md:flex items-center space-x-4">
+                <NavLink to="/family">Family Portal</NavLink>
+                <Form action="/logout" method="post">
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <LogOut className="h-4 w-4 mr-1" /> Logout
+                  </Button>
+                </Form>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="hidden md:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Login
+              </Link>
+            )}
             
             {/* Mobile Menu Button */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -76,9 +99,30 @@ export default function Navbar() {
                   <MobileNavLink to="/contact" onClick={() => setIsOpen(false)}>
                     Contact
                   </MobileNavLink>
-                  <MobileNavLink to="/login" onClick={() => setIsOpen(false)}>
-                    Login
-                  </MobileNavLink>
+                  
+                  {/* Mobile Auth Links */}
+                  {user ? (
+                    <>
+                      <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
+                        Family Portal
+                      </MobileNavLink>
+                      <Form action="/logout" method="post" className="px-4 py-3">
+                         <Button
+                           type="submit"
+                           variant="outline"
+                           size="sm"
+                           className="w-full justify-start text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                           onClick={() => setIsOpen(false)} // Close sheet on click
+                         >
+                           <LogOut className="h-5 w-5 mr-2 inline-block" /> Logout
+                         </Button>
+                       </Form>
+                    </>
+                  ) : (
+                    <MobileNavLink to="/login" onClick={() => setIsOpen(false)}>
+                      Login
+                    </MobileNavLink>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
