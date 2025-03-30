@@ -137,7 +137,6 @@ export default function FamilyPortal() {
                   >
                     {student.first_name} {student.last_name}
                   </Link>
-                  {/* TODO: Implement the /family/student/:studentId route */}
                 </li>
               ))}
             </ul>
