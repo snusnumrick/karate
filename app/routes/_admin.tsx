@@ -7,6 +7,7 @@ import AdminFooter from "~/components/AdminFooter"; // Import AdminFooter
 // Regular layout route for /admin/*
 // Loader protects the entire section
 export async function loader({ request }: LoaderFunctionArgs) {
+  console.log("--- HITTING /_admin LOADER ---"); // <<< ADDED THIS LINE FOR DEBUGGING
   console.log("Entering /_admin layout loader..."); // Updated log
   const { supabaseServer, response } = getSupabaseServerClient(request);
   const { data: { user } } = await supabaseServer.auth.getUser();
