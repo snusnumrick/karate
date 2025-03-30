@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS payments (
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_session_id text NULL;
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_url text NULL;
 -- Modify existing columns to be nullable if needed (optional, depends on if script was run before)
--- ALTER TABLE payments ALTER COLUMN payment_date DROP NOT NULL;
+ALTER TABLE payments ALTER COLUMN payment_date DROP NOT NULL; -- Make payment_date nullable
 -- ALTER TABLE payments ALTER COLUMN payment_method DROP NOT NULL;
 
 
