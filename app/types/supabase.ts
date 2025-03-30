@@ -185,6 +185,7 @@ export interface Database {
           payment_date: string
           payment_method: string
           status: 'pending' | 'completed' | 'failed'
+          notes: string | null // Add optional notes column
         }
         Insert: {
           amount: number
@@ -193,6 +194,7 @@ export interface Database {
           payment_date: string
           payment_method: string
           status: 'pending' | 'completed' | 'failed'
+          notes?: string | null // Add optional notes column
         }
         Update: {
           amount?: number
@@ -201,6 +203,7 @@ export interface Database {
           payment_date?: string
           payment_method?: string
           status?: 'pending' | 'completed' | 'failed'
+          notes?: string | null // Add optional notes column
         }
         Relationships: [
           {
