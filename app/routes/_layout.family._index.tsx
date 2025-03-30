@@ -144,9 +144,9 @@ export default function FamilyPortal() {
           ) : (
             <p className="text-gray-600 dark:text-gray-400">No students registered yet.</p>
           )}
-          {/* TODO: Re-evaluate Button/Link structure after resolving SSR issues */}
-          <Button className="mt-4">
-            <Link to="/register">Add Student</Link> {/* Link might need adjustment */}
+          {/* Link to the new dedicated page for adding a student to the current family */}
+          <Button asChild className="mt-4">
+            <Link to="/family/add-student">Add Student</Link>
           </Button>
         </div>
 
