@@ -12,8 +12,13 @@ if (!stripeSecretKey) {
 // Ensure Stripe version compatibility if needed, e.g., apiVersion: '2023-10-16'
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
+type SupabaseServerClientReturn = {
+    supabaseServer: ReturnType<typeof createServerClient>,
+    supabaseClient: ReturnType<typeof createServerClient>,
+    response: Response
+};
 
-export function getSupabaseServerClient(request: Request) {
+export function getSupabaseServerClient(request: Request) : SupabaseServerClientReturn {
   const response = new Response();
   
   const supabaseUrl = process.env.SUPABASE_URL || '';
