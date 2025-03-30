@@ -256,23 +256,3 @@ export default function FamilyPortal() {
     </div>
   );
 }
-              <Link to="/family/payment">Make Payment</Link>
-            </Button>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 italic">Add a student to enable payments.</p>
-          )}
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
-          {/* TODO: Link to profile/account management */}
-          <p className="text-gray-600 dark:text-gray-400">Links to update family/guardian info.</p>
-           <Button className="mt-4" disabled>
-             {/* <Link to="/account">Manage Account</Link> */}
-             <span>Manage Account (Coming Soon)</span>
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
