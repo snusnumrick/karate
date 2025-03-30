@@ -52,8 +52,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
         *,
         students ( first_name, last_name )
       `)
-      .eq('class_date', today)
-      .order('created_at', { ascending: false }); // Or order by student name if preferred
+      .eq('class_date', today);
+      // Removed: .order('created_at', { ascending: false }); - Column doesn't exist
+      // We will sort by student name after fetching
 
     if (error) {
       console.error("Error fetching attendance records:", error.message);
@@ -61,8 +62,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     console.log(`Admin attendance loader - Fetched ${attendanceRecords?.length ?? 0} records for today.`);
-    // Ensure students relation is at least null
+    // Ensure students relation is at least null and sort by student name
     const typedRecords = attendanceRecords?.map(r => ({ ...r, students: r.students ?? null })) ?? [];
+
+    // Sort by student last name, then first name
+    typedRecords.sort((a, b) => {
+       const nameA = `${a.students?.last_name ?? ''} ${a.students?.first_name ?? ''}`.toLowerCase().trim();
+       const nameB = `${b.students?.last_name ?? ''} ${b.students?.first_name ?? ''}`.toLowerCase().trim();
+       if (nameA < nameB) return -1;
+       if (nameA > nameB) return 1;
+       return 0;
+    });
+
     return json({ attendanceRecords: typedRecords, attendanceDate: today });
 
   } catch (error) {
