@@ -1,8 +1,8 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useRouteError } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from "~/types/supabase"; // Assuming your generated types are here
-import { Button } from "~/components/ui/button"; // Assuming you have a Button component
+import type { Database } from "~/types/supabase";
+import { Button } from "~/components/ui/button";
 import {
   Table,
   TableBody,
@@ -29,15 +29,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
   try {
-    console.log("Admin families loader - Fetching all families and related primary contact profiles using service role...");
-    // Fetch family data and related primary contact profile data
-    // Assumes 'primary_contact_user_id' is the FK in 'families' pointing to 'profiles.id'
+    console.log("Admin families loader - Fetching all families and related guardians using service role...");
+    // Fetch family data and related guardian names
     const { data: families, error } = await supabaseAdmin
       .from('families')
       .select(`
         *,
-        primary_contact: profiles ( first_name, last_name )
-      `)
+        guardians ( first_name, last_name ) 
+      `) // Fetch names from the related guardians table
       .order('name', { ascending: true }); // Order by family name
 
     if (error) {
@@ -61,7 +60,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function FamiliesAdminPage() {
-  const { families } = useLoaderData<typeof loader>();
+  // Use the specific type for the loader data
+  const { families } = useLoaderData<{ families: FamilyWithGuardians[] }>();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -90,10 +90,10 @@ export default function FamiliesAdminPage() {
               {families.map((family) => (
                 <TableRow key={family.id}>
                   <TableCell className="font-medium">{family.name}</TableCell>
-                  {/* Display primary contact name from related profile */}
+                  {/* Display name of the first guardian as primary contact */}
                   <TableCell>
-                    {family.primary_contact 
-                      ? `${family.primary_contact.first_name || ''} ${family.primary_contact.last_name || ''}`.trim() 
+                    {family.guardians && family.guardians.length > 0 && family.guardians[0]
+                      ? `${family.guardians[0].first_name || ''} ${family.guardians[0].last_name || ''}`.trim()
                       : 'N/A'}
                   </TableCell>
                   <TableCell>{family.email}</TableCell>
