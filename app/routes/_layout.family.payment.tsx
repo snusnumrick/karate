@@ -83,6 +83,11 @@ export default function FamilyPaymentPage() {
 
     const isProcessing = fetcher.state !== 'idle';
 
+    // Log fetcher state and data on every render for debugging
+    console.log("Fetcher state:", fetcher.state);
+    console.log("Fetcher data:", fetcher.data);
+
+
     // Effect to load Stripe.js
     useEffect(() => {
         if (stripePublishableKey) {
@@ -100,7 +105,9 @@ export default function FamilyPaymentPage() {
 
     // Effect to handle redirect after fetcher gets sessionId
     useEffect(() => {
+        console.log("Effect check: fetcher.data:", fetcher.data, "stripe loaded:", !!stripe); // Log effect trigger
         if (fetcher.data?.sessionId && stripe) {
+            console.log("Attempting redirect to Stripe Checkout with session ID:", fetcher.data.sessionId); // Log redirect attempt
             stripe.redirectToCheckout({ sessionId: fetcher.data.sessionId })
                 .then(result => {
                     // If redirectToCheckout fails (e.g., network error), show error
@@ -189,6 +196,7 @@ export default function FamilyPaymentPage() {
             method: 'post',
             action: '/api/create-checkout-session', // Target the API route
         });
+        console.log("Form submitted to fetcher."); // Log submission call
     };
 
     return (
