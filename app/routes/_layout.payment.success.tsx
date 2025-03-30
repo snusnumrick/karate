@@ -20,9 +20,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       *,
       family:family_id (name)
     `)
-    .eq('session_id', sessionId)
+    .eq('stripe_session_id', sessionId) // Use the correct column name
     .single();
-    
+
   if (error || !payment) {
     return json({ error: "Payment not found" }, { status: 404 });
   }
@@ -31,8 +31,39 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function PaymentSuccess() {
-  const { payment } = useLoaderData() as { payment: { amount: number; family_id: string; id: string; payment_date: string; payment_method: string; status: "pending" | "completed" | "failed"; family: { name: string } | null; receipt_url?: string } };
-  
+  const loaderData = useLoaderData<typeof loader>();
+
+  // Handle case where loader returned an error
+  if ('error' in loaderData) {
+    return (
+      <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg text-center">
+        <h1 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">Error Loading Payment Details</h1>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">{loaderData.error}</p>
+        <Link
+            to="/"
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+          >
+            Return Home
+          </Link>
+      </div>
+    );
+  }
+
+  // Now we know payment exists
+  const { payment } = loaderData;
+
+  // Type assertion for easier access, matching the updated enum
+  const typedPayment = payment as {
+      amount: number;
+      family_id: string;
+      id: string;
+      payment_date: string | null; // Can be null if webhook hasn't run yet
+      payment_method: string | null; // Can be null
+      status: "pending" | "succeeded" | "failed";
+      family: { name: string } | null;
+      receipt_url?: string | null;
+  };
+
   return (
     <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
       <div className="text-center">
