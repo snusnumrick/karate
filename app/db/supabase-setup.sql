@@ -157,7 +157,8 @@ CREATE TABLE IF NOT EXISTS attendance (
                                           student_id uuid REFERENCES students(id) ON DELETE CASCADE NOT NULL,
                                           class_date date NOT NULL,
                                           present boolean NOT NULL,
-                                          notes text
+                                          notes text,
+                                          CONSTRAINT attendance_class_date_student_id_key UNIQUE (class_date, student_id) -- Add unique constraint
 );
 
 DO $$
@@ -168,6 +169,18 @@ DO $$
             CREATE INDEX idx_attendance_student_id ON attendance (student_id);
         END IF;
     END$$;
+
+-- Ensure the unique constraint exists even if the table was created previously without it
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'attendance_class_date_student_id_key' AND conrelid = 'public.attendance'::regclass
+    ) THEN
+        ALTER TABLE public.attendance ADD CONSTRAINT attendance_class_date_student_id_key UNIQUE (class_date, student_id);
+    END IF;
+END;
+$$;
 
 -- Waivers table
 CREATE TABLE IF NOT EXISTS waivers (
