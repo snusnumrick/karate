@@ -165,12 +165,16 @@ export default function FamilyPortal() {
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">Payments</h2>
-          {/* TODO: Link to payment history and initiation */}
-          <p className="text-gray-600 dark:text-gray-400">Payment history and options will appear here.</p>
-           <Button className="mt-4" disabled>
-             {/* <Link to="/payment">Make Payment</Link> */}
-             <span>Make Payment (Coming Soon)</span>
-          </Button>
+          {/* Link to payment initiation */}
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Proceed to make a payment for class fees.</p>
+          {/* Only show button if there are students */}
+          {family.students && family.students.length > 0 ? (
+            <Button asChild className="mt-4">
+              <Link to="/family/payment">Make Payment</Link>
+            </Button>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400 italic">Add a student to enable payments.</p>
+          )}
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
