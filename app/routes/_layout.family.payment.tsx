@@ -1,19 +1,24 @@
 import {json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, TypedResponse} from "@remix-run/node";
-import {Form, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
-import {getSupabaseServerClient, createPaymentSession} from "~/utils/supabase.server";
-import {Button} from "~/components/ui/button";
-import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
+import { useLoaderData, useFetcher, Link } from "@remix-run/react"; // Use useFetcher, remove Form, useNavigation, useActionData
+import { useState, useEffect } from "react"; // Add React hooks
+import { loadStripe, type Stripe } from '@stripe/stripe-js'; // Import Stripe.js
+import { getSupabaseServerClient } from "~/utils/supabase.server"; // Remove createPaymentSession import
+import { Button } from "~/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { Link } from "@remix-run/react"; // Ensure Link is imported
 
-// Loader to get family ID and student IDs
+
+// Loader data interface
 export interface LoaderData {
     familyId: string;
     studentIds: string[];
+    stripePublishableKey: string | null; // Add Stripe publishable key
     error?: string;
 }
 
-export async function loader({request}: LoaderFunctionArgs)
-    : Promise<TypedResponse<LoaderData>> {
+// Loader function
+export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
     const {data: {user}} = await supabaseServer.auth.getUser();
@@ -131,7 +136,22 @@ export default function FamilyPaymentPage() {
         );
     }
 
-    // Handle other potential loader errors (though they should throw Response)
+    // Handle missing Stripe key from loader
+    if (!stripePublishableKey) {
+         return (
+             <div className="container mx-auto px-4 py-8">
+                 <Alert variant="destructive">
+                     <ExclamationTriangleIcon className="h-4 w-4"/>
+                     <AlertTitle>Configuration Error</AlertTitle>
+                     <AlertDescription>
+                         Payment processing is not configured correctly. Please contact support.
+                     </AlertDescription>
+                 </Alert>
+             </div>
+         );
+    }
+
+    // Handle other potential loader errors (e.g., failed to get familyId/students)
     if (!familyId || !studentIds) {
         return (
             <div className="container mx-auto px-4 py-8">
@@ -139,26 +159,48 @@ export default function FamilyPaymentPage() {
                     <ExclamationTriangleIcon className="h-4 w-4"/>
                     <AlertTitle>Error</AlertTitle>
                     <AlertDescription>
-                        Could not load necessary payment information. Please go back and try again.
+                        Could not load necessary payment information. Please go back and try again or contact support.
                     </AlertDescription>
                 </Alert>
             </div>
         );
     }
 
+    // TODO: Determine the actual amount dynamically (e.g., based on number of students, selected plan, etc.)
+    // For now, using a placeholder amount. Ensure this is in the smallest currency unit (e.g., cents).
+    const amountInCents = 5000; // Example: $50.00
+    const paymentAmountDisplay = `$${(amountInCents / 100).toFixed(2)}`; // Format for display
 
-    // TODO: Add more details about the payment (amount, what it covers)
-    const paymentAmountDisplay = "$50.00"; // Example display amount
+    // Handle form submission
+    const handlePaymentSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setClientError(null); // Clear previous errors
+
+        if (!stripe) {
+            setClientError("Payment system is not ready. Please wait a moment or refresh.");
+            return;
+        }
+
+        const formData = new FormData(event.currentTarget);
+        // Add amountInCents to the form data for the fetcher
+        formData.set('amountInCents', String(amountInCents));
+
+        fetcher.submit(formData, {
+            method: 'post',
+            action: '/api/create-checkout-session', // Target the API route
+        });
+    };
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-md">
             <h1 className="text-2xl font-bold mb-6 text-center">Make Payment</h1>
 
-            {actionData?.error && (
+            {/* Display errors from client-side state (Stripe load/redirect) or fetcher */}
+            {(clientError || fetcher.data?.error) && (
                 <Alert variant="destructive" className="mb-4">
                     <ExclamationTriangleIcon className="h-4 w-4"/>
                     <AlertTitle>Payment Error</AlertTitle>
-                    <AlertDescription>{actionData.error}</AlertDescription>
+                    <AlertDescription>{clientError || fetcher.data?.error}</AlertDescription>
                 </Alert>
             )}
 
