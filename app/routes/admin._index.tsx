@@ -1,20 +1,36 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useRouteError, useLoaderData } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { createClient } from '@supabase/supabase-js'; // Import createClient
 
 // Loader now only fetches data, assumes auth handled by parent layout (admin.tsx)
 export async function loader({ request }: LoaderFunctionArgs) {
   console.log("Entering /admin/index loader (data fetch only)..."); // Updated log
-  const { supabaseServer, response } = getSupabaseServerClient(request);
+  // Get headers from the user-context client helper
+  const { response } = getSupabaseServerClient(request);
   const headers = response.headers;
 
-  // --- Data fetching logic ---
+  // Create a service role client for admin-level data fetching
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("Admin index loader: Missing Supabase URL or Service Role Key env variables.");
+    // Preserve headers in error response
+    const headersObj = Object.fromEntries(headers);
+    throw new Response("Server configuration error.", { status: 500, headers: headersObj });
+  }
+
+  // Use service role client for admin data access
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+  // --- Data fetching logic using supabaseAdmin ---
   try {
-    console.log("Admin index loader - Fetching dashboard data..."); // Add log
+    console.log("Admin index loader - Fetching dashboard data using service role..."); // Add log
 
     // --- Data fetching logic ---
-    // Fetch required waiver IDs first
-    const { data: requiredWaivers, error: requiredWaiversError } = await supabaseServer
+    // Fetch required waiver IDs first (using admin client)
+    const { data: requiredWaivers, error: requiredWaiversError } = await supabaseAdmin
         .from('waivers')
         .select('id')
         .eq('required', true);
@@ -39,20 +55,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
       // Simplified approach: Count users missing *at least one* required waiver
       { data: usersWithAnySignature, error: usersSignaturesError } // Fetch users who signed *any* required waiver
     ] = await Promise.all([
-      supabaseServer.from('families').select('id', { count: 'exact', head: true }),
-      supabaseServer.from('students').select('id', { count: 'exact', head: true }),
-      supabaseServer.from('payments').select('amount').eq('status', 'completed'),
-      supabaseServer.from('attendance')
+      supabaseAdmin.from('families').select('id', { count: 'exact', head: true }), // Use admin client
+      supabaseAdmin.from('students').select('id', { count: 'exact', head: true }), // Use admin client
+      supabaseAdmin.from('payments').select('amount').eq('status', 'completed'), // Use admin client
+      supabaseAdmin.from('attendance')
           .select('id', { count: 'exact', head: true })
           .eq('class_date', new Date().toISOString().split('T')[0]) // Today's date
-          .eq('present', true),
-      supabaseServer.from('payments')
+          .eq('present', true), // Use admin client
+      supabaseAdmin.from('payments')
           .select('family_id', { count: 'exact', head: true }) // Count distinct families
-          .eq('status', 'pending'),
+          .eq('status', 'pending'), // Use admin client
       // Fetch distinct user_ids who have signed *at least one* required waiver
-      supabaseServer.from('waiver_signatures')
+      supabaseAdmin.from('waiver_signatures')
           .select('user_id', { count: 'exact', head: true }) // Count distinct users
-          .in('waiver_id', requiredWaiverIds)
+          .in('waiver_id', requiredWaiverIds) // Use admin client
     ]);
 
     // --- Error Handling ---
@@ -76,8 +92,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const totalPaymentAmount = completedPayments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
 
     // Placeholder for missing waivers count - needs refinement
-    // Fetch total active users vs signed users
-    const { count: totalUserCount, error: totalUserError } = await supabaseServer
+    // Fetch total active users vs signed users (using admin client)
+    const { count: totalUserCount, error: totalUserError } = await supabaseAdmin
         .from('profiles')
         .select('id', { count: 'exact', head: true })
         .eq('role', 'user'); // Assuming 'user' role means active family member
