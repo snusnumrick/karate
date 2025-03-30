@@ -29,10 +29,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
   try {
-    console.log("Admin families loader - Fetching all families using service role...");
+    console.log("Admin families loader - Fetching all families and related primary contact profiles using service role...");
+    // Fetch family data and related primary contact profile data
+    // Assumes 'primary_contact_user_id' is the FK in 'families' pointing to 'profiles.id'
     const { data: families, error } = await supabaseAdmin
       .from('families')
-      .select('*') // Select all columns for now
+      .select(`
+        *,
+        primary_contact: profiles ( first_name, last_name )
+      `)
       .order('name', { ascending: true }); // Order by family name
 
     if (error) {
@@ -85,8 +90,12 @@ export default function FamiliesAdminPage() {
               {families.map((family) => (
                 <TableRow key={family.id}>
                   <TableCell className="font-medium">{family.name}</TableCell>
-                  {/* Assuming primary contact info is directly on family for now */}
-                  <TableCell>{family.primary_contact_name || 'N/A'}</TableCell> 
+                  {/* Display primary contact name from related profile */}
+                  <TableCell>
+                    {family.primary_contact 
+                      ? `${family.primary_contact.first_name || ''} ${family.primary_contact.last_name || ''}`.trim() 
+                      : 'N/A'}
+                  </TableCell>
                   <TableCell>{family.email}</TableCell>
                   <TableCell>{family.primary_phone}</TableCell>
                   <TableCell>
