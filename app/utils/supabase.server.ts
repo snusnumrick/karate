@@ -73,20 +73,25 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
   return data.role === 'admin';
 }
 
-export async function createPaymentSession(
+// Renamed from createPaymentSession - This function ONLY creates the initial DB record.
+export async function createInitialPaymentRecord(
   familyId: string,
   amount: number, // Amount in smallest currency unit (e.g., cents)
   studentIds: string[],
-  request: Request // Pass request to get base URL
+  // No longer needs request object or Stripe logic here
 ) {
-  if (!stripe) {
-    console.error("Stripe is not initialized. Cannot create payment session.");
-    return { error: "Payment system not configured.", sessionUrl: null };
+  // Use the standard client with service role for creating payment records server-side
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Missing Supabase environment variables for payment record creation.');
+    return { data: null, error: 'Server configuration error for payment record creation.' };
   }
+  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-  const { supabaseServer } = getSupabaseServerClient(request); // Use request-specific client if needed
 
-  // 1. Create a pending payment record in Supabase
+  // Create a pending payment record in Supabase
   const { data: paymentRecord, error: insertError } = await supabaseServer
     .from('payments')
     .insert({
@@ -94,75 +99,33 @@ export async function createPaymentSession(
       amount: amount, // Store amount in cents
       student_ids: studentIds,
       status: 'pending',
-      // payment_date will be set on success
+      // payment_date will be set on success by webhook/updatePaymentStatus
     })
     .select('id') // Select the ID of the newly created record
     .single();
 
   if (insertError || !paymentRecord) {
     console.error('Supabase payment insert error:', insertError?.message);
-    return { error: 'Failed to create payment record.', sessionUrl: null };
+    return { data: null, error: `Failed to create payment record: ${insertError.message}` };
   }
 
-  const supabasePaymentId = paymentRecord.id;
+  // Return the newly created payment record ID and null error
+  return { data: { id: paymentRecord.id }, error: null };
+}
 
-  // 2. Create a Stripe Checkout session
-  const successUrl = process.env.STRIPE_SUCCESS_URL || new URL('/payment/success', new URL(request.url).origin).toString();
-  const cancelUrl = process.env.STRIPE_CANCEL_URL || new URL('/family', new URL(request.url).origin).toString(); // Redirect back to family portal on cancel
 
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd', // Or your desired currency
-            product_data: {
-              name: 'Karate Class Fees', // Customize as needed
-              // description: `Payment for student(s): ${studentIds.join(', ')}`, // Optional description
-            },
-            unit_amount: amount, // Amount in cents
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`, // Pass session ID on success
-      cancel_url: cancelUrl,
-      client_reference_id: supabasePaymentId, // Link Stripe session to Supabase payment record ID
-      // You might want to prefill customer email if available
-      // customer_email: userEmail,
-      metadata: { // Add any other relevant metadata
-          familyId: familyId,
-          // studentIds: studentIds.join(','), // Metadata values must be strings
-      }
-    });
+export async function updatePaymentStatus(
+  stripeSessionId: string, // Use Stripe session ID to find the record
+  status: Payment['status'],
+  receiptUrl?: string // Stripe might provide this in the webhook event
+) {
+  // Use the standard client with service role for webhooks/server-side updates
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!session.url || !session.id) {
-       throw new Error('Stripe session creation failed: Missing URL or ID.');
-    }
-
-    // 3. Update the Supabase payment record with the Stripe session ID
-    const { error: updateError } = await supabaseServer
-      .from('payments')
-      .update({ stripe_session_id: session.id }) // Store the Stripe session ID
-      .eq('id', supabasePaymentId);
-
-    if (updateError) {
-      console.error('Supabase payment update error (stripe_session_id):', updateError.message);
-      // Consider how to handle this - the user might proceed to pay, but linking fails.
-      // Maybe attempt to refund/cancel the Stripe session if possible? Or log for manual reconciliation.
-      return { error: 'Failed to link payment session.', sessionUrl: null };
-    }
-
-    // 4. Return the Stripe session URL for redirection
-    return { sessionUrl: session.url, error: null };
-
-  } catch (stripeError: any) {
-    console.error('Stripe Checkout session creation error:', stripeError.message);
-    // Optionally delete the pending Supabase payment record here if Stripe fails
-    // await supabaseServer.from('payments').delete().eq('id', supabasePaymentId);
-    return { error: `Payment initiation failed: ${stripeError.message}`, sessionUrl: null };
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Missing Supabase environment variables for payment update.');
+    throw new Error('Server configuration error for payment update.');
   }
 }
 
