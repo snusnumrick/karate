@@ -4,7 +4,7 @@ import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Database} from "~/types/supabase"; // Import Database type
-import {z, ZodIssue} from "zod"; // For validation
+import {z} from "zod"; // For validation
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {Form as UIForm, FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form"; // Shadcn Form components
@@ -595,7 +595,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                         employer_phone: getDefaultValue(guardian.employer_phone),
                         employer_notes: getDefaultValue(guardian.employer_notes),
                     });
-                }, [guardian, guardianForm]); // Keep dependencies
+                }, []); // Keep dependencies
 
                 return (
                     <UIForm {...guardianForm}>
