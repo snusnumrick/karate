@@ -311,9 +311,13 @@ export default function AccountSettingsPage() {
         <div className="container mx-auto px-4 py-8 space-y-8">
             <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family
                 Portal</Link>
-            <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
+            
+            <ClientOnly fallback={<div className="text-center p-8">Loading account settings...</div>}>
+                {() => (
+                    <> {/* Use fragment to avoid adding extra div */}
+                        <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
 
-            {/* General Action Feedback */}
+                        {/* General Action Feedback */}
             {actionData && actionData.status === 'success' && (
                 <Alert variant="default"
                        className="bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700">
@@ -332,8 +336,7 @@ export default function AccountSettingsPage() {
 
 
             {/* --- Family Information Form --- */}
-            <ClientOnly>
-                {() => (
+            {/* Removed ClientOnly wrapper from here */}
                     <UIForm {...familyForm}>
                         <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
@@ -499,8 +502,7 @@ export default function AccountSettingsPage() {
                     </Button>
                         </Form>
                     </UIForm>
-                )}
-            </ClientOnly>
+            {/* Removed ClientOnly wrapper closing tags */}
 
 
             {/* --- Guardian Information Forms --- */}
@@ -517,6 +519,9 @@ export default function AccountSettingsPage() {
                     soon.</p>
                 {/* TODO: Add password change form, email preferences, etc. */}
             </div>
+                    </> 
+                )}
+            </ClientOnly>
         </div>
     );
 }
@@ -575,8 +580,8 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
     const formIntent = `updateGuardian-${guardian.id}`; // Unique intent for submission check
 
     return (
-        <ClientOnly>
-            {() => (
+        // Removed ClientOnly wrapper from GuardianForm component itself
+        // The parent AccountSettingsPage now handles client-only rendering
                 <UIForm {...guardianForm}>
                     <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                         <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
@@ -729,7 +734,6 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                         </Button>
                     </Form>
                 </UIForm>
-            )}
-        </ClientOnly>
+        // Removed ClientOnly closing tags
     );
 }
