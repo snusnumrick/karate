@@ -449,19 +449,18 @@ export default function FamilyPaymentPage() {
 
             {/* Payment Form - Submits selected students and calculated total */}
             <form onSubmit={handlePaymentSubmit}>
+                {/* Hidden fields for family info */}
                 <input type="hidden" name="familyId" value={familyId} />
-                <input type="hidden" name="familyName" value={familyName} /> {/* Add hidden input for family name */}
-                {/* Pass student IDs as a comma-separated string using the derived array */}
-                <input type="hidden" name="studentIds" value={studentIdsForForm.join(',')} />
-                {/* Amount is added dynamically in handleSubmit */}
+                <input type="hidden" name="familyName" value={familyName} />
+                {/* studentIds and amountInCents are added dynamically in handlePaymentSubmit */}
+
                 <Button
                     type="submit"
                     className="w-full"
-                    // Disable while fetcher is working, Stripe is loading, or if no students
-                    // Use the derived studentIdsForForm array for the check
-                    disabled={isProcessing || !stripe || studentIdsForForm.length === 0}
+                    // Disable if processing, stripe not loaded, no student selected, or total is 0
+                    disabled={isProcessing || !stripe || selectedStudentIds.size === 0 || currentTotalInCents <= 0}
                 >
-                    {isProcessing ? "Processing..." : `Proceed to Pay ${paymentAmountDisplay}`}
+                    {isProcessing ? "Processing..." : `Proceed to Pay ${currentTotalDisplay}`}
                 </Button>
             </form>
             <div className="mt-4 text-center">
