@@ -648,17 +648,22 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                             />
                         )}
                     </ClientOnly>
-                    <FormField
-                        control={guardianForm.control}
-                        name="last_name"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Last Name</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                    
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="last_name"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Last Name</FormLabel>
+                                        <FormControl><Input {...field} /></FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
+                    </ClientOnly>
                     <ClientOnly>
                         {() => (
                             <FormField
@@ -679,95 +684,126 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                                 <SelectItem value="Other">Other</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                <FormMessage/>
-                            </FormItem>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="home_phone"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Home Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field} /></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                    </ClientOnly>
+                    
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="home_phone"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Home Phone</FormLabel>
+                                        <FormControl><Input type="tel" {...field} /></FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="cell_phone"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Cell Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field} /></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                    </ClientOnly>
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="cell_phone"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Cell Phone</FormLabel>
+                                        <FormControl><Input type="tel" {...field} /></FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="email"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl><Input type="email" {...field} /></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                    </ClientOnly>
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="email"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Email</FormLabel>
+                                        <FormControl><Input type="email" {...field} /></FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="work_phone"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Work Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field}
-                                                    value={getDefaultValue(field.value)}/></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                    </ClientOnly>
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="work_phone"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Work Phone</FormLabel>
+                                        <FormControl><Input type="tel" {...field}
+                                                            value={getDefaultValue(field.value)}/></FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="employer"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Employer</FormLabel>
-                                <FormControl><Input {...field} value={getDefaultValue(field.value)}/></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                    </ClientOnly>
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="employer"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Employer</FormLabel>
+                                        <FormControl><Input {...field} value={getDefaultValue(field.value)}/></FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="employer_phone"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Employer Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field}
-                                                    value={getDefaultValue(field.value)}/></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                    </ClientOnly>
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="employer_phone"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Employer Phone</FormLabel>
+                                        <FormControl><Input type="tel" {...field}
+                                                            value={getDefaultValue(field.value)}/></FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="employer_notes"
-                        render={({field}) => (
-                            <FormItem className="md:col-span-2">
-                                <FormLabel>Employer Notes</FormLabel>
-                                <FormControl><Textarea {...field} value={getDefaultValue(field.value)}/></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                    </ClientOnly>
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="employer_notes"
+                                render={({field}) => (
+                                    <FormItem className="md:col-span-2">
+                                        <FormLabel>Employer Notes</FormLabel>
+                                        <FormControl><Textarea {...field} value={getDefaultValue(field.value)}/></FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
+                    </ClientOnly>
                 </div>
 
                 <Button type="submit" disabled={isSubmitting} name="intent" value={formIntent}>
                     {isSubmitting && navigation.formData?.get('guardianId') === guardian.id ? 'Saving...' : `Update Guardian #${index}`}
                 </Button>
-                    </Form>
+                </Form>
                 </UIForm>
             )}
         </ClientOnly>
