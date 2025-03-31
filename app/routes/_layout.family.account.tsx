@@ -252,28 +252,33 @@ export default function AccountSettingsPage() {
     const isSubmitting = navigation.state === "submitting";
 
     // --- Family Form ---
-    const familyForm = useForm<FamilyFormData>({
-        resolver: zodResolver(familySchema),
-        // Initialize with empty/default values, not directly from loader data
-        defaultValues: {
-            intent: 'updateFamily',
-            name: '',
-            address: '',
-            city: '',
-            province: '',
-            postal_code: '',
-            primary_phone: '',
-            email: '',
-            referral_source: '',
-            referral_name: '',
-            emergency_contact: '',
-            health_info: '',
-            notes: '',
-        },
+    const familyForm = ClientOnly({
+        fallback: null,
+        children: () => useForm<FamilyFormData>({
+            resolver: zodResolver(familySchema),
+            // Initialize with empty/default values, not directly from loader data
+            defaultValues: {
+                intent: 'updateFamily',
+                name: '',
+                address: '',
+                city: '',
+                province: '',
+                postal_code: '',
+                primary_phone: '',
+                email: '',
+                referral_source: '',
+                referral_name: '',
+                emergency_contact: '',
+                health_info: '',
+                notes: '',
+            },
+        })
+        })
     });
 
     // Reset form with loader data on client side
-    useClientEffect(() => {
+    useEffect(() => {
+        if (!familyForm) return;
         if (family) {
             familyForm.reset({
                 intent: 'updateFamily',
@@ -333,7 +338,8 @@ export default function AccountSettingsPage() {
 
             {/* --- Family Information Form --- */}
             {/* Removed ClientOnly wrapper */}
-            <UIForm {...familyForm}>
+            <ClientOnly fallback={<div>Loading family form...</div>}>
+                <UIForm {...familyForm}>
                 <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
                     <input type="hidden" name="intent" value="updateFamily"/>
@@ -498,7 +504,9 @@ export default function AccountSettingsPage() {
                         {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
                     </Button>
                 </Form>
-            </UIForm>
+                    </UIForm>
+                </ClientOnly>
+            </ClientOnly>
             {/* End of removed ClientOnly wrapper */}
 
 
@@ -532,7 +540,9 @@ interface GuardianFormProps {
 }
 
 function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: GuardianFormProps) {
-    const guardianForm = useForm<GuardianFormData>({
+    const guardianForm = ClientOnly({
+        fallback: null,
+        children: () => useForm<GuardianFormData>({
         resolver: zodResolver(guardianSchema),
         // Initialize with empty/default values
         defaultValues: {
@@ -572,7 +582,8 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
     const formIntent = `updateGuardian-${guardian.id}`; // Unique intent for submission check
 
     return (
-        <UIForm {...guardianForm}>
+        <ClientOnly fallback={<div>Loading guardian form...</div>}>
+            <UIForm {...guardianForm}>
             <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                 <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
                 <input type="hidden" name="intent" value="updateGuardian"/>
