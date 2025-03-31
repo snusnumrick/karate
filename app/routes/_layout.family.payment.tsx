@@ -5,8 +5,9 @@ import { loadStripe, type Stripe } from '@stripe/stripe-js'; // Import Stripe.js
 import { getSupabaseServerClient } from "~/utils/supabase.server"; // Remove createPaymentSession import
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { ExclamationTriangleIcon, InfoCircledIcon } from "@radix-ui/react-icons"; // Add InfoCircledIcon
 import { Link } from "@remix-run/react"; // Ensure Link is imported
+import { siteConfig } from "~/config/site"; // Import site config
 
 
 // Loader data interface

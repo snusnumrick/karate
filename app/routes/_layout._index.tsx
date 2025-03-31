@@ -27,7 +27,8 @@ export default function Index() {
                 &ldquo;This class is an introduction to one of the most sophisticated martial arts ‒ the Art of Karate.
                 While karate focuses on defence techniques, its teaching goes far beyond fighting&rdquo;
               </p>
-              <Link 
+              <p className="text-lg mb-4 italic">{siteConfig.pricing.freeTrial} available!</p> {/* Add free trial mention */}
+              <Link
                 to="/register"
                 className="inline-block bg-white text-green-600 font-bold py-3 px-8 rounded-lg text-lg hover:bg-gray-100 transition"
               >
