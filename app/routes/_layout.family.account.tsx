@@ -364,8 +364,8 @@ export default function AccountSettingsPage() {
                                 </FormItem>
                             )}
                         />
-                    )}
-                </ClientOnly>
+                    )} 
+                </ClientOnly> 
                         
                         <ClientOnly>
                             {() => (
