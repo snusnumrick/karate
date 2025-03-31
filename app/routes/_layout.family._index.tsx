@@ -7,20 +7,12 @@ import { Link } from "@remix-run/react";
 import { Database } from "~/types/supabase";
 import { format } from 'date-fns'; // For formatting dates
 
-export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
-    students?: Database["public"]["Tables"]["students"]["Row"][]; // adjust if you have a specific type for students
-    payments?: (
-        Database["public"]["Tables"]["payments"]["Row"] & {
-        payment_students: {
-            student_id: string;
-        }[];
-    }
-        )[];
 // Extend student type within FamilyData to include eligibility
 type StudentWithEligibility = Database["public"]["Tables"]["students"]["Row"] & {
     eligibility: EligibilityStatus;
 };
 
+// Define FamilyData using the extended student type
 export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
     students?: StudentWithEligibility[]; // Use the extended student type
     payments?: (
