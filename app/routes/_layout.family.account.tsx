@@ -273,7 +273,6 @@ export default function AccountSettingsPage() {
                 notes: '',
             },
         })
-        })
     });
 
     // Reset form with loader data on client side
