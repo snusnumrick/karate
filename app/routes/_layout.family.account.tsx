@@ -345,7 +345,6 @@ export default function AccountSettingsPage() {
 
 
             {/* --- Family Information Form --- */}
-            {/* Removed ClientOnly wrapper from here */}
                     <UIForm {...familyForm}>
                         <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
@@ -520,7 +519,6 @@ export default function AccountSettingsPage() {
                     </Button>
                         </Form>
                     </UIForm>
-            {/* Removed ClientOnly wrapper closing tags */}
 
 
             {/* --- Guardian Information Forms --- */}
@@ -599,8 +597,6 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
     return (
         // REMOVE ClientOnly wrapper from GuardianForm UI - rely on parent and specific component wrappers
         // Fallback logic might need adjustment if loading state is desired here
-        // <ClientOnly fallback={...}>
-        //    {() => (
                 <UIForm {...guardianForm}>
                     <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                             <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
@@ -765,8 +761,5 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                         </Button>
                         </Form>
                     </UIForm>
-        // REMOVE ClientOnly closing tags
-        //    )}
-        // </ClientOnly>
     );
 }
