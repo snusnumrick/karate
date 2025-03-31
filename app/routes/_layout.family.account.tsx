@@ -353,11 +353,9 @@ export default function AccountSettingsPage() {
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <ClientOnly>
-                           {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="name"
+                        <FormField
+                            control={familyForm.control}
+                            name="name"
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Family Last Name</FormLabel>
@@ -366,14 +364,10 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
                         
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="primary_phone"
+                        <FormField
+                            control={familyForm.control}
+                            name="primary_phone"
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Primary Phone</FormLabel>
@@ -382,14 +376,10 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
                         
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="email"
+                        <FormField
+                            control={familyForm.control}
+                            name="email"
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Family Email</FormLabel>
@@ -398,13 +388,9 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="address"
+                        <FormField
+                            control={familyForm.control}
+                            name="address"
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Home Address</FormLabel>
@@ -413,13 +399,9 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="city"
+                        <FormField
+                            control={familyForm.control}
+                            name="city"
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>City</FormLabel>
@@ -428,13 +410,9 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="province"
+                        <FormField
+                            control={familyForm.control}
+                            name="province"
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Province</FormLabel>
@@ -465,14 +443,10 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
                         
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="postal_code"
+                        <FormField
+                            control={familyForm.control}
+                            name="postal_code"
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Postal Code</FormLabel>
@@ -481,14 +455,10 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
                         {/* Optional Fields */}
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="emergency_contact"
+                        <FormField
+                            control={familyForm.control}
+                            name="emergency_contact"
                                     render={({field}) => (
                                         <FormItem className="md:col-span-2">
                                             <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
@@ -498,13 +468,9 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="health_info"
+                        <FormField
+                            control={familyForm.control}
+                            name="health_info"
                                     render={({field}) => (
                                         <FormItem className="md:col-span-2">
                                             <FormLabel>Personal Health Number / Info</FormLabel>
@@ -514,13 +480,9 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
-                        <ClientOnly>
-                            {() => (
-                                <FormField
-                                    control={familyForm.control}
-                                    name="notes"
+                        <FormField
+                            control={familyForm.control}
+                            name="notes"
                                     render={({field}) => (
                                         <FormItem className="md:col-span-2">
                                             <FormLabel>Family Notes (Internal Use)</FormLabel>
@@ -530,8 +492,6 @@ export default function AccountSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
-                            )}
-                        </ClientOnly>
                     </div>
 
                     <Button type="submit" disabled={isSubmitting}>
@@ -637,11 +597,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <ClientOnly>
-                                {() => (
-                                    <FormField
-                                        control={guardianForm.control}
-                                        name="first_name"
+                            <FormField
+                                control={guardianForm.control}
+                                name="first_name"
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>First Name</FormLabel>
@@ -650,14 +608,10 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                             </FormItem>
                                         )}
                                     />
-                                )}
-                            </ClientOnly>
                     
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="last_name"
+                    <FormField
+                        control={guardianForm.control}
+                        name="last_name"
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Last Name</FormLabel>
@@ -666,13 +620,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="relationship"
+                    <FormField
+                        control={guardianForm.control}
+                        name="relationship"
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Relationship</FormLabel>
@@ -692,14 +642,10 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
                     
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="home_phone"
+                    <FormField
+                        control={guardianForm.control}
+                        name="home_phone"
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Home Phone</FormLabel>
@@ -708,13 +654,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="cell_phone"
+                    <FormField
+                        control={guardianForm.control}
+                        name="cell_phone"
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Cell Phone</FormLabel>
@@ -723,13 +665,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="email"
+                    <FormField
+                        control={guardianForm.control}
+                        name="email"
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Email</FormLabel>
@@ -738,13 +676,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="work_phone"
+                    <FormField
+                        control={guardianForm.control}
+                        name="work_phone"
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Work Phone</FormLabel>
@@ -754,13 +688,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="employer"
+                    <FormField
+                        control={guardianForm.control}
+                        name="employer"
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Employer</FormLabel>
@@ -769,13 +699,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="employer_phone"
+                    <FormField
+                        control={guardianForm.control}
+                        name="employer_phone"
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Employer Phone</FormLabel>
@@ -785,13 +711,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
-                    <ClientOnly>
-                        {() => (
-                            <FormField
-                                control={guardianForm.control}
-                                name="employer_notes"
+                    <FormField
+                        control={guardianForm.control}
+                        name="employer_notes"
                                 render={({field}) => (
                                     <FormItem className="md:col-span-2">
                                         <FormLabel>Employer Notes</FormLabel>
@@ -800,8 +722,6 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     </FormItem>
                                 )}
                             />
-                        )}
-                    </ClientOnly>
                 </div>
 
                         <Button type="submit" disabled={isSubmitting} name="intent" value={formIntent}>
