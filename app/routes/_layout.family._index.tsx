@@ -84,6 +84,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             nullsFirst: false
         }) // Order payments by date
         .single(); // Fetch raw data first
+    console.log("Family Data:", familyData);
 
     if (familyError || !familyData) { // Check if familyData itself is null/undefined
         console.error("Error fetching family data:", familyError?.message ?? "Family not found");

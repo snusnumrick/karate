@@ -1,5 +1,5 @@
 import {json, redirect, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
-import { useLoaderData, useFetcher, Link } from "@remix-run/react"; // Use useFetcher, remove Form, useNavigation, useActionData
+import {useLoaderData, useFetcher, Link, useRouteError} from "@remix-run/react"; // Use useFetcher, remove Form, useNavigation, useActionData
 import { useState, useEffect } from "react"; // Add React hooks
 import { loadStripe, type Stripe } from '@stripe/stripe-js'; // Import Stripe.js
 import { getSupabaseServerClient } from "~/utils/supabase.server"; // Remove createPaymentSession import
@@ -7,10 +7,26 @@ import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { ExclamationTriangleIcon, InfoCircledIcon } from "@radix-ui/react-icons";
 import { siteConfig } from "~/config/site";
-import type { Database } from "~/types/supabase"; // Import Database type
 import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
 import { Checkbox } from "~/components/ui/checkbox"; // Import Checkbox
 import { format } from 'date-fns'; // Import format
+
+// Payment Calculation
+//
+// The logic resides entirely within the loader function of the payment page (app/routes/_layout.family.payment.tsx). It does not rely on a specific "tier" field stored in the database. Instead, it calculates the next
+// appropriate tier dynamically each time the payment page is loaded:
+//
+//  1 Fetch Successful Payment History: The loader queries the payments table for all records associated with the current family_id that have a status of 'succeeded'.
+//  2 Fetch Payment-Student Links: It then queries the payment_students junction table to find out which specific student_id was included in each of those successful payments.
+//  3 Count Past Payments Per Student: For each student belonging to the family, the code counts how many times their student_id appears in the results from step 2 (i.e., how many successful payments they have been part
+//    of in the past).
+//  4 Determine Next Tier: Based on this pastPaymentCount:
+//     • If pastPaymentCount is 0, the student is considered to be on their "Trial" or needing their "1st Month" payment. The loader calculates the nextPaymentAmount using siteConfig.pricing.firstMonth and sets the
+//       nextPaymentTierLabel to "1st Month".
+//     • If pastPaymentCount is 1, the student needs their "2nd Month" payment. The loader uses siteConfig.pricing.secondMonth and sets the label to "2nd Month".
+//     • If pastPaymentCount is 2 or more, the student is on the "Ongoing" rate. The loader uses siteConfig.pricing.monthly and sets the label to "Monthly".
+//  5 Pass to Component: This calculated nextPaymentAmount and nextPaymentTierLabel (along with eligibility status) for each student are then passed as studentPaymentDetails to the payment page component for display and
+//    use in the dynamic total calculation when checkboxes are selected.
 
 
 // Define the structure for student payment details, including eligibility
@@ -30,8 +46,8 @@ export interface LoaderData {
     familyId: string;
     familyName: string;
     // No longer need the separate 'students' array, details are in studentPaymentDetails
-    studentPaymentDetails: StudentPaymentDetail[];
-    stripePublishableKey: string | null;
+    studentPaymentDetails?: StudentPaymentDetail[];
+    stripePublishableKey?: string;
     error?: string;
 }
 
@@ -51,7 +67,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
         .from('profiles')
         .select('family_id')
         .eq('id', user.id)
-        .single();
+        .single() as { data: { family_id: string | null } | null, error: Error };
     console.log("Profile Data:", profileData, "Profile Error:", profileError);
 
     if (profileError || !profileData?.family_id) {
@@ -66,22 +82,22 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
     // --- Fetch Family, Students, and Payment History ---
 
     // 1. Fetch Family Name
-    const { data: familyData, error: familyError } = await supabaseServer
+    const {data: familyData, error: familyError} = await supabaseServer
         .from('families')
         .select('name')
         .eq('id', familyId)
-        .single();
+        .single() as { data: { name: string | null } | null, error: Error };
 
     if (familyError || !familyData) {
         console.error("Payment Loader Error: Failed to load family name", familyError?.message);
         throw new Response("Could not load family details.", { status: 500, headers });
     }
-    const familyName = familyData.name;
+    const familyName : string = familyData.name!;
 
     // 2. Fetch Students for the Family
-    const { data: studentsData, error: studentsError } = await supabaseServer
+    const {data: studentsData, error: studentsError} = await supabaseServer
         .from('students')
-        .select('id, first_name, last_name')
+        .select('id::text, first_name::text, last_name::text')
         .eq('family_id', familyId);
 
     if (studentsError) {
@@ -94,8 +110,6 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
             familyId,
             familyName,
             // No students found, return empty details
-            studentPaymentDetails: [],
-            stripePublishableKey: null,
             error: "No students found in this family."
         }, { headers });
     }
@@ -117,10 +131,13 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
     // 4. Fetch Payment-Student Links for Successful Payments
     let paymentStudentLinks: Array<{ student_id: string, payment_id: string }> = [];
     if (successfulPaymentIds.length > 0) {
-        const { data: linksData, error: linksError } = await supabaseServer
+        const {data: linksData, error: linksError} = await supabaseServer
             .from('payment_students')
             .select('student_id, payment_id')
-            .in('payment_id', successfulPaymentIds);
+            .in('payment_id', successfulPaymentIds) as {
+            data: Array<{ student_id: string, payment_id: string }> | null,
+            error: Error
+        };
 
         if (linksError) {
             console.error("Payment Loader Error: Failed to load payment links", linksError.message);
@@ -170,11 +187,15 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
     }
 
     // --- Prepare and Return Data ---
-    const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || null;
-    if (!stripePublishableKey) {
-        console.warn("STRIPE_PUBLISHABLE_KEY is not set in environment variables.");
-        // Allow proceeding but component should handle missing key
-    }
+    const getStripePublishableKey = (): string | undefined => {
+        const key = process.env.STRIPE_PUBLISHABLE_KEY;
+        if (!key) {
+            console.warn("STRIPE_PUBLISHABLE_KEY is not set in environment variables.");
+            // Allow proceeding but component should handle missing key
+        }
+        return key;
+    };
+    const stripePublishableKey = getStripePublishableKey();
 
     // Return data without pre-calculated total
     return json({
@@ -206,7 +227,7 @@ export default function FamilyPaymentPage() {
     const calculateTotal = () => {
         let total = 0;
         selectedStudentIds.forEach(id => {
-            const detail = studentPaymentDetails.find(d => d.studentId === id);
+            const detail = studentPaymentDetails!.find(d => d.studentId === id);
             if (detail) {
                 total += detail.nextPaymentAmount * 100; // Add amount in cents
             }
@@ -443,7 +464,7 @@ export default function FamilyPaymentPage() {
                      The 1st month fee is {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth},
                      2nd month is {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth},
                      and the ongoing rate is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per student.
-                     The total above reflects the calculated amount based on each student's payment history.
+                     The total above reflects the calculated amount based on each student&apos;s payment history.
                    </AlertDescription>
                  </Alert>
             </div>
