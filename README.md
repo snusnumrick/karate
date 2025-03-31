@@ -154,6 +154,9 @@ gantt
     Dynamic Pricing Logic   :done,    pay_dynamic, after pay_track, 7d
     Student Selection UI    :done,    pay_select, after pay_dynamic, 5d
     Eligibility Display     :done,    pay_eligibility, after pay_select, 3d
+    section User Management
+    Account Settings Link   :done,    acct_link, after pay_eligibility, 1d
+    Account Settings Page   :active,  acct_page, after acct_link, 7d
     section Reporting
     Attendance System       :active,  attend, 2024-05-25, 21d
     Achievement Tracking    :         achieve, 2024-06-15, 21d

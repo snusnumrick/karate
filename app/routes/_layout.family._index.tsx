@@ -334,11 +334,9 @@ export default function FamilyPortal() {
                 {/* Account Settings Section - Remains unchanged */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                     <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
-                    {/* TODO: Link to profile/account management */}
-                    <p className="text-gray-600 dark:text-gray-400">Links to update family/guardian info.</p>
-                    <Button className="mt-4" disabled>
-                        {/* <Link to="/account">Manage Account</Link> */}
-                        <span>Manage Account (Coming Soon)</span>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Update your family information, guardian details, and account preferences.</p>
+                    <Button asChild className="mt-4">
+                        <Link to="/family/account">Manage Account</Link>
                     </Button>
                 </div>
             </div>
