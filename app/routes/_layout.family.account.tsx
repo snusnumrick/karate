@@ -360,10 +360,12 @@ export default function AccountSettingsPage() {
                                 <FormItem>
                                     <FormLabel>Family Last Name</FormLabel>
                                     <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
+                        </ClientOnly>
                         <FormField
                             control={familyForm.control}
                             name="primary_phone"
@@ -371,10 +373,12 @@ export default function AccountSettingsPage() {
                                 <FormItem>
                                     <FormLabel>Primary Phone</FormLabel>
                                     <FormControl><Input type="tel" {...field} /></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
+                        </ClientOnly>
                         <FormField
                             control={familyForm.control}
                             name="email"
@@ -408,14 +412,14 @@ export default function AccountSettingsPage() {
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={familyForm.control}
-                            name="province"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Province</FormLabel>
-                                    <ClientOnly fallback={<Input disabled placeholder="Loading province select..."/>}>
-                                        {() => (
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="province"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Province</FormLabel>
                                             <Select onValueChange={field.onChange}
                                                     defaultValue={field.value ?? undefined}>
                                                 <FormControl>
@@ -439,8 +443,6 @@ export default function AccountSettingsPage() {
                                                     <SelectItem value="YT">Yukon</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                        )}
-                                    </ClientOnly>
                                     <FormMessage/>
                                 </FormItem>
                             )}
@@ -620,14 +622,14 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                             </FormItem>
                         )}
                     />
-                    <FormField
-                        control={guardianForm.control}
-                        name="relationship"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Relationship</FormLabel>
-                                <ClientOnly fallback={<Input disabled placeholder="Loading relationship select..."/>}>
-                                    {() => (
+                    <ClientOnly>
+                        {() => (
+                            <FormField
+                                control={guardianForm.control}
+                                name="relationship"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Relationship</FormLabel>
                                         <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
                                             <FormControl>
                                                 <SelectTrigger><SelectValue
@@ -640,8 +642,6 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                                 <SelectItem value="Other">Other</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                    )}
-                                </ClientOnly>
                                 <FormMessage/>
                             </FormItem>
                         )}
