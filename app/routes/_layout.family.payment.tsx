@@ -5,11 +5,15 @@ import { loadStripe, type Stripe } from '@stripe/stripe-js'; // Import Stripe.js
 import { getSupabaseServerClient } from "~/utils/supabase.server"; // Remove createPaymentSession import
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { ExclamationTriangleIcon, InfoCircledIcon } from "@radix-ui/react-icons"; // Add InfoCircledIcon
+import { ExclamationTriangleIcon, InfoCircledIcon } from "@radix-ui/react-icons";
 import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/supabase"; // Import Database type
+import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
+import { Checkbox } from "~/components/ui/checkbox"; // Import Checkbox
+import { format } from 'date-fns'; // Import format
 
-// Define the structure for student payment details
+
+// Define the structure for student payment details, including eligibility
 interface StudentPaymentDetail {
     studentId: string;
     firstName: string;
@@ -370,30 +374,80 @@ export default function FamilyPaymentPage() {
                     <ExclamationTriangleIcon className="h-4 w-4"/>
                     <AlertTitle>Payment Error</AlertTitle>
                     <AlertDescription>{clientError || fetcher.data?.error}</AlertDescription>
-                </Alert>
             )}
 
+            {/* Student Selection & Payment Details Section */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-                <p className="text-lg mb-2">Standard Monthly Fee:</p>
-                <p className="text-3xl font-semibold text-center mb-4">{paymentAmountDisplay}</p>
-                <Alert variant="default" className="mb-4 bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
-                  <InfoCircledIcon className="h-4 w-4 text-blue-600 dark:text-blue-300" />
-                  <AlertTitle className="text-blue-800 dark:text-blue-200">Pricing Information</AlertTitle>
-                  <AlertDescription className="text-blue-700 dark:text-blue-300">
-                    Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
-                    The 1st month is {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth},
-                    2nd month is {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth},
-                    and the ongoing rate is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month.
-                    The amount shown reflects the standard rate.
-                  </AlertDescription>
-                </Alert>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    Clicking below will redirect you to our secure payment processor to pay the standard monthly fee.
-                    Adjustments based on your enrollment duration may apply.
-                </p>
+                <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">Select Students to Pay For</h2>
+
+                {/* Student List with Checkboxes */}
+                <div className="space-y-4 mb-6">
+                    {studentPaymentDetails.map(detail => (
+                        <div key={detail.studentId} className={`flex items-start space-x-3 p-3 rounded-md ${detail.needsPayment ? 'border border-gray-200 dark:border-gray-700' : 'opacity-70 bg-gray-50 dark:bg-gray-700/50'}`}>
+                            {detail.needsPayment ? (
+                                <Checkbox
+                                    id={`student-${detail.studentId}`}
+                                    checked={selectedStudentIds.has(detail.studentId)}
+                                    onCheckedChange={(checked) => handleCheckboxChange(detail.studentId, checked)}
+                                    className="mt-1" // Align checkbox better
+                                />
+                            ) : (
+                                <div className="w-4 h-4 mt-1"> {/* Placeholder for alignment */} </div>
+                            )}
+                            <div className="flex-1">
+                                <label
+                                    htmlFor={detail.needsPayment ? `student-${detail.studentId}` : undefined}
+                                    className={`font-medium ${detail.needsPayment ? 'cursor-pointer' : 'cursor-default'}`}
+                                >
+                                    {detail.firstName} {detail.lastName}
+                                </label>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {detail.eligibility.reason === 'Paid' && detail.eligibility.lastPaymentDate &&
+                                        `Active (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
+                                    }
+                                    {detail.eligibility.reason === 'Trial' &&
+                                        `On Free Trial`
+                                    }
+                                     {detail.eligibility.reason === 'Expired' && detail.eligibility.lastPaymentDate &&
+                                        `Expired (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
+                                    }
+                                     {detail.eligibility.reason === 'Expired' && !detail.eligibility.lastPaymentDate &&
+                                        `Expired (No payment history)`
+                                    }
+                                </p>
+                                {detail.needsPayment && (
+                                     <p className="text-sm font-semibold text-green-700 dark:text-green-400 mt-1">
+                                         Next Payment: {siteConfig.pricing.currency}{detail.nextPaymentAmount.toFixed(2)} ({detail.nextPaymentTierLabel})
+                                     </p>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Calculated Total Amount */}
+                <div className="border-t pt-4 mt-4 dark:border-gray-600">
+                    <div className="flex justify-between items-center font-bold text-lg">
+                        <span>Total Due:</span>
+                        <span>{currentTotalDisplay}</span>
+                    </div>
+                </div>
+
+                 {/* Pricing Info Alert */}
+                 <Alert variant="default" className="mt-6 bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
+                   <InfoCircledIcon className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                   <AlertTitle className="text-blue-800 dark:text-blue-200">How Pricing Works</AlertTitle>
+                   <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
+                     Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
+                     The 1st month fee is {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth},
+                     2nd month is {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth},
+                     and the ongoing rate is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per student.
+                     The total above reflects the calculated amount based on each student's payment history.
+                   </AlertDescription>
+                 </Alert>
             </div>
 
-            {/* Use standard form and onSubmit handler */}
+            {/* Payment Form - Submits selected students and calculated total */}
             <form onSubmit={handlePaymentSubmit}>
                 <input type="hidden" name="familyId" value={familyId} />
                 <input type="hidden" name="familyName" value={familyName} /> {/* Add hidden input for family name */}
@@ -419,24 +473,28 @@ export default function FamilyPaymentPage() {
     );
 }
 
-// Basic Error Boundary for this route
+// Error Boundary remains largely the same, but use useRouteError()
 export function ErrorBoundary() {
-    // Check if error is a Response object to get status/message
-    // Note: Remix v2 might handle this differently, check docs if needed
-    // const error = useRouteError(); // Use this hook in Remix v2+
-    const error: any = new Error("An unknown error occurred on the payment page."); // Placeholder for older Remix or general error
+    const error = useRouteError(); // Use this hook
 
     // Basic error display
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 max-w-lg"> {/* Match container width */}
             <Alert variant="destructive">
-                <ExclamationTriangleIcon className="h-4 w-4"/>
+                <ExclamationTriangleIcon className="h-4 w-4" />
                 <AlertTitle>Payment Page Error</AlertTitle>
                 <AlertDescription>
-                    {error instanceof Error ? error.message : "An unexpected error occurred while loading the payment page."}
-                    Please try returning to the <Link to="/family" className="font-medium underline">Family
-                    Portal</Link>.
+                    {error instanceof Error
+                        ? error.message
+                        : "An unexpected error occurred while loading the payment page."}
+                    Please try returning to the <Link to="/family" className="font-medium underline px-1">Family Portal</Link>.
                 </AlertDescription>
+                 {/* Optional: Display stack trace in development */}
+                 {process.env.NODE_ENV === "development" && error instanceof Error && (
+                    <pre className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs dark:bg-red-900/50 dark:text-red-100">
+                        {error.stack}
+                    </pre>
+                 )}
             </Alert>
         </div>
     );
