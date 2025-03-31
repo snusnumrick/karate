@@ -293,10 +293,12 @@ export default function AccountSettingsPage() {
 
 
             {/* --- Family Information Form --- */}
-            <UIForm {...familyForm}>
-                <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
-                    <input type="hidden" name="intent" value="updateFamily" />
+            <ClientOnly fallback={<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6"><h2 className="text-xl font-semibold mb-4 border-b pb-2">Loading Family Information...</h2></div>}>
+              {() => (
+                <UIForm {...familyForm}>
+                    <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
+                        <input type="hidden" name="intent" value="updateFamily" />
 
                     {/* Display field-specific errors for family form */}
                     {actionData?.intent === 'updateFamily' && actionData.errors && (
@@ -451,13 +453,19 @@ export default function AccountSettingsPage() {
                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
                     </Button>
-                </Form>
-            </UIForm>
+                  </Form>
+                </UIForm>
+              )}
+            </ClientOnly>
 
 
             {/* --- Guardian Information Forms --- */}
             {guardians.map((guardian, index) => (
-                <GuardianForm key={guardian.id} guardian={guardian} index={index + 1} actionData={actionData} isSubmitting={isSubmitting} navigation={navigation} />
+              <ClientOnly key={guardian.id} fallback={<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6"><h2 className="text-xl font-semibold mb-4 border-b pb-2">Loading Guardian #{index + 1} Information...</h2></div>}>
+                {() => (
+                  <GuardianForm guardian={guardian} index={index + 1} actionData={actionData} isSubmitting={isSubmitting} navigation={navigation} />
+                )}
+              </ClientOnly>
             ))}
 
 
