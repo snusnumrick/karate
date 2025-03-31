@@ -154,7 +154,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             status: 'error',
             message: 'Invalid form data.',
             errors: parsed.error.issues,
-            intent: formData.get('intent') as any, // Try to pass intent back
+            // Provide a more specific type than 'any'
+            intent: formData.get('intent') as 'updateFamily' | 'updateGuardian' | undefined, 
             guardianId: formData.get('guardianId') as string | undefined, // Pass guardianId back if present
         }, {status: 400, headers});
     }
