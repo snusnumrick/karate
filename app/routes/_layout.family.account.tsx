@@ -653,7 +653,11 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                         {/* Wrap Select with ClientOnly */}
                                         <ClientOnly fallback={<Input disabled placeholder="Relationship..."/>}>
                                             {() => (
-                                                <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
+                                                <Select 
+                                                    onValueChange={field.onChange} 
+                                                    value={field.value ?? undefined} // Explicitly control the value
+                                                    defaultValue={field.value ?? undefined} // Keep defaultValue for initial render consistency
+                                                >
                                                     <FormControl>
                                                         <SelectTrigger><SelectValue
                                                             placeholder="Select relationship"/></SelectTrigger>
