@@ -372,7 +372,7 @@ export default function AccountSettingsPage() {
                                         <FormItem>
                                             <FormLabel>Family Last Name</FormLabel>
                                             <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -384,7 +384,7 @@ export default function AccountSettingsPage() {
                                         <FormItem>
                                             <FormLabel>Primary Phone</FormLabel>
                                             <FormControl><Input type="tel" {...field} /></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -396,7 +396,7 @@ export default function AccountSettingsPage() {
                                         <FormItem>
                                             <FormLabel>Family Email</FormLabel>
                                             <FormControl><Input type="email" {...field} /></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -407,7 +407,7 @@ export default function AccountSettingsPage() {
                                         <FormItem>
                                             <FormLabel>Home Address</FormLabel>
                                             <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -418,7 +418,7 @@ export default function AccountSettingsPage() {
                                         <FormItem>
                                             <FormLabel>City</FormLabel>
                                             <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -459,7 +459,7 @@ export default function AccountSettingsPage() {
                                                     </Select>
                                                 )}
                                             </ClientOnly>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -471,7 +471,7 @@ export default function AccountSettingsPage() {
                                         <FormItem>
                                             <FormLabel>Postal Code</FormLabel>
                                             <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -484,7 +484,7 @@ export default function AccountSettingsPage() {
                                             <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
                                             <FormControl><Textarea {...field}
                                                                    value={getDefaultValue(field.value)}/></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -494,9 +494,11 @@ export default function AccountSettingsPage() {
                                     render={({field}) => (
                                         <FormItem className="md:col-span-2">
                                             <FormLabel>Personal Health Number / Info</FormLabel>
+                                        <FormItem className="md:col-span-2">
+                                            <FormLabel>Personal Health Number / Info</FormLabel>
                                             <FormControl><Textarea {...field}
                                                                    value={getDefaultValue(field.value)}/></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -506,9 +508,11 @@ export default function AccountSettingsPage() {
                                     render={({field}) => (
                                         <FormItem className="md:col-span-2">
                                             <FormLabel>Family Notes (Internal Use)</FormLabel>
+                                        <FormItem className="md:col-span-2">
+                                            <FormLabel>Family Notes (Internal Use)</FormLabel>
                                             <FormControl><Textarea {...field}
                                                                    value={getDefaultValue(field.value)}/></FormControl>
-                                            <FormMessage/>
+                                            <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
                                 />
@@ -625,7 +629,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                             <FormItem>
                                                 <FormLabel>First Name</FormLabel>
                                                 <FormControl><Input {...field} /></FormControl>
-                                                <FormMessage/>
+                                                <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
                                     />
@@ -637,7 +641,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     <FormItem>
                                         <FormLabel>Last Name</FormLabel>
                                         <FormControl><Input {...field} /></FormControl>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
@@ -668,7 +672,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                                 </Select>
                                             )}
                                         </ClientOnly>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
@@ -680,7 +684,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     <FormItem>
                                         <FormLabel>Home Phone</FormLabel>
                                         <FormControl><Input type="tel" {...field} /></FormControl>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
@@ -691,7 +695,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     <FormItem>
                                         <FormLabel>Cell Phone</FormLabel>
                                         <FormControl><Input type="tel" {...field} /></FormControl>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
@@ -702,7 +706,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     <FormItem>
                                         <FormLabel>Email</FormLabel>
                                         <FormControl><Input type="email" {...field} /></FormControl>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
@@ -714,7 +718,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                         <FormLabel>Work Phone</FormLabel>
                                         <FormControl><Input type="tel" {...field}
                                                             value={getDefaultValue(field.value)}/></FormControl>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
@@ -725,7 +729,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     <FormItem>
                                         <FormLabel>Employer</FormLabel>
                                         <FormControl><Input {...field} value={getDefaultValue(field.value)}/></FormControl>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
@@ -737,7 +741,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                         <FormLabel>Employer Phone</FormLabel>
                                         <FormControl><Input type="tel" {...field}
                                                             value={getDefaultValue(field.value)}/></FormControl>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
@@ -748,7 +752,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                     <FormItem className="md:col-span-2">
                                         <FormLabel>Employer Notes</FormLabel>
                                         <FormControl><Textarea {...field} value={getDefaultValue(field.value)}/></FormControl>
-                                        <FormMessage/>
+                                        <FormMessage className="dark:text-red-400"/>
                                     </FormItem>
                                 )}
                             />
