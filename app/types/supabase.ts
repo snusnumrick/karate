@@ -85,6 +85,7 @@ export interface Database {
           postal_code: string
           province: string
           referral_source: string | null
+          referral_name: string | null
           emergency_contact: string | null
           health_info: string | null
           notes: string | null // Add the new optional notes column
@@ -101,6 +102,7 @@ export interface Database {
           postal_code: string
           province: string
           referral_source?: string | null
+          referral_name?: string | null
           emergency_contact?: string | null
           health_info?: string | null
           notes?: string | null // Add the new optional notes column
@@ -117,6 +119,7 @@ export interface Database {
           postal_code?: string
           province?: string
           referral_source?: string | null
+          referral_name?: string | null
           emergency_contact?: string | null
           health_info?: string | null
           notes?: string | null // Add the new optional notes column

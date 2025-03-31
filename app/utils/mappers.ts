@@ -75,7 +75,7 @@ export function mapFamilyFromSupabase(row: Database['public']['Tables']['familie
     city: row.city,
     province: row.province,
     postalCode: row.postal_code,
-    primaryPhone: row.phone,
+    primaryPhone: row.primary_phone,
     email: row.email,
     referralSource: row.referral_source || undefined,
     referralName: row.referral_name || undefined,
@@ -92,7 +92,7 @@ export function mapFamilyToSupabase(family: Family): Database['public']['Tables'
     city: family.city,
     province: family.province,
     postal_code: family.postalCode,
-    phone: family.primaryPhone,
+    primary_phone: family.primaryPhone,
     email: family.email,
     referral_source: family.referralSource,
     referral_name: family.referralName
@@ -122,8 +122,8 @@ export function mapPaymentFromSupabase(row: Database['public']['Tables']['paymen
     id: row.id,
     familyId: row.family_id,
     amount: row.amount,
-    paymentDate: row.payment_date,
-    paymentMethod: row.payment_method,
+    paymentDate: row.payment_date ?? '',
+    paymentMethod: row.payment_method ?? '',
     status: row.status,
     studentIds: studentIds
   };

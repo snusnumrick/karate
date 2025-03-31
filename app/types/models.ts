@@ -15,6 +15,7 @@ export interface Family {
   primaryPhone: string;
   email: string;
   referralSource?: string;
+  referralName?: string;
   emergencyContact?: string;
   healthInfo?: string;
   guardians: Guardian[];
@@ -49,7 +50,7 @@ export interface Student {
   specialNeeds?: string;
   allergies?: string;
   medications?: string;
-  immunizationsUpToDate: string;
+  immunizationsUpToDate: boolean;
   immunizationNotes?: string;
   beltRank: string;
   familyId: string;
@@ -79,7 +80,7 @@ export interface Payment {
   amount: number;
   paymentDate: string;
   paymentMethod: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: 'pending' | 'succeeded' | 'failed';
   studentIds: string[]; // Which students this payment covers
 }
 

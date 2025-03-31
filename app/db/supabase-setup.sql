@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS families (
                                         primary_phone varchar(20) NOT NULL,
                                         email text NOT NULL,
                                         referral_source text,
+                                        referral_name text,
                                         emergency_contact text,
                                         health_info text,
                                         created_at timestamptz DEFAULT now(),

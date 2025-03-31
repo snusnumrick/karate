@@ -2,6 +2,7 @@
 export const siteConfig = {
   location: {
     address: "650 Allandale Rd Suite A101",
+    description: " our Colwood studio",
     // Add other location details if needed, e.g., map link
   },
   contact: {

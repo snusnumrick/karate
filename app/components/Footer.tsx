@@ -2,7 +2,8 @@ import { Link } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { useRouteLoaderData } from "@remix-run/react"; // Import useRouteLoaderData
-import type { loader as rootLayoutLoader } from "~/routes/_layout"; // Import loader type
+import type { loader as rootLayoutLoader } from "~/routes/_layout";
+import {siteConfig} from "~/config/site"; // Import loader type
 
 export default function Footer() {
   // Get loader data from the parent layout route
@@ -18,7 +19,7 @@ export default function Footer() {
   ];
 
   // Conditionally add/remove links based on user state
-  let quickLinks = [...baseLinks];
+  const quickLinks = [...baseLinks];
   if (user) {
     // Add Family Portal for logged-in users
     quickLinks.push({ path: "/family", label: "Family Portal" }); 

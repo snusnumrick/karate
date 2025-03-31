@@ -68,6 +68,7 @@ export async function action({ request }: ActionFunctionArgs) {
         email: contact1Email,
         name: formData.get('familyName'),
         referral_source: formData.get('referralSource'),
+        referral_name: formData.get('referralName'),
         emergency_contact: formData.get('emergencyContact'),
         health_info: formData.get('healthNumber')
       })
