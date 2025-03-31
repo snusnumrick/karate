@@ -339,7 +339,7 @@ export default function AccountSettingsPage() {
             {/* Removed ClientOnly wrapper */}
             <ClientOnly fallback={<div>Loading family form...</div>}>
                 <UIForm {...familyForm}>
-                <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+                  <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
                     <input type="hidden" name="intent" value="updateFamily"/>
 
@@ -503,8 +503,7 @@ export default function AccountSettingsPage() {
                         {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
                     </Button>
                 </Form>
-                    </UIForm>
-                </ClientOnly>
+                </UIForm>
             </ClientOnly>
             {/* End of removed ClientOnly wrapper */}
 
