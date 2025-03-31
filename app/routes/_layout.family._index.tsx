@@ -1,9 +1,8 @@
 import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { Link, useLoaderData } from "@remix-run/react";
 import { getSupabaseServerClient, checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge"; // Import Badge
-import { Link } from "@remix-run/react";
 import { Database } from "~/types/supabase";
 import { format } from 'date-fns'; // For formatting dates
 
@@ -84,7 +83,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             nullsFirst: false
         }) // Order payments by date
         .single<FamilyData>(); // Apply the specific type here
-    console.log("Family Data:", familyData);
+    // console.log("Family Data:", familyData);
 
     if (familyError || !familyData) { // Check if familyData itself is null/undefined
         console.error("Error fetching family data:", familyError?.message ?? "Family not found");
