@@ -7,23 +7,35 @@ import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { ExclamationTriangleIcon, InfoCircledIcon } from "@radix-ui/react-icons"; // Add InfoCircledIcon
 import { Link } from "@remix-run/react"; // Ensure Link is imported
-import { siteConfig } from "~/config/site"; // Import site config
+import { siteConfig } from "~/config/site";
+import type { Database } from "~/types/supabase"; // Import Database type
 
+// Define the structure for student payment details
+interface StudentPaymentDetail {
+    studentId: string;
+    firstName: string;
+    lastName: string;
+    nextPaymentAmount: number; // Amount in dollars
+    nextPaymentTierLabel: string;
+    pastPaymentCount: number;
+}
 
-// Loader data interface
+// Updated Loader data interface
 export interface LoaderData {
     familyId: string;
-    familyName: string; // Add family name
-    studentIds: string[];
-    stripePublishableKey: string | null; // Add Stripe publishable key
+    familyName: string;
+    students: Array<Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>>; // Pass student names too
+    studentPaymentDetails: StudentPaymentDetail[];
+    totalAmountInCents: number;
+    stripePublishableKey: string | null;
     error?: string;
 }
 
 // Loader function
 export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const {supabaseServer, response} = getSupabaseServerClient(request);
+    const { supabaseServer, response } = getSupabaseServerClient(request);
     const headers = response.headers;
-    const {data: {user}} = await supabaseServer.auth.getUser();
+    const { data: { user } } = await supabaseServer.auth.getUser();
 
     if (!user) {
         // Should be protected by layout, but handle defensively
@@ -47,25 +59,9 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
     const familyId = profileData.family_id;
 
-    // Get student IDs associated with the family
-    const {data: students, error: studentsError} = await supabaseServer
-        .from('students')
-        .select('id')
-        .eq('family_id', familyId);
+    // --- Fetch Family, Students, and Payment History ---
 
-    if (studentsError) {
-        console.error("Payment Loader Error: Failed to load students for family", studentsError.message);
-        throw new Response("Could not load student information for payment. Please try again.", {status: 500});
-    }
-
-    if (!students || students.length === 0) {
-        // Redirect back if no students, maybe with a message?
-        // Or handle this in the component. Let's handle in component for now.
-        // Need family name here too
-        return json({familyId, familyName: "Unknown Family", studentIds: [], error: "No students found in this family."}, {headers});
-    }
-
-    // Fetch family name along with student IDs
+    // 1. Fetch Family Name
     const { data: familyData, error: familyError } = await supabaseServer
         .from('families')
         .select('name')
@@ -74,23 +70,112 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
     if (familyError || !familyData) {
         console.error("Payment Loader Error: Failed to load family name", familyError?.message);
-        throw new Response("Could not load family details for payment.", { status: 500 });
+        throw new Response("Could not load family details.", { status: 500, headers });
     }
     const familyName = familyData.name;
 
+    // 2. Fetch Students for the Family
+    const { data: studentsData, error: studentsError } = await supabaseServer
+        .from('students')
+        .select('id, first_name, last_name')
+        .eq('family_id', familyId);
 
-    const studentIds = students.map(s => s.id);
-    const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || null;
+    if (studentsError) {
+        console.error("Payment Loader Error: Failed to load students", studentsError.message);
+        throw new Response("Could not load student information.", { status: 500, headers });
+    }
+    if (!studentsData || studentsData.length === 0) {
+        // Return specific error handled by the component
+        return json({
+            familyId,
+            familyName,
+            students: [],
+            studentPaymentDetails: [],
+            totalAmountInCents: 0,
+            stripePublishableKey: null, // Not needed if no students
+            error: "No students found in this family."
+        }, { headers });
+    }
+    const students = studentsData; // Keep full student list
 
-    if (!stripePublishableKey) {
-        console.warn("STRIPE_PUBLISHABLE_KEY is not set in environment variables.");
-        // Decide if this is a critical error. For now, pass null and handle in component.
+    // 3. Fetch Successful Payments for the Family
+    const { data: paymentsData, error: paymentsError } = await supabaseServer
+        .from('payments')
+        .select('id, status') // Only need id and status
+        .eq('family_id', familyId)
+        .eq('status', 'succeeded'); // Only count successful payments
+
+    if (paymentsError) {
+        console.error("Payment Loader Error: Failed to load payments", paymentsError.message);
+        throw new Response("Could not load payment history.", { status: 500, headers });
+    }
+    const successfulPaymentIds = paymentsData?.map(p => p.id) || [];
+
+    // 4. Fetch Payment-Student Links for Successful Payments
+    let paymentStudentLinks: Array<{ student_id: string, payment_id: string }> = [];
+    if (successfulPaymentIds.length > 0) {
+        const { data: linksData, error: linksError } = await supabaseServer
+            .from('payment_students')
+            .select('student_id, payment_id')
+            .in('payment_id', successfulPaymentIds);
+
+        if (linksError) {
+            console.error("Payment Loader Error: Failed to load payment links", linksError.message);
+            throw new Response("Could not load payment link history.", { status: 500, headers });
+        }
+        paymentStudentLinks = linksData || [];
     }
 
-    return json({ familyId, familyName, studentIds, stripePublishableKey }, { headers });
-}
+    // --- Calculate Next Payment Amount Per Student ---
+    const studentPaymentDetails: StudentPaymentDetail[] = [];
+    let totalAmountInCents = 0;
 
-// Remove the action function entirely - logic moved to API route and client-side
+    for (const student of students) {
+        const pastPaymentCount = paymentStudentLinks.filter(link => link.student_id === student.id).length;
+
+        let nextPaymentAmount = 0;
+        let nextPaymentTierLabel = "";
+
+        // Determine tier based on past successful payments
+        if (pastPaymentCount === 0) {
+            nextPaymentAmount = siteConfig.pricing.firstMonth;
+            nextPaymentTierLabel = "1st Month";
+        } else if (pastPaymentCount === 1) {
+            nextPaymentAmount = siteConfig.pricing.secondMonth;
+            nextPaymentTierLabel = "2nd Month";
+        } else { // 2 or more past payments
+            nextPaymentAmount = siteConfig.pricing.monthly;
+            nextPaymentTierLabel = "Monthly";
+        }
+
+        studentPaymentDetails.push({
+            studentId: student.id,
+            firstName: student.first_name,
+            lastName: student.last_name,
+            nextPaymentAmount: nextPaymentAmount, // Store in dollars for detail display
+            nextPaymentTierLabel: nextPaymentTierLabel,
+            pastPaymentCount: pastPaymentCount,
+        });
+
+        totalAmountInCents += nextPaymentAmount * 100; // Add to total in cents
+    }
+
+    // --- Prepare and Return Data ---
+    const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || null;
+    if (!stripePublishableKey) {
+        console.warn("STRIPE_PUBLISHABLE_KEY is not set in environment variables.");
+        // Allow proceeding but component should handle missing key
+    }
+
+    return json({
+        familyId,
+        familyName,
+        students, // Pass student list for potential use (e.g., hidden input)
+        studentPaymentDetails,
+        totalAmountInCents,
+        stripePublishableKey
+    }, { headers });
+}
 
 export default function FamilyPaymentPage() {
     const { familyId, familyName, studentIds, stripePublishableKey, error: loaderError } = useLoaderData<typeof loader>();
@@ -143,10 +228,10 @@ export default function FamilyPaymentPage() {
         }
     }, [fetcher.data, stripe]);
 
-    // Handle case where loader found no students
-    if (loaderError && loaderError === "No students found in this family.") {
+    // Handle case where loader found no students (error message comes from loader data)
+    if (loaderError === "No students found in this family.") {
         return (
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-4 py-8 max-w-md">
                 <Alert variant="destructive">
                     <ExclamationTriangleIcon className="h-4 w-4"/>
                     <AlertTitle>No Students Found</AlertTitle>
@@ -163,9 +248,9 @@ export default function FamilyPaymentPage() {
     // Handle missing Stripe key from loader
     if (!stripePublishableKey) {
          return (
-             <div className="container mx-auto px-4 py-8">
-                 <Alert variant="destructive">
-                     <ExclamationTriangleIcon className="h-4 w-4"/>
+             <div className="container mx-auto px-4 py-8 max-w-md">
+                 <Alert variant="destructive" className="mb-4">
+                     <ExclamationTriangleIcon className="h-4 w-4" />
                      <AlertTitle>Configuration Error</AlertTitle>
                      <AlertDescription>
                          Payment processing is not configured correctly. Please contact support.
@@ -175,15 +260,18 @@ export default function FamilyPaymentPage() {
          );
     }
 
-    // Handle other potential loader errors (e.g., failed to get familyId/students)
-    if (!familyId || !studentIds) {
+    // Handle other potential loader errors (e.g., failed to get familyId)
+    // studentPaymentDetails will be empty if students couldn't be loaded properly by the loader logic
+    if (!familyId || !studentPaymentDetails) {
         return (
-            <div className="container mx-auto px-4 py-8">
-                <Alert variant="destructive">
-                    <ExclamationTriangleIcon className="h-4 w-4"/>
-                    <AlertTitle>Error</AlertTitle>
+            <div className="container mx-auto px-4 py-8 max-w-md">
+                <Alert variant="destructive" className="mb-4">
+                    <ExclamationTriangleIcon className="h-4 w-4" />
+                    <AlertTitle>Error Loading Payment Details</AlertTitle>
                     <AlertDescription>
-                        Could not load necessary payment information. Please go back and try again or contact support.
+                        Could not load necessary payment information. Please return to the
+                        <Link to="/family" className="font-medium underline px-1">Family Portal</Link>
+                        and try again, or contact support if the problem persists.
                     </AlertDescription>
                 </Alert>
             </div>
