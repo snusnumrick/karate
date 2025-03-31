@@ -57,7 +57,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     ] = await Promise.all([
       supabaseAdmin.from('families').select('id', { count: 'exact', head: true }), // Use admin client
       supabaseAdmin.from('students').select('id', { count: 'exact', head: true }), // Use admin client
-      supabaseAdmin.from('payments').select('amount').eq('status', 'completed'), // Use admin client
+      supabaseAdmin.from('payments').select('amount').eq('status', 'succeeded'), // Use admin client - Corrected status
       supabaseAdmin.from('attendance')
           .select('id', { count: 'exact', head: true })
           .eq('class_date', new Date().toISOString().split('T')[0]) // Today's date
