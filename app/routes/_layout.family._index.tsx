@@ -15,6 +15,17 @@ type StudentWithEligibility = Database["public"]["Tables"]["students"]["Row"] & 
 // Define FamilyData using the extended student type
 export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
     students?: StudentWithEligibility[]; // Use the extended student type
+// Define a more specific type for the data fetched from Supabase
+type FamilyWithStudentsAndPayments = Database["public"]["Tables"]["families"]["Row"] & {
+  students: Database["public"]["Tables"]["students"]["Row"][] | null; // students can be null or an array
+  payments: (Database["public"]["Tables"]["payments"]["Row"] & {
+    payment_students: { student_id: string }[] | null; // payment_students can be null or an array
+  })[] | null; // payments can be null or an array
+};
+
+// Define FamilyData using the extended student type
+export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
+    students?: StudentWithEligibility[]; // Use the extended student type
     payments?: (
         Database["public"]["Tables"]["payments"]["Row"] & {
         payment_students: {
@@ -83,7 +94,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             ascending: false,
             nullsFirst: false
         }) // Order payments by date
-        .single(); // Fetch raw data first
+        .single<FamilyWithStudentsAndPayments>(); // Apply the specific type here
     console.log("Family Data:", familyData);
 
     if (familyError || !familyData) { // Check if familyData itself is null/undefined
