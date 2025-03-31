@@ -572,8 +572,6 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
         },
     });
 
-    const formIntent = `updateGuardian-${guardian.id}`; // Unique intent for submission check
-
     // Reset form with guardian data on client side using useEffect
     useEffect(() => {
         // Ensure this only runs client-side after hydration
