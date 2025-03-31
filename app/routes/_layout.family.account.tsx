@@ -429,32 +429,38 @@ export default function AccountSettingsPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Province</FormLabel>
-                                            <Select onValueChange={field.onChange}
-                                                    defaultValue={field.value ?? undefined}>
-                                                <FormControl>
-                                                    <SelectTrigger><SelectValue
-                                                        placeholder="Select province"/></SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {/* Add Canadian provinces */}
-                                                    <SelectItem value="AB">Alberta</SelectItem>
-                                                    <SelectItem value="BC">British Columbia</SelectItem>
-                                                    <SelectItem value="MB">Manitoba</SelectItem>
-                                                    <SelectItem value="NB">New Brunswick</SelectItem>
-                                                    <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
-                                                    <SelectItem value="NS">Nova Scotia</SelectItem>
-                                                    <SelectItem value="ON">Ontario</SelectItem>
-                                                    <SelectItem value="PE">Prince Edward Island</SelectItem>
-                                                    <SelectItem value="QC">Quebec</SelectItem>
-                                                    <SelectItem value="SK">Saskatchewan</SelectItem>
-                                                    <SelectItem value="NT">Northwest Territories</SelectItem>
-                                                    <SelectItem value="NU">Nunavut</SelectItem>
-                                                    <SelectItem value="YT">Yukon</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            {/* Wrap Select with ClientOnly */}
+                                            <ClientOnly fallback={<Input disabled placeholder="Province..."/>}>
+                                                {() => (
+                                                    <Select onValueChange={field.onChange}
+                                                            defaultValue={field.value ?? undefined}>
+                                                        <FormControl>
+                                                            <SelectTrigger><SelectValue
+                                                                placeholder="Select province"/></SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {/* ... SelectItems ... */}
+                                                            <SelectItem value="AB">Alberta</SelectItem>
+                                                            <SelectItem value="BC">British Columbia</SelectItem>
+                                                            <SelectItem value="MB">Manitoba</SelectItem>
+                                                            <SelectItem value="NB">New Brunswick</SelectItem>
+                                                            <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
+                                                            <SelectItem value="NS">Nova Scotia</SelectItem>
+                                                            <SelectItem value="ON">Ontario</SelectItem>
+                                                            <SelectItem value="PE">Prince Edward Island</SelectItem>
+                                                            <SelectItem value="QC">Quebec</SelectItem>
+                                                            <SelectItem value="SK">Saskatchewan</SelectItem>
+                                                            <SelectItem value="NT">Northwest Territories</SelectItem>
+                                                            <SelectItem value="NU">Nunavut</SelectItem>
+                                                            <SelectItem value="YT">Yukon</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            </ClientOnly>
                                             <FormMessage/>
                                         </FormItem>
                                     )}
+                                    {/* Closing tags moved into the ClientOnly wrapper above */}
                                 />
                         
                         <FormField
@@ -591,10 +597,10 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
     }, [guardian, guardianForm]); // Re-add dependencies
 
     return (
-        // Keep ClientOnly wrapper for the form UI itself
-        <ClientOnly fallback={<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">Loading Guardian {index} form...</div>}>
-            {() => (
-                // useEffect is now outside, return the form directly
+        // REMOVE ClientOnly wrapper from GuardianForm UI - rely on parent and specific component wrappers
+        // Fallback logic might need adjustment if loading state is desired here
+        // <ClientOnly fallback={...}>
+        //    {() => (
                 <UIForm {...guardianForm}>
                     <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                             <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
@@ -645,21 +651,27 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                 render={({field}) => (
                                     <FormItem>
                                         <FormLabel>Relationship</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
-                                            <FormControl>
-                                                <SelectTrigger><SelectValue
-                                                    placeholder="Select relationship"/></SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="Mother">Mother</SelectItem>
-                                                <SelectItem value="Father">Father</SelectItem>
-                                                <SelectItem value="Guardian">Guardian</SelectItem>
-                                                <SelectItem value="Other">Other</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        {/* Wrap Select with ClientOnly */}
+                                        <ClientOnly fallback={<Input disabled placeholder="Relationship..."/>}>
+                                            {() => (
+                                                <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
+                                                    <FormControl>
+                                                        <SelectTrigger><SelectValue
+                                                            placeholder="Select relationship"/></SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="Mother">Mother</SelectItem>
+                                                        <SelectItem value="Father">Father</SelectItem>
+                                                        <SelectItem value="Guardian">Guardian</SelectItem>
+                                                        <SelectItem value="Other">Other</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        </ClientOnly>
                                         <FormMessage/>
                                     </FormItem>
                                 )}
+                                {/* Closing tags moved into the ClientOnly wrapper above */}
                             />
                     
                     <FormField
@@ -748,7 +760,8 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                         </Button>
                         </Form>
                     </UIForm>
-            )}
-        </ClientOnly>
+        // REMOVE ClientOnly closing tags
+        //    )}
+        // </ClientOnly>
     );
 }
