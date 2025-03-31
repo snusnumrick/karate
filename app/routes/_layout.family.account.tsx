@@ -86,7 +86,7 @@ export default function AccountSettingsPage() {
                     </div>
                 </Form>
                 */}
-                 <p className="text-gray-600 dark:text-gray-400 italic">Editing functionality coming soon.</p>
+                <p className="text-gray-600 dark:text-gray-400 italic">Editing functionality coming soon.</p>
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
