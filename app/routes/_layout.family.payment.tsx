@@ -178,7 +178,17 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 }
 
 export default function FamilyPaymentPage() {
-    const { familyId, familyName, studentIds, stripePublishableKey, error: loaderError } = useLoaderData<typeof loader>();
+    // Destructure the updated loader data
+    const {
+        familyId,
+        familyName,
+        students, // Full student list
+        studentPaymentDetails,
+        totalAmountInCents,
+        stripePublishableKey,
+        error: loaderError
+    } = useLoaderData<typeof loader>();
+
     const fetcher = useFetcher<{ sessionId?: string; error?: string }>(); // Fetcher for API call
     const [stripe, setStripe] = useState<Stripe | null>(null);
     const [clientError, setClientError] = useState<string | null>(null);
