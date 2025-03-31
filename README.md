@@ -14,7 +14,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - Home Page:
 
     - Introduction to karate emphasizing personal growth and defense techniques.
-    - Class schedule: Monday & Wednesday at 6 p.m. for ages 6-12.
+    - Class schedule: Tuesday & Friday at 6:15 - 7:15 p.m. for ages 6-12.
 
 - Instructor Profile:
 

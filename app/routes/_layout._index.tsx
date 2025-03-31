@@ -4,8 +4,8 @@ import { Link } from "@remix-run/react";
 export const meta: MetaFunction = () => {
   return [
     { title: "Karate Classes - Sensei Negin" },
-    { name: "description", content: "Discover the art of karate with Sensei Negin at Lighthouse Christian Academy. " +
-          "Classes for children ages 6-12." },
+    { name: "description", content: "Discover the art of karate with Sensei Negin at 650 Allandale Rd Suite A101. " +
+          "Classes for children ages 6-12 on Tuesdays and Fridays." },
   ];
 };
 
@@ -61,7 +61,7 @@ export default function Index() {
               </li>
               <li className="flex items-center">
                 <span className="mr-2">🕕</span>
-                <span>Mon & Wed at 6 p.m</span>
+                <span>Tue & Fri at 6:15 - 7:15 p.m</span>
               </li>
               <li className="flex items-center">
                 <span className="mr-2">👧👦</span>

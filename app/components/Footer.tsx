@@ -83,12 +83,12 @@ export default function Footer() {
             </Button>
             <div className="space-y-2 text-green-100 dark:text-gray-300">
               {[
-                { icon: "📍", label: "Lighthouse Christian Academy" },
+                { icon: "📍", label: "650 Allandale Rd Suite A101" },
                 { icon: "📞", label: "(604) 690-7121" },
                 { icon: "✉️", label: "info@greenegin.ca" },
-                { icon: "🕒", label: "Mon & Wed: 6-7 PM" },
+                { icon: "🕒", label: "Tue & Fri: 6:15 - 7:15 PM" },
               ].map((item) => (
-                <Button 
+                <Button
                   key={item.label}
                   variant="ghost"
                   className="w-full justify-start text-green-100 hover:bg-green-700/50 px-2 py-1 h-auto"
