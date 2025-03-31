@@ -382,17 +382,22 @@ export default function AccountSettingsPage() {
                                 />
                             )}
                         </ClientOnly>
-                        <FormField
-                            control={familyForm.control}
-                            name="email"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Family Email</FormLabel>
-                                    <FormControl><Input type="email" {...field} /></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                        
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="email"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Family Email</FormLabel>
+                                            <FormControl><Input type="email" {...field} /></FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
+                        </ClientOnly>
                         <ClientOnly>
                             {() => (
                                 <FormField
