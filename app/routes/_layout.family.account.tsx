@@ -360,12 +360,12 @@ export default function AccountSettingsPage() {
                                 <FormItem>
                                     <FormLabel>Family Last Name</FormLabel>
                                     <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage/>
-                                        </FormItem>
-                                    )}
-                                />
+                                    <FormMessage/>
+                                </FormItem>
                             )}
-                        </ClientOnly>
+                        />
+                    )}
+                </ClientOnly>
                         
                         <ClientOnly>
                             {() => (
@@ -617,37 +617,39 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
             {() => (
                 <UIForm {...guardianForm}>
                     <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
-                <input type="hidden" name="intent" value="updateGuardian"/>
-                <input type="hidden" name="guardianId" value={guardian.id}/>
+                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
+                        <input type="hidden" name="intent" value="updateGuardian"/>
+                        <input type="hidden" name="guardianId" value={guardian.id}/>
 
-                {/* Display field-specific errors for this guardian form */}
-                {actionData?.intent === 'updateGuardian' && actionData.guardianId === guardian.id && actionData.errors && (
-                    <Alert variant="destructive" className="mb-4">
-                        <AlertTitle>Validation Errors</AlertTitle>
-                        <AlertDescription>
-                            <ul className="list-disc pl-5">
-                                {actionData.errors.map((err: ZodIssue, i: number) => <li
-                                    key={i}>{err.path.join('.')} : {err.message}</li>)}
-                            </ul>
-                        </AlertDescription>
-                    </Alert>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={guardianForm.control}
-                        name="first_name"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>First Name</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                        <FormMessage/>
-                                    </FormItem>
-                                )}
-                            />
+                        {/* Display field-specific errors for this guardian form */}
+                        {actionData?.intent === 'updateGuardian' && actionData.guardianId === guardian.id && actionData.errors && (
+                            <Alert variant="destructive" className="mb-4">
+                                <AlertTitle>Validation Errors</AlertTitle>
+                                <AlertDescription>
+                                    <ul className="list-disc pl-5">
+                                        {actionData.errors.map((err: ZodIssue, i: number) => <li
+                                            key={i}>{err.path.join('.')} : {err.message}</li>)}
+                                    </ul>
+                                </AlertDescription>
+                            </Alert>
                         )}
-                    </ClientOnly>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <ClientOnly>
+                                {() => (
+                                    <FormField
+                                        control={guardianForm.control}
+                                        name="first_name"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>First Name</FormLabel>
+                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
+                            </ClientOnly>
                     
                     <ClientOnly>
                         {() => (
@@ -800,10 +802,10 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                     </ClientOnly>
                 </div>
 
-                <Button type="submit" disabled={isSubmitting} name="intent" value={formIntent}>
-                    {isSubmitting && navigation.formData?.get('guardianId') === guardian.id ? 'Saving...' : `Update Guardian #${index}`}
-                </Button>
-                </Form>
+                        <Button type="submit" disabled={isSubmitting} name="intent" value={formIntent}>
+                            {isSubmitting && navigation.formData?.get('guardianId') === guardian.id ? 'Saving...' : `Update Guardian #${index}`}
+                        </Button>
+                    </Form>
                 </UIForm>
             )}
         </ClientOnly>
