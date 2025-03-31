@@ -13,7 +13,8 @@ import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import type {ActionFunctionArgs} from "@remix-run/node"; // For action type
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For feedback
 import {ClientOnly} from "~/components/client-only";
-import {useEffect} from "react"; // Import ClientOnly
+import {useEffect} from "react";
+import {useClientEffect} from "~/hooks/use-client-effect";
 
 // Define Supabase types for easier access
 type FamilyRow = Database['public']['Tables']['families']['Row'];
@@ -272,7 +273,7 @@ export default function AccountSettingsPage() {
     });
 
     // Reset form with loader data on client side
-    useEffect(() => {
+    useClientEffect(() => {
         if (family) {
             familyForm.reset({
                 intent: 'updateFamily',
@@ -551,7 +552,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
     });
 
     // Reset form with guardian data on client side
-    useEffect(() => {
+    useClientEffect(() => {
         guardianForm.reset({
             intent: 'updateGuardian',
             guardianId: guardian.id,
