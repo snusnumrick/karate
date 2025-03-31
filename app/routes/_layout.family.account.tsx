@@ -163,6 +163,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
     try {
         if (intent === 'updateFamily') {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const {intent: _, ...familyUpdateData} = parsed.data; // Exclude intent
 
             // Need family ID - fetch it again based on user (safer than hidden field)
@@ -185,7 +186,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             return json({status: 'success', message: 'Family information updated successfully.', intent}, {headers});
 
         } else if (intent === 'updateGuardian') {
-            const {intent: _, guardianId, ...guardianUpdateData} = parsed.data; // Exclude intent and guardianId
+            const { guardianId, ...restData } = parsed.data; // Exclude guardianId
+            const { intent, ...guardianUpdateData } = restData; // Exclude intent
 
             // Verify guardianId belongs to the user's family before updating (security)
             const {data: {user}} = await supabaseServer.auth.getUser();
