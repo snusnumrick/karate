@@ -189,10 +189,11 @@ export default function FamilyPaymentPage() {
         );
     }
 
-    // TODO: Determine the actual amount dynamically (e.g., based on number of students, selected plan, etc.)
-    // For now, using a placeholder amount. Ensure this is in the smallest currency unit (e.g., cents).
-    const amountInCents = 5000; // Example: $50.00
-    const paymentAmountDisplay = `$${(amountInCents / 100).toFixed(2)}`; // Format for display
+    // TODO: Determine the actual amount dynamically based on enrollment duration.
+    // For now, use the standard monthly rate as the default.
+    const standardMonthlyRate = siteConfig.pricing.monthly;
+    const amountInCents = standardMonthlyRate * 100; // Convert to cents
+    const paymentAmountDisplay = `${siteConfig.pricing.currency}${standardMonthlyRate.toFixed(2)}`; // Format for display
 
     // Handle form submission
     const handlePaymentSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -229,12 +230,22 @@ export default function FamilyPaymentPage() {
             )}
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-                <p className="text-lg mb-2">You are about to make a payment of:</p>
+                <p className="text-lg mb-2">Standard Monthly Fee:</p>
                 <p className="text-3xl font-semibold text-center mb-4">{paymentAmountDisplay}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                    This payment covers [Placeholder: Describe what the payment is for, e.g., monthly fees
-                    for {studentIds.length} student(s)].
-                    Clicking below will redirect you to our secure payment processor.
+                <Alert variant="default" className="mb-4 bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
+                  <InfoCircledIcon className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                  <AlertTitle className="text-blue-800 dark:text-blue-200">Pricing Information</AlertTitle>
+                  <AlertDescription className="text-blue-700 dark:text-blue-300">
+                    Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
+                    The 1st month is {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth},
+                    2nd month is {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth},
+                    and the ongoing rate is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month.
+                    The amount shown reflects the standard rate.
+                  </AlertDescription>
+                </Alert>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    Clicking below will redirect you to our secure payment processor to pay the standard monthly fee.
+                    Adjustments based on your enrollment duration may apply.
                 </p>
             </div>
 

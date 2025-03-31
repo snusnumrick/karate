@@ -36,6 +36,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 
   - Linking parent payments directly to individual children, accommodating multiple children per family.
   - Secure payment processing with transaction records for families.
+  - Pricing Structure: Free Trial, $49/1st mo, $100/2nd mo, $121/monthly ongoing (details in `app/config/site.ts`).
 
 - Online Waivers and Policies:
 

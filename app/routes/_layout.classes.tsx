@@ -56,6 +56,33 @@ export default function ClassesPage() {
               </div>
             </div>
 
+            {/* Add Pricing Section */}
+            <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-6 mt-10">Tuition & Pricing</h2>
+            <div className="bg-blue-50 dark:bg-gray-700/40 p-6 rounded-lg mb-8 border border-blue-200 dark:border-gray-600">
+              <ul className="space-y-3">
+                {siteConfig.pricing.tiers.map((tier) => (
+                  <li key={tier.label} className="flex justify-between items-center">
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">{tier.label}</span>
+                    {tier.price ? (
+                      <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                        {siteConfig.pricing.currency}{tier.price}
+                        {tier.label.includes("Month") || tier.label === "Monthly" ? <span className="text-sm font-normal text-gray-500 dark:text-gray-400"> / mo</span> : ""}
+                      </span>
+                    ) : (
+                       <span className="text-lg font-bold text-blue-700 dark:text-blue-300">{tier.description || "Free"}</span>
+                    )}
+                  </li>
+                ))}
+                 {/* Add a clarifying note if needed */}
+                 <li className="pt-3 border-t border-blue-200 dark:border-gray-600">
+                   <p className="text-sm text-gray-600 dark:text-gray-400">
+                     The first class is a free trial. Subsequent months follow the tiered pricing.
+                   </p>
+                 </li>
+              </ul>
+            </div>
+
+
             <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-6">Belt Progression</h2>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
               Students progress through a traditional belt system that recognizes their growing skills and knowledge.

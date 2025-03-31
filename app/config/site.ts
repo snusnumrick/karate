@@ -18,6 +18,20 @@ export const siteConfig = {
   socials: {
     instagram: "https://www.instagram.com/greenegin.karate/",
   },
+  pricing: {
+    currency: "$",
+    currencyCode: "CAD", // Optional: For more specific contexts
+    freeTrial: "FREE TRIAL",
+    firstMonth: 49,
+    secondMonth: 100,
+    monthly: 121,
+    tiers: [
+      { label: "Free Trial", description: "Your first class is on us!" },
+      { label: "1st Month", price: 49 },
+      { label: "2nd Month", price: 100 },
+      { label: "Monthly", price: 121, description: "(Ongoing after 2nd month)" },
+    ]
+  },
   // Add other site-wide config as needed
 };
 
