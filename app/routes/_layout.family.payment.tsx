@@ -374,6 +374,7 @@ export default function FamilyPaymentPage() {
                     <ExclamationTriangleIcon className="h-4 w-4"/>
                     <AlertTitle>Payment Error</AlertTitle>
                     <AlertDescription>{clientError || fetcher.data?.error}</AlertDescription>
+                </Alert> // Add missing closing tag
             )}
 
             {/* Student Selection & Payment Details Section */}
