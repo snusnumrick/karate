@@ -579,13 +579,38 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
 
     const formIntent = `updateGuardian-${guardian.id}`; // Unique intent for submission check
 
+    // Reset form with guardian data on client side - Moved useEffect inside ClientOnly render prop
+    // useEffect(() => { ... }); // Removed from here
+
     return (
-        // Removed ClientOnly wrapper from GuardianForm component itself
-        // The parent AccountSettingsPage now handles client-only rendering
-                <UIForm {...guardianForm}>
-                    <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
-                        <input type="hidden" name="intent" value="updateGuardian"/>
+        // Re-introduce ClientOnly wrapper inside GuardianForm
+        <ClientOnly fallback={<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">Loading Guardian {index} form...</div>}>
+            {() => {
+                // Place useEffect inside the ClientOnly render prop to ensure it runs client-side
+                // eslint-disable-next-line react-hooks/rules-of-hooks
+                useEffect(() => {
+                    // No need for typeof window check here as ClientOnly ensures it
+                    guardianForm.reset({
+                        intent: 'updateGuardian',
+                        guardianId: guardian.id,
+                        first_name: getDefaultValue(guardian.first_name),
+                        last_name: getDefaultValue(guardian.last_name),
+                        relationship: getDefaultValue(guardian.relationship),
+                        home_phone: getDefaultValue(guardian.home_phone),
+                        cell_phone: getDefaultValue(guardian.cell_phone),
+                        email: getDefaultValue(guardian.email),
+                        work_phone: getDefaultValue(guardian.work_phone),
+                        employer: getDefaultValue(guardian.employer),
+                        employer_phone: getDefaultValue(guardian.employer_phone),
+                        employer_notes: getDefaultValue(guardian.employer_notes),
+                    });
+                }, [guardian, guardianForm]); // Keep dependencies
+
+                return (
+                    <UIForm {...guardianForm}>
+                        <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+                            <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
+                            <input type="hidden" name="intent" value="updateGuardian"/>
                         <input type="hidden" name="guardianId" value={guardian.id}/>
 
                         {/* Display field-specific errors for this guardian form */}
@@ -732,8 +757,10 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                         <Button type="submit" disabled={isSubmitting} name="intent" value={formIntent}>
                             {isSubmitting && navigation.formData?.get('guardianId') === guardian.id ? 'Saving...' : `Update Guardian #${index}`}
                         </Button>
-                    </Form>
-                </UIForm>
-        // Removed ClientOnly closing tags
+                        </Form>
+                    </UIForm>
+                );
+            }}
+        </ClientOnly>
     );
 }
