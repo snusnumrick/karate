@@ -460,7 +460,6 @@ export default function AccountSettingsPage() {
                                             <FormMessage/>
                                         </FormItem>
                                     )}
-                                    {/* Closing tags moved into the ClientOnly wrapper above */}
                                 />
                         
                         <FormField
@@ -671,7 +670,6 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                         <FormMessage/>
                                     </FormItem>
                                 )}
-                                {/* Closing tags moved into the ClientOnly wrapper above */}
                             />
                     
                     <FormField
