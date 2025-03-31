@@ -174,12 +174,12 @@ export default function RecordAttendancePage() {
   const isSubmitting = navigation.state === "submitting";
   const formattedDate = format(new Date(attendanceDate + 'T00:00:00'), 'MMMM d, yyyy'); // Ensure correct date parsing
 
-  // Helper to determine badge variant based on eligibility
+  // Helper to determine badge variant based on eligibility (Updated reasons)
   const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'Paid': return 'default';
       case 'Trial': return 'secondary';
-      case 'Not Paid': return 'destructive';
+      case 'Expired': return 'destructive'; // Changed from 'Not Paid'
       default: return 'outline';
     }
   };
@@ -224,7 +224,8 @@ export default function RecordAttendancePage() {
                     <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">
                       {student.first_name} {student.last_name}
                     </h3>
-                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="ml-2">
+                    {/* Display eligibility badge - consider adding last payment date tooltip if needed */}
+                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="ml-2 text-xs">
                       {student.eligibility.reason}
                     </Badge>
                   </div>

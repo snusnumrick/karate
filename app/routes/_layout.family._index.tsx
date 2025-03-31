@@ -1,12 +1,28 @@
-import {json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
-import {useLoaderData} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {Button} from "~/components/ui/button"; // Example import
-import {Link} from "@remix-run/react";
-import {Database} from "~/types/supabase";
+import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import { getSupabaseServerClient, checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
+import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge"; // Import Badge
+import { Link } from "@remix-run/react";
+import { Database } from "~/types/supabase";
+import { format } from 'date-fns'; // For formatting dates
 
 export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
     students?: Database["public"]["Tables"]["students"]["Row"][]; // adjust if you have a specific type for students
+    payments?: (
+        Database["public"]["Tables"]["payments"]["Row"] & {
+        payment_students: {
+            student_id: string;
+        }[];
+    }
+        )[];
+// Extend student type within FamilyData to include eligibility
+type StudentWithEligibility = Database["public"]["Tables"]["students"]["Row"] & {
+    eligibility: EligibilityStatus;
+};
+
+export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
+    students?: StudentWithEligibility[]; // Use the extended student type
     payments?: (
         Database["public"]["Tables"]["payments"]["Row"] & {
         payment_students: {
@@ -75,18 +91,37 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             ascending: false,
             nullsFirst: false
         }) // Order payments by date
-        .single<FamilyData>();
+        .single(); // Fetch raw data first
 
-    if (familyError) {
-        console.error("Error fetching family data:", familyError?.message);
+    if (familyError || !familyData) { // Check if familyData itself is null/undefined
+        console.error("Error fetching family data:", familyError?.message ?? "Family not found");
         return json({
             profile: { familyId: String(profileData.family_id) },
             error: "Failed to load family data.",
             allWaiversSigned: false
-        }, {status: 500, headers});
+        }, { status: 500, headers });
     }
 
-    // 3. Fetch required waivers and user's signatures to determine status
+    // 3. Fetch eligibility for each student IN the fetched family data
+    const studentsWithEligibility: StudentWithEligibility[] = [];
+    if (familyData.students && familyData.students.length > 0) {
+        for (const student of familyData.students) {
+            const eligibility = await checkStudentEligibility(student.id, supabaseServer); // Use supabaseServer (service role)
+            studentsWithEligibility.push({
+                ...student,
+                eligibility: eligibility,
+            });
+        }
+    }
+
+    // Replace the original students array with the one containing eligibility
+    const familyDataWithEligibility: FamilyData = {
+        ...familyData,
+        students: studentsWithEligibility,
+    };
+
+
+    // 4. Fetch required waivers and user's signatures to determine status
     let allWaiversSigned = false;
     try {
         const {data: requiredWaivers, error: requiredWaiversError} = await supabaseServer
@@ -123,11 +158,26 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         allWaiversSigned = false;
     }
 
-    console.log('familyData:', familyData);
+    console.log('Family data with eligibility:', familyDataWithEligibility);
 
-    // Return profile, family data, and waiver status
-    return json({profile: { familyId: String(profileData.family_id) }, family: familyData, allWaiversSigned}, {headers});
+    // Return profile, family data (with eligibility), and waiver status
+    return json({
+        profile: { familyId: String(profileData.family_id) },
+        family: familyDataWithEligibility, // Use the updated data
+        allWaiversSigned
+    }, { headers });
 }
+
+
+// Helper function for badge variants (can be moved to utils if reused)
+const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+        case 'Paid': return 'default'; // Greenish
+        case 'Trial': return 'secondary'; // Bluish/Grayish
+        case 'Expired': return 'destructive'; // Reddish
+        default: return 'outline';
+    }
+};
 
 export default function FamilyPortal() {
     // Now loader returns profile, family data, and waiver status
@@ -174,12 +224,22 @@ export default function FamilyPortal() {
                         <ul className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300">
                             {family.students.map((student) => (
                                 <li key={student.id}>
+                                <li key={student.id} className="flex justify-between items-center">
                                     <Link
                                         to={`/family/student/${student.id}`}
                                         className="text-blue-600 hover:underline dark:text-blue-400"
                                     >
                                         {student.first_name} {student.last_name}
                                     </Link>
+                                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="ml-2 text-xs">
+                                        {student.eligibility.reason}
+                                        {student.eligibility.reason === 'Paid' && student.eligibility.lastPaymentDate &&
+                                            ` (Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
+                                        }
+                                        {student.eligibility.reason === 'Expired' && student.eligibility.lastPaymentDate &&
+                                            ` (Last Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
+                                        }
+                                    </Badge>
                                 </li>
                             ))}
                         </ul>

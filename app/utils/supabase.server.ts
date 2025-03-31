@@ -135,30 +135,33 @@ export async function createInitialPaymentRecord(
 
 // --- Student Eligibility Check ---
 
+// Define the eligibility window in days
+const PAYMENT_ELIGIBILITY_WINDOW_DAYS = 35;
+
 export type EligibilityStatus = {
   eligible: boolean;
-  reason: 'Trial' | 'Paid' | 'Not Paid';
-  paidThrough?: string; // Optional: YYYY-MM for the month they are paid through
+  reason: 'Trial' | 'Paid' | 'Expired'; // Changed 'Not Paid' to 'Expired' for clarity
+  lastPaymentDate?: string; // Optional: ISO date string of the last successful payment
 };
 
 /**
- * Checks if a student is eligible to attend class based on payment status.
+ * Checks if a student is eligible to attend class today based on payment status.
  * Eligibility rules:
  * 1. Eligible if on Free Trial (zero successful payments linked).
- * 2. Eligible if paid for the current calendar month.
+ * 2. Eligible if the most recent successful payment was within the last PAYMENT_ELIGIBILITY_WINDOW_DAYS days.
  * @param studentId The ID of the student to check.
  * @param supabaseAdmin A Supabase client instance with service_role privileges.
  * @returns Promise<EligibilityStatus>
  */
 export async function checkStudentEligibility(
   studentId: string,
-  supabaseAdmin: ReturnType<typeof createClient<Database>> // Use the specific client type
+  supabaseAdmin: ReturnType<typeof createClient<Database>>
 ): Promise<EligibilityStatus> {
   const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth(); // 0-indexed (0 = January)
+  const eligibilityCutoffDate = new Date(today);
+  eligibilityCutoffDate.setDate(today.getDate() - PAYMENT_ELIGIBILITY_WINDOW_DAYS);
 
-  // 1. Fetch successful payments linked to this student
+  // 1. Fetch successful payments linked to this student, ordered by date descending
   const { data: paymentLinks, error: linkError } = await supabaseAdmin
     .from('payment_students')
     .select(`
@@ -166,18 +169,19 @@ export async function checkStudentEligibility(
       payments ( id, payment_date, status )
     `)
     .eq('student_id', studentId)
-    // Ensure we only join with successful payments
-    .eq('payments.status', 'succeeded');
+    .eq('payments.status', 'succeeded') // Ensure we only join with successful payments
+    .order('payment_date', { foreignTable: 'payments', ascending: false }); // Get most recent first
 
   if (linkError) {
     console.error(`Error fetching payment links for student ${studentId}:`, linkError.message);
     // Default to not eligible if we can't verify payments
-    return { eligible: false, reason: 'Not Paid' };
+    return { eligible: false, reason: 'Expired' }; // Use 'Expired'
   }
 
+  // Filter out null payments just in case, although the join condition should prevent this
   const successfulPayments = paymentLinks
-    ?.map(link => link.payments) // Extract the payment object
-    .filter(payment => payment !== null && payment.payment_date !== null) as Array<{ id: string, payment_date: string, status: string }> ?? []; // Type assertion after filtering nulls
+    ?.map(link => link.payments)
+    .filter(payment => payment !== null && payment.payment_date !== null) as Array<{ id: string, payment_date: string, status: string }> ?? [];
 
 
   // 2. Check for Free Trial (zero successful payments)
@@ -185,20 +189,26 @@ export async function checkStudentEligibility(
     return { eligible: true, reason: 'Trial' };
   }
 
-  // 3. Check if paid for the current calendar month
-  for (const payment of successfulPayments) {
-    const paymentDate = new Date(payment.payment_date); // Assumes payment_date is YYYY-MM-DD or ISO string
-    if (paymentDate.getFullYear() === currentYear && paymentDate.getMonth() === currentMonth) {
-      return {
-        eligible: true,
-        reason: 'Paid',
-        paidThrough: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}` // YYYY-MM
-      };
-    }
+  // 3. Check the most recent payment date against the eligibility window
+  // Since we ordered by date descending, the first payment is the most recent
+  const mostRecentPayment = successfulPayments[0];
+  const lastPaymentDate = new Date(mostRecentPayment.payment_date); // Assumes payment_date is valid date string
+
+  if (lastPaymentDate >= eligibilityCutoffDate) {
+    // Payment is recent enough
+    return {
+      eligible: true,
+      reason: 'Paid',
+      lastPaymentDate: mostRecentPayment.payment_date // Pass the date for display
+    };
   }
 
-  // 4. If not on trial and no payment for the current month found
-  return { eligible: false, reason: 'Not Paid' };
+  // 4. If not on trial and the most recent payment is outside the window
+  return {
+      eligible: false,
+      reason: 'Expired',
+      lastPaymentDate: mostRecentPayment.payment_date // Still pass the date for context
+  };
 }
 
 

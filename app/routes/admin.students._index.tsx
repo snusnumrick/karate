@@ -87,12 +87,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function StudentsAdminPage() {
   const { students } = useLoaderData<{ students: StudentWithFamilyAndEligibility[] }>();
 
-  // Helper to determine badge variant based on eligibility
+  // Helper to determine badge variant based on eligibility (Updated reasons)
   const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-      case 'Paid': return 'default'; // Greenish
-      case 'Trial': return 'secondary'; // Bluish/Grayish
-      case 'Not Paid': return 'destructive'; // Reddish
+      case 'Paid': return 'default';
+      case 'Trial': return 'secondary';
+      case 'Expired': return 'destructive'; // Changed from 'Not Paid'
       default: return 'outline';
     }
   };
@@ -128,9 +128,12 @@ export default function StudentsAdminPage() {
                   <TableCell>{student.families?.name ?? 'N/A'}</TableCell>
                   <TableCell>{student.belt_rank ?? 'N/A'}</TableCell> {/* Handle null belt rank */}
                   <TableCell>
-                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)}>
+                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="text-xs">
                       {student.eligibility.reason}
-                      {student.eligibility.reason === 'Paid' && student.eligibility.paidThrough && ` (Thru ${student.eligibility.paidThrough})`}
+                      {/* Optionally show last payment date for Paid/Expired */}
+                      {student.eligibility.lastPaymentDate && (student.eligibility.reason === 'Paid' || student.eligibility.reason === 'Expired') &&
+                        ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'yyyy-MM-dd')})`
+                      }
                     </Badge>
                   </TableCell>
                   <TableCell>
