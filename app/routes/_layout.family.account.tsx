@@ -551,10 +551,12 @@ function GuardianForm({ guardian, index, actionData, isSubmitting, navigation }:
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Relationship</FormLabel>
-                                 <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
-                                    <FormControl>
-                                        <SelectTrigger><SelectValue placeholder="Select relationship" /></SelectTrigger>
-                                    </FormControl>
+                                <ClientOnly fallback={<Input disabled placeholder="Loading relationship select..." />}>
+                                  {() => (
+                                    <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
+                                      <FormControl>
+                                          <SelectTrigger><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                                      </FormControl>
                                     <SelectContent>
                                         <SelectItem value="Mother">Mother</SelectItem>
                                         <SelectItem value="Father">Father</SelectItem>
