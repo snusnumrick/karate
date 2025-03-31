@@ -753,7 +753,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                             />
                 </div>
 
-                        <Button type="submit" disabled={isSubmitting} name="intent" value={formIntent}>
+                        {/* Remove name="intent" and value={formIntent} from button */}
+                        {/* Rely on the hidden input field above for the correct intent value */}
+                        <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting && navigation.formData?.get('guardianId') === guardian.id ? 'Saving...' : `Update Guardian #${index}`}
                         </Button>
                         </Form>
