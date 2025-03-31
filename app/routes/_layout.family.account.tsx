@@ -353,19 +353,21 @@ export default function AccountSettingsPage() {
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                            control={familyForm.control}
-                            name="name"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Family Last Name</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                        <ClientOnly>
+                           {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="name"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Family Last Name</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
-                    )} 
-                </ClientOnly> 
+                        </ClientOnly>
                         
                         <ClientOnly>
                             {() => (
