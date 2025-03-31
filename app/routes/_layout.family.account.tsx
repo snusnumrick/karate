@@ -240,22 +240,44 @@ export default function AccountSettingsPage() {
     // --- Family Form ---
     const familyForm = useForm<FamilyFormData>({
         resolver: zodResolver(familySchema),
+        // Initialize with empty/default values, not directly from loader data
         defaultValues: {
             intent: 'updateFamily',
-            name: getDefaultValue(family?.name),
-            address: getDefaultValue(family?.address),
-            city: getDefaultValue(family?.city),
-            province: getDefaultValue(family?.province),
-            postal_code: getDefaultValue(family?.postal_code),
-            primary_phone: getDefaultValue(family?.primary_phone),
-            email: getDefaultValue(family?.email),
-            referral_source: getDefaultValue(family?.referral_source),
-            referral_name: getDefaultValue(family?.referral_name),
-            emergency_contact: getDefaultValue(family?.emergency_contact),
-            health_info: getDefaultValue(family?.health_info),
-            notes: getDefaultValue(family?.notes),
+            name: '',
+            address: '',
+            city: '',
+            province: '',
+            postal_code: '',
+            primary_phone: '',
+            email: '',
+            referral_source: '',
+            referral_name: '',
+            emergency_contact: '',
+            health_info: '',
+            notes: '',
         },
     });
+
+    // Reset form with loader data on client side
+    useEffect(() => {
+        if (family) {
+            familyForm.reset({
+                intent: 'updateFamily',
+                name: getDefaultValue(family.name),
+                address: getDefaultValue(family.address),
+                city: getDefaultValue(family.city),
+                province: getDefaultValue(family.province),
+                postal_code: getDefaultValue(family.postal_code),
+                primary_phone: getDefaultValue(family.primary_phone),
+                email: getDefaultValue(family.email),
+                referral_source: getDefaultValue(family.referral_source),
+                referral_name: getDefaultValue(family.referral_name),
+                emergency_contact: getDefaultValue(family.emergency_contact),
+                health_info: getDefaultValue(family.health_info),
+                notes: getDefaultValue(family.notes),
+            });
+        }
+    }, [family, familyForm]); // Dependency array ensures this runs when family data is available
 
     // --- Guardian Forms (one for each guardian) ---
     // We need a way to manage multiple forms. We can create them dynamically.
@@ -293,12 +315,11 @@ export default function AccountSettingsPage() {
 
 
             {/* --- Family Information Form --- */}
-            <ClientOnly fallback={<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6"><h2 className="text-xl font-semibold mb-4 border-b pb-2">Loading Family Information...</h2></div>}>
-              {() => (
-                <UIForm {...familyForm}>
-                    <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
-                        <input type="hidden" name="intent" value="updateFamily" />
+            {/* Removed ClientOnly wrapper */}
+            <UIForm {...familyForm}>
+                <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
+                    <input type="hidden" name="intent" value="updateFamily" />
 
                     {/* Display field-specific errors for family form */}
                     {actionData?.intent === 'updateFamily' && actionData.errors && (
@@ -453,20 +474,17 @@ export default function AccountSettingsPage() {
                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
                     </Button>
-                  </Form>
-                </UIForm>
-              )}
-            </ClientOnly>
+                </Form>
+            </UIForm>
+            {/* End of removed ClientOnly wrapper */}
 
 
             {/* --- Guardian Information Forms --- */}
+            {/* Removed ClientOnly wrapper */}
             {guardians.map((guardian, index) => (
-              <ClientOnly key={guardian.id} fallback={<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6"><h2 className="text-xl font-semibold mb-4 border-b pb-2">Loading Guardian #{index + 1} Information...</h2></div>}>
-                {() => (
-                  <GuardianForm guardian={guardian} index={index + 1} actionData={actionData} isSubmitting={isSubmitting} navigation={navigation} />
-                )}
-              </ClientOnly>
+                <GuardianForm key={guardian.id} guardian={guardian} index={index + 1} actionData={actionData} isSubmitting={isSubmitting} navigation={navigation} />
             ))}
+            {/* End of removed ClientOnly wrapper */}
 
 
             {/* --- Account Preferences (Placeholder) --- */}
@@ -493,7 +511,26 @@ interface GuardianFormProps {
 function GuardianForm({ guardian, index, actionData, isSubmitting, navigation }: GuardianFormProps) {
     const guardianForm = useForm<GuardianFormData>({
         resolver: zodResolver(guardianSchema),
+        // Initialize with empty/default values
         defaultValues: {
+            intent: 'updateGuardian',
+            guardianId: guardian.id, // Keep ID for submission
+            first_name: '',
+            last_name: '',
+            relationship: '',
+            home_phone: '',
+            cell_phone: '',
+            email: '',
+            work_phone: '',
+            employer: '',
+            employer_phone: '',
+            employer_notes: '',
+        },
+    });
+
+    // Reset form with guardian data on client side
+    useEffect(() => {
+        guardianForm.reset({
             intent: 'updateGuardian',
             guardianId: guardian.id,
             first_name: getDefaultValue(guardian.first_name),
@@ -506,8 +543,8 @@ function GuardianForm({ guardian, index, actionData, isSubmitting, navigation }:
             employer: getDefaultValue(guardian.employer),
             employer_phone: getDefaultValue(guardian.employer_phone),
             employer_notes: getDefaultValue(guardian.employer_notes),
-        },
-    });
+        });
+    }, [guardian, guardianForm]); // Dependency array
 
     const formIntent = `updateGuardian-${guardian.id}`; // Unique intent for submission check
 
