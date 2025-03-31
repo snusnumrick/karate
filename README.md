@@ -146,10 +146,10 @@ gantt
     Family Portal           :done,    portal, 2024-03-29, 14d
     Student Detail Page     :done,    student, after portal, 7d
     Security Implementation :done,    sec, 2024-04-05, 14d     
-    section Payments                                                                                                                                                                                                    
-    Gateway Integration     :active,  pay, 2024-04-20, 21d # Basic flow with Stripe.js/API route
-    Transaction Tracking    :done,    pay_track, after pay, 14d # History on separate page
-    Dynamic Pricing Logic   :         pay_dynamic, after pay_track, 7d # Implement tiered pricing logic
+    section Payments
+    Gateway Integration     :active,  pay, 2024-04-20, 21d
+    Transaction Tracking    :done,    pay_track, after pay, 14d
+    Dynamic Pricing Logic   :         pay_dynamic, after pay_track, 7d
     section Reporting
     Attendance System       :         attend, 2024-05-25, 21d
     Achievement Tracking    :         achieve, 2024-06-15, 21d
