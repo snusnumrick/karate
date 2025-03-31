@@ -18,6 +18,7 @@ export interface Family {
   referralName?: string;
   emergencyContact?: string;
   healthInfo?: string;
+  notes?: string; // Added from supabase type
   guardians: Guardian[];
   students: Student[];
 }
