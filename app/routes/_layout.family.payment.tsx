@@ -14,18 +14,19 @@ interface StudentPaymentDetail {
     studentId: string;
     firstName: string;
     lastName: string;
-    nextPaymentAmount: number; // Amount in dollars
-    nextPaymentTierLabel: string;
-    pastPaymentCount: number;
+    eligibility: EligibilityStatus; // Current status (Trial, Paid, Expired)
+    needsPayment: boolean; // True if status is Trial or Expired
+    nextPaymentAmount: number; // Amount in dollars for their next tier
+    nextPaymentTierLabel: string; // Label for their next tier (1st Month, 2nd Month, Monthly)
+    pastPaymentCount: number; // Needed to determine next tier
 }
 
-// Updated Loader data interface
+// Updated Loader data interface - remove totalAmountInCents
 export interface LoaderData {
     familyId: string;
     familyName: string;
-    students: Array<Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>>; // Pass student names too
+    // No longer need the separate 'students' array, details are in studentPaymentDetails
     studentPaymentDetails: StudentPaymentDetail[];
-    totalAmountInCents: number;
     stripePublishableKey: string | null;
     error?: string;
 }
@@ -88,10 +89,9 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
         return json({
             familyId,
             familyName,
-            students: [],
+            // No students found, return empty details
             studentPaymentDetails: [],
-            totalAmountInCents: 0,
-            stripePublishableKey: null, // Not needed if no students
+            stripePublishableKey: null,
             error: "No students found in this family."
         }, { headers });
     }
@@ -125,17 +125,18 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
         paymentStudentLinks = linksData || [];
     }
 
-    // --- Calculate Next Payment Amount Per Student ---
+    // --- Calculate Eligibility and Next Payment Details Per Student ---
     const studentPaymentDetails: StudentPaymentDetail[] = [];
-    let totalAmountInCents = 0;
+    // let totalAmountInCents = 0; // Remove pre-calculation
 
     for (const student of students) {
-        const pastPaymentCount = paymentStudentLinks.filter(link => link.student_id === student.id).length;
+        // 1. Check current eligibility
+        const eligibility = await checkStudentEligibility(student.id, supabaseServer);
 
+        // 2. Determine next payment tier based on past successful payments
+        const pastPaymentCount = paymentStudentLinks.filter(link => link.student_id === student.id).length;
         let nextPaymentAmount = 0;
         let nextPaymentTierLabel = "";
-
-        // Determine tier based on past successful payments
         if (pastPaymentCount === 0) {
             nextPaymentAmount = siteConfig.pricing.firstMonth;
             nextPaymentTierLabel = "1st Month";
@@ -147,16 +148,21 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
             nextPaymentTierLabel = "Monthly";
         }
 
+        // 3. Determine if payment is needed now
+        const needsPayment = eligibility.reason === 'Trial' || eligibility.reason === 'Expired';
+
         studentPaymentDetails.push({
             studentId: student.id,
             firstName: student.first_name,
             lastName: student.last_name,
-            nextPaymentAmount: nextPaymentAmount, // Store in dollars for detail display
+            eligibility: eligibility, // Include eligibility status
+            needsPayment: needsPayment, // Include flag
+            nextPaymentAmount: nextPaymentAmount,
             nextPaymentTierLabel: nextPaymentTierLabel,
             pastPaymentCount: pastPaymentCount,
         });
 
-        totalAmountInCents += nextPaymentAmount * 100; // Add to total in cents
+        // totalAmountInCents += nextPaymentAmount * 100; // Remove pre-calculation
     }
 
     // --- Prepare and Return Data ---
@@ -166,36 +172,48 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
         // Allow proceeding but component should handle missing key
     }
 
+    // Return data without pre-calculated total
     return json({
         familyId,
         familyName,
-        students, // Pass student list for potential use (e.g., hidden input)
-        studentPaymentDetails,
-        totalAmountInCents,
+        studentPaymentDetails, // This now contains all student info needed
         stripePublishableKey
     }, { headers });
 }
 
 export default function FamilyPaymentPage() {
-    // Destructure the updated loader data
+    // Destructure the updated loader data (no totalAmountInCents, no separate students array)
     const {
         familyId,
         familyName,
-        students, // Full student list
         studentPaymentDetails,
-        totalAmountInCents,
         stripePublishableKey,
         error: loaderError
     } = useLoaderData<typeof loader>();
 
-    const fetcher = useFetcher<{ sessionId?: string; error?: string }>(); // Fetcher for API call
+    const fetcher = useFetcher<{ sessionId?: string; error?: string }>();
     const [stripe, setStripe] = useState<Stripe | null>(null);
     const [clientError, setClientError] = useState<string | null>(null);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set()); // State for selected students
 
     const isProcessing = fetcher.state !== 'idle';
 
-    // Derive student IDs from the students array for use in the form
-    const studentIdsForForm = students.map(s => s.id);
+    // --- Dynamic Calculation ---
+    const calculateTotal = () => {
+        let total = 0;
+        selectedStudentIds.forEach(id => {
+            const detail = studentPaymentDetails.find(d => d.studentId === id);
+            if (detail) {
+                total += detail.nextPaymentAmount * 100; // Add amount in cents
+            }
+        });
+        return total;
+    };
+
+    const currentTotalInCents = calculateTotal();
+    const currentTotalDisplay = `${siteConfig.pricing.currency}${(currentTotalInCents / 100).toFixed(2)}`;
+    // --- End Dynamic Calculation ---
+
 
     // Log fetcher state and data on every render for debugging
     console.log("Fetcher state:", fetcher.state);
@@ -239,6 +257,56 @@ export default function FamilyPaymentPage() {
              setClientError(fetcher.data.error);
         }
     }, [fetcher.data, stripe]);
+
+
+    // --- Event Handlers ---
+    const handleCheckboxChange = (studentId: string, checked: boolean | 'indeterminate') => {
+        setSelectedStudentIds(prev => {
+            const next = new Set(prev);
+            if (checked === true) {
+                next.add(studentId);
+            } else {
+                next.delete(studentId);
+            }
+            return next;
+        });
+    };
+
+    // Handle form submission
+    const handlePaymentSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setClientError(null);
+
+        if (!stripe) {
+            setClientError("Payment system is not ready. Please wait a moment or refresh.");
+            return;
+        }
+        if (selectedStudentIds.size === 0) {
+             setClientError("Please select at least one student to pay for.");
+             return;
+        }
+        const calculatedTotal = calculateTotal();
+        if (calculatedTotal <= 0) {
+             setClientError("Calculated payment amount must be greater than zero.");
+             return;
+        }
+
+        const formData = new FormData(event.currentTarget);
+        // Set the CALCULATED total amount in cents
+        formData.set('amountInCents', String(calculatedTotal));
+        // Set the SELECTED student IDs
+        formData.set('studentIds', Array.from(selectedStudentIds).join(','));
+
+        console.log("Submitting to API with formData:", Object.fromEntries(formData));
+
+        fetcher.submit(formData, {
+            method: 'post',
+            action: '/api/create-checkout-session',
+        });
+        console.log("Form submitted to fetcher.");
+    };
+    // --- End Event Handlers ---
+
 
     // Handle case where loader found no students (error message comes from loader data)
     if (loaderError === "No students found in this family.") {
@@ -290,35 +358,10 @@ export default function FamilyPaymentPage() {
         );
     }
 
-    // Use the standard monthly rate as the default for display and initial processing.
-    // Dynamic calculation based on enrollment duration needs to be implemented in the API/loader.
-    const standardMonthlyRate = siteConfig.pricing.monthly;
-    const amountInCents = standardMonthlyRate * 100; // Convert to cents
-    const paymentAmountDisplay = `${siteConfig.pricing.currency}${standardMonthlyRate.toFixed(2)}`; // Format for display
-
-    // Handle form submission
-    const handlePaymentSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setClientError(null); // Clear previous errors
-
-        if (!stripe) {
-            setClientError("Payment system is not ready. Please wait a moment or refresh.");
-            return;
-        }
-
-        const formData = new FormData(event.currentTarget);
-        // Add amountInCents to the form data for the fetcher
-        formData.set('amountInCents', String(amountInCents));
-
-        fetcher.submit(formData, {
-            method: 'post',
-            action: '/api/create-checkout-session', // Target the API route
-        });
-        console.log("Form submitted to fetcher."); // Log submission call
-    };
+    // Removed old static calculation logic
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-md">
+        <div className="container mx-auto px-4 py-8 max-w-lg"> {/* Increased max-width */}
             <h1 className="text-2xl font-bold mb-6 text-center">Make Payment</h1>
 
             {/* Display errors from client-side state (Stripe load/redirect) or fetcher */}
