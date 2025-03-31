@@ -126,7 +126,8 @@ export default function AdminPaymentsPage() {
                       {payment.familyName}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-right">${payment.amount.toFixed(2)}</TableCell>
+                  {/* Divide by 100 to convert cents to dollars */}
+                  <TableCell className="text-right">${(payment.amount / 100).toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(payment.status)} className="capitalize">
                       {payment.status}
