@@ -123,11 +123,12 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 
 ### Next Priority Features
 1. **Payment Integration Enhancements**:
-  - Implement dynamic payment amount calculation based on enrollment duration (`_layout.family.payment.tsx`).
-  - Display recent payment in Family Portal, full history on separate page (`_layout.family.payment-history.tsx`) (Implemented).
-  - Implement robust error handling for payment linking and Stripe webhooks (`utils/supabase.server.ts`).
+  - Implement dynamic payment amount calculation based on enrollment duration (`_layout.family.payment.tsx`) (✅ Implemented - based on past payment count).
+  - Display recent payment in Family Portal, full history on separate page (`_layout.family.payment-history.tsx`) (✅ Implemented).
+  - Implement robust error handling for payment linking and Stripe webhooks (`utils/supabase.server.ts`) (✅ Implemented).
+  - Display student eligibility status (Trial/Paid/Not Paid) in Admin panels (`/admin/students`, `/admin/attendance/record`) (✅ Implemented).
 2. **Account Settings**: Implement account management section/link in Family Portal (`_layout.family._index.tsx`).
-3. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId`. 
+3. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId`.
 4. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`).
 5. **Attendance Tracking**: Implement core attendance tracking system features.
 6. **Achievement Badges**: Implement achievement badge functionality.
