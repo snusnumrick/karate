@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge"; // For status display
 import { format } from 'date-fns'; // For date formatting
+import { PaymentStatus } from "~/types/models"; // Import the enum
 
 // Define the shape of data returned by the loader, including the family name
 type PaymentWithFamily = Database['public']['Tables']['payments']['Row'] & {
