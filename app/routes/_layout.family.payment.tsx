@@ -1,4 +1,4 @@
-import {json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, TypedResponse} from "@remix-run/node";
+import {json, redirect, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
 import { useLoaderData, useFetcher, Link } from "@remix-run/react"; // Use useFetcher, remove Form, useNavigation, useActionData
 import { useState, useEffect } from "react"; // Add React hooks
 import { loadStripe, type Stripe } from '@stripe/stripe-js'; // Import Stripe.js
@@ -6,7 +6,6 @@ import { getSupabaseServerClient } from "~/utils/supabase.server"; // Remove cre
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { ExclamationTriangleIcon, InfoCircledIcon } from "@radix-ui/react-icons"; // Add InfoCircledIcon
-import { Link } from "@remix-run/react"; // Ensure Link is imported
 import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/supabase"; // Import Database type
 
