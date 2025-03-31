@@ -15,6 +15,12 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Fo
 import {ClientOnly} from "~/components/client-only";
 import {useEffect} from "react";
 
+// Define a type for serialized Zod issues (plain objects)
+type SerializedZodIssue = {
+    path: (string | number)[]; // Path can include numbers for array indices
+    message: string;
+};
+
 // Define Supabase types for easier access
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
@@ -129,7 +135,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 type ActionResponse = {
     status: 'success' | 'error';
     message: string;
-    errors?: z.ZodIssue[]; // Field-specific errors
+    errors?: SerializedZodIssue[]; // Use the serialized type
     intent?: 'updateFamily' | 'updateGuardian';
     guardianId?: string; // To identify which guardian form had an error
 };
@@ -348,8 +354,8 @@ export default function AccountSettingsPage() {
                             <AlertTitle>Validation Errors</AlertTitle>
                             <AlertDescription>
                                 <ul className="list-disc pl-5">
-                                    {/* Use the imported ZodIssue type */}
-                                    {actionData.errors.map((err: ZodIssue, i: number) => <li
+                                    {/* Use the SerializedZodIssue type */}
+                                    {actionData.errors.map((err: SerializedZodIssue, i: number) => <li
                                         key={i}>{err.path.join('.')} : {err.message}</li>)}
                                 </ul>
                             </AlertDescription>
@@ -601,8 +607,8 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                 <AlertTitle>Validation Errors</AlertTitle>
                                 <AlertDescription>
                                     <ul className="list-disc pl-5">
-                                        {/* Use the imported ZodIssue type */}
-                                        {actionData.errors.map((err: ZodIssue, i: number) => <li
+                                        {/* Use the SerializedZodIssue type */}
+                                        {actionData.errors.map((err: SerializedZodIssue, i: number) => <li
                                             key={i}>{err.path.join('.')} : {err.message}</li>)}
                                     </ul>
                                 </AlertDescription>
