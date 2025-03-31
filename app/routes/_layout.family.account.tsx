@@ -557,26 +557,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
         },
     });
 
-    // Reset form with guardian data on client side
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            guardianForm.reset({
-                intent: 'updateGuardian',
-                guardianId: guardian.id,
-                first_name: getDefaultValue(guardian.first_name),
-                last_name: getDefaultValue(guardian.last_name),
-                relationship: getDefaultValue(guardian.relationship),
-                home_phone: getDefaultValue(guardian.home_phone),
-                cell_phone: getDefaultValue(guardian.cell_phone),
-                email: getDefaultValue(guardian.email),
-                work_phone: getDefaultValue(guardian.work_phone),
-                employer: getDefaultValue(guardian.employer),
-                employer_phone: getDefaultValue(guardian.employer_phone),
-                employer_notes: getDefaultValue(guardian.employer_notes),
-            });
-        }
-    }, [guardian, guardianForm]); // Dependency array
-
+    // useEffect removed as it's now inside ClientOnly below
     const formIntent = `updateGuardian-${guardian.id}`; // Unique intent for submission check
 
     // Reset form with guardian data on client side - Moved useEffect inside ClientOnly render prop
