@@ -37,6 +37,12 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - Linking parent payments directly to individual children, accommodating multiple children per family.
   - Secure payment processing with transaction records for families.
   - Pricing Structure: Free Trial, $49/1st mo, $100/2nd mo, $121/monthly ongoing (details in `app/config/site.ts`).
+  - **Dynamic Tier Calculation:** The payment tier for each student (1st Month, 2nd Month, Ongoing) is calculated dynamically on the payment page (`/family/payment`). It checks the count of past *successful* payments linked to the student via the `payments` and `payment_students` tables.
+    - 0 past payments -> 1st Month price
+    - 1 past payment -> 2nd Month price
+    - 2+ past payments -> Ongoing Monthly price
+    - This avoids storing a separate "tier" status in the database.
+  - **Eligibility Check:** Student eligibility ("Trial", "Active", "Expired") is determined based on the date of their *most recent* successful payment (within the last ~35 days) or if they have zero payment history ("Trial"). This logic is in `app/utils/supabase.server.ts` and displayed in the Family Portal and Admin panels.
 
 - Online Waivers and Policies:
 
