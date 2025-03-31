@@ -215,7 +215,6 @@ export default function FamilyPortal() {
                     {family.students && family.students.length > 0 ? (
                         <ul className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300">
                             {family.students.map((student) => (
-                                <li key={student.id}>
                                 <li key={student.id} className="flex justify-between items-center">
                                     <Link
                                         to={`/family/student/${student.id}`}
