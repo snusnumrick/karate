@@ -432,8 +432,11 @@ export default function AccountSettingsPage() {
                                             {/* Wrap Select with ClientOnly */}
                                             <ClientOnly fallback={<Input disabled placeholder="Province..."/>}>
                                                 {() => (
-                                                    <Select onValueChange={field.onChange}
-                                                            defaultValue={field.value ?? undefined}>
+                                                    <Select 
+                                                        onValueChange={field.onChange}
+                                                        value={field.value} // Use field.value directly
+                                                        // Remove defaultValue
+                                                    >
                                                         <FormControl>
                                                             <SelectTrigger><SelectValue
                                                                 placeholder="Select province"/></SelectTrigger>
@@ -653,8 +656,8 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                             {() => (
                                                 <Select 
                                                     onValueChange={field.onChange} 
-                                                    value={field.value ?? ''} // Control with form value, default to '' if undefined/null
-                                                    // Remove defaultValue when using value for controlled component
+                                                    value={field.value} // Use field.value directly
+                                                    // Remove defaultValue
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger><SelectValue
