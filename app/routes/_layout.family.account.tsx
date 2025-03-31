@@ -494,8 +494,7 @@ export default function AccountSettingsPage() {
                                     render={({field}) => (
                                         <FormItem className="md:col-span-2">
                                             <FormLabel>Personal Health Number / Info</FormLabel>
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Personal Health Number / Info</FormLabel>
+                                            {/* Removed duplicated FormItem and FormLabel */}
                                             <FormControl><Textarea {...field}
                                                                    value={getDefaultValue(field.value)}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
@@ -508,8 +507,7 @@ export default function AccountSettingsPage() {
                                     render={({field}) => (
                                         <FormItem className="md:col-span-2">
                                             <FormLabel>Family Notes (Internal Use)</FormLabel>
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Family Notes (Internal Use)</FormLabel>
+                                            {/* Removed duplicated FormItem and FormLabel */}
                                             <FormControl><Textarea {...field}
                                                                    value={getDefaultValue(field.value)}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
