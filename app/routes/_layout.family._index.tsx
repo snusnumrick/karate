@@ -150,7 +150,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         allWaiversSigned = false;
     }
 
-    console.log('Family data with eligibility:', familyDataWithEligibility);
+    // console.log('Family data with eligibility:', familyDataWithEligibility);
 
     // Return profile, family data (with eligibility), and waiver status
     return json({
