@@ -55,11 +55,11 @@ type FamilyFormData = z.infer<typeof familySchema>;
 const guardianSchema = z.object({
     intent: z.literal('updateGuardian'),
     guardianId: z.string().uuid("Invalid Guardian ID"),
-    first_name: z.string().min(1, "First name is required"),
-    last_name: z.string().min(1, "Last name is required"),
-    relationship: z.string().min(1, "Relationship is required"),
-    home_phone: z.string().min(1, "Home phone is required"),
-    cell_phone: z.string().min(1, "Cell phone is required"),
+    first_name: z.string().trim().min(1, "First name is required"), // Added trim
+    last_name: z.string().trim().min(1, "Last name is required"), // Added trim
+    relationship: z.string().trim().min(1, "Relationship is required"), // Added trim
+    home_phone: z.string().trim().min(1, "Home phone is required"), // Added trim
+    cell_phone: z.string().trim().min(1, "Cell phone is required"), // Added trim
     email: z.string().email("Invalid email address"),
     // Optional fields
     work_phone: z.string().optional().nullable(),
@@ -330,16 +330,16 @@ export default function AccountSettingsPage() {
                         {actionData && actionData.status === 'success' && (
                             <Alert variant="default"
                                    className="bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700">
-                                <AlertTitle className="text-green-800 dark:text-green-200">Success!</AlertTitle>
-                                <AlertDescription className="text-green-700 dark:text-green-300">
+                                <AlertTitle className="text-green-800 dark:text-green-200">Success!</AlertTitle> {/* Ensure dark mode text */}
+                                <AlertDescription className="text-green-700 dark:text-green-300"> {/* Ensure dark mode text */}
                                     {actionData.message}
                                 </AlertDescription>
                             </Alert>
                         )}
                         {actionData && actionData.status === 'error' && !actionData.errors && ( // Show general errors only if no field errors
                             <Alert variant="destructive">
-                                <AlertTitle className="dark:text-red-200">Error</AlertTitle>
-                                <AlertDescription className="dark:text-red-300">{actionData.message}</AlertDescription>
+                                <AlertTitle className="dark:text-red-200">Error</AlertTitle> {/* Added dark mode text */}
+                                <AlertDescription className="dark:text-red-300">{actionData.message}</AlertDescription> {/* Added dark mode text */}
                             </Alert>
                         )}
 
@@ -563,20 +563,20 @@ interface GuardianFormProps {
 function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: GuardianFormProps) {
     const guardianForm = useForm<GuardianFormData>({
         resolver: zodResolver(guardianSchema),
-        // Initialize with empty/default values
+        // Initialize defaultValues directly from the guardian prop
         defaultValues: {
             intent: 'updateGuardian',
-            guardianId: guardian.id, // Keep ID for submission
-            first_name: '',
-            last_name: '',
-            relationship: '',
-            home_phone: '',
-            cell_phone: '',
-            email: '',
-            work_phone: '',
-            employer: '',
-            employer_phone: '',
-            employer_notes: '',
+            guardianId: guardian.id,
+            first_name: getDefaultValue(guardian.first_name),
+            last_name: getDefaultValue(guardian.last_name),
+            relationship: getDefaultValue(guardian.relationship),
+            home_phone: getDefaultValue(guardian.home_phone),
+            cell_phone: getDefaultValue(guardian.cell_phone),
+            email: getDefaultValue(guardian.email),
+            work_phone: getDefaultValue(guardian.work_phone),
+            employer: getDefaultValue(guardian.employer),
+            employer_phone: getDefaultValue(guardian.employer_phone),
+            employer_notes: getDefaultValue(guardian.employer_notes),
         },
     });
 
