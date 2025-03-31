@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea"; // Import Textarea
 import type { ActionFunctionArgs } from "@remix-run/node"; // For action type
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // For feedback
+import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
 
 // Define Supabase types for easier access
 type FamilyRow = Database['public']['Tables']['families']['Row'];
@@ -371,10 +372,12 @@ export default function AccountSettingsPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Province</FormLabel>
-                                     <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
-                                        <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Select province" /></SelectTrigger>
-                                        </FormControl>
+                                    <ClientOnly fallback={<Input disabled placeholder="Loading province select..." />}>
+                                      {() => (
+                                        <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
+                                          <FormControl>
+                                              <SelectTrigger><SelectValue placeholder="Select province" /></SelectTrigger>
+                                          </FormControl>
                                         <SelectContent>
                                             {/* Add Canadian provinces */}
                                             <SelectItem value="AB">Alberta</SelectItem>
@@ -389,9 +392,11 @@ export default function AccountSettingsPage() {
                                             <SelectItem value="SK">Saskatchewan</SelectItem>
                                             <SelectItem value="NT">Northwest Territories</SelectItem>
                                             <SelectItem value="NU">Nunavut</SelectItem>
-                                            <SelectItem value="YT">Yukon</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                              <SelectItem value="YT">Yukon</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      )}
+                                    </ClientOnly>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -554,9 +559,11 @@ function GuardianForm({ guardian, index, actionData, isSubmitting, navigation }:
                                         <SelectItem value="Mother">Mother</SelectItem>
                                         <SelectItem value="Father">Father</SelectItem>
                                         <SelectItem value="Guardian">Guardian</SelectItem>
-                                        <SelectItem value="Other">Other</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                          <SelectItem value="Other">Other</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </ClientOnly>
                                 <FormMessage />
                             </FormItem>
                         )}
