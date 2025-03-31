@@ -333,9 +333,10 @@ export default function AccountSettingsPage() {
 
 
             {/* --- Family Information Form --- */}
-            {/* Removed ClientOnly wrapper */}
-            <UIForm {...familyForm}>
-                <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+            <ClientOnly>
+                {() => (
+                    <UIForm {...familyForm}>
+                        <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
                     <input type="hidden" name="intent" value="updateFamily"/>
 
@@ -498,9 +499,10 @@ export default function AccountSettingsPage() {
                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
                     </Button>
-                </Form>
-            </UIForm>
-            {/* End of removed ClientOnly wrapper */}
+                        </Form>
+                    </UIForm>
+                )}
+            </ClientOnly>
 
 
             {/* --- Guardian Information Forms --- */}
@@ -573,8 +575,10 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
     const formIntent = `updateGuardian-${guardian.id}`; // Unique intent for submission check
 
     return (
-        <UIForm {...guardianForm}>
-            <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+        <ClientOnly>
+            {() => (
+                <UIForm {...guardianForm}>
+                    <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                 <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
                 <input type="hidden" name="intent" value="updateGuardian"/>
                 <input type="hidden" name="guardianId" value={guardian.id}/>
@@ -725,7 +729,9 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                 <Button type="submit" disabled={isSubmitting} name="intent" value={formIntent}>
                     {isSubmitting && navigation.formData?.get('guardianId') === guardian.id ? 'Saving...' : `Update Guardian #${index}`}
                 </Button>
-            </Form>
-        </UIForm>
+                    </Form>
+                </UIForm>
+            )}
+        </ClientOnly>
     );
 }
