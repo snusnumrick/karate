@@ -60,8 +60,8 @@ export default function AboutPage() {
               <div className="mt-8">
                 <h3 className="text-xl font-semibold mb-4">Join us! OSS!</h3>
                 <p>
-                  Experience the transformative power of karate under the guidance of Sensei Negin at 
-                  Lighthouse Christian Academy. Classes are designed for children ages 6-12 and focus on 
+                  Experience the transformative power of karate under the guidance of Sensei Negin at
+                  650 Allandale Rd Suite A101. Classes are designed for children ages 6-12 and focus on
                   building a strong foundation in karate techniques while developing character and life skills.
                 </p>
               </div>

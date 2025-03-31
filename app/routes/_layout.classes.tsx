@@ -21,12 +21,12 @@ export default function ClassesPage() {
                 Children&apos;s Classes (Ages 6-12)</h3>
               <ul className="space-y-4">
                 <li className="flex items-start">
-                  <span className="text-green-600 dark:text-green-400 font-bold mr-3">Monday:</span>
-                  <span className="dark:text-gray-300">6:00 PM - 7:00 PM at Lighthouse Christian Academy</span>
+                  <span className="text-green-600 dark:text-green-400 font-bold mr-3">Tuesday:</span>
+                  <span className="dark:text-gray-300">6:15 PM - 7:15 PM at 650 Allandale Rd Suite A101</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-green-600 dark:text-green-400 font-bold mr-3">Wednesday:</span>
-                  <span className="dark:text-gray-300">6:00 PM - 7:00 PM at Lighthouse Christian Academy</span>
+                  <span className="text-green-600 dark:text-green-400 font-bold mr-3">Friday:</span>
+                  <span className="dark:text-gray-300">6:15 PM - 7:15 PM at 650 Allandale Rd Suite A101</span>
                 </li>
               </ul>
             </div>
