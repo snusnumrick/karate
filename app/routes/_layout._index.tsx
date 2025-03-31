@@ -1,11 +1,12 @@
 import type { MetaFunction } from "@remix-run/node";
 import { Link } from "@remix-run/react";
+import { siteConfig } from "~/config/site"; // Import site config
 
 export const meta: MetaFunction = () => {
   return [
     { title: "Karate Classes - Sensei Negin" },
-    { name: "description", content: "Discover the art of karate with Sensei Negin at 650 Allandale Rd Suite A101. " +
-          "Classes for children ages 6-12 on Tuesdays and Fridays." },
+    { name: "description", content: `Discover the art of karate with Sensei Negin at ${siteConfig.location.address}. ` +
+          `Classes for children ages ${siteConfig.classes.ageRange} on ${siteConfig.classes.days}.` },
   ];
 };
 
@@ -57,23 +58,23 @@ export default function Index() {
             <ul className="space-y-4 text-lg">
               <li className="flex items-center">
                 <span className="mr-2">📍</span>
-                <span>650 Allandale Rd Suite A101</span>
+                <span>{siteConfig.location.address}</span>
               </li>
               <li className="flex items-center">
                 <span className="mr-2">🕕</span>
-                <span>Tue & Fri at 6:15 - 7:15 p.m</span>
+                <span>{siteConfig.classes.days} at {siteConfig.classes.time}</span>
               </li>
               <li className="flex items-center">
                 <span className="mr-2">👧👦</span>
-                <span>Ages 6-12 y/o</span>
+                <span>Ages {siteConfig.classes.ageRange}</span>
               </li>
               <li className="flex items-center">
                 <span className="mr-2">📞</span>
-                <span>(604) 690-7121</span>
+                <span>{siteConfig.contact.phone}</span>
               </li>
               <li className="flex items-center">
                 <span className="mr-2">✉️</span>
-                <span>info@greenegin.ca</span>
+                <span>{siteConfig.contact.email}</span>
               </li>
             </ul>
           </div>

@@ -1,4 +1,5 @@
 import { Link } from "@remix-run/react";
+import { siteConfig } from "~/config/site"; // Import site config
 
 export default function ClassesPage() {
   return (
@@ -18,15 +19,15 @@ export default function ClassesPage() {
             <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-6">Class Schedule</h2>
             <div className="bg-green-100 dark:bg-gray-700/30 p-6 rounded-lg mb-8">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Children&apos;s Classes (Ages 6-12)</h3>
+                Children&apos;s Classes (Ages {siteConfig.classes.ageRange})</h3>
               <ul className="space-y-4">
                 <li className="flex items-start">
                   <span className="text-green-600 dark:text-green-400 font-bold mr-3">Tuesday:</span>
-                  <span className="dark:text-gray-300">6:15 PM - 7:15 PM at 650 Allandale Rd Suite A101</span>
+                  <span className="dark:text-gray-300">{siteConfig.classes.timeLong} at {siteConfig.location.address}</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-green-600 dark:text-green-400 font-bold mr-3">Friday:</span>
-                  <span className="dark:text-gray-300">6:15 PM - 7:15 PM at 650 Allandale Rd Suite A101</span>
+                  <span className="dark:text-gray-300">{siteConfig.classes.timeLong} at {siteConfig.location.address}</span>
                 </li>
               </ul>
             </div>

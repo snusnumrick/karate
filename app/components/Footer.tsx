@@ -43,7 +43,7 @@ export default function Footer() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-green-100 dark:text-gray-300">Follow Us:</span>
               <Button variant="secondary" size="icon" asChild className="bg-[#E1306C] hover:bg-[#C1355B] text-white">
-                <a href="https://www.instagram.com/greenegin.karate/" target="_blank" rel="noopener noreferrer">
+                <a href={siteConfig.socials.instagram} target="_blank" rel="noopener noreferrer">
                   <span className="sr-only">Instagram</span>
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   {/* Instagram Icon SVG Path */}
@@ -83,10 +83,10 @@ export default function Footer() {
             </Button>
             <div className="space-y-2 text-green-100 dark:text-gray-300">
               {[
-                { icon: "📍", label: "650 Allandale Rd Suite A101" },
-                { icon: "📞", label: "(604) 690-7121" },
-                { icon: "✉️", label: "info@greenegin.ca" },
-                { icon: "🕒", label: "Tue & Fri: 6:15 - 7:15 PM" },
+                { icon: "📍", label: siteConfig.location.address },
+                { icon: "📞", label: siteConfig.contact.phone },
+                { icon: "✉️", label: siteConfig.contact.email },
+                { icon: "🕒", label: `${siteConfig.classes.days}: ${siteConfig.classes.timeLong}` },
               ].map((item) => (
                 <Button
                   key={item.label}

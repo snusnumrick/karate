@@ -61,7 +61,7 @@ export default function AboutPage() {
                 <h3 className="text-xl font-semibold mb-4">Join us! OSS!</h3>
                 <p>
                   Experience the transformative power of karate under the guidance of Sensei Negin at
-                  650 Allandale Rd Suite A101. Classes are designed for children ages 6-12 and focus on
+                  {siteConfig.location.address}. Classes are designed for children ages {siteConfig.classes.ageRange} and focus on
                   building a strong foundation in karate techniques while developing character and life skills.
                 </p>
               </div>

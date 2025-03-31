@@ -3,7 +3,7 @@
 ## Project Overview
 
 Develop a comprehensive and user-friendly karate class management website for 
-Sensei Negin's classes at 650 Allandale Rd Suite A101, 
+Sensei Negin's classes (details managed in `app/config/site.ts`), 
 incorporating efficient family-oriented registration, 
 achievement tracking, attendance monitoring, payment integration, and waiver management.
 
@@ -14,7 +14,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - Home Page:
 
     - Introduction to karate emphasizing personal growth and defense techniques.
-    - Class schedule: Tuesday & Friday at 6:15 - 7:15 p.m. for ages 6-12.
+    - Class schedule and location details (see `app/config/site.ts`).
 
 - Instructor Profile:
 
