@@ -1,19 +1,19 @@
-import { json, type LoaderFunctionArgs, TypedResponse, redirect } from "@remix-run/node"; // Added redirect
-import { Link, useLoaderData, Form, useActionData, useNavigation } from "@remix-run/react"; // Added useActionData, useNavigation
-import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Database } from "~/types/supabase"; // Import Database type
-import { z } from "zod"; // For validation
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Form as UIForm, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "~/components/ui/form"; // Shadcn Form components
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"; // Import Select
-import { Textarea } from "~/components/ui/textarea"; // Import Textarea
-import type { ActionFunctionArgs } from "@remix-run/node"; // For action type
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // For feedback
-import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
+import {json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node"; // Added redirect
+import {Link, useLoaderData, Form, useActionData, useNavigation} from "@remix-run/react"; // Added useActionData, useNavigation
+import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {Button} from "~/components/ui/button";
+import {Input} from "~/components/ui/input";
+import {Database} from "~/types/supabase"; // Import Database type
+import {z, ZodIssue} from "zod"; // For validation
+import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import {Form as UIForm, FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form"; // Shadcn Form components
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select"; // Import Select
+import {Textarea} from "~/components/ui/textarea"; // Import Textarea
+import type {ActionFunctionArgs} from "@remix-run/node"; // For action type
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For feedback
+import {ClientOnly} from "~/components/client-only";
+import {useEffect} from "react"; // Import ClientOnly
 
 // Define Supabase types for easier access
 type FamilyRow = Database['public']['Tables']['families']['Row'];
@@ -21,8 +21,8 @@ type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 
 // Define expected loader data structure
 interface LoaderData {
-    family: FamilyRow | null;
-    guardians: GuardianRow[];
+    family?: FamilyRow;
+    guardians?: GuardianRow[];
     error?: string;
 }
 
@@ -70,18 +70,18 @@ const formSchema = z.discriminatedUnion("intent", [
 ]);
 
 // --- Loader ---
-export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const { supabaseServer, response } = getSupabaseServerClient(request);
+export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+    const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
-    const { data: { user } } = await supabaseServer.auth.getUser();
+    const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {
         // Redirect or error if not logged in (should be handled by layout)
-        return json({ error: "User not authenticated" }, { status: 401, headers });
+        return json({error: "User not authenticated"}, {status: 401, headers});
     }
 
     // Fetch profile to get family_id
-    const { data: profileData, error: profileError } = await supabaseServer
+    const {data: profileData, error: profileError} = await supabaseServer
         .from('profiles')
         .select('family_id')
         .eq('id', user.id)
@@ -89,20 +89,20 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
     if (profileError || !profileData || !profileData.family_id) {
         console.error("Error fetching profile or family_id for account page:", profileError?.message);
-        return json({ error: "Failed to load user profile or family association." }, { status: 500, headers });
+        return json({error: "Failed to load user profile or family association."}, {status: 500, headers});
     }
 
     const familyId = profileData.family_id;
 
     // Fetch family data using family_id
-    const { data: familyData, error: familyError } = await supabaseServer
+    const {data: familyData, error: familyError} = await supabaseServer
         .from('families')
         .select('*') // Fetch all family fields
         .eq('id', familyId)
         .single();
 
     // Fetch associated guardians
-    const { data: guardiansData, error: guardiansError } = await supabaseServer
+    const {data: guardiansData, error: guardiansError} = await supabaseServer
         .from('guardians')
         .select('*')
         .eq('family_id', familyId);
@@ -110,16 +110,19 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
     if (familyError || !familyData) {
         console.error("Error fetching family data for account page:", familyError?.message);
         // Return null for family but still try to return guardians if fetched
-        return json({ family: null, guardians: guardiansData ?? [], error: "Failed to load family details." }, { status: 500, headers });
+        return json({guardians: guardiansData ?? [], error: "Failed to load family details."}, {status: 500, headers});
     }
 
     if (guardiansError) {
         console.error("Error fetching guardians data for account page:", guardiansError?.message);
         // Return family data but indicate error fetching guardians
-        return json({ family: familyData, guardians: [], error: "Failed to load guardian details." }, { status: 500, headers });
+        return json({family: familyData, guardians: [], error: "Failed to load guardian details."}, {
+            status: 500,
+            headers
+        });
     }
 
-    return json({ family: familyData, guardians: guardiansData ?? [] }, { headers });
+    return json({family: familyData, guardians: guardiansData ?? []}, {headers});
 }
 
 // --- Action ---
@@ -131,8 +134,8 @@ type ActionResponse = {
     guardianId?: string; // To identify which guardian form had an error
 };
 
-export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
-    const { supabaseServer, response } = getSupabaseServerClient(request);
+export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
+    const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
     const formData = await request.formData();
     const formValues = Object.fromEntries(formData.entries());
@@ -147,47 +150,47 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             errors: parsed.error.issues,
             intent: formData.get('intent') as any, // Try to pass intent back
             guardianId: formData.get('guardianId') as string | undefined, // Pass guardianId back if present
-        }, { status: 400, headers });
+        }, {status: 400, headers});
     }
 
-    const { intent } = parsed.data;
+    const {intent} = parsed.data;
 
     try {
         if (intent === 'updateFamily') {
-            const { intent: _, ...familyUpdateData } = parsed.data; // Exclude intent
+            const {intent: _, ...familyUpdateData} = parsed.data; // Exclude intent
 
             // Need family ID - fetch it again based on user (safer than hidden field)
-            const { data: { user } } = await supabaseServer.auth.getUser();
-            if (!user) return json({ status: 'error', message: 'User not authenticated.' }, { status: 401, headers });
+            const {data: {user}} = await supabaseServer.auth.getUser();
+            if (!user) return json({status: 'error', message: 'User not authenticated.'}, {status: 401, headers});
 
-            const { data: profileData, error: profileError } = await supabaseServer
+            const {data: profileData, error: profileError} = await supabaseServer
                 .from('profiles').select('family_id').eq('id', user.id).single();
             if (profileError || !profileData?.family_id) {
-                return json({ status: 'error', message: 'Could not find associated family.' }, { status: 404, headers });
+                return json({status: 'error', message: 'Could not find associated family.'}, {status: 404, headers});
             }
 
-            const { error: updateError } = await supabaseServer
+            const {error: updateError} = await supabaseServer
                 .from('families')
                 .update(familyUpdateData)
                 .eq('id', profileData.family_id);
 
             if (updateError) throw updateError;
 
-            return json({ status: 'success', message: 'Family information updated successfully.', intent }, { headers });
+            return json({status: 'success', message: 'Family information updated successfully.', intent}, {headers});
 
         } else if (intent === 'updateGuardian') {
-            const { intent: _, guardianId, ...guardianUpdateData } = parsed.data; // Exclude intent and guardianId
+            const {intent: _, guardianId, ...guardianUpdateData} = parsed.data; // Exclude intent and guardianId
 
             // Verify guardianId belongs to the user's family before updating (security)
-            const { data: { user } } = await supabaseServer.auth.getUser();
-            if (!user) return json({ status: 'error', message: 'User not authenticated.' }, { status: 401, headers });
-            const { data: profileData, error: profileError } = await supabaseServer
+            const {data: {user}} = await supabaseServer.auth.getUser();
+            if (!user) return json({status: 'error', message: 'User not authenticated.'}, {status: 401, headers});
+            const {data: profileData, error: profileError} = await supabaseServer
                 .from('profiles').select('family_id').eq('id', user.id).single();
             if (profileError || !profileData?.family_id) {
-                 return json({ status: 'error', message: 'Could not find associated family.' }, { status: 404, headers });
+                return json({status: 'error', message: 'Could not find associated family.'}, {status: 404, headers});
             }
 
-            const { data: guardianCheck, error: checkError } = await supabaseServer
+            const {data: guardianCheck, error: checkError} = await supabaseServer
                 .from('guardians')
                 .select('id')
                 .eq('id', guardianId)
@@ -195,23 +198,33 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 .maybeSingle(); // Use maybeSingle to handle null case
 
             if (checkError || !guardianCheck) {
-                 console.error("Guardian verification failed:", checkError?.message);
-                 return json({ status: 'error', message: 'Guardian not found or access denied.', intent, guardianId }, { status: 404, headers });
+                console.error("Guardian verification failed:", checkError?.message);
+                return json({
+                    status: 'error',
+                    message: 'Guardian not found or access denied.',
+                    intent,
+                    guardianId
+                }, {status: 404, headers});
             }
             // --- End verification ---
 
-            const { error: updateError } = await supabaseServer
+            const {error: updateError} = await supabaseServer
                 .from('guardians')
                 .update(guardianUpdateData)
                 .eq('id', guardianId);
 
             if (updateError) throw updateError;
 
-            return json({ status: 'success', message: 'Guardian information updated successfully.', intent, guardianId }, { headers });
+            return json({
+                status: 'success',
+                message: 'Guardian information updated successfully.',
+                intent,
+                guardianId
+            }, {headers});
         }
 
         // Should not happen if schema is correct
-        return json({ status: 'error', message: 'Invalid form intent.' }, { status: 400, headers });
+        return json({status: 'error', message: 'Invalid form intent.'}, {status: 400, headers});
 
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -221,7 +234,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             message: `Failed to update information: ${message}`,
             intent: intent,
             guardianId: intent === 'updateGuardian' ? parsed.data.guardianId : undefined,
-        }, { status: 500, headers });
+        }, {status: 500, headers});
     }
 }
 
@@ -232,7 +245,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 const getDefaultValue = (value: string | null | undefined) => value ?? '';
 
 export default function AccountSettingsPage() {
-    const { family, guardians, error: loaderError } = useLoaderData<typeof loader>();
+    const {family, guardians, error: loaderError} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
@@ -289,24 +302,27 @@ export default function AccountSettingsPage() {
         return <div className="text-red-500 p-4">Error loading account settings: {loaderError}</div>;
     }
     if (!family) {
-         return <div className="text-orange-500 p-4">Could not load family details. Please try again later or contact support.</div>;
+        return <div className="text-orange-500 p-4">Could not load family details. Please try again later or contact
+            support.</div>;
     }
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-8">
-            <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family Portal</Link>
+            <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family
+                Portal</Link>
             <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
 
             {/* General Action Feedback */}
-             {actionData && actionData.status === 'success' && (
-                <Alert variant="default" className="bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700">
+            {actionData && actionData.status === 'success' && (
+                <Alert variant="default"
+                       className="bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700">
                     <AlertTitle className="text-green-800 dark:text-green-200">Success!</AlertTitle>
                     <AlertDescription className="text-green-700 dark:text-green-300">
                         {actionData.message}
                     </AlertDescription>
                 </Alert>
             )}
-             {actionData && actionData.status === 'error' && !actionData.errors && ( // Show general errors only if no field errors
+            {actionData && actionData.status === 'error' && !actionData.errors && ( // Show general errors only if no field errors
                 <Alert variant="destructive">
                     <AlertTitle>Error</AlertTitle>
                     <AlertDescription>{actionData.message}</AlertDescription>
@@ -319,15 +335,16 @@ export default function AccountSettingsPage() {
             <UIForm {...familyForm}>
                 <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
-                    <input type="hidden" name="intent" value="updateFamily" />
+                    <input type="hidden" name="intent" value="updateFamily"/>
 
                     {/* Display field-specific errors for family form */}
                     {actionData?.intent === 'updateFamily' && actionData.errors && (
-                         <Alert variant="destructive" className="mb-4">
+                        <Alert variant="destructive" className="mb-4">
                             <AlertTitle>Validation Errors</AlertTitle>
                             <AlertDescription>
                                 <ul className="list-disc pl-5">
-                                    {actionData.errors.map((err, i) => <li key={i}>{err.path.join('.')} : {err.message}</li>)}
+                                    {actionData.errors.map((err: { path: string[]; message: string }, i) => <li
+                                        key={i}>{err.path.join('.')} : {err.message}</li>)}
                                 </ul>
                             </AlertDescription>
                         </Alert>
@@ -337,135 +354,140 @@ export default function AccountSettingsPage() {
                         <FormField
                             control={familyForm.control}
                             name="name"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem>
                                     <FormLabel>Family Last Name</FormLabel>
                                     <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage />
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="primary_phone"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem>
                                     <FormLabel>Primary Phone</FormLabel>
                                     <FormControl><Input type="tel" {...field} /></FormControl>
-                                    <FormMessage />
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="email"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem>
                                     <FormLabel>Family Email</FormLabel>
                                     <FormControl><Input type="email" {...field} /></FormControl>
-                                    <FormMessage />
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="address"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem>
                                     <FormLabel>Home Address</FormLabel>
                                     <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage />
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="city"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem>
                                     <FormLabel>City</FormLabel>
                                     <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage />
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="province"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem>
                                     <FormLabel>Province</FormLabel>
-                                    <ClientOnly fallback={<Input disabled placeholder="Loading province select..." />}>
-                                      {() => (
-                                        <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
-                                          <FormControl>
-                                              <SelectTrigger><SelectValue placeholder="Select province" /></SelectTrigger>
-                                          </FormControl>
-                                        <SelectContent>
-                                            {/* Add Canadian provinces */}
-                                            <SelectItem value="AB">Alberta</SelectItem>
-                                            <SelectItem value="BC">British Columbia</SelectItem>
-                                            <SelectItem value="MB">Manitoba</SelectItem>
-                                            <SelectItem value="NB">New Brunswick</SelectItem>
-                                            <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
-                                            <SelectItem value="NS">Nova Scotia</SelectItem>
-                                            <SelectItem value="ON">Ontario</SelectItem>
-                                            <SelectItem value="PE">Prince Edward Island</SelectItem>
-                                            <SelectItem value="QC">Quebec</SelectItem>
-                                            <SelectItem value="SK">Saskatchewan</SelectItem>
-                                            <SelectItem value="NT">Northwest Territories</SelectItem>
-                                            <SelectItem value="NU">Nunavut</SelectItem>
-                                              <SelectItem value="YT">Yukon</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      )}
+                                    <ClientOnly fallback={<Input disabled placeholder="Loading province select..."/>}>
+                                        {() => (
+                                            <Select onValueChange={field.onChange}
+                                                    defaultValue={field.value ?? undefined}>
+                                                <FormControl>
+                                                    <SelectTrigger><SelectValue
+                                                        placeholder="Select province"/></SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {/* Add Canadian provinces */}
+                                                    <SelectItem value="AB">Alberta</SelectItem>
+                                                    <SelectItem value="BC">British Columbia</SelectItem>
+                                                    <SelectItem value="MB">Manitoba</SelectItem>
+                                                    <SelectItem value="NB">New Brunswick</SelectItem>
+                                                    <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
+                                                    <SelectItem value="NS">Nova Scotia</SelectItem>
+                                                    <SelectItem value="ON">Ontario</SelectItem>
+                                                    <SelectItem value="PE">Prince Edward Island</SelectItem>
+                                                    <SelectItem value="QC">Quebec</SelectItem>
+                                                    <SelectItem value="SK">Saskatchewan</SelectItem>
+                                                    <SelectItem value="NT">Northwest Territories</SelectItem>
+                                                    <SelectItem value="NU">Nunavut</SelectItem>
+                                                    <SelectItem value="YT">Yukon</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
                                     </ClientOnly>
-                                    <FormMessage />
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="postal_code"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem>
                                     <FormLabel>Postal Code</FormLabel>
                                     <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage />
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
                         {/* Optional Fields */}
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="emergency_contact"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem className="md:col-span-2">
                                     <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
-                                    <FormControl><Textarea {...field} value={getDefaultValue(field.value)} /></FormControl>
-                                    <FormMessage />
+                                    <FormControl><Textarea {...field}
+                                                           value={getDefaultValue(field.value)}/></FormControl>
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="health_info"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem className="md:col-span-2">
                                     <FormLabel>Personal Health Number / Info</FormLabel>
-                                    <FormControl><Textarea {...field} value={getDefaultValue(field.value)} /></FormControl>
-                                    <FormMessage />
+                                    <FormControl><Textarea {...field}
+                                                           value={getDefaultValue(field.value)}/></FormControl>
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={familyForm.control}
                             name="notes"
-                            render={({ field }) => (
+                            render={({field}) => (
                                 <FormItem className="md:col-span-2">
                                     <FormLabel>Family Notes (Internal Use)</FormLabel>
-                                    <FormControl><Textarea {...field} value={getDefaultValue(field.value)} /></FormControl>
-                                    <FormMessage />
+                                    <FormControl><Textarea {...field}
+                                                           value={getDefaultValue(field.value)}/></FormControl>
+                                    <FormMessage/>
                                 </FormItem>
                             )}
                         />
@@ -480,17 +502,17 @@ export default function AccountSettingsPage() {
 
 
             {/* --- Guardian Information Forms --- */}
-            {/* Removed ClientOnly wrapper */}
-            {guardians.map((guardian, index) => (
-                <GuardianForm key={guardian.id} guardian={guardian} index={index + 1} actionData={actionData} isSubmitting={isSubmitting} navigation={navigation} />
+            {(guardians ?? []).map((guardian, index) => (
+                <GuardianForm key={guardian.id} guardian={guardian} index={index + 1} actionData={actionData}
+                              isSubmitting={isSubmitting} navigation={navigation}/>
             ))}
-            {/* End of removed ClientOnly wrapper */}
 
 
             {/* --- Account Preferences (Placeholder) --- */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <h2 className="text-xl font-semibold mb-4">Account Preferences</h2>
-                <p className="text-gray-600 dark:text-gray-400 italic">Password change and other preferences coming soon.</p>
+                <p className="text-gray-600 dark:text-gray-400 italic">Password change and other preferences coming
+                    soon.</p>
                 {/* TODO: Add password change form, email preferences, etc. */}
             </div>
         </div>
@@ -503,12 +525,12 @@ export default function AccountSettingsPage() {
 interface GuardianFormProps {
     guardian: GuardianRow;
     index: number;
-    actionData: ActionResponse | undefined;
+    actionData?: ActionResponse;
     isSubmitting: boolean;
     navigation: ReturnType<typeof useNavigation>;
 }
 
-function GuardianForm({ guardian, index, actionData, isSubmitting, navigation }: GuardianFormProps) {
+function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: GuardianFormProps) {
     const guardianForm = useForm<GuardianFormData>({
         resolver: zodResolver(guardianSchema),
         // Initialize with empty/default values
@@ -552,143 +574,147 @@ function GuardianForm({ guardian, index, actionData, isSubmitting, navigation }:
         <UIForm {...guardianForm}>
             <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                 <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
-                <input type="hidden" name="intent" value="updateGuardian" />
-                <input type="hidden" name="guardianId" value={guardian.id} />
+                <input type="hidden" name="intent" value="updateGuardian"/>
+                <input type="hidden" name="guardianId" value={guardian.id}/>
 
-                 {/* Display field-specific errors for this guardian form */}
-                 {actionData?.intent === 'updateGuardian' && actionData.guardianId === guardian.id && actionData.errors && (
-                     <Alert variant="destructive" className="mb-4">
+                {/* Display field-specific errors for this guardian form */}
+                {actionData?.intent === 'updateGuardian' && actionData.guardianId === guardian.id && actionData.errors && (
+                    <Alert variant="destructive" className="mb-4">
                         <AlertTitle>Validation Errors</AlertTitle>
                         <AlertDescription>
                             <ul className="list-disc pl-5">
-                                {actionData.errors.map((err, i) => <li key={i}>{err.path.join('.')} : {err.message}</li>)}
+                                {actionData.errors.map((err: ZodIssue, i: number) => <li
+                                    key={i}>{err.path.join('.')} : {err.message}</li>)}
                             </ul>
                         </AlertDescription>
                     </Alert>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="first_name"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>First Name</FormLabel>
                                 <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="last_name"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>Last Name</FormLabel>
                                 <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="relationship"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>Relationship</FormLabel>
-                                <ClientOnly fallback={<Input disabled placeholder="Loading relationship select..." />}>
-                                  {() => (
-                                    <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
-                                      <FormControl>
-                                          <SelectTrigger><SelectValue placeholder="Select relationship" /></SelectTrigger>
-                                      </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Mother">Mother</SelectItem>
-                                        <SelectItem value="Father">Father</SelectItem>
-                                        <SelectItem value="Guardian">Guardian</SelectItem>
-                                          <SelectItem value="Other">Other</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  )}
+                                <ClientOnly fallback={<Input disabled placeholder="Loading relationship select..."/>}>
+                                    {() => (
+                                        <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
+                                            <FormControl>
+                                                <SelectTrigger><SelectValue
+                                                    placeholder="Select relationship"/></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="Mother">Mother</SelectItem>
+                                                <SelectItem value="Father">Father</SelectItem>
+                                                <SelectItem value="Guardian">Guardian</SelectItem>
+                                                <SelectItem value="Other">Other</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
                                 </ClientOnly>
-                                <FormMessage />
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="home_phone"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>Home Phone</FormLabel>
                                 <FormControl><Input type="tel" {...field} /></FormControl>
-                                <FormMessage />
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="cell_phone"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>Cell Phone</FormLabel>
                                 <FormControl><Input type="tel" {...field} /></FormControl>
-                                <FormMessage />
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="email"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl><Input type="email" {...field} /></FormControl>
-                                <FormMessage />
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="work_phone"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>Work Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field} value={getDefaultValue(field.value)} /></FormControl>
-                                <FormMessage />
+                                <FormControl><Input type="tel" {...field}
+                                                    value={getDefaultValue(field.value)}/></FormControl>
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="employer"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>Employer</FormLabel>
-                                <FormControl><Input {...field} value={getDefaultValue(field.value)} /></FormControl>
-                                <FormMessage />
+                                <FormControl><Input {...field} value={getDefaultValue(field.value)}/></FormControl>
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="employer_phone"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormLabel>Employer Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field} value={getDefaultValue(field.value)} /></FormControl>
-                                <FormMessage />
+                                <FormControl><Input type="tel" {...field}
+                                                    value={getDefaultValue(field.value)}/></FormControl>
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={guardianForm.control}
                         name="employer_notes"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem className="md:col-span-2">
                                 <FormLabel>Employer Notes</FormLabel>
-                                <FormControl><Textarea {...field} value={getDefaultValue(field.value)} /></FormControl>
-                                <FormMessage />
+                                <FormControl><Textarea {...field} value={getDefaultValue(field.value)}/></FormControl>
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
