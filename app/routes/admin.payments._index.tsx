@@ -82,12 +82,13 @@ export default function AdminPaymentsPage() {
   const { payments } = useLoaderData<typeof loader>();
   console.log("Rendering AdminPaymentsPage component...");
 
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  // Update function signature to accept the enum
+  const getStatusVariant = (status: PaymentStatus): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-      case 'completed': return 'default'; // Greenish in default theme
-      case 'pending': return 'secondary'; // Yellowish/Grayish
-      case 'failed': return 'destructive'; // Reddish
-      default: return 'outline';
+      case PaymentStatus.Succeeded: return 'default'; // Greenish in default theme
+      case PaymentStatus.Pending: return 'secondary'; // Yellowish/Grayish
+      case PaymentStatus.Failed: return 'destructive'; // Reddish
+      default: return 'outline'; // Should not happen with enum, but good practice
     }
   };
 

@@ -2,6 +2,7 @@ import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useRouteError, useLoaderData } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { createClient } from '@supabase/supabase-js'; // Import createClient
+import { PaymentStatus } from "~/types/models"; // Import the enum
 
 // Loader now only fetches data, assumes auth handled by parent layout (admin.tsx)
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -57,14 +58,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     ] = await Promise.all([
       supabaseAdmin.from('families').select('id', { count: 'exact', head: true }), // Use admin client
       supabaseAdmin.from('students').select('id', { count: 'exact', head: true }), // Use admin client
-      supabaseAdmin.from('payments').select('amount').eq('status', 'succeeded'), // Use admin client - Corrected status
+      supabaseAdmin.from('payments').select('amount').eq('status', PaymentStatus.Succeeded), // Use enum
       supabaseAdmin.from('attendance')
           .select('id', { count: 'exact', head: true })
           .eq('class_date', new Date().toISOString().split('T')[0]) // Today's date
           .eq('present', true), // Use admin client
       supabaseAdmin.from('payments')
           .select('family_id', { count: 'exact', head: true }) // Count distinct families
-          .eq('status', 'pending'), // Use admin client
+          .eq('status', PaymentStatus.Pending), // Use enum
       // Fetch distinct user_ids who have signed *at least one* required waiver
       supabaseAdmin.from('waiver_signatures')
           .select('user_id', { count: 'exact', head: true }) // Count distinct users

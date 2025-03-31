@@ -74,13 +74,20 @@ export interface AttendanceRecord {
   notes?: string;
 }
 
+// Enum for Payment Status
+export enum PaymentStatus {
+  Pending = 'pending',
+  Succeeded = 'succeeded',
+  Failed = 'failed',
+}
+
 export interface Payment {
   id: string;
   familyId: string;
-  amount: number;
+  amount: number; // Amount in cents
   paymentDate: string;
   paymentMethod: string;
-  status: 'pending' | 'succeeded' | 'failed';
+  status: PaymentStatus; // Use the enum here
   studentIds: string[]; // Which students this payment covers
 }
 
