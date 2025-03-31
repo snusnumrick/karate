@@ -1,3 +1,5 @@
+import { siteConfig } from "~/config/site"; // Import site config
+
 export default function AboutPage() {
   return (
     <div className="bg-amber-50 dark:bg-gray-800 py-12">
