@@ -129,10 +129,10 @@ export default function StudentsAdminPage() {
                   <TableCell>{student.belt_rank ?? 'N/A'}</TableCell> {/* Handle null belt rank */}
                   <TableCell>
                     <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="text-xs">
-                      {student.eligibility.reason}
+                      {student.eligibility.reason === 'Paid' ? 'Active' : student.eligibility.reason}
                       {/* Optionally show last payment date for Paid/Expired */}
                       {student.eligibility.lastPaymentDate && (student.eligibility.reason === 'Paid' || student.eligibility.reason === 'Expired') &&
-                        ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'yyyy-MM-dd')})`
+                        ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'yyyy-MM-dd')})` // Keep date format for admin view
                       }
                     </Badge>
                   </TableCell>

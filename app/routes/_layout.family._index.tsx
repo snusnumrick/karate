@@ -223,9 +223,9 @@ export default function FamilyPortal() {
                                         {student.first_name} {student.last_name}
                                     </Link>
                                     <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="ml-2 text-xs">
-                                        {student.eligibility.reason}
+                                        {student.eligibility.reason === 'Paid' ? 'Active' : student.eligibility.reason}
                                         {student.eligibility.reason === 'Paid' && student.eligibility.lastPaymentDate &&
-                                            ` (Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
+                                            ` (Last Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
                                         }
                                         {student.eligibility.reason === 'Expired' && student.eligibility.lastPaymentDate &&
                                             ` (Last Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`

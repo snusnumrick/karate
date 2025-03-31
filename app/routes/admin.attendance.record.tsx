@@ -224,9 +224,11 @@ export default function RecordAttendancePage() {
                     <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">
                       {student.first_name} {student.last_name}
                     </h3>
-                    {/* Display eligibility badge - consider adding last payment date tooltip if needed */}
+                    {/* Display eligibility badge - use 'Active' for 'Paid' */}
                     <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="ml-2 text-xs">
-                      {student.eligibility.reason}
+                      {student.eligibility.reason === 'Paid' ? 'Active' : student.eligibility.reason}
+                      {/* Optionally add last payment date here too if desired */}
+                      {/* {student.eligibility.lastPaymentDate && (student.eligibility.reason === 'Paid' || student.eligibility.reason === 'Expired') && ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`} */}
                     </Badge>
                   </div>
 
