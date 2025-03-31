@@ -128,11 +128,13 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - Added unique constraint to `attendance` table for reliable upserts
 
 ### Next Priority Features
-1. **Payment Integration Enhancements**:
-  - Implement dynamic payment amount calculation based on enrollment duration (`_layout.family.payment.tsx`) (✅ Implemented - based on past payment count).
-  - Display recent payment in Family Portal, full history on separate page (`_layout.family.payment-history.tsx`) (✅ Implemented).
-  - Implement robust error handling for payment linking and Stripe webhooks (`utils/supabase.server.ts`) (✅ Implemented).
-  - Display student eligibility status (Trial/Paid/Not Paid) in Admin panels (`/admin/students`, `/admin/attendance/record`) (✅ Implemented).
+1. **Payment Integration Enhancements**: (✅ **Completed**)
+  - Implement dynamic payment amount calculation based on enrollment duration (`_layout.family.payment.tsx`).
+  - Allow selection of students for payment with dynamic total calculation (`_layout.family.payment.tsx`).
+  - Display recent payment in Family Portal, full history on separate page (`_layout.family.payment-history.tsx`).
+  - Implement robust error handling for payment linking and Stripe webhooks (`utils/supabase.server.ts`, `api.webhooks.stripe.ts`).
+  - Display student eligibility status (Trial/Active/Expired) in Family Portal and Admin panels (`_layout.family._index.tsx`, `/admin/students`, `/admin/attendance/record`).
+  - Explain dynamic pricing and eligibility logic in README.
 2. **Account Settings**: Implement account management section/link in Family Portal (`_layout.family._index.tsx`).
 3. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId`.
 4. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`).
@@ -154,9 +156,11 @@ gantt
     Student Detail Page     :done,    student, after portal, 7d
     Security Implementation :done,    sec, 2024-04-05, 14d     
     section Payments
-    Gateway Integration     :active,  pay, 2024-04-20, 21d
+    Gateway Integration     :done,    pay, 2024-04-20, 21d
     Transaction Tracking    :done,    pay_track, after pay, 14d
     Dynamic Pricing Logic   :done,    pay_dynamic, after pay_track, 7d
+    Student Selection UI    :done,    pay_select, after pay_dynamic, 5d
+    Eligibility Display     :done,    pay_eligibility, after pay_select, 3d
     section Reporting
     Attendance System       :active,  attend, 2024-05-25, 21d
     Achievement Tracking    :         achieve, 2024-06-15, 21d
