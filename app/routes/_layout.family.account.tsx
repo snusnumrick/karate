@@ -366,13 +366,16 @@ export default function AccountSettingsPage() {
                                 />
                             )}
                         </ClientOnly>
-                        <FormField
-                            control={familyForm.control}
-                            name="primary_phone"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Primary Phone</FormLabel>
-                                    <FormControl><Input type="tel" {...field} /></FormControl>
+                        
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="primary_phone"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Primary Phone</FormLabel>
+                                            <FormControl><Input type="tel" {...field} /></FormControl>
                                             <FormMessage/>
                                         </FormItem>
                                     )}
@@ -390,28 +393,36 @@ export default function AccountSettingsPage() {
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={familyForm.control}
-                            name="address"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Home Address</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="address"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Home Address</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
-                        <FormField
-                            control={familyForm.control}
-                            name="city"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>City</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                        </ClientOnly>
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="city"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>City</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
+                        </ClientOnly>
                         <ClientOnly>
                             {() => (
                                 <FormField
@@ -443,58 +454,77 @@ export default function AccountSettingsPage() {
                                                     <SelectItem value="YT">Yukon</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                    <FormMessage/>
-                                </FormItem>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
-                        <FormField
-                            control={familyForm.control}
-                            name="postal_code"
-                            render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>Postal Code</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                        </ClientOnly>
+                        
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="postal_code"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Postal Code</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
+                        </ClientOnly>
                         {/* Optional Fields */}
-                        <FormField
-                            control={familyForm.control}
-                            name="emergency_contact"
-                            render={({field}) => (
-                                <FormItem className="md:col-span-2">
-                                    <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
-                                    <FormControl><Textarea {...field}
-                                                           value={getDefaultValue(field.value)}/></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="emergency_contact"
+                                    render={({field}) => (
+                                        <FormItem className="md:col-span-2">
+                                            <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
+                                            <FormControl><Textarea {...field}
+                                                                   value={getDefaultValue(field.value)}/></FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
-                        <FormField
-                            control={familyForm.control}
-                            name="health_info"
-                            render={({field}) => (
-                                <FormItem className="md:col-span-2">
-                                    <FormLabel>Personal Health Number / Info</FormLabel>
-                                    <FormControl><Textarea {...field}
-                                                           value={getDefaultValue(field.value)}/></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                        </ClientOnly>
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="health_info"
+                                    render={({field}) => (
+                                        <FormItem className="md:col-span-2">
+                                            <FormLabel>Personal Health Number / Info</FormLabel>
+                                            <FormControl><Textarea {...field}
+                                                                   value={getDefaultValue(field.value)}/></FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
-                        <FormField
-                            control={familyForm.control}
-                            name="notes"
-                            render={({field}) => (
-                                <FormItem className="md:col-span-2">
-                                    <FormLabel>Family Notes (Internal Use)</FormLabel>
-                                    <FormControl><Textarea {...field}
-                                                           value={getDefaultValue(field.value)}/></FormControl>
-                                    <FormMessage/>
-                                </FormItem>
+                        </ClientOnly>
+                        <ClientOnly>
+                            {() => (
+                                <FormField
+                                    control={familyForm.control}
+                                    name="notes"
+                                    render={({field}) => (
+                                        <FormItem className="md:col-span-2">
+                                            <FormLabel>Family Notes (Internal Use)</FormLabel>
+                                            <FormControl><Textarea {...field}
+                                                                   value={getDefaultValue(field.value)}/></FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
+                        </ClientOnly>
                     </div>
 
                     <Button type="submit" disabled={isSubmitting}>
@@ -607,10 +637,12 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                             <FormItem>
                                 <FormLabel>First Name</FormLabel>
                                 <FormControl><Input {...field} /></FormControl>
-                                <FormMessage/>
-                            </FormItem>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                         )}
-                    />
+                    </ClientOnly>
                     <FormField
                         control={guardianForm.control}
                         name="last_name"
