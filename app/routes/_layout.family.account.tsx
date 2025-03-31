@@ -653,8 +653,8 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                             {() => (
                                                 <Select 
                                                     onValueChange={field.onChange} 
-                                                    value={field.value ?? undefined} // Explicitly control the value
-                                                    defaultValue={field.value ?? undefined} // Keep defaultValue for initial render consistency
+                                                    value={field.value ?? ''} // Control with form value, default to '' if undefined/null
+                                                    // Remove defaultValue when using value for controlled component
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger><SelectValue
