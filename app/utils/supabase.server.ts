@@ -1,8 +1,6 @@
 import { createServerClient } from "@supabase/auth-helpers-remix";
 import { createClient } from "@supabase/supabase-js"; // Import standard client
-import Stripe from 'stripe'; // Import Stripe
 import type { Database } from "~/types/supabase";
-import type { Payment } from "~/types/models";
 
 // Initialize Stripe
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -10,13 +8,15 @@ if (!stripeSecretKey) {
   console.warn("STRIPE_SECRET_KEY is not set. Payment functionality will be disabled.");
 }
 // Ensure Stripe version compatibility if needed, e.g., apiVersion: '2023-10-16'
-const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
+// Stripe client initialization removed since it is not used.
 
+type SupabaseClient = ReturnType<typeof createServerClient<Database>>;
 type SupabaseServerClientReturn = {
-    supabaseServer: ReturnType<typeof createServerClient>,
-    supabaseClient: ReturnType<typeof createServerClient>,
+    supabaseServer: SupabaseClient,
+    supabaseClient: SupabaseClient,
     response: Response
 };
+
 
 export function getSupabaseServerClient(request: Request) : SupabaseServerClientReturn {
   const response = new Response();

@@ -15,17 +15,6 @@ type StudentWithEligibility = Database["public"]["Tables"]["students"]["Row"] & 
 // Define FamilyData using the extended student type
 export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
     students?: StudentWithEligibility[]; // Use the extended student type
-// Define a more specific type for the data fetched from Supabase
-type FamilyWithStudentsAndPayments = Database["public"]["Tables"]["families"]["Row"] & {
-  students: Database["public"]["Tables"]["students"]["Row"][] | null; // students can be null or an array
-  payments: (Database["public"]["Tables"]["payments"]["Row"] & {
-    payment_students: { student_id: string }[] | null; // payment_students can be null or an array
-  })[] | null; // payments can be null or an array
-};
-
-// Define FamilyData using the extended student type
-export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
-    students?: StudentWithEligibility[]; // Use the extended student type
     payments?: (
         Database["public"]["Tables"]["payments"]["Row"] & {
         payment_students: {
@@ -94,7 +83,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             ascending: false,
             nullsFirst: false
         }) // Order payments by date
-        .single<FamilyWithStudentsAndPayments>(); // Apply the specific type here
+        .single<FamilyData>(); // Apply the specific type here
     console.log("Family Data:", familyData);
 
     if (familyError || !familyData) { // Check if familyData itself is null/undefined
@@ -195,7 +184,7 @@ export default function FamilyPortal() {
                 <div className="container mx-auto px-4 py-8 text-center">
                     <h1 className="text-2xl font-semibold mb-4">Welcome!</h1>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">
-                        Your account isn't linked to a family yet. Please complete your registration or contact support.
+                        Your account isn&apos;t linked to a family yet. Please complete your registration or contact support.
                     </p>
                     {/* Optional: Add a link to registration or contact */}
                     {/* <Button asChild><Link to="/register/family-details">Complete Registration</Link></Button> */}
