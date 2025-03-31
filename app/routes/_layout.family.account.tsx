@@ -348,7 +348,8 @@ export default function AccountSettingsPage() {
                             <AlertTitle>Validation Errors</AlertTitle>
                             <AlertDescription>
                                 <ul className="list-disc pl-5">
-                                    {actionData.errors.map((err: { path: string[]; message: string }, i) => <li
+                                    {/* Use the imported ZodIssue type */}
+                                    {actionData.errors.map((err: ZodIssue, i: number) => <li
                                         key={i}>{err.path.join('.')} : {err.message}</li>)}
                                 </ul>
                             </AlertDescription>
@@ -600,6 +601,7 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                 <AlertTitle>Validation Errors</AlertTitle>
                                 <AlertDescription>
                                     <ul className="list-disc pl-5">
+                                        {/* Use the imported ZodIssue type */}
                                         {actionData.errors.map((err: ZodIssue, i: number) => <li
                                             key={i}>{err.path.join('.')} : {err.message}</li>)}
                                     </ul>
