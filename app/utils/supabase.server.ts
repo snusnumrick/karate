@@ -133,6 +133,74 @@ export async function createInitialPaymentRecord(
   return { data: { id: paymentId }, error: null };
 }
 
+// --- Student Eligibility Check ---
+
+export type EligibilityStatus = {
+  eligible: boolean;
+  reason: 'Trial' | 'Paid' | 'Not Paid';
+  paidThrough?: string; // Optional: YYYY-MM for the month they are paid through
+};
+
+/**
+ * Checks if a student is eligible to attend class based on payment status.
+ * Eligibility rules:
+ * 1. Eligible if on Free Trial (zero successful payments linked).
+ * 2. Eligible if paid for the current calendar month.
+ * @param studentId The ID of the student to check.
+ * @param supabaseAdmin A Supabase client instance with service_role privileges.
+ * @returns Promise<EligibilityStatus>
+ */
+export async function checkStudentEligibility(
+  studentId: string,
+  supabaseAdmin: ReturnType<typeof createClient<Database>> // Use the specific client type
+): Promise<EligibilityStatus> {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth(); // 0-indexed (0 = January)
+
+  // 1. Fetch successful payments linked to this student
+  const { data: paymentLinks, error: linkError } = await supabaseAdmin
+    .from('payment_students')
+    .select(`
+      payment_id,
+      payments ( id, payment_date, status )
+    `)
+    .eq('student_id', studentId)
+    // Ensure we only join with successful payments
+    .eq('payments.status', 'succeeded');
+
+  if (linkError) {
+    console.error(`Error fetching payment links for student ${studentId}:`, linkError.message);
+    // Default to not eligible if we can't verify payments
+    return { eligible: false, reason: 'Not Paid' };
+  }
+
+  const successfulPayments = paymentLinks
+    ?.map(link => link.payments) // Extract the payment object
+    .filter(payment => payment !== null && payment.payment_date !== null) as Array<{ id: string, payment_date: string, status: string }> ?? []; // Type assertion after filtering nulls
+
+
+  // 2. Check for Free Trial (zero successful payments)
+  if (successfulPayments.length === 0) {
+    return { eligible: true, reason: 'Trial' };
+  }
+
+  // 3. Check if paid for the current calendar month
+  for (const payment of successfulPayments) {
+    const paymentDate = new Date(payment.payment_date); // Assumes payment_date is YYYY-MM-DD or ISO string
+    if (paymentDate.getFullYear() === currentYear && paymentDate.getMonth() === currentMonth) {
+      return {
+        eligible: true,
+        reason: 'Paid',
+        paidThrough: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}` // YYYY-MM
+      };
+    }
+  }
+
+  // 4. If not on trial and no payment for the current month found
+  return { eligible: false, reason: 'Not Paid' };
+}
+
 
 export async function updatePaymentStatus(
   stripeSessionId: string, // Use Stripe session ID to find the record

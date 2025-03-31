@@ -9,7 +9,9 @@ import {
 } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
+import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
 import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge"; // Import Badge
 import { Label } from "~/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Textarea } from "~/components/ui/textarea";
@@ -17,11 +19,13 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { format } from 'date-fns';
 
 // Define types
-type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
+type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'> & {
+  eligibility: EligibilityStatus; // Add eligibility status
+};
 type AttendanceRecord = Database['public']['Tables']['attendance']['Row'];
 type LoaderData = {
   students: StudentInfo[];
-  existingRecords: Record<string, Pick<AttendanceRecord, 'present' | 'notes'>>; // studentId -> { present, notes }
+  existingRecords: Record<string, Pick<AttendanceRecord, 'present' | 'notes'>>;
   attendanceDate: string;
 };
 type ActionData = {
@@ -66,7 +70,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (studentsResponse.error) throw studentsResponse.error;
     if (attendanceResponse.error) throw attendanceResponse.error;
 
-    const students = studentsResponse.data ?? [];
+    const rawStudents = studentsResponse.data ?? [];
     const existingRecordsMap: LoaderData['existingRecords'] = {};
     (attendanceResponse.data ?? []).forEach(record => {
       existingRecordsMap[record.student_id] = {
@@ -75,8 +79,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
       };
     });
 
-    console.log(`Fetched ${students.length} students and ${Object.keys(existingRecordsMap).length} existing records.`);
-    return json({ students, existingRecords: existingRecordsMap, attendanceDate: today });
+    // Fetch eligibility for each student
+    const studentsWithEligibility: StudentInfo[] = [];
+    for (const student of rawStudents) {
+      const eligibility = await checkStudentEligibility(student.id, supabaseAdmin);
+      studentsWithEligibility.push({
+        ...student,
+        eligibility: eligibility,
+      });
+    }
+
+    console.log(`Fetched ${studentsWithEligibility.length} students and ${Object.keys(existingRecordsMap).length} existing records. Eligibility checked.`);
+    return json({ students: studentsWithEligibility, existingRecords: existingRecordsMap, attendanceDate: today });
 
   } catch (error) {
      const message = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -158,7 +172,17 @@ export default function RecordAttendancePage() {
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
-  const formattedDate = format(new Date(attendanceDate + 'T00:00:00'), 'MMMM d, yyyy');
+  const formattedDate = format(new Date(attendanceDate + 'T00:00:00'), 'MMMM d, yyyy'); // Ensure correct date parsing
+
+  // Helper to determine badge variant based on eligibility
+  const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+      case 'Paid': return 'default';
+      case 'Trial': return 'secondary';
+      case 'Not Paid': return 'destructive';
+      default: return 'outline';
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -196,9 +220,15 @@ export default function RecordAttendancePage() {
                   {/* Hidden input to ensure we know which students were displayed */}
                   <input type="hidden" name="studentId" value={student.id} />
 
-                  <h3 className="text-lg font-medium mb-2 text-gray-800 dark:text-gray-100">
-                    {student.first_name} {student.last_name}
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">
+                      {student.first_name} {student.last_name}
+                    </h3>
+                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="ml-2">
+                      {student.eligibility.reason}
+                    </Badge>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                     {/* Status Radio Group */}
                     <div className="md:col-span-1">

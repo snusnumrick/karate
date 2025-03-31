@@ -2,7 +2,9 @@ import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useRouteError } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
+import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
 import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge"; // Import Badge
 import {
   Table,
   TableBody,
@@ -14,10 +16,12 @@ import {
 
 // Define types for loader data
 type StudentRow = Database['public']['Tables']['students']['Row'];
-type FamilyName = Pick<Database['public']['Tables']['families']['Row'], 'name'> | null; // Family might be null if relationship allows
+type FamilyName = Pick<Database['public']['Tables']['families']['Row'], 'name'> | null;
 
-type StudentWithFamilyName = StudentRow & {
-  families: FamilyName; // Supabase nests related data under the table name
+// Extend the student type to include eligibility
+type StudentWithFamilyAndEligibility = StudentRow & {
+  families: FamilyName;
+  eligibility: EligibilityStatus; // Add eligibility status
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -51,10 +55,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
       throw new Response("Failed to load student data.", { status: 500 });
     }
 
-    console.log(`Admin students loader - Fetched ${students?.length ?? 0} students.`);
-    // Ensure families is at least null if not found, matching the type
-    const typedStudents = students?.map(s => ({ ...s, families: s.families ?? null })) ?? [];
-    return json({ students: typedStudents });
+    console.log(`Admin students loader - Fetched ${students?.length ?? 0} students. Now checking eligibility...`);
+
+    // Fetch eligibility for each student
+    const studentsWithEligibility: StudentWithFamilyAndEligibility[] = [];
+    if (students) {
+      for (const student of students) {
+        const eligibility = await checkStudentEligibility(student.id, supabaseAdmin);
+        studentsWithEligibility.push({
+          ...student,
+          families: student.families ?? null, // Ensure families is at least null
+          eligibility: eligibility,
+        });
+      }
+    }
+
+    console.log("Admin students loader - Eligibility checks complete.");
+    return json({ students: studentsWithEligibility });
 
   } catch (error) {
      if (error instanceof Error) {
@@ -68,7 +85,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function StudentsAdminPage() {
-  const { students } = useLoaderData<{ students: StudentWithFamilyName[] }>();
+  const { students } = useLoaderData<{ students: StudentWithFamilyAndEligibility[] }>();
+
+  // Helper to determine badge variant based on eligibility
+  const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+      case 'Paid': return 'default'; // Greenish
+      case 'Trial': return 'secondary'; // Bluish/Grayish
+      case 'Not Paid': return 'destructive'; // Reddish
+      default: return 'outline';
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -90,6 +117,7 @@ export default function StudentsAdminPage() {
                 <TableHead>Student Name</TableHead>
                 <TableHead>Family Name</TableHead>
                 <TableHead>Belt Rank</TableHead>
+                <TableHead>Eligibility</TableHead> {/* Add Eligibility column */}
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -98,7 +126,13 @@ export default function StudentsAdminPage() {
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{`${student.first_name} ${student.last_name}`}</TableCell>
                   <TableCell>{student.families?.name ?? 'N/A'}</TableCell>
-                  <TableCell>{student.belt_rank}</TableCell>
+                  <TableCell>{student.belt_rank ?? 'N/A'}</TableCell> {/* Handle null belt rank */}
+                  <TableCell>
+                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)}>
+                      {student.eligibility.reason}
+                      {student.eligibility.reason === 'Paid' && student.eligibility.paidThrough && ` (Thru ${student.eligibility.paidThrough})`}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" asChild className="mr-2">
                       {/* Link to a future detail/edit page */}
