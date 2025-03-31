@@ -123,7 +123,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 
 ### Next Priority Features
 1. **Payment Integration Enhancements**:
-  - Implement dynamic payment amount calculation (`_layout.family.payment.tsx`).
+  - Implement dynamic payment amount calculation based on enrollment duration (`_layout.family.payment.tsx`).
   - Display recent payment in Family Portal, full history on separate page (`_layout.family.payment-history.tsx`) (Implemented).
   - Implement robust error handling for payment linking and Stripe webhooks (`utils/supabase.server.ts`).
 2. **Account Settings**: Implement account management section/link in Family Portal (`_layout.family._index.tsx`).

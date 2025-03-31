@@ -190,8 +190,8 @@ export default function FamilyPaymentPage() {
         );
     }
 
-    // TODO: Determine the actual amount dynamically based on enrollment duration.
-    // For now, use the standard monthly rate as the default.
+    // Use the standard monthly rate as the default for display and initial processing.
+    // Dynamic calculation based on enrollment duration needs to be implemented in the API/loader.
     const standardMonthlyRate = siteConfig.pricing.monthly;
     const amountInCents = standardMonthlyRate * 100; // Convert to cents
     const paymentAmountDisplay = `${siteConfig.pricing.currency}${standardMonthlyRate.toFixed(2)}`; // Format for display
