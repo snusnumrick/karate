@@ -57,7 +57,7 @@ export default function Index() {
             <ul className="space-y-4 text-lg">
               <li className="flex items-center">
                 <span className="mr-2">📍</span>
-                <span>Lighthouse Christian Academy</span>
+                <span>650 Allandale Rd Suite A101</span>
               </li>
               <li className="flex items-center">
                 <span className="mr-2">🕕</span>

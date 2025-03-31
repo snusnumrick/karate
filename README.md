@@ -3,7 +3,7 @@
 ## Project Overview
 
 Develop a comprehensive and user-friendly karate class management website for 
-Sensei Negin's classes at Lighthouse Christian Academy, 
+Sensei Negin's classes at 650 Allandale Rd Suite A101, 
 incorporating efficient family-oriented registration, 
 achievement tracking, attendance monitoring, payment integration, and waiver management.
 
