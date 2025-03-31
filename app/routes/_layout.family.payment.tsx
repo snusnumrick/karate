@@ -194,6 +194,9 @@ export default function FamilyPaymentPage() {
 
     const isProcessing = fetcher.state !== 'idle';
 
+    // Derive student IDs from the students array for use in the form
+    const studentIdsForForm = students.map(s => s.id);
+
     // Log fetcher state and data on every render for debugging
     console.log("Fetcher state:", fetcher.state);
     console.log("Fetcher data:", fetcher.data);
@@ -351,14 +354,15 @@ export default function FamilyPaymentPage() {
             <form onSubmit={handlePaymentSubmit}>
                 <input type="hidden" name="familyId" value={familyId} />
                 <input type="hidden" name="familyName" value={familyName} /> {/* Add hidden input for family name */}
-                {/* Pass student IDs as a comma-separated string */}
-                <input type="hidden" name="studentIds" value={studentIds.join(',')} />
+                {/* Pass student IDs as a comma-separated string using the derived array */}
+                <input type="hidden" name="studentIds" value={studentIdsForForm.join(',')} />
                 {/* Amount is added dynamically in handleSubmit */}
                 <Button
                     type="submit"
                     className="w-full"
                     // Disable while fetcher is working, Stripe is loading, or if no students
-                    disabled={isProcessing || !stripe || studentIds.length === 0}
+                    // Use the derived studentIdsForForm array for the check
+                    disabled={isProcessing || !stripe || studentIdsForForm.length === 0}
                 >
                     {isProcessing ? "Processing..." : `Proceed to Pay ${paymentAmountDisplay}`}
                 </Button>
