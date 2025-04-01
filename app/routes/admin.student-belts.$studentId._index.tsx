@@ -12,7 +12,6 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@radix-ui/react-alert-dialog"; // Import AlertDialog components
@@ -231,12 +230,10 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
-                        <AlertDialogHeader>
                           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                           <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete the belt award record.
                           </AlertDialogDescription>
-                        </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel onClick={() => setDeleteTargetId(null)}>Cancel</AlertDialogCancel>
                           {/* Use AlertDialogAction which closes the dialog */}
