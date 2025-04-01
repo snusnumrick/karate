@@ -181,39 +181,7 @@ export async function action({ request }: ActionFunctionArgs) {
       console.log('Student created:', studentData);
     }
 
-    // Record waiver signatures for each required waiver
-    const fullName = formData.get('fullName') as string;
-    const currentDate = new Date().toISOString();
-    
-    // Get all required waivers
-    const { data: waivers, error: waiversError } = await supabaseServer
-      .from('waivers')
-      .select('id, title')
-      .eq('required', true);
-      
-    if (waiversError) throw waiversError;
-    console.log('Required waivers:', waivers);
-    
-    // Create signatures for each waiver
-    for (const waiver of waivers) {
-      const isAgreed = formData.has(waiver.title.toLowerCase().replace(/\s+/g, '')) || 
-                       formData.has('agreeAll');
-                       
-      if (isAgreed) {
-        const { data: signatureData, error: signatureError } = await supabaseServer
-          .from('waiver_signatures')
-          .insert({
-            waiver_id: waiver.id,
-            user_id: user.id,
-            signature_data: fullName,
-            agreement_version: '1.0', // Initial version
-            signed_at: currentDate
-          });
-          
-        if (signatureError) throw signatureError;
-        console.log(`Waiver signature created for ${waiver.title}`);
-      }
-    }
+    // Waiver signatures will be handled in a separate dedicated flow
 
     return redirect('/register/success');
 
@@ -234,39 +202,6 @@ export default function RegisterPage() {
   const [familyName, setFamilyName] = useState(""); // State for family name
   const [primaryPhone, setPrimaryPhone] = useState(""); // State for primary phone
   
-  // State for policy checkboxes
-  const [photoReleaseChecked, setPhotoReleaseChecked] = useState(false);
-  const [liabilityChecked, setLiabilityChecked] = useState(false);
-  const [conductChecked, setConductChecked] = useState(false);
-  const [paymentChecked, setPaymentChecked] = useState(false);
-  const [attireChecked, setAttireChecked] = useState(false);
-  const [agreeAllChecked, setAgreeAllChecked] = useState(false);
-
-  const policyCheckboxes = [
-    { state: photoReleaseChecked, setState: setPhotoReleaseChecked },
-    { state: liabilityChecked, setState: setLiabilityChecked },
-    { state: conductChecked, setState: setConductChecked },
-    { state: paymentChecked, setState: setPaymentChecked },
-    { state: attireChecked, setState: setAttireChecked },
-  ];
-
-  const handleAgreeAllChange = (checked: boolean) => {
-    setAgreeAllChecked(checked);
-    policyCheckboxes.forEach(cb => cb.setState(checked));
-  };
-
-  const handleIndividualPolicyChange = (setState: React.Dispatch<React.SetStateAction<boolean>>, checked: boolean) => {
-    setState(checked);
-    // Check if all individual policies are now checked
-    const allChecked = policyCheckboxes.every(cb => (cb.setState === setState ? checked : cb.state));
-    const noneChecked = policyCheckboxes.every(cb => (cb.setState === setState ? !checked : !cb.state));
-
-    if (allChecked) {
-      setAgreeAllChecked(true);
-    } else {
-      setAgreeAllChecked(false);
-    }
-  };
 
 
   const addStudent = () => {
@@ -902,7 +837,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
               
-              {/* Step 4: Student Info */}
+              {/* Step 4: Student Info (Final Step) */}
               <div className={currentStep === 4 ? '' : 'hidden'}>
                 {students.map((student, index) => (
                   <div key={student.id} className="mb-8 pb-8 border-b border-border dark:border-gray-700">
@@ -1154,191 +1089,6 @@ export default function RegisterPage() {
                     </Button>
                   </div>
                   
-                  <div className="flex justify-between mt-8">
-                    <Button
-                      type="button"
-                      onClick={prevStep}
-                      variant="outline"
-                      className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={nextStep}
-                      className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                </div>
-              
-              {/* Step 5: Policies & Submit */}
-              <div className={currentStep === 5 ? '' : 'hidden'}>
-                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REQUIRED POLICIES</h2>
-                
-                <div className="space-y-6">
-                    {/* Photo Release */}
-                    <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
-                      <div className="flex items-start space-x-3">
-                        <Checkbox 
-                          id="photoRelease" 
-                          name="photoRelease" 
-                          required 
-                          checked={photoReleaseChecked}
-                          onCheckedChange={(checked) => handleIndividualPolicyChange(setPhotoReleaseChecked, Boolean(checked))}
-                          className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
-                        />
-                        <div>
-                          <Label htmlFor="photoRelease" className="font-medium">
-                            Photo / Video Release
-                          </Label>
-                          <p className="text-muted-foreground text-sm mt-2">
-                            I give permission for my child to be photographed or videotaped during karate activities. 
-                            I understand these images may be used for promotional purposes including social media, website, and printed materials.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Liability */}
-                    <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
-                      <div className="flex items-start space-x-3">
-                        <Checkbox 
-                          id="liability" 
-                          name="liability" 
-                          required 
-                          checked={liabilityChecked}
-                          onCheckedChange={(checked) => handleIndividualPolicyChange(setLiabilityChecked, Boolean(checked))}
-                          className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
-                        />
-                        <div>
-                          <Label htmlFor="liability" className="font-medium">
-                            Release of Liability & Assumption of Risk
-                          </Label>
-                          <p className="text-muted-foreground text-sm mt-2">
-                            I understand that participation in karate involves physical activity and carries inherent risks. 
-                            I release Karate Greenegin, its instructors, and staff from liability for injuries sustained during participation.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Conduct */}
-                    <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
-                      <div className="flex items-start space-x-3">
-                        <Checkbox 
-                          id="conduct" 
-                          name="conduct" 
-                          required 
-                          checked={conductChecked}
-                          onCheckedChange={(checked) => handleIndividualPolicyChange(setConductChecked, Boolean(checked))}
-                          className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
-                        />
-                        <div>
-                          <Label htmlFor="conduct" className="font-medium">
-                            Code Of Conduct Agreement
-                          </Label>
-                          <p className="text-muted-foreground text-sm mt-2">
-                            I agree that my child will follow all rules and guidelines set by the instructors, 
-                            show respect to all participants, and maintain appropriate behavior during all activities.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Payment */}
-                    <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
-                      <div className="flex items-start space-x-3">
-                        <Checkbox 
-                          id="payment" 
-                          name="payment" 
-                          required 
-                          checked={paymentChecked}
-                          onCheckedChange={(checked) => handleIndividualPolicyChange(setPaymentChecked, Boolean(checked))}
-                          className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
-                        />
-                        <div>
-                          <Label htmlFor="payment" className="font-medium">
-                            Payment Policy
-                          </Label>
-                          <p className="text-muted-foreground text-sm mt-2">
-                            I understand the payment schedule and agree to make timely payments. 
-                            I acknowledge that fees are non-refundable and that missed classes cannot be credited.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Attire */}
-                    <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border text-foreground">
-                      <div className="flex items-start space-x-3">
-                        <Checkbox 
-                          id="attire" 
-                          name="attire" 
-                          required 
-                          checked={attireChecked}
-                          onCheckedChange={(checked) => handleIndividualPolicyChange(setAttireChecked, Boolean(checked))}
-                          className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
-                        />
-                        <div>
-                          <Label htmlFor="attire" className="font-medium">
-                            Attire / Dress Code Agreement
-                          </Label>
-                          <p className="text-muted-foreground text-sm mt-2">
-                            I agree that my child will wear the appropriate karate uniform (gi) to all classes 
-                            and will maintain proper hygiene and appearance according to dojo guidelines.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Agree All */}
-                    <div className="bg-muted/50 dark:bg-muted p-4 rounded-md border border-border">
-                      <div className="flex items-start space-x-3">
-                        <Checkbox 
-                          id="agreeAll" 
-                          name="agreeAll" 
-                          required 
-                          checked={agreeAllChecked}
-                          onCheckedChange={(checked) => handleAgreeAllChange(Boolean(checked))}
-                          className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400 dark:data-[state=checked]:border-green-400" 
-                        />
-                        <Label htmlFor="agreeAll" className="font-medium">
-                          I AGREE TO ALL OF THE ABOVE
-                        </Label>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="fullName" className="text-sm font-medium mb-1">
-                        Enter your Full Name<span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        type="text"
-                        id="fullName"
-                        name="fullName"
-                        required
-                        className="focus:ring-green-500"
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="comments" className="text-sm font-medium mb-1">
-                        Comments
-                      </Label>
-                      <Textarea
-                        id="comments"
-                        name="comments"
-                        rows={4}
-                        className="focus:ring-green-500"
-                      />
-                    </div>
-                  </div>
-
                   {actionData?.error && (
                     <div className="text-red-500 text-sm mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
                       Error: {actionData.error}
@@ -1361,7 +1111,6 @@ export default function RegisterPage() {
                       SUBMIT REGISTRATION
                     </Button>
                   </div>
-                  
                 </div>
             </Form>
           </div>
