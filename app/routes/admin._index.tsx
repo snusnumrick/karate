@@ -222,7 +222,7 @@ export default function AdminDashboard() {
                   to="/admin/students"
                   className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
               >
-                Manage Student Belts
+                Manage Students
               </Link>
             </div>
           </div>
