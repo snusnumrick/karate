@@ -131,13 +131,13 @@ export default function AdminStudentDetailPage() {
 
              {/* Links to other related admin sections */}
              <div className="mt-8 space-x-4">
-                 {/* Remove asChild to prevent hydration issues */}
-                 <Button variant="secondary">
+                 {/* Restore asChild for correct Button/Link integration */}
+                 <Button asChild variant="secondary">
                      <Link to={`/admin/students/${student.id}/belts`}>Manage Belt Awards</Link>
                  </Button>
                  {/* Add link to attendance history filtered for this student */}
-                 {/* Remove asChild here too for consistency and potential future issues */}
-                 <Button variant="secondary">
+                 {/* Restore asChild here too */}
+                 <Button asChild variant="secondary">
                      <Link to={`/admin/attendance?studentId=${student.id}`}>View Attendance</Link>
                  </Button>
              </div>
