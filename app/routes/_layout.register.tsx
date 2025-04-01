@@ -175,7 +175,7 @@ export async function action({ request }: ActionFunctionArgs) {
         medications: formData.get(`students[${index}].medications`) as string || undefined,
         immunizations_up_to_date: formData.get(`students[${index}].immunizationsUpToDate`) as string || undefined,
         immunization_notes: formData.get(`students[${index}].immunizationNotes`) as string || undefined,
-        belt_rank: formData.get(`students[${index}].beltRank`) as 'white' || 'yellow' || 'orange' || 'green' || 'blue' || 'purple' || 'red' || 'brown' || 'black'
+        belt_rank: formData.get(`students[${index}].beltRank`) as typeof BELT_RANKS[number]
       });
       if (studentError) throw studentError;
       console.log('Student created:', studentData);

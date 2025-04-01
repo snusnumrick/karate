@@ -22,7 +22,6 @@ import { format } from 'date-fns';
 // Define types
 type StudentRow = Database['public']['Tables']['students']['Row'];
 type FamilyRow = Database['public']['Tables']['families']['Row'];
-type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 
 // Extend student type to include family name and use enum
 type StudentWithFamily = Omit<StudentRow, 'belt_rank'> & {
@@ -114,7 +113,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
       immunizations_up_to_date: formData.get('immunizations_up_to_date') === 'on' ? 'true' : 'false',
       immunization_notes: formData.get('immunization_notes') as string || null,
       // Ensure belt_rank is handled correctly (might be empty string from select)
-      belt_rank: (formData.get('belt_rank') as BeltRankEnum | '' | null) || null,
+      belt_rank: (formData.get('belt_rank') as typeof BELT_RANKS[number] | '' | null) || null,
     };
 
     // --- Basic Validation ---
