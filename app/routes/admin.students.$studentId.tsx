@@ -1,9 +1,22 @@
-import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError, useNavigate } from "@remix-run/react"; // Remove Outlet, keep useNavigate
+import { useState, useEffect } from "react"; // Import useState and useEffect
+import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, TypedResponse } from "@remix-run/node"; // Import ActionFunctionArgs, redirect
+import { Link, useLoaderData, useRouteError, useNavigate, Form, useActionData, useNavigation } from "@remix-run/react"; // Import Form, useActionData, useNavigation
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
+import { Input } from "~/components/ui/input"; // Import Input
+import { Label } from "~/components/ui/label"; // Import Label
+import { Textarea } from "~/components/ui/textarea"; // Import Textarea
+import { Checkbox } from "~/components/ui/checkbox"; // Import Checkbox
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select"; // Import Select components
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // Import Alert components
 import { format } from 'date-fns';
 
 // Define types
@@ -20,6 +33,15 @@ type StudentWithFamily = Omit<StudentRow, 'belt_rank'> & {
 type LoaderData = {
     student: StudentWithFamily;
 };
+
+// Define potential action data structure
+type ActionData = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+  fieldErrors?: { [key: string]: string | undefined };
+};
+
 
 // Helper mapping for belt colors (copied from family student detail)
 const beltColorMap: Record<string, string> = {
@@ -72,11 +94,96 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
     return json({ student: typedStudentData });
 }
 
+// Action function to handle student updates
+export async function action({ request, params }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
+    const studentId = params.studentId;
+    if (!studentId) {
+        return json({ error: "Student ID is required" }, { status: 400 });
+    }
+
+    const formData = await request.formData();
+    const intent = formData.get("intent");
+
+    if (intent !== "edit") {
+        return json({ error: "Invalid intent" }, { status: 400 });
+    }
+
+    // --- Data Extraction ---
+    const updateData: Partial<StudentRow> = {
+      first_name: formData.get('first_name') as string,
+      last_name: formData.get('last_name') as string,
+      gender: formData.get('gender') as string,
+      birth_date: formData.get('birth_date') as string,
+      cell_phone: formData.get('cell_phone') as string || null,
+      email: formData.get('email') as string || null,
+      t_shirt_size: formData.get('t_shirt_size') as string,
+      school: formData.get('school') as string,
+      grade_level: formData.get('grade_level') as string || null,
+      special_needs: formData.get('special_needs') as string || null,
+      allergies: formData.get('allergies') as string || null,
+      medications: formData.get('medications') as string || null,
+      immunizations_up_to_date: formData.get('immunizations_up_to_date') === 'on' ? 'true' : 'false',
+      immunization_notes: formData.get('immunization_notes') as string || null,
+      // Ensure belt_rank is handled correctly (might be empty string from select)
+      belt_rank: (formData.get('belt_rank') as BeltRankEnum | '' | null) || null,
+    };
+
+    // --- Basic Validation ---
+    const fieldErrors: ActionData['fieldErrors'] = {};
+    if (!updateData.first_name) fieldErrors.first_name = "First name is required.";
+    if (!updateData.last_name) fieldErrors.last_name = "Last name is required.";
+    if (!updateData.gender) fieldErrors.gender = "Gender is required.";
+    if (!updateData.birth_date) fieldErrors.birth_date = "Birth date is required.";
+    if (!updateData.t_shirt_size) fieldErrors.t_shirt_size = "T-shirt size is required.";
+    if (!updateData.school) fieldErrors.school = "School is required.";
+    // Add more validation as needed
+
+    if (Object.values(fieldErrors).some(Boolean)) {
+        return json({ error: "Please correct the errors below.", fieldErrors }, { status: 400 });
+    }
+
+    // --- Database Interaction ---
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+        return json({ error: "Server configuration error." }, { status: 500 });
+    }
+    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+
+    try {
+        const { error: updateError } = await supabaseAdmin
+            .from('students')
+            .update(updateData)
+            .eq('id', studentId);
+
+        if (updateError) throw updateError;
+
+        return json({ success: true, message: "Student details updated successfully." });
+
+    } catch (error) {
+        console.error("Admin student update error:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        return json({ error: `Failed to update student: ${errorMessage}` }, { status: 500 });
+    }
+}
+
+
 export default function AdminStudentDetailPage() {
     const { student } = useLoaderData<LoaderData>();
+    const actionData = useActionData<ActionData>();
+    const navigation = useNavigation();
     const navigate = useNavigate(); // Get navigate function
+    const [isEditing, setIsEditing] = useState(false); // State for edit mode
 
-    // TODO: Add Edit functionality later with useState and Form
+    const isSubmitting = navigation.state === "submitting";
+
+    // Reset edit mode on successful update
+    useEffect(() => {
+        if (actionData?.success && isEditing && navigation.state === 'idle') {
+          setIsEditing(false);
+        }
+    }, [actionData, isEditing, navigation.state]);
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -84,14 +191,191 @@ export default function AdminStudentDetailPage() {
 
             <div className="flex justify-between items-center mb-6">
                  <h1 className="text-3xl font-bold">Student Details: {student.first_name} {student.last_name}</h1>
-                 {/* TODO: Add Edit Button */}
-                 <Button variant="outline" disabled>Edit Student (WIP)</Button>
+                 {/* Enable Edit Button */}
+                 {!isEditing && (
+                    <Button variant="outline" onClick={() => setIsEditing(true)}>Edit Student</Button>
+                 )}
             </div>
 
+            {/* Display action feedback */}
+            {actionData?.error && !actionData.fieldErrors && (
+                <Alert variant="destructive" className="mb-4">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{actionData.error}</AlertDescription>
+                </Alert>
+            )}
+             {actionData?.error && actionData.fieldErrors && (
+                <Alert variant="destructive" className="mb-4">
+                    <AlertTitle>Validation Error</AlertTitle>
+                    <AlertDescription>{actionData.error}</AlertDescription>
+                    {/* Optionally list field errors */}
+                </Alert>
+            )}
+            {actionData?.success && actionData.message && !isEditing && ( // Show success only when not editing
+                 <Alert variant="default" className="mb-4 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
+                    <AlertTitle>Success</AlertTitle>
+                    <AlertDescription>{actionData.message}</AlertDescription>
+                 </Alert>
+            )}
 
-            {/* Display Student Information */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Information</h2>
+            {isEditing ? (
+            // --- Edit Form ---
+            <Form method="post" className="space-y-6">
+                <input type="hidden" name="intent" value="edit" />
+
+                {/* Information Section */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Edit Information</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="first_name">First Name <span className="text-red-500">*</span></Label>
+                            <Input id="first_name" name="first_name" defaultValue={student.first_name} required />
+                            {actionData?.fieldErrors?.first_name && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.first_name}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="last_name">Last Name <span className="text-red-500">*</span></Label>
+                            <Input id="last_name" name="last_name" defaultValue={student.last_name} required />
+                            {actionData?.fieldErrors?.last_name && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.last_name}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="gender">Gender <span className="text-red-500">*</span></Label>
+                            <Select name="gender" defaultValue={student.gender} required>
+                                <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Male">Male</SelectItem>
+                                    <SelectItem value="Female">Female</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {actionData?.fieldErrors?.gender && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.gender}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="birth_date">Birth Date <span className="text-red-500">*</span></Label>
+                            <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date} required />
+                            {actionData?.fieldErrors?.birth_date && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.birth_date}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="belt_rank">Belt Rank</Label>
+                            <Select name="belt_rank" defaultValue={student.belt_rank || ''}>
+                                <SelectTrigger id="belt_rank"><SelectValue placeholder="Select belt rank" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">N/A</SelectItem> {/* Add option for no belt */}
+                                    <SelectItem value="white">White</SelectItem>
+                                    <SelectItem value="yellow">Yellow</SelectItem>
+                                    <SelectItem value="orange">Orange</SelectItem>
+                                    <SelectItem value="green">Green</SelectItem>
+                                    <SelectItem value="blue">Blue</SelectItem>
+                                    <SelectItem value="purple">Purple</SelectItem>
+                                    <SelectItem value="red">Red</SelectItem>
+                                    <SelectItem value="brown">Brown</SelectItem>
+                                    <SelectItem value="black">Black</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="t_shirt_size">T-Shirt Size <span className="text-red-500">*</span></Label>
+                            <Select name="t_shirt_size" defaultValue={student.t_shirt_size} required>
+                                <SelectTrigger id="t_shirt_size"><SelectValue placeholder="Select size" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="YXS">Youth XS</SelectItem>
+                                    <SelectItem value="YS">Youth S</SelectItem>
+                                    <SelectItem value="YM">Youth M</SelectItem>
+                                    <SelectItem value="YL">Youth L</SelectItem>
+                                    <SelectItem value="YXL">Youth XL</SelectItem>
+                                    <SelectItem value="AS">Adult S</SelectItem>
+                                    <SelectItem value="AM">Adult M</SelectItem>
+                                    <SelectItem value="AL">Adult L</SelectItem>
+                                    <SelectItem value="AXL">Adult XL</SelectItem>
+                                    <SelectItem value="A2XL">Adult 2XL</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {actionData?.fieldErrors?.t_shirt_size && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.t_shirt_size}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="school">School <span className="text-red-500">*</span></Label>
+                            <Input id="school" name="school" defaultValue={student.school} required />
+                            {actionData?.fieldErrors?.school && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.school}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="grade_level">Grade Level</Label>
+                            <Select name="grade_level" defaultValue={student.grade_level || ''}>
+                                <SelectTrigger id="grade_level"><SelectValue placeholder="Select grade" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">N/A</SelectItem>
+                                    <SelectItem value="K">Kindergarten</SelectItem>
+                                    <SelectItem value="1">1st Grade</SelectItem>
+                                    <SelectItem value="2">2nd Grade</SelectItem>
+                                    <SelectItem value="3">3rd Grade</SelectItem>
+                                    <SelectItem value="4">4th Grade</SelectItem>
+                                    <SelectItem value="5">5th Grade</SelectItem>
+                                    <SelectItem value="6">6th Grade</SelectItem>
+                                    <SelectItem value="7">7th Grade</SelectItem>
+                                    <SelectItem value="8">8th Grade</SelectItem>
+                                    <SelectItem value="9">9th Grade</SelectItem>
+                                    <SelectItem value="10">10th Grade</SelectItem>
+                                    <SelectItem value="11">11th Grade</SelectItem>
+                                    <SelectItem value="12">12th Grade</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="cell_phone">Cell Phone</Label>
+                            <Input id="cell_phone" name="cell_phone" type="tel" defaultValue={student.cell_phone || ''} />
+                        </div>
+                        <div>
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" name="email" type="email" defaultValue={student.email || ''} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Health Information Section */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Edit Health Information</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="immunizations_up_to_date"
+                                name="immunizations_up_to_date"
+                                defaultChecked={student.immunizations_up_to_date === 'true'}
+                            />
+                            <Label htmlFor="immunizations_up_to_date">Immunizations Up-to-Date?</Label>
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="immunization_notes">Immunization Notes</Label>
+                            <Textarea id="immunization_notes" name="immunization_notes" defaultValue={student.immunization_notes || ''} rows={2} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="allergies">Allergies</Label>
+                            <Textarea id="allergies" name="allergies" defaultValue={student.allergies || ''} rows={2} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="medications">Medications</Label>
+                            <Textarea id="medications" name="medications" defaultValue={student.medications || ''} rows={2} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="special_needs">Special Needs</Label>
+                            <Textarea id="special_needs" name="special_needs" defaultValue={student.special_needs || ''} rows={2} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-4 mt-6">
+                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
+            </Form>
+            ) : (
+            // --- View Mode ---
+            <>
+                {/* Display Student Information */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Information</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <p><strong>First Name:</strong> {student.first_name}</p>
                     <p><strong>Last Name:</strong> {student.last_name}</p>
@@ -141,6 +425,8 @@ export default function AdminStudentDetailPage() {
                      View Attendance
                  </Button>
              </div>
+            </>
+            )}
 
              {/* Removed Outlet and surrounding div */}
 
