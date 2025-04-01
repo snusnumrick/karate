@@ -93,7 +93,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     // Basic Validation
     const fieldErrors: { [key: string]: string } = {};
     if (!type) fieldErrors.type = "Type is required.";
-    if (!description) fieldErrors.description = "Description is required.";
+    // Removed description validation as it's optional
     if (!awarded_date) fieldErrors.awarded_date = "Awarded date is required.";
     // Add more specific validation if needed (e.g., date format)
 
