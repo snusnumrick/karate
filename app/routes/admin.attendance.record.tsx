@@ -6,6 +6,8 @@ import {
   useLoaderData,
   useNavigation,
   useRouteError,
+  useNavigate,    // Import useNavigate
+  useSearchParams, // Import useSearchParams
 } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
@@ -38,10 +40,25 @@ function getTodayDateString(): string {
   return format(new Date(), 'yyyy-MM-dd');
 }
 
-// Loader: Fetch students and today's existing records
+// Loader: Fetch students and existing records for a specific date
 export async function loader({ request }: LoaderFunctionArgs) {
   console.log("Entering /admin/attendance/record loader...");
-  const today = getTodayDateString();
+  const url = new URL(request.url);
+  const dateParam = url.searchParams.get("date");
+
+  // Validate dateParam or default to today
+  let attendanceDate = getTodayDateString(); // Default to today
+  if (dateParam) {
+    // Basic validation: YYYY-MM-DD format
+    const parsedDate = parse(dateParam, 'yyyy-MM-dd', new Date());
+    if (isValid(parsedDate)) {
+      attendanceDate = dateParam;
+    } else {
+      console.warn(`Invalid date parameter received: ${dateParam}. Defaulting to today.`);
+    }
+  }
+  console.log(`Loading attendance data for date: ${attendanceDate}`);
+
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -54,7 +71,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
   try {
-    console.log("Fetching students and existing attendance for today...");
+    console.log(`Fetching students and existing attendance for ${attendanceDate}...`);
     const [studentsResponse, attendanceResponse] = await Promise.all([
       supabaseAdmin
         .from('students')
@@ -64,7 +81,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       supabaseAdmin
         .from('attendance')
         .select('student_id, present, notes')
-        .eq('class_date', today)
+        .eq('class_date', attendanceDate) // Use the selected date
     ]);
 
     if (studentsResponse.error) throw studentsResponse.error;
@@ -168,11 +185,25 @@ export async function action({ request }: ActionFunctionArgs) {
 
 // Component: Display form to record attendance
 export default function RecordAttendancePage() {
-  const { students, existingRecords, attendanceDate } = useLoaderData<LoaderData>();
+  const { students, existingRecords, attendanceDate: initialAttendanceDate } = useLoaderData<LoaderData>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Use the date from search params if available, otherwise fallback to loader data
+  const selectedDate = searchParams.get("date") || initialAttendanceDate;
+
   const isSubmitting = navigation.state === "submitting";
-  const formattedDate = format(new Date(attendanceDate + 'T00:00:00'), 'MMMM d, yyyy'); // Ensure correct date parsing
+  // Format the selected date for display
+  const formattedDate = format(parse(selectedDate, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy');
+
+  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = event.target.value;
+    if (newDate) {
+      navigate(`/admin/attendance/record?date=${newDate}`, { replace: true });
+    }
+  };
 
   // Helper to determine badge variant based on eligibility (Updated reasons)
   const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
@@ -189,12 +220,26 @@ export default function RecordAttendancePage() {
       <Link to="/admin/attendance" className="text-green-600 hover:underline mb-4 inline-block">
         &larr; Back to Attendance List
       </Link>
-      <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Record Attendance for {formattedDate}</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Record Attendance for {formattedDate}</h1>
+        <div>
+          <Label htmlFor="attendance-date-picker" className="mr-2 text-sm font-medium">Select Date:</Label>
+          <Input
+            type="date"
+            id="attendance-date-picker"
+            name="attendance-date-picker" // Name not strictly needed if using onChange navigation
+            value={selectedDate}
+            onChange={handleDateChange}
+            className="w-auto inline-block dark:bg-gray-700 dark:border-gray-600"
+          />
+        </div>
+      </div>
+
 
       <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
         <Form method="post">
-          {/* Hidden input for the date */}
-          <input type="hidden" name="attendanceDate" value={attendanceDate} />
+          {/* Hidden input for the date - Use selectedDate */}
+          <input type="hidden" name="attendanceDate" value={selectedDate} />
 
           {actionData?.error && (
             <Alert variant="destructive" className="mb-4">
