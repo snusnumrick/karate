@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError } from "@remix-run/react";
+import { Link, useLoaderData, useRouteError, Outlet } from "@remix-run/react"; // Import Outlet
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
@@ -140,6 +140,11 @@ export default function AdminStudentDetailPage() {
                  <Button asChild variant="secondary">
                      <Link to={`/admin/attendance?studentId=${student.id}`}>View Attendance</Link>
                  </Button>
+             </div>
+
+             {/* Add Outlet here to render nested routes like belts */}
+             <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                 <Outlet />
              </div>
 
         </div>
