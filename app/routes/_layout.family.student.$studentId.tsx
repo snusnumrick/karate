@@ -302,6 +302,7 @@ export default function StudentDetailPage() {
                         <SelectItem value="green">Green</SelectItem>
                         <SelectItem value="blue">Blue</SelectItem>
                         <SelectItem value="purple">Purple</SelectItem>
+                        <SelectItem value="red">Red</SelectItem>
                         <SelectItem value="brown">Brown</SelectItem>
                         <SelectItem value="black">Black</SelectItem>
                     </SelectContent>

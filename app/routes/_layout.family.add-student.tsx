@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
@@ -17,7 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
 // Loader to get family ID and name for context
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer, headers } = getSupabaseServerClient(request);
+  const { supabaseServer, response: {headers} } = getSupabaseServerClient(request);
   const { data: { user } } = await supabaseServer.auth.getUser();
 
   if (!user) {
@@ -58,7 +57,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 // Action function to handle adding the student
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  const { supabaseServer, headers } = getSupabaseServerClient(request);
+  const { supabaseServer, response: {headers} } = getSupabaseServerClient(request);
   const { data: { user } } = await supabaseServer.auth.getUser();
 
   if (!user) {
@@ -118,7 +117,7 @@ export async function action({ request }: ActionFunctionArgs) {
       medications: medications,
       immunizations_up_to_date: immunizationsUpToDate,
       immunization_notes: immunizationNotes,
-      belt_rank: beltRank,
+      belt_rank: beltRank as 'white' || 'yellow' || 'orange' || 'green' || 'blue' || 'purple' || 'red' || 'brown' || 'black' || null,
       email: email,
       cell_phone: cellPhone,
       // Add other fields as necessary, ensure they match your DB schema
@@ -132,10 +131,10 @@ export async function action({ request }: ActionFunctionArgs) {
     // Redirect back to the family portal on success
     return redirect("/family", { headers });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Add student error:', error);
     return json({
-      error: error.message || 'Failed to add student. Please try again.',
+      error: error instanceof Error ? error.message : 'Failed to add student. Please try again.',
       // Optionally return formData values to repopulate form
       // formData: Object.fromEntries(formData)
     }, { status: 500, headers });
@@ -143,7 +142,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function AddStudentPage() {
-  const { familyId, familyName } = useLoaderData<typeof loader>();
+  const { familyName } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -271,6 +270,7 @@ export default function AddStudentPage() {
                   <SelectItem value="green">Green</SelectItem>
                   <SelectItem value="blue">Blue</SelectItem>
                   <SelectItem value="purple">Purple</SelectItem>
+                  <SelectItem value="red">Red</SelectItem>
                   <SelectItem value="brown">Brown</SelectItem>
                   <SelectItem value="black">Black</SelectItem>
                   {/* Add other ranks if needed */}

@@ -21,7 +21,7 @@ import {siteConfig} from "~/config/site"; // For ErrorBoundary
 // Action function to handle form submission
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  console.log(formData);
+  // console.log(formData);
   const { supabaseServer } = getSupabaseServerClient(request);
 
   // Validate matching emails and passwords
@@ -103,7 +103,7 @@ export async function action({ request }: ActionFunctionArgs) {
     // Process Contact #1
     const contact1FirstName = formData.get('contact1FirstName') as string;
     const contact1LastName = formData.get('contact1LastName') as string;
-    console.log(`Attempting to insert Guardian 1: Name=${contact1FirstName} ${contact1LastName}, Email=${contact1Email}`); // Added logging
+    // console.log(`Attempting to insert Guardian 1: Name=${contact1FirstName} ${contact1LastName}, Email=${contact1Email}`); // Added logging
     const { data: contact1Data, error: contact1Error } = await supabaseServer.from('guardians').insert({
       family_id: familyId,
       first_name: contact1FirstName as string,
@@ -128,7 +128,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const contact2FirstName = formData.get('contact2FirstName') as string;
     const contact2LastName = formData.get('contact2LastName') as string;
     const contact2Email = formData.get('contact2Email') as string;
-    console.log(`Attempting to insert Guardian 2: Name=${contact2FirstName} ${contact2LastName}, Email=${contact2Email}`); // Added logging
+    // console.log(`Attempting to insert Guardian 2: Name=${contact2FirstName} ${contact2LastName}, Email=${contact2Email}`); // Added logging
     const { data: contact2Data, error: contact2Error } = await supabaseServer.from('guardians').insert({
       family_id: familyId,
       first_name: contact2FirstName as string,
@@ -173,9 +173,9 @@ export async function action({ request }: ActionFunctionArgs) {
         special_needs: formData.get(`students[${index}].specialNeeds`) as string || undefined,
         allergies: formData.get(`students[${index}].allergies`) as string || undefined,
         medications: formData.get(`students[${index}].medications`) as string || undefined,
-        immunizations_up_to_date: formData.get(`students[${index}].immunizationsUpToDate`) === "Yes",
+        immunizations_up_to_date: formData.get(`students[${index}].immunizationsUpToDate`) as string || undefined,
         immunization_notes: formData.get(`students[${index}].immunizationNotes`) as string || undefined,
-        belt_rank: formData.get(`students[${index}].beltRank`) as string || undefined
+        belt_rank: formData.get(`students[${index}].beltRank`) as 'white' || 'yellow' || 'orange' || 'green' || 'blue' || 'purple' || 'red' || 'brown' || 'black'
       });
       if (studentError) throw studentError;
       console.log('Student created:', studentData);
@@ -1067,6 +1067,7 @@ export default function RegisterPage() {
                             <SelectItem value="green">Green</SelectItem>
                             <SelectItem value="blue">Blue</SelectItem>
                             <SelectItem value="purple">Purple</SelectItem>
+                            <SelectItem value="red">Red</SelectItem>
                             <SelectItem value="brown">Brown</SelectItem>
                             <SelectItem value="black">Black</SelectItem>
                           </SelectContent>

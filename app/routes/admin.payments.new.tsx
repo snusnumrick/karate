@@ -120,7 +120,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
   }
 
   if (Object.keys(fieldErrors).length > 0) {
-    console.log("Validation errors:", fieldErrors);
+    console.error("Validation errors:", fieldErrors);
     return json<ActionData>({ error: "Validation failed.", fieldErrors }, { status: 400, headers: Object.fromEntries(headers) });
   }
   // --- End Validation ---
@@ -138,7 +138,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
   try {
-    console.log("Admin new payment action: Inserting payment record...");
+    // console.log("Admin new payment action: Inserting payment record...");
     const { error: insertError } = await supabaseAdmin
       .from('payments')
       .insert({
@@ -155,7 +155,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
       return json<ActionData>({ error: `Failed to record payment: ${insertError.message}` }, { status: 500, headers: Object.fromEntries(headers) });
     }
 
-    console.log("Admin new payment action: Payment recorded successfully.");
+    // console.log("Admin new payment action: Payment recorded successfully.");
     // Redirect to the payments index page on success
     // Add success=true query param for potential feedback message on redirect target
     headers.set('Location', '/admin/payments?success=true');
@@ -183,8 +183,8 @@ export default function AdminNewPaymentPage() {
   const [selectedMethod, setSelectedMethod] = useState<string | undefined>(undefined);
   const [selectedStatus, setSelectedStatus] = useState<string>('completed'); // Default to completed
 
-  console.log("Rendering AdminNewPaymentPage component...");
-  console.log("Action Data:", actionData);
+  // console.log("Rendering AdminNewPaymentPage component...");
+  // console.log("Action Data:", actionData);
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
