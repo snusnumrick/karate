@@ -15,10 +15,11 @@ import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabas
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge"; // Import Badge
 import { Label } from "~/components/ui/label";
+import { Input } from "~/components/ui/input"; // Import Input
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { format } from 'date-fns';
+import { format, isValid, parse } from 'date-fns'; // Import isValid and parse
 
 // Define types
 type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'> & {
@@ -106,8 +107,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       });
     }
 
-    console.log(`Fetched ${studentsWithEligibility.length} students and ${Object.keys(existingRecordsMap).length} existing records. Eligibility checked.`);
-    return json({ students: studentsWithEligibility, existingRecords: existingRecordsMap, attendanceDate: today });
+    console.log(`Fetched ${studentsWithEligibility.length} students and ${Object.keys(existingRecordsMap).length} existing records for ${attendanceDate}. Eligibility checked.`); // Update log message
+    return json({ students: studentsWithEligibility, existingRecords: existingRecordsMap, attendanceDate: attendanceDate }); // Return the actual date used
 
   } catch (error) {
      const message = error instanceof Error ? error.message : "An unknown error occurred.";
