@@ -120,7 +120,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function SignWaiver() {
-  const { waiver, userId, firstName, lastName } = useLoaderData<typeof loader>();
+  const { waiver, firstName, lastName } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
   
