@@ -131,13 +131,12 @@ export default function AdminStudentDetailPage() {
 
              {/* Links to other related admin sections */}
              <div className="mt-8 space-x-4">
-                 {/* Restore asChild for correct Button/Link integration */}
-                 <Button asChild variant="secondary">
+                 {/* Remove asChild again to test if it blocks Outlet rendering */}
+                 <Button variant="secondary">
                      <Link to={`/admin/students/${student.id}/belts`}>Manage Belt Awards</Link>
                  </Button>
-                 {/* Add link to attendance history filtered for this student */}
-                 {/* Restore asChild here too */}
-                 <Button asChild variant="secondary">
+                 {/* Remove asChild here too */}
+                 <Button variant="secondary">
                      <Link to={`/admin/attendance?studentId=${student.id}`}>View Attendance</Link>
                  </Button>
              </div>
