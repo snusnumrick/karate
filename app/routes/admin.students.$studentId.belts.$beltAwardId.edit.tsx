@@ -200,7 +200,8 @@ export default function EditAchievementPage() { // Function name can stay for no
                 </div>
 
                 <div className="flex justify-end gap-4">
-                    <Button type="button" variant="outline" asChild>
+                    {/* Remove asChild from Cancel button */}
+                    <Button type="button" variant="outline">
                         <Link to={`/admin/students/${params.studentId}/belts`}>Cancel</Link> {/* Renamed link */}
                     </Button>
                     <Button type="submit" disabled={isSubmitting}>
