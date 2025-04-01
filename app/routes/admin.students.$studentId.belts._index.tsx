@@ -1,5 +1,5 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, Form, useNavigation, useParams, useSubmit } from "@remix-run/react";
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs, TypedResponse } from "@remix-run/node";
+import { Link, useLoaderData, useNavigation, useParams, useSubmit } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
