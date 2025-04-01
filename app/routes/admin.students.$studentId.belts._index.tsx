@@ -192,8 +192,8 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                     </Badge>
                   </TableCell>
                   <TableCell className="space-x-2 whitespace-nowrap">
-                    {/* Temporarily remove asChild from Edit button */}
-                    <Button variant="outline" size="icon" title="Edit Belt Award">
+                    {/* Restore asChild for correct Button/Link integration */}
+                    <Button variant="outline" size="icon" asChild title="Edit Belt Award">
                       <Link to={`/admin/students/${student.id}/belts/${beltAward.id}/edit`}>
                         <Edit className="h-4 w-4" />
                       </Link>
