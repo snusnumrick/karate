@@ -170,12 +170,12 @@ export async function action({ request }: ActionFunctionArgs) {
         t_shirt_size: formData.get(`students[${index}].tShirtSize`) as string,
         school: formData.get(`students[${index}].school`) as string,
         grade_level: formData.get(`students[${index}].gradeLevel`) as string,
-        special_needs: formData.get(`students[${index}].specialNeeds`) as string || null,
-        allergies: formData.get(`students[${index}].allergies`) as string || null,
-        medications: formData.get(`students[${index}].medications`) as string || null,
+        special_needs: formData.get(`students[${index}].specialNeeds`) as string || undefined,
+        allergies: formData.get(`students[${index}].allergies`) as string || undefined,
+        medications: formData.get(`students[${index}].medications`) as string || undefined,
         immunizations_up_to_date: formData.get(`students[${index}].immunizationsUpToDate`) === "Yes",
-        immunization_notes: formData.get(`students[${index}].immunizationNotes`) as string || null,
-        belt_rank: formData.get(`students[${index}].beltRank`) as string || null
+        immunization_notes: formData.get(`students[${index}].immunizationNotes`) as string || undefined,
+        belt_rank: formData.get(`students[${index}].beltRank`) as string || undefined
       });
       if (studentError) throw studentError;
       console.log('Student created:', studentData);
