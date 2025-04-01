@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "~/components/ui/alert-dialog"; // Import AlertDialog components
+} from "@radix-ui/react-alert-dialog"; // Import AlertDialog components
 import {
   Table,
   TableBody,
