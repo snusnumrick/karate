@@ -1,22 +1,24 @@
-import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError } from "@remix-run/react";
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from "~/types/supabase";
-import { Button } from "~/components/ui/button";
+import {json, TypedResponse} from "@remix-run/node";
+import {Link, useLoaderData, useRouteError} from "@remix-run/react";
+import {createClient} from '@supabase/supabase-js';
+import type {Database} from "~/types/supabase";
+import {Button} from "~/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "~/components/ui/table";
-import { Badge } from "~/components/ui/badge";
-import { format } from 'date-fns';
-import { PaymentStatus } from "~/types/models"; // Import the enum
+import {Badge} from "~/components/ui/badge";
+import {format} from 'date-fns';
+import {PaymentStatus} from "~/types/models"; // Import the enum
 
 // Define types
-type PendingPayment = Pick<Database['public']['Tables']['payments']['Row'], 'id' | 'amount' | 'family_id' | 'status' | 'payment_date'> & {
+type PendingPayment =
+    Pick<Database['public']['Tables']['payments']['Row'], 'id' | 'amount' | 'family_id' | 'status' | 'payment_date'>
+    & {
     families: { name: string } | null; // Include family name
 };
 
@@ -32,13 +34,13 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error("Admin pending payments loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", { status: 500 });
+        throw new Response("Server configuration error.", {status: 500});
     }
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     try {
         // Fetch payments with status 'pending' and related family name
-        const { data, error } = await supabaseAdmin
+        const {data, error} = await supabaseAdmin
             .from('payments')
             .select(`
                 id,
@@ -49,7 +51,7 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
                 families ( name )
             `)
             .eq('status', PaymentStatus.Pending) // Filter by pending status using enum
-            .order('payment_date', { ascending: true, nullsFirst: true }); // Show oldest pending first
+            .order('payment_date', {ascending: true, nullsFirst: true}); // Show oldest pending first
 
         if (error) throw new Error(`Failed to fetch pending payments: ${error.message}`);
 
@@ -60,18 +62,18 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
         })) || [];
 
         console.log(`Found ${formattedPayments.length} pending payments.`);
-        return json({ pendingPayments: formattedPayments });
+        return json({pendingPayments: formattedPayments});
 
     } catch (error) {
         const message = error instanceof Error ? error.message : "An unknown error occurred.";
         console.error("Error in /admin/payments/pending loader:", message);
-        throw new Response(message, { status: 500 });
+        throw new Response(message, {status: 500});
     }
 }
 
 
 export default function PendingPaymentsPage() {
-    const { pendingPayments } = useLoaderData<LoaderData>();
+    const {pendingPayments} = useLoaderData<LoaderData>();
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -98,7 +100,8 @@ export default function PendingPaymentsPage() {
                             {pendingPayments.map((payment) => (
                                 <TableRow key={payment.id}>
                                     <TableCell className="font-medium">
-                                        <Link to={`/admin/families/${payment.family_id}`} className="text-blue-600 hover:underline">
+                                        <Link to={`/admin/families/${payment.family_id}`}
+                                              className="text-blue-600 hover:underline">
                                             {payment.familyName}
                                         </Link>
                                     </TableCell>
@@ -129,26 +132,27 @@ export default function PendingPaymentsPage() {
 
 // Add a specific ErrorBoundary for this route
 export function ErrorBoundary() {
-  const error = useRouteError();
-  console.error("Error caught in PendingPaymentsPage ErrorBoundary:", error);
+    const error = useRouteError();
+    console.error("Error caught in PendingPaymentsPage ErrorBoundary:", error);
 
-  let errorMessage = "An unknown error occurred loading pending payment data.";
-  let errorStatus = 500;
+    let errorMessage = "An unknown error occurred loading pending payment data.";
+    let errorStatus = 500;
 
-  if (error instanceof Response) {
-     errorMessage = `Error: ${error.status} - ${error.statusText || 'Failed to load data.'}`;
-     errorStatus = error.status;
-  } else if (error instanceof Error) {
-     errorMessage = error.message;
-  }
+    if (error instanceof Response) {
+        errorMessage = `Error: ${error.status} - ${error.statusText || 'Failed to load data.'}`;
+        errorStatus = error.status;
+    } else if (error instanceof Error) {
+        errorMessage = error.message;
+    }
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-        <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Admin Dashboard</Link>
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          <h2 className="text-xl font-bold mb-2">Error Loading Pending Payments ({errorStatus})</h2>
-          <p>{errorMessage}</p>
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Admin
+                Dashboard</Link>
+            <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                <h2 className="text-xl font-bold mb-2">Error Loading Pending Payments ({errorStatus})</h2>
+                <p>{errorMessage}</p>
+            </div>
         </div>
-    </div>
-  );
+    );
 }

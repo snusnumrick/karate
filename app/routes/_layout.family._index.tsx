@@ -32,8 +32,7 @@ interface LoaderData {
 
 // Placeholder loader - will need to fetch actual family data later
 export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const {supabaseServer, response} = getSupabaseServerClient(request);
-    const headers = response.headers;
+    const {supabaseServer, response:{headers}} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {

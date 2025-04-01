@@ -1,6 +1,6 @@
 import {json, redirect, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
 import {useLoaderData, useFetcher, Link, useRouteError} from "@remix-run/react"; // Use useFetcher, remove Form, useNavigation, useActionData
-import { useState, useEffect } from "react"; // Add React hooks
+import React, { useState, useEffect } from "react"; // Add React hooks
 import { loadStripe, type Stripe } from '@stripe/stripe-js'; // Import Stripe.js
 import { getSupabaseServerClient } from "~/utils/supabase.server"; // Remove createPaymentSession import
 import { Button } from "~/components/ui/button";

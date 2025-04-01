@@ -127,8 +127,7 @@ const formSchema = z.union([
 
 // --- Loader ---
 export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const {supabaseServer, response} = getSupabaseServerClient(request);
-    const headers = response.headers;
+    const {supabaseServer, response:{headers}} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {

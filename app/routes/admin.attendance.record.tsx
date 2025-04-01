@@ -19,7 +19,8 @@ import { Input } from "~/components/ui/input"; // Import Input
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { format, isValid, parse } from 'date-fns'; // Import isValid and parse
+import { format, isValid, parse } from 'date-fns';
+import React from "react"; // Import isValid and parse
 
 // Define types
 type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'> & {
@@ -249,7 +250,7 @@ export default function RecordAttendancePage() {
             </Alert>
           )}
            {actionData?.success && (
-             <Alert variant="success" className="mb-4"> {/* Assuming a success variant exists */}
+             <Alert variant="default" className="mb-4"> {/* Assuming a success variant exists */}
                <AlertTitle>Success</AlertTitle>
                <AlertDescription>Attendance recorded successfully.</AlertDescription>
              </Alert>

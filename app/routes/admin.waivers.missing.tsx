@@ -1,14 +1,14 @@
-import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError } from "@remix-run/react";
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from "~/types/supabase";
+import {json, TypedResponse} from "@remix-run/node";
+import {Link, useLoaderData, useRouteError} from "@remix-run/react";
+import {createClient} from '@supabase/supabase-js';
+import type {Database} from "~/types/supabase";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "~/components/ui/table";
 
 // Define types
@@ -32,35 +32,35 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error("Admin missing waivers loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", { status: 500 });
+        throw new Response("Server configuration error.", {status: 500});
     }
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     try {
         // 1. Fetch all required waivers
-        const { data: requiredWaivers, error: waiversError } = await supabaseAdmin
+        const {data: requiredWaivers, error: waiversError} = await supabaseAdmin
             .from('waivers')
             .select('id, title')
             .eq('required', true);
         if (waiversError) throw new Error(`Failed to fetch required waivers: ${waiversError.message}`);
         if (!requiredWaivers || requiredWaivers.length === 0) {
             // No required waivers, so no one is missing any
-            return json({ usersMissingWaivers: [] });
+            return json({usersMissingWaivers: []});
         }
         const requiredWaiverMap = new Map(requiredWaivers.map(w => [w.id, w]));
 
         // 2. Fetch all user profiles (excluding admin/instructor roles if necessary) and their family names
-        const { data: profiles, error: profilesError } = await supabaseAdmin
+        const {data: profiles, error: profilesError} = await supabaseAdmin
             .from('profiles')
             .select('id, email, family_id, families ( name )') // Fetch family name
             .eq('role', 'user'); // Assuming 'user' role represents family members
         if (profilesError) throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
         if (!profiles) {
-            return json({ usersMissingWaivers: [] }); // No users to check
+            return json({usersMissingWaivers: []}); // No users to check
         }
 
         // 3. Fetch all waiver signatures for the required waivers
-        const { data: signatures, error: signaturesError } = await supabaseAdmin
+        const {data: signatures, error: signaturesError} = await supabaseAdmin
             .from('waiver_signatures')
             .select('user_id, waiver_id')
             .in('waiver_id', Array.from(requiredWaiverMap.keys()));
@@ -95,18 +95,18 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
         }
 
         console.log(`Found ${usersMissingWaivers.length} users missing required waivers.`);
-        return json({ usersMissingWaivers });
+        return json({usersMissingWaivers});
 
     } catch (error) {
         const message = error instanceof Error ? error.message : "An unknown error occurred.";
         console.error("Error in /admin/waivers/missing loader:", message);
-        throw new Response(message, { status: 500 });
+        throw new Response(message, {status: 500});
     }
 }
 
 
 export default function MissingWaiversPage() {
-    const { usersMissingWaivers } = useLoaderData<LoaderData>();
+    const {usersMissingWaivers} = useLoaderData<LoaderData>();
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -153,26 +153,27 @@ export default function MissingWaiversPage() {
 
 // Add a specific ErrorBoundary for this route
 export function ErrorBoundary() {
-  const error = useRouteError();
-  console.error("Error caught in MissingWaiversPage ErrorBoundary:", error);
+    const error = useRouteError();
+    console.error("Error caught in MissingWaiversPage ErrorBoundary:", error);
 
-  let errorMessage = "An unknown error occurred loading missing waiver data.";
-  let errorStatus = 500;
+    let errorMessage = "An unknown error occurred loading missing waiver data.";
+    let errorStatus = 500;
 
-  if (error instanceof Response) {
-     errorMessage = `Error: ${error.status} - ${error.statusText || 'Failed to load data.'}`;
-     errorStatus = error.status;
-  } else if (error instanceof Error) {
-     errorMessage = error.message;
-  }
+    if (error instanceof Response) {
+        errorMessage = `Error: ${error.status} - ${error.statusText || 'Failed to load data.'}`;
+        errorStatus = error.status;
+    } else if (error instanceof Error) {
+        errorMessage = error.message;
+    }
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-        <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Admin Dashboard</Link>
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          <h2 className="text-xl font-bold mb-2">Error Loading Missing Waivers ({errorStatus})</h2>
-          <p>{errorMessage}</p>
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Admin
+                Dashboard</Link>
+            <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                <h2 className="text-xl font-bold mb-2">Error Loading Missing Waivers ({errorStatus})</h2>
+                <p>{errorMessage}</p>
+            </div>
         </div>
-    </div>
-  );
+    );
 }
