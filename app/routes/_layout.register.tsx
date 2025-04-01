@@ -163,19 +163,19 @@ export async function action({ request }: ActionFunctionArgs) {
     for (const index of studentIndices) {
       const { data: studentData, error: studentError } = await supabaseServer.from('students').insert({
         family_id: familyId,
-        first_name: formData.get(`students[${index}].firstName`),
-        last_name: formData.get(`students[${index}].lastName`),
-        gender: formData.get(`students[${index}].gender`),
-        birth_date: formData.get(`students[${index}].birthDate`),
-        t_shirt_size: formData.get(`students[${index}].tShirtSize`),
-        school: formData.get(`students[${index}].school`),
-        grade_level: formData.get(`students[${index}].gradeLevel`),
-        special_needs: formData.get(`students[${index}].specialNeeds`),
-        allergies: formData.get(`students[${index}].allergies`),
-        medications: formData.get(`students[${index}].medications`),
+        first_name: formData.get(`students[${index}].firstName`) as string,
+        last_name: formData.get(`students[${index}].lastName`) as string,
+        gender: formData.get(`students[${index}].gender`) as string,
+        birth_date: formData.get(`students[${index}].birthDate`) as string,
+        t_shirt_size: formData.get(`students[${index}].tShirtSize`) as string,
+        school: formData.get(`students[${index}].school`) as string,
+        grade_level: formData.get(`students[${index}].gradeLevel`) as string,
+        special_needs: formData.get(`students[${index}].specialNeeds`) as string || null,
+        allergies: formData.get(`students[${index}].allergies`) as string || null,
+        medications: formData.get(`students[${index}].medications`) as string || null,
         immunizations_up_to_date: formData.get(`students[${index}].immunizationsUpToDate`) === "Yes",
-        immunization_notes: formData.get(`students[${index}].immunizationNotes`),
-        belt_rank: formData.get(`students[${index}].beltRank`)
+        immunization_notes: formData.get(`students[${index}].immunizationNotes`) as string || null,
+        belt_rank: formData.get(`students[${index}].beltRank`) as string || null
       });
       if (studentError) throw studentError;
       console.log('Student created:', studentData);
