@@ -19,10 +19,25 @@ import type { Database } from "~/types/supabase";
 import { Badge } from "~/components/ui/badge"; // Import Badge
 import { format } from 'date-fns'; // Import date-fns
 
+// Helper mapping for belt colors (adjust colors as needed)
+const beltColorMap: Record<string, string> = {
+  white: 'bg-white border border-gray-300',
+  yellow: 'bg-yellow-200',
+  orange: 'bg-orange-300',
+  green: 'bg-green-500',
+  blue: 'bg-blue-500',
+  purple: 'bg-purple-500',
+  red: 'bg-red-600',
+  brown: 'bg-yellow-800', // Or another brown color like bg-amber-800
+  black: 'bg-black',
+};
+
 // Define the type for the student data returned by the loader more accurately
-type StudentRow = Database['public']['Tables']['students']['Row'];
-// Assuming table renamed to 'belt_awards' and types regenerated
-type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row'];
+// Assuming types regenerated with belt_rank_enum
+type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
+type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'> & { belt_rank: BeltRankEnum | null };
+// Assuming table renamed to 'belt_awards' and types regenerated with enum
+type BeltAwardRow = Omit<Database['public']['Tables']['belt_awards']['Row'], 'type'> & { type: BeltRankEnum };
 
 // Extend loader data type
 type LoaderData = {
@@ -397,7 +412,17 @@ export default function StudentDetailPage() {
               <p><strong>Last Name:</strong> {student.last_name}</p>
               <p><strong>Gender:</strong> {student.gender}</p>
               <p><strong>Birth Date:</strong> {new Date(student.birth_date).toLocaleDateString()}</p>
-              <p><strong>Belt Rank:</strong> {student.belt_rank || 'N/A'}</p>
+              <div className="flex items-center">
+                 <strong className="mr-2">Belt Rank:</strong>
+                 {student.belt_rank ? (
+                   <>
+                     <div className={`h-4 w-8 rounded mr-2 ${beltColorMap[student.belt_rank] || 'bg-gray-400'}`}></div>
+                     <span className="capitalize">{student.belt_rank}</span>
+                   </>
+                 ) : (
+                   'N/A'
+                 )}
+              </div>
               <p><strong>T-Shirt Size:</strong> {student.t_shirt_size}</p>
               <p><strong>School:</strong> {student.school}</p>
               <p><strong>Grade Level:</strong> {student.grade_level}</p>
@@ -420,25 +445,30 @@ export default function StudentDetailPage() {
 
           {/* Belt Awards Section */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-            <h2 className="text-xl font-semibold mb-4 border-b pb-2">Belt Awards</h2> {/* Renamed title */}
+            <h2 className="text-xl font-semibold mb-4 border-b pb-2">Belt Awards</h2>
             {beltAwards && beltAwards.length > 0 ? (
-              <ul className="space-y-3">
-                {beltAwards.map((beltAward) => ( // Renamed variable
-                  <li key={beltAward.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                    <div>
-                      {/* Assuming 'type' holds the belt name */}
-                      <p className="font-medium text-gray-800 dark:text-gray-100">{beltAward.type}</p>
-                      {/* Assuming 'description' holds notes about the award */}
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{beltAward.description}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {beltAwards.map((beltAward) => (
+                  <div key={beltAward.id} className="bg-gray-50 dark:bg-gray-700 rounded-md p-4 shadow">
+                    <div className="flex items-center mb-2">
+                      {/* Belt Visual */}
+                      <div className={`h-5 w-10 rounded mr-3 ${beltColorMap[beltAward.type] || 'bg-gray-400'}`}></div>
+                      {/* Belt Name (Capitalized) */}
+                      <p className="font-medium text-gray-800 dark:text-gray-100 capitalize">{beltAward.type}</p>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {format(new Date(beltAward.awarded_date), 'MMM d, yyyy')}
+                     {/* Optional Description */}
+                    {beltAward.description && (
+                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{beltAward.description}</p>
+                    )}
+                     {/* Awarded Date */}
+                    <Badge variant="secondary" className="text-xs w-full text-center justify-center">
+                      Awarded: {format(new Date(beltAward.awarded_date), 'MMM d, yyyy')}
                     </Badge>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <p className="text-gray-600 dark:text-gray-400">No belt awards recorded yet.</p> {/* Updated text */}
+              <p className="text-gray-600 dark:text-gray-400">No belt awards recorded yet.</p>
             )}
           </div>
 

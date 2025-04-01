@@ -13,6 +13,26 @@ DO $$
         END IF;
     END$$;
 
+-- Create belt_rank enum type if it doesn't exist
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'belt_rank_enum') THEN
+            CREATE TYPE belt_rank_enum AS ENUM (
+                'white',
+                'yellow',
+                'orange',
+                'green',
+                'blue',
+                'purple',
+                'red', -- Assuming red is between purple and brown based on /classes page
+                'brown',
+                'black'
+                -- Add Dan ranks if needed, e.g., 'black_1st_dan', 'black_2nd_dan'
+            );
+        END IF;
+    END$$;
+
+
 -- Create tables with IF NOT EXISTS to avoid errors on subsequent runs
 
 -- Families table
@@ -71,7 +91,7 @@ CREATE TABLE IF NOT EXISTS students (
                                         last_name text NOT NULL,
                                         gender text NOT NULL,
                                         birth_date date NOT NULL,
-                                        belt_rank text,
+                                        belt_rank belt_rank_enum, -- Changed from text to enum
                                         t_shirt_size text NOT NULL,
                                         school text NOT NULL,
                                         grade_level text,
@@ -148,10 +168,16 @@ DO $$
 CREATE TABLE IF NOT EXISTS belt_awards (
                                             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                                             student_id uuid REFERENCES students(id) ON DELETE CASCADE NOT NULL,
-                                            type text NOT NULL, -- e.g., 'Yellow', 'Orange', 'Black 1st Dan'
-                                            description text NOT NULL,
+                                            type belt_rank_enum NOT NULL, -- Changed from text to enum
+                                            description text, -- Made description optional
                                             awarded_date date NOT NULL
 );
+
+-- Alter existing table column type if script was run before enum creation
+-- This might fail if existing data in 'type' cannot be cast to the enum.
+-- Manual data cleanup might be needed before running this alter statement.
+ALTER TABLE belt_awards ALTER COLUMN type TYPE belt_rank_enum USING type::belt_rank_enum;
+ALTER TABLE students ALTER COLUMN belt_rank TYPE belt_rank_enum USING belt_rank::belt_rank_enum;
 
 DO $$
     BEGIN
