@@ -4,15 +4,39 @@ import { Link, useLoaderData, Form, useActionData, useNavigation, useParams } fr
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { Input } from "~/components/ui/input"; // Keep Input for other fields
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select"; // Import Select components
 import { format } from 'date-fns'; // For default date
 
-// Define types (assuming table renamed to 'belt_awards')
+// Define the valid belt ranks based on the enum
+const beltRanks = [
+  'white',
+  'yellow',
+  'orange',
+  'green',
+  'blue',
+  'purple',
+  'red',
+  'brown',
+  'black'
+] as const; // Use 'as const' for stricter typing
+
+// Define types (assuming table renamed to 'belt_awards' and types regenerated)
+// Ensure app/types/supabase.ts has been regenerated after adding the enum in SQL
+type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
-type BeltAwardInsert = Database['public']['Tables']['belt_awards']['Insert']; // Renamed
+// Update Insert type to use the enum
+type BeltAwardInsert = Omit<Database['public']['Tables']['belt_awards']['Insert'], 'type'> & { type: BeltRankEnum };
+
 
 type LoaderData = {
   student: StudentRow;
@@ -86,10 +110,11 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    const beltAwardData: BeltAwardInsert = { // Renamed variable
+    // Cast the type from form data to the enum type
+    const beltAwardData: BeltAwardInsert = {
         student_id: studentId,
-        type, // Assuming 'type' is the belt name
-        description, // Assuming 'description' is notes
+        type: type as BeltRankEnum, // Cast to enum type
+        description: description || null, // Ensure description is null if empty, as it's optional now
         awarded_date,
     };
 
@@ -132,9 +157,19 @@ export default function AddAchievementPage() { // Function name can stay for now
 
             <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <div>
-                    {/* Assuming 'type' is the belt name */}
-                    <Label htmlFor="type">Belt Awarded (e.g., Yellow, Orange)</Label>
-                    <Input id="type" name="type" required />
+                    <Label htmlFor="type">Belt Awarded</Label>
+                    <Select name="type" required>
+                        <SelectTrigger id="type">
+                            <SelectValue placeholder="Select belt rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {beltRanks.map((rank) => (
+                                <SelectItem key={rank} value={rank} className="capitalize">
+                                    {rank}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     {actionData?.fieldErrors?.type && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.type}</p>}
                 </div>
                 <div>

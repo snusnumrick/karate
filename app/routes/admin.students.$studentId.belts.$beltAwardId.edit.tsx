@@ -4,19 +4,43 @@ import { Link, useLoaderData, Form, useActionData, useNavigation, useParams } fr
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { Input } from "~/components/ui/input"; // Keep Input for other fields
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select"; // Import Select components
 
-// Define types (assuming table renamed to 'belt_awards')
+// Define the valid belt ranks based on the enum
+const beltRanks = [
+  'white',
+  'yellow',
+  'orange',
+  'green',
+  'blue',
+  'purple',
+  'red',
+  'brown',
+  'black'
+] as const; // Use 'as const' for stricter typing
+
+// Define types (assuming table renamed to 'belt_awards' and types regenerated)
+// Ensure app/types/supabase.ts has been regenerated after adding the enum in SQL
+type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
-type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Renamed
-type BeltAwardUpdate = Database['public']['Tables']['belt_awards']['Update']; // Renamed
+// Update Row and Update types to use the enum
+type BeltAwardRow = Omit<Database['public']['Tables']['belt_awards']['Row'], 'type'> & { type: BeltRankEnum };
+type BeltAwardUpdate = Omit<Database['public']['Tables']['belt_awards']['Update'], 'type'> & { type?: BeltRankEnum };
+
 
 type LoaderData = {
   student: StudentRow;
-  beltAward: BeltAwardRow; // Renamed
+  beltAward: BeltAwardRow;
 };
 
 type ActionData = {
@@ -101,9 +125,10 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    const beltAwardUpdateData: BeltAwardUpdate = { // Renamed variable
-        type, // Assuming 'type' is belt name
-        description, // Assuming 'description' is notes
+    // Cast the type from form data to the enum type
+    const beltAwardUpdateData: BeltAwardUpdate = {
+        type: type as BeltRankEnum, // Cast to enum type
+        description: description || null, // Ensure description is null if empty
         awarded_date,
         // student_id is not updated
     };
@@ -146,10 +171,20 @@ export default function EditAchievementPage() { // Function name can stay for no
             )}
 
             <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                <div>
-                    {/* Assuming 'type' is belt name */}
+                 <div>
                     <Label htmlFor="type">Belt Awarded</Label>
-                    <Input id="type" name="type" required defaultValue={beltAward.type} />
+                    <Select name="type" required defaultValue={beltAward.type}>
+                        <SelectTrigger id="type">
+                            <SelectValue placeholder="Select belt rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {beltRanks.map((rank) => (
+                                <SelectItem key={rank} value={rank} className="capitalize">
+                                    {rank}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     {actionData?.fieldErrors?.type && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.type}</p>}
                 </div>
                 <div>
