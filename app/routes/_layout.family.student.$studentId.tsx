@@ -19,7 +19,7 @@ import type { Database } from "~/types/supabase";
 import { Badge } from "~/components/ui/badge"; // Import Badge
 import { format } from 'date-fns'; // Import date-fns
 
-import { beltColorMap } from "~/utils/constants";
+import {BELT_RANKS, beltColorMap} from "~/utils/constants";
 
 // Define the type for the student data returned by the loader more accurately
 // Assuming types regenerated with belt_rank_enum

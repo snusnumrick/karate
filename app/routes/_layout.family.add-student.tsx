@@ -13,6 +13,7 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import {BELT_RANKS} from "~/utils/constants";
 
 // Loader to get family ID and name for context
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -117,7 +118,7 @@ export async function action({ request }: ActionFunctionArgs) {
       medications: medications,
       immunizations_up_to_date: immunizationsUpToDate,
       immunization_notes: immunizationNotes,
-      belt_rank: beltRank as 'white' || 'yellow' || 'orange' || 'green' || 'blue' || 'purple' || 'red' || 'brown' || 'black' || null,
+      belt_rank: beltRank as typeof BELT_RANKS[number] | null,
       email: email,
       cell_phone: cellPhone,
       // Add other fields as necessary, ensure they match your DB schema

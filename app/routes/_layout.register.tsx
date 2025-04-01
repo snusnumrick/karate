@@ -16,7 +16,8 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import {siteConfig} from "~/config/site"; // For ErrorBoundary
+import {siteConfig} from "~/config/site";
+import {BELT_RANKS} from "~/utils/constants"; // For ErrorBoundary
 
 // Action function to handle form submission
 export async function action({ request }: ActionFunctionArgs) {

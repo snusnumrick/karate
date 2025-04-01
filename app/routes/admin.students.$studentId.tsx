@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react"; // Import useState and useEffect
-import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, TypedResponse } from "@remix-run/node"; // Import ActionFunctionArgs, redirect
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs, TypedResponse } from "@remix-run/node"; // Import ActionFunctionArgs, redirect
 import { Link, useLoaderData, useRouteError, useNavigate, Form, useActionData, useNavigation } from "@remix-run/react"; // Import Form, useActionData, useNavigation
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input"; // Import Input
 import { Label } from "~/components/ui/label"; // Import Label
 import { Textarea } from "~/components/ui/textarea"; // Import Textarea
@@ -22,6 +21,7 @@ import { format } from 'date-fns';
 // Define types
 type StudentRow = Database['public']['Tables']['students']['Row'];
 type FamilyRow = Database['public']['Tables']['families']['Row'];
+type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 
 // Extend student type to include family name and use enum
 type StudentWithFamily = Omit<StudentRow, 'belt_rank'> & {
@@ -42,7 +42,7 @@ type ActionData = {
 };
 
 
-import { beltColorMap } from "~/utils/constants";
+import {BELT_RANKS, beltColorMap} from "~/utils/constants";
 
 
 export async function loader({ params }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
