@@ -167,9 +167,9 @@ gantt
     Attendance Admin Filters:done,    attend_admin_filter, after attend_basic, 7d
     Attendance Family View  :done,    attend_family_view, after attend_admin_filter, 3d
     Attendance Reporting    :active,  attend_report, after attend_family_view, 7d
-    Achievement Tracking    :         achieve, 2024-06-15, 21d
-    Automated Notifications :         notify, 2024-07-01, 14d
-    Technical Debt Refactor :         tech_debt, 2024-07-15, 7d
+    Achievement Tracking    :done,    achieve, after attend_report, 10d # Added Admin CRUD & User View
+    Automated Notifications :         notify, after achieve, 14d
+    Technical Debt Refactor :         tech_debt, after notify, 7d
 ```
 
 ### Technical Health

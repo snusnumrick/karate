@@ -16,9 +16,18 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import type { Database } from "~/types/supabase";
+import { Badge } from "~/components/ui/badge"; // Import Badge
+import { format } from 'date-fns'; // Import date-fns
 
 // Define the type for the student data returned by the loader more accurately
 type StudentRow = Database['public']['Tables']['students']['Row'];
+type AchievementRow = Database['public']['Tables']['achievements']['Row'];
+
+// Extend loader data type
+type LoaderData = {
+  student: StudentRow;
+  achievements: AchievementRow[];
+};
 
 // Define potential action data structure
 type ActionData = {
@@ -70,8 +79,21 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Forbidden: You do not have permission to view this student.", { status: 403 });
   }
 
-  // Return the student data, explicitly typed
-  return json({ student: studentData as StudentRow }, { headers });
+  // Fetch the student's achievements
+  const { data: achievementsData, error: achievementsError } = await supabaseServer
+    .from('achievements')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('awarded_date', { ascending: false });
+
+  if (achievementsError) {
+    console.error("Error fetching student achievements:", achievementsError?.message);
+    // Don't fail the whole page load, just return an empty array or handle gracefully
+    achievementsData = [];
+  }
+
+  // Return the student data and achievements, explicitly typed
+  return json({ student: studentData as StudentRow, achievements: achievementsData as AchievementRow[] }, { headers });
 }
 
 // Action function for handling form submissions (edit/delete)
@@ -182,7 +204,8 @@ export async function action({ request, params }: ActionFunctionArgs) : Promise<
 
 
 export default function StudentDetailPage() {
-  const { student } = useLoaderData<typeof loader>();
+  // Update to use the extended LoaderData type
+  const { student, achievements } = useLoaderData<LoaderData>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const [isEditing, setIsEditing] = useState(false);
@@ -382,6 +405,7 @@ export default function StudentDetailPage() {
             </div>
           </div>
 
+          {/* Health Information Section */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
              <h2 className="text-xl font-semibold mb-4 border-b pb-2">Health Information</h2>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -392,6 +416,29 @@ export default function StudentDetailPage() {
                 <p><strong>Special Needs:</strong> {student.special_needs || 'None'}</p>
              </div>
           </div>
+
+          {/* Achievements Section */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+            <h2 className="text-xl font-semibold mb-4 border-b pb-2">Achievements</h2>
+            {achievements && achievements.length > 0 ? (
+              <ul className="space-y-3">
+                {achievements.map((achievement) => (
+                  <li key={achievement.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">{achievement.type}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{achievement.description}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {format(new Date(achievement.awarded_date), 'MMM d, yyyy')}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-600 dark:text-gray-400">No achievements recorded yet.</p>
+            )}
+          </div>
+
 
           {/* Action Buttons */}
           <div className="flex flex-wrap justify-between items-center gap-4 mt-6">
