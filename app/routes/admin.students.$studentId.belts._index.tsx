@@ -191,12 +191,13 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                     </Badge>
                   </TableCell>
                   <TableCell className="space-x-2 whitespace-nowrap">
-                    <Button variant="outline" size="icon" asChild title="Edit Belt Award"> {/* Updated title */}
-                      <Link to={`/admin/students/${student.id}/belts/${beltAward.id}/edit`}> {/* Renamed link */}
+                    {/* Temporarily remove asChild from Edit button */}
+                    <Button variant="outline" size="icon" title="Edit Belt Award">
+                      <Link to={`/admin/students/${student.id}/belts/${beltAward.id}/edit`}>
                         <Edit className="h-4 w-4" />
                       </Link>
                     </Button>
-                    {/* Use a Form for delete to trigger the action */}
+                    {/* Delete button doesn't use asChild, so it's likely okay */}
                     <Button
                         variant="destructive"
                         size="icon"
