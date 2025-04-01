@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError, Outlet } from "@remix-run/react"; // Import Outlet
+import { Link, useLoaderData, useRouteError, Outlet, useNavigate } from "@remix-run/react"; // Import Outlet and useNavigate
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
@@ -74,6 +74,7 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
 
 export default function AdminStudentDetailPage() {
     const { student } = useLoaderData<LoaderData>();
+    const navigate = useNavigate(); // Get navigate function
 
     // TODO: Add Edit functionality later with useState and Form
 
@@ -131,13 +132,13 @@ export default function AdminStudentDetailPage() {
 
              {/* Links to other related admin sections */}
              <div className="mt-8 space-x-4">
-                 {/* Restore asChild for correct Button/Link integration */}
-                 <Button asChild variant="secondary">
-                     <Link to={`/admin/students/${student.id}/belts`}>Manage Belt Awards</Link>
+                 {/* Use onClick with navigate instead of asChild/Link */}
+                 <Button variant="secondary" onClick={() => navigate(`/admin/students/${student.id}/belts`)}>
+                     Manage Belt Awards
                  </Button>
-                 {/* Restore asChild here too */}
-                 <Button asChild variant="secondary">
-                     <Link to={`/admin/attendance?studentId=${student.id}`}>View Attendance</Link>
+                 {/* Use onClick with navigate here too */}
+                 <Button variant="secondary" onClick={() => navigate(`/admin/attendance?studentId=${student.id}`)}>
+                     View Attendance
                  </Button>
              </div>
 
