@@ -137,13 +137,11 @@ export default function StudentsAdminPage() {
                       }
                     </Badge>
                   </TableCell>
-                  <TableCell className="space-x-2 whitespace-nowrap"> {/* Add class for spacing */}
-                    {/* Temporarily remove asChild to debug React.Children.only error */}
-                    <Button variant="outline" size="sm">
+                  <TableCell className="space-x-2 whitespace-nowrap">
+                    <Button variant="outline" size="sm" asChild>
                       <Link to={`/admin/students/${student.id}`}>View/Edit</Link>
                     </Button>
-                    {/* Temporarily remove asChild to debug React.Children.only error - Update path */}
-                    <Button variant="secondary" size="sm">
+                    <Button variant="secondary" size="sm" asChild>
                       <Link to={`/admin/student-belts/${student.id}`}>Belts</Link> {/* Renamed link and text */}
                     </Button>
                     {/* Add delete button/logic here if needed */}
@@ -176,23 +174,17 @@ export function ErrorBoundary() {
   return (
     <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
       <h2 className="text-xl font-bold mb-2">Error Loading Students</h2>
-      <p>An error occurred while loading student data. Check the console for details.</p>
-      {/*
-        Temporarily removed detailed error rendering to fix the 'React.Children.only' issue.
-        The actual error details are still logged to the console via console.error above.
-        We can revisit rendering error details more safely later if needed.
-        <p>{errorMessage}</p>
-        {process.env.NODE_ENV === "development" && errorStack && (
-          <pre className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs">
-            {String(errorStack)}
-          </pre>
-        )}
-         {process.env.NODE_ENV === "development" && error instanceof Response && (
-           <pre className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs">
-             {`Status: ${error.status} ${error.statusText}`}
-           </pre>
-         )}
-      */}
+      <p>{errorMessage}</p>
+      {process.env.NODE_ENV === "development" && errorStack && (
+        <pre className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs">
+          {String(errorStack)}
+        </pre>
+      )}
+       {process.env.NODE_ENV === "development" && error instanceof Response && (
+         <pre className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs">
+           {`Status: ${error.status} ${error.statusText}`}
+         </pre>
+       )}
     </div>
   );
 }
