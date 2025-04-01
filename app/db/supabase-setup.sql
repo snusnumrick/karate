@@ -144,11 +144,11 @@ DO $$
         END IF;
     END$$;
 
--- Achievements table
-CREATE TABLE IF NOT EXISTS achievements (
+-- Belt Awards table (Renamed from Achievements)
+CREATE TABLE IF NOT EXISTS belt_awards (
                                             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                                             student_id uuid REFERENCES students(id) ON DELETE CASCADE NOT NULL,
-                                            type text NOT NULL,
+                                            type text NOT NULL, -- e.g., 'Yellow', 'Orange', 'Black 1st Dan'
                                             description text NOT NULL,
                                             awarded_date date NOT NULL
 );
@@ -156,9 +156,9 @@ CREATE TABLE IF NOT EXISTS achievements (
 DO $$
     BEGIN
         IF NOT EXISTS (
-            SELECT 1 FROM pg_indexes WHERE indexname = 'idx_achievements_student_id'
+            SELECT 1 FROM pg_indexes WHERE indexname = 'idx_belt_awards_student_id' -- Renamed index
         ) THEN
-            CREATE INDEX idx_achievements_student_id ON achievements (student_id);
+            CREATE INDEX idx_belt_awards_student_id ON belt_awards (student_id); -- Renamed index and table
         END IF;
     END$$;
 
@@ -316,7 +316,7 @@ ALTER TABLE guardians ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE belt_awards ENABLE ROW LEVEL SECURITY; -- Renamed table
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waivers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waiver_signatures ENABLE ROW LEVEL SECURITY;
@@ -408,14 +408,14 @@ DO $$
 
         IF NOT EXISTS (
             SELECT 1 FROM pg_policies
-            WHERE tablename = 'achievements' AND policyname = 'Achievements are viewable by family members'
+            WHERE tablename = 'belt_awards' AND policyname = 'Belt awards are viewable by family members' -- Renamed policy and table
         ) THEN
-            CREATE POLICY "Achievements are viewable by family members" ON achievements
+            CREATE POLICY "Belt awards are viewable by family members" ON belt_awards -- Renamed policy and table
                 FOR SELECT USING (
                 EXISTS (
                     SELECT 1 FROM students
                                       JOIN profiles ON profiles.family_id = students.family_id
-                    WHERE achievements.student_id = students.id
+                    WHERE belt_awards.student_id = students.id -- Renamed table
                       AND profiles.id = auth.uid()
                 )
                 );
