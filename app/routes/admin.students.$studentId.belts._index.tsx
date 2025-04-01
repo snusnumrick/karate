@@ -250,7 +250,7 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                    </Button>
+                    {/* Removed extraneous closing Button tag */}
                   </TableCell>
                 </TableRow>
               ))}
