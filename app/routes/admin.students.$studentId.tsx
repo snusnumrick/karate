@@ -259,7 +259,7 @@ export default function AdminStudentDetailPage() {
                             <Select name="belt_rank" defaultValue={student.belt_rank || ''}>
                                 <SelectTrigger id="belt_rank"><SelectValue placeholder="Select belt rank" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">N/A</SelectItem> {/* Add option for no belt */}
+                                    {/* Removed SelectItem with value="" */}
                                     <SelectItem value="white">White</SelectItem>
                                     <SelectItem value="yellow">Yellow</SelectItem>
                                     <SelectItem value="orange">Orange</SelectItem>
@@ -301,7 +301,7 @@ export default function AdminStudentDetailPage() {
                             <Select name="grade_level" defaultValue={student.grade_level || ''}>
                                 <SelectTrigger id="grade_level"><SelectValue placeholder="Select grade" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">N/A</SelectItem>
+                                    {/* Removed SelectItem with value="" */}
                                     <SelectItem value="K">Kindergarten</SelectItem>
                                     <SelectItem value="1">1st Grade</SelectItem>
                                     <SelectItem value="2">2nd Grade</SelectItem>
