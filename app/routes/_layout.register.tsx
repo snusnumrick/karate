@@ -106,20 +106,19 @@ export async function action({ request }: ActionFunctionArgs) {
     console.log(`Attempting to insert Guardian 1: Name=${contact1FirstName} ${contact1LastName}, Email=${contact1Email}`); // Added logging
     const { data: contact1Data, error: contact1Error } = await supabaseServer.from('guardians').insert({
       family_id: familyId,
-      first_name: contact1FirstName,
-      last_name: contact1LastName,
-      relationship: formData.get('contact1Type'),
-      home_phone: formData.get('contact1HomePhone'),
-      work_phone: formData.get('contact1WorkPhone'),
-      cell_phone: formData.get('contact1CellPhone'),
-      email: contact1Email,
-      employer: formData.get('contact1Employer'),
-      employer_phone: formData.get('contact1EmployerPhone'),
-      employer_notes: formData.get('contact1EmployerNotes')
+      first_name: contact1FirstName as string,
+      last_name: contact1LastName as string,
+      relationship: formData.get('contact1Type') as string,
+      home_phone: formData.get('contact1HomePhone') as string,
+      work_phone: formData.get('contact1WorkPhone') as string | null,
+      cell_phone: formData.get('contact1CellPhone') as string,
+      email: contact1Email as string,
+      employer: formData.get('contact1Employer') as string | null,
+      employer_phone: formData.get('contact1EmployerPhone') as string | null,
+      employer_notes: formData.get('contact1EmployerNotes') as string | null
     });
 
-    if (contact1Error) throw contact1Error;
-    if (contact1Error) { // Log error if insertion failed
+    if (contact1Error) {
         console.error('Error inserting Guardian 1:', contact1Error);
         throw contact1Error;
     }
@@ -132,18 +131,18 @@ export async function action({ request }: ActionFunctionArgs) {
     console.log(`Attempting to insert Guardian 2: Name=${contact2FirstName} ${contact2LastName}, Email=${contact2Email}`); // Added logging
     const { data: contact2Data, error: contact2Error } = await supabaseServer.from('guardians').insert({
       family_id: familyId,
-      first_name: contact2FirstName,
-      last_name: contact2LastName,
-      relationship: formData.get('contact2Type'),
-      home_phone: formData.get('contact2HomePhone'),
-      work_phone: formData.get('contact2WorkPhone'),
-      cell_phone: formData.get('contact2CellPhone'),
-      email: formData.get('contact2Email'),
-      employer: formData.get('contact2Employer'),
-      employer_phone: formData.get('contact2EmployerPhone'),
-      employer_notes: formData.get('contact2EmployerNotes')
+      first_name: contact2FirstName as string,
+      last_name: contact2LastName as string,
+      relationship: formData.get('contact2Type') as string,
+      home_phone: formData.get('contact2HomePhone') as string,
+      work_phone: formData.get('contact2WorkPhone') as string | null,
+      cell_phone: formData.get('contact2CellPhone') as string,
+      email: contact2Email as string,
+      employer: formData.get('contact2Employer') as string | null,
+      employer_phone: formData.get('contact2EmployerPhone') as string | null,
+      employer_notes: formData.get('contact2EmployerNotes') as string | null
     });
-    if (contact2Error) { // Log error if insertion failed
+    if (contact2Error) {
         console.error('Error inserting Guardian 2:', contact2Error);
         throw contact2Error;
     }
