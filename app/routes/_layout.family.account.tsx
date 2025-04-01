@@ -354,12 +354,6 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 const getDefaultValue = (value: string | null | undefined) => value ?? '';
 
 export default function AccountSettingsPage() {
-    const {family, guardians, error: loaderError} = useLoaderData<typeof loader>();
-    const actionData = useActionData<typeof action>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
-
-    // --- Preferences Form ---
     const {family, guardians, policyAgreements, userPreferences, error: loaderError} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
@@ -662,42 +656,7 @@ export default function AccountSettingsPage() {
                             </Form>
                         </UIForm>
 
-                        {/* --- Policy Agreements --- */}
-                        {policyAgreements && (
-                            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6 mt-8">
-                                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Policy Agreements</h2>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <h3 className="text-sm font-medium">Photo Release</h3>
-                                            <p className="text-sm text-muted-foreground">{policyAgreements.photo_release ? "Agreed" : "Not Agreed"}</p>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-medium">Liability Release</h3>
-                                            <p className="text-sm text-muted-foreground">{policyAgreements.liability_release ? "Agreed" : "Not Agreed"}</p>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-medium">Code of Conduct</h3>
-                                            <p className="text-sm text-muted-foreground">{policyAgreements.code_of_conduct ? "Agreed" : "Not Agreed"}</p>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-medium">Payment Policy</h3>
-                                            <p className="text-sm text-muted-foreground">{policyAgreements.payment_policy ? "Agreed" : "Not Agreed"}</p>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-medium">Attire Agreement</h3>
-                                            <p className="text-sm text-muted-foreground">{policyAgreements.attire_agreement ? "Agreed" : "Not Agreed"}</p>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-medium">Signature Date</h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                {new Date(policyAgreements.signature_date).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        {/* Policy Agreements section removed - will be handled in a separate route */}
 
                         {/* --- Guardian Information Forms --- */}
                         {(guardians ?? []).map((guardian, index) => (
