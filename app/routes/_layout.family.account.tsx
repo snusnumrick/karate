@@ -40,23 +40,19 @@ const preferencesSchema = z.object({
     newPassword: z.string().min(8, "Password must be at least 8 characters").optional(),
     confirmPassword: z.string().optional(),
     receiveMarketingEmails: z.coerce.boolean().optional()
-}).superRefine((data, ctx) => {
-    if ((data.newPassword || data.confirmPassword) && !data.currentPassword) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['currentPassword'],
-            message: "Current password is required to change password"
-        });
+}).refine(data => 
+    !((data.newPassword || data.confirmPassword) && !data.currentPassword), 
+    {
+        message: "Current password is required to change password",
+        path: ["currentPassword"]
     }
-    
-    if (data.newPassword !== data.confirmPassword) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['confirmPassword'],
-            message: "Passwords must match"
-        });
+).refine(data => 
+    data.newPassword === data.confirmPassword, 
+    {
+        message: "Passwords must match",
+        path: ["confirmPassword"]
     }
-});
+);
 
 type PreferencesFormData = z.infer<typeof preferencesSchema>;
 
