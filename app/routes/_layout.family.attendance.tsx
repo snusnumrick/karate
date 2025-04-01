@@ -1,6 +1,5 @@
 import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useRouteError } from "@remix-run/react";
-import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
@@ -156,7 +155,7 @@ export default function FamilyAttendancePage() {
                   </TableCell>
                   <TableCell>
                     {record.present ? (
-                      <Badge variant="success">Present</Badge>
+                      <Badge variant="default">Present</Badge>
                     ) : (
                       <Badge variant="destructive">Absent</Badge>
                     )}

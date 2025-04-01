@@ -25,7 +25,7 @@ type StudentWithFamilyAndEligibility = StudentRow & {
   eligibility: EligibilityStatus; // Add eligibility status
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader() {
   console.log("Entering /admin/students loader...");
 
   const supabaseUrl = process.env.SUPABASE_URL;

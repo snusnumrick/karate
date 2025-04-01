@@ -3,7 +3,6 @@ import { Link, useLoaderData, useRouteError } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -25,7 +24,7 @@ type LoaderData = {
     pendingPayments: Array<Omit<PendingPayment, 'families'> & { familyName: string }>;
 };
 
-export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+export async function loader(): Promise<TypedResponse<LoaderData>> {
     console.log("Entering /admin/payments/pending loader...");
 
     const supabaseUrl = process.env.SUPABASE_URL;

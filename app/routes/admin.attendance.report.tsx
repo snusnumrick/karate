@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { format, startOfMonth, endOfMonth, subMonths, isValid } from 'date-fns';
 
 // Define types
-type AttendanceRow = Database['public']['Tables']['attendance']['Row'];
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
 
 type StudentReport = StudentRow & {
@@ -161,7 +160,6 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<Response>
 
 export default function AttendanceReportPage() {
   const { reportData, filterParams } = useLoaderData<LoaderData>();
-  const [searchParams] = useSearchParams();
 
   const formattedStartDate = format(new Date(filterParams.startDate + 'T00:00:00'), 'MMM d, yyyy');
   const formattedEndDate = format(new Date(filterParams.endDate + 'T00:00:00'), 'MMM d, yyyy');

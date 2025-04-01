@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
-import { useLoaderData, Link, useParams } from "@remix-run/react";
+import {useLoaderData, Link, useParams, useRouteError, isRouteErrorResponse} from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button"; // Assuming Button component exists
 
@@ -9,7 +9,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Waiver ID is required", { status: 400 });
   }
 
-  const { supabaseServer, headers } = getSupabaseServerClient(request);
+  const { supabaseServer, response : {headers} } = getSupabaseServerClient(request);
 
   // Ensure user is authenticated (as per RLS policy)
   const { data: { user } } = await supabaseServer.auth.getUser();
@@ -97,7 +97,7 @@ export function ErrorBoundary() {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 text-center">
       <h1 className="text-2xl font-bold text-red-600 mb-4">An Unexpected Error Occurred</h1>
-      <p>We're sorry, something went wrong.</p>
+      <p>We&apos;re sorry, something went wrong.</p>
       <Link to="/waivers" className="text-blue-600 hover:underline mt-4 inline-block">
         &larr; Back to Waivers List
       </Link>
@@ -105,5 +105,3 @@ export function ErrorBoundary() {
   );
 }
 
-// Helper to check if the error is a Remix route error response
-import { isRouteErrorResponse, useRouteError } from "@remix-run/react";

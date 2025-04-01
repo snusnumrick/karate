@@ -1,12 +1,10 @@
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
-import type { Database } from "~/types/supabase";
 
-type Payment = Database['public']['Tables']['payments']['Row'];
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer, headers } = getSupabaseServerClient(request);
+  const { supabaseServer, response : { headers } } = getSupabaseServerClient(request);
   const { data: { user } } = await supabaseServer.auth.getUser();
 
   if (!user) {
@@ -122,7 +120,7 @@ export default function PaymentHistoryPage() {
 // Basic Error Boundary for this route
 export function ErrorBoundary() {
     // const error = useRouteError(); // Use this hook in Remix v2+
-    const error: any = new Error("An unknown error occurred on the payment history page."); // Placeholder
+    const error: Error = new Error("An unknown error occurred on the payment history page."); // Placeholder
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -133,7 +131,7 @@ export function ErrorBoundary() {
              </div>
             <h1 className="text-3xl font-bold mb-6 text-red-600 dark:text-red-400">Error Loading Payment History</h1>
             <p className="text-gray-600 dark:text-gray-400">
-                {error instanceof Error ? error.message : "An unexpected error occurred."}
+                {error.message}
             </p>
         </div>
     );

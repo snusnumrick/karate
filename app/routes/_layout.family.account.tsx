@@ -1,4 +1,4 @@
-import {json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node"; // Added redirect
+import {json, type LoaderFunctionArgs, TypedResponse, ActionFunctionArgs} from "@remix-run/node"; // Added redirect
 import {Link, useLoaderData, Form, useActionData, useNavigation} from "@remix-run/react"; // Added useActionData, useNavigation
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
@@ -10,7 +10,6 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {Form as UIForm, FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form"; // Shadcn Form components
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select"; // Import Select
 import {Textarea} from "~/components/ui/textarea"; // Import Textarea
-import type {ActionFunctionArgs} from "@remix-run/node"; // For action type
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For feedback
 import {ClientOnly} from "~/components/client-only";
 import {useEffect} from "react";
@@ -165,7 +164,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         .eq('family_id', familyId);
         
     // Fetch waiver signatures
-    const {data: waiverSignaturesData, error: waiverSignaturesError} = await supabaseServer
+    const {data: waiverSignaturesData} = await supabaseServer
         .from('waiver_signatures')
         .select('*, waivers(title, description)')
         .eq('user_id', user.id)
@@ -204,7 +203,7 @@ type ActionResponse = {
     status: 'success' | 'error';
     message: string;
     errors?: SerializedZodIssue[]; // Use the serialized type
-    intent?: 'updateFamily' | 'updateGuardian';
+    intent?: 'updateFamily' | 'updateGuardian' | 'updatePreferences';
     guardianId?: string; // To identify which guardian form had an error
 };
 
@@ -352,7 +351,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 const getDefaultValue = (value: string | null | undefined) => value ?? '';
 
 export default function AccountSettingsPage() {
-    const {family, guardians, policyAgreements, userPreferences, error: loaderError} = useLoaderData<typeof loader>();
+    const {family, guardians, userPreferences, error: loaderError} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";

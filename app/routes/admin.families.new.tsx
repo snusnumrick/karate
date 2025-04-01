@@ -1,12 +1,10 @@
-import { useState } from "react";
 import { json, type ActionFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
-import { Link, Form, useActionData, useNavigation, useSubmit } from "@remix-run/react";
+import { Link, Form, useActionData, useNavigation } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import {
   Select,
@@ -15,10 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-
-// Define types for form data (can be refined)
-type FamilyInsert = Database['public']['Tables']['families']['Insert'];
-type GuardianInsert = Database['public']['Tables']['guardians']['Insert'];
 
 // Define potential action data structure
 type ActionData = {

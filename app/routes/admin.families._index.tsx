@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { Link, useLoaderData, useRouteError } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
@@ -12,9 +12,18 @@ import {
   TableRow,
 } from "~/components/ui/table"; // Assuming you have Table components
 
-type Family = Database['public']['Tables']['families']['Row'];
+type FamilyWithGuardians = {
+  id: string;
+  name: string;
+  email: string;
+  primary_phone: string;
+  guardians: {
+    first_name: string | null;
+    last_name: string | null;
+  }[];
+};
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader() {
   console.log("Entering /admin/families loader...");
 
   const supabaseUrl = process.env.SUPABASE_URL;
