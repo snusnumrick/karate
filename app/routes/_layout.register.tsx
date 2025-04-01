@@ -1061,15 +1061,11 @@ export default function RegisterPage() {
                             <SelectValue placeholder="Select belt rank" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="white">White</SelectItem>
-                            <SelectItem value="yellow">Yellow</SelectItem>
-                            <SelectItem value="orange">Orange</SelectItem>
-                            <SelectItem value="green">Green</SelectItem>
-                            <SelectItem value="blue">Blue</SelectItem>
-                            <SelectItem value="purple">Purple</SelectItem>
-                            <SelectItem value="red">Red</SelectItem>
-                            <SelectItem value="brown">Brown</SelectItem>
-                            <SelectItem value="black">Black</SelectItem>
+                            {BELT_RANKS.map((rank) => (
+                              <SelectItem key={rank} value={rank} className="capitalize">
+                                {rank}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
