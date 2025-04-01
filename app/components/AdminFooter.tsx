@@ -1,5 +1,6 @@
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
+import {Link} from "@remix-run/react";
 
 export default function AdminFooter() {
   return (
@@ -8,7 +9,7 @@ export default function AdminFooter() {
         <Separator className="my-4 bg-gray-300 dark:bg-gray-600" />
         <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
           <Button variant="link" className="text-gray-500 dark:text-gray-400 p-0 h-auto">
-            &copy; {new Date().getFullYear()} Ponto Studio - Admin Panel. All rights reserved.
+            <Link to="https://www.ponto.studio/">&copy; {new Date().getFullYear()} Ponto Studio - Admin Panel. All rights reserved.</Link>
           </Button>
         </div>
       </div>

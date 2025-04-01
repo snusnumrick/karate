@@ -105,7 +105,7 @@ export default function Footer() {
         
         <div className="text-center text-green-200 dark:text-gray-400 text-sm">
           <Button variant="link" className="text-green-200">
-            &copy; {new Date().getFullYear()} Ponto Studio. All rights reserved.
+            <Link to="https://www.ponto.studio/">&copy; {new Date().getFullYear()} Ponto Studio. All rights reserved.</Link>
           </Button>
         </div>
       </div>
