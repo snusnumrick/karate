@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError, Form, useSearchParams } from "@remix-run/react";
+import { Link, useLoaderData, useRouteError, Form } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
@@ -37,11 +37,11 @@ type LoaderData = {
 };
 
 // Helper to get today's date in YYYY-MM-DD format
-function getTodayDateString(): string {
-  return format(new Date(), 'yyyy-MM-dd');
-}
+// function getTodayDateString(): string {
+//   return format(new Date(), 'yyyy-MM-dd');
+// }
 
-export async function loader({ request }: LoaderFunctionArgs): Promise<json<LoaderData>> {
+export async function loader({ request }: LoaderFunctionArgs): Promise<Response> {
   console.log("Entering /admin/attendance loader...");
   const url = new URL(request.url);
   const searchParams = url.searchParams;
@@ -127,7 +127,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<json<Load
 
 export default function AttendanceHistoryPage() { // Renamed component
   const { attendanceRecords, filterParams, allStudents } = useLoaderData<LoaderData>();
-  const [searchParams] = useSearchParams(); // To get current params for display/links if needed
+  // const [searchParams] = useSearchParams(); // To get current params for display/links if needed
 
   // Determine the title based on filters
   let title = "Attendance History";
@@ -152,7 +152,7 @@ export default function AttendanceHistoryPage() { // Renamed component
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{title}</h1>
         <Button asChild variant="outline">
           {/* Link to record attendance page - still relevant */}
-          <Link to="/admin/attendance/record">Record Today's Attendance</Link>
+          <Link to="/admin/attendance/record">Record Today&apos;s Attendance</Link>
         </Button>
       </div>
 
@@ -214,7 +214,7 @@ export default function AttendanceHistoryPage() { // Renamed component
                   </TableCell>
                   <TableCell>
                     {record.present ? (
-                      <Badge variant="success">Present</Badge> // Assuming you have a 'success' variant or use 'default'
+                      <Badge variant="default">Present</Badge>
                     ) : (
                       <Badge variant="destructive">Absent</Badge>
                     )}
