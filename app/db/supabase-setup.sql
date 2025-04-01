@@ -183,11 +183,11 @@ ALTER TABLE belt_awards ALTER COLUMN description DROP NOT NULL;
 ALTER TABLE belt_awards ALTER COLUMN type TYPE belt_rank_enum USING type::belt_rank_enum;
 -- Convert empty strings and any other invalid values in students.belt_rank to NULL before casting to enum
 ALTER TABLE students ALTER COLUMN belt_rank TYPE belt_rank_enum USING CASE
-    -- Handle empty strings or strings with only whitespace -> NULL
-    WHEN trim(belt_rank) = '' THEN NULL
-    -- Check if the lowercase, trimmed value is a valid enum member
-    WHEN lower(trim(belt_rank)) IN ('white', 'yellow', 'orange', 'green', 'blue', 'purple', 'red', 'brown', 'black')
-    THEN lower(trim(belt_rank))::belt_rank_enum
+    -- Handle empty strings or strings with only whitespace (after casting to text) -> NULL
+    WHEN trim(belt_rank::text) = '' THEN NULL
+    -- Check if the lowercase, trimmed value (after casting to text) is a valid enum member
+    WHEN lower(trim(belt_rank::text)) IN ('white', 'yellow', 'orange', 'green', 'blue', 'purple', 'red', 'brown', 'black')
+    THEN lower(trim(belt_rank::text))::belt_rank_enum
     -- If it's not empty/whitespace and not a valid enum member, map to NULL
     ELSE NULL
 END;
