@@ -150,10 +150,15 @@ export default function AttendanceHistoryPage() { // Renamed component
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{title}</h1>
-        <Button asChild variant="outline">
-          {/* Link to record attendance page - still relevant */}
-          <Link to="/admin/attendance/record">Record Today&apos;s Attendance</Link>
-        </Button>
+         <div className="flex gap-2">
+             <Button asChild variant="secondary">
+               <Link to="/admin/attendance/report">View Reports</Link>
+             </Button>
+             <Button asChild variant="outline">
+               {/* Link to record attendance page - still relevant */}
+               <Link to="/admin/attendance/record">Record Today&apos;s Attendance</Link>
+             </Button>
+         </div>
       </div>
 
       {/* Filter Form */}
