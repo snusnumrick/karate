@@ -153,8 +153,8 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                 Belt Awards for {student.first_name} {student.last_name} {/* Renamed title */}
             </h1>
         </div>
-        {/* Temporarily remove asChild from Add button */}
-        <Button>
+        {/* Restore asChild for correct Button/Link integration */}
+        <Button asChild>
           <Link to={`/admin/students/${student.id}/belts/new`}>Add New Belt Award</Link> {/* Renamed link and text */}
         </Button>
       </div>
