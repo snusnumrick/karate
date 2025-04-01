@@ -70,17 +70,17 @@ export async function action({ request }: ActionFunctionArgs) {
     // Create family record
     const { data: familyData, error: familyError } = await supabaseServer.from('families')
       .insert({
-        address: formData.get('address'),
-        city: formData.get('city'),
-        province: formData.get('province'),
-        postal_code: formData.get('postalCode'),
-        primary_phone: formData.get('primaryPhone'),
+        address: formData.get('address') as string,
+        city: formData.get('city') as string,
+        province: formData.get('province') as string,
+        postal_code: formData.get('postalCode') as string,
+        primary_phone: formData.get('primaryPhone') as string,
         email: contact1Email,
-        name: formData.get('familyName'),
-        referral_source: formData.get('referralSource'),
-        referral_name: formData.get('referralName'),
-        emergency_contact: formData.get('emergencyContact'),
-        health_info: formData.get('healthNumber')
+        name: formData.get('familyName') as string,
+        referral_source: formData.get('referralSource') as string || null,
+        referral_name: formData.get('referralName') as string || null,
+        emergency_contact: formData.get('emergencyContact') as string || null,
+        health_info: formData.get('healthNumber') as string || null
       })
       .select('id')
       .single();
