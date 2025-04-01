@@ -36,23 +36,38 @@ interface LoaderData {
 // --- Validation Schemas ---
 const preferencesSchema = z.object({
     intent: z.literal('updatePreferences'),
-    currentPassword: z.string().min(8, "Current password is required").optional(),
-    newPassword: z.string().min(8, "Password must be at least 8 characters").optional(),
+    currentPassword: z.string().optional(),
+    newPassword: z.string().optional(),
     confirmPassword: z.string().optional(),
     receiveMarketingEmails: z.coerce.boolean().optional()
-}).refine(data => 
-    !((data.newPassword || data.confirmPassword) && !data.currentPassword), 
-    {
-        message: "Current password is required to change password",
-        path: ["currentPassword"]
+}).superRefine((data, ctx) => {
+    // Current password required if changing password
+    if ((data.newPassword || data.confirmPassword) && !data.currentPassword) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['currentPassword'],
+            message: "Current password is required to change password"
+        });
     }
-).refine(data => 
-    data.newPassword === data.confirmPassword, 
-    {
-        message: "Passwords must match",
-        path: ["confirmPassword"]
+    
+    // Password confirmation match
+    if (data.newPassword !== data.confirmPassword) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['confirmPassword'],
+            message: "Passwords must match"
+        });
     }
-);
+
+    // New password requirements
+    if (data.newPassword && data.newPassword.length < 8) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['newPassword'],
+            message: "Password must be at least 8 characters"
+        });
+    }
+});
 
 type PreferencesFormData = z.infer<typeof preferencesSchema>;
 
@@ -92,10 +107,10 @@ const guardianSchema = z.object({
 type GuardianFormData = z.infer<typeof guardianSchema>;
 
 // Combined schema for parsing intent in action
-const formSchema = z.discriminatedUnion("intent", [
+const formSchema = z.union([
     familySchema,
     guardianSchema,
-    preferencesSchema,
+    preferencesSchema
 ]);
 
 // --- Loader ---
