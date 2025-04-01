@@ -110,6 +110,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       user_id: user.id,
       signature_data: signature,
       signed_at: new Date().toISOString(),
+      agreement_version: waiverId, // Use waiverId as the version identifier
     });
     
   if (error) {
