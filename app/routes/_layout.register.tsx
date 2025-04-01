@@ -257,10 +257,10 @@ export default function RegisterPage() {
               <div className="w-full bg-muted rounded-full h-2.5">
                 <div 
                   className="bg-green-600 h-2.5 rounded-full" 
-                  style={{ width: `${(currentStep / 5) * 100}%` }}
+                  style={{ width: `${(currentStep / 4) * 100}%` }}
                 ></div>
               </div>
-              <p className="text-center mt-2 text-sm text-muted-foreground dark:text-muted-foreground">Step {currentStep} of 5</p>
+              <p className="text-center mt-2 text-sm text-muted-foreground dark:text-muted-foreground">Step {currentStep} of 4</p>
             </div>
             
             <Form method="post" noValidate className="space-y-8">
