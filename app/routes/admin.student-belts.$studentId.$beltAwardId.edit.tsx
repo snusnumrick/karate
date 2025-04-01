@@ -143,8 +143,8 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         return json({ error: "Failed to update belt award. " + updateError.message }, { status: 500 }); // Updated message
     }
 
-    // Redirect back to the belt awards list on success
-    return redirect(`/admin/students/${studentId}/belts`); // Renamed redirect path
+    // Redirect back to the belt awards list on success - Update path
+    return redirect(`/admin/student-belts/${studentId}`);
 }
 
 
@@ -158,7 +158,8 @@ export default function EditAchievementPage() { // Function name can stay for no
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-2xl">
-            <Link to={`/admin/students/${params.studentId}/belts`} className="text-blue-600 hover:underline mb-4 inline-block"> {/* Renamed link */}
+            {/* Update path */}
+            <Link to={`/admin/student-belts/${params.studentId}`} className="text-blue-600 hover:underline mb-4 inline-block">
                 &larr; Back to Belt Awards for {student.first_name} {/* Updated text */}
             </Link>
             <h1 className="text-3xl font-bold mb-6">Edit Belt Award</h1> {/* Renamed title */}
@@ -200,9 +201,9 @@ export default function EditAchievementPage() { // Function name can stay for no
                 </div>
 
                 <div className="flex justify-end gap-4">
-                    {/* Remove asChild from Cancel button */}
+                    {/* Remove asChild from Cancel button - Update path */}
                     <Button type="button" variant="outline">
-                        <Link to={`/admin/students/${params.studentId}/belts`}>Cancel</Link> {/* Renamed link */}
+                        <Link to={`/admin/student-belts/${params.studentId}`}>Cancel</Link>
                     </Button>
                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? 'Saving...' : 'Save Changes'} {/* Text can remain generic */}

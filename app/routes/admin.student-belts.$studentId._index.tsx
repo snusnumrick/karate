@@ -168,8 +168,8 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                 Belt Awards for {student.first_name} {student.last_name} {/* Renamed title */}
             </h1>
         </div>
-        {/* Use onClick with navigate instead of Link/asChild */}
-        <Button onClick={() => navigate(`/admin/students/${student.id}/belts/new`)}>
+        {/* Use onClick with navigate instead of Link/asChild - Update path */}
+        <Button onClick={() => navigate(`/admin/student-belts/${student.id}/new`)}>
           Add New Belt Award
         </Button>
       </div>
@@ -212,7 +212,7 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                         variant="outline"
                         size="icon"
                         title="Edit Belt Award"
-                        onClick={() => navigate(`/admin/students/${student.id}/belts/${beltAward.id}/edit`)}
+                        onClick={() => navigate(`/admin/student-belts/${student.id}/${beltAward.id}/edit`)}
                     >
                         <Edit className="h-4 w-4" />
                     </Button>

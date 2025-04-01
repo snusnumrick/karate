@@ -132,8 +132,8 @@ export default function AdminStudentDetailPage() {
 
              {/* Links to other related admin sections */}
              <div className="mt-8 space-x-4">
-                 {/* Use onClick with navigate instead of asChild/Link */}
-                 <Button variant="secondary" onClick={() => navigate(`/admin/students/${student.id}/belts`)}>
+                 {/* Use onClick with navigate instead of asChild/Link - Update path */}
+                 <Button variant="secondary" onClick={() => navigate(`/admin/student-belts/${student.id}`)}>
                      Manage Belt Awards
                  </Button>
                  {/* Use onClick with navigate here too */}

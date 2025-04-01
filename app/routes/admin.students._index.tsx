@@ -142,9 +142,9 @@ export default function StudentsAdminPage() {
                     <Button variant="outline" size="sm">
                       <Link to={`/admin/students/${student.id}`}>View/Edit</Link>
                     </Button>
-                    {/* Temporarily remove asChild to debug React.Children.only error */}
+                    {/* Temporarily remove asChild to debug React.Children.only error - Update path */}
                     <Button variant="secondary" size="sm">
-                      <Link to={`/admin/students/${student.id}/belts`}>Belts</Link> {/* Renamed link and text */}
+                      <Link to={`/admin/student-belts/${student.id}`}>Belts</Link> {/* Renamed link and text */}
                     </Button>
                     {/* Add delete button/logic here if needed */}
                   </TableCell>
