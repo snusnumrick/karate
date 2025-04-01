@@ -153,8 +153,8 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                 Belt Awards for {student.first_name} {student.last_name} {/* Renamed title */}
             </h1>
         </div>
-        {/* Restore asChild for correct Button/Link integration */}
-        <Button asChild>
+        {/* Remove asChild again to prevent React.Children.only error */}
+        <Button>
           <Link to={`/admin/students/${student.id}/belts/new`}>Add New Belt Award</Link> {/* Renamed link and text */}
         </Button>
       </div>
