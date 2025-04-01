@@ -51,7 +51,17 @@ export default function AdminNavbar() {
           </nav>
 
           <div className="flex items-center space-x-4">
-            <ModeToggle />
+            {/* Wrap ModeToggle in ClientOnly */}
+            <ClientOnly
+              fallback={
+                <Button variant="outline" size="icon" disabled>
+                  <Sun className="h-[1.2rem] w-[1.2rem]" />
+                  <span className="sr-only">Toggle theme</span>
+                </Button>
+              }
+            >
+              {() => <ModeToggle />}
+            </ClientOnly>
             {/* Logout Form */}
             <Form action="/logout" method="post" className="hidden md:inline-block">
               <Button
