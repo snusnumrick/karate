@@ -176,8 +176,10 @@ CREATE TABLE IF NOT EXISTS belt_awards (
 -- Alter existing table column type if script was run before enum creation
 -- This might fail if existing data in 'type' cannot be cast to the enum.
 -- Manual data cleanup might be needed before running this alter statement.
+-- IMPORTANT: Before running this, ensure no rows in 'belt_awards' have an empty string ('') for 'type'. Update them to a valid enum value (e.g., 'white').
 ALTER TABLE belt_awards ALTER COLUMN type TYPE belt_rank_enum USING type::belt_rank_enum;
-ALTER TABLE students ALTER COLUMN belt_rank TYPE belt_rank_enum USING belt_rank::belt_rank_enum;
+-- Convert empty strings in students.belt_rank to NULL before casting to enum
+ALTER TABLE students ALTER COLUMN belt_rank TYPE belt_rank_enum USING CASE WHEN belt_rank = '' THEN NULL ELSE belt_rank::belt_rank_enum END;
 
 DO $$
     BEGIN
