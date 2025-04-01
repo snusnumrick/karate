@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
 import { Link, useLoaderData, Form, useActionData, useNavigation, useParams } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
@@ -128,7 +127,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     // Cast the type from form data to the enum type
     const beltAwardUpdateData: BeltAwardUpdate = {
         type: type as BeltRankEnum, // Cast to enum type
-        description: description || null, // Ensure description is null if empty
+        description: description || undefined, // Ensure description is undefined if empty
         awarded_date,
         // student_id is not updated
     };

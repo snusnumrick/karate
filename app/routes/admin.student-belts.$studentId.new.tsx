@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
 import { Link, useLoaderData, Form, useActionData, useNavigation, useParams } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
@@ -35,7 +34,7 @@ const beltRanks = [
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
 // Update Insert type to use the enum
-type BeltAwardInsert = Omit<Database['public']['Tables']['belt_awards']['Insert'], 'type'> & { type: BeltRankEnum };
+type BeltAwardInsert = Omit<Database['public']['Tables']['belt_awards']['Insert'], 'type' | 'description'> & { type: BeltRankEnum; description: string  };
 
 
 type LoaderData = {
@@ -114,7 +113,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     const beltAwardData: BeltAwardInsert = {
         student_id: studentId,
         type: type as BeltRankEnum, // Cast to enum type
-        description: description || null, // Ensure description is null if empty, as it's optional now
+        description: description || '', // Ensure description is empty string if empty, as it's optional now
         awarded_date,
     };
 
