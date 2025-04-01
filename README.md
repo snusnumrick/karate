@@ -118,14 +118,20 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - Font optimization with preconnect
 - Security audit workflow
 - **Admin Panel Enhancements:**
-  - Admin Dashboard (`/admin`) with key statistics (Families, Students, Payments, Attendance)
-  - Manage Families page (`/admin/families`) using service role client
-  - Manage Students page (`/admin/students`) using service role client
-  - Manage Waivers page (`/admin/waivers`) using service role client
+  - Admin Dashboard (`/admin`) with key statistics (Families, Students, Payments, Attendance, Missing Waivers, Pending Payments)
+  - Manage Families page (`/admin/families`)
+  - Register New Family page (`/admin/families/new`)
+  - Manage Students page (`/admin/students`)
+  - View/Edit Student page (`/admin/students/:studentId`) with edit functionality
+  - Manage Belt Awards page (`/admin/student-belts/:studentId`) with CRUD operations (formerly Achievements)
+  - Manage Waivers page (`/admin/waivers`)
   - View/Edit Waiver page (`/admin/waivers/:waiverId`)
+  - View Missing Waivers page (`/admin/waivers/missing`)
+  - View Pending Payments page (`/admin/payments/pending`)
   - View Attendance History page (`/admin/attendance`) with date/student filters
-  - Record Attendance page (`/admin/attendance/record`) with upsert logic
+  - Record Attendance page (`/admin/attendance/record`) with date picker and upsert logic
   - Added unique constraint to `attendance` table for reliable upserts
+- **Family Portal Enhancements:**
   - **Account Settings Link**: Added link from Family Portal to `/family/account`.
   - **Account Settings Page**: Implemented editing for Family, Guardian information, and password changes on `/family/account`.
   - **Student Management**: Added Edit/Delete functionality on `/family/student/:studentId`.
