@@ -6,41 +6,9 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      achievements: {
-        Row: {
-          awarded_date: string
-          description: string
-          id: string
-          student_id: string
-          type: string
-        }
-        Insert: {
-          awarded_date: string
-          description: string
-          id?: string
-          student_id: string
-          type: string
-        }
-        Update: {
-          awarded_date?: string
-          description?: string
-          id?: string
-          student_id?: string
-          type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "achievements_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       attendance: {
         Row: {
           class_date: string
@@ -70,60 +38,92 @@ export interface Database {
             isOneToOne: false
             referencedRelation: "students"
             referencedColumns: ["id"]
-          }
+          },
+        ]
+      }
+      belt_awards: {
+        Row: {
+          awarded_date: string
+          description: string
+          id: string
+          student_id: string
+          type: Database["public"]["Enums"]["belt_rank_enum"]
+        }
+        Insert: {
+          awarded_date: string
+          description: string
+          id?: string
+          student_id: string
+          type: Database["public"]["Enums"]["belt_rank_enum"]
+        }
+        Update: {
+          awarded_date?: string
+          description?: string
+          id?: string
+          student_id?: string
+          type?: Database["public"]["Enums"]["belt_rank_enum"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "achievements_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
         ]
       }
       families: {
         Row: {
           address: string
           city: string
-          created_at: string
+          created_at: string | null
           email: string
-          id: string
-          name: string
-          primary_phone: string
-          postal_code: string
-          province: string
-          referral_source: string | null
-          referral_name: string | null
           emergency_contact: string | null
           health_info: string | null
-          notes: string | null // Add the new optional notes column
-          updated_at: string
+          id: string
+          name: string
+          notes: string | null
+          postal_code: string
+          primary_phone: string
+          province: string
+          referral_name: string | null
+          referral_source: string | null
+          updated_at: string | null
         }
         Insert: {
           address: string
           city: string
-          created_at?: string
+          created_at?: string | null
           email: string
-          id?: string
-          name: string
-          primary_phone: string
-          postal_code: string
-          province: string
-          referral_source?: string | null
-          referral_name?: string | null
           emergency_contact?: string | null
           health_info?: string | null
-          notes?: string | null // Add the new optional notes column
-          updated_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          postal_code: string
+          primary_phone: string
+          province: string
+          referral_name?: string | null
+          referral_source?: string | null
+          updated_at?: string | null
         }
         Update: {
           address?: string
           city?: string
-          created_at?: string
+          created_at?: string | null
           email?: string
-          id?: string
-          name?: string
-          primary_phone?: string
-          postal_code?: string
-          province?: string
-          referral_source?: string | null
-          referral_name?: string | null
           emergency_contact?: string | null
           health_info?: string | null
-          notes?: string | null // Add the new optional notes column
-          updated_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          postal_code?: string
+          primary_phone?: string
+          province?: string
+          referral_name?: string | null
+          referral_source?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -177,51 +177,7 @@ export interface Database {
             isOneToOne: false
             referencedRelation: "families"
             referencedColumns: ["id"]
-          }
-        ]
-      }
-      payments: {
-        Row: {
-          amount: number // Assumed to be in cents based on usage
-          family_id: string
-          id: string
-          payment_date: string | null // Made nullable
-          payment_method: string | null // Made nullable
-          status: "pending" | "succeeded" | "failed" // Adjusted status enum values if needed
-          notes: string | null
-          receipt_url: string | null // Added
-          stripe_session_id: string | null // Added
-        }
-        Insert: {
-          amount: number
-          family_id: string
-          id?: string
-          payment_date?: string | null // Made nullable
-          payment_method?: string | null // Made nullable
-          status?: "pending" | "succeeded" | "failed" // Default is 'pending' in DB
-          notes?: string | null
-          receipt_url?: string | null // Added
-          stripe_session_id?: string | null // Added
-        }
-        Update: {
-          amount?: number
-          family_id?: string
-          id?: string
-          payment_date?: string | null // Made nullable
-          payment_method?: string | null // Made nullable
-          status?: "pending" | "succeeded" | "failed"
-          notes?: string | null
-          receipt_url?: string | null // Added
-          stripe_session_id?: string | null // Added
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_family_id_fkey"
-            columns: ["family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
-            referencedColumns: ["id"]
-          }
+          },
         ]
       }
       payment_students: {
@@ -254,7 +210,92 @@ export interface Database {
             isOneToOne: false
             referencedRelation: "students"
             referencedColumns: ["id"]
-          }
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          family_id: string
+          id: string
+          payment_date: string | null
+          payment_method: string | null
+          receipt_url: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount: number
+          family_id: string
+          id?: string
+          payment_date?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          family_id?: string
+          id?: string
+          payment_date?: string | null
+          payment_method?: string | null
+          receipt_url?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_agreements: {
+        Row: {
+          attire_agreement: boolean
+          code_of_conduct: boolean
+          family_id: string
+          full_name: string
+          id: string
+          liability_release: boolean
+          payment_policy: boolean
+          photo_release: boolean
+          signature_date: string
+        }
+        Insert: {
+          attire_agreement: boolean
+          code_of_conduct: boolean
+          family_id: string
+          full_name: string
+          id?: string
+          liability_release: boolean
+          payment_policy: boolean
+          photo_release: boolean
+          signature_date?: string
+        }
+        Update: {
+          attire_agreement?: boolean
+          code_of_conduct?: boolean
+          family_id?: string
+          full_name?: string
+          id?: string
+          liability_release?: boolean
+          payment_policy?: boolean
+          photo_release?: boolean
+          signature_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_agreements_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -262,19 +303,19 @@ export interface Database {
           email: string
           family_id: string | null
           id: string
-          role: 'user' | 'admin' | 'instructor'
+          role: string
         }
         Insert: {
           email: string
           family_id?: string | null
           id: string
-          role?: 'user' | 'admin' | 'instructor'
+          role?: string
         }
         Update: {
           email?: string
           family_id?: string | null
           id?: string
-          role?: 'user' | 'admin' | 'instructor'
+          role?: string
         }
         Relationships: [
           {
@@ -284,29 +325,22 @@ export interface Database {
             referencedRelation: "families"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
         ]
       }
       students: {
         Row: {
           allergies: string | null
-          belt_rank: string
+          belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
           birth_date: string
           cell_phone: string | null
           email: string | null
           family_id: string
           first_name: string
           gender: string
-          grade_level: string
+          grade_level: string | null
           id: string
           immunization_notes: string | null
-          immunizations_up_to_date: boolean
+          immunizations_up_to_date: string | null
           last_name: string
           medications: string | null
           school: string
@@ -315,17 +349,17 @@ export interface Database {
         }
         Insert: {
           allergies?: string | null
-          belt_rank?: string
+          belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           birth_date: string
           cell_phone?: string | null
           email?: string | null
           family_id: string
           first_name: string
           gender: string
-          grade_level: string
+          grade_level?: string | null
           id?: string
           immunization_notes?: string | null
-          immunizations_up_to_date?: boolean
+          immunizations_up_to_date?: string | null
           last_name: string
           medications?: string | null
           school: string
@@ -334,17 +368,17 @@ export interface Database {
         }
         Update: {
           allergies?: string | null
-          belt_rank?: string
+          belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           birth_date?: string
           cell_phone?: string | null
           email?: string | null
           family_id?: string
           first_name?: string
           gender?: string
-          grade_level?: string
+          grade_level?: string | null
           id?: string
           immunization_notes?: string | null
-          immunizations_up_to_date?: boolean
+          immunizations_up_to_date?: string | null
           last_name?: string
           medications?: string | null
           school?: string
@@ -358,7 +392,42 @@ export interface Database {
             isOneToOne: false
             referencedRelation: "families"
             referencedColumns: ["id"]
-          }
+          },
+        ]
+      }
+      waiver_signatures: {
+        Row: {
+          agreement_version: string
+          id: string
+          signature_data: string
+          signed_at: string
+          user_id: string
+          waiver_id: string
+        }
+        Insert: {
+          agreement_version: string
+          id?: string
+          signature_data: string
+          signed_at?: string
+          user_id: string
+          waiver_id: string
+        }
+        Update: {
+          agreement_version?: string
+          id?: string
+          signature_data?: string
+          signed_at?: string
+          user_id?: string
+          waiver_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiver_signatures_waiver_id_fkey"
+            columns: ["waiver_id"]
+            isOneToOne: false
+            referencedRelation: "waivers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       waivers: {
@@ -385,90 +454,6 @@ export interface Database {
         }
         Relationships: []
       }
-      waiver_signatures: {
-        Row: {
-          id: string
-          signature_data: string
-          signed_at: string
-          user_id: string
-          waiver_id: string
-        }
-        Insert: {
-          id?: string
-          signature_data: string
-          signed_at: string
-          user_id: string
-          waiver_id: string
-        }
-        Update: {
-          id?: string
-          signature_data?: string
-          signed_at?: string
-          user_id?: string
-          waiver_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "waiver_signatures_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "waiver_signatures_waiver_id_fkey"
-            columns: ["waiver_id"]
-            isOneToOne: false
-            referencedRelation: "waivers"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      checkout_sessions: {
-        Row: {
-          id: string
-          user_id: string
-          payment_id: string | null
-          session_id: string
-          status: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          payment_id?: string | null
-          session_id: string
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          payment_id?: string | null
-          session_id?: string
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "checkout_sessions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "checkout_sessions_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payments"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
     }
     Views: {
       [_ in never]: never
@@ -477,10 +462,117 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      belt_rank_enum:
+        | "white"
+        | "yellow"
+        | "orange"
+        | "green"
+        | "blue"
+        | "purple"
+        | "red"
+        | "brown"
+        | "black"
+      payment_status: "pending" | "succeeded" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
     }
   }
 }
+
+type PublicSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends
+    | keyof PublicSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never

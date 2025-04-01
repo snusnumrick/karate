@@ -96,11 +96,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 
   // Fetch the student's belt awards (assuming table renamed)
-  const { data: beltAwardsData, error: beltAwardsError } = await supabaseServer
+  const { data, error: beltAwardsError } = await supabaseServer
       .from('belt_awards') // Renamed from 'achievements'
       .select('*')
       .eq('student_id', studentId)
       .order('awarded_date', { ascending: false });
+  let beltAwardsData = data;
 
   if (beltAwardsError) {
     console.error("Error fetching student belt awards:", beltAwardsError?.message);
@@ -193,9 +194,9 @@ export async function action({ request, params }: ActionFunctionArgs) : Promise<
       allergies: formData.get('allergies') as string || null,
       medications: formData.get('medications') as string || null,
       // Handle checkbox - value is 'on' if checked, null otherwise
-      immunizations_up_to_date: formData.get('immunizations_up_to_date') === 'on',
+      immunizations_up_to_date: formData.get('immunizations_up_to_date') === 'on' ? 'true' : 'false',
       immunization_notes: formData.get('immunization_notes') as string || null,
-      belt_rank: formData.get('belt_rank') as string,
+      belt_rank: formData.get('belt_rank') as "white" | "yellow" | "orange" | "green" | "blue" | "purple" | "red" | "brown" | "black" | null | undefined,
     };
 
     const { error: updateError } = await supabaseServer
@@ -330,7 +331,7 @@ export default function StudentDetailPage() {
               </div>
               <div>
                 <Label htmlFor="grade_level">Grade Level</Label>
-                 <Select name="grade_level" defaultValue={student.grade_level} required>
+                 <Select name="grade_level" defaultValue={student.grade_level || undefined} required>
                     <SelectTrigger id="grade_level"><SelectValue placeholder="Select grade" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="K">Kindergarten</SelectItem>
@@ -368,7 +369,7 @@ export default function StudentDetailPage() {
                  <Checkbox
                     id="immunizations_up_to_date"
                     name="immunizations_up_to_date"
-                    defaultChecked={student.immunizations_up_to_date}
+                    defaultChecked={student.immunizations_up_to_date === 'true'}
                  />
                  <Label htmlFor="immunizations_up_to_date">Immunizations Up-to-Date?</Label>
                </div>
