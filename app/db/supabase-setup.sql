@@ -169,9 +169,12 @@ CREATE TABLE IF NOT EXISTS belt_awards (
                                             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                                             student_id uuid REFERENCES students(id) ON DELETE CASCADE NOT NULL,
                                             type belt_rank_enum NOT NULL, -- Changed from text to enum
-                                            description text, -- Made description optional
+                                            description text NULL, -- Explicitly allow NULL
                                             awarded_date date NOT NULL
 );
+
+-- Alter existing table column to allow NULL if it was previously NOT NULL
+ALTER TABLE belt_awards ALTER COLUMN description DROP NOT NULL;
 
 -- Alter existing table column type if script was run before enum creation
 -- This might fail if existing data in 'type' cannot be cast to the enum.
