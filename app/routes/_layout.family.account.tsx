@@ -14,6 +14,7 @@ import type {ActionFunctionArgs} from "@remix-run/node"; // For action type
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For feedback
 import {ClientOnly} from "~/components/client-only";
 import {useEffect} from "react";
+import {Checkbox} from "~/components/ui/checkbox"; // Import Checkbox for preferences
 
 // Define a type for serialized Zod issues (plain objects)
 type SerializedZodIssue = {
@@ -33,6 +34,31 @@ interface LoaderData {
 }
 
 // --- Validation Schemas ---
+const preferencesSchema = z.object({
+    intent: z.literal('updatePreferences'),
+    currentPassword: z.string().min(8, "Current password is required").optional(),
+    newPassword: z.string().min(8, "Password must be at least 8 characters").optional(),
+    confirmPassword: z.string().optional(),
+    receiveMarketingEmails: z.coerce.boolean().optional()
+}).superRefine((data, ctx) => {
+    if ((data.newPassword || data.confirmPassword) && !data.currentPassword) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['currentPassword'],
+            message: "Current password is required to change password"
+        });
+    }
+    
+    if (data.newPassword !== data.confirmPassword) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['confirmPassword'],
+            message: "Passwords must match"
+        });
+    }
+});
+
+type PreferencesFormData = z.infer<typeof preferencesSchema>;
 
 const familySchema = z.object({
     intent: z.literal('updateFamily'),
@@ -73,6 +99,7 @@ type GuardianFormData = z.infer<typeof guardianSchema>;
 const formSchema = z.discriminatedUnion("intent", [
     familySchema,
     guardianSchema,
+    preferencesSchema,
 ]);
 
 // --- Loader ---
@@ -230,6 +257,36 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                 intent,
                 guardianId
             }, {headers});
+        } else if (intent === 'updatePreferences') {
+            const { currentPassword, newPassword, receiveMarketingEmails } = parsed.data;
+
+            // Get user
+            const { data: { user } } = await supabaseServer.auth.getUser();
+            if (!user) return json({ status: 'error', message: 'Not authenticated' }, { status: 401, headers });
+
+            // Update password if provided
+            if (newPassword && currentPassword) {
+                const { error: updateError } = await supabaseServer.auth.updateUser({
+                    password: newPassword,
+                    data: { receive_marketing_emails: receiveMarketingEmails }
+                });
+
+                if (updateError) throw updateError;
+            }
+
+            // Update email preferences if no password change
+            if (!newPassword) {
+                const { error } = await supabaseServer.auth.updateUser({
+                    data: { receive_marketing_emails: receiveMarketingEmails }
+                });
+                if (error) throw error;
+            }
+
+            return json({
+                status: 'success',
+                message: 'Preferences updated successfully',
+                intent: 'updatePreferences'
+            }, { headers });
         }
 
         // Should not happen if schema is correct
@@ -258,6 +315,22 @@ export default function AccountSettingsPage() {
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
+
+    // --- Preferences Form ---
+    const preferencesForm = useForm<PreferencesFormData>({
+        resolver: zodResolver(preferencesSchema),
+        defaultValues: {
+            intent: 'updatePreferences',
+            receiveMarketingEmails: true
+        }
+    });
+
+    // Reset form when action completes
+    useEffect(() => {
+        if (actionData?.intent === 'updatePreferences' && actionData.status === 'success') {
+            preferencesForm.reset();
+        }
+    }, [actionData, preferencesForm]);
 
     // --- Family Form ---
     const familyForm = useForm<FamilyFormData>({
@@ -537,14 +610,99 @@ export default function AccountSettingsPage() {
                         ))}
 
 
-                        {/* --- Account Preferences (Placeholder) --- */}
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                            <h2 className="text-xl font-semibold mb-4">Account Preferences</h2>
-                            <p className="text-gray-600 dark:text-gray-400 italic">Password change and other preferences
-                                coming
-                                soon.</p>
-                            {/* TODO: Add password change form, email preferences, etc. */}
-                        </div>
+                        {/* --- Account Preferences --- */}
+                        <UIForm {...preferencesForm}>
+                            <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+                                <h2 className="text-xl font-semibold mb-4">Account Preferences</h2>
+                                <input type="hidden" name="intent" value="updatePreferences" />
+
+                                {actionData?.intent === 'updatePreferences' && actionData.errors && (
+                                    <Alert variant="destructive" className="mb-4">
+                                        <AlertTitle>Validation Errors</AlertTitle>
+                                        <AlertDescription>
+                                            <ul className="list-disc pl-5">
+                                                {actionData.errors.map((err, i) => 
+                                                    <li key={i}>{err.path.join('.')} : {err.message}</li>
+                                                )}
+                                            </ul>
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={preferencesForm.control}
+                                        name="currentPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Current Password</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    
+                                    <FormField
+                                        control={preferencesForm.control}
+                                        name="newPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>New Password</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={preferencesForm.control}
+                                        name="confirmPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Confirm Password</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={preferencesForm.control}
+                                        name="receiveMarketingEmails"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                    />
+                                                </FormControl>
+                                                <div className="space-y-1 leading-none">
+                                                    <FormLabel>
+                                                        Receive marketing emails
+                                                    </FormLabel>
+                                                </div>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <Button 
+                                    type="submit" 
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting && navigation.formData?.get('intent') === 'updatePreferences' 
+                                        ? 'Saving...' 
+                                        : 'Update Preferences'}
+                                </Button>
+                            </Form>
+                        </UIForm>
                     </>
                 )}
             </ClientOnly>
