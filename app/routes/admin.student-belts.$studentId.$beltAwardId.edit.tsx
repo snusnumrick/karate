@@ -15,18 +15,7 @@ import {
   SelectValue,
 } from "~/components/ui/select"; // Import Select components
 
-// Define the valid belt ranks based on the enum
-const beltRanks = [
-  'white',
-  'yellow',
-  'orange',
-  'green',
-  'blue',
-  'purple',
-  'red',
-  'brown',
-  'black'
-] as const; // Use 'as const' for stricter typing
+import { BELT_RANKS } from "~/utils/constants";
 
 // Define types (assuming table renamed to 'belt_awards' and types regenerated)
 // Ensure app/types/supabase.ts has been regenerated after adding the enum in SQL

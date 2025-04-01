@@ -19,18 +19,7 @@ import type { Database } from "~/types/supabase";
 import { Badge } from "~/components/ui/badge"; // Import Badge
 import { format } from 'date-fns'; // Import date-fns
 
-// Helper mapping for belt colors (adjust colors as needed)
-const beltColorMap: Record<string, string> = {
-  white: 'bg-white border border-gray-300',
-  yellow: 'bg-yellow-200',
-  orange: 'bg-orange-300',
-  green: 'bg-green-500',
-  blue: 'bg-blue-500',
-  purple: 'bg-purple-500',
-  red: 'bg-red-600',
-  brown: 'bg-yellow-800', // Or another brown color like bg-amber-800
-  black: 'bg-black',
-};
+import { beltColorMap } from "~/utils/constants";
 
 // Define the type for the student data returned by the loader more accurately
 // Assuming types regenerated with belt_rank_enum
