@@ -134,10 +134,10 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - **Admin Attendance Reports**: Admins can view attendance summaries and rates at `/admin/attendance/report`.
 
 ### Next Priority Features
-1. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`). Guide them towards family creation or linking if applicable.
-2. **Achievement Badges**: Implement achievement badge functionality (data model exists, needs UI/logic).
-3. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers).
-4. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
+1. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`). Guide them towards family creation or linking if applicable. (Next)
+2. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers).
+3. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
+<!-- Achievement Badges moved to implemented -->
 
 ### Development Progress
 ```mermaid

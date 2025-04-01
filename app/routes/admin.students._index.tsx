@@ -3,6 +3,7 @@ import { Link, useLoaderData, useRouteError } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
+import { format } from 'date-fns'; // Import date-fns for formatting dates
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge"; // Import Badge
 import {
@@ -136,12 +137,14 @@ export default function StudentsAdminPage() {
                       }
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" asChild className="mr-2">
-                      {/* Link to a future detail/edit page */}
+                  <TableCell className="space-x-2 whitespace-nowrap"> {/* Add class for spacing */}
+                    <Button variant="outline" size="sm" asChild> {/* Remove mr-2 */}
                       <Link to={`/admin/students/${student.id}`}>View/Edit</Link>
                     </Button>
-                    {/* Add delete button/logic later */}
+                    <Button variant="secondary" size="sm" asChild> {/* Add Achievements button */}
+                      <Link to={`/admin/students/${student.id}/achievements`}>Achievements</Link>
+                    </Button>
+                    {/* Add delete button/logic here if needed */}
                   </TableCell>
                 </TableRow>
               ))}
