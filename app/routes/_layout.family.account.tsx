@@ -30,6 +30,10 @@ type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 interface LoaderData {
     family?: FamilyRow;
     guardians?: GuardianRow[];
+    policyAgreements?: Database['public']['Tables']['policy_agreements']['Row'];
+    userPreferences?: {
+        receiveMarketingEmails: boolean;
+    };
     error?: string;
 }
 
@@ -65,6 +69,15 @@ const preferencesSchema = z.object({
             code: z.ZodIssueCode.custom,
             path: ['newPassword'],
             message: "Password must be at least 8 characters"
+        });
+    }
+    
+    // Password complexity check
+    if (data.newPassword && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(data.newPassword)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['newPassword'],
+            message: "Password must contain uppercase, lowercase, and number"
         });
     }
 });
@@ -150,6 +163,20 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         .from('guardians')
         .select('*')
         .eq('family_id', familyId);
+        
+    // Fetch policy agreements
+    const {data: policyData, error: policyError} = await supabaseServer
+        .from('policy_agreements')
+        .select('*')
+        .eq('family_id', familyId)
+        .order('signature_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+    // Get user preferences from auth metadata
+    const userPreferences = {
+        receiveMarketingEmails: user.user_metadata?.receive_marketing_emails ?? true
+    };
 
     if (familyError || !familyData) {
         console.error("Error fetching family data for account page:", familyError?.message);
@@ -166,7 +193,12 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         });
     }
 
-    return json({family: familyData, guardians: guardiansData ?? []}, {headers});
+    return json({
+        family: familyData, 
+        guardians: guardiansData ?? [],
+        policyAgreements: policyData || undefined,
+        userPreferences
+    }, {headers});
 }
 
 // --- Action ---
@@ -328,11 +360,17 @@ export default function AccountSettingsPage() {
     const isSubmitting = navigation.state === "submitting";
 
     // --- Preferences Form ---
+    const {family, guardians, policyAgreements, userPreferences, error: loaderError} = useLoaderData<typeof loader>();
+    const actionData = useActionData<typeof action>();
+    const navigation = useNavigation();
+    const isSubmitting = navigation.state === "submitting";
+
+    // --- Preferences Form ---
     const preferencesForm = useForm<PreferencesFormData>({
         resolver: zodResolver(preferencesSchema),
         defaultValues: {
             intent: 'updatePreferences',
-            receiveMarketingEmails: true
+            receiveMarketingEmails: userPreferences?.receiveMarketingEmails ?? true
         }
     });
 
@@ -593,6 +631,18 @@ export default function AccountSettingsPage() {
                                 />
                         <FormField
                             control={familyForm.control}
+                            name="emergency_contact"
+                                    render={({field}) => (
+                                        <FormItem className="md:col-span-2">
+                                            <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
+                                            <FormControl><Textarea {...field}
+                                                                   value={getDefaultValue(field.value)}/></FormControl>
+                                            <FormMessage className="dark:text-red-400"/>
+                                        </FormItem>
+                                    )}
+                                />
+                        <FormField
+                            control={familyForm.control}
                             name="notes"
                                     render={({field}) => (
                                         <FormItem className="md:col-span-2">
@@ -668,6 +718,10 @@ export default function AccountSettingsPage() {
                                             </FormItem>
                                         )}
                                     />
+                                    
+                                    <FormMessage className="text-sm text-muted-foreground mt-1">
+                                        Password must be at least 8 characters and contain uppercase, lowercase, and number.
+                                    </FormMessage>
 
                                     <FormField
                                         control={preferencesForm.control}

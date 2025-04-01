@@ -37,6 +37,10 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: 'Passwords do not match' }, { status: 400 });
   }
 
+  if (password.length < 8) {
+    return json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+  }
+
   try {
     // Create auth user
     console.log('Creating auth user ...', contact1Email);
@@ -50,7 +54,9 @@ export async function action({ request }: ActionFunctionArgs) {
       options: {
         // This tells Supabase where to redirect the user after email confirmation
         emailRedirectTo: emailRedirectTo,
-        // Profile data is explicitly inserted later, so no 'data' option here
+        data: {
+          receive_marketing_emails: true // Default opt-in for marketing emails
+        }
       }
     });
     console.log('Auth user created:', user, authError);
