@@ -238,13 +238,16 @@ INSERT INTO waivers (title, description, content, required) VALUES
 ON CONFLICT (title) DO UPDATE SET content = EXCLUDED.content;
 
 
--- Waiver Signatures table
+-- Waiver Signatures table with enhanced structure
+DROP TABLE IF EXISTS waiver_signatures CASCADE;
 CREATE TABLE IF NOT EXISTS waiver_signatures (
                                                  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                                                  waiver_id uuid REFERENCES waivers(id) ON DELETE CASCADE NOT NULL,
                                                  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+                                                 signed_at timestamptz NOT NULL DEFAULT now(),
                                                  signature_data text NOT NULL,
-                                                 signed_at timestamptz DEFAULT now()
+                                                 agreement_version text NOT NULL,  -- Add version tracking
+                                                 CONSTRAINT unique_waiver_signature UNIQUE (waiver_id, user_id)  -- Prevent duplicate signatures
 );
 
 DO $$
@@ -262,27 +265,7 @@ DO $$
         END IF;
     END$$;
 
--- Policy Agreements table
-CREATE TABLE IF NOT EXISTS policy_agreements (
-                                                 id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-                                                 family_id uuid REFERENCES families(id) ON DELETE CASCADE NOT NULL,
-                                                 full_name text NOT NULL,
-                                                 photo_release boolean NOT NULL,
-                                                 liability_release boolean NOT NULL,
-                                                 code_of_conduct boolean NOT NULL,
-                                                 payment_policy boolean NOT NULL,
-                                                 attire_agreement boolean NOT NULL,
-                                                 signature_date timestamptz NOT NULL DEFAULT now()
-);
-
-DO $$
-    BEGIN
-        IF NOT EXISTS (
-            SELECT 1 FROM pg_indexes WHERE indexname = 'idx_policy_agreements_family_id'
-        ) THEN
-            CREATE INDEX idx_policy_agreements_family_id ON policy_agreements (family_id);
-        END IF;
-    END$$;
+-- Policy Agreements table removed in favor of enhanced waiver_signatures
 
 -- Profiles table
 CREATE TABLE IF NOT EXISTS profiles (
@@ -337,7 +320,7 @@ ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waivers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waiver_signatures ENABLE ROW LEVEL SECURITY;
-ALTER TABLE policy_agreements ENABLE ROW LEVEL SECURITY;
+-- policy_agreements table removed
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Add RLS policies conditionally
@@ -469,18 +452,26 @@ DO $$
                 FOR SELECT USING (auth.uid() = user_id);
         END IF;
 
+        -- Enhanced waiver_signatures RLS policies
         IF NOT EXISTS (
             SELECT 1 FROM pg_policies
-            WHERE tablename = 'policy_agreements' AND policyname = 'Policy agreements are viewable by family members'
+            WHERE tablename = 'waiver_signatures' AND policyname = 'Users can view their waiver signatures'
         ) THEN
-            CREATE POLICY "Policy agreements are viewable by family members" ON policy_agreements
-                FOR SELECT USING (
-                EXISTS (
-                    SELECT 1 FROM profiles
-                    WHERE profiles.family_id = policy_agreements.family_id
-                      AND profiles.id = auth.uid()
-                )
-                );
+            CREATE POLICY "Users can view their waiver signatures" ON waiver_signatures
+                FOR SELECT USING (auth.uid() = user_id);
+        END IF;
+
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_policies
+            WHERE tablename = 'waiver_signatures' AND policyname = 'Admins can manage waiver signatures'
+        ) THEN
+            CREATE POLICY "Admins can manage waiver signatures" ON waiver_signatures
+                FOR ALL TO authenticated
+                USING (EXISTS (
+                    SELECT 1 FROM profiles 
+                    WHERE profiles.id = auth.uid() 
+                    AND profiles.role = 'admin'
+                ));
         END IF;
     END$$;
 

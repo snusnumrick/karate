@@ -30,7 +30,7 @@ type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 interface LoaderData {
     family?: FamilyRow;
     guardians?: GuardianRow[];
-    policyAgreements?: Database['public']['Tables']['policy_agreements']['Row'];
+    waiverSignatures?: Database['public']['Tables']['waiver_signatures']['Row'][];
     userPreferences?: {
         receiveMarketingEmails: boolean;
     };
@@ -164,14 +164,12 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         .select('*')
         .eq('family_id', familyId);
         
-    // Fetch policy agreements
-    const {data: policyData, error: policyError} = await supabaseServer
-        .from('policy_agreements')
-        .select('*')
-        .eq('family_id', familyId)
-        .order('signature_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    // Fetch waiver signatures
+    const {data: waiverSignaturesData, error: waiverSignaturesError} = await supabaseServer
+        .from('waiver_signatures')
+        .select('*, waivers(title, description)')
+        .eq('user_id', user.id)
+        .order('signed_at', { ascending: false });
         
     // Get user preferences from auth metadata
     const userPreferences = {
@@ -196,7 +194,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     return json({
         family: familyData, 
         guardians: guardiansData ?? [],
-        policyAgreements: policyData || undefined,
+        waiverSignatures: waiverSignaturesData || [],
         userPreferences
     }, {headers});
 }

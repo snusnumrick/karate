@@ -181,19 +181,39 @@ export async function action({ request }: ActionFunctionArgs) {
       console.log('Student created:', studentData);
     }
 
-    // Record policy agreements
-   const { data: policyData, error: policyError } = await supabaseServer.from('policy_agreements').insert({
-      family_id: familyId,
-      full_name: formData.get('fullName'),
-      photo_release: formData.has('photoRelease'),
-      liability_release: formData.has('liability'),
-      code_of_conduct: formData.has('conduct'),
-      payment_policy: formData.has('payment'),
-      attire_agreement: formData.has('attire'),
-      signature_date: new Date().toISOString()
-    });
-    if (policyError) throw policyError;
-    console.log('Policy agreement created:', policyData);
+    // Record waiver signatures for each required waiver
+    const fullName = formData.get('fullName') as string;
+    const currentDate = new Date().toISOString();
+    
+    // Get all required waivers
+    const { data: waivers, error: waiversError } = await supabaseServer
+      .from('waivers')
+      .select('id, title')
+      .eq('required', true);
+      
+    if (waiversError) throw waiversError;
+    console.log('Required waivers:', waivers);
+    
+    // Create signatures for each waiver
+    for (const waiver of waivers) {
+      const isAgreed = formData.has(waiver.title.toLowerCase().replace(/\s+/g, '')) || 
+                       formData.has('agreeAll');
+                       
+      if (isAgreed) {
+        const { data: signatureData, error: signatureError } = await supabaseServer
+          .from('waiver_signatures')
+          .insert({
+            waiver_id: waiver.id,
+            user_id: user.id,
+            signature_data: fullName,
+            agreement_version: '1.0', // Initial version
+            signed_at: currentDate
+          });
+          
+        if (signatureError) throw signatureError;
+        console.log(`Waiver signature created for ${waiver.title}`);
+      }
+    }
 
     return redirect('/register/success');
 
