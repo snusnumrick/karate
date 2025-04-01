@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
+import {useEffect, useState} from "react";
+import {json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import { useLoaderData, Link, Form, useActionData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { Database } from "~/types/supabase"; // Use Supabase generated types
+import type { Database } from "~/types/supabase";
 
 // Define the type for the student data returned by the loader more accurately
 type StudentRow = Database['public']['Tables']['students']['Row'];
@@ -35,7 +35,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Student ID is required", { status: 400 });
   }
 
-  const { supabaseServer, headers } = getSupabaseServerClient(request);
+  const { supabaseServer, response } = getSupabaseServerClient(request);
+  const headers = response.headers;
   const { data: { user } } = await supabaseServer.auth.getUser();
 
   if (!user) {
@@ -69,20 +70,136 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Forbidden: You do not have permission to view this student.", { status: 403 });
   }
 
-  // Return the student data
-  return json({ student: studentData as Student }, { headers });
+  // Return the student data, explicitly typed
+  return json({ student: studentData as StudentRow }, { headers });
 }
 
-// TODO: Add action function for handling form submissions (edit/delete)
-// export async function action({ request, params }: ActionFunctionArgs) { ... }
+// Action function for handling form submissions (edit/delete)
+export async function action({ request, params }: ActionFunctionArgs) : Promise<TypedResponse<ActionData>> {
+  const studentId = params.studentId;
+  if (!studentId) {
+    return json({ error: "Student ID is required" }, { status: 400 });
+  }
+
+  const formData = await request.formData();
+  const intent = formData.get("intent");
+  const { supabaseServer, response } = getSupabaseServerClient(request);
+  const headers = response.headers;
+  const { data: { user } } = await supabaseServer.auth.getUser();
+
+  if (!user) {
+    return redirect("/login?redirectTo=/family", { headers });
+  }
+
+  // Authorization check: Fetch student's family ID first
+  const { data: studentFamily, error: studentFamilyError } = await supabaseServer
+      .from('students')
+      .select('family_id')
+      .eq('id', studentId)
+      .single();
+
+  if (studentFamilyError || !studentFamily) {
+    return json({ error: "Student not found or error fetching student." }, { status: 404, headers });
+  }
+
+  // Verify the logged-in user belongs to the same family
+  const { data: profileData, error: profileError } = await supabaseServer
+      .from('profiles')
+      .select('family_id')
+      .eq('id', user.id)
+      .single();
+
+  if (profileError || !profileData || profileData.family_id !== studentFamily.family_id) {
+    return json({ error: "Forbidden: You do not have permission to modify this student." }, { status: 403, headers });
+  }
+
+  // --- Handle Delete Intent ---
+  if (intent === "delete") {
+    // Add checks for related data if necessary (e.g., attendance, payments) before deleting
+    const { error: deleteError } = await supabaseServer
+        .from('students')
+        .delete()
+        .eq('id', studentId);
+
+    if (deleteError) {
+      console.error("Error deleting student:", deleteError);
+      return json({ error: "Failed to delete student. " + deleteError.message }, { status: 500, headers });
+    }
+
+    // Redirect to family page after successful deletion
+    return redirect("/family", { headers });
+  }
+
+  // --- Handle Edit Intent ---
+  if (intent === "edit") {
+    // Basic validation example (enhance with Zod if needed)
+    const firstName = formData.get('first_name') as string;
+    const lastName = formData.get('last_name') as string;
+    // Add validation for other required fields...
+
+    if (!firstName || !lastName) {
+      return json({ error: "First name and last name are required.", fieldErrors: { first_name: !firstName ? 'Required' : '', last_name: !lastName ? 'Required' : '' } }, { status: 400, headers });
+    }
+
+    const updateData: Partial<StudentRow> = {
+      first_name: firstName,
+      last_name: lastName,
+      gender: formData.get('gender') as string,
+      birth_date: formData.get('birth_date') as string,
+      cell_phone: formData.get('cell_phone') as string || null,
+      email: formData.get('email') as string || null,
+      t_shirt_size: formData.get('t_shirt_size') as string,
+      school: formData.get('school') as string,
+      grade_level: formData.get('grade_level') as string,
+      special_needs: formData.get('special_needs') as string || null,
+      allergies: formData.get('allergies') as string || null,
+      medications: formData.get('medications') as string || null,
+      // Handle checkbox - value is 'on' if checked, null otherwise
+      immunizations_up_to_date: formData.get('immunizations_up_to_date') === 'on',
+      immunization_notes: formData.get('immunization_notes') as string || null,
+      belt_rank: formData.get('belt_rank') as string,
+    };
+
+    const { error: updateError } = await supabaseServer
+        .from('students')
+        .update(updateData)
+        .eq('id', studentId)
+        .select() // Optionally select the updated data
+        .single();
+
+    if (updateError) {
+      console.error("Error updating student:", updateError);
+      return json({ error: "Failed to update student. " + updateError.message }, { status: 500, headers });
+    }
+
+    // Return success message
+    return json({ success: true, message: "Student updated successfully." }, { headers });
+  }
+
+  // Invalid intent
+  return json({ error: "Invalid action." }, { status: 400, headers });
+}
+
 
 export default function StudentDetailPage() {
   const { student } = useLoaderData<typeof loader>();
-  // const actionData = useActionData<typeof action>(); // For form feedback
+  const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+  const [isEditing, setIsEditing] = useState(false);
+
+  const isSubmitting = navigation.state === "submitting";
+
+  // Reset edit mode on successful update
+  useEffect(() => {
+    if (actionData?.success && isEditing) {
+      setIsEditing(false);
+    }
+  }, [actionData, isEditing]);
+
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family Portal</Link>
+      <div className="container mx-auto px-4 py-8">
+        <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family Portal</Link>
 
       <h1 className="text-3xl font-bold mb-6">Student Details: {student.first_name} {student.last_name}</h1>
 
