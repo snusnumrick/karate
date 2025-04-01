@@ -48,6 +48,9 @@ export async function action({ request }: ActionFunctionArgs) {
     const url = new URL(request.url);
     const emailRedirectTo = `${url.origin}/auth/callback`;
 
+    // Get marketing email preference from form
+    const receiveMarketing = formData.has('marketingEmails');
+    
     const { data: { user }, error: authError } = await supabaseServer.auth.signUp({
       email: contact1Email,
       password,
@@ -55,7 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
         // This tells Supabase where to redirect the user after email confirmation
         emailRedirectTo: emailRedirectTo,
         data: {
-          receive_marketing_emails: true // Default opt-in for marketing emails
+          receive_marketing_emails: receiveMarketing // Use form value instead of hardcoded true
         }
       }
     });
@@ -624,6 +627,23 @@ export default function RegisterPage() {
                       />
                       <p className="text-xs text-muted-foreground mt-1">Minimum number of characters is 5</p>
                     </div>
+                  </div>
+                  
+                  <div className="md:col-span-2 mt-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="marketingEmails" 
+                        name="marketingEmails" 
+                        defaultChecked={true}
+                        className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400"
+                      />
+                      <Label htmlFor="marketingEmails" className="text-sm font-medium">
+                        I want to receive promotional emails and updates
+                      </Label>
+                    </div>
+                    <p className="text-muted-foreground text-sm mt-1 ml-6">
+                      You can change this preference anytime in your account settings
+                    </p>
                   </div>
                   
                   <h3 className="text-lg font-medium text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
