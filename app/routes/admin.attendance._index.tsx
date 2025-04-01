@@ -173,7 +173,7 @@ export default function AttendanceHistoryPage() { // Renamed component
               <SelectValue placeholder="All Students" />
             </SelectTrigger>
             <SelectContent className="dark:bg-gray-700">
-              <SelectItem value="">All Students</SelectItem>
+              {/* Removed the explicit "All Students" item with value="" */}
               {allStudents.map(student => (
                 <SelectItem key={student.id} value={student.id}>
                   {student.last_name}, {student.first_name}
