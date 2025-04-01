@@ -459,6 +459,12 @@ export default function AccountSettingsPage() {
                                                     </Select>
                                                 )}
                                             </ClientOnly>
+                                            {/* Add hidden input to ensure value is submitted with form */}
+                                            <input
+                                                type="hidden"
+                                                name="province"
+                                                value={field.value || ''}
+                                            />
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -672,6 +678,12 @@ function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: G
                                         </Select>
                                     )}
                                 </ClientOnly>
+                                {/* Add hidden input to ensure value is submitted with form */}
+                                <input
+                                    type="hidden"
+                                    name="relationship"
+                                    value={field.value || ''}
+                                />
                                 <FormMessage className="dark:text-red-400"/>
                             </FormItem>
                         )}
