@@ -185,7 +185,7 @@ export async function action({ request, params }: ActionFunctionArgs) : Promise<
       // Handle checkbox - value is 'on' if checked, null otherwise
       immunizations_up_to_date: formData.get('immunizations_up_to_date') === 'on' ? 'true' : 'false',
       immunization_notes: formData.get('immunization_notes') as string || null,
-      belt_rank: formData.get('belt_rank') as "white" | "yellow" | "orange" | "green" | "blue" | "purple" | "red" | "brown" | "black" | null | undefined,
+      belt_rank: formData.get('belt_rank') as typeof BELT_RANKS[number] | null | undefined,
     };
 
     const { error: updateError } = await supabaseServer
