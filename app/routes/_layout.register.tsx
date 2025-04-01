@@ -15,7 +15,8 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // For ErrorBoundary
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import {siteConfig} from "~/config/site"; // For ErrorBoundary
 
 // Action function to handle form submission
 export async function action({ request }: ActionFunctionArgs) {
@@ -69,7 +70,7 @@ export async function action({ request }: ActionFunctionArgs) {
     // Create family record
     const { data: familyData, error: familyError } = await supabaseServer.from('families')
       .insert({
-        address: formData.get('address') as string,
+        address: formData.get('address'),
         city: formData.get('city'),
         province: formData.get('province'),
         postal_code: formData.get('postalCode'),
