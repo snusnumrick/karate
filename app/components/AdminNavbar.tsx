@@ -3,7 +3,8 @@ import { Link, Form } from "@remix-run/react";
 import { ModeToggle } from "./mode-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { Button } from "./ui/button";
-import { Menu, X, LogOut, LayoutDashboard, Users, User, CreditCard, FileText, CalendarCheck } from "lucide-react"; // Added icons
+import { Menu, X, LogOut, LayoutDashboard, Users, User, CreditCard, FileText, CalendarCheck, Sun } from "lucide-react"; // Added Sun and icons
+import ClientOnly from './client-only'; // Import ClientOnly
 
 // Define navigation items for reuse
 const adminNavItems = [

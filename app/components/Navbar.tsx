@@ -3,9 +3,10 @@ import { Link } from "@remix-run/react";
 import { ModeToggle } from "./mode-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { Button } from "./ui/button";
-import { Menu, X, LogOut } from "lucide-react"; // Import LogOut
+import { Menu, X, LogOut, Sun } from "lucide-react"; // Import LogOut and Sun
 import { useRouteLoaderData, Form } from "@remix-run/react"; // Import useRouteLoaderData and Form
 import type { loader as rootLayoutLoader } from "~/routes/_layout"; // Import loader type
+import ClientOnly from './client-only'; // Import ClientOnly
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
