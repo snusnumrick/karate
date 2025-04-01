@@ -217,11 +217,12 @@ export default function AdminDashboard() {
               >
                 Process New Payment
               </Link>
+              {/* Update link to point to the student list */}
               <Link
-                  to="/admin/achievements/award"
+                  to="/admin/students"
                   className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
               >
-                Award Achievement
+                Manage Student Belts
               </Link>
             </div>
           </div>
