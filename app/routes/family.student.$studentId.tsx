@@ -394,10 +394,15 @@ export default function StudentDetailPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center mt-6">
-             <Button variant="outline" onClick={() => setIsEditing(true)}>
-               Edit Student
-             </Button>
+          <div className="flex flex-wrap justify-between items-center gap-4 mt-6">
+             <div className="flex gap-4">
+                 <Button variant="outline" onClick={() => setIsEditing(true)}>
+                   Edit Student
+                 </Button>
+                 <Button asChild variant="secondary">
+                    <Link to="/family/attendance">View Attendance</Link>
+                 </Button>
+             </div>
 
              {/* Delete Form */}
              <Form

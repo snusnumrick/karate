@@ -123,17 +123,18 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - Manage Students page (`/admin/students`) using service role client
   - Manage Waivers page (`/admin/waivers`) using service role client
   - View/Edit Waiver page (`/admin/waivers/:waiverId`)
-  - View Today's Attendance page (`/admin/attendance`)
+  - View Attendance History page (`/admin/attendance`) with date/student filters
   - Record Attendance page (`/admin/attendance/record`) with upsert logic
   - Added unique constraint to `attendance` table for reliable upserts
   - **Account Settings Link**: Added link from Family Portal to `/family/account`.
   - **Account Settings Page**: Implemented editing for Family, Guardian information, and password changes on `/family/account`.
   - **Student Management**: Added Edit/Delete functionality on `/family/student/:studentId`.
   - **Instructor Profile**: Basic instructor profile page available at `/about`.
+  - **Family Attendance View**: Parents can view attendance history for their children at `/family/attendance`.
 
 ### Next Priority Features
 1. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`). Guide them towards family creation or linking if applicable.
-2. **Attendance Tracking (Enhancements)**: Implement comprehensive attendance features beyond basic recording, such as history view, reporting for admins, and potentially user-facing views.
+2. **Attendance Tracking (Reporting)**: Develop reports for admins (e.g., monthly summaries, class rates).
 3. **Achievement Badges**: Implement achievement badge functionality (data model exists, needs UI/logic).
 4. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers).
 5. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
@@ -163,7 +164,9 @@ gantt
     User Onboarding Flow    :         onboard, 2024-06-01, 7d
     section Reporting & Features
     Attendance System (Basic):done,   attend_basic, 2024-05-25, 14d
-    Attendance Enhancements :active,  attend_enhance, after attend_basic, 14d
+    Attendance Admin Filters:done,    attend_admin_filter, after attend_basic, 7d
+    Attendance Family View  :active,  attend_family_view, after attend_admin_filter, 3d
+    Attendance Reporting    :         attend_report, after attend_family_view, 7d
     Achievement Tracking    :         achieve, 2024-06-15, 21d
     Automated Notifications :         notify, 2024-07-01, 14d
     Technical Debt Refactor :         tech_debt, 2024-07-15, 7d
