@@ -80,11 +80,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 
   // Fetch the student's achievements
-  const { data: achievementsData, error: achievementsError } = await supabaseServer
-    .from('achievements')
-    .select('*')
-    .eq('student_id', studentId)
-    .order('awarded_date', { ascending: false });
+  const { data, error: achievementsError } = await supabaseServer
+      .from('achievements')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('awarded_date', { ascending: false });
+  let achievementsData = data;
 
   if (achievementsError) {
     console.error("Error fetching student achievements:", achievementsError?.message);
