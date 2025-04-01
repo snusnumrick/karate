@@ -221,7 +221,7 @@ export default function FamilyManager({ familyId, onSave }: FamilyManagerProps) 
           school: '',
           gradeLevel: '',
           immunizationsUpToDate: false,
-          beltRank: 'white',
+          beltRank: 'white' as const,
           familyId: family.id
         }
       ]

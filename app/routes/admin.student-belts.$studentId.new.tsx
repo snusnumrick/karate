@@ -152,7 +152,7 @@ export default function AddAchievementPage() { // Function name can stay for now
                             <SelectValue placeholder="Select belt rank" />
                         </SelectTrigger>
                         <SelectContent>
-                            {beltRanks.map((rank) => (
+                            {BELT_RANKS.map((rank) => (
                                 <SelectItem key={rank} value={rank} className="capitalize">
                                     {rank}
                                 </SelectItem>
