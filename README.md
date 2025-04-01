@@ -166,14 +166,14 @@ gantt
     Account Settings Link   :done,    acct_link, after pay_eligibility, 1d
     Account Settings Page   :done,    acct_page, after acct_link, 7d
     Student Edit/Delete     :done,    student_edit, after acct_page, 3d
-    Instructor Profile Page :done,    instructor, 2024-03-15, 7d # Assuming /about covers this
-    User Onboarding Flow    :         onboard, 2024-06-01, 7d    # Added missing colon after task name
+    Instructor Profile Page :done,    instructor, 2024-03-15, 7d    %% Assuming /about covers this
+    User Onboarding Flow    :         onboard, 2024-06-01, 7d    %% Added missing colon after task name
     section Reporting & Features
     Attendance System (Basic):done,   attend_basic, 2024-05-25, 14d
     Attendance Admin Filters:done,    attend_admin_filter, after attend_basic, 7d
     Attendance Family View  :done,    attend_family_view, after attend_admin_filter, 3d
     Attendance Reporting    :active,  attend_report, after attend_family_view, 7d
-    Belt Award Tracking     :done,    belt_award, after attend_report, 10d # Admin CRUD & User View Implemented
+    Belt Award Tracking     :done,    belt_award, after attend_report, 10d %% Admin CRUD & User View Implemented
     Admin Pages (Missing Waivers, Pending Payments, New Family): done, admin_extra, after belt_award, 5d
     Automated Notifications :         notify, after admin_extra, 14d
     Technical Debt Refactor :         tech_debt, after notify, 7d
