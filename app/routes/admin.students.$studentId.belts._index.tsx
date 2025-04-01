@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, useNavigation, useParams, useSubmit } from "@remix-run/react";
+import { Link, useLoaderData, useNavigation, useParams, useSubmit, useNavigate } from "@remix-run/react"; // Import useNavigate
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
@@ -129,6 +129,7 @@ export default function AdminStudentAchievementsPage() { // Function name can st
   const navigation = useNavigation();
   const params = useParams(); // Get studentId from URL params
   const submit = useSubmit();
+  const navigate = useNavigate(); // Get navigate function
 
   const isSubmitting = navigation.state === "submitting";
 
@@ -153,9 +154,9 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                 Belt Awards for {student.first_name} {student.last_name} {/* Renamed title */}
             </h1>
         </div>
-        {/* Remove asChild again to prevent React.Children.only error */}
-        <Button>
-          <Link to={`/admin/students/${student.id}/belts/new`}>Add New Belt Award</Link> {/* Renamed link and text */}
+        {/* Use onClick with navigate instead of Link/asChild */}
+        <Button onClick={() => navigate(`/admin/students/${student.id}/belts/new`)}>
+          Add New Belt Award
         </Button>
       </div>
 
