@@ -128,15 +128,15 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - Added unique constraint to `attendance` table for reliable upserts
   - **Account Settings Link**: Added link from Family Portal to `/family/account`.
   - **Account Settings Page**: Implemented editing for Family, Guardian information, and password changes on `/family/account`.
+  - **Student Management**: Added Edit/Delete functionality on `/family/student/:studentId`.
+  - **Instructor Profile**: Basic instructor profile page available at `/about`.
 
 ### Next Priority Features
-1. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId` (In Progress).
-2. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`).
-3. **Attendance Tracking**: Implement core attendance tracking system features.
-4. **Achievement Badges**: Implement achievement badge functionality.
-6. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance).
-7. **Instructor Profile**: Develop the instructor profile module/page.
-8. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
+1. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`). Guide them towards family creation or linking if applicable.
+2. **Attendance Tracking (Enhancements)**: Implement comprehensive attendance features beyond basic recording, such as history view, reporting for admins, and potentially user-facing views.
+3. **Achievement Badges**: Implement achievement badge functionality (data model exists, needs UI/logic).
+4. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers).
+5. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
 
 ### Development Progress
 ```mermaid
@@ -148,7 +148,7 @@ gantt
     Family Management       :done,    family, 2024-03-15, 21d
     Family Portal           :done,    portal, 2024-03-29, 14d
     Student Detail Page     :done,    student, after portal, 7d
-    Security Implementation :done,    sec, 2024-04-05, 14d     
+    Security Implementation :done,    sec, 2024-04-05, 14d
     section Payments
     Gateway Integration     :done,    pay, 2024-04-20, 21d
     Transaction Tracking    :done,    pay_track, after pay, 14d
@@ -158,9 +158,15 @@ gantt
     section User Management
     Account Settings Link   :done,    acct_link, after pay_eligibility, 1d
     Account Settings Page   :done,    acct_page, after acct_link, 7d
-    section Reporting
-    Attendance System       :active,  attend, 2024-05-25, 21d
+    Student Edit/Delete     :done,    student_edit, after acct_page, 3d
+    Instructor Profile Page :done,    instructor, 2024-03-15, 7d # Assuming /about covers this
+    User Onboarding Flow    :         onboard, 2024-06-01, 7d
+    section Reporting & Features
+    Attendance System (Basic):done,   attend_basic, 2024-05-25, 14d
+    Attendance Enhancements :active,  attend_enhance, after attend_basic, 14d
     Achievement Tracking    :         achieve, 2024-06-15, 21d
+    Automated Notifications :         notify, 2024-07-01, 14d
+    Technical Debt Refactor :         tech_debt, 2024-07-15, 7d
 ```
 
 ### Technical Health
