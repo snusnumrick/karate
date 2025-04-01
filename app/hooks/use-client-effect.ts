@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, {useEffect, useState} from "react";
 
-export function useClientEffect(cb: () => void, deps?: any[]) {
-  const [hasMounted, setHasMounted] = useState(false);
+export function useClientEffect(cb: () => void, deps?: React.DependencyList) {
+    const [hasMounted, setHasMounted] = useState(false);
 
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+    useEffect(() => {
+        setHasMounted(true);
+    }, []);
 
-  useEffect(() => {
-    if (hasMounted) {
-      cb();
-    }
-  }, [hasMounted, ...(deps || [])]);
+    useEffect(() => {
+        if (hasMounted) {
+            cb();
+        }
+    }, [hasMounted, cb, ...(deps || [])]);
 }

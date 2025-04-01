@@ -2,8 +2,6 @@ import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
 import { Link, useLoaderData, useRouteError } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
-import { Button } from "~/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -16,7 +14,6 @@ import {
 // Define types
 type ProfileRow = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'email' | 'family_id'>;
 type WaiverRow = Pick<Database['public']['Tables']['waivers']['Row'], 'id' | 'title'>;
-type SignatureRow = Pick<Database['public']['Tables']['waiver_signatures']['Row'], 'user_id' | 'waiver_id'>;
 
 type UserMissingWaivers = ProfileRow & {
     missingWaivers: WaiverRow[];
@@ -27,7 +24,7 @@ type LoaderData = {
     usersMissingWaivers: UserMissingWaivers[];
 };
 
-export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+export async function loader(): Promise<TypedResponse<LoaderData>> {
     console.log("Entering /admin/waivers/missing loader...");
 
     const supabaseUrl = process.env.SUPABASE_URL;

@@ -9,7 +9,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const { data: { user } } = await supabaseServer.auth.getUser();
   
   if (!user) {
-    return json({ waivers: [], userSignedWaivers: [] });
     return json({ waivers: [], userSignedWaivers: [], isAuthenticated: false });
   }
   

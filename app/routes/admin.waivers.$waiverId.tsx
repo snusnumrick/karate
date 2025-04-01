@@ -16,8 +16,6 @@ import { Textarea } from "~/components/ui/textarea";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // For displaying errors
 
-type WaiverRow = Database['public']['Tables']['waivers']['Row'];
-
 // Loader to fetch a single waiver
 export async function loader({ params }: LoaderFunctionArgs) {
   console.log("Entering /admin/waivers/$waiverId loader...");

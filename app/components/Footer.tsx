@@ -1,7 +1,6 @@
-import { Link } from "@remix-run/react";
+import { Link, useRouteLoaderData } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
-import { useRouteLoaderData } from "@remix-run/react"; // Import useRouteLoaderData
 import type { loader as rootLayoutLoader } from "~/routes/_layout";
 import {siteConfig} from "~/config/site"; // Import loader type
 

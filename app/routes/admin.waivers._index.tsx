@@ -16,7 +16,7 @@ import {
 // Define type for loader data
 type WaiverRow = Database['public']['Tables']['waivers']['Row'];
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader() {
   console.log("Entering /admin/waivers loader...");
 
   const supabaseUrl = process.env.SUPABASE_URL;
