@@ -10,9 +10,9 @@ import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { format } from 'date-fns'; // For default date
 
-// Define types
+// Define types (assuming table renamed to 'belt_awards')
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
-type AchievementInsert = Database['public']['Tables']['achievements']['Insert'];
+type BeltAwardInsert = Database['public']['Tables']['belt_awards']['Insert']; // Renamed
 
 type LoaderData = {
   student: StudentRow;
@@ -54,7 +54,7 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
     return json({ student: studentData });
 }
 
-// Action to add new achievement
+// Action to add new belt award
 export async function action({ request, params }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
     const studentId = params.studentId;
     if (!studentId) {
@@ -86,28 +86,28 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    const achievementData: AchievementInsert = {
+    const beltAwardData: BeltAwardInsert = { // Renamed variable
         student_id: studentId,
-        type,
-        description,
+        type, // Assuming 'type' is the belt name
+        description, // Assuming 'description' is notes
         awarded_date,
     };
 
     const { error: insertError } = await supabaseAdmin
-        .from('achievements')
-        .insert(achievementData);
+        .from('belt_awards') // Renamed table
+        .insert(beltAwardData); // Renamed variable
 
     if (insertError) {
-        console.error("Error inserting achievement:", insertError);
-        return json({ error: "Failed to add achievement. " + insertError.message }, { status: 500 });
+        console.error("Error inserting belt award:", insertError); // Updated message
+        return json({ error: "Failed to add belt award. " + insertError.message }, { status: 500 }); // Updated message
     }
 
-    // Redirect back to the achievements list on success
-    return redirect(`/admin/students/${studentId}/achievements`);
+    // Redirect back to the belt awards list on success
+    return redirect(`/admin/students/${studentId}/belts`); // Renamed redirect path
 }
 
 
-export default function AddAchievementPage() {
+export default function AddAchievementPage() { // Function name can stay for now, or rename later
     const { student } = useLoaderData<LoaderData>();
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
@@ -118,10 +118,10 @@ export default function AddAchievementPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-2xl">
-            <Link to={`/admin/students/${params.studentId}/achievements`} className="text-blue-600 hover:underline mb-4 inline-block">
-                &larr; Back to Achievements for {student.first_name}
+            <Link to={`/admin/students/${params.studentId}/belts`} className="text-blue-600 hover:underline mb-4 inline-block"> {/* Renamed link */}
+                &larr; Back to Belt Awards for {student.first_name} {/* Updated text */}
             </Link>
-            <h1 className="text-3xl font-bold mb-6">Add New Achievement</h1>
+            <h1 className="text-3xl font-bold mb-6">Add New Belt Award</h1> {/* Renamed title */}
 
             {actionData?.error && !actionData.fieldErrors && (
                 <Alert variant="destructive" className="mb-4">
@@ -132,13 +132,15 @@ export default function AddAchievementPage() {
 
             <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <div>
-                    <Label htmlFor="type">Achievement Type</Label>
+                    {/* Assuming 'type' is the belt name */}
+                    <Label htmlFor="type">Belt Awarded (e.g., Yellow, Orange)</Label>
                     <Input id="type" name="type" required />
                     {actionData?.fieldErrors?.type && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.type}</p>}
                 </div>
                 <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea id="description" name="description" required rows={3} />
+                    {/* Assuming 'description' is notes */}
+                    <Label htmlFor="description">Notes (Optional)</Label>
+                    <Textarea id="description" name="description" rows={3} />
                     {actionData?.fieldErrors?.description && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.description}</p>}
                 </div>
                 <div>
@@ -149,10 +151,10 @@ export default function AddAchievementPage() {
 
                 <div className="flex justify-end gap-4">
                     <Button type="button" variant="outline" asChild>
-                        <Link to={`/admin/students/${params.studentId}/achievements`}>Cancel</Link>
+                        <Link to={`/admin/students/${params.studentId}/belts`}>Cancel</Link> {/* Renamed link */}
                     </Button>
                     <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Adding...' : 'Add Achievement'}
+                        {isSubmitting ? 'Adding...' : 'Add Belt Award'} {/* Updated text */}
                     </Button>
                 </div>
             </Form>
@@ -162,5 +164,5 @@ export default function AddAchievementPage() {
 
 // Optional: Add ErrorBoundary
 export function ErrorBoundary() {
-    return <div>Error loading add achievement page.</div>;
+    return <div>Error loading add belt award page.</div>; // Updated message
 }

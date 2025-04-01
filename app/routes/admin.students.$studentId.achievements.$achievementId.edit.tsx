@@ -9,14 +9,14 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
-// Define types
+// Define types (assuming table renamed to 'belt_awards')
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
-type AchievementRow = Database['public']['Tables']['achievements']['Row'];
-type AchievementUpdate = Database['public']['Tables']['achievements']['Update'];
+type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Renamed
+type BeltAwardUpdate = Database['public']['Tables']['belt_awards']['Update']; // Renamed
 
 type LoaderData = {
   student: StudentRow;
-  achievement: AchievementRow;
+  beltAward: BeltAwardRow; // Renamed
 };
 
 type ActionData = {
@@ -26,12 +26,12 @@ type ActionData = {
   fieldErrors?: { [key: string]: string };
 };
 
-// Loader to get student name and specific achievement
+// Loader to get student name and specific belt award
 export async function loader({ params }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const studentId = params.studentId;
-    const achievementId = params.achievementId;
-    if (!studentId || !achievementId) {
-        throw new Response("Student ID and Achievement ID are required", { status: 400 });
+    const beltAwardId = params.beltAwardId; // Renamed parameter (needs file rename too)
+    if (!studentId || !beltAwardId) { // Renamed variable
+        throw new Response("Student ID and Belt Award ID are required", { status: 400 }); // Updated message
     }
 
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -54,27 +54,27 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
         throw new Response("Student not found", { status: 404 });
     }
 
-    // Fetch the specific achievement
-    const { data: achievementData, error: achievementError } = await supabaseAdmin
-        .from('achievements')
+    // Fetch the specific belt award
+    const { data: beltAwardData, error: beltAwardError } = await supabaseAdmin // Renamed variables
+        .from('belt_awards') // Renamed table
         .select('*')
-        .eq('id', achievementId)
+        .eq('id', beltAwardId) // Renamed variable
         .eq('student_id', studentId) // Ensure it belongs to the correct student
         .single();
 
-    if (achievementError || !achievementData) {
-        throw new Response("Achievement not found", { status: 404 });
+    if (beltAwardError || !beltAwardData) { // Renamed variables
+        throw new Response("Belt award not found", { status: 404 }); // Updated message
     }
 
-    return json({ student: studentData, achievement: achievementData });
+    return json({ student: studentData, beltAward: beltAwardData }); // Renamed property
 }
 
-// Action to update achievement
+// Action to update belt award
 export async function action({ request, params }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
     const studentId = params.studentId;
-    const achievementId = params.achievementId;
-    if (!studentId || !achievementId) {
-        return json({ error: "Student ID or Achievement ID is missing." }, { status: 400 });
+    const beltAwardId = params.beltAwardId; // Renamed parameter (needs file rename too)
+    if (!studentId || !beltAwardId) { // Renamed variable
+        return json({ error: "Student ID or Belt Award ID is missing." }, { status: 400 }); // Updated message
     }
 
     const formData = await request.formData();
@@ -101,30 +101,30 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    const achievementUpdateData: AchievementUpdate = {
-        type,
-        description,
+    const beltAwardUpdateData: BeltAwardUpdate = { // Renamed variable
+        type, // Assuming 'type' is belt name
+        description, // Assuming 'description' is notes
         awarded_date,
         // student_id is not updated
     };
 
     const { error: updateError } = await supabaseAdmin
-        .from('achievements')
-        .update(achievementUpdateData)
-        .eq('id', achievementId);
+        .from('belt_awards') // Renamed table
+        .update(beltAwardUpdateData) // Renamed variable
+        .eq('id', beltAwardId); // Renamed variable
 
     if (updateError) {
-        console.error("Error updating achievement:", updateError);
-        return json({ error: "Failed to update achievement. " + updateError.message }, { status: 500 });
+        console.error("Error updating belt award:", updateError); // Updated message
+        return json({ error: "Failed to update belt award. " + updateError.message }, { status: 500 }); // Updated message
     }
 
-    // Redirect back to the achievements list on success
-    return redirect(`/admin/students/${studentId}/achievements`);
+    // Redirect back to the belt awards list on success
+    return redirect(`/admin/students/${studentId}/belts`); // Renamed redirect path
 }
 
 
-export default function EditAchievementPage() {
-    const { student, achievement } = useLoaderData<LoaderData>();
+export default function EditAchievementPage() { // Function name can stay for now, or rename later
+    const { student, beltAward } = useLoaderData<LoaderData>(); // Renamed variable
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
     const params = useParams();
@@ -133,10 +133,10 @@ export default function EditAchievementPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-2xl">
-            <Link to={`/admin/students/${params.studentId}/achievements`} className="text-blue-600 hover:underline mb-4 inline-block">
-                &larr; Back to Achievements for {student.first_name}
+            <Link to={`/admin/students/${params.studentId}/belts`} className="text-blue-600 hover:underline mb-4 inline-block"> {/* Renamed link */}
+                &larr; Back to Belt Awards for {student.first_name} {/* Updated text */}
             </Link>
-            <h1 className="text-3xl font-bold mb-6">Edit Achievement</h1>
+            <h1 className="text-3xl font-bold mb-6">Edit Belt Award</h1> {/* Renamed title */}
 
             {actionData?.error && !actionData.fieldErrors && (
                 <Alert variant="destructive" className="mb-4">
@@ -147,27 +147,29 @@ export default function EditAchievementPage() {
 
             <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <div>
-                    <Label htmlFor="type">Achievement Type</Label>
-                    <Input id="type" name="type" required defaultValue={achievement.type} />
+                    {/* Assuming 'type' is belt name */}
+                    <Label htmlFor="type">Belt Awarded</Label>
+                    <Input id="type" name="type" required defaultValue={beltAward.type} />
                     {actionData?.fieldErrors?.type && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.type}</p>}
                 </div>
                 <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea id="description" name="description" required defaultValue={achievement.description} rows={3} />
+                    {/* Assuming 'description' is notes */}
+                    <Label htmlFor="description">Notes (Optional)</Label>
+                    <Textarea id="description" name="description" defaultValue={beltAward.description} rows={3} />
                     {actionData?.fieldErrors?.description && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.description}</p>}
                 </div>
                 <div>
                     <Label htmlFor="awarded_date">Awarded Date</Label>
-                    <Input id="awarded_date" name="awarded_date" type="date" required defaultValue={achievement.awarded_date} />
+                    <Input id="awarded_date" name="awarded_date" type="date" required defaultValue={beltAward.awarded_date} />
                     {actionData?.fieldErrors?.awarded_date && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.awarded_date}</p>}
                 </div>
 
                 <div className="flex justify-end gap-4">
                     <Button type="button" variant="outline" asChild>
-                        <Link to={`/admin/students/${params.studentId}/achievements`}>Cancel</Link>
+                        <Link to={`/admin/students/${params.studentId}/belts`}>Cancel</Link> {/* Renamed link */}
                     </Button>
                     <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Saving...' : 'Save Changes'}
+                        {isSubmitting ? 'Saving...' : 'Save Changes'} {/* Text can remain generic */}
                     </Button>
                 </div>
             </Form>
@@ -177,5 +179,5 @@ export default function EditAchievementPage() {
 
 // Optional: Add ErrorBoundary
 export function ErrorBoundary() {
-    return <div>Error loading edit achievement page.</div>;
+    return <div>Error loading edit belt award page.</div>; // Updated message
 }

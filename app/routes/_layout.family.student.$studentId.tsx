@@ -21,12 +21,13 @@ import { format } from 'date-fns'; // Import date-fns
 
 // Define the type for the student data returned by the loader more accurately
 type StudentRow = Database['public']['Tables']['students']['Row'];
-type AchievementRow = Database['public']['Tables']['achievements']['Row'];
+// Assuming table renamed to 'belt_awards' and types regenerated
+type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row'];
 
 // Extend loader data type
 type LoaderData = {
   student: StudentRow;
-  achievements: AchievementRow[];
+  beltAwards: BeltAwardRow[]; // Renamed from achievements
 };
 
 // Define potential action data structure
@@ -79,22 +80,21 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Forbidden: You do not have permission to view this student.", { status: 403 });
   }
 
-  // Fetch the student's achievements
-  const { data, error: achievementsError } = await supabaseServer
-      .from('achievements')
+  // Fetch the student's belt awards (assuming table renamed)
+  const { data: beltAwardsData, error: beltAwardsError } = await supabaseServer
+      .from('belt_awards') // Renamed from 'achievements'
       .select('*')
       .eq('student_id', studentId)
       .order('awarded_date', { ascending: false });
-  let achievementsData = data;
 
-  if (achievementsError) {
-    console.error("Error fetching student achievements:", achievementsError?.message);
+  if (beltAwardsError) {
+    console.error("Error fetching student belt awards:", beltAwardsError?.message);
     // Don't fail the whole page load, just return an empty array or handle gracefully
-    achievementsData = [];
+    beltAwardsData = [];
   }
 
-  // Return the student data and achievements, explicitly typed
-  return json({ student: studentData as StudentRow, achievements: achievementsData as AchievementRow[] }, { headers });
+  // Return the student data and belt awards, explicitly typed
+  return json({ student: studentData as StudentRow, beltAwards: beltAwardsData as BeltAwardRow[] }, { headers });
 }
 
 // Action function for handling form submissions (edit/delete)
@@ -206,7 +206,7 @@ export async function action({ request, params }: ActionFunctionArgs) : Promise<
 
 export default function StudentDetailPage() {
   // Update to use the extended LoaderData type
-  const { student, achievements } = useLoaderData<LoaderData>();
+  const { student, beltAwards } = useLoaderData<LoaderData>(); // Renamed from achievements
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const [isEditing, setIsEditing] = useState(false);
@@ -418,25 +418,27 @@ export default function StudentDetailPage() {
              </div>
           </div>
 
-          {/* Achievements Section */}
+          {/* Belt Awards Section */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-            <h2 className="text-xl font-semibold mb-4 border-b pb-2">Achievements</h2>
-            {achievements && achievements.length > 0 ? (
+            <h2 className="text-xl font-semibold mb-4 border-b pb-2">Belt Awards</h2> {/* Renamed title */}
+            {beltAwards && beltAwards.length > 0 ? (
               <ul className="space-y-3">
-                {achievements.map((achievement) => (
-                  <li key={achievement.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                {beltAwards.map((beltAward) => ( // Renamed variable
+                  <li key={beltAward.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                     <div>
-                      <p className="font-medium text-gray-800 dark:text-gray-100">{achievement.type}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{achievement.description}</p>
+                      {/* Assuming 'type' holds the belt name */}
+                      <p className="font-medium text-gray-800 dark:text-gray-100">{beltAward.type}</p>
+                      {/* Assuming 'description' holds notes about the award */}
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{beltAward.description}</p>
                     </div>
                     <Badge variant="secondary" className="text-xs">
-                      {format(new Date(achievement.awarded_date), 'MMM d, yyyy')}
+                      {format(new Date(beltAward.awarded_date), 'MMM d, yyyy')}
                     </Badge>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-600 dark:text-gray-400">No achievements recorded yet.</p>
+              <p className="text-gray-600 dark:text-gray-400">No belt awards recorded yet.</p> {/* Updated text */}
             )}
           </div>
 

@@ -16,13 +16,13 @@ import { Badge } from "~/components/ui/badge";
 import { format } from 'date-fns';
 import { Trash2, Edit } from 'lucide-react'; // Icons for actions
 
-// Define types
+// Define types (assuming table renamed to 'belt_awards')
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
-type AchievementRow = Database['public']['Tables']['achievements']['Row'];
+type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Renamed
 
 type LoaderData = {
   student: StudentRow;
-  achievements: AchievementRow[];
+  beltAwards: BeltAwardRow[]; // Renamed
   error?: string;
 };
 
@@ -61,30 +61,30 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
     throw new Response("Student not found", { status: 404 });
   }
 
-  // Fetch achievements for the student
-  const { data: achievementsData, error: achievementsError } = await supabaseAdmin
-    .from('achievements')
+  // Fetch belt awards for the student (assuming table renamed)
+  const { data: beltAwardsData, error: beltAwardsError } = await supabaseAdmin
+    .from('belt_awards') // Renamed from 'achievements'
     .select('*')
     .eq('student_id', studentId)
     .order('awarded_date', { ascending: false });
 
-  if (achievementsError) {
-    console.error("Error fetching achievements:", achievementsError?.message);
-    // Return student data even if achievements fail to load
-    return json({ student: studentData, achievements: [], error: "Failed to load achievements." });
+  if (beltAwardsError) {
+    console.error("Error fetching belt awards:", beltAwardsError?.message);
+    // Return student data even if belt awards fail to load
+    return json({ student: studentData, beltAwards: [], error: "Failed to load belt awards." }); // Renamed
   }
 
-  return json({ student: studentData, achievements: achievementsData });
+  return json({ student: studentData, beltAwards: beltAwardsData }); // Renamed
 }
 
-// Action function to handle achievement deletion
+// Action function to handle belt award deletion
 export async function action({ request, params }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
     const studentId = params.studentId;
     const formData = await request.formData();
     const intent = formData.get("intent");
-    const achievementId = formData.get("achievementId") as string;
+    const beltAwardId = formData.get("beltAwardId") as string; // Renamed from achievementId
 
-    if (intent !== "delete" || !achievementId || !studentId) {
+    if (intent !== "delete" || !beltAwardId || !studentId) { // Renamed variable
         return json({ error: "Invalid request." }, { status: 400 });
     }
 
@@ -97,48 +97,48 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Verify achievement belongs to the student before deleting (optional but good practice)
-    const { data: achievement, error: fetchError } = await supabaseAdmin
-        .from('achievements')
+    // Verify belt award belongs to the student before deleting (optional but good practice)
+    const { data: beltAward, error: fetchError } = await supabaseAdmin // Renamed variable
+        .from('belt_awards') // Renamed table
         .select('id')
-        .eq('id', achievementId)
+        .eq('id', beltAwardId) // Renamed variable
         .eq('student_id', studentId)
         .single();
 
-    if (fetchError || !achievement) {
-        return json({ error: "Achievement not found or does not belong to this student." }, { status: 404 });
+    if (fetchError || !beltAward) { // Renamed variable
+        return json({ error: "Belt award not found or does not belong to this student." }, { status: 404 }); // Updated message
     }
 
-    // Delete the achievement
+    // Delete the belt award
     const { error: deleteError } = await supabaseAdmin
-        .from('achievements')
+        .from('belt_awards') // Renamed table
         .delete()
-        .eq('id', achievementId);
+        .eq('id', beltAwardId); // Renamed variable
 
     if (deleteError) {
-        console.error("Error deleting achievement:", deleteError);
-        return json({ error: "Failed to delete achievement. " + deleteError.message }, { status: 500 });
+        console.error("Error deleting belt award:", deleteError); // Updated message
+        return json({ error: "Failed to delete belt award. " + deleteError.message }, { status: 500 }); // Updated message
     }
 
-    return json({ success: true, message: "Achievement deleted successfully." });
+    return json({ success: true, message: "Belt award deleted successfully." }); // Updated message
 }
 
 
-export default function AdminStudentAchievementsPage() {
-  const { student, achievements, error } = useLoaderData<LoaderData>();
+export default function AdminStudentAchievementsPage() { // Function name can stay for now, or rename later
+  const { student, beltAwards, error } = useLoaderData<LoaderData>(); // Renamed variable
   const navigation = useNavigation();
   const params = useParams(); // Get studentId from URL params
   const submit = useSubmit();
 
   const isSubmitting = navigation.state === "submitting";
 
-  const handleDelete = (achievementId: string) => {
-      if (!confirm("Are you sure you want to delete this achievement?")) {
+  const handleDelete = (beltAwardId: string) => { // Renamed parameter
+      if (!confirm("Are you sure you want to delete this belt award?")) { // Updated confirmation message
           return;
       }
       const formData = new FormData();
       formData.append("intent", "delete");
-      formData.append("achievementId", achievementId);
+      formData.append("beltAwardId", beltAwardId); // Renamed form field
       submit(formData, { method: "post" });
   };
 
@@ -150,23 +150,23 @@ export default function AdminStudentAchievementsPage() {
                 &larr; Back to Student Details
             </Link>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-                Achievements for {student.first_name} {student.last_name}
+                Belt Awards for {student.first_name} {student.last_name} {/* Renamed title */}
             </h1>
         </div>
         <Button asChild>
-          <Link to={`/admin/students/${student.id}/achievements/new`}>Add New Achievement</Link>
+          <Link to={`/admin/students/${student.id}/belts/new`}>Add New Belt Award</Link> {/* Renamed link and text */}
         </Button>
       </div>
 
       {error && (
         <Alert variant="destructive" className="mb-4">
-          <AlertTitle>Error Loading Achievements</AlertTitle>
+          <AlertTitle>Error Loading Belt Awards</AlertTitle> {/* Renamed title */}
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      {achievements.length === 0 && !error ? (
-        <p className="text-gray-600 dark:text-gray-400">No achievements recorded for this student yet.</p>
+      {beltAwards.length === 0 && !error ? ( // Renamed variable
+        <p className="text-gray-600 dark:text-gray-400">No belt awards recorded for this student yet.</p> // Updated text
       ) : (
         <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
           <Table>
@@ -179,18 +179,20 @@ export default function AdminStudentAchievementsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {achievements.map((achievement) => (
-                <TableRow key={achievement.id}>
-                  <TableCell className="font-medium">{achievement.type}</TableCell>
-                  <TableCell>{achievement.description}</TableCell>
+              {beltAwards.map((beltAward) => ( // Renamed variable
+                <TableRow key={beltAward.id}>
+                  {/* Assuming 'type' holds the belt name */}
+                  <TableCell className="font-medium">{beltAward.type}</TableCell>
+                  {/* Assuming 'description' holds notes */}
+                  <TableCell>{beltAward.description}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="text-xs">
-                      {format(new Date(achievement.awarded_date), 'MMM d, yyyy')}
+                      {format(new Date(beltAward.awarded_date), 'MMM d, yyyy')}
                     </Badge>
                   </TableCell>
                   <TableCell className="space-x-2 whitespace-nowrap">
-                    <Button variant="outline" size="icon" asChild title="Edit Achievement">
-                      <Link to={`/admin/students/${student.id}/achievements/${achievement.id}/edit`}>
+                    <Button variant="outline" size="icon" asChild title="Edit Belt Award"> {/* Updated title */}
+                      <Link to={`/admin/students/${student.id}/belts/${beltAward.id}/edit`}> {/* Renamed link */}
                         <Edit className="h-4 w-4" />
                       </Link>
                     </Button>
@@ -198,9 +200,9 @@ export default function AdminStudentAchievementsPage() {
                     <Button
                         variant="destructive"
                         size="icon"
-                        onClick={() => handleDelete(achievement.id)}
-                        disabled={isSubmitting && navigation.formData?.get('achievementId') === achievement.id}
-                        title="Delete Achievement"
+                        onClick={() => handleDelete(beltAward.id)} // Pass beltAward.id
+                        disabled={isSubmitting && navigation.formData?.get('beltAwardId') === beltAward.id} // Check beltAwardId
+                        title="Delete Belt Award" // Updated title
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -217,6 +219,6 @@ export default function AdminStudentAchievementsPage() {
 
 // Optional: Add a specific ErrorBoundary for this route
 export function ErrorBoundary() {
-  // ... (similar ErrorBoundary as in admin.students._index.tsx, adapted for achievements)
-  return <div>Error loading achievements page.</div>;
+  // ... (similar ErrorBoundary as in admin.students._index.tsx, adapted for belt awards)
+  return <div>Error loading belt awards page.</div>; // Updated message
 }

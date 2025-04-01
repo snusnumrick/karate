@@ -144,7 +144,7 @@ export default function StudentsAdminPage() {
                     </Button>
                     {/* Temporarily remove asChild to debug React.Children.only error */}
                     <Button variant="secondary" size="sm">
-                      <Link to={`/admin/students/${student.id}/achievements`}>Achievements</Link>
+                      <Link to={`/admin/students/${student.id}/belts`}>Belts</Link> {/* Renamed link and text */}
                     </Button>
                     {/* Add delete button/logic here if needed */}
                   </TableCell>

@@ -167,8 +167,8 @@ gantt
     Attendance Admin Filters:done,    attend_admin_filter, after attend_basic, 7d
     Attendance Family View  :done,    attend_family_view, after attend_admin_filter, 3d
     Attendance Reporting    :active,  attend_report, after attend_family_view, 7d
-    Achievement Tracking    :done,    achieve, after attend_report, 10d # Added Admin CRUD & User View
-    Automated Notifications :         notify, after achieve, 14d
+    Belt Award Tracking     :done,    belt_award, after attend_report, 10d # Renamed from Achievement Tracking
+    Automated Notifications :         notify, after belt_award, 14d
     Technical Debt Refactor :         tech_debt, after notify, 7d
 ```
 
