@@ -127,14 +127,13 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - Record Attendance page (`/admin/attendance/record`) with upsert logic
   - Added unique constraint to `attendance` table for reliable upserts
   - **Account Settings Link**: Added link from Family Portal to `/family/account`.
-  - **Account Settings Page**: Implemented editing for Family and Guardian information on `/family/account`.
+  - **Account Settings Page**: Implemented editing for Family, Guardian information, and password changes on `/family/account`.
 
 ### Next Priority Features
-1. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId`.
+1. **Student Management**: Add Edit/Delete functionality on `/family/student/:studentId` (In Progress).
 2. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`).
-3. **Account Settings Page**: Add password change functionality.
-4. **Attendance Tracking**: Implement core attendance tracking system features.
-5. **Achievement Badges**: Implement achievement badge functionality.
+3. **Attendance Tracking**: Implement core attendance tracking system features.
+4. **Achievement Badges**: Implement achievement badge functionality.
 6. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance).
 7. **Instructor Profile**: Develop the instructor profile module/page.
 8. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
