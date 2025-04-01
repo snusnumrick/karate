@@ -138,10 +138,12 @@ export default function StudentsAdminPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="space-x-2 whitespace-nowrap"> {/* Add class for spacing */}
-                    <Button variant="outline" size="sm" asChild> {/* Remove mr-2 */}
+                    {/* Temporarily remove asChild to debug React.Children.only error */}
+                    <Button variant="outline" size="sm">
                       <Link to={`/admin/students/${student.id}`}>View/Edit</Link>
                     </Button>
-                    <Button variant="secondary" size="sm" asChild> {/* Add Achievements button */}
+                    {/* Temporarily remove asChild to debug React.Children.only error */}
+                    <Button variant="secondary" size="sm">
                       <Link to={`/admin/students/${student.id}/achievements`}>Achievements</Link>
                     </Button>
                     {/* Add delete button/logic here if needed */}
