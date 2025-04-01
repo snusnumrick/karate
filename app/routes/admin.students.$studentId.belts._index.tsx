@@ -1,9 +1,21 @@
+import { useState } from "react"; // Import useState
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, TypedResponse } from "@remix-run/node";
 import { Link, useLoaderData, useNavigation, useParams, useSubmit, useNavigate } from "@remix-run/react"; // Import useNavigate
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog"; // Import AlertDialog components
 import {
   Table,
   TableBody,
@@ -130,17 +142,19 @@ export default function AdminStudentAchievementsPage() { // Function name can st
   const params = useParams(); // Get studentId from URL params
   const submit = useSubmit();
   const navigate = useNavigate(); // Get navigate function
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null); // State for delete target
 
   const isSubmitting = navigation.state === "submitting";
 
-  const handleDelete = (beltAwardId: string) => { // Renamed parameter
-      if (!confirm("Are you sure you want to delete this belt award?")) { // Updated confirmation message
-          return;
-      }
+  // Function to handle the actual form submission for delete
+  const submitDelete = () => {
+      if (!deleteTargetId) return; // Should not happen if dialog logic is correct
+
       const formData = new FormData();
       formData.append("intent", "delete");
-      formData.append("beltAwardId", beltAwardId); // Renamed form field
+      formData.append("beltAwardId", deleteTargetId);
       submit(formData, { method: "post" });
+      setDeleteTargetId(null); // Reset target ID after submission
   };
 
   return (
@@ -202,15 +216,40 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                     >
                         <Edit className="h-4 w-4" />
                     </Button>
-                    {/* Delete button doesn't use asChild, so it's likely okay */}
-                    <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleDelete(beltAward.id)} // Pass beltAward.id
-                        disabled={isSubmitting && navigation.formData?.get('beltAwardId') === beltAward.id} // Check beltAwardId
-                        title="Delete Belt Award" // Updated title
-                    >
-                        <Trash2 className="h-4 w-4" />
+
+                    {/* AlertDialog for Delete Confirmation */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          title="Delete Belt Award"
+                          onClick={() => setDeleteTargetId(beltAward.id)} // Set target ID on click
+                          disabled={isSubmitting && navigation.formData?.get('beltAwardId') === beltAward.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the belt award record.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setDeleteTargetId(null)}>Cancel</AlertDialogCancel>
+                          {/* Use AlertDialogAction which closes the dialog */}
+                          <AlertDialogAction
+                            onClick={submitDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={isSubmitting} // Disable if a delete is already in progress
+                          >
+                            {isSubmitting && navigation.formData?.get('beltAwardId') === deleteTargetId ? 'Deleting...' : 'Delete'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                     </Button>
                   </TableCell>
                 </TableRow>
