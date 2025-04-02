@@ -1,6 +1,8 @@
 import router from "@remix-run/router";
 const { invariant } = router;
-import { json, LoaderFunctionArgs, MetaFunction, isRouteErrorResponse } from "@remix-run/node"; // Added isRouteErrorResponse
+import node from "@remix-run/node"; // Import default
+const { json, isRouteErrorResponse } = node; // Destructure needed functions
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node"; // Keep type imports separate
 import { Link, useLoaderData, useParams, useRouteError } from "@remix-run/react"; // Added useRouteError
 import { createServerClient } from "~/utils/supabase.server";
 import { Database } from "~/types/supabase";
