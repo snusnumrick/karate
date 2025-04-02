@@ -36,10 +36,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   invariant(params.familyId, "Missing familyId parameter");
   const familyId = params.familyId;
 
-  // Use the correct function and destructure the result
-  const { supabaseClient, response } = getSupabaseServerClient(request);
+  // Use the correct function and destructure the server client
+  const { supabaseServer, response } = getSupabaseServerClient(request); // Use supabaseServer
 
-  const { data: familyData, error: familyError } = await supabaseClient // Use the destructured client
+  const { data: familyData, error: familyError } = await supabaseServer // Use the server client
     .from('families')
     .select(`
       *,
