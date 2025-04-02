@@ -22,10 +22,10 @@ export function mapStudentFromSupabase(row: Database['public']['Tables']['studen
     medications: row.medications || undefined,
     immunizationsUpToDate: row.immunizations_up_to_date === 'true',
     immunizationNotes: row.immunization_notes || undefined,
-    beltRank: row.belt_rank || '',
+    // beltRank removed
     familyId: row.family_id,
     // Relationships are loaded separately
-    achievements: [],
+    achievements: [], // Consider renaming to beltAwards if Achievement type is updated/removed
     attendanceRecords: []
   };
 }
@@ -48,7 +48,7 @@ export function mapStudentToSupabase(student: Student): Database['public']['Tabl
     medications: student.medications,
     immunizations_up_to_date: student.immunizationsUpToDate ? 'true' : 'false',
     immunization_notes: student.immunizationNotes,
-    belt_rank: student.beltRank as (typeof BELT_RANKS[number]) | null | undefined,
+    // belt_rank removed
     family_id: student.familyId // Assuming familyId exists on Student
   };
 }

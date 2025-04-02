@@ -294,9 +294,7 @@ export default function FamilyDetailPage() {
                                                     <p className="text-sm text-gray-600 dark:text-gray-400">
                                                         DOB: {student.birth_date ? format(new Date(student.birth_date), 'PPP') : 'N/A'}
                                                     </p>
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                        Belt: {student.belt_rank ?? 'N/A'}
-                                                    </p>
+                                                    {/* Belt display removed - view on student detail page */}
                                                 </div>
                                                 <div className="flex space-x-2">
                                                     <Button asChild variant="secondary" size="sm">
