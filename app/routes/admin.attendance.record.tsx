@@ -9,9 +9,10 @@ import {
   useNavigate,    // Import useNavigate
   useSearchParams, // Import useSearchParams
 } from "@remix-run/react";
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'; // Import SupabaseClient type
 import type { Database } from "~/types/supabase";
 import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
+import { sendEmail } from '~/utils/email.server'; // Import the email utility
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge"; // Import Badge
 import { Label } from "~/components/ui/label";
@@ -177,11 +178,85 @@ export async function action({ request }: ActionFunctionArgs) {
     // Redirect back to the main attendance list after successful save
     return redirect("/admin/attendance");
 
+    console.log("Attendance saved successfully.");
+
+    // --- Send Absence Notifications ---
+    // We need the student names and family emails for notifications
+    await sendAbsenceNotifications(recordsToUpsert, attendanceDate, supabaseAdmin);
+    // --- End Absence Notifications ---
+
+
+    // Redirect back to the main attendance list after successful save
+    return redirect("/admin/attendance");
+
   } catch (error) {
      const message = error instanceof Error ? error.message : "An unknown error occurred.";
      console.error("Error in /admin/attendance/record action:", message);
      return json({ error: message }, { status: 500 });
   }
+}
+
+// Helper function to send absence notifications
+async function sendAbsenceNotifications(
+  records: Database['public']['Tables']['attendance']['Insert'][],
+  attendanceDate: string,
+  supabaseAdmin: SupabaseClient<Database> // Pass the Supabase client
+) {
+  const absentStudents = records.filter(record => !record.present);
+  if (absentStudents.length === 0) {
+    console.log("No absent students found, skipping notifications.");
+    return;
+  }
+
+  console.log(`Found ${absentStudents.length} absent students. Preparing notifications...`);
+
+  // Format the date nicely for the email
+  const formattedDate = format(parse(attendanceDate, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy');
+
+  for (const record of absentStudents) {
+    try {
+      // Fetch student name and their family's email
+      const { data: studentData, error: studentError } = await supabaseAdmin
+        .from('students')
+        .select(`
+          first_name,
+          last_name,
+          families ( email )
+        `)
+        .eq('id', record.student_id)
+        .single();
+
+      if (studentError || !studentData || !studentData.families?.email) {
+        console.error(`Error fetching student/family data for student ID ${record.student_id}:`, studentError?.message ?? 'Data not found or email missing');
+        continue; // Skip notification for this student
+      }
+
+      const studentName = `${studentData.first_name} ${studentData.last_name}`;
+      const familyEmail = studentData.families.email;
+
+      // Send the email
+      const subject = `Absence Notification for ${studentName}`;
+      const htmlBody = `
+        <p>Hello,</p>
+        <p>This email is to inform you that <strong>${studentName}</strong> was marked absent for the karate class on <strong>${formattedDate}</strong>.</p>
+        ${record.notes ? `<p><strong>Instructor Notes:</strong> ${record.notes}</p>` : ''}
+        <p>If you believe this is an error, please contact us.</p>
+        <p>Thank you,<br/>Sensei Negin's Karate Class</p>
+      `;
+
+      await sendEmail({
+        to: familyEmail,
+        subject: subject,
+        html: htmlBody,
+      });
+      // Log success implicitly via sendEmail function
+
+    } catch (emailError) {
+      // Error is already logged within sendEmail, but we catch here to ensure the loop continues
+      console.error(`Failed to process or send absence notification for student ID ${record.student_id}.`);
+    }
+  }
+  console.log("Finished processing absence notifications.");
 }
 
 
