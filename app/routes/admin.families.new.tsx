@@ -80,10 +80,9 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         if (!guardian2FirstName) fieldErrors.guardian2FirstName = "Guardian 2 first name is required if adding Guardian 2.";
         if (!guardian2LastName) fieldErrors.guardian2LastName = "Guardian 2 last name is required if adding Guardian 2.";
         if (!guardian2Relationship) fieldErrors.guardian2Relationship = "Guardian 2 relationship is required if adding Guardian 2.";
-        if (!guardian2CellPhone) fieldErrors.guardian2CellPhone = "Guardian 2 cell phone is required if adding Guardian 2."; // Make cell phone required
-        // Optional: Add validation for home phone/email if needed for Guardian 2
-        // if (!guardian2HomePhone) fieldErrors.guardian2HomePhone = "Guardian 2 home phone is required.";
-        // if (!guardian2Email) fieldErrors.guardian2Email = "Guardian 2 email is required.";
+        if (!guardian2HomePhone) fieldErrors.guardian2HomePhone = "Guardian 2 home phone is required if adding Guardian 2."; // Make home phone required
+        if (!guardian2CellPhone) fieldErrors.guardian2CellPhone = "Guardian 2 cell phone is required if adding Guardian 2."; // Cell phone is already required
+        if (!guardian2Email) fieldErrors.guardian2Email = "Guardian 2 email is required if adding Guardian 2."; // Make email required
     }
 
     if (Object.values(fieldErrors).some(Boolean)) {
@@ -385,17 +384,17 @@ export default function AdminNewFamilyPage() {
                     <p className="text-sm text-muted-foreground mb-4">Fill this section only if there is a second guardian.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <Label htmlFor="guardian2FirstName">First Name</Label>
+                            <Label htmlFor="guardian2FirstName">First Name <span className="text-red-500">*</span></Label> {/* Add indicator */}
                             <Input id="guardian2FirstName" name="guardian2FirstName" />
                             {actionData?.fieldErrors?.guardian2FirstName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2FirstName}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian2LastName">Last Name</Label>
+                            <Label htmlFor="guardian2LastName">Last Name <span className="text-red-500">*</span></Label> {/* Add indicator */}
                             <Input id="guardian2LastName" name="guardian2LastName" />
                             {actionData?.fieldErrors?.guardian2LastName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2LastName}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian2Relationship">Relationship to Student(s)</Label>
+                            <Label htmlFor="guardian2Relationship">Relationship to Student(s) <span className="text-red-500">*</span></Label> {/* Add indicator */}
                              <Select name="guardian2Relationship">
                                 <SelectTrigger id="guardian2Relationship"><SelectValue placeholder="Select relationship" /></SelectTrigger>
                                 <SelectContent>
@@ -408,12 +407,12 @@ export default function AdminNewFamilyPage() {
                             {actionData?.fieldErrors?.guardian2Relationship && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Relationship}</p>}
                         </div>
                          <div>
-                            <Label htmlFor="guardian2Email">Email</Label>
+                            <Label htmlFor="guardian2Email">Email <span className="text-red-500">*</span></Label> {/* Add indicator */}
                             <Input id="guardian2Email" name="guardian2Email" type="email" />
                             {actionData?.fieldErrors?.guardian2Email && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Email}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian2HomePhone">Home Phone</Label>
+                            <Label htmlFor="guardian2HomePhone">Home Phone <span className="text-red-500">*</span></Label> {/* Add indicator */}
                             <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel" />
                             {actionData?.fieldErrors?.guardian2HomePhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
                         </div>
