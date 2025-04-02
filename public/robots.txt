@@ -1,0 +1,17 @@
+# Allow all user agents
+User-agent: *
+
+# Disallow crawling of admin and family sections
+Disallow: /admin/
+Disallow: /family/
+# Add any other paths you want to disallow
+
+# Allow crawling of specific necessary resources if needed, e.g.:
+# Allow: /assets/
+
+# Point to the sitemap
+Sitemap: https://www.greenegin.ca/sitemap.xml
+# TODO: Replace https://www.greenegin.ca with your actual production domain
+
+# Allow everything else (implicitly allowed if not disallowed)
+Allow: /
