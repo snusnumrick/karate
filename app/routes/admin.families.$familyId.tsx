@@ -250,7 +250,7 @@ export default function FamilyDetailPage() {
                                                 <div>
                                                     <p className="font-semibold">{student.first_name} {student.last_name}</p>
                                                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                        DOB: {student.dob ? format(new Date(student.dob), 'PPP') : 'N/A'}
+                                                        DOB: {student.birth_date ? format(new Date(student.birth_date), 'PPP') : 'N/A'}
                                                     </p>
                                                     <p className="text-sm text-gray-600 dark:text-gray-400">
                                                         Belt: {student.belt_rank ?? 'N/A'}
