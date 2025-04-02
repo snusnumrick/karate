@@ -17,13 +17,16 @@ import {
 } from "~/components/ui/table";
 
 // Define types for loader data
-type StudentRow = Database['public']['Tables']['students']['Row'];
+type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'>; // Omit removed column
 type FamilyName = Pick<Database['public']['Tables']['families']['Row'], 'name'> | null;
+type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Use BeltAwardRow
+type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 
-// Extend the student type to include eligibility
-type StudentWithFamilyAndEligibility = StudentRow & {
+// Extend the student type to include eligibility and current belt rank
+type StudentWithFamilyEligibilityAndBelt = StudentRow & {
   families: FamilyName;
-  eligibility: EligibilityStatus; // Add eligibility status
+  eligibility: EligibilityStatus;
+  currentBeltRank: BeltRankEnum | null; // Store the derived current rank
 };
 
 export async function loader() {
