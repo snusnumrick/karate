@@ -145,7 +145,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                     last_name: guardian2LastName,
                     relationship: guardian2Relationship,
                     home_phone: guardian2HomePhone, // Can be null
-                    cell_phone: guardian2CellPhone, // Can be null
+                    cell_phone: guardian2CellPhone,
                     email: guardian2Email,         // Can be null
                 });
 
