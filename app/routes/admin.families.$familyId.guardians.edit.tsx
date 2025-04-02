@@ -3,7 +3,8 @@ import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
 // Import createClient and PostgrestQueryBuilder
-import { createClient, type PostgrestQueryBuilder } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 import { Database, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -102,8 +103,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Explicitly type the array elements as PostgrestQueryBuilder
-    type GuardianUpdateBuilder = PostgrestQueryBuilder<
+    // Explicitly type the array elements as PostgrestFilterBuilder
+    type GuardianUpdateBuilder = PostgrestFilterBuilder<
         Database["public"],
         Database["public"]["Tables"]["guardians"], // Use the full table definition
         null // Expected result type after .then()
@@ -163,17 +164,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
             // Required fields are guaranteed non-null here by validation.
             // Optional fields use '|| undefined' to match the expected type 'string | undefined'.
             const updatePayload: TablesUpdate<"guardians"> = {
-                first_name: firstName, // '!' removed
-                last_name: lastName, // '!' removed
-                relationship: relationship, // '!' removed
-                cell_phone: cell_phone, // '!' removed
-                email: email, // '!' removed
-                home_phone: home_phone, // '!' removed
-                // Optional fields: pass undefined if empty/missing
-                work_phone: work_phone || undefined,
-                employer: employer || undefined,
-                employer_phone: employer_phone || undefined,
-                employer_notes: employer_notes || undefined,
+                first_name: firstName!,
+                last_name: lastName!,
+                relationship: relationship!,
+                cell_phone: cell_phone!,
+                email: email!,
+                home_phone: home_phone!,
+                // Optional fields
+                work_phone: work_phone,
+                employer: employer,
+                employer_phone: employer_phone,
+                employer_notes: employer_notes,
             };
 
             // Add update operation to the list
