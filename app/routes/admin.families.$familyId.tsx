@@ -1,7 +1,5 @@
 import invariant from "tiny-invariant"; // Use tiny-invariant instead
-import node from "@remix-run/node"; // Import default
-const {json, redirect} = node; // Destructure json and redirect
-import type {LoaderFunctionArgs, ActionFunctionArgs, MetaFunction} from "@remix-run/node"; // Keep type imports separate
+import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from "@remix-run/node"; // Use named imports
 // Import isRouteErrorResponse from @remix-run/react
 import {Link, Outlet, useLoaderData, useParams, useRouteError, isRouteErrorResponse, useOutlet, useFetcher} from "@remix-run/react";
 // Import createClient directly
