@@ -32,11 +32,27 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         throw new Response("Waiver Not Found", {status: 404});
     }
 
-    return json({waiver}, {headers});
+    // Check if the user has already signed this waiver
+    const {data: signature, error: signatureError} = await supabaseServer
+        .from('waiver_signatures')
+        .select('id')
+        .eq('waiver_id', waiverId)
+        .eq('user_id', user.id)
+        .maybeSingle(); // Use maybeSingle as they might not have signed it
+
+    if (signatureError) {
+        console.error("Error checking waiver signature:", signatureError);
+        // Decide how to handle this - maybe proceed but log, or throw 500?
+        // For now, let's proceed but the button logic might be incorrect.
+    }
+
+    const hasSigned = !!signature; // True if a signature record exists
+
+    return json({waiver, hasSigned}, {headers});
 }
 
 export default function WaiverDetailsPage() {
-    const {waiver} = useLoaderData<typeof loader>();
+    const {waiver, hasSigned} = useLoaderData<typeof loader>();
     const params = useParams(); // To get waiverId for the sign link
 
     return (
@@ -58,15 +74,21 @@ export default function WaiverDetailsPage() {
             <div
                 className="prose dark:prose-invert max-w-none border rounded-lg p-6 bg-gray-50 dark:bg-gray-800 whitespace-pre-wrap">
                 {waiver.content}
+                {waiver.content}
             </div>
 
             <div className="mt-8 flex justify-end">
-                {/* TODO: Add logic to hide this button if already signed */}
-                <Button asChild>
-                    <Link to={`/waivers/${params.waiverId}/sign`}>
-                        Sign Now
-                    </Link>
-                </Button>
+                {hasSigned ? (
+                    <span className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 dark:bg-green-900 dark:text-green-200">
+                        ✓ Signed
+                    </span>
+                ) : (
+                    <Button asChild>
+                        <Link to={`/waivers/${params.waiverId}/sign`}>
+                            Sign Now
+                        </Link>
+                    </Button>
+                )}
             </div>
         </div>
     );
