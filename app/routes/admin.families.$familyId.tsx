@@ -220,7 +220,7 @@ export default function FamilyDetailPage() {
                                         <li key={guardian.id} className="border-b pb-2 last:border-b-0">
                                             <p><strong>Name:</strong> {guardian.first_name} {guardian.last_name}</p>
                                             <p><strong>Relationship:</strong> {guardian.relationship ?? 'N/A'}</p>
-                                            <p><strong>Phone:</strong> {guardian.phone ?? 'N/A'}</p>
+                                            <p><strong>Cell Phone:</strong> {guardian.cell_phone ?? 'N/A'}</p> {/* Changed from Phone */}
                                             <p><strong>Email:</strong> {guardian.email ?? 'N/A'}</p>
                                         </li>
                                     ))}
