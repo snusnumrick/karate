@@ -142,7 +142,6 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 ### Next Priority Features
 1. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`). Guide them towards family creation or linking if applicable. (Next)
 2. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers).
-3. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
 
 ### Development Progress
 ```mermaid
@@ -175,7 +174,7 @@ gantt
     Belt Award Tracking     :done,    belt_award, after attend_report, 10d %% Admin CRUD & User View Implemented
     Admin Pages (Missing Waivers, Pending Payments, New Family): done, admin_extra, after belt_award, 5d
     Automated Notifications :         notify, after admin_extra, 14d
-    Technical Debt Refactor :         tech_debt, after notify, 7d
+    %% Technical Debt Refactor (Button/Link structure was already correct): tech_debt, 2024-06-01, 0d
 ```
 
 ### Technical Health
