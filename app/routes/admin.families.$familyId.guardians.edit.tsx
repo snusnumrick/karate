@@ -4,8 +4,8 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remi
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
 // Import PostgrestQueryBuilder for explicit typing
 import { createClient } from "@supabase/supabase-js"; // Changed Filter to Query
-import type { PostgrestQueryBuilder } from "@supabase/postgrest-js";
-import { Database, Tables, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
+import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
+import { Database, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -105,7 +105,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     // Explicitly type the array elements as PostgrestQueryBuilder
     // We need to specify the schema, table definition, and return type for the builder
-    type GuardianUpdateBuilder = PostgrestQueryBuilder<
+    type GuardianUpdateBuilder = PostgrestFilterBuilder<
         Database["public"], // Schema
         Database["public"]["Tables"]["guardians"], // Full table definition
         null // Expected result type after .then()
