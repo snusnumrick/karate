@@ -85,7 +85,11 @@ export default function ContactPage() {
                         </div>
 
                         <div>
-                            <h2 className="text-xl font-semibold mb-4">Class Schedule</h2>
+                            <h2 className="text-xl font-semibold mb-4">
+                                <a href="/classes" className="hover:underline hover:text-green-700 dark:hover:text-green-400">
+                                    Class Schedule
+                                </a>
+                            </h2>
                             <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-md">
                                 <p className="font-medium mb-2">Children&apos;s Classes (Ages 6-12)</p>
                                 <ul className="space-y-2">

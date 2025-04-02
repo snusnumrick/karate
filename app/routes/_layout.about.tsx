@@ -112,7 +112,7 @@ export default function AboutPage() {
                                     {siteConfig.location.description}. Classes are designed for children
                                     ages {siteConfig.classes.ageRange} and focus on
                                     building a strong foundation in karate techniques while developing character and
-                                    life skills.
+                                    life skills. Ready to start? <a href="/contact" className="text-green-500 hover:underline">Contact us</a> to learn more or sign up for a free trial!
                                 </p>
                             </div>
                         </div>
