@@ -71,8 +71,8 @@ export function Layout() {
                     "@context": "https://schema.org",
                     "@type": "Organization",
                     "name": siteConfig.name,
-                    "url": "https://www.greenegin.ca", // TODO: Replace with actual production URL
-                    "logo": "https://www.greenegin.ca/apple-touch-icon.png", // TODO: Replace with actual production URL for logo
+                    "url": siteConfig.url, // Use siteConfig
+                    "logo": `${siteConfig.url}/apple-touch-icon.png`, // Use siteConfig for logo URL
                     "contactPoint": {
                         "@type": "ContactPoint",
                         "telephone": siteConfig.contact.phone,

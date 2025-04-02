@@ -1,3 +1,4 @@
+import { siteConfig } from "~/config/site"; // Import site config
 import type { MetaFunction } from "@remix-run/node"; // Import MetaFunction
 
 export const meta: MetaFunction = () => {
@@ -23,7 +24,7 @@ export const meta: MetaFunction = () => {
                 "addressCountry": "CA"
             },
             "telephone": siteConfig.contact.phone,
-            "url": "https://www.greenegin.ca/contact", // TODO: Replace with actual production URL
+            "url": `${siteConfig.url}/contact`, // Use siteConfig
             "openingHoursSpecification": [ // Define class times
                 {
                     "@type": "OpeningHoursSpecification",
@@ -39,12 +40,12 @@ export const meta: MetaFunction = () => {
             "provider": { // Link back to the main organization
                 "@type": "Organization",
                 "name": siteConfig.name,
-                "url": "https://www.greenegin.ca" // TODO: Replace with actual production URL
+                "url": siteConfig.url // Use siteConfig
             }
         }
     },
     // Add canonical link for the Contact page
-    { tagName: "link", rel: "canonical", href: "https://www.greenegin.ca/contact" }, // TODO: Replace with actual production URL
+    { tagName: "link", rel: "canonical", href: `${siteConfig.url}/contact` }, // Use siteConfig
   ];
 };
 

@@ -10,8 +10,10 @@ Disallow: /family/
 # Allow: /assets/
 
 # Point to the sitemap
+# IMPORTANT: The URL below MUST match the SITE_URL environment variable used in the application.
+# Since this is a static file, it needs to be updated manually or via a build/deployment script
+# if the SITE_URL changes.
 Sitemap: https://www.greenegin.ca/sitemap.xml
-# TODO: Replace https://www.greenegin.ca with your actual production domain
 
 # Allow everything else (implicitly allowed if not disallowed)
 Allow: /

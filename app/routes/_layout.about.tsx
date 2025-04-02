@@ -1,4 +1,5 @@
 import {siteConfig} from "~/config/site"; // Import site config
+import { siteConfig } from "~/config/site"; // Import site config
 import type { MetaFunction } from "@remix-run/node"; // Import MetaFunction
 
 export const meta: MetaFunction = () => {
@@ -21,17 +22,17 @@ export const meta: MetaFunction = () => {
         },
         "knowsAbout": ["Karate", "Martial Arts", "Sport Psychology", "Child Development"],
         "description": "5th Dan Black Belt karate instructor with a Master's in Sport Psychology, specializing in teaching children.",
-        "url": "https://www.greenegin.ca/about", // TODO: Replace with actual production URL
+        "url": `${siteConfig.url}/about`, // Use siteConfig
         // "image": "URL_TO_SENSEI_NEGIN_PHOTO.jpg", // Optional: Add a URL to a photo
         "worksFor": {
             "@type": "Organization",
             "name": siteConfig.name,
-            "url": "https://www.greenegin.ca" // TODO: Replace with actual production URL
+            "url": siteConfig.url // Use siteConfig
         }
       }
     },
     // Add canonical link for the About page
-    { tagName: "link", rel: "canonical", href: "https://www.greenegin.ca/about" }, // TODO: Replace with actual production URL
+    { tagName: "link", rel: "canonical", href: `${siteConfig.url}/about` }, // Use siteConfig
   ];
 };
 
