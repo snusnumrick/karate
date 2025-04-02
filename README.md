@@ -140,8 +140,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - **Admin Attendance Reports**: Admins can view attendance summaries and rates at `/admin/attendance/report`.
 
 ### Next Priority Features
-1. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`). Guide them towards family creation or linking if applicable. (Next)
-2. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers).
+1. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers). (Next)
 
 ### Development Progress
 ```mermaid
@@ -165,7 +164,7 @@ gantt
     Account Settings Page   :done,    acct_page, after acct_link, 7d
     Student Edit/Delete     :done,    student_edit, after acct_page, 3d
     Instructor Profile Page :done,    instructor, 2024-03-15, 7d    %% Assuming /about covers this
-    User Onboarding Flow    :         onboard, 2024-06-01, 7d    %% Added missing colon after task name
+    %% User Onboarding Flow (Handled by redirect in _layout.family._index.tsx): onboard, 2024-06-01, 0d
     section Reporting & Features
     Attendance System (Basic):done,   attend_basic, 2024-05-25, 14d
     Attendance Admin Filters:done,    attend_admin_filter, after attend_basic, 7d
