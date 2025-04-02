@@ -3,7 +3,7 @@ import node from "@remix-run/node"; // Import default
 const {json} = node; // Destructure only json
 import type {LoaderFunctionArgs, MetaFunction} from "@remix-run/node"; // Keep type imports separate
 // Import isRouteErrorResponse from @remix-run/react
-import {Link, useLoaderData, useParams, useRouteError, isRouteErrorResponse} from "@remix-run/react";
+import {Link, Outlet, useLoaderData, useParams, useRouteError, isRouteErrorResponse} from "@remix-run/react";
 // Import createClient directly
 import { createClient } from "@supabase/supabase-js";
 // No longer need getSupabaseServerClient here
