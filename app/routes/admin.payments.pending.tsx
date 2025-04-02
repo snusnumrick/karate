@@ -3,14 +3,7 @@ import {Link, useLoaderData, useRouteError} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/supabase";
 import {Button} from "~/components/ui/button";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "~/components/ui/table";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Badge} from "~/components/ui/badge";
 import {format} from 'date-fns';
 import {PaymentStatus} from "~/types/models"; // Import the enum

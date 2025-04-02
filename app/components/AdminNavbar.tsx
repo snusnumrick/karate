@@ -1,9 +1,9 @@
 import React, {useState} from 'react';
-import {Link, Form} from "@remix-run/react";
+import {Form, Link} from "@remix-run/react";
 import {ModeToggle} from "./mode-toggle";
 import {Sheet, SheetContent, SheetTrigger} from "./ui/sheet";
 import {Button} from "./ui/button";
-import {Menu, X, LogOut, LayoutDashboard, Users, User, CreditCard, FileText, CalendarCheck, Sun} from "lucide-react"; // Added Sun and icons
+import {CalendarCheck, CreditCard, FileText, LayoutDashboard, LogOut, Menu, Sun, User, Users, X} from "lucide-react"; // Added Sun and icons
 import {ClientOnly} from './client-only'; // Import ClientOnly
 
 // Define navigation items for reuse

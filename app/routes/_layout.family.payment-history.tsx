@@ -1,120 +1,130 @@
-import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
-import { useLoaderData, Link } from "@remix-run/react";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import {json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
+import {Link, useLoaderData} from "@remix-run/react";
+import {getSupabaseServerClient} from "~/utils/supabase.server";
 
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer, response : { headers } } = getSupabaseServerClient(request);
-  const { data: { user } } = await supabaseServer.auth.getUser();
+export async function loader({request}: LoaderFunctionArgs) {
+    const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
+    const {data: {user}} = await supabaseServer.auth.getUser();
 
-  if (!user) {
-    throw redirect("/login", { headers });
-  }
+    if (!user) {
+        throw redirect("/login", {headers});
+    }
 
-  // Get profile to find family_id
-  const { data: profileData, error: profileError } = await supabaseServer
-    .from('profiles')
-    .select('family_id')
-    .eq('id', user.id)
-    .single();
+    // Get profile to find family_id
+    const {data: profileData, error: profileError} = await supabaseServer
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
 
-  if (profileError || !profileData?.family_id) {
-    // Handle error or case where user has no family
-    console.error("Payment History Loader Error: Failed to load profile or family_id", profileError?.message);
-    // You might want to redirect to the family portal or show an error message
-    throw new Response("Could not load your family information.", { status: 500 });
-  }
+    if (profileError || !profileData?.family_id) {
+        // Handle error or case where user has no family
+        console.error("Payment History Loader Error: Failed to load profile or family_id", profileError?.message);
+        // You might want to redirect to the family portal or show an error message
+        throw new Response("Could not load your family information.", {status: 500});
+    }
 
-  const familyId = profileData.family_id;
+    const familyId = profileData.family_id;
 
-  // Fetch all payments for the family, ordered by date descending
-  const { data: payments, error: paymentsError } = await supabaseServer
-    .from('payments')
-    .select('*') // Select all payment columns
-    .eq('family_id', familyId)
-    .order('payment_date', { ascending: false, nullsFirst: false });
+    // Fetch all payments for the family, ordered by date descending
+    const {data: payments, error: paymentsError} = await supabaseServer
+        .from('payments')
+        .select('*') // Select all payment columns
+        .eq('family_id', familyId)
+        .order('payment_date', {ascending: false, nullsFirst: false});
 
-  if (paymentsError) {
-    console.error("Payment History Loader Error: Failed to load payments", paymentsError.message);
-    throw new Response("Could not load payment history.", { status: 500 });
-  }
+    if (paymentsError) {
+        console.error("Payment History Loader Error: Failed to load payments", paymentsError.message);
+        throw new Response("Could not load payment history.", {status: 500});
+    }
 
-  return json({ payments: payments ?? [] }, { headers });
+    return json({payments: payments ?? []}, {headers});
 }
 
 
 export default function PaymentHistoryPage() {
-  const { payments } = useLoaderData<typeof loader>();
+    const {payments} = useLoaderData<typeof loader>();
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-         <Link to="/family" className="text-blue-600 hover:underline dark:text-blue-400">
-           &larr; Back to Family Portal
-         </Link>
-      </div>
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <div className="mb-6">
+                <Link to="/family" className="text-blue-600 hover:underline dark:text-blue-400">
+                    &larr; Back to Family Portal
+                </Link>
+            </div>
 
-      <h1 className="text-3xl font-bold mb-6">Full Payment History</h1>
+            <h1 className="text-3xl font-bold mb-6">Full Payment History</h1>
 
-      {payments && payments.length > 0 ? (
-        <div className="overflow-x-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Method</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Receipt</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {payments.map((payment) => (
-                <tr key={payment.id}>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    ${(payment.amount / 100).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm">
+            {payments && payments.length > 0 ? (
+                <div className="overflow-x-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th scope="col"
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date
+                            </th>
+                            <th scope="col"
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount
+                            </th>
+                            <th scope="col"
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status
+                            </th>
+                            <th scope="col"
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Method
+                            </th>
+                            <th scope="col"
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Receipt
+                            </th>
+                        </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {payments.map((payment) => (
+                            <tr key={payment.id}>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                    {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                    ${(payment.amount / 100).toFixed(2)}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm">
                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                       payment.status === 'succeeded' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                       payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                       'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                         payment.status === 'succeeded' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                             payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                      }`}>
                        {payment.status}
                      </span>
-                  </td>
-                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">
-                     {payment.payment_method || 'N/A'}
-                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {payment.receipt_url ? (
-                      <a
-                        href={payment.receipt_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
-                      >
-                        View
-                      </a>
-                    ) : (
-                      'N/A'
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">
+                                    {payment.payment_method || 'N/A'}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {payment.receipt_url ? (
+                                        <a
+                                            href={payment.receipt_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                        >
+                                            View
+                                        </a>
+                                    ) : (
+                                        'N/A'
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <p className="text-gray-600 dark:text-gray-400">No payment history found.</p>
+                </div>
+            )}
         </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-           <p className="text-gray-600 dark:text-gray-400">No payment history found.</p>
-        </div>
-      )}
-    </div>
-  );
+    );
 }
 
 // Basic Error Boundary for this route
@@ -124,11 +134,11 @@ export function ErrorBoundary() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-             <div className="mb-6">
-                 <Link to="/family" className="text-blue-600 hover:underline dark:text-blue-400">
-                   &larr; Back to Family Portal
-                 </Link>
-             </div>
+            <div className="mb-6">
+                <Link to="/family" className="text-blue-600 hover:underline dark:text-blue-400">
+                    &larr; Back to Family Portal
+                </Link>
+            </div>
             <h1 className="text-3xl font-bold mb-6 text-red-600 dark:text-red-400">Error Loading Payment History</h1>
             <p className="text-gray-600 dark:text-gray-400">
                 {error.message}

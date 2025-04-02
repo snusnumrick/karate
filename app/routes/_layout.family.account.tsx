@@ -1,5 +1,5 @@
-import {json, type LoaderFunctionArgs, TypedResponse, ActionFunctionArgs} from "@remix-run/node"; // Added redirect
-import {Link, useLoaderData, Form, useActionData, useNavigation} from "@remix-run/react"; // Added useActionData, useNavigation
+import {ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node"; // Added redirect
+import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react"; // Added useActionData, useNavigation
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
@@ -52,7 +52,7 @@ const preferencesSchema = z.object({
             message: "Current password is required to change password"
         });
     }
-    
+
     // Password confirmation match
     if (data.newPassword !== data.confirmPassword) {
         ctx.addIssue({
@@ -70,7 +70,7 @@ const preferencesSchema = z.object({
             message: "Password must be at least 8 characters"
         });
     }
-    
+
     // Password complexity check
     if (data.newPassword && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(data.newPassword)) {
         ctx.addIssue({
@@ -127,7 +127,7 @@ const formSchema = z.union([
 
 // --- Loader ---
 export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const {supabaseServer, response:{headers}} = getSupabaseServerClient(request);
+    const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {
@@ -161,14 +161,14 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         .from('guardians')
         .select('*')
         .eq('family_id', familyId);
-        
+
     // Fetch waiver signatures
     const {data: waiverSignaturesData} = await supabaseServer
         .from('waiver_signatures')
         .select('*, waivers(title, description)')
         .eq('user_id', user.id)
-        .order('signed_at', { ascending: false });
-        
+        .order('signed_at', {ascending: false});
+
     // Get user preferences from auth metadata
     const userPreferences = {
         receiveMarketingEmails: user.user_metadata?.receive_marketing_emails ?? true
@@ -190,7 +190,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     }
 
     return json({
-        family: familyData, 
+        family: familyData,
         guardians: guardiansData ?? [],
         waiverSignatures: waiverSignaturesData || [],
         userPreferences
@@ -253,8 +253,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             return json({status: 'success', message: 'Family information updated successfully.', intent}, {headers});
 
         } else if (intent === 'updateGuardian') {
-            const { guardianId, ...restData } = parsed.data; // Exclude guardianId
-            const { intent, ...guardianUpdateData } = restData; // Exclude intent
+            const {guardianId, ...restData} = parsed.data; // Exclude guardianId
+            const {intent, ...guardianUpdateData} = restData; // Exclude intent
 
             // Verify guardianId belongs to the user's family before updating (security)
             const {data: {user}} = await supabaseServer.auth.getUser();
@@ -297,17 +297,17 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                 guardianId
             }, {headers});
         } else if (intent === 'updatePreferences') {
-            const { currentPassword, newPassword, receiveMarketingEmails } = parsed.data;
+            const {currentPassword, newPassword, receiveMarketingEmails} = parsed.data;
 
             // Get user
-            const { data: { user } } = await supabaseServer.auth.getUser();
-            if (!user) return json({ status: 'error', message: 'Not authenticated' }, { status: 401, headers });
+            const {data: {user}} = await supabaseServer.auth.getUser();
+            if (!user) return json({status: 'error', message: 'Not authenticated'}, {status: 401, headers});
 
             // Update password if provided
             if (newPassword && currentPassword) {
-                const { error: updateError } = await supabaseServer.auth.updateUser({
+                const {error: updateError} = await supabaseServer.auth.updateUser({
                     password: newPassword,
-                    data: { receive_marketing_emails: receiveMarketingEmails }
+                    data: {receive_marketing_emails: receiveMarketingEmails}
                 });
 
                 if (updateError) throw updateError;
@@ -315,8 +315,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
             // Update email preferences if no password change
             if (!newPassword) {
-                const { error } = await supabaseServer.auth.updateUser({
-                    data: { receive_marketing_emails: receiveMarketingEmails }
+                const {error} = await supabaseServer.auth.updateUser({
+                    data: {receive_marketing_emails: receiveMarketingEmails}
                 });
                 if (error) throw error;
             }
@@ -325,7 +325,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                 status: 'success',
                 message: 'Preferences updated successfully',
                 intent: 'updatePreferences'
-            }, { headers });
+            }, {headers});
         }
 
         // Should not happen if schema is correct
@@ -439,212 +439,215 @@ export default function AccountSettingsPage() {
                         <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
 
                         {/* General Action Feedback */}
-            {actionData && actionData.status === 'success' && (
-                <Alert variant="default"
-                       className="bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700">
-                    <AlertTitle className="text-green-800 dark:text-green-200">Success!</AlertTitle>
-                    <AlertDescription className="text-green-700 dark:text-green-300">
-                        {actionData.message}
-                    </AlertDescription>
-                </Alert>
-            )}
-            {actionData && actionData.status === 'error' && !actionData.errors && ( // Show general errors only if no field errors
-                <Alert variant="destructive">
-                    <AlertTitle className="dark:text-red-200">Error</AlertTitle>
-                    <AlertDescription className="dark:text-red-300">{actionData.message}</AlertDescription>
-                </Alert>
-            )}
+                        {actionData && actionData.status === 'success' && (
+                            <Alert variant="default"
+                                   className="bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700">
+                                <AlertTitle className="text-green-800 dark:text-green-200">Success!</AlertTitle>
+                                <AlertDescription className="text-green-700 dark:text-green-300">
+                                    {actionData.message}
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                        {actionData && actionData.status === 'error' && !actionData.errors && ( // Show general errors only if no field errors
+                            <Alert variant="destructive">
+                                <AlertTitle className="dark:text-red-200">Error</AlertTitle>
+                                <AlertDescription className="dark:text-red-300">{actionData.message}</AlertDescription>
+                            </Alert>
+                        )}
 
 
-            {/* --- Family Information Form --- */}
-                    <UIForm {...familyForm}>
-                        <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
-                    <input type="hidden" name="intent" value="updateFamily"/>
+                        {/* --- Family Information Form --- */}
+                        <UIForm {...familyForm}>
+                            <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+                                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
+                                <input type="hidden" name="intent" value="updateFamily"/>
 
-                    {/* Display field-specific errors for family form */}
-                    {actionData?.intent === 'updateFamily' && actionData.errors && (
-                        <Alert variant="destructive" className="mb-4">
-                            <AlertTitle className="text-green-800 dark:text-green-200">Validation Errors</AlertTitle>
-                            <AlertDescription className="text-green-700 dark:text-green-300">
-                                <ul className="list-disc pl-5">
-                                    {/* Use the SerializedZodIssue type */}
-                                    {actionData.errors.map((err: SerializedZodIssue, i: number) => <li
-                                        key={i}>{err.path.join('.')} : {err.message}</li>)}
-                                </ul>
-                            </AlertDescription>
-                        </Alert>
-                    )}
+                                {/* Display field-specific errors for family form */}
+                                {actionData?.intent === 'updateFamily' && actionData.errors && (
+                                    <Alert variant="destructive" className="mb-4">
+                                        <AlertTitle className="text-green-800 dark:text-green-200">Validation
+                                            Errors</AlertTitle>
+                                        <AlertDescription className="text-green-700 dark:text-green-300">
+                                            <ul className="list-disc pl-5">
+                                                {/* Use the SerializedZodIssue type */}
+                                                {actionData.errors.map((err: SerializedZodIssue, i: number) => <li
+                                                    key={i}>{err.path.join('.')} : {err.message}</li>)}
+                                            </ul>
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                            control={familyForm.control}
-                            name="name"
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>Family Last Name</FormLabel>
-                                            <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="name"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Family Last Name</FormLabel>
+                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
 
-                        <FormField
-                            control={familyForm.control}
-                            name="primary_phone"
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>Primary Phone</FormLabel>
-                                            <FormControl><Input type="tel" {...field} /></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="primary_phone"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Primary Phone</FormLabel>
+                                                <FormControl><Input type="tel" {...field} /></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
 
-                        <FormField
-                            control={familyForm.control}
-                            name="email"
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>Family Email</FormLabel>
-                                            <FormControl><Input type="email" {...field} /></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
-                        <FormField
-                            control={familyForm.control}
-                            name="address"
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>Home Address</FormLabel>
-                                            <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
-                        <FormField
-                            control={familyForm.control}
-                            name="city"
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>City</FormLabel>
-                                            <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
-                        <FormField
-                            control={familyForm.control}
-                            name="province"
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>Province</FormLabel>
-                                            {/* Wrap Select with ClientOnly */}
-                                            <ClientOnly fallback={<Input disabled placeholder="Province..."/>}>
-                                                {() => (
-                                                    <Select
-                                                        onValueChange={field.onChange}
-                                                        value={field.value} // Use field.value directly
-                                                        // Remove defaultValue
-                                                    >
-                                                        <FormControl>
-                                                            <SelectTrigger><SelectValue
-                                                                placeholder="Select province"/></SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {/* ... SelectItems ... */}
-                                                            <SelectItem value="AB">Alberta</SelectItem>
-                                                            <SelectItem value="BC">British Columbia</SelectItem>
-                                                            <SelectItem value="MB">Manitoba</SelectItem>
-                                                            <SelectItem value="NB">New Brunswick</SelectItem>
-                                                            <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
-                                                            <SelectItem value="NS">Nova Scotia</SelectItem>
-                                                            <SelectItem value="ON">Ontario</SelectItem>
-                                                            <SelectItem value="PE">Prince Edward Island</SelectItem>
-                                                            <SelectItem value="QC">Quebec</SelectItem>
-                                                            <SelectItem value="SK">Saskatchewan</SelectItem>
-                                                            <SelectItem value="NT">Northwest Territories</SelectItem>
-                                                            <SelectItem value="NU">Nunavut</SelectItem>
-                                                            <SelectItem value="YT">Yukon</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            </ClientOnly>
-                                            {/* Add hidden input to ensure value is submitted with form */}
-                                            <input
-                                                type="hidden"
-                                                name="province"
-                                                value={field.value || ''}
-                                            />
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="email"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Family Email</FormLabel>
+                                                <FormControl><Input type="email" {...field} /></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="address"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Home Address</FormLabel>
+                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="city"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>City</FormLabel>
+                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="province"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Province</FormLabel>
+                                                {/* Wrap Select with ClientOnly */}
+                                                <ClientOnly fallback={<Input disabled placeholder="Province..."/>}>
+                                                    {() => (
+                                                        <Select
+                                                            onValueChange={field.onChange}
+                                                            value={field.value} // Use field.value directly
+                                                            // Remove defaultValue
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger><SelectValue
+                                                                    placeholder="Select province"/></SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                {/* ... SelectItems ... */}
+                                                                <SelectItem value="AB">Alberta</SelectItem>
+                                                                <SelectItem value="BC">British Columbia</SelectItem>
+                                                                <SelectItem value="MB">Manitoba</SelectItem>
+                                                                <SelectItem value="NB">New Brunswick</SelectItem>
+                                                                <SelectItem value="NL">Newfoundland and
+                                                                    Labrador</SelectItem>
+                                                                <SelectItem value="NS">Nova Scotia</SelectItem>
+                                                                <SelectItem value="ON">Ontario</SelectItem>
+                                                                <SelectItem value="PE">Prince Edward Island</SelectItem>
+                                                                <SelectItem value="QC">Quebec</SelectItem>
+                                                                <SelectItem value="SK">Saskatchewan</SelectItem>
+                                                                <SelectItem value="NT">Northwest
+                                                                    Territories</SelectItem>
+                                                                <SelectItem value="NU">Nunavut</SelectItem>
+                                                                <SelectItem value="YT">Yukon</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                </ClientOnly>
+                                                {/* Add hidden input to ensure value is submitted with form */}
+                                                <input
+                                                    type="hidden"
+                                                    name="province"
+                                                    value={field.value || ''}
+                                                />
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
 
-                        <FormField
-                            control={familyForm.control}
-                            name="postal_code"
-                                    render={({field}) => (
-                                        <FormItem>
-                                            <FormLabel>Postal Code</FormLabel>
-                                            <FormControl><Input {...field} /></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
-                        {/* Optional Fields */}
-                        <FormField
-                            control={familyForm.control}
-                            name="emergency_contact"
-                                    render={({field}) => (
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
-                                            <FormControl><Textarea {...field}
-                                                                   value={getDefaultValue(field.value)}/></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
-                        <FormField
-                            control={familyForm.control}
-                            name="health_info"
-                                    render={({field}) => (
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Personal Health Number / Info</FormLabel>
-                                            {/* Removed duplicated FormItem and FormLabel */}
-                                            <FormControl><Textarea {...field}
-                                                                   value={getDefaultValue(field.value)}/></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
-                        <FormField
-                            control={familyForm.control}
-                            name="emergency_contact"
-                                    render={({field}) => (
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
-                                            <FormControl><Textarea {...field}
-                                                                   value={getDefaultValue(field.value)}/></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
-                        <FormField
-                            control={familyForm.control}
-                            name="notes"
-                                    render={({field}) => (
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Family Notes (Internal Use)</FormLabel>
-                                            {/* Removed duplicated FormItem and FormLabel */}
-                                            <FormControl><Textarea {...field}
-                                                                   value={getDefaultValue(field.value)}/></FormControl>
-                                            <FormMessage className="dark:text-red-400"/>
-                                        </FormItem>
-                                    )}
-                                />
-                    </div>
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="postal_code"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Postal Code</FormLabel>
+                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    {/* Optional Fields */}
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="emergency_contact"
+                                        render={({field}) => (
+                                            <FormItem className="md:col-span-2">
+                                                <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
+                                                <FormControl><Textarea {...field}
+                                                                       value={getDefaultValue(field.value)}/></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="health_info"
+                                        render={({field}) => (
+                                            <FormItem className="md:col-span-2">
+                                                <FormLabel>Personal Health Number / Info</FormLabel>
+                                                {/* Removed duplicated FormItem and FormLabel */}
+                                                <FormControl><Textarea {...field}
+                                                                       value={getDefaultValue(field.value)}/></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="emergency_contact"
+                                        render={({field}) => (
+                                            <FormItem className="md:col-span-2">
+                                                <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
+                                                <FormControl><Textarea {...field}
+                                                                       value={getDefaultValue(field.value)}/></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={familyForm.control}
+                                        name="notes"
+                                        render={({field}) => (
+                                            <FormItem className="md:col-span-2">
+                                                <FormLabel>Family Notes (Internal Use)</FormLabel>
+                                                {/* Removed duplicated FormItem and FormLabel */}
+                                                <FormControl><Textarea {...field}
+                                                                       value={getDefaultValue(field.value)}/></FormControl>
+                                                <FormMessage className="dark:text-red-400"/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
 
                                 <Button type="submit" disabled={isSubmitting}>
                                     {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
@@ -656,7 +659,10 @@ export default function AccountSettingsPage() {
 
                         {/* --- Guardian Information Forms --- */}
                         {(guardians ?? []).map((guardian, index) => (
-                            <ClientOnly key={guardian.id} fallback={<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6 animate-pulse"><h2 className="text-xl font-semibold mb-4 border-b pb-2">Loading Guardian #{index + 1}...</h2></div>}>
+                            <ClientOnly key={guardian.id} fallback={<div
+                                className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6 animate-pulse"><h2
+                                className="text-xl font-semibold mb-4 border-b pb-2">Loading Guardian
+                                #{index + 1}...</h2></div>}>
                                 {() => (
                                     <GuardianForm guardian={guardian} index={index + 1}
                                                   actionData={actionData}
@@ -670,14 +676,14 @@ export default function AccountSettingsPage() {
                         <UIForm {...preferencesForm}>
                             <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                                 <h2 className="text-xl font-semibold mb-4">Account Preferences</h2>
-                                <input type="hidden" name="intent" value="updatePreferences" />
+                                <input type="hidden" name="intent" value="updatePreferences"/>
 
                                 {actionData?.intent === 'updatePreferences' && actionData.errors && (
                                     <Alert variant="destructive" className="mb-4">
                                         <AlertTitle>Validation Errors</AlertTitle>
                                         <AlertDescription>
                                             <ul className="list-disc pl-5">
-                                                {actionData.errors.map((err, i) => 
+                                                {actionData.errors.map((err, i) =>
                                                     <li key={i}>{err.path.join('.')} : {err.message}</li>
                                                 )}
                                             </ul>
@@ -689,45 +695,46 @@ export default function AccountSettingsPage() {
                                     <FormField
                                         control={preferencesForm.control}
                                         name="currentPassword"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Current Password</FormLabel>
                                                 <FormControl>
                                                     <Input type="password" {...field} />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
-                                    
+
                                     <FormField
                                         control={preferencesForm.control}
                                         name="newPassword"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>New Password</FormLabel>
                                                 <FormControl>
                                                     <Input type="password" {...field} />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
-                                    
+
                                     <FormMessage className="text-sm text-muted-foreground mt-1">
-                                        Password must be at least 8 characters and contain uppercase, lowercase, and number.
+                                        Password must be at least 8 characters and contain uppercase, lowercase, and
+                                        number.
                                     </FormMessage>
 
                                     <FormField
                                         control={preferencesForm.control}
                                         name="confirmPassword"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Confirm Password</FormLabel>
                                                 <FormControl>
                                                     <Input type="password" {...field} />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -735,7 +742,7 @@ export default function AccountSettingsPage() {
                                     <FormField
                                         control={preferencesForm.control}
                                         name="receiveMarketingEmails"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4">
                                                 <FormControl>
                                                     <Checkbox
@@ -753,12 +760,12 @@ export default function AccountSettingsPage() {
                                     />
                                 </div>
 
-                                <Button 
-                                    type="submit" 
+                                <Button
+                                    type="submit"
                                     disabled={isSubmitting}
                                 >
-                                    {isSubmitting && navigation.formData?.get('intent') === 'updatePreferences' 
-                                        ? 'Saving...' 
+                                    {isSubmitting && navigation.formData?.get('intent') === 'updatePreferences'
+                                        ? 'Saving...'
                                         : 'Update Preferences'}
                                 </Button>
                             </Form>

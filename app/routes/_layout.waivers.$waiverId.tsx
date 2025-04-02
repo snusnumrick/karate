@@ -1,5 +1,5 @@
 import {json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
-import {useLoaderData, Link, useParams, useRouteError, isRouteErrorResponse} from "@remix-run/react";
+import {isRouteErrorResponse, Link, useLoaderData, useParams, useRouteError} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button"; // Assuming Button component exists
 
@@ -79,7 +79,8 @@ export default function WaiverDetailsPage() {
 
             <div className="mt-8 flex justify-end">
                 {hasSigned ? (
-                    <span className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 dark:bg-green-900 dark:text-green-200">
+                    <span
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 dark:bg-green-900 dark:text-green-200">
                         ✓ Signed
                     </span>
                 ) : (

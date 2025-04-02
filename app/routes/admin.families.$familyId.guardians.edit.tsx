@@ -1,18 +1,18 @@
 import invariant from "tiny-invariant";
-import { json, redirect } from "@remix-run/node";
-import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
-import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
+import type {ActionFunctionArgs, LoaderFunctionArgs, MetaFunction} from "@remix-run/node";
+import {json, redirect} from "@remix-run/node";
+import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
 // Import createClient
-import { createClient } from "@supabase/supabase-js";
+import {createClient} from "@supabase/supabase-js";
 // Remove unused PostgrestFilterBuilder import
-import { Database, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Separator } from "~/components/ui/separator";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import {Database, TablesUpdate} from "~/types/supabase"; // Import TablesUpdate
+import {Button} from "~/components/ui/button";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
+import {Input} from "~/components/ui/input";
+import {Label} from "~/components/ui/label";
+import {Separator} from "~/components/ui/separator";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 
@@ -30,16 +30,16 @@ type ActionData = {
     fieldErrors?: Record<string, Record<string, string>>; // e.g., { guardianId: { fieldName: errorMessage } }
 };
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export const meta: MetaFunction<typeof loader> = ({data}) => {
     const familyName = data?.familyName ?? "Family";
     return [
-        { title: `Edit Guardians for ${familyName} | Admin Dashboard` },
-        { name: "description", content: `Edit guardian details for the ${familyName} family.` },
+        {title: `Edit Guardians for ${familyName} | Admin Dashboard`},
+        {name: "description", content: `Edit guardian details for the ${familyName} family.`},
     ];
 };
 
 // Loader to fetch family name and existing guardians
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({params}: LoaderFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
 
@@ -48,7 +48,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error("[Guardians Edit Loader] Missing Supabase URL or Service Role Key env vars.");
-        throw new Response("Server configuration error", { status: 500 });
+        throw new Response("Server configuration error", {status: 500});
     }
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
@@ -64,11 +64,11 @@ export async function loader({ params }: LoaderFunctionArgs) {
             .from('guardians')
             .select('*')
             .eq('family_id', familyId)
-            // .order('created_at', { ascending: true }) // Removed: Column does not exist
+        // .order('created_at', { ascending: true }) // Removed: Column does not exist
     ]);
 
-    const { data: familyData, error: familyError } = familyResult;
-    const { data: guardians, error: guardiansError } = guardiansResult;
+    const {data: familyData, error: familyError} = familyResult;
+    const {data: guardians, error: guardiansError} = guardiansResult;
 
     if (familyError) {
         console.error(`[Guardians Edit Loader] Supabase error fetching family name ${familyId}:`, familyError.message);
@@ -76,19 +76,19 @@ export async function loader({ params }: LoaderFunctionArgs) {
     }
     if (guardiansError) {
         console.error(`[Guardians Edit Loader] Supabase error fetching guardians for family ${familyId}:`, guardiansError.message);
-        throw new Response(`Database error fetching guardians: ${guardiansError.message}`, { status: 500 });
+        throw new Response(`Database error fetching guardians: ${guardiansError.message}`, {status: 500});
     }
 
     if (!guardians) {
         // This shouldn't happen if the query succeeds, but good to check
-        throw new Response("Could not fetch guardians", { status: 500 });
+        throw new Response("Could not fetch guardians", {status: 500});
     }
 
-    return json({ familyName: familyData?.name ?? null, guardians });
+    return json({familyName: familyData?.name ?? null, guardians});
 }
 
 // Action to handle form submission for updating guardians
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({request, params}: ActionFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
     const formData = await request.formData();
@@ -98,7 +98,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error("[Guardians Edit Action] Missing Supabase URL or Service Role Key env vars.");
-        return json<ActionData>({ error: "Server configuration error" }, { status: 500 });
+        return json<ActionData>({error: "Server configuration error"}, {status: 500});
     }
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
@@ -113,17 +113,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
     // A simpler approach for now: refetch guardians and update based on form data.
 
     // Refetch guardians to ensure we have the correct IDs
-    const { data: currentGuardians, error: fetchError } = await supabaseServer
+    const {data: currentGuardians, error: fetchError} = await supabaseServer
         .from('guardians')
         .select('id')
         .eq('family_id', familyId);
 
     if (fetchError) {
         console.error(`[Guardians Edit Action] Error fetching current guardians for family ${familyId}:`, fetchError.message);
-        return json<ActionData>({ error: `Database error: ${fetchError.message}` }, { status: 500 });
+        return json<ActionData>({error: `Database error: ${fetchError.message}`}, {status: 500});
     }
     if (!currentGuardians) {
-         return json<ActionData>({ error: "Could not find guardians to update." }, { status: 404 });
+        return json<ActionData>({error: "Could not find guardians to update."}, {status: 404});
     }
 
     for (const guardian of currentGuardians) {
@@ -184,7 +184,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     if (Object.keys(fieldErrors).length > 0) {
         console.log("[Guardians Edit Action] Validation failed:", fieldErrors);
-        return json<ActionData>({ error: "Validation failed", fieldErrors }, { status: 400 });
+        return json<ActionData>({error: "Validation failed", fieldErrors}, {status: 400});
     }
 
     // Execute all update promises
@@ -199,7 +199,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         console.error(`[Guardians Edit Action] Supabase error updating guardians for family ${familyId}:`, updateErrors);
         // Extract error messages more reliably
         const errorMessages = updateErrors.map(error => error?.message || 'Unknown update error').join(', ');
-        return json<ActionData>({ error: `Database error during update: ${errorMessages}` }, { status: 500 });
+        return json<ActionData>({error: `Database error during update: ${errorMessages}`}, {status: 500});
     }
 
     // Redirect back to the family detail page after successful update
@@ -209,7 +209,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 // Component for the Edit Guardians page
 export default function EditGuardiansPage() {
-    const { familyName, guardians } = useLoaderData<LoaderData>();
+    const {familyName, guardians} = useLoaderData<LoaderData>();
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
     const params = useParams();
@@ -226,18 +226,19 @@ export default function EditGuardiansPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Edit Guardian Details</CardTitle>
-                    <CardDescription>Update the information for the guardians associated with the {familyName ?? 'family'} family.</CardDescription>
+                    <CardDescription>Update the information for the guardians associated with
+                        the {familyName ?? 'family'} family.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {actionData?.error && !actionData.fieldErrors && (
                         <Alert variant="destructive" className="mb-4">
-                            <ExclamationTriangleIcon className="h-4 w-4" />
+                            <ExclamationTriangleIcon className="h-4 w-4"/>
                             <AlertTitle>Error</AlertTitle>
                             <AlertDescription>{actionData.error}</AlertDescription>
                         </Alert>
                     )}
                     {guardians.length === 0 ? (
-                         <p>There are no guardians associated with this family to edit.</p>
+                        <p>There are no guardians associated with this family to edit.</p>
                     ) : (
                         <Form method="post" className="space-y-6">
                             {guardians.map((guardian, index) => {
@@ -262,7 +263,8 @@ export default function EditGuardiansPage() {
                                                     aria-describedby={`guardian_${guardianId}_first_name-error`}
                                                 />
                                                 {errors?.first_name && (
-                                                    <p id={`guardian_${guardianId}_first_name-error`} className="text-sm text-destructive">
+                                                    <p id={`guardian_${guardianId}_first_name-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.first_name}
                                                     </p>
                                                 )}
@@ -280,7 +282,8 @@ export default function EditGuardiansPage() {
                                                     aria-describedby={`guardian_${guardianId}_last_name-error`}
                                                 />
                                                 {errors?.last_name && (
-                                                    <p id={`guardian_${guardianId}_last_name-error`} className="text-sm text-destructive">
+                                                    <p id={`guardian_${guardianId}_last_name-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.last_name}
                                                     </p>
                                                 )}
@@ -288,7 +291,8 @@ export default function EditGuardiansPage() {
 
                                             {/* Relationship */}
                                             <div className="space-y-1">
-                                                <Label htmlFor={`guardian_${guardianId}_relationship`}>Relationship</Label>
+                                                <Label
+                                                    htmlFor={`guardian_${guardianId}_relationship`}>Relationship</Label>
                                                 <Input
                                                     id={`guardian_${guardianId}_relationship`}
                                                     name={`guardian_${guardianId}_relationship`}
@@ -297,8 +301,9 @@ export default function EditGuardiansPage() {
                                                     aria-invalid={!!errors?.relationship}
                                                     aria-describedby={`guardian_${guardianId}_relationship-error`}
                                                 />
-                                                 {errors?.relationship && (
-                                                    <p id={`guardian_${guardianId}_relationship-error`} className="text-sm text-destructive">
+                                                {errors?.relationship && (
+                                                    <p id={`guardian_${guardianId}_relationship-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.relationship}
                                                     </p>
                                                 )}
@@ -316,8 +321,9 @@ export default function EditGuardiansPage() {
                                                     aria-invalid={!!errors?.cell_phone}
                                                     aria-describedby={`guardian_${guardianId}_cell_phone-error`}
                                                 />
-                                                 {errors?.cell_phone && (
-                                                    <p id={`guardian_${guardianId}_cell_phone-error`} className="text-sm text-destructive">
+                                                {errors?.cell_phone && (
+                                                    <p id={`guardian_${guardianId}_cell_phone-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.cell_phone}
                                                     </p>
                                                 )}
@@ -335,8 +341,9 @@ export default function EditGuardiansPage() {
                                                     aria-invalid={!!errors?.home_phone}
                                                     aria-describedby={`guardian_${guardianId}_home_phone-error`}
                                                 />
-                                                 {errors?.home_phone && (
-                                                    <p id={`guardian_${guardianId}_home_phone-error`} className="text-sm text-destructive">
+                                                {errors?.home_phone && (
+                                                    <p id={`guardian_${guardianId}_home_phone-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.home_phone}
                                                     </p>
                                                 )}
@@ -353,8 +360,9 @@ export default function EditGuardiansPage() {
                                                     aria-invalid={!!errors?.work_phone}
                                                     aria-describedby={`guardian_${guardianId}_work_phone-error`}
                                                 />
-                                                 {errors?.work_phone && (
-                                                    <p id={`guardian_${guardianId}_work_phone-error`} className="text-sm text-destructive">
+                                                {errors?.work_phone && (
+                                                    <p id={`guardian_${guardianId}_work_phone-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.work_phone}
                                                     </p>
                                                 )}
@@ -372,8 +380,9 @@ export default function EditGuardiansPage() {
                                                     aria-invalid={!!errors?.email}
                                                     aria-describedby={`guardian_${guardianId}_email-error`}
                                                 />
-                                                 {errors?.email && (
-                                                    <p id={`guardian_${guardianId}_email-error`} className="text-sm text-destructive">
+                                                {errors?.email && (
+                                                    <p id={`guardian_${guardianId}_email-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.email}
                                                     </p>
                                                 )}
@@ -389,8 +398,9 @@ export default function EditGuardiansPage() {
                                                     aria-invalid={!!errors?.employer}
                                                     aria-describedby={`guardian_${guardianId}_employer-error`}
                                                 />
-                                                 {errors?.employer && (
-                                                    <p id={`guardian_${guardianId}_employer-error`} className="text-sm text-destructive">
+                                                {errors?.employer && (
+                                                    <p id={`guardian_${guardianId}_employer-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.employer}
                                                     </p>
                                                 )}
@@ -398,7 +408,8 @@ export default function EditGuardiansPage() {
 
                                             {/* Employer Phone */}
                                             <div className="space-y-1">
-                                                <Label htmlFor={`guardian_${guardianId}_employer_phone`}>Employer Phone</Label>
+                                                <Label htmlFor={`guardian_${guardianId}_employer_phone`}>Employer
+                                                    Phone</Label>
                                                 <Input
                                                     id={`guardian_${guardianId}_employer_phone`}
                                                     name={`guardian_${guardianId}_employer_phone`}
@@ -407,8 +418,9 @@ export default function EditGuardiansPage() {
                                                     aria-invalid={!!errors?.employer_phone}
                                                     aria-describedby={`guardian_${guardianId}_employer_phone-error`}
                                                 />
-                                                 {errors?.employer_phone && (
-                                                    <p id={`guardian_${guardianId}_employer_phone-error`} className="text-sm text-destructive">
+                                                {errors?.employer_phone && (
+                                                    <p id={`guardian_${guardianId}_employer_phone-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.employer_phone}
                                                     </p>
                                                 )}
@@ -416,7 +428,8 @@ export default function EditGuardiansPage() {
 
                                             {/* Employer Notes */}
                                             <div className="space-y-1 md:col-span-2"> {/* Span across columns */}
-                                                <Label htmlFor={`guardian_${guardianId}_employer_notes`}>Employer Notes</Label>
+                                                <Label htmlFor={`guardian_${guardianId}_employer_notes`}>Employer
+                                                    Notes</Label>
                                                 <Input // Consider using Textarea if notes can be long
                                                     id={`guardian_${guardianId}_employer_notes`}
                                                     name={`guardian_${guardianId}_employer_notes`}
@@ -424,8 +437,9 @@ export default function EditGuardiansPage() {
                                                     aria-invalid={!!errors?.employer_notes}
                                                     aria-describedby={`guardian_${guardianId}_employer_notes-error`}
                                                 />
-                                                 {errors?.employer_notes && (
-                                                    <p id={`guardian_${guardianId}_employer_notes-error`} className="text-sm text-destructive">
+                                                {errors?.employer_notes && (
+                                                    <p id={`guardian_${guardianId}_employer_notes-error`}
+                                                       className="text-sm text-destructive">
                                                         {errors.employer_notes}
                                                     </p>
                                                 )}
@@ -435,7 +449,7 @@ export default function EditGuardiansPage() {
                                 );
                             })}
 
-                            <Separator className="my-4" />
+                            <Separator className="my-4"/>
 
                             <div className="flex justify-end space-x-2">
                                 <Button type="button" variant="outline" asChild>
@@ -454,4 +468,4 @@ export default function EditGuardiansPage() {
 }
 
 // Re-use the Error Boundary from the main family detail page for now
-export { ErrorBoundary } from "./admin.families.$familyId";
+export {ErrorBoundary} from "./admin.families.$familyId";

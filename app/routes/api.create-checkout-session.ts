@@ -1,4 +1,4 @@
-import {json, type ActionFunctionArgs} from "@remix-run/node";
+import {type ActionFunctionArgs, json} from "@remix-run/node";
 import {createClient} from "@supabase/supabase-js"; // Import standard client
 import Stripe from 'stripe';
 import {createInitialPaymentRecord} from '~/utils/supabase.server'; // Use the renamed utility

@@ -1,11 +1,4 @@
-import {
-    Links,
-    Meta,
-    Outlet,
-    Scripts,
-    ScrollRestoration,
-    useRouteError,
-} from "@remix-run/react";
+import {Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError,} from "@remix-run/react";
 import type {LinksFunction} from "@remix-run/node";
 import {ThemeProvider} from "~/components/theme-provider";
 

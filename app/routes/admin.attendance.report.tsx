@@ -1,20 +1,13 @@
 import {json, type LoaderFunctionArgs} from "@remix-run/node";
-import {Link, useLoaderData, useRouteError, Form} from "@remix-run/react";
+import {Form, Link, useLoaderData, useRouteError} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/supabase";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "~/components/ui/table";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Card, CardContent, CardHeader, CardTitle} from "~/components/ui/card";
-import {format, startOfMonth, endOfMonth, subMonths, isValid} from 'date-fns';
+import {endOfMonth, format, isValid, startOfMonth, subMonths} from 'date-fns';
 
 // Define types
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;

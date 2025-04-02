@@ -4,22 +4,31 @@
  * For more information, see https://remix.run/file-conventions/entry.client
  */
 
-import { RemixBrowser } from "@remix-run/react";
-import { startTransition, StrictMode } from "react";
-import { hydrateRoot } from "react-dom/client";
+declare global {
+  interface Window {
+    __REMIX_DEV_TOOLS?: {
+      suppressHydrationWarning: boolean;
+      suppressExtraHydrationErrors: boolean;
+    };
+  }
+}
+
+import {RemixBrowser} from "@remix-run/react";
+import {startTransition, StrictMode} from "react";
+import {hydrateRoot} from "react-dom/client";
 
 if (process.env.NODE_ENV === 'development') {
-  window.__REMIX_DEV_TOOLS = {
-    suppressHydrationWarning: true,
-    suppressExtraHydrationErrors: true
-  };
+    window.__REMIX_DEV_TOOLS = {
+        suppressHydrationWarning: true,
+        suppressExtraHydrationErrors: true
+    };
 }
 
 startTransition(() => {
-  hydrateRoot(
-    document,
-    <StrictMode>
-      <RemixBrowser />
-    </StrictMode>
-  );
+    hydrateRoot(
+        document,
+        <StrictMode>
+            <RemixBrowser/>
+        </StrictMode>
+    );
 });

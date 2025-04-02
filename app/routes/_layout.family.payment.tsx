@@ -1,15 +1,14 @@
-import {json, redirect, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
-import {useLoaderData, useFetcher, Link, useRouteError} from "@remix-run/react"; // Use useFetcher, remove Form, useNavigation, useActionData
-import React, { useState, useEffect } from "react"; // Add React hooks
-import { loadStripe, type Stripe } from '@stripe/stripe-js'; // Import Stripe.js
-import { getSupabaseServerClient } from "~/utils/supabase.server"; // Remove createPaymentSession import
-import { Button } from "~/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { ExclamationTriangleIcon, InfoCircledIcon } from "@radix-ui/react-icons";
-import { siteConfig } from "~/config/site";
-import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
-import { Checkbox } from "~/components/ui/checkbox"; // Import Checkbox
-import { format } from 'date-fns'; // Import format
+import {json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
+import {Link, useFetcher, useLoaderData, useRouteError} from "@remix-run/react"; // Use useFetcher, remove Form, useNavigation, useActionData
+import React, {useEffect, useState} from "react"; // Add React hooks
+import {loadStripe, type Stripe} from '@stripe/stripe-js'; // Import Stripe.js
+import {checkStudentEligibility, type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check // Remove createPaymentSession import
+import {Button} from "~/components/ui/button";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {ExclamationTriangleIcon, InfoCircledIcon} from "@radix-ui/react-icons";
+import {siteConfig} from "~/config/site";
+import {Checkbox} from "~/components/ui/checkbox"; // Import Checkbox
+import {format} from 'date-fns'; // Import format
 
 // Payment Calculation
 //
@@ -52,10 +51,10 @@ export interface LoaderData {
 }
 
 // Loader function
-export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const { supabaseServer, response } = getSupabaseServerClient(request);
+export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+    const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
-    const { data: { user } } = await supabaseServer.auth.getUser();
+    const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {
         // Should be protected by layout, but handle defensively
@@ -90,9 +89,9 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
     if (familyError || !familyData) {
         console.error("Payment Loader Error: Failed to load family name", familyError?.message);
-        throw new Response("Could not load family details.", { status: 500, headers });
+        throw new Response("Could not load family details.", {status: 500, headers});
     }
-    const familyName : string = familyData.name!;
+    const familyName: string = familyData.name!;
 
     // 2. Fetch Students for the Family
     const {data: studentsData, error: studentsError} = await supabaseServer
@@ -102,7 +101,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
     if (studentsError) {
         console.error("Payment Loader Error: Failed to load students", studentsError.message);
-        throw new Response("Could not load student information.", { status: 500, headers });
+        throw new Response("Could not load student information.", {status: 500, headers});
     }
     if (!studentsData || studentsData.length === 0) {
         // Return specific error handled by the component
@@ -111,12 +110,12 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
             familyName,
             // No students found, return empty details
             error: "No students found in this family."
-        }, { headers });
+        }, {headers});
     }
     const students = studentsData; // Keep full student list
 
     // 3. Fetch Successful Payments for the Family
-    const { data: paymentsData, error: paymentsError } = await supabaseServer
+    const {data: paymentsData, error: paymentsError} = await supabaseServer
         .from('payments')
         .select('id, status') // Only need id and status
         .eq('family_id', familyId)
@@ -124,7 +123,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
     if (paymentsError) {
         console.error("Payment Loader Error: Failed to load payments", paymentsError.message);
-        throw new Response("Could not load payment history.", { status: 500, headers });
+        throw new Response("Could not load payment history.", {status: 500, headers});
     }
     const successfulPaymentIds = paymentsData?.map(p => p.id) || [];
 
@@ -141,7 +140,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
         if (linksError) {
             console.error("Payment Loader Error: Failed to load payment links", linksError.message);
-            throw new Response("Could not load payment link history.", { status: 500, headers });
+            throw new Response("Could not load payment link history.", {status: 500, headers});
         }
         paymentStudentLinks = linksData || [];
     }
@@ -203,7 +202,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
         familyName,
         studentPaymentDetails, // This now contains all student info needed
         stripePublishableKey
-    }, { headers });
+    }, {headers});
 }
 
 export default function FamilyPaymentPage() {
@@ -251,8 +250,8 @@ export default function FamilyPaymentPage() {
             loadStripe(stripePublishableKey).then(stripeInstance => {
                 setStripe(stripeInstance);
             }).catch(error => {
-                 console.error("Failed to load Stripe.js:", error);
-                 setClientError("Failed to load payment library. Please refresh the page.");
+                console.error("Failed to load Stripe.js:", error);
+                setClientError("Failed to load payment library. Please refresh the page.");
             });
         } else {
             console.error("Stripe publishable key is missing.");
@@ -265,7 +264,7 @@ export default function FamilyPaymentPage() {
         console.log("Effect check: fetcher.data:", fetcher.data, "stripe loaded:", !!stripe); // Log effect trigger
         if (fetcher.data?.sessionId && stripe) {
             console.log("Attempting redirect to Stripe Checkout with session ID:", fetcher.data.sessionId); // Log redirect attempt
-            stripe.redirectToCheckout({ sessionId: fetcher.data.sessionId })
+            stripe.redirectToCheckout({sessionId: fetcher.data.sessionId})
                 .then(result => {
                     // If redirectToCheckout fails (e.g., network error), show error
                     if (result.error) {
@@ -273,13 +272,13 @@ export default function FamilyPaymentPage() {
                         setClientError(result.error.message || "Failed to redirect to payment page. Please try again.");
                     }
                 }).catch(error => {
-                    console.error("Error during Stripe redirect:", error);
-                    setClientError("An unexpected error occurred while redirecting to payment. Please try again.");
-                });
+                console.error("Error during Stripe redirect:", error);
+                setClientError("An unexpected error occurred while redirecting to payment. Please try again.");
+            });
         }
         // Handle errors returned by the fetcher API call itself
         if (fetcher.data?.error) {
-             setClientError(fetcher.data.error);
+            setClientError(fetcher.data.error);
         }
     }, [fetcher.data, stripe]);
 
@@ -307,13 +306,13 @@ export default function FamilyPaymentPage() {
             return;
         }
         if (selectedStudentIds.size === 0) {
-             setClientError("Please select at least one student to pay for.");
-             return;
+            setClientError("Please select at least one student to pay for.");
+            return;
         }
         const calculatedTotal = calculateTotal();
         if (calculatedTotal <= 0) {
-             setClientError("Calculated payment amount must be greater than zero.");
-             return;
+            setClientError("Calculated payment amount must be greater than zero.");
+            return;
         }
 
         const formData = new FormData(event.currentTarget);
@@ -352,17 +351,17 @@ export default function FamilyPaymentPage() {
 
     // Handle missing Stripe key from loader
     if (!stripePublishableKey) {
-         return (
-             <div className="container mx-auto px-4 py-8 max-w-md">
-                 <Alert variant="destructive" className="mb-4">
-                     <ExclamationTriangleIcon className="h-4 w-4" />
-                     <AlertTitle>Configuration Error</AlertTitle>
-                     <AlertDescription>
-                         Payment processing is not configured correctly. Please contact support.
-                     </AlertDescription>
-                 </Alert>
-             </div>
-         );
+        return (
+            <div className="container mx-auto px-4 py-8 max-w-md">
+                <Alert variant="destructive" className="mb-4">
+                    <ExclamationTriangleIcon className="h-4 w-4"/>
+                    <AlertTitle>Configuration Error</AlertTitle>
+                    <AlertDescription>
+                        Payment processing is not configured correctly. Please contact support.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        );
     }
 
     // Handle other potential loader errors (e.g., failed to get familyId)
@@ -371,7 +370,7 @@ export default function FamilyPaymentPage() {
         return (
             <div className="container mx-auto px-4 py-8 max-w-md">
                 <Alert variant="destructive" className="mb-4">
-                    <ExclamationTriangleIcon className="h-4 w-4" />
+                    <ExclamationTriangleIcon className="h-4 w-4"/>
                     <AlertTitle>Error Loading Payment Details</AlertTitle>
                     <AlertDescription>
                         Could not load necessary payment information. Please return to the
@@ -400,12 +399,14 @@ export default function FamilyPaymentPage() {
 
             {/* Student Selection & Payment Details Section */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-                <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">Select Students to Pay For</h2>
+                <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">Select Students to Pay
+                    For</h2>
 
                 {/* Student List with Checkboxes */}
                 <div className="space-y-4 mb-6">
                     {studentPaymentDetails.map(detail => (
-                        <div key={detail.studentId} className={`flex items-start space-x-3 p-3 rounded-md ${detail.needsPayment ? 'border border-gray-200 dark:border-gray-700' : 'opacity-70 bg-gray-50 dark:bg-gray-700/50'}`}>
+                        <div key={detail.studentId}
+                             className={`flex items-start space-x-3 p-3 rounded-md ${detail.needsPayment ? 'border border-gray-200 dark:border-gray-700' : 'opacity-70 bg-gray-50 dark:bg-gray-700/50'}`}>
                             {detail.needsPayment ? (
                                 <Checkbox
                                     id={`student-${detail.studentId}`}
@@ -430,17 +431,18 @@ export default function FamilyPaymentPage() {
                                     {detail.eligibility.reason === 'Trial' &&
                                         `On Free Trial`
                                     }
-                                     {detail.eligibility.reason === 'Expired' && detail.eligibility.lastPaymentDate &&
+                                    {detail.eligibility.reason === 'Expired' && detail.eligibility.lastPaymentDate &&
                                         `Expired (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
                                     }
-                                     {detail.eligibility.reason === 'Expired' && !detail.eligibility.lastPaymentDate &&
+                                    {detail.eligibility.reason === 'Expired' && !detail.eligibility.lastPaymentDate &&
                                         `Expired (No payment history)`
                                     }
                                 </p>
                                 {detail.needsPayment && (
-                                     <p className="text-sm font-semibold text-green-700 dark:text-green-400 mt-1">
-                                         Next Payment: {siteConfig.pricing.currency}{detail.nextPaymentAmount.toFixed(2)} ({detail.nextPaymentTierLabel})
-                                     </p>
+                                    <p className="text-sm font-semibold text-green-700 dark:text-green-400 mt-1">
+                                        Next
+                                        Payment: {siteConfig.pricing.currency}{detail.nextPaymentAmount.toFixed(2)} ({detail.nextPaymentTierLabel})
+                                    </p>
                                 )}
                             </div>
                         </div>
@@ -455,25 +457,27 @@ export default function FamilyPaymentPage() {
                     </div>
                 </div>
 
-                 {/* Pricing Info Alert */}
-                 <Alert variant="default" className="mt-6 bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
-                   <InfoCircledIcon className="h-4 w-4 text-blue-600 dark:text-blue-300" />
-                   <AlertTitle className="text-blue-800 dark:text-blue-200">How Pricing Works</AlertTitle>
-                   <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
-                     Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
-                     The 1st month fee is {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth},
-                     2nd month is {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth},
-                     and the ongoing rate is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per student.
-                     The total above reflects the calculated amount based on each student&apos;s payment history.
-                   </AlertDescription>
-                 </Alert>
+                {/* Pricing Info Alert */}
+                <Alert variant="default"
+                       className="mt-6 bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
+                    <InfoCircledIcon className="h-4 w-4 text-blue-600 dark:text-blue-300"/>
+                    <AlertTitle className="text-blue-800 dark:text-blue-200">How Pricing Works</AlertTitle>
+                    <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
+                        Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
+                        The 1st month fee is {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth},
+                        2nd month is {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth},
+                        and the ongoing rate is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per
+                        student.
+                        The total above reflects the calculated amount based on each student&apos;s payment history.
+                    </AlertDescription>
+                </Alert>
             </div>
 
             {/* Payment Form - Submits selected students and calculated total */}
             <form onSubmit={handlePaymentSubmit}>
                 {/* Hidden fields for family info */}
-                <input type="hidden" name="familyId" value={familyId} />
-                <input type="hidden" name="familyName" value={familyName} />
+                <input type="hidden" name="familyId" value={familyId}/>
+                <input type="hidden" name="familyName" value={familyName}/>
                 {/* studentIds and amountInCents are added dynamically in handlePaymentSubmit */}
 
                 <Button
@@ -502,20 +506,22 @@ export function ErrorBoundary() {
     return (
         <div className="container mx-auto px-4 py-8 max-w-lg"> {/* Match container width */}
             <Alert variant="destructive">
-                <ExclamationTriangleIcon className="h-4 w-4" />
+                <ExclamationTriangleIcon className="h-4 w-4"/>
                 <AlertTitle>Payment Page Error</AlertTitle>
                 <AlertDescription>
                     {error instanceof Error
                         ? error.message
                         : "An unexpected error occurred while loading the payment page."}
-                    Please try returning to the <Link to="/family" className="font-medium underline px-1">Family Portal</Link>.
+                    Please try returning to the <Link to="/family" className="font-medium underline px-1">Family
+                    Portal</Link>.
                 </AlertDescription>
-                 {/* Optional: Display stack trace in development */}
-                 {process.env.NODE_ENV === "development" && error instanceof Error && (
-                    <pre className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs dark:bg-red-900/50 dark:text-red-100">
+                {/* Optional: Display stack trace in development */}
+                {process.env.NODE_ENV === "development" && error instanceof Error && (
+                    <pre
+                        className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs dark:bg-red-900/50 dark:text-red-100">
                         {error.stack}
                     </pre>
-                 )}
+                )}
             </Alert>
         </div>
     );

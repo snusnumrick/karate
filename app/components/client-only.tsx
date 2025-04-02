@@ -1,8 +1,8 @@
-import { useState, useEffect, type ReactNode } from "react";
+import {type ReactNode, useEffect, useState} from "react";
 
 interface ClientOnlyProps {
-  children: () => ReactNode;
-  fallback?: ReactNode;
+    children: () => ReactNode;
+    fallback?: ReactNode;
 }
 
 /**
@@ -12,19 +12,19 @@ interface ClientOnlyProps {
  * @param children A function that returns the ReactNode to render on the client.
  * @param fallback Optional ReactNode to render on the server and before hydration.
  */
-export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
-  const [hasMounted, setHasMounted] = useState(false);
+export function ClientOnly({children, fallback = null}: ClientOnlyProps) {
+    const [hasMounted, setHasMounted] = useState(false);
 
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+    useEffect(() => {
+        setHasMounted(true);
+    }, []);
 
-  if (!hasMounted) {
-    return fallback;
-  }
+    if (!hasMounted) {
+        return fallback;
+    }
 
-  // We need to call the children function to render the actual content
-  return <>{children()}</>;
+    // We need to call the children function to render the actual content
+    return <>{children()}</>;
 }
 
 export default ClientOnly;

@@ -1,21 +1,14 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, Form, useActionData, useNavigation, useParams } from "@remix-run/react";
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from "~/types/supabase";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input"; // Keep Input for other fields
-import { Label } from "~/components/ui/label";
-import { Textarea } from "~/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select"; // Import Select components
-
-import { BELT_RANKS } from "~/utils/constants";
+import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
+import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
+import {createClient} from '@supabase/supabase-js';
+import type {Database} from "~/types/supabase";
+import {Button} from "~/components/ui/button";
+import {Input} from "~/components/ui/input"; // Keep Input for other fields
+import {Label} from "~/components/ui/label";
+import {Textarea} from "~/components/ui/textarea";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select"; // Import Select components
+import {BELT_RANKS} from "~/utils/constants";
 
 // Define types (assuming table renamed to 'belt_awards' and types regenerated)
 // Ensure app/types/supabase.ts has been regenerated after adding the enum in SQL
@@ -27,47 +20,47 @@ type BeltAwardUpdate = Omit<Database['public']['Tables']['belt_awards']['Update'
 
 
 type LoaderData = {
-  student: StudentRow;
-  beltAward: BeltAwardRow;
+    student: StudentRow;
+    beltAward: BeltAwardRow;
 };
 
 type ActionData = {
-  success?: boolean;
-  message?: string;
-  error?: string;
-  fieldErrors?: { [key: string]: string };
+    success?: boolean;
+    message?: string;
+    error?: string;
+    fieldErrors?: { [key: string]: string };
 };
 
 // Loader to get student name and specific belt award
-export async function loader({ params }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+export async function loader({params}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const studentId = params.studentId;
     const beltAwardId = params.beltAwardId; // Renamed parameter (needs file rename too)
     if (!studentId || !beltAwardId) { // Renamed variable
-        throw new Response("Student ID and Belt Award ID are required", { status: 400 }); // Updated message
+        throw new Response("Student ID and Belt Award ID are required", {status: 400}); // Updated message
     }
 
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Response("Server configuration error.", { status: 500 });
+        throw new Response("Server configuration error.", {status: 500});
     }
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     // Fetch student name
-    const { data: studentData, error: studentError } = await supabaseAdmin
+    const {data: studentData, error: studentError} = await supabaseAdmin
         .from('students')
         .select('id, first_name, last_name')
         .eq('id', studentId)
         .single();
 
     if (studentError || !studentData) {
-        throw new Response("Student not found", { status: 404 });
+        throw new Response("Student not found", {status: 404});
     }
 
     // Fetch the specific belt award
-    const { data: beltAwardData, error: beltAwardError } = await supabaseAdmin // Renamed variables
+    const {data: beltAwardData, error: beltAwardError} = await supabaseAdmin // Renamed variables
         .from('belt_awards') // Renamed table
         .select('*')
         .eq('id', beltAwardId) // Renamed variable
@@ -75,18 +68,18 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
         .single();
 
     if (beltAwardError || !beltAwardData) { // Renamed variables
-        throw new Response("Belt award not found", { status: 404 }); // Updated message
+        throw new Response("Belt award not found", {status: 404}); // Updated message
     }
 
-    return json({ student: studentData, beltAward: beltAwardData }); // Renamed property
+    return json({student: studentData, beltAward: beltAwardData}); // Renamed property
 }
 
 // Action to update belt award
-export async function action({ request, params }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
+export async function action({request, params}: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
     const studentId = params.studentId;
     const beltAwardId = params.beltAwardId; // Renamed parameter (needs file rename too)
     if (!studentId || !beltAwardId) { // Renamed variable
-        return json({ error: "Student ID or Belt Award ID is missing." }, { status: 400 }); // Updated message
+        return json({error: "Student ID or Belt Award ID is missing."}, {status: 400}); // Updated message
     }
 
     const formData = await request.formData();
@@ -101,14 +94,14 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     if (!awarded_date) fieldErrors.awarded_date = "Awarded date is required.";
 
     if (Object.keys(fieldErrors).length > 0) {
-        return json({ error: "Please correct the errors below.", fieldErrors }, { status: 400 });
+        return json({error: "Please correct the errors below.", fieldErrors}, {status: 400});
     }
 
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        return json({ error: "Server configuration error." }, { status: 500 });
+        return json({error: "Server configuration error."}, {status: 500});
     }
 
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
@@ -121,14 +114,14 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         // student_id is not updated
     };
 
-    const { error: updateError } = await supabaseAdmin
+    const {error: updateError} = await supabaseAdmin
         .from('belt_awards') // Renamed table
         .update(beltAwardUpdateData) // Renamed variable
         .eq('id', beltAwardId); // Renamed variable
 
     if (updateError) {
         console.error("Error updating belt award:", updateError); // Updated message
-        return json({ error: "Failed to update belt award. " + updateError.message }, { status: 500 }); // Updated message
+        return json({error: "Failed to update belt award. " + updateError.message}, {status: 500}); // Updated message
     }
 
     // Redirect back to the belt awards list on success - Update path
@@ -137,7 +130,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
 
 export default function EditAchievementPage() { // Function name can stay for now, or rename later
-    const { student, beltAward } = useLoaderData<LoaderData>(); // Renamed variable
+    const {student, beltAward} = useLoaderData<LoaderData>(); // Renamed variable
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
     const params = useParams();
@@ -147,7 +140,8 @@ export default function EditAchievementPage() { // Function name can stay for no
     return (
         <div className="container mx-auto px-4 py-8 max-w-2xl">
             {/* Update path */}
-            <Link to={`/admin/student-belts/${params.studentId}`} className="text-blue-600 hover:underline mb-4 inline-block">
+            <Link to={`/admin/student-belts/${params.studentId}`}
+                  className="text-blue-600 hover:underline mb-4 inline-block">
                 &larr; Back to Belt Awards for {student.first_name} {/* Updated text */}
             </Link>
             <h1 className="text-3xl font-bold mb-6">Edit Belt Award</h1> {/* Renamed title */}
@@ -160,11 +154,11 @@ export default function EditAchievementPage() { // Function name can stay for no
             )}
 
             <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                 <div>
+                <div>
                     <Label htmlFor="type">Belt Awarded</Label>
                     <Select name="type" required defaultValue={beltAward.type}>
                         <SelectTrigger id="type">
-                            <SelectValue placeholder="Select belt rank" />
+                            <SelectValue placeholder="Select belt rank"/>
                         </SelectTrigger>
                         <SelectContent>
                             {BELT_RANKS.map((rank) => (
@@ -174,18 +168,22 @@ export default function EditAchievementPage() { // Function name can stay for no
                             ))}
                         </SelectContent>
                     </Select>
-                    {actionData?.fieldErrors?.type && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.type}</p>}
+                    {actionData?.fieldErrors?.type &&
+                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.type}</p>}
                 </div>
                 <div>
                     {/* Assuming 'description' is notes */}
                     <Label htmlFor="description">Notes (Optional)</Label>
-                    <Textarea id="description" name="description" defaultValue={beltAward.description} rows={3} />
-                    {actionData?.fieldErrors?.description && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.description}</p>}
+                    <Textarea id="description" name="description" defaultValue={beltAward.description || undefined} rows={3}/>
+                    {actionData?.fieldErrors?.description &&
+                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.description}</p>}
                 </div>
                 <div>
                     <Label htmlFor="awarded_date">Awarded Date</Label>
-                    <Input id="awarded_date" name="awarded_date" type="date" required defaultValue={beltAward.awarded_date} />
-                    {actionData?.fieldErrors?.awarded_date && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.awarded_date}</p>}
+                    <Input id="awarded_date" name="awarded_date" type="date" required
+                           defaultValue={beltAward.awarded_date}/>
+                    {actionData?.fieldErrors?.awarded_date &&
+                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.awarded_date}</p>}
                 </div>
 
                 <div className="flex justify-end gap-4">

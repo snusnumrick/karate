@@ -1,32 +1,26 @@
-import { json, type ActionFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
-import { Link, Form, useActionData, useNavigation } from "@remix-run/react";
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from "~/types/supabase";
-import { Button } from "~/components/ui/button";
-import { useState } from "react";
-import { isValid, parse } from 'date-fns'; // Import date-fns functions
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Textarea } from "~/components/ui/textarea"; // Import Textarea
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+import {type ActionFunctionArgs, json, redirect, TypedResponse} from "@remix-run/node";
+import {Form, Link, useActionData, useNavigation} from "@remix-run/react";
+import {createClient} from '@supabase/supabase-js';
+import type {Database} from "~/types/supabase";
+import {Button} from "~/components/ui/button";
+import {useState} from "react";
+import {isValid, parse} from 'date-fns'; // Import date-fns functions
+import {Input} from "~/components/ui/input";
+import {Label} from "~/components/ui/label";
+import {Textarea} from "~/components/ui/textarea"; // Import Textarea
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 
 // Define potential action data structure
 type ActionData = {
-  success?: boolean;
-  message?: string;
-  error?: string;
-  fieldErrors?: { [key: string]: string | undefined }; // Allow undefined for easier checking
+    success?: boolean;
+    message?: string;
+    error?: string;
+    fieldErrors?: { [key: string]: string | undefined }; // Allow undefined for easier checking
 };
 
 // Action function to handle admin family creation
-export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
+export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
     const formData = await request.formData();
 
     // --- Data Extraction ---
@@ -86,7 +80,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     }
 
     if (Object.values(fieldErrors).some(Boolean)) {
-        return json({ error: "Please correct the errors below.", fieldErrors }, { status: 400 });
+        return json({error: "Please correct the errors below.", fieldErrors}, {status: 400});
     }
 
     // --- Database Interaction ---
@@ -94,13 +88,13 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        return json({ error: "Server configuration error." }, { status: 500 });
+        return json({error: "Server configuration error."}, {status: 500});
     }
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     try {
         // 1. Insert Family
-        const { data: familyData, error: familyError } = await supabaseAdmin
+        const {data: familyData, error: familyError} = await supabaseAdmin
             .from('families')
             .insert({
                 name: familyName,
@@ -119,7 +113,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         const familyId = familyData.id;
 
         // 2. Insert Guardian 1
-        const { error: guardian1Error } = await supabaseAdmin
+        const {error: guardian1Error} = await supabaseAdmin
             .from('guardians')
             .insert({
                 family_id: familyId,
@@ -136,7 +130,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
         // 3. Insert Guardian 2 (if data provided)
         if (hasGuardian2Data && guardian2FirstName && guardian2LastName && guardian2Relationship) { // Ensure required fields are present
-             const { error: guardian2Error } = await supabaseAdmin
+            const {error: guardian2Error} = await supabaseAdmin
                 .from('guardians')
                 .insert({
                     family_id: familyId,
@@ -148,7 +142,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                     email: guardian2Email!,         // Can be null
                 });
 
-             if (guardian2Error) throw new Error(`Failed to create guardian 2: ${guardian2Error.message}`);
+            if (guardian2Error) throw new Error(`Failed to create guardian 2: ${guardian2Error.message}`);
         }
 
         // 4. Insert Students (if any provided)
@@ -188,21 +182,21 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             const immunizationNotes = studentImmunizationNotes[i]?.trim() || null;
 
 
-           // Basic validation for each student
-           if (firstName && lastName && dob && gender && school && tShirtSize) { // Check all required fields
-               // Validate date format first
-               if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-                   fieldErrors[`studentDob[${i}]`] = `Invalid date format for student ${i + 1}. Use YYYY-MM-DD.`;
-                   continue; // Skip this student
-               }
-               // Validate date value using date-fns
-               const parsedDate = parse(dob, 'yyyy-MM-dd', new Date());
-               if (!isValid(parsedDate)) {
-                   fieldErrors[`studentDob[${i}]`] = `Invalid date value for student ${i + 1}. Please enter a real date.`;
-                   continue; // Skip this student
-               }
+            // Basic validation for each student
+            if (firstName && lastName && dob && gender && school && tShirtSize) { // Check all required fields
+                // Validate date format first
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+                    fieldErrors[`studentDob[${i}]`] = `Invalid date format for student ${i + 1}. Use YYYY-MM-DD.`;
+                    continue; // Skip this student
+                }
+                // Validate date value using date-fns
+                const parsedDate = parse(dob, 'yyyy-MM-dd', new Date());
+                if (!isValid(parsedDate)) {
+                    fieldErrors[`studentDob[${i}]`] = `Invalid date value for student ${i + 1}. Please enter a real date.`;
+                    continue; // Skip this student
+                }
 
-               studentsToInsert.push({
+                studentsToInsert.push({
                     family_id: familyId,
                     first_name: firstName,
                     last_name: lastName,
@@ -234,12 +228,12 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         // Re-check for errors after student validation
         if (Object.values(fieldErrors).some(Boolean)) {
             // Need to return fieldErrors related to students if any validation failed
-             return json({ error: "Please correct the errors below.", fieldErrors }, { status: 400 });
+            return json({error: "Please correct the errors below.", fieldErrors}, {status: 400});
         }
 
 
         if (studentsToInsert.length > 0) {
-            const { error: studentError } = await supabaseAdmin
+            const {error: studentError} = await supabaseAdmin
                 .from('students')
                 .insert(studentsToInsert);
 
@@ -252,7 +246,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     } catch (error) {
         console.error("Admin family creation error:", error);
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-        return json({ error: errorMessage }, { status: 500 });
+        return json({error: errorMessage}, {status: 500});
     }
 }
 
@@ -283,11 +277,11 @@ export default function AdminNewFamilyPage() {
     const isSubmitting = navigation.state === "submitting";
 
     // State for dynamic student forms
-    const [students, setStudents] = useState<StudentFormEntry[]>([{ id: Date.now() }]); // Start with one student form
+    const [students, setStudents] = useState<StudentFormEntry[]>([{id: Date.now()}]); // Start with one student form
 
     // Function to add a new student form entry
     const addStudent = () => {
-        setStudents([...students, { id: Date.now() }]); // Add new entry with unique id
+        setStudents([...students, {id: Date.now()}]); // Add new entry with unique id
     };
 
     // Function to remove a student form entry by id
@@ -309,7 +303,7 @@ export default function AdminNewFamilyPage() {
                     <AlertDescription>{actionData.error}</AlertDescription>
                 </Alert>
             )}
-             {actionData?.error && actionData.fieldErrors && (
+            {actionData?.error && actionData.fieldErrors && (
                 <Alert variant="destructive" className="mb-4">
                     <AlertTitle>Validation Error</AlertTitle>
                     <AlertDescription>{actionData.error}</AlertDescription>
@@ -320,32 +314,38 @@ export default function AdminNewFamilyPage() {
 
                 {/* Family Information Section */}
                 <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Family Information</h2>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Family
+                        Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <Label htmlFor="familyName">Family Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="familyName" name="familyName" required />
-                            {actionData?.fieldErrors?.familyName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyName}</p>}
+                            <Input id="familyName" name="familyName" required/>
+                            {actionData?.fieldErrors?.familyName &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyName}</p>}
                         </div>
-                         <div>
+                        <div>
                             <Label htmlFor="familyEmail">Family Email <span className="text-red-500">*</span></Label>
-                            <Input id="familyEmail" name="familyEmail" type="email" required />
-                            {actionData?.fieldErrors?.familyEmail && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyEmail}</p>}
+                            <Input id="familyEmail" name="familyEmail" type="email" required/>
+                            {actionData?.fieldErrors?.familyEmail &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyEmail}</p>}
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="address">Home Address <span className="text-red-500">*</span></Label>
-                            <Input id="address" name="address" required />
-                            {actionData?.fieldErrors?.address && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.address}</p>}
+                            <Input id="address" name="address" required/>
+                            {actionData?.fieldErrors?.address &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.address}</p>}
                         </div>
                         <div>
                             <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
-                            <Input id="city" name="city" required />
-                            {actionData?.fieldErrors?.city && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.city}</p>}
+                            <Input id="city" name="city" required/>
+                            {actionData?.fieldErrors?.city &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.city}</p>}
                         </div>
                         <div>
                             <Label htmlFor="province">Province <span className="text-red-500">*</span></Label>
                             <Select name="province" required>
-                                <SelectTrigger id="province"><SelectValue placeholder="Select province" /></SelectTrigger>
+                                <SelectTrigger id="province"><SelectValue
+                                    placeholder="Select province"/></SelectTrigger>
                                 <SelectContent>
                                     {/* Add all provinces/territories */}
                                     <SelectItem value="AB">Alberta</SelectItem>
@@ -363,17 +363,20 @@ export default function AdminNewFamilyPage() {
                                     <SelectItem value="YT">Yukon</SelectItem>
                                 </SelectContent>
                             </Select>
-                            {actionData?.fieldErrors?.province && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.province}</p>}
+                            {actionData?.fieldErrors?.province &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.province}</p>}
                         </div>
                         <div>
                             <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
-                            <Input id="postalCode" name="postalCode" required />
-                            {actionData?.fieldErrors?.postalCode && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.postalCode}</p>}
+                            <Input id="postalCode" name="postalCode" required/>
+                            {actionData?.fieldErrors?.postalCode &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.postalCode}</p>}
                         </div>
                         <div>
                             <Label htmlFor="primaryPhone">Primary Phone <span className="text-red-500">*</span></Label>
-                            <Input id="primaryPhone" name="primaryPhone" type="tel" required />
-                            {actionData?.fieldErrors?.primaryPhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.primaryPhone}</p>}
+                            <Input id="primaryPhone" name="primaryPhone" type="tel" required/>
+                            {actionData?.fieldErrors?.primaryPhone &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.primaryPhone}</p>}
                         </div>
                         {/* Add optional family fields here if needed (referral, etc.) */}
                     </div>
@@ -381,23 +384,30 @@ export default function AdminNewFamilyPage() {
 
                 {/* Guardian 1 Section */}
                 <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Guardian #1 Information</h2>
-                     <p className="text-sm text-muted-foreground mb-4">Note: The email provided here can be used later to invite this guardian to create their portal login.</p>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Guardian #1
+                        Information</h2>
+                    <p className="text-sm text-muted-foreground mb-4">Note: The email provided here can be used later to
+                        invite this guardian to create their portal login.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <Label htmlFor="guardian1FirstName">First Name <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1FirstName" name="guardian1FirstName" required />
-                            {actionData?.fieldErrors?.guardian1FirstName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1FirstName}</p>}
+                            <Label htmlFor="guardian1FirstName">First Name <span
+                                className="text-red-500">*</span></Label>
+                            <Input id="guardian1FirstName" name="guardian1FirstName" required/>
+                            {actionData?.fieldErrors?.guardian1FirstName &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1FirstName}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian1LastName">Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1LastName" name="guardian1LastName" required />
-                            {actionData?.fieldErrors?.guardian1LastName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1LastName}</p>}
+                            <Input id="guardian1LastName" name="guardian1LastName" required/>
+                            {actionData?.fieldErrors?.guardian1LastName &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1LastName}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian1Relationship">Relationship to Student(s) <span className="text-red-500">*</span></Label>
-                             <Select name="guardian1Relationship" required>
-                                <SelectTrigger id="guardian1Relationship"><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                            <Label htmlFor="guardian1Relationship">Relationship to Student(s) <span
+                                className="text-red-500">*</span></Label>
+                            <Select name="guardian1Relationship" required>
+                                <SelectTrigger id="guardian1Relationship"><SelectValue
+                                    placeholder="Select relationship"/></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Mother">Mother</SelectItem>
                                     <SelectItem value="Father">Father</SelectItem>
@@ -405,22 +415,29 @@ export default function AdminNewFamilyPage() {
                                     <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
-                            {actionData?.fieldErrors?.guardian1Relationship && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Relationship}</p>}
-                        </div>
-                         <div>
-                            <Label htmlFor="guardian1Email">Email (for Portal Invite) <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1Email" name="guardian1Email" type="email" required />
-                            {actionData?.fieldErrors?.guardian1Email && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Email}</p>}
+                            {actionData?.fieldErrors?.guardian1Relationship &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Relationship}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian1HomePhone">Home Phone <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" required />
-                            {actionData?.fieldErrors?.guardian1HomePhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1HomePhone}</p>}
+                            <Label htmlFor="guardian1Email">Email (for Portal Invite) <span
+                                className="text-red-500">*</span></Label>
+                            <Input id="guardian1Email" name="guardian1Email" type="email" required/>
+                            {actionData?.fieldErrors?.guardian1Email &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Email}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian1CellPhone">Cell Phone <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" required />
-                            {actionData?.fieldErrors?.guardian1CellPhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1CellPhone}</p>}
+                            <Label htmlFor="guardian1HomePhone">Home Phone <span
+                                className="text-red-500">*</span></Label>
+                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" required/>
+                            {actionData?.fieldErrors?.guardian1HomePhone &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1HomePhone}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="guardian1CellPhone">Cell Phone <span
+                                className="text-red-500">*</span></Label>
+                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" required/>
+                            {actionData?.fieldErrors?.guardian1CellPhone &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1CellPhone}</p>}
                         </div>
                         {/* Add optional guardian fields here (work phone, employer, etc.) */}
                     </div>
@@ -428,23 +445,31 @@ export default function AdminNewFamilyPage() {
 
                 {/* Guardian 2 Section (Optional) */}
                 <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Guardian #2 Information (Optional)</h2>
-                    <p className="text-sm text-muted-foreground mb-4">Fill this section only if there is a second guardian.</p>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Guardian #2
+                        Information (Optional)</h2>
+                    <p className="text-sm text-muted-foreground mb-4">Fill this section only if there is a second
+                        guardian.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <Label htmlFor="guardian2FirstName">First Name <span className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2FirstName" name="guardian2FirstName" />
-                            {actionData?.fieldErrors?.guardian2FirstName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2FirstName}</p>}
+                            <Label htmlFor="guardian2FirstName">First Name <span
+                                className="text-red-500">*</span></Label> {/* Add indicator */}
+                            <Input id="guardian2FirstName" name="guardian2FirstName"/>
+                            {actionData?.fieldErrors?.guardian2FirstName &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2FirstName}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian2LastName">Last Name <span className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2LastName" name="guardian2LastName" />
-                            {actionData?.fieldErrors?.guardian2LastName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2LastName}</p>}
+                            <Label htmlFor="guardian2LastName">Last Name <span
+                                className="text-red-500">*</span></Label> {/* Add indicator */}
+                            <Input id="guardian2LastName" name="guardian2LastName"/>
+                            {actionData?.fieldErrors?.guardian2LastName &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2LastName}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian2Relationship">Relationship to Student(s) <span className="text-red-500">*</span></Label> {/* Add indicator */}
-                             <Select name="guardian2Relationship">
-                                <SelectTrigger id="guardian2Relationship"><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                            <Label htmlFor="guardian2Relationship">Relationship to Student(s) <span
+                                className="text-red-500">*</span></Label> {/* Add indicator */}
+                            <Select name="guardian2Relationship">
+                                <SelectTrigger id="guardian2Relationship"><SelectValue
+                                    placeholder="Select relationship"/></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Mother">Mother</SelectItem>
                                     <SelectItem value="Father">Father</SelectItem>
@@ -452,23 +477,31 @@ export default function AdminNewFamilyPage() {
                                     <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
-                            {actionData?.fieldErrors?.guardian2Relationship && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Relationship}</p>}
-                        </div>
-                         <div>
-                            <Label htmlFor="guardian2Email">Email <span className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2Email" name="guardian2Email" type="email" />
-                            {actionData?.fieldErrors?.guardian2Email && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Email}</p>}
+                            {actionData?.fieldErrors?.guardian2Relationship &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Relationship}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian2HomePhone">Home Phone <span className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel" />
-                            {actionData?.fieldErrors?.guardian2HomePhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
+                            <Label htmlFor="guardian2Email">Email <span
+                                className="text-red-500">*</span></Label> {/* Add indicator */}
+                            <Input id="guardian2Email" name="guardian2Email" type="email"/>
+                            {actionData?.fieldErrors?.guardian2Email &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Email}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="guardian2HomePhone">Home Phone <span
+                                className="text-red-500">*</span></Label> {/* Add indicator */}
+                            <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel"/>
+                            {actionData?.fieldErrors?.guardian2HomePhone &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
                         </div>
                         <div>
                             {/* Add required indicator - server validation enforces the rule */}
-                            <Label htmlFor="guardian2CellPhone">Cell Phone <span className="text-red-500">*</span></Label>
-                            <Input id="guardian2CellPhone" name="guardian2CellPhone" type="tel" /> {/* Removed non-functional required attribute */}
-                            {actionData?.fieldErrors?.guardian2CellPhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2CellPhone}</p>}
+                            <Label htmlFor="guardian2CellPhone">Cell Phone <span
+                                className="text-red-500">*</span></Label>
+                            <Input id="guardian2CellPhone" name="guardian2CellPhone"
+                                   type="tel"/> {/* Removed non-functional required attribute */}
+                            {actionData?.fieldErrors?.guardian2CellPhone &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2CellPhone}</p>}
                         </div>
                         {/* Add optional guardian fields here (work phone, employer, etc.) */}
                     </div>
@@ -476,12 +509,14 @@ export default function AdminNewFamilyPage() {
 
                 {/* Student Section(s) (Dynamic) */}
                 <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Student Information</h2>
-                    <p className="text-sm text-muted-foreground mb-4">Add one or more students associated with this family.</p>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Student
+                        Information</h2>
+                    <p className="text-sm text-muted-foreground mb-4">Add one or more students associated with this
+                        family.</p>
 
                     {students.map((student, index) => (
                         <div key={student.id} className="mb-6 p-4 border border-dashed border-border rounded relative">
-                             {students.length > 1 && ( // Show remove button only if more than one student
+                            {students.length > 1 && ( // Show remove button only if more than one student
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -497,24 +532,33 @@ export default function AdminNewFamilyPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     {/* Use indexed names like studentFirstName[] */}
-                                    <Label htmlFor={`studentFirstName-${student.id}`}>First Name <span className="text-red-500">*</span></Label>
-                                    <Input id={`studentFirstName-${student.id}`} name="studentFirstName[]" required />
-                                    {actionData?.fieldErrors?.[`studentFirstName[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentFirstName[${index}]`]}</p>}
+                                    <Label htmlFor={`studentFirstName-${student.id}`}>First Name <span
+                                        className="text-red-500">*</span></Label>
+                                    <Input id={`studentFirstName-${student.id}`} name="studentFirstName[]" required/>
+                                    {actionData?.fieldErrors?.[`studentFirstName[${index}]`] &&
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentFirstName[${index}]`]}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`studentLastName-${student.id}`}>Last Name <span className="text-red-500">*</span></Label>
-                                    <Input id={`studentLastName-${student.id}`} name="studentLastName[]" required />
-                                     {actionData?.fieldErrors?.[`studentLastName[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentLastName[${index}]`]}</p>}
+                                    <Label htmlFor={`studentLastName-${student.id}`}>Last Name <span
+                                        className="text-red-500">*</span></Label>
+                                    <Input id={`studentLastName-${student.id}`} name="studentLastName[]" required/>
+                                    {actionData?.fieldErrors?.[`studentLastName[${index}]`] &&
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentLastName[${index}]`]}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`studentDob-${student.id}`}>Date of Birth (YYYY-MM-DD) <span className="text-red-500">*</span></Label>
-                                    <Input id={`studentDob-${student.id}`} name="studentDob[]" type="date" required placeholder="YYYY-MM-DD" />
-                                     {actionData?.fieldErrors?.[`studentDob[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentDob[${index}]`]}</p>}
+                                    <Label htmlFor={`studentDob-${student.id}`}>Date of Birth (YYYY-MM-DD) <span
+                                        className="text-red-500">*</span></Label>
+                                    <Input id={`studentDob-${student.id}`} name="studentDob[]" type="date" required
+                                           placeholder="YYYY-MM-DD"/>
+                                    {actionData?.fieldErrors?.[`studentDob[${index}]`] &&
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentDob[${index}]`]}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`studentGender-${student.id}`}>Gender <span className="text-red-500">*</span></Label>
+                                    <Label htmlFor={`studentGender-${student.id}`}>Gender <span
+                                        className="text-red-500">*</span></Label>
                                     <Select name="studentGender[]" required>
-                                        <SelectTrigger id={`studentGender-${student.id}`}><SelectValue placeholder="Select gender" /></SelectTrigger>
+                                        <SelectTrigger id={`studentGender-${student.id}`}><SelectValue
+                                            placeholder="Select gender"/></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Male">Male</SelectItem>
                                             <SelectItem value="Female">Female</SelectItem>
@@ -523,22 +567,27 @@ export default function AdminNewFamilyPage() {
                                             <SelectItem value="Other">Other</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    {actionData?.fieldErrors?.[`studentGender[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentGender[${index}]`]}</p>}
+                                    {actionData?.fieldErrors?.[`studentGender[${index}]`] &&
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentGender[${index}]`]}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`studentSchool-${student.id}`}>School <span className="text-red-500">*</span></Label>
-                                    <Input id={`studentSchool-${student.id}`} name="studentSchool[]" required />
-                                    {actionData?.fieldErrors?.[`studentSchool[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentSchool[${index}]`]}</p>}
+                                    <Label htmlFor={`studentSchool-${student.id}`}>School <span
+                                        className="text-red-500">*</span></Label>
+                                    <Input id={`studentSchool-${student.id}`} name="studentSchool[]" required/>
+                                    {actionData?.fieldErrors?.[`studentSchool[${index}]`] &&
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentSchool[${index}]`]}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentGradeLevel-${student.id}`}>Grade Level</Label>
-                                    <Input id={`studentGradeLevel-${student.id}`} name="studentGradeLevel[]" />
+                                    <Input id={`studentGradeLevel-${student.id}`} name="studentGradeLevel[]"/>
                                     {/* Optional field, no error display unless specific validation added */}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`studentTShirtSize-${student.id}`}>T-Shirt Size <span className="text-red-500">*</span></Label>
+                                    <Label htmlFor={`studentTShirtSize-${student.id}`}>T-Shirt Size <span
+                                        className="text-red-500">*</span></Label>
                                     <Select name="studentTShirtSize[]" required>
-                                        <SelectTrigger id={`studentTShirtSize-${student.id}`}><SelectValue placeholder="Select size" /></SelectTrigger>
+                                        <SelectTrigger id={`studentTShirtSize-${student.id}`}><SelectValue
+                                            placeholder="Select size"/></SelectTrigger>
                                         <SelectContent>
                                             {/* Add appropriate sizes */}
                                             <SelectItem value="Youth S">Youth S</SelectItem>
@@ -552,15 +601,16 @@ export default function AdminNewFamilyPage() {
                                             <SelectItem value="Adult XXL">Adult XXL</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    {actionData?.fieldErrors?.[`studentTShirtSize[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentTShirtSize[${index}]`]}</p>}
+                                    {actionData?.fieldErrors?.[`studentTShirtSize[${index}]`] &&
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentTShirtSize[${index}]`]}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentCellPhone-${student.id}`}>Cell Phone</Label>
-                                    <Input id={`studentCellPhone-${student.id}`} name="studentCellPhone[]" type="tel" />
+                                    <Input id={`studentCellPhone-${student.id}`} name="studentCellPhone[]" type="tel"/>
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentEmail-${student.id}`}>Email</Label>
-                                    <Input id={`studentEmail-${student.id}`} name="studentEmail[]" type="email" />
+                                    <Input id={`studentEmail-${student.id}`} name="studentEmail[]" type="email"/>
                                 </div>
                             </div>
                             {/* Health Information Sub-section */}
@@ -569,20 +619,27 @@ export default function AdminNewFamilyPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="md:col-span-2">
                                         <Label htmlFor={`studentAllergies-${student.id}`}>Allergies</Label>
-                                        <Textarea id={`studentAllergies-${student.id}`} name="studentAllergies[]" placeholder="List any known allergies" />
+                                        <Textarea id={`studentAllergies-${student.id}`} name="studentAllergies[]"
+                                                  placeholder="List any known allergies"/>
                                     </div>
                                     <div className="md:col-span-2">
                                         <Label htmlFor={`studentMedications-${student.id}`}>Medications</Label>
-                                        <Textarea id={`studentMedications-${student.id}`} name="studentMedications[]" placeholder="List any medications the student takes" />
+                                        <Textarea id={`studentMedications-${student.id}`} name="studentMedications[]"
+                                                  placeholder="List any medications the student takes"/>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <Label htmlFor={`studentSpecialNeeds-${student.id}`}>Special Needs / Considerations</Label>
-                                        <Textarea id={`studentSpecialNeeds-${student.id}`} name="studentSpecialNeeds[]" placeholder="Any special needs, learning considerations, or other relevant info" />
+                                        <Label htmlFor={`studentSpecialNeeds-${student.id}`}>Special Needs /
+                                            Considerations</Label>
+                                        <Textarea id={`studentSpecialNeeds-${student.id}`} name="studentSpecialNeeds[]"
+                                                  placeholder="Any special needs, learning considerations, or other relevant info"/>
                                     </div>
                                     <div>
-                                        <Label htmlFor={`studentImmunizationsUpToDate-${student.id}`}>Immunizations Up-to-Date?</Label>
+                                        <Label htmlFor={`studentImmunizationsUpToDate-${student.id}`}>Immunizations
+                                            Up-to-Date?</Label>
                                         <Select name="studentImmunizationsUpToDate[]">
-                                            <SelectTrigger id={`studentImmunizationsUpToDate-${student.id}`}><SelectValue placeholder="Select status" /></SelectTrigger>
+                                            <SelectTrigger
+                                                id={`studentImmunizationsUpToDate-${student.id}`}><SelectValue
+                                                placeholder="Select status"/></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="Yes">Yes</SelectItem>
                                                 <SelectItem value="No">No</SelectItem>
@@ -591,8 +648,11 @@ export default function AdminNewFamilyPage() {
                                         </Select>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <Label htmlFor={`studentImmunizationNotes-${student.id}`}>Immunization Notes</Label>
-                                        <Textarea id={`studentImmunizationNotes-${student.id}`} name="studentImmunizationNotes[]" placeholder="Any notes regarding immunizations" />
+                                        <Label htmlFor={`studentImmunizationNotes-${student.id}`}>Immunization
+                                            Notes</Label>
+                                        <Textarea id={`studentImmunizationNotes-${student.id}`}
+                                                  name="studentImmunizationNotes[]"
+                                                  placeholder="Any notes regarding immunizations"/>
                                     </div>
                                 </div>
                             </div>
@@ -623,14 +683,14 @@ export default function AdminNewFamilyPage() {
 export function ErrorBoundary() {
     // Basic error boundary, can be enhanced
     return (
-         <div className="container mx-auto px-4 py-8 max-w-3xl">
-             <Link to="/admin/families" className="text-blue-600 hover:underline mb-4 inline-block">
+        <div className="container mx-auto px-4 py-8 max-w-3xl">
+            <Link to="/admin/families" className="text-blue-600 hover:underline mb-4 inline-block">
                 &larr; Back to Families List
             </Link>
-             <Alert variant="destructive">
+            <Alert variant="destructive">
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>There was an error loading or processing the new family form.</AlertDescription>
             </Alert>
-         </div>
+        </div>
     );
 }

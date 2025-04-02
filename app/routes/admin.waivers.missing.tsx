@@ -2,14 +2,7 @@ import {json, TypedResponse} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/supabase";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "~/components/ui/table";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 
 // Define types
 type ProfileRow = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'email' | 'family_id'>;

@@ -1,16 +1,16 @@
 import invariant from "tiny-invariant";
-import { json, redirect } from "@remix-run/node";
-import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
-import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
-import { createClient } from "@supabase/supabase-js";
-import { Database } from "~/types/supabase";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Separator } from "~/components/ui/separator";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import type {ActionFunctionArgs, LoaderFunctionArgs, MetaFunction} from "@remix-run/node";
+import {json, redirect} from "@remix-run/node";
+import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
+import {createClient} from "@supabase/supabase-js";
+import {Database} from "~/types/supabase";
+import {Button} from "~/components/ui/button";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
+import {Input} from "~/components/ui/input";
+import {Label} from "~/components/ui/label";
+import {Separator} from "~/components/ui/separator";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 
@@ -39,16 +39,16 @@ type ActionData = {
     };
 };
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export const meta: MetaFunction<typeof loader> = ({data}) => {
     const familyName = data?.family?.name ?? "Edit Family";
     return [
-        { title: `Edit ${familyName} | Admin Dashboard` },
-        { name: "description", content: `Edit details for the ${familyName} family.` },
+        {title: `Edit ${familyName} | Admin Dashboard`},
+        {name: "description", content: `Edit details for the ${familyName} family.`},
     ];
 };
 
 // Loader to fetch existing family data
-export async function loader({ params}: LoaderFunctionArgs) {
+export async function loader({params}: LoaderFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
 
@@ -57,12 +57,12 @@ export async function loader({ params}: LoaderFunctionArgs) {
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error("[Edit Loader] Missing Supabase URL or Service Role Key env vars.");
-        throw new Response("Server configuration error", { status: 500 });
+        throw new Response("Server configuration error", {status: 500});
     }
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    const { data: family, error } = await supabaseServer
+    const {data: family, error} = await supabaseServer
         .from('families')
         .select('*')
         .eq('id', familyId)
@@ -70,18 +70,18 @@ export async function loader({ params}: LoaderFunctionArgs) {
 
     if (error) {
         console.error(`[Edit Loader] Supabase error fetching family ${familyId}:`, error.message);
-        throw new Response(`Database error: ${error.message}`, { status: 500 });
+        throw new Response(`Database error: ${error.message}`, {status: 500});
     }
 
     if (!family) {
-        throw new Response("Family not found", { status: 404 });
+        throw new Response("Family not found", {status: 404});
     }
 
-    return json({ family });
+    return json({family});
 }
 
 // Action to handle form submission for updating family data
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({request, params}: ActionFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
     const formData = await request.formData();
@@ -112,7 +112,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     // Optional fields don't need presence validation unless specific formats are required
 
     if (Object.keys(fieldErrors).length > 0) {
-        return json<ActionData>({ error: "Validation failed", fieldErrors }, { status: 400 });
+        return json<ActionData>({error: "Validation failed", fieldErrors}, {status: 400});
     }
 
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -120,12 +120,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error("[Edit Action] Missing Supabase URL or Service Role Key env vars.");
-        return json<ActionData>({ error: "Server configuration error" }, { status: 500 });
+        return json<ActionData>({error: "Server configuration error"}, {status: 500});
     }
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    const { error } = await supabaseServer
+    const {error} = await supabaseServer
         .from('families')
         .update({
             // Already validated non-null
@@ -148,7 +148,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     if (error) {
         console.error(`[Edit Action] Supabase error updating family ${familyId}:`, error.message);
-        return json<ActionData>({ error: `Database error: ${error.message}` }, { status: 500 });
+        return json<ActionData>({error: `Database error: ${error.message}`}, {status: 500});
     }
 
     // Redirect back to the family detail page after successful update
@@ -158,7 +158,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 // Component for the Edit Family page
 export default function EditFamilyPage() {
-    const { family } = useLoaderData<LoaderData>();
+    const {family} = useLoaderData<LoaderData>();
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
     const params = useParams();
@@ -173,7 +173,7 @@ export default function EditFamilyPage() {
             </div>
 
             <Card>
-            <CardHeader>
+                <CardHeader>
                     <CardTitle>Edit Family Details</CardTitle>
                     <CardDescription>Update the information for the {family.name} family.</CardDescription>
                 </CardHeader>
@@ -181,7 +181,7 @@ export default function EditFamilyPage() {
                     <Form method="post" className="space-y-4">
                         {actionData?.error && !actionData.fieldErrors && (
                             <Alert variant="destructive">
-                                <ExclamationTriangleIcon className="h-4 w-4" />
+                                <ExclamationTriangleIcon className="h-4 w-4"/>
                                 <AlertTitle>Error</AlertTitle>
                                 <AlertDescription>{actionData.error}</AlertDescription>
                             </Alert>
@@ -326,7 +326,7 @@ export default function EditFamilyPage() {
                                 aria-invalid={!!actionData?.fieldErrors?.emergency_contact}
                                 aria-describedby="emergency_contact-error"
                             />
-                             {actionData?.fieldErrors?.emergency_contact && (
+                            {actionData?.fieldErrors?.emergency_contact && (
                                 <p id="emergency_contact-error" className="text-sm text-destructive">
                                     {actionData.fieldErrors.emergency_contact}
                                 </p>
@@ -343,7 +343,7 @@ export default function EditFamilyPage() {
                                 aria-invalid={!!actionData?.fieldErrors?.health_info}
                                 aria-describedby="health_info-error"
                             />
-                             {actionData?.fieldErrors?.health_info && (
+                            {actionData?.fieldErrors?.health_info && (
                                 <p id="health_info-error" className="text-sm text-destructive">
                                     {actionData.fieldErrors.health_info}
                                 </p>
@@ -360,7 +360,7 @@ export default function EditFamilyPage() {
                                 aria-invalid={!!actionData?.fieldErrors?.notes}
                                 aria-describedby="notes-error"
                             />
-                             {actionData?.fieldErrors?.notes && (
+                            {actionData?.fieldErrors?.notes && (
                                 <p id="notes-error" className="text-sm text-destructive">
                                     {actionData.fieldErrors.notes}
                                 </p>
@@ -377,7 +377,7 @@ export default function EditFamilyPage() {
                                 aria-invalid={!!actionData?.fieldErrors?.referral_source}
                                 aria-describedby="referral_source-error"
                             />
-                             {actionData?.fieldErrors?.referral_source && (
+                            {actionData?.fieldErrors?.referral_source && (
                                 <p id="referral_source-error" className="text-sm text-destructive">
                                     {actionData.fieldErrors.referral_source}
                                 </p>
@@ -394,14 +394,14 @@ export default function EditFamilyPage() {
                                 aria-invalid={!!actionData?.fieldErrors?.referral_name}
                                 aria-describedby="referral_name-error"
                             />
-                             {actionData?.fieldErrors?.referral_name && (
+                            {actionData?.fieldErrors?.referral_name && (
                                 <p id="referral_name-error" className="text-sm text-destructive">
                                     {actionData.fieldErrors.referral_name}
                                 </p>
                             )}
                         </div>
 
-                        <Separator className="my-4" />
+                        <Separator className="my-4"/>
 
                         <div className="flex justify-end space-x-2">
                             <Button type="button" variant="outline" asChild>
@@ -419,4 +419,4 @@ export default function EditFamilyPage() {
 }
 
 // You might want a more specific Error Boundary for the edit page later
-export { ErrorBoundary } from "./admin.families.$familyId";
+export {ErrorBoundary} from "./admin.families.$familyId";

@@ -1,13 +1,13 @@
-import {useState, useEffect, useCallback} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {Form} from '@remix-run/react';
 import {supabaseClient} from '~/utils/supabase.client';
 import type {Family, Guardian, Student} from '~/types/models';
 import {
     mapFamilyFromSupabase,
-    mapGuardianFromSupabase,
-    mapStudentFromSupabase,
     mapFamilyToSupabase,
+    mapGuardianFromSupabase,
     mapGuardianToSupabase,
+    mapStudentFromSupabase,
     mapStudentToSupabase
 } from '~/utils/mappers';
 import {Button} from "~/components/ui/button";
@@ -15,14 +15,7 @@ import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Card} from "~/components/ui/card";
 import {Alert, AlertDescription} from "~/components/ui/alert";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "~/components/ui/select";
-import {BELT_RANKS} from "~/utils/constants";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select";
 
 interface FamilyManagerProps {
     familyId?: string;

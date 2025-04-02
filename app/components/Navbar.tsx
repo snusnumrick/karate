@@ -1,9 +1,9 @@
 import React, {useState} from 'react';
-import {Link, useRouteLoaderData, Form} from "@remix-run/react";
+import {Form, Link, useRouteLoaderData} from "@remix-run/react";
 import {ModeToggle} from "./mode-toggle";
 import {Sheet, SheetContent, SheetTrigger} from "./ui/sheet";
 import {Button} from "./ui/button";
-import {Menu, X, LogOut, Sun} from "lucide-react"; // Import LogOut and Sun
+import {LogOut, Menu, Sun, X} from "lucide-react"; // Import LogOut and Sun
 import type {loader as rootLayoutLoader} from "~/routes/_layout"; // Import loader type
 import {ClientOnly} from './client-only'; // Import ClientOnly
 

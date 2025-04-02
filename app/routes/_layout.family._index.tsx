@@ -1,10 +1,10 @@
-import { json, redirect, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node"; // Import redirect
-import { Link, useLoaderData } from "@remix-run/react";
-import { getSupabaseServerClient, checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
-import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge"; // Import Badge
-import { Database } from "~/types/supabase";
-import { format } from 'date-fns'; // For formatting dates
+import {json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node"; // Import redirect
+import {Link, useLoaderData} from "@remix-run/react";
+import {checkStudentEligibility, type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check
+import {Button} from "~/components/ui/button";
+import {Badge} from "~/components/ui/badge"; // Import Badge
+import {Database} from "~/types/supabase";
+import {format} from 'date-fns'; // For formatting dates
 
 // Extend student type within FamilyData to include eligibility
 type StudentWithEligibility = Database["public"]["Tables"]["students"]["Row"] & {
@@ -32,14 +32,14 @@ interface LoaderData {
 
 // Placeholder loader - will need to fetch actual family data later
 export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const {supabaseServer, response:{headers}} = getSupabaseServerClient(request);
+    const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {
         // This shouldn't happen if the route is protected by the layout,
         // but good practice to handle it.
         // Consider redirecting to login if needed, depending on layout setup.
-        return json({ error: "User not authenticated"}, {status: 401, headers});
+        return json({error: "User not authenticated"}, {status: 401, headers});
     }
 
     // 1. Get the user's profile to find their family_id
@@ -62,7 +62,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         // This might happen after registration but before family creation/linking
         console.log("User authenticated but no family_id found. Redirecting to /family/setup");
         // Note: Ensure the /family/setup route exists or adjust the target URL.
-        return redirect("/family/setup", { headers });
+        return redirect("/family/setup", {headers});
     }
 
     // 2. Fetch the family data *and* its related students and payments using the family_id from the profile
@@ -86,10 +86,10 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     if (familyError || !familyData) { // Check if familyData itself is null/undefined
         console.error("Error fetching family data:", familyError?.message ?? "Family not found");
         return json({
-            profile: { familyId: String(profileData.family_id) },
+            profile: {familyId: String(profileData.family_id)},
             error: "Failed to load family data.",
             allWaiversSigned: false
-        }, { status: 500, headers });
+        }, {status: 500, headers});
     }
 
     // 3. Fetch eligibility for each student IN the fetched family data
@@ -152,20 +152,24 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // Return profile, family data (with eligibility), and waiver status
     return json({
-        profile: { familyId: String(profileData.family_id) },
+        profile: {familyId: String(profileData.family_id)},
         family: familyDataWithEligibility, // Use the updated data
         allWaiversSigned
-    }, { headers });
+    }, {headers});
 }
 
 
 // Helper function for badge variants (can be moved to utils if reused)
 const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-        case 'Paid': return 'default'; // Greenish
-        case 'Trial': return 'secondary'; // Bluish/Grayish
-        case 'Expired': return 'destructive'; // Reddish
-        default: return 'outline';
+        case 'Paid':
+            return 'default'; // Greenish
+        case 'Trial':
+            return 'secondary'; // Bluish/Grayish
+        case 'Expired':
+            return 'destructive'; // Reddish
+        default:
+            return 'outline';
     }
 };
 
@@ -181,7 +185,8 @@ export default function FamilyPortal() {
                 <div className="container mx-auto px-4 py-8 text-center">
                     <h1 className="text-2xl font-semibold mb-4">Welcome!</h1>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">
-                        Your account isn&apos;t linked to a family yet. Please complete your registration or contact support.
+                        Your account isn&apos;t linked to a family yet. Please complete your registration or contact
+                        support.
                     </p>
                     {/* Optional: Add a link to registration or contact */}
                     {/* <Button asChild><Link to="/register/family-details">Complete Registration</Link></Button> */}
@@ -220,7 +225,8 @@ export default function FamilyPortal() {
                                     >
                                         {student.first_name} {student.last_name}
                                     </Link>
-                                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="ml-2 text-xs">
+                                    <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)}
+                                           className="ml-2 text-xs">
                                         {student.eligibility.reason === 'Paid' ? 'Active' : student.eligibility.reason}
                                         {student.eligibility.reason === 'Paid' && student.eligibility.lastPaymentDate &&
                                             ` (Last Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
@@ -332,7 +338,8 @@ export default function FamilyPortal() {
                 {/* Account Settings Section - Remains unchanged */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                     <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">Update your family information, guardian details, and account preferences.</p>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Update your family information, guardian
+                        details, and account preferences.</p>
                     <Button asChild className="mt-4">
                         <Link to="/family/account">Manage Account</Link>
                     </Button>

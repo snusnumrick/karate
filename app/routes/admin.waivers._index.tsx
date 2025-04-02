@@ -4,14 +4,7 @@ import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/supabase";
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // For displaying 'Required' status
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "~/components/ui/table";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 
 // Define type for loader data
 type WaiverRow = Database['public']['Tables']['waivers']['Row'];

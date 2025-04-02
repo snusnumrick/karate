@@ -1,12 +1,21 @@
 import invariant from "tiny-invariant"; // Use tiny-invariant instead
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from "@remix-run/node"; // Use named imports
+import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction} from "@remix-run/node"; // Use named imports
 // Import isRouteErrorResponse from @remix-run/react
-import {Link, Outlet, useLoaderData, useParams, useRouteError, isRouteErrorResponse, useOutlet, useFetcher} from "@remix-run/react";
+import {
+    isRouteErrorResponse,
+    Link,
+    Outlet,
+    useFetcher,
+    useLoaderData,
+    useOutlet,
+    useParams,
+    useRouteError
+} from "@remix-run/react";
 // Import createClient directly
-import { createClient } from "@supabase/supabase-js";
+import {createClient} from "@supabase/supabase-js";
 // No longer need getSupabaseServerClient here
-import { Database } from "~/types/supabase";
-import { Button } from "~/components/ui/button";
+import {Database} from "~/types/supabase";
+import {Button} from "~/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {Separator} from "~/components/ui/separator";
 import {format} from 'date-fns';
@@ -91,69 +100,69 @@ export async function loader({params}: LoaderFunctionArgs) {
 }
 
 // Action function to handle deletions etc.
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({request, params}: ActionFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId; // Keep familyId for potential redirects/context
     const formData = await request.formData();
     const intent = formData.get("intent");
 
-        if (intent === "deleteStudent") {
-            const studentId = formData.get("studentId") as string;
-            invariant(studentId, "Missing studentId for deletion");
+    if (intent === "deleteStudent") {
+        const studentId = formData.get("studentId") as string;
+        invariant(studentId, "Missing studentId for deletion");
 
-            console.log(`[Action] Attempting to delete student ${studentId} from family ${familyId}`);
+        console.log(`[Action] Attempting to delete student ${studentId} from family ${familyId}`);
 
-            const supabaseUrl = process.env.SUPABASE_URL;
-            const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-            if (!supabaseUrl || !supabaseServiceKey) {
-                console.error("[Action Delete Student] Missing Supabase URL or Service Role Key env vars.");
-                return json({ error: "Server configuration error" }, { status: 500 });
-            }
-            const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error("[Action Delete Student] Missing Supabase URL or Service Role Key env vars.");
+            return json({error: "Server configuration error"}, {status: 500});
+        }
+        const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-            const { error } = await supabaseServer
-              .from('students')
-              .delete()
-              .eq('id', studentId);
+        const {error} = await supabaseServer
+            .from('students')
+            .delete()
+            .eq('id', studentId);
 
-            if (error) {
-                console.error(`[Action Delete Student] Supabase error deleting student ${studentId}:`, error.message);
-                // Return error in JSON format for the fetcher
-                return json({ error: `Database error: ${error.message}` }, { status: 500 });
-            }
-
-            console.log(`[Action] Successfully deleted student ${studentId}`);
-            // Return success, fetcher will cause UI update via revalidation
-            return json({ success: true });
-            // Or redirect if preferred, though fetcher works better without full reload:
-            // return redirect(`/admin/families/${familyId}`);
+        if (error) {
+            console.error(`[Action Delete Student] Supabase error deleting student ${studentId}:`, error.message);
+            // Return error in JSON format for the fetcher
+            return json({error: `Database error: ${error.message}`}, {status: 500});
         }
 
-        // Handle other intents or return error if intent is unknown
-        return json({ error: `Unknown intent: ${intent}` }, { status: 400 });
+        console.log(`[Action] Successfully deleted student ${studentId}`);
+        // Return success, fetcher will cause UI update via revalidation
+        return json({success: true});
+        // Or redirect if preferred, though fetcher works better without full reload:
+        // return redirect(`/admin/families/${familyId}`);
     }
 
-    // Helper component for the delete button/form
-    function DeleteStudentButton({ studentId, studentName }: { studentId: string, studentName: string }) {
-      const fetcher = useFetcher<{ error?: string }>();
-      const isDeleting = fetcher.state !== 'idle';
+    // Handle other intents or return error if intent is unknown
+    return json({error: `Unknown intent: ${intent}`}, {status: 400});
+}
 
-      const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
+// Helper component for the delete button/form
+function DeleteStudentButton({studentId, studentName}: { studentId: string, studentName: string }) {
+    const fetcher = useFetcher<{ error?: string }>();
+    const isDeleting = fetcher.state !== 'idle';
+
+    const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
         console.log('[handleDelete] Clicked delete button.'); // Add log
         if (!window.confirm(`Are you sure you want to delete ${studentName}? This cannot be undone.`)) {
-          console.log('[handleDelete] User cancelled. Preventing default.'); // Add log
-          event.preventDefault(); // Prevent form submission if user cancels
+            console.log('[handleDelete] User cancelled. Preventing default.'); // Add log
+            event.preventDefault(); // Prevent form submission if user cancels
         } else {
-          // If user confirms, default submission proceeds.
-          console.log('[handleDelete] User confirmed. Allowing default submission.'); // Add log
+            // If user confirms, default submission proceeds.
+            console.log('[handleDelete] User confirmed. Allowing default submission.'); // Add log
         }
-      };
+    };
 
-      return (
+    return (
         <fetcher.Form method="post">
-            <input type="hidden" name="intent" value="deleteStudent" />
-            <input type="hidden" name="studentId" value={studentId} />
+            <input type="hidden" name="intent" value="deleteStudent"/>
+            <input type="hidden" name="studentId" value={studentId}/>
             <Button
                 type="submit"
                 variant="destructive"
@@ -161,12 +170,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
                 onClick={handleDelete}
                 disabled={isDeleting}
             >
-            {isDeleting ? 'Deleting...' : 'Delete'}
+                {isDeleting ? 'Deleting...' : 'Delete'}
             </Button>
             {/* Optionally display fetcher errors */}
             {fetcher.data?.error && <p className="text-xs text-destructive mt-1">{fetcher.data.error}</p>}
         </fetcher.Form>
-      );
+    );
 }
 
 export default function FamilyDetailPage() {
@@ -177,7 +186,7 @@ export default function FamilyDetailPage() {
     return (
         <div className="space-y-6">
             {/* Render child routes (like the edit page) here */}
-            <Outlet />
+            <Outlet/>
 
             {/* Only render the detail view if no child route (like edit) is active */}
             {!outlet && (
@@ -209,8 +218,12 @@ export default function FamilyDetailPage() {
                             <p><strong>Notes:</strong> {family.notes ?? 'N/A'}</p>
                             <p><strong>Referral Source:</strong> {family.referral_source ?? 'N/A'}</p>
                             <p><strong>Referral Name:</strong> {family.referral_name ?? 'N/A'}</p>
-                            <p><strong>Created At:</strong> {family.created_at ? format(new Date(family.created_at), 'PPP p') : 'N/A'}</p>
-                            <p><strong>Updated At:</strong> {family.updated_at ? format(new Date(family.updated_at), 'PPP p') : 'N/A'}</p>
+                            <p><strong>Created
+                                At:</strong> {family.created_at ? format(new Date(family.created_at), 'PPP p') : 'N/A'}
+                            </p>
+                            <p><strong>Updated
+                                At:</strong> {family.updated_at ? format(new Date(family.updated_at), 'PPP p') : 'N/A'}
+                            </p>
                         </CardContent>
                     </Card>
 
@@ -227,7 +240,8 @@ export default function FamilyDetailPage() {
                             {family.guardians.length > 0 ? (
                                 <ul className="space-y-4"> {/* Changed space-y from 1 to 4 */}
                                     {family.guardians.map((guardian) => (
-                                        <li key={guardian.id} className="border p-4 rounded-md shadow-sm"> {/* Applied student list item classes */}
+                                        <li key={guardian.id}
+                                            className="border p-4 rounded-md shadow-sm"> {/* Applied student list item classes */}
                                             {/* Removed flex justify-between as there's no button here */}
                                             <div>
                                                 <p className="font-semibold">{guardian.first_name} {guardian.last_name}</p>
@@ -287,7 +301,8 @@ export default function FamilyDetailPage() {
                             {family.students.length > 0 ? (
                                 <ul className="space-y-4"> {/* Keep space-y-4 for students */}
                                     {family.students.map((student) => (
-                                        <li key={student.id} className="border p-4 rounded-md shadow-sm"> {/* Keep p-4 for students */}
+                                        <li key={student.id}
+                                            className="border p-4 rounded-md shadow-sm"> {/* Keep p-4 for students */}
                                             <div className="flex justify-between items-center">
                                                 <div>
                                                     <p className="font-semibold">{student.first_name} {student.last_name}</p>
@@ -300,7 +315,8 @@ export default function FamilyDetailPage() {
                                                     <Button asChild variant="secondary" size="sm">
                                                         <Link to={`/admin/students/${student.id}`}>View Details</Link>
                                                     </Button>
-                                                    <DeleteStudentButton studentId={student.id} studentName={`${student.first_name} ${student.last_name}`} />
+                                                    <DeleteStudentButton studentId={student.id}
+                                                                         studentName={`${student.first_name} ${student.last_name}`}/>
                                                 </div>
                                             </div>
                                         </li>
