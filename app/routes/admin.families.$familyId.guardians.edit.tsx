@@ -129,14 +129,18 @@ export async function action({ request, params }: ActionFunctionArgs) {
         const firstName = formData.get(`guardian_${guardianId}_first_name`) as string | null;
         const lastName = formData.get(`guardian_${guardianId}_last_name`) as string | null;
         const relationship = formData.get(`guardian_${guardianId}_relationship`) as string | null;
-        const phone = formData.get(`guardian_${guardianId}_phone`) as string | null;
+        const cell_phone = formData.get(`guardian_${guardianId}_cell_phone`) as string | null; // Changed from phone
         const email = formData.get(`guardian_${guardianId}_email`) as string | null;
+        // Add other fields like home_phone, employer etc. if needed
 
-        // Basic Validation per guardian
+        // Basic Validation per guardian - Align with DB constraints
         const currentGuardianErrors: Record<string, string> = {};
         if (!firstName) currentGuardianErrors.first_name = "First name is required.";
         if (!lastName) currentGuardianErrors.last_name = "Last name is required.";
-        // Add more validation (email format, phone format, etc.)
+        if (!relationship) currentGuardianErrors.relationship = "Relationship is required."; // Added validation
+        if (!cell_phone) currentGuardianErrors.cell_phone = "Cell phone is required."; // Added validation
+        if (!email) currentGuardianErrors.email = "Email is required."; // Added validation
+        // Add more specific validation (email format, phone format, etc.)
 
         if (Object.keys(currentGuardianErrors).length > 0) {
             fieldErrors[guardianId] = currentGuardianErrors;
@@ -146,12 +150,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
                 supabaseServer
                     .from('guardians')
                     .update({
-                        first_name: firstName,
-                        last_name: lastName,
-                        relationship: relationship || null,
-                        phone: phone || null,
-                        email: email || null,
-                        // updated_at: new Date().toISOString(), // Optional
+                        first_name: firstName, // Already validated non-null
+                        last_name: lastName, // Already validated non-null
+                        relationship: relationship, // DB requires non-null
+                        cell_phone: cell_phone, // DB requires non-null
+                        email: email, // DB requires non-null
+                        // Add other updatable fields here, ensuring nullability matches DB
+                        // updated_at: new Date().toISOString(), // Optional: Supabase might handle this automatically
                     })
                     .eq('id', guardianId)
             );
@@ -265,6 +270,7 @@ export default function EditGuardiansPage() {
                                                     id={`guardian_${guardianId}_relationship`}
                                                     name={`guardian_${guardianId}_relationship`}
                                                     defaultValue={guardian.relationship ?? ''}
+                                                    required // Added required
                                                     aria-invalid={!!errors?.relationship}
                                                     aria-describedby={`guardian_${guardianId}_relationship-error`}
                                                 />
@@ -275,20 +281,21 @@ export default function EditGuardiansPage() {
                                                 )}
                                             </div>
 
-                                            {/* Phone */}
+                                            {/* Cell Phone */}
                                             <div className="space-y-1">
-                                                <Label htmlFor={`guardian_${guardianId}_phone`}>Phone</Label>
+                                                <Label htmlFor={`guardian_${guardianId}_cell_phone`}>Cell Phone</Label>
                                                 <Input
-                                                    id={`guardian_${guardianId}_phone`}
-                                                    name={`guardian_${guardianId}_phone`}
+                                                    id={`guardian_${guardianId}_cell_phone`}
+                                                    name={`guardian_${guardianId}_cell_phone`}
                                                     type="tel"
-                                                    defaultValue={guardian.phone ?? ''}
-                                                    aria-invalid={!!errors?.phone}
-                                                    aria-describedby={`guardian_${guardianId}_phone-error`}
+                                                    defaultValue={guardian.cell_phone ?? ''} // Use cell_phone
+                                                    required // Added required
+                                                    aria-invalid={!!errors?.cell_phone}
+                                                    aria-describedby={`guardian_${guardianId}_cell_phone-error`}
                                                 />
-                                                 {errors?.phone && (
-                                                    <p id={`guardian_${guardianId}_phone-error`} className="text-sm text-destructive">
-                                                        {errors.phone}
+                                                 {errors?.cell_phone && (
+                                                    <p id={`guardian_${guardianId}_cell_phone-error`} className="text-sm text-destructive">
+                                                        {errors.cell_phone}
                                                     </p>
                                                 )}
                                             </div>
@@ -301,6 +308,7 @@ export default function EditGuardiansPage() {
                                                     name={`guardian_${guardianId}_email`}
                                                     type="email"
                                                     defaultValue={guardian.email ?? ''}
+                                                    required // Added required
                                                     aria-invalid={!!errors?.email}
                                                     aria-describedby={`guardian_${guardianId}_email-error`}
                                                 />
