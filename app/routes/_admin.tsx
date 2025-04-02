@@ -14,7 +14,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // console.log("_Admin layout loader - User:", user?.id); // Updated log
 
   if (!user) {
-    console.log("_Admin layout loader - No user found, redirecting to login."); // Updated log
+    console.warn("_Admin layout loader - No user found, redirecting to login."); // Updated log
     return redirect('/login?redirectTo=/admin', { headers });
   }
 
@@ -23,7 +23,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // console.log('Response headers:', Object.fromEntries(headers));
   
   if (!isAdmin) {
-    console.log(`_Admin layout loader - User ${user.id} is not admin, redirecting to /family.`); // Updated log
+    console.warn(`_Admin layout loader - User ${user.id} is not admin, redirecting to /family.`); // Updated log
     return redirect('/family', { headers });
   }
 

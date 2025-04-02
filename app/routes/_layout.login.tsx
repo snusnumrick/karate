@@ -29,7 +29,7 @@ export async function action({ request }: ActionFunctionArgs)
     email,
     password,
   });
-  console.log("Login attempt for:", email, "Result:", authData?.user, "Error:", authError?.message);
+  // console.log("Login attempt for:", email, "Result:", authData?.user, "Error:", authError?.message);
 
   if (authError || !authData.user) {
     console.error("Login error:", authError?.message);

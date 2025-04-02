@@ -24,7 +24,7 @@ type FamilyWithGuardians = {
 };
 
 export async function loader() {
-  console.log("Entering /admin/families loader...");
+  // console.log("Entering /admin/families loader...");
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -38,7 +38,7 @@ export async function loader() {
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
   try {
-    console.log("Admin families loader - Fetching all families and related guardians using service role...");
+    // console.log("Admin families loader - Fetching all families and related guardians using service role...");
     // Fetch family data and related guardian names
     const { data: families, error } = await supabaseAdmin
       .from('families')
@@ -53,7 +53,7 @@ export async function loader() {
       throw new Response("Failed to load family data.", { status: 500 });
     }
 
-    console.log(`Admin families loader - Fetched ${families?.length ?? 0} families.`);
+    // console.log(`Admin families loader - Fetched ${families?.length ?? 0} families.`);
     return json({ families: families ?? [] });
 
   } catch (error) {

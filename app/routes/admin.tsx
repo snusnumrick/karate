@@ -7,38 +7,38 @@ import AdminFooter from "~/components/AdminFooter";
 // This is the route file for /admin/* paths
 // Loader protects the entire admin section
 export async function loader({ request }: LoaderFunctionArgs) {
-  console.log("--- HITTING /admin LOADER ---");
-  console.log("Entering /admin layout loader...");
+  // console.log("--- HITTING /admin LOADER ---");
+  // console.log("Entering /admin layout loader...");
   const { supabaseServer, response } = getSupabaseServerClient(request);
   const { data: { user } } = await supabaseServer.auth.getUser();
   const headers = response.headers;
-  console.log("Admin layout loader - User:", user?.id);
+  // console.log("Admin layout loader - User:", user?.id);
 
   if (!user) {
-    console.log("Admin layout loader - No user found, redirecting to login.");
+    console.warn("Admin layout loader - No user found, redirecting to login.");
     return redirect('/login?redirectTo=/admin', { headers });
   }
 
   const isAdmin = await isUserAdmin(user.id);
-  console.log(`Admin layout loader - User ${user.id} isAdmin: ${isAdmin}`);
-  console.log('Response headers:', Object.fromEntries(headers));
+  // console.log(`Admin layout loader - User ${user.id} isAdmin: ${isAdmin}`);
+  // console.log('Response headers:', Object.fromEntries(headers));
   
   if (!isAdmin) {
-    console.log(`Admin layout loader - User ${user.id} is not admin, redirecting to /family.`);
+    console.warn(`Admin layout loader - User ${user.id} is not admin, redirecting to /family.`);
     return redirect('/family', { headers });
   }
 
-  console.log("Admin layout loader - User is admin, allowing access.");
+  // console.log("Admin layout loader - User is admin, allowing access.");
   // Return necessary data for the layout, or just null/{} if none needed yet
   // Convert headers to plain object for Response
   const headersObj = Object.fromEntries(headers);
-  console.log('Final headers being sent:', headersObj);
+  // console.log('Final headers being sent:', headersObj);
   return json({ isAdmin: true }, { headers: headersObj });
 }
 
 // The actual layout component
 export default function AdminLayout() {
-  console.log("Rendering AdminLayout component with Navbar and Footer");
+  // console.log("Rendering AdminLayout component with Navbar and Footer");
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <AdminNavbar />
