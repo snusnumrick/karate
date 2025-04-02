@@ -108,10 +108,7 @@ export default function FamilyDetailPage() {
                            or adjust structure if edit should replace details */}
                     <div className="flex justify-between items-center">
                         <h1 className="text-2xl font-bold">Family: {family.name}</h1>
-                        {/* Link to the edit page for this family */}
-                        <Button asChild variant="outline">
-                            <Link to={`/admin/families/${params.familyId}/edit`}>Edit Family</Link>
-                        </Button>
+                        {/* Top-level Edit button removed */}
                     </div>
 
                     <Card>
