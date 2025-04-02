@@ -414,7 +414,7 @@ export default function RegisterPage() {
                 <div className="space-y-6">
                   <div>
                       <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
-                        Emergency Contact Info (Not Contact #1 or #2)<span className="text-red-500">*</span>
+                        Emergency Contact Info (Not Guardian #1 or #2)<span className="text-red-500">*</span>
                       </Label>
                       <Textarea
                         id="emergencyContact"
@@ -438,11 +438,11 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   
-                  <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">CONTACT #1</h2>
+                  <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">GUARDIAN #1</h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <Label htmlFor="contact1FirstName" className="block text-sm font-medium mb-1">
-                        Contact #1 First Name<span className="text-red-500">*</span>
+                        Guardian #1 First Name<span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="text"
@@ -662,11 +662,11 @@ export default function RegisterPage() {
               
               {/* Step 3: Contact 2 */}
               <div className={currentStep === 3 ? '' : 'hidden'}>
-                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT #2</h2>
+                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">GUARDIAN #2</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                       <Label htmlFor="contact2FirstName" className="block text-sm font-medium mb-1">
-                        Contact #2 First Name<span className="text-red-500">*</span>
+                        Guardian #2 First Name<span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="text"
