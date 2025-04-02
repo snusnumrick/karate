@@ -7,8 +7,9 @@ import {
   useNavigation,
   useRouteError,
 } from "@remix-run/react";
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'; // Import SupabaseClient
 import type { Database } from "~/types/supabase";
+import { sendEmail } from '~/utils/email.server'; // Import email utility
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -104,10 +105,157 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
   try {
-    console.log(`Updating waiver with ID: ${waiverId}`);
-    const { error } = await supabaseAdmin
+    // Fetch the current state of the waiver BEFORE updating
+    console.log(`Fetching current state of waiver ID: ${waiverId} before update.`);
+    const { data: currentWaiver, error: fetchError } = await supabaseAdmin
       .from('waivers')
-      .update({
+      .select('required')
+      .eq('id', waiverId)
+      .single();
+
+    if (fetchError || !currentWaiver) {
+      console.error("Error fetching current waiver state before update:", fetchError?.message);
+      return json({ error: `Failed to retrieve current waiver state: ${fetchError?.message ?? 'Not found'}` }, { status: fetchError?.code === 'PGRST116' ? 404 : 500 });
+    }
+    const originalRequired = currentWaiver.required;
+    console.log(`Original 'required' status for waiver ${waiverId}: ${originalRequired}`);
+
+
+    // Perform the update
+    const newWaiverData = {
+        title,
+        description,
+        content,
+        required, // The new value from the form
+    };
+    console.log(`Attempting to update waiver ID: ${waiverId} with new data.`);
+    const { error: updateError } = await supabaseAdmin
+      .from('waivers')
+      .update(newWaiverData)
+      .eq('id', waiverId);
+
+    if (updateError) {
+      console.error("Error updating waiver:", updateError.message);
+      return json({ error: `Failed to update waiver: ${updateError.message}` }, { status: 500 });
+    }
+
+    console.log(`Waiver ${waiverId} updated successfully.`);
+
+    // --- Send Notification if waiver became required ---
+    const newRequired = required; // Use the value from formData
+    if (!originalRequired && newRequired) {
+      console.log(`Waiver ${waiverId} changed to required. Triggering notifications.`);
+      await sendNewRequiredWaiverNotification(waiverId, title, supabaseAdmin);
+    } else {
+       console.log(`Waiver ${waiverId} 'required' status did not change from false to true (Original: ${originalRequired}, New: ${newRequired}). No notification needed.`);
+    }
+    // --- End Notification ---
+
+    // Redirect back to the waivers list after successful update
+    return redirect("/admin/waivers");
+
+  } catch (error) {
+     const message = error instanceof Error ? error.message : "An unknown error occurred.";
+     console.error("Error in /admin/waivers/$waiverId action:", message);
+     return json({ error: message }, { status: 500 });
+  }
+}
+
+
+// Helper function to notify users about a newly required waiver
+async function sendNewRequiredWaiverNotification(
+  waiverId: string,
+  waiverTitle: string,
+  supabaseAdmin: SupabaseClient<Database>
+) {
+  console.log(`Starting notification process for newly required waiver: "${waiverTitle}" (ID: ${waiverId})`);
+  let emailsSent = 0;
+  let errorsEncountered = 0;
+
+  try {
+    // 1. Fetch all active users (profiles) linked to a family with an email
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from('profiles')
+      .select(`
+        id,
+        families ( name, email )
+      `)
+      .not('family_id', 'is', null)
+      .not('families', 'is', null)
+      .not('families.email', 'is', null);
+
+    if (profilesError) throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
+    if (!profiles || profiles.length === 0) {
+      console.log("No relevant users found to notify.");
+      return;
+    }
+    console.log(`Found ${profiles.length} potential users to check for notification.`);
+
+    // 2. Fetch users who have *already* signed this specific waiver
+    const { data: signatures, error: signaturesError } = await supabaseAdmin
+      .from('waiver_signatures')
+      .select('user_id')
+      .eq('waiver_id', waiverId);
+
+    if (signaturesError) throw new Error(`Failed to fetch signatures for waiver ${waiverId}: ${signaturesError.message}`);
+
+    const usersWhoSigned = new Set(signatures?.map(s => s.user_id) ?? []);
+    console.log(`Found ${usersWhoSigned.size} users who have already signed waiver ${waiverId}.`);
+
+    // 3. Filter users who need notification (haven't signed yet)
+    const usersToNotify = profiles.filter(p => !usersWhoSigned.has(p.id) && p.families?.email);
+
+    console.log(`Identified ${usersToNotify.length} users needing notification for waiver "${waiverTitle}".`);
+
+    // 4. Send email to each user who needs to sign
+    const siteUrl = process.env.SITE_URL || ''; // Get site URL for the link
+
+    for (const profile of usersToNotify) {
+      // Type guard for family email
+      if (!profile.families?.email) continue;
+
+      const familyName = profile.families.name || 'Family';
+      const familyEmail = profile.families.email;
+
+      try {
+        const subject = `Action Required: New Karate Waiver "${waiverTitle}"`;
+        const htmlBody = `
+          <p>Hello ${familyName},</p>
+          <p>A new waiver, "<strong>${waiverTitle}</strong>", now requires your signature for participation in karate class.</p>
+          <p>Please log in to your family portal to review and sign the waiver at your earliest convenience.</p>
+          ${siteUrl ? `<p><a href="${siteUrl}/waivers">Sign Waiver Now</a></p>` : '<p>Please visit the website to sign the waiver.</p>'}
+          <p>Thank you,<br/>Sensei Negin's Karate Class</p>
+        `;
+
+        const emailSent = await sendEmail({
+          to: familyEmail,
+          subject: subject,
+          html: htmlBody,
+        });
+
+        if (emailSent) {
+          emailsSent++;
+        } else {
+          errorsEncountered++;
+        }
+      } catch (emailError) {
+        console.error(`Error sending new waiver notification email to ${familyEmail} (User ID: ${profile.id}):`, emailError instanceof Error ? emailError.message : emailError);
+        errorsEncountered++;
+      }
+    } // End user loop
+
+  } catch (error) {
+    console.error(`General error during new waiver notification process for waiver ${waiverId}:`, error instanceof Error ? error.message : error);
+    errorsEncountered++; // Increment general error count
+  } finally {
+    console.log(`Finished notification process for waiver "${waiverTitle}". Emails Sent: ${emailsSent}, Errors: ${errorsEncountered}`);
+  }
+}
+
+
+// Component to display and edit the waiver
+export default function EditWaiverPage() {
+  const { waiver } = useLoaderData<typeof loader>();
         title,
         description,
         content,
