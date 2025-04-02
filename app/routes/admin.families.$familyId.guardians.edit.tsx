@@ -63,7 +63,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
             .from('guardians')
             .select('*')
             .eq('family_id', familyId)
-            .order('created_at', { ascending: true }) // Optional: order guardians consistently
+            // .order('created_at', { ascending: true }) // Removed: Column does not exist
     ]);
 
     const { data: familyData, error: familyError } = familyResult;
