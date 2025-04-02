@@ -418,9 +418,9 @@ export default function AdminNewFamilyPage() {
                             {actionData?.fieldErrors?.guardian2HomePhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
                         </div>
                         <div>
-                            {/* Add required indicator and attribute */}
+                            {/* Add required indicator - server validation enforces the rule */}
                             <Label htmlFor="guardian2CellPhone">Cell Phone <span className="text-red-500">*</span></Label>
-                            <Input id="guardian2CellPhone" name="guardian2CellPhone" type="tel" required={hasGuardian2Data} /> {/* Conditionally require based on other fields */}
+                            <Input id="guardian2CellPhone" name="guardian2CellPhone" type="tel" /> {/* Removed non-functional required attribute */}
                             {actionData?.fieldErrors?.guardian2CellPhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2CellPhone}</p>}
                         </div>
                         {/* Add optional guardian fields here (work phone, employer, etc.) */}
