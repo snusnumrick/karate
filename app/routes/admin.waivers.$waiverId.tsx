@@ -256,33 +256,6 @@ async function sendNewRequiredWaiverNotification(
 // Component to display and edit the waiver
 export default function EditWaiverPage() {
   const { waiver } = useLoaderData<typeof loader>();
-        title,
-        description,
-        content,
-        required,
-      })
-      .eq('id', waiverId);
-
-    if (error) {
-      console.error("Error updating waiver:", error.message);
-      return json({ error: `Failed to update waiver: ${error.message}` }, { status: 500 });
-    }
-
-    console.log("Waiver updated successfully.");
-    // Redirect back to the waivers list after successful update
-    return redirect("/admin/waivers");
-
-  } catch (error) {
-     const message = error instanceof Error ? error.message : "An unknown error occurred.";
-     console.error("Error in /admin/waivers/$waiverId action:", message);
-     return json({ error: message }, { status: 500 });
-  }
-}
-
-
-// Component to display and edit the waiver
-export default function EditWaiverPage() {
-  const { waiver } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";

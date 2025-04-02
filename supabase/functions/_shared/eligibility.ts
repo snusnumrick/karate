@@ -1,7 +1,7 @@
 // IMPORTANT: This needs to mirror the logic in app/utils/supabase.server.ts
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { differenceInDays } from 'https://deno.land/x/date_fns@v2.22.1/index.js'; // Use Deno date-fns
-import { Database } from './database.types';
+import { differenceInDays } from 'https://esm.sh/date-fns@3.6.0'; // Use esm.sh and a specific recent version
+import { Database } from './database.types.ts';
 
 export type EligibilityStatus = {
   eligible: boolean;
