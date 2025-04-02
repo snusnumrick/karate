@@ -80,9 +80,9 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         if (!guardian2FirstName) fieldErrors.guardian2FirstName = "Guardian 2 first name is required if adding Guardian 2.";
         if (!guardian2LastName) fieldErrors.guardian2LastName = "Guardian 2 last name is required if adding Guardian 2.";
         if (!guardian2Relationship) fieldErrors.guardian2Relationship = "Guardian 2 relationship is required if adding Guardian 2.";
-        // Optional: Add validation for phone/email if needed for Guardian 2
+        if (!guardian2CellPhone) fieldErrors.guardian2CellPhone = "Guardian 2 cell phone is required if adding Guardian 2."; // Make cell phone required
+        // Optional: Add validation for home phone/email if needed for Guardian 2
         // if (!guardian2HomePhone) fieldErrors.guardian2HomePhone = "Guardian 2 home phone is required.";
-        // if (!guardian2CellPhone) fieldErrors.guardian2CellPhone = "Guardian 2 cell phone is required.";
         // if (!guardian2Email) fieldErrors.guardian2Email = "Guardian 2 email is required.";
     }
 
@@ -418,8 +418,9 @@ export default function AdminNewFamilyPage() {
                             {actionData?.fieldErrors?.guardian2HomePhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian2CellPhone">Cell Phone</Label>
-                            <Input id="guardian2CellPhone" name="guardian2CellPhone" type="tel" />
+                            {/* Add required indicator and attribute */}
+                            <Label htmlFor="guardian2CellPhone">Cell Phone <span className="text-red-500">*</span></Label>
+                            <Input id="guardian2CellPhone" name="guardian2CellPhone" type="tel" required={hasGuardian2Data} /> {/* Conditionally require based on other fields */}
                             {actionData?.fieldErrors?.guardian2CellPhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2CellPhone}</p>}
                         </div>
                         {/* Add optional guardian fields here (work phone, employer, etc.) */}
