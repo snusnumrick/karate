@@ -19,7 +19,7 @@ import type { Database } from "~/types/supabase";
 import { Badge } from "~/components/ui/badge"; // Import Badge
 import { format } from 'date-fns'; // Import date-fns
 
-import {BELT_RANKS, beltColorMap} from "~/utils/constants";
+import {beltColorMap} from "~/utils/constants";
 
 // Define types based on updated Supabase schema
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
