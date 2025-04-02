@@ -1,6 +1,6 @@
 import { invariant } from "@remix-run/router";
-import { json, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { Link, useLoaderData, useParams } from "@remix-run/react";
+import { json, LoaderFunctionArgs, MetaFunction, isRouteErrorResponse } from "@remix-run/node"; // Added isRouteErrorResponse
+import { Link, useLoaderData, useParams, useRouteError } from "@remix-run/react"; // Added useRouteError
 import { createServerClient } from "~/utils/supabase.server";
 import { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
