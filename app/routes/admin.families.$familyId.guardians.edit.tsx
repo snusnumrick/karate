@@ -152,23 +152,26 @@ export async function action({ request, params }: ActionFunctionArgs) {
         if (Object.keys(currentGuardianErrors).length > 0) {
             fieldErrors[guardianId] = currentGuardianErrors;
         } else {
+            // Type safety: firstName, lastName, etc., are confirmed non-null strings here due to the validation above.
+            const updatePayload: Database['public']['Tables']['guardians']['Update'] = {
+                first_name: firstName,
+                last_name: lastName,
+                relationship: relationship,
+                cell_phone: cell_phone,
+                email: email,
+                home_phone: home_phone,
+                // Optional fields: pass null if empty/missing from form, matching DB schema
+                work_phone: work_phone || null,
+                employer: employer || null,
+                employer_phone: employer_phone || null,
+                employer_notes: employer_notes || null,
+            };
+
             // Add update operation to the list
             updates.push(
                 supabaseServer
                     .from('guardians')
-                    .update({
-                        first_name: firstName, // Already validated non-null
-                        last_name: lastName,
-                        relationship: relationship,
-                        cell_phone: cell_phone,
-                        email: email,
-                        home_phone: home_phone, // DB requires non-null
-                        work_phone: work_phone || null, // Allow null
-                        employer: employer || null, // Allow null
-                        employer_phone: employer_phone || null, // Allow null
-                        employer_notes: employer_notes || null, // Allow null
-                        // updated_at: new Date().toISOString(), // Optional: Supabase might handle this automatically
-                    })
+                    .update(updatePayload) // Pass the explicitly typed payload
                     .eq('id', guardianId)
             );
         }
