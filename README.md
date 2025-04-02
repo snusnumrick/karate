@@ -65,6 +65,75 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Payments**: Stripe or PayPal integration for robust payment processing.
 - **Deployment**: Cloud-based deployment solutions (e.g., Vercel or Netlify).
 
+## Setup Instructions
+
+### Supabase Configuration
+
+#### Local Development:
+1. Create a Supabase project at https://supabase.com
+2. Enable Email auth provider in Authentication settings
+3. Create tables following the database schema from the code
+4. Get credentials:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+
+#### Vercel Deployment:
+1. Add environment variables in Vercel:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY` 
+   - `SUPABASE_SERVICE_ROLE_KEY`
+
+### Stripe Configuration
+
+#### Local Development:
+1. Create Stripe account at https://stripe.com
+2. Get API keys:
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_PUBLISHABLE_KEY`
+3. Set webhook secret in `.env`:
+   - `STRIPE_WEBHOOK_SECRET`
+
+#### Vercel Deployment:
+1. Add Stripe environment variables:
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_PUBLISHABLE_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
+2. Configure webhook endpoint in Stripe Dashboard to point to your Vercel domain
+
+### Resend Configuration
+
+#### Local Development:
+1. Create account at https://resend.com
+2. Get API key:
+   - `RESEND_API_KEY`
+3. Set from email in `.env`:
+   - `FROM_EMAIL` (format: "Name <email@domain.com>")
+
+#### Vercel Deployment:
+1. Add Resend environment variables:
+   - `RESEND_API_KEY`
+   - `FROM_EMAIL`
+2. Verify sending domain in Resend dashboard
+
+### General Setup
+
+1. Clone repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Copy `.env.example` to `.env` and fill in values
+4. Generate Supabase types:
+   ```bash
+   npx supabase gen types typescript --project-id YOUR_PROJECT_ID --schema public > supabase/functions/_shared/database.types.ts
+   ```
+5. Deploy Supabase functions:
+   ```bash
+   npx supabase functions deploy payment-reminder --no-verify-jwt
+   npx supabase functions deploy missing-waiver-reminder --no-verify-jwt
+   ```
+
 ## Development Timeline
 
 - Week 1-2:
