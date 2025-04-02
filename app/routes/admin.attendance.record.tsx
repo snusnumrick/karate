@@ -175,10 +175,6 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     console.log("Attendance saved successfully.");
-    // Redirect back to the main attendance list after successful save
-    return redirect("/admin/attendance");
-
-    console.log("Attendance saved successfully.");
 
     // --- Send Absence Notifications ---
     // We need the student names and family emails for notifications
