@@ -53,9 +53,9 @@ export interface Student {
   medications?: string;
   immunizationsUpToDate: boolean;
   immunizationNotes?: string;
-  beltRank: string;
+  // beltRank removed, derive from achievements/belt_awards
   familyId: string;
-  achievements?: Achievement[];
+  achievements?: Achievement[]; // Renamed to beltAwards? Keep consistent
   attendanceRecords?: AttendanceRecord[];
 }
 

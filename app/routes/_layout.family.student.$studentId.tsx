@@ -21,17 +21,16 @@ import { format } from 'date-fns'; // Import date-fns
 
 import {BELT_RANKS, beltColorMap} from "~/utils/constants";
 
-// Define the type for the student data returned by the loader more accurately
-// Assuming types regenerated with belt_rank_enum
+// Define types based on updated Supabase schema
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
-type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'> & { belt_rank: BeltRankEnum | null };
-// Assuming table renamed to 'belt_awards' and types regenerated with enum
-type BeltAwardRow = Omit<Database['public']['Tables']['belt_awards']['Row'], 'type'> & { type: BeltRankEnum };
+type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'>; // Omit removed column
+type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Use BeltAwardRow
 
-// Extend loader data type
+// Extend loader data type to include derived current belt
 type LoaderData = {
   student: StudentRow;
-  beltAwards: BeltAwardRow[]; // Renamed from achievements
+  beltAwards: BeltAwardRow[];
+  currentBeltRank: BeltRankEnum | null; // Add derived current belt rank
 };
 
 // Define potential action data structure
@@ -98,8 +97,17 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     beltAwardsData = [];
   }
 
-  // Return the student data and belt awards, explicitly typed
-  return json({ student: studentData as StudentRow, beltAwards: beltAwardsData as BeltAwardRow[] }, { headers });
+  // Determine the current belt rank from the fetched awards
+  const currentBeltRank = beltAwardsData && beltAwardsData.length > 0
+    ? beltAwardsData[0].type // Assuming awards are sorted descending by date
+    : null;
+
+  // Return the student data, belt awards, and derived current rank
+  return json({
+      student: studentData as StudentRow,
+      beltAwards: beltAwardsData as BeltAwardRow[],
+      currentBeltRank: currentBeltRank
+  }, { headers });
 }
 
 // Action function for handling form submissions (edit/delete)
@@ -185,7 +193,7 @@ export async function action({ request, params }: ActionFunctionArgs) : Promise<
       // Handle checkbox - value is 'on' if checked, null otherwise
       immunizations_up_to_date: formData.get('immunizations_up_to_date') === 'on' ? 'true' : 'false',
       immunization_notes: formData.get('immunization_notes') as string || null,
-      belt_rank: formData.get('belt_rank') as typeof BELT_RANKS[number] | null | undefined,
+      // belt_rank removed from updateData
     };
 
     const { error: updateError } = await supabaseServer
@@ -210,8 +218,8 @@ export async function action({ request, params }: ActionFunctionArgs) : Promise<
 
 
 export default function StudentDetailPage() {
-  // Update to use the extended LoaderData type
-  const { student, beltAwards } = useLoaderData<LoaderData>(); // Renamed from achievements
+  // Update to use the extended LoaderData type including currentBeltRank
+  const { student, beltAwards, currentBeltRank } = useLoaderData<LoaderData>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const [isEditing, setIsEditing] = useState(false);
@@ -280,19 +288,7 @@ export default function StudentDetailPage() {
                 <Label htmlFor="birth_date">Birth Date</Label>
                 <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date} required />
               </div>
-              <div>
-                <Label htmlFor="belt_rank">Belt Rank</Label>
-                 <Select name="belt_rank" defaultValue={student.belt_rank || ''}>
-                    <SelectTrigger id="belt_rank"><SelectValue placeholder="Select belt rank" /></SelectTrigger>
-                    <SelectContent>
-                        {BELT_RANKS.map((rank) => (
-                          <SelectItem key={rank} value={rank} className="capitalize">
-                            {rank}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-              </div>
+              {/* Belt Rank Select Removed */}
               <div>
                 <Label htmlFor="t_shirt_size">T-Shirt Size</Label>
                 <Select name="t_shirt_size" defaultValue={student.t_shirt_size} required>
@@ -400,11 +396,11 @@ export default function StudentDetailPage() {
               <p><strong>Gender:</strong> {student.gender}</p>
               <p><strong>Birth Date:</strong> {new Date(student.birth_date).toLocaleDateString()}</p>
               <div className="flex items-center">
-                 <strong className="mr-2">Belt Rank:</strong>
-                 {student.belt_rank ? (
+                 <strong className="mr-2">Current Belt:</strong> {/* Updated Label */}
+                 {currentBeltRank ? (
                    <>
-                     <div className={`h-4 w-8 rounded mr-2 ${beltColorMap[student.belt_rank] || 'bg-gray-400'}`}></div>
-                     <span className="capitalize">{student.belt_rank}</span>
+                     <div className={`h-4 w-8 rounded mr-2 ${beltColorMap[currentBeltRank] || 'bg-gray-400'}`}></div>
+                     <span className="capitalize">{currentBeltRank}</span>
                    </>
                  ) : (
                    'N/A'

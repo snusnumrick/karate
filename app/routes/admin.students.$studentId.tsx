@@ -19,18 +19,19 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // 
 import { format } from 'date-fns';
 
 // Define types
-type StudentRow = Database['public']['Tables']['students']['Row'];
+type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'>; // Omit removed column
 type FamilyRow = Database['public']['Tables']['families']['Row'];
+type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Use BeltAwardRow
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 
-// Extend student type to include family name and use enum
-type StudentWithFamily = Omit<StudentRow, 'belt_rank'> & {
-    belt_rank: BeltRankEnum | null;
-    families: Pick<FamilyRow, 'id' | 'name'> | null; // Include family ID and name
+// Extend student type to include family name and current belt
+type StudentWithFamilyAndBelt = StudentRow & {
+    families: Pick<FamilyRow, 'id' | 'name'> | null;
+    currentBeltRank: BeltRankEnum | null; // Add derived current belt rank
 };
 
 type LoaderData = {
-    student: StudentWithFamily;
+    student: StudentWithFamilyAndBelt; // Update type
 };
 
 // Define potential action data structure
@@ -65,7 +66,7 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
     const { data: studentData, error } = await supabaseAdmin
         .from('students')
         .select(`
-            *,
+            *
             families ( id, name )
         `)
         .eq('id', studentId)
@@ -76,10 +77,29 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
         throw new Response("Student not found", { status: 404 });
     }
 
-    // Explicitly cast to ensure type safety, especially with the nested family object and enum
-    const typedStudentData = studentData as StudentWithFamily;
+    // Fetch the latest belt award for the student
+    const { data: latestBeltAward, error: beltError } = await supabaseAdmin
+      .from('belt_awards')
+      .select('type')
+      .eq('student_id', studentId)
+      .order('awarded_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    return json({ student: typedStudentData });
+    if (beltError) {
+      console.error(`Error fetching latest belt for student ${studentId}:`, beltError.message);
+      // Handle error as needed, here we'll proceed with null belt rank
+    }
+
+    // Combine student data with the derived belt rank
+    const studentWithDetails: StudentWithFamilyAndBelt = {
+        ...studentData,
+        families: studentData.families ?? null,
+        currentBeltRank: latestBeltAward?.type ?? null,
+    };
+
+
+    return json({ student: studentWithDetails }); // Return combined data
 }
 
 // Action function to handle student updates
@@ -112,8 +132,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
       medications: formData.get('medications') as string || null,
       immunizations_up_to_date: formData.get('immunizations_up_to_date') === 'on' ? 'true' : 'false',
       immunization_notes: formData.get('immunization_notes') as string || null,
-      // Ensure belt_rank is handled correctly (might be empty string from select)
-      belt_rank: (formData.get('belt_rank') as typeof BELT_RANKS[number] | '' | null) || null,
+      // belt_rank is removed from updateData
     };
 
     // --- Basic Validation ---
@@ -242,12 +261,198 @@ export default function AdminStudentDetailPage() {
                             <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date} required />
                             {actionData?.fieldErrors?.birth_date && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.birth_date}</p>}
                         </div>
+                        {/* Belt Rank Select Removed */}
                         <div>
-                            <Label htmlFor="belt_rank">Belt Rank</Label>
-                            <Select name="belt_rank" defaultValue={student.belt_rank || ''}>
-                                <SelectTrigger id="belt_rank"><SelectValue placeholder="Select belt rank" /></SelectTrigger>
+                            <Label htmlFor="t_shirt_size">T-Shirt Size <span className="text-red-500">*</span></Label>
+                            <Select name="t_shirt_size" defaultValue={student.t_shirt_size} required>
+                                <SelectTrigger id="t_shirt_size"><SelectValue placeholder="Select size" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="YXS">Youth XS</SelectItem>
+                                    <SelectItem value="YS">Youth S</SelectItem>
+                                    <SelectItem value="YM">Youth M</SelectItem>
+                                    <SelectItem value="YL">Youth L</SelectItem>
+                                    <SelectItem value="YXL">Youth XL</SelectItem>
+                                    <SelectItem value="AS">Adult S</SelectItem>
+                                    <SelectItem value="AM">Adult M</SelectItem>
+                                    <SelectItem value="AL">Adult L</SelectItem>
+                                    <SelectItem value="AXL">Adult XL</SelectItem>
+                                    <SelectItem value="A2XL">Adult 2XL</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {actionData?.fieldErrors?.t_shirt_size && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.t_shirt_size}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="school">School <span className="text-red-500">*</span></Label>
+                            <Input id="school" name="school" defaultValue={student.school} required />
+                            {actionData?.fieldErrors?.school && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.school}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="grade_level">Grade Level</Label>
+                            <Select name="grade_level" defaultValue={student.grade_level || ''}>
+                                <SelectTrigger id="grade_level"><SelectValue placeholder="Select grade" /></SelectTrigger>
                                 <SelectContent>
                                     {/* Removed SelectItem with value="" */}
+                                    <SelectItem value="K">Kindergarten</SelectItem>
+                                    <SelectItem value="1">1st Grade</SelectItem>
+                                    <SelectItem value="2">2nd Grade</SelectItem>
+                                    <SelectItem value="3">3rd Grade</SelectItem>
+                                    <SelectItem value="4">4th Grade</SelectItem>
+                                    <SelectItem value="5">5th Grade</SelectItem>
+                                    <SelectItem value="6">6th Grade</SelectItem>
+                                    <SelectItem value="7">7th Grade</SelectItem>
+                                    <SelectItem value="8">8th Grade</SelectItem>
+                                    <SelectItem value="9">9th Grade</SelectItem>
+                                    <SelectItem value="10">10th Grade</SelectItem>
+                                    <SelectItem value="11">11th Grade</SelectItem>
+                                    <SelectItem value="12">12th Grade</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="cell_phone">Cell Phone</Label>
+                            <Input id="cell_phone" name="cell_phone" type="tel" defaultValue={student.cell_phone || ''} />
+                        </div>
+                        <div>
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" name="email" type="email" defaultValue={student.email || ''} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Health Information Section */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Edit Health Information</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="immunizations_up_to_date"
+                                name="immunizations_up_to_date"
+                                defaultChecked={student.immunizations_up_to_date === 'true'}
+                            />
+                            <Label htmlFor="immunizations_up_to_date">Immunizations Up-to-Date?</Label>
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="immunization_notes">Immunization Notes</Label>
+                            <Textarea id="immunization_notes" name="immunization_notes" defaultValue={student.immunization_notes || ''} rows={2} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="allergies">Allergies</Label>
+                            <Textarea id="allergies" name="allergies" defaultValue={student.allergies || ''} rows={2} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="medications">Medications</Label>
+                            <Textarea id="medications" name="medications" defaultValue={student.medications || ''} rows={2} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label htmlFor="special_needs">Special Needs</Label>
+                            <Textarea id="special_needs" name="special_needs" defaultValue={student.special_needs || ''} rows={2} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-4 mt-6">
+                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
+            </Form>
+            ) : (
+            // --- View Mode ---
+            <>
+                {/* Display Student Information */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <p><strong>First Name:</strong> {student.first_name}</p>
+                    <p><strong>Last Name:</strong> {student.last_name}</p>
+                    <p><strong>Family:</strong> {student.families ? <Link to={`/admin/families/${student.families.id}`} className="text-blue-600 hover:underline">{student.families.name}</Link> : 'N/A'}</p>
+                    <p><strong>Gender:</strong> {student.gender}</p>
+                    <p><strong>Birth Date:</strong> {format(new Date(student.birth_date), 'PPP')}</p> {/* Use PPP for readable date */}
+                    <div className="flex items-center">
+                        <strong className="mr-2">Current Belt:</strong> {/* Updated Label */}
+                        {student.currentBeltRank ? (
+                            <>
+                                <div className={`h-4 w-8 rounded mr-2 ${beltColorMap[student.currentBeltRank] || 'bg-gray-400'}`}></div>
+                                <span className="capitalize">{student.currentBeltRank}</span>
+                            </>
+                        ) : (
+                            'N/A'
+                        )}
+                    </div>
+                    <p><strong>T-Shirt Size:</strong> {student.t_shirt_size}</p>
+                    <p><strong>School:</strong> {student.school}</p>
+                    <p><strong>Grade Level:</strong> {student.grade_level || 'N/A'}</p>
+                    <p><strong>Cell Phone:</strong> {student.cell_phone || 'N/A'}</p>
+                    <p><strong>Email:</strong> {student.email || 'N/A'}</p>
+                </div>
+            </div>
+
+            {/* Health Information Section */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Health Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Display boolean 'true'/'false' as Yes/No */}
+                    <p><strong>Immunizations Up-to-Date:</strong> {student.immunizations_up_to_date === 'true' ? 'Yes' : student.immunizations_up_to_date === 'false' ? 'No' : 'N/A'}</p>
+                    <p><strong>Immunization Notes:</strong> {student.immunization_notes || 'None'}</p>
+                    <p><strong>Allergies:</strong> {student.allergies || 'None'}</p>
+                    <p><strong>Medications:</strong> {student.medications || 'None'}</p>
+                    <p><strong>Special Needs:</strong> {student.special_needs || 'None'}</p>
+                </div>
+            </div>
+
+             {/* Links to other related admin sections */}
+             <div className="mt-8 space-x-4">
+                 {/* Use onClick with navigate instead of asChild/Link - Update path */}
+                 <Button variant="secondary" onClick={() => navigate(`/admin/student-belts/${student.id}`)}>
+                     Manage Belt Awards
+                 </Button>
+                 {/* Use onClick with navigate here too */}
+                 <Button variant="secondary" onClick={() => navigate(`/admin/attendance?studentId=${student.id}`)}>
+                     View Attendance
+                 </Button>
+             </div>
+            </>
+            )}
+
+             {/* Removed Outlet and surrounding div */}
+
+        </div>
+    );
+}
+
+// Add a specific ErrorBoundary for this route
+export function ErrorBoundary() {
+  const error = useRouteError();
+  console.error("Error caught in AdminStudentDetailPage ErrorBoundary:", error);
+
+  let errorMessage = "An unknown error occurred loading the student details.";
+  let errorStatus = 500;
+
+  if (error instanceof Response) {
+     errorMessage = `Error: ${error.status} - ${error.statusText || 'Failed to load data.'}`;
+     errorStatus = error.status;
+     // Handle 404 specifically
+     if (error.status === 404) {
+         errorMessage = "Student not found.";
+     }
+  } else if (error instanceof Error) {
+     errorMessage = error.message;
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+        <Link to="/admin/students" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Student List</Link>
+        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <h2 className="text-xl font-bold mb-2">Error Loading Student Details ({errorStatus})</h2>
+          <p>{errorMessage}</p>
+        </div>
+    </div>
+  );
+}
                                     {BELT_RANKS.map((rank) => (
                                       <SelectItem key={rank} value={rank} className="capitalize">
                                         {rank}

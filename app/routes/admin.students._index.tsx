@@ -2,10 +2,11 @@ import { json } from "@remix-run/node";
 import { Link, useLoaderData, useRouteError } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
-import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
-import { format } from 'date-fns'; // Import date-fns for formatting dates
+import { checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server";
+import { format } from 'date-fns';
 import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge"; // Import Badge
+import { Badge } from "~/components/ui/badge";
+import { beltColorMap } from "~/utils/constants"; // Import belt color map
 import {
   Table,
   TableBody,
@@ -56,23 +57,40 @@ export async function loader() {
       throw new Response("Failed to load student data.", { status: 500 });
     }
 
-    console.log(`Admin students loader - Fetched ${students?.length ?? 0} students. Now checking eligibility...`);
+    console.log(`Admin students loader - Fetched ${students?.length ?? 0} students. Now checking eligibility and latest belt...`);
 
-    // Fetch eligibility for each student
-    const studentsWithEligibility: StudentWithFamilyAndEligibility[] = [];
+    // Fetch eligibility and latest belt for each student
+    const studentsWithDetails: StudentWithFamilyEligibilityAndBelt[] = [];
     if (students) {
       for (const student of students) {
+        // Fetch eligibility
         const eligibility = await checkStudentEligibility(student.id, supabaseAdmin);
-        studentsWithEligibility.push({
+
+        // Fetch the latest belt award for the student
+        const { data: latestBeltAward, error: beltError } = await supabaseAdmin
+          .from('belt_awards')
+          .select('type') // Select only the type (rank)
+          .eq('student_id', student.id)
+          .order('awarded_date', { ascending: false })
+          .limit(1)
+          .maybeSingle(); // Use maybeSingle to handle cases with no awards
+
+        if (beltError) {
+          console.error(`Error fetching latest belt for student ${student.id}:`, beltError.message);
+          // Decide how to handle error: skip student, show 'Error', or null? Let's use null.
+        }
+
+        studentsWithDetails.push({
           ...student,
-          families: student.families ?? null, // Ensure families is at least null
+          families: student.families ?? null,
           eligibility: eligibility,
+          currentBeltRank: latestBeltAward?.type ?? null, // Store the rank or null
         });
       }
     }
 
-    console.log("Admin students loader - Eligibility checks complete.");
-    return json({ students: studentsWithEligibility });
+    console.log("Admin students loader - Eligibility and belt checks complete.");
+    return json({ students: studentsWithDetails });
 
   } catch (error) {
      if (error instanceof Error) {
@@ -86,7 +104,7 @@ export async function loader() {
 }
 
 export default function StudentsAdminPage() {
-  const { students } = useLoaderData<{ students: StudentWithFamilyAndEligibility[] }>();
+  const { students } = useLoaderData<{ students: StudentWithFamilyEligibilityAndBelt[] }>(); // Update type
 
   // Helper to determine badge variant based on eligibility (Updated reasons)
   const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
@@ -117,8 +135,8 @@ export default function StudentsAdminPage() {
               <TableRow>
                 <TableHead>Student Name</TableHead>
                 <TableHead>Family Name</TableHead>
-                <TableHead>Belt Rank</TableHead>
-                <TableHead>Eligibility</TableHead> {/* Add Eligibility column */}
+                <TableHead>Current Belt</TableHead> {/* Changed header */}
+                <TableHead>Eligibility</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -127,7 +145,16 @@ export default function StudentsAdminPage() {
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{`${student.first_name} ${student.last_name}`}</TableCell>
                   <TableCell>{student.families?.name ?? 'N/A'}</TableCell>
-                  <TableCell>{student.belt_rank ?? 'N/A'}</TableCell> {/* Handle null belt rank */}
+                  <TableCell>
+                    {student.currentBeltRank ? (
+                      <div className="flex items-center">
+                        <div className={`h-4 w-8 rounded mr-2 ${beltColorMap[student.currentBeltRank] || 'bg-gray-400'}`}></div>
+                        <span className="capitalize">{student.currentBeltRank}</span>
+                      </div>
+                    ) : (
+                      'N/A'
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)} className="text-xs">
                       {student.eligibility.reason === 'Paid' ? 'Active' : student.eligibility.reason}
