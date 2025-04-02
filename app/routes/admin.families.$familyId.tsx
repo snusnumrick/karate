@@ -1,5 +1,4 @@
-import router from "@remix-run/router"; // Use default import again
-const { invariant } = router; // Destructure invariant
+import invariant from "tiny-invariant"; // Use tiny-invariant instead
 import node from "@remix-run/node"; // Import default
 const { json } = node; // Destructure only json
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node"; // Keep type imports separate
