@@ -19,7 +19,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
     try {
         console.log(`Attempting to send email via Edge Function to: ${options.to} with subject: "${options.subject}"`);
         const { data, error } = await resend.emails.send({
-            from: fromEmail,
+            from: fromEmail!,
             to: options.to,
             subject: options.subject,
             html: options.html,
