@@ -178,6 +178,14 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - Error boundary handling & SSR/Hydration fixes
   - Supabase database integration (Auth, Families, Students, Waivers, Profiles, Attendance)
   - Mobile-optimized responsive layout
+- **SEO Enhancements:**
+  - Default and page-specific Meta Tags (Title, Description, Open Graph) via Remix `meta` function.
+  - `robots.txt` to guide search engine crawlers (disallowing `/admin`, `/family`).
+  - Dynamically generated `sitemap.xml` for improved content discovery.
+  - JSON-LD Structured Data (Organization, Person, SportsActivityLocation) for richer search results.
+  - Canonical URLs specified for key pages.
+  - Basic internal linking added between relevant pages (About, Contact, Classes).
+  - Semantic HTML structure in layouts (nav, main, footer).
 
 🛠 **Recent Additions**
 - Dynamic data fetching for Family Portal (Family, Students, Waiver Status)
@@ -210,6 +218,12 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 
 ### Next Priority Features
 *All major planned features implemented.*
+
+### Potential Future Enhancements / Areas for Review
+- **Content Quality:** Ensure public-facing page content is informative, engaging, and naturally incorporates relevant keywords.
+- **Image Alt Text:** Conduct a site-wide review to ensure all meaningful images have descriptive `alt` attributes for SEO and accessibility.
+- **Performance (Core Web Vitals):** Analyze and optimize page load speed and responsiveness using tools like Google PageSpeed Insights.
+- **Accessibility (A11y):** Perform comprehensive accessibility checks (keyboard navigation, color contrast, ARIA attributes).
 
 ### Implemented Notifications
 - **Student Absence:** Email sent to family when student marked absent (`/admin/attendance/record`).
