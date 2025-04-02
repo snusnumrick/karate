@@ -62,6 +62,34 @@ export function Layout() {
             <link rel="manifest" href="/manifest.webmanifest"/>
             <Meta/>
             <Links/>
+            {/* Add Organization Schema */}
+            <script type="application/ld+json" dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "Organization",
+                    "name": siteConfig.name,
+                    "url": "https://www.greenegin.ca", // TODO: Replace with actual production URL
+                    "logo": "https://www.greenegin.ca/apple-touch-icon.png", // TODO: Replace with actual production URL for logo
+                    "contactPoint": {
+                        "@type": "ContactPoint",
+                        "telephone": siteConfig.contact.phone,
+                        "contactType": "Customer Service", // Or "Sales", "Technical Support", etc.
+                        "email": siteConfig.contact.email
+                    },
+                    "address": {
+                        "@type": "PostalAddress",
+                        // Add address details if available and appropriate for Organization schema
+                        // "streetAddress": siteConfig.location.address,
+                        "addressLocality": "Colwood", // Assuming Colwood based on description
+                        "addressRegion": "BC", // Assuming British Columbia
+                        "addressCountry": "CA" // Assuming Canada
+                    },
+                    "sameAs": [ // Add social media links
+                        siteConfig.socials.instagram
+                    ],
+                    "description": siteConfig.description
+                })
+            }} />
         </head>
         {/* Removed contentEditable attributes as suppressHydrationWarning on <html> handles extension issues */}
         <body className="h-full bg-background text-foreground">

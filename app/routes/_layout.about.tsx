@@ -8,6 +8,28 @@ export const meta: MetaFunction = () => {
     // You can override OG tags here too if needed
     { property: "og:title", content: "About Sensei Negin | Greenegin Karate" },
     { property: "og:description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor." },
+    // Add Person Schema for Sensei Negin
+    {
+      "script:ld+json": {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Sensei Negin",
+        "jobTitle": "Karate Instructor",
+        "alumniOf": { // Example if applicable, adjust as needed
+            "@type": "EducationalOrganization",
+            "name": "University/Institution for Sport Psychology" // Replace with actual institution if known
+        },
+        "knowsAbout": ["Karate", "Martial Arts", "Sport Psychology", "Child Development"],
+        "description": "5th Dan Black Belt karate instructor with a Master's in Sport Psychology, specializing in teaching children.",
+        "url": "https://www.greenegin.ca/about", // TODO: Replace with actual production URL
+        // "image": "URL_TO_SENSEI_NEGIN_PHOTO.jpg", // Optional: Add a URL to a photo
+        "worksFor": {
+            "@type": "Organization",
+            "name": siteConfig.name,
+            "url": "https://www.greenegin.ca" // TODO: Replace with actual production URL
+        }
+      }
+    }
   ];
 };
 

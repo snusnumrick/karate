@@ -7,6 +7,42 @@ export const meta: MetaFunction = () => {
     // You can override OG tags here too if needed
     { property: "og:title", content: "Contact Us | Greenegin Karate" },
     { property: "og:description", content: "Contact Sensei Negin for kids karate classes in Colwood." },
+    // Add SportsActivityLocation Schema
+    {
+        "script:ld+json": {
+            "@context": "https://schema.org",
+            "@type": "SportsActivityLocation",
+            "name": "Greenegin Karate Class Location",
+            "description": `Kids Karate Classes (${siteConfig.classes.ageRange}) at Lighthouse Christian Academy.`,
+            "address": {
+                "@type": "PostalAddress",
+                // Use specific address if known, otherwise use locality/region
+                // "streetAddress": siteConfig.location.address, // Use if this is the exact class address
+                "addressLocality": "Colwood", // Assuming Colwood
+                "addressRegion": "BC",
+                "addressCountry": "CA"
+            },
+            "telephone": siteConfig.contact.phone,
+            "url": "https://www.greenegin.ca/contact", // TODO: Replace with actual production URL
+            "openingHoursSpecification": [ // Define class times
+                {
+                    "@type": "OpeningHoursSpecification",
+                    "dayOfWeek": [
+                        "Tuesday", // Assuming Tue & Fri from siteConfig
+                        "Friday"
+                    ],
+                    "opens": "18:15", // Use 24hr format HH:MM
+                    "closes": "19:15"
+                }
+                // Add more specifications if classes run on other days/times
+            ],
+            "provider": { // Link back to the main organization
+                "@type": "Organization",
+                "name": siteConfig.name,
+                "url": "https://www.greenegin.ca" // TODO: Replace with actual production URL
+            }
+        }
+    }
   ];
 };
 
