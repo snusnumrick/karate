@@ -29,7 +29,9 @@ export const meta: MetaFunction = () => {
             "url": "https://www.greenegin.ca" // TODO: Replace with actual production URL
         }
       }
-    }
+    },
+    // Add canonical link for the About page
+    { tagName: "link", rel: "canonical", href: "https://www.greenegin.ca/about" }, // TODO: Replace with actual production URL
   ];
 };
 

@@ -10,6 +10,7 @@ const staticRoutes = [
     "/contact",
     "/login",
     "/register",
+    "/classes", // Add the classes route
     // Add other static public routes as needed
 ];
 
