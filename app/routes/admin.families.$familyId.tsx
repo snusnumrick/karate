@@ -215,18 +215,18 @@ export default function FamilyDetailPage() {
                         </CardHeader>
                         <CardContent className="pt-4"> {/* Add padding top if needed */}
                             {family.guardians.length > 0 ? (
-                                <ul className="space-y-2">
+                                <ul className="space-y-1"> {/* Reduced space-y from 2 to 1 */}
                                     {family.guardians.map((guardian) => (
-                                        <li key={guardian.id} className="border-b pb-2 last:border-b-0">
+                                        <li key={guardian.id} className="border-b pb-1 pt-1 last:border-b-0 text-sm"> {/* Reduced pb, added pt, smaller text */}
                                             <p><strong>Name:</strong> {guardian.first_name} {guardian.last_name}</p>
-                                            <p><strong>Relationship:</strong> {guardian.relationship ?? 'N/A'}</p>
-                                            <p><strong>Email:</strong> {guardian.email ?? 'N/A'}</p>
-                                            <p><strong>Cell Phone:</strong> {guardian.cell_phone ?? 'N/A'}</p>
-                                            <p><strong>Home Phone:</strong> {guardian.home_phone ?? 'N/A'}</p>
-                                            <p><strong>Work Phone:</strong> {guardian.work_phone ?? 'N/A'}</p>
-                                            <p><strong>Employer:</strong> {guardian.employer ?? 'N/A'}</p>
-                                            <p><strong>Employer Phone:</strong> {guardian.employer_phone ?? 'N/A'}</p>
-                                            <p><strong>Employer Notes:</strong> {guardian.employer_notes ?? 'N/A'}</p>
+                                            <p><strong>Relationship:</strong> {guardian.relationship}</p> {/* Required field, no need for ?? 'N/A' */}
+                                            <p><strong>Email:</strong> {guardian.email}</p> {/* Required field */}
+                                            <p><strong>Cell Phone:</strong> {guardian.cell_phone}</p> {/* Required field */}
+                                            <p><strong>Home Phone:</strong> {guardian.home_phone}</p> {/* Required field */}
+                                            {guardian.work_phone && <p><strong>Work Phone:</strong> {guardian.work_phone}</p>}
+                                            {guardian.employer && <p><strong>Employer:</strong> {guardian.employer}</p>}
+                                            {guardian.employer_phone && <p><strong>Employer Phone:</strong> {guardian.employer_phone}</p>}
+                                            {guardian.employer_notes && <p><strong>Employer Notes:</strong> {guardian.employer_notes}</p>}
                                         </li>
                                     ))}
                                 </ul>
@@ -248,9 +248,9 @@ export default function FamilyDetailPage() {
                         </CardHeader>
                         <CardContent className="pt-4"> {/* Add padding top if needed */}
                             {family.students.length > 0 ? (
-                                <ul className="space-y-4">
+                                <ul className="space-y-4"> {/* Keep space-y-4 for students */}
                                     {family.students.map((student) => (
-                                        <li key={student.id} className="border p-4 rounded-md shadow-sm">
+                                        <li key={student.id} className="border p-4 rounded-md shadow-sm"> {/* Keep p-4 for students */}
                                             <div className="flex justify-between items-center">
                                                 <div>
                                                     <p className="font-semibold">{student.first_name} {student.last_name}</p>
