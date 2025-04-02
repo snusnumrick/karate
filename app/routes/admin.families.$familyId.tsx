@@ -97,6 +97,11 @@ export default function FamilyDetailPage() {
 
     return (
         <div className="space-y-6">
+            {/* Render child routes (like the edit page) here */}
+            <Outlet />
+
+            {/* Keep the detail view content below for now,
+                or adjust structure if edit should replace details */}
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Family: {family.name}</h1>
                 {/* Link to the edit page for this family */}
