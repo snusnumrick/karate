@@ -1,5 +1,4 @@
 import { Resend } from 'https://esm.sh/resend@3.2.0';
-import Deno from "cac/deno"; // Use specific version
 
 const resendApiKey = Deno.env.get('RESEND_API_KEY');
 const fromEmail = Deno.env.get('FROM_EMAIL');
