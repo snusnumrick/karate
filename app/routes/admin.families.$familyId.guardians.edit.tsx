@@ -13,7 +13,6 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
-type FamilyRow = Database['public']['Tables']['families']['Row'];
 
 // Define the shape of the data returned by the loader
 type LoaderData = {
