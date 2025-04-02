@@ -41,7 +41,9 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   console.log(`[Loader] Fetching family details for ID: ${familyId}`); // Log the ID
 
   // Use the correct function and destructure the server client
-  const { supabaseServer, response } = getSupabaseServerClient(request); // Use supabaseServer
+  // const { supabaseServer, response } = getSupabaseServerClient(request);
+  const supabaseServer = createClient<Database>(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const response = new Response();
 
   console.log('[Loader] Supabase client initialized. Fetching data...'); // Log before query
   const { data: familyData, error: familyError } = await supabaseServer // Use the server client
@@ -51,7 +53,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       guardians (*),
       students (*)
     `)
-    .eq('id', familyId); // Remove .single() - fetch potential multiple rows
+      .eq('id', familyId)
+      .single();
 
   // Log the result from Supabase
   console.log('[Loader] Supabase query result:', { familyData, familyError });
