@@ -27,11 +27,10 @@ export const meta: MetaFunction = () => {
         {property: "og:title", content: siteConfig.name},
         {property: "og:description", content: siteConfig.description},
         {property: "og:type", content: "website"},
-        // TODO: Replace with actual production URL
-        { property: "og:url", content: "https://www.greenegin.ca" },
+        { property: "og:url", content: siteConfig.url }, // Use siteConfig
         // { property: "og:image", content: "YOUR_IMAGE_URL" }, // Optional: Add a preview image URL
-        // Add default canonical link (adjust BASE_URL as needed)
-        { tagName: "link", rel: "canonical", href: "https://www.greenegin.ca" }, // TODO: Replace with actual production URL
+        // Add default canonical link
+        { tagName: "link", rel: "canonical", href: siteConfig.url }, // Use siteConfig
     ];
 };
 

@@ -1,7 +1,5 @@
 import { type LoaderFunctionArgs } from "@remix-run/node";
-
-// TODO: Replace with your actual production domain
-const BASE_URL = "https://www.greenegin.ca";
+import { siteConfig } from "~/config/site"; // Import siteConfig
 
 // List your public-facing static routes here
 const staticRoutes = [
@@ -31,7 +29,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         .map((route) =>
             `
         <url>
-          <loc>${BASE_URL}${route}</loc>
+          <loc>${siteConfig.url}${route}</loc>
           <lastmod>${new Date().toISOString().split("T")[0]}</lastmod>
           <changefreq>weekly</changefreq> 
           <priority>${route === "/" ? "1.0" : "0.8"}</priority> 

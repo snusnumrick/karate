@@ -1,6 +1,10 @@
+// Ensure SITE_URL is defined in your environment variables (.env file)
+const siteUrl = process.env.SITE_URL || 'http://localhost:3000'; // Fallback for local dev if not set
+
 export const siteConfig = {
     name: "Greenegin Karate", // Added site name
     description: "Kids Karate Classes in Colwood, BC. Learn discipline, respect, and self-defense with Sensei Negin. Ages 6-12. Free trial available!", // Added default description
+    url: siteUrl, // Use the environment variable
     location: {
         address: "650 Allandale Rd Suite A101",
         description: " our Colwood studio",
