@@ -83,14 +83,37 @@ serve(async (req: Request) => {
             student.id,
             supabaseAdmin,
           );
-          // --- Logic for sending reminders ---
-          // Send email if status is 'Expired'
-          // TODO: Add logic for 'expiring soon' (e.g., last payment > 25 days ago?)
+          
+          // Calculate expiration timeframe
+          const now = new Date();
+          const expirationThresholdDays = 5; // Warn when expiration is within 5 days
+          
           if (eligibility.reason === 'Expired') {
             console.log(
               `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} has expired eligibility.`,
             );
             studentsToExpire.push({ name: `${student.first_name} ${student.last_name}` });
+          } else if (
+            eligibility.reason === 'Paid' && 
+            eligibility.lastPaymentDate
+          ) {
+            const lastPaymentDate = new Date(eligibility.lastPaymentDate);
+            const expirationDate = new Date(lastPaymentDate);
+            expirationDate.setDate(expirationDate.getDate() + 30); // Payments cover 30 days
+            
+            const daysUntilExpiration = Math.ceil(
+              (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+            );
+
+            if (daysUntilExpiration <= expirationThresholdDays) {
+              console.log(
+                `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} expires in ${daysUntilExpiration} days.`
+              );
+              studentsToExpire.push({ 
+                name: `${student.first_name} ${student.last_name}`,
+                daysUntilExpiration 
+              });
+            }
           }
         } catch (eligibilityError) {
           console.error(
@@ -104,17 +127,26 @@ serve(async (req: Request) => {
       // If any students in the family have expired eligibility, send ONE email to the family
       if (studentsToExpire.length > 0) {
         try {
-          const studentList = studentsToExpire.map((s) => s.name).join(', ');
+          const expiredStudents = studentsToExpire.filter(s => !('daysUntilExpiration' in s));
+          const expiringSoonStudents = studentsToExpire.filter(s => 'daysUntilExpiration' in s);
+          
           const subject = `Action Required: Karate Payment Due for ${family.name}`;
-          const htmlBody =
-            `                                                                                                                                                                                             
-            <p>Hello ${family.name},</p>                                                                                                                                                                                 
-            <p>This is a reminder that the karate class payment is due or overdue for the following student(s):</p>                                                                                                      
-            <ul>                                                                                                                                                                                                         
-              ${
-              studentsToExpire.map((s) => `<li><strong>${s.name}</strong></li>`).join('')
-            }                                                                                                                               
-            </ul>
+          const htmlBody = `
+            <p>Hello ${family.name},</p>
+            ${expiredStudents.length > 0 ? `
+              <p>This is a reminder that the karate class payment is <strong>overdue</strong> for:</p>
+              <ul>
+                ${expiredStudents.map(s => `<li><strong>${s.name}</strong></li>`).join('')}
+              </ul>
+            ` : ''}
+            ${expiringSoonStudents.length > 0 ? `
+              <p>The following students have payments expiring soon:</p>
+              <ul>
+                ${expiringSoonStudents.map(s => 
+                  `<li><strong>${s.name}</strong> - Expires in ${s.daysUntilExpiration} days</li>`
+                ).join('')}
+              </ul>
+            ` : ''}
             <p>Their current status is 'Expired'. Please visit the family portal to make a payment and ensure continued participation.</p>
             <p><a href="${siteUrl}/family/payment">Make Payment Now</a></p> {/* Use verified siteUrl variable */}
             <p>Thank you,<br/>Sensei Negin's Karate Class</p>
