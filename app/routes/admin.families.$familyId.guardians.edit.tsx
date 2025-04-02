@@ -104,10 +104,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     // Explicitly type the array elements as PostgrestQueryBuilder
-    // We need to specify the schema, table, and return type for the builder
+    // We need to specify the schema, table definition, and return type for the builder
     type GuardianUpdateBuilder = PostgrestQueryBuilder<
         Database["public"], // Schema
-        Tables<"guardians">, // Row type (not strictly needed for update, but good practice)
+        Database["public"]["Tables"]["guardians"], // Full table definition
         null // Expected result type after .then()
     >;
     const updates: GuardianUpdateBuilder[] = [];
