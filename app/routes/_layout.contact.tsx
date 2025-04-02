@@ -1,3 +1,16 @@
+import type { MetaFunction } from "@remix-run/node"; // Import MetaFunction
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "Contact Us | Greenegin Karate" },
+    { name: "description", content: "Contact Sensei Negin for kids karate classes in Colwood. Find class schedules, location, phone number, and email address." },
+    // You can override OG tags here too if needed
+    { property: "og:title", content: "Contact Us | Greenegin Karate" },
+    { property: "og:description", content: "Contact Sensei Negin for kids karate classes in Colwood." },
+  ];
+};
+
+
 export default function ContactPage() {
     return (
         <div className="min-h-screen bg-green-50 dark:bg-gray-900 py-12">

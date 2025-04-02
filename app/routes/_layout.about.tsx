@@ -1,4 +1,15 @@
 import {siteConfig} from "~/config/site"; // Import site config
+import type { MetaFunction } from "@remix-run/node"; // Import MetaFunction
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "About Sensei Negin | Greenegin Karate" },
+    { name: "description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor with a Master's in Sport Psychology, teaching kids karate in Colwood." },
+    // You can override OG tags here too if needed
+    { property: "og:title", content: "About Sensei Negin | Greenegin Karate" },
+    { property: "og:description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor." },
+  ];
+};
 
 export default function AboutPage() {
     return (

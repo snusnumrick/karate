@@ -1,6 +1,7 @@
 import {Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError,} from "@remix-run/react";
-import type {LinksFunction} from "@remix-run/node";
+import type {LinksFunction, MetaFunction} from "@remix-run/node"; // Import MetaFunction
 import {ThemeProvider} from "~/components/theme-provider";
+import {siteConfig} from "~/config/site"; // Import site config
 
 import "./tailwind.css";
 
