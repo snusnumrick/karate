@@ -108,7 +108,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         Database["public"]["Tables"]["guardians"], // Use the full table definition
         null // Expected result type after .then()
     >;
-    const updates: GuardianUpdateBuilder[] = [];
+    const updates: GuardianUpdateBuilder[] = []; // Ensure this line has the type
     const fieldErrors: ActionData['fieldErrors'] = {};
 
     // Need a way to iterate through guardians submitted in the form.
@@ -160,15 +160,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
         } else {
             // Type safety: firstName, lastName, etc., are confirmed non-null strings here due to the validation above.
             // Use the imported TablesUpdate type for better clarity
-            // Required fields are guaranteed non-null here by validation, so '!' is removed.
+            // Required fields are guaranteed non-null here by validation.
             // Optional fields use '|| undefined' to match the expected type 'string | undefined'.
             const updatePayload: TablesUpdate<"guardians"> = {
-                first_name: firstName,
-                last_name: lastName,
-                relationship: relationship,
-                cell_phone: cell_phone,
-                email: email,
-                home_phone: home_phone,
+                first_name: firstName, // '!' removed
+                last_name: lastName, // '!' removed
+                relationship: relationship, // '!' removed
+                cell_phone: cell_phone, // '!' removed
+                email: email, // '!' removed
+                home_phone: home_phone, // '!' removed
                 // Optional fields: pass undefined if empty/missing
                 work_phone: work_phone || undefined,
                 employer: employer || undefined,
