@@ -35,10 +35,12 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ params, request }: LoaderFunctionArgs) {
   invariant(params.familyId, "Missing familyId parameter");
   const familyId = params.familyId;
+  console.log(`[Loader] Fetching family details for ID: ${familyId}`); // Log the ID
 
   // Use the correct function and destructure the server client
   const { supabaseServer, response } = getSupabaseServerClient(request); // Use supabaseServer
 
+  console.log('[Loader] Supabase client initialized. Fetching data...'); // Log before query
   const { data: familyData, error: familyError } = await supabaseServer // Use the server client
     .from('families')
     .select(`
