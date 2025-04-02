@@ -2,9 +2,9 @@ import invariant from "tiny-invariant";
 import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
-// Import PostgrestQueryBuilder for explicit typing
-import { createClient } from "@supabase/supabase-js"; // Changed Filter to Query
-import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
+// Import createClient
+import { createClient } from "@supabase/supabase-js";
+// Remove unused PostgrestFilterBuilder import
 import { Database, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -103,14 +103,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Explicitly type the array elements as PostgrestQueryBuilder
-    // We need to specify the schema, table definition, and return type for the builder
-    type GuardianUpdateBuilder = PostgrestFilterBuilder<
-        Database["public"], // Schema
-        Database["public"]["Tables"]["guardians"], // Full table definition
-        null // Expected result type after .then()
-    >;
-    const updates: GuardianUpdateBuilder[] = [];
+    // Let TypeScript infer the type of the array elements (they are thenable builders)
+    const updates = [];
     const fieldErrors: ActionData['fieldErrors'] = {};
 
     // Need a way to iterate through guardians submitted in the form.
@@ -163,12 +157,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
             // Type safety: firstName, lastName, etc., are confirmed non-null strings here due to the validation above.
             // Use the imported TablesUpdate type for better clarity
             const updatePayload: TablesUpdate<"guardians"> = {
-                first_name: firstName!, // Non-null assertion (!) no longer needed due to validation check
-                last_name: lastName!,
-                relationship: relationship!,
-                cell_phone: cell_phone!,
-                email: email!,
-                home_phone: home_phone!,
+                first_name: firstName, // Non-null assertion (!) removed
+                last_name: lastName, // Non-null assertion (!) removed
+                relationship: relationship, // Non-null assertion (!) removed
+                cell_phone: cell_phone, // Non-null assertion (!) removed
+                email: email, // Non-null assertion (!) removed
+                home_phone: home_phone, // Non-null assertion (!) removed
                 // Optional fields: pass null if empty/missing from form, matching DB schema
                 work_phone: work_phone || null,
                 employer: employer || null,
