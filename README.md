@@ -143,7 +143,6 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 1. **User Onboarding**: Improve handling for newly registered users without a linked family (`_layout.family._index.tsx`). Guide them towards family creation or linking if applicable. (Next)
 2. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers).
 3. **Technical Debt**: Address UI/SSR issues (e.g., Button/Link structure in Family Portal - `_layout.family._index.tsx`).
-<!-- Achievement Badges moved to implemented -->
 
 ### Development Progress
 ```mermaid
