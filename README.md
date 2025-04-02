@@ -145,8 +145,9 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 ### Implemented Notifications
 - **Student Absence:** Email sent to family when student marked absent (`/admin/attendance/record`).
 - **Newly Required Waiver:** Email sent to families needing to sign when a waiver is marked as required (`/admin/waivers/:waiverId`).
-- **Payment Reminder (Scheduled):** Supabase Edge Function (`payment-reminder`) runs periodically (via Cron Job) to email families with students whose eligibility status is 'Expired'.
-- **Missing Waiver Reminder (Scheduled):** Supabase Edge Function (`missing-waiver-reminder`) runs periodically (via Cron Job) to email families who are missing required waiver signatures.
+- **Payment Reminder (Scheduled):** Supabase Edge Function (`payment-reminder`) runs periodically (via Cron Job) to email families with students whose eligibility status is 'Expired'. Requires deployment (`npx supabase functions deploy payment-reminder --no-verify-jwt`) and Cron Job setup in Supabase dashboard.
+- **Missing Waiver Reminder (Scheduled):** Supabase Edge Function (`missing-waiver-reminder`) runs periodically (via Cron Job) to email families who are missing required waiver signatures. Requires deployment (`npx supabase functions deploy missing-waiver-reminder --no-verify-jwt`) and Cron Job setup.
+- **Type Generation:** Ensure shared types are generated: `npx supabase gen types typescript --project-id <your-project-id> --schema public > supabase/functions/_shared/database.types.ts` (Replace `<your-project-id>`).
 
 ### Development Progress
 ```mermaid
