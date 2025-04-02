@@ -221,10 +221,12 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 ### Development Progress
 ```mermaid
 gantt
-    title Project Timeline
+    title Project Development Timeline
     dateFormat  YYYY-MM-DD
-    section Core
-    Authentication          :done,    auth, 2024-03-01, 14d
+    axisFormat %Y-%m-%d
+    
+    section Core Features
+    Authentication          :done, auth, 2024-03-01, 14d
     Family Management       :done,    family, 2024-03-15, 21d
     Family Portal           :done,    portal, 2024-03-29, 14d
     Student Detail Page     :done,    student, after portal, 7d
