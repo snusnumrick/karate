@@ -48,19 +48,37 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       guardians (*),
       students (*)
     `)
-    .eq('id', familyId)
-    .single(); // Use single() as we expect only one family
+    .eq('id', familyId); // Remove .single() - fetch potential multiple rows
 
-  if (familyError || !familyData) {
-    console.error("Error fetching family:", familyError?.message);
-    throw new Response("Family not found", { status: 404, headers: response.headers });
+  // Log the result from Supabase
+  console.log('[Loader] Supabase query result:', { familyData, familyError });
+
+  if (familyError) {
+      console.error(`[Loader] Supabase error fetching family ${familyId}:`, familyError.message);
+      // Throw a 500 for actual DB errors, keeping response headers
+      throw new Response(`Database error: ${familyError.message}`, { status: 500, headers: response.headers });
   }
+
+  // Check if any data was returned
+  if (!familyData || familyData.length === 0) {
+      console.warn(`[Loader] No family data found for ID: ${familyId}. Throwing 404.`);
+      // Throw 404 specifically if no data is returned
+      throw new Response("Family not found", { status: 404, headers: response.headers });
+  }
+
+  // Warn if multiple families found with the same ID (data integrity issue)
+  if (familyData.length > 1) {
+      console.warn(`[Loader] Multiple families found for ID: ${familyId}. Using the first result. Please check database for duplicates.`);
+  }
+
+  // Use the first family found
+  const firstFamilyData = familyData[0];
 
   // Ensure guardians and students are arrays even if null/undefined from query
   const family = {
-      ...familyData,
-      guardians: familyData.guardians ?? [],
-      students: familyData.students ?? [],
+      ...firstFamilyData, // Use the first result
+      guardians: firstFamilyData.guardians ?? [],
+      students: firstFamilyData.students ?? [],
   };
 
 
