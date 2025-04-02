@@ -1,0 +1,24 @@
+{
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "fmt": {
+    "options": {
+      "useTabs": false,
+      "lineWidth": 100,
+      "indentWidth": 2,
+      "singleQuote": true
+    }
+  },
+  "compilerOptions": {
+    // Add any specific TypeScript compiler options needed for Deno here
+    // For example, if you need unstable APIs:
+    // "unstable": true,
+    // "lib": ["deno.window", "deno.unstable"] // Example if using unstable features
+  },
+  // If you have import maps, specify them here:
+  // "importMap": "./import_map.json"
+}
