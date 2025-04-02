@@ -6,7 +6,7 @@ import type {LoaderFunctionArgs, MetaFunction} from "@remix-run/node"; // Keep t
 import {Link, Outlet, useLoaderData, useParams, useRouteError, isRouteErrorResponse, useOutlet} from "@remix-run/react";
 // Import createClient directly
 import { createClient } from "@supabase/supabase-js";
-// No longer need getSupabaseServerClient here 
+// No longer need getSupabaseServerClient here
 import { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
@@ -94,91 +94,97 @@ export async function loader({params, request}: LoaderFunctionArgs) {
 export default function FamilyDetailPage() {
     const {family} = useLoaderData<LoaderData>();
     const params = useParams(); // Get params again for edit link if needed
+    const outlet = useOutlet(); // Check if a child route is being rendered
 
     return (
         <div className="space-y-6">
             {/* Render child routes (like the edit page) here */}
             <Outlet />
 
-            {/* Keep the detail view content below for now,
-                or adjust structure if edit should replace details */}
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Family: {family.name}</h1>
-                {/* Link to the edit page for this family */}
-                 <Button asChild variant="outline">
-          <Link to={`/admin/families/${params.familyId}/edit`}>Edit Family</Link>
-        </Button> 
-            </div>
+            {/* Only render the detail view if no child route (like edit) is active */}
+            {!outlet && (
+                <>
+                    {/* Keep the detail view content below for now,
+                           or adjust structure if edit should replace details */}
+                    <div className="flex justify-between items-center">
+                        <h1 className="text-2xl font-bold">Family: {family.name}</h1>
+                        {/* Link to the edit page for this family */}
+                        <Button asChild variant="outline">
+                            <Link to={`/admin/families/${params.familyId}/edit`}>Edit Family</Link>
+                        </Button>
+                    </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Family Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <p><strong>Email:</strong> {family.email}</p>
-                    <p><strong>Primary Phone:</strong> {family.primary_phone ?? 'N/A'}</p>
-                    <p><strong>Secondary Phone:</strong> {family.secondary_phone ?? 'N/A'}</p>
-                    <p><strong>Address:</strong> {family.address ?? 'N/A'}</p>
-                </CardContent>
-            </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Family Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            <p><strong>Email:</strong> {family.email}</p>
+                            <p><strong>Primary Phone:</strong> {family.primary_phone ?? 'N/A'}</p>
+                            <p><strong>Secondary Phone:</strong> {family.secondary_phone ?? 'N/A'}</p>
+                            <p><strong>Address:</strong> {family.address ?? 'N/A'}</p>
+                        </CardContent>
+                    </Card>
 
-            <Separator/>
+                    <Separator/>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Guardians</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {family.guardians.length > 0 ? (
-                        <ul className="space-y-2">
-                            {family.guardians.map((guardian) => (
-                                <li key={guardian.id} className="border-b pb-2 last:border-b-0">
-                                    <p><strong>Name:</strong> {guardian.first_name} {guardian.last_name}</p>
-                                    <p><strong>Relationship:</strong> {guardian.relationship ?? 'N/A'}</p>
-                                    <p><strong>Phone:</strong> {guardian.phone ?? 'N/A'}</p>
-                                    <p><strong>Email:</strong> {guardian.email ?? 'N/A'}</p>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p>No guardians associated with this family.</p>
-                    )}
-                </CardContent>
-            </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Guardians</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {family.guardians.length > 0 ? (
+                                <ul className="space-y-2">
+                                    {family.guardians.map((guardian) => (
+                                        <li key={guardian.id} className="border-b pb-2 last:border-b-0">
+                                            <p><strong>Name:</strong> {guardian.first_name} {guardian.last_name}</p>
+                                            <p><strong>Relationship:</strong> {guardian.relationship ?? 'N/A'}</p>
+                                            <p><strong>Phone:</strong> {guardian.phone ?? 'N/A'}</p>
+                                            <p><strong>Email:</strong> {guardian.email ?? 'N/A'}</p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>No guardians associated with this family.</p>
+                            )}
+                        </CardContent>
+                    </Card>
 
-            <Separator/>
+                    <Separator/>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Students</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {family.students.length > 0 ? (
-                        <ul className="space-y-4">
-                            {family.students.map((student) => (
-                                <li key={student.id} className="border p-4 rounded-md shadow-sm">
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <p className="font-semibold">{student.first_name} {student.last_name}</p>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                DOB: {student.dob ? format(new Date(student.dob), 'PPP') : 'N/A'}
-                                            </p>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                Belt: {student.belt_rank ?? 'N/A'}
-                                            </p>
-                                        </div>
-                                        <Button asChild variant="secondary" size="sm">
-                                            <Link to={`/admin/students/${student.id}`}>View Details</Link>
-                                        </Button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p>No students associated with this family.</p>
-                    )}
-                </CardContent>
-            </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Students</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {family.students.length > 0 ? (
+                                <ul className="space-y-4">
+                                    {family.students.map((student) => (
+                                        <li key={student.id} className="border p-4 rounded-md shadow-sm">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="font-semibold">{student.first_name} {student.last_name}</p>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        DOB: {student.dob ? format(new Date(student.dob), 'PPP') : 'N/A'}
+                                                    </p>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        Belt: {student.belt_rank ?? 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <Button asChild variant="secondary" size="sm">
+                                                    <Link to={`/admin/students/${student.id}`}>View Details</Link>
+                                                </Button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>No students associated with this family.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </>
+            )}
         </div>
     );
 }
