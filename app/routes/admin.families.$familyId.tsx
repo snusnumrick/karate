@@ -141,8 +141,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const isDeleting = fetcher.state !== 'idle';
 
       const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
+        console.log('[handleDelete] Clicked delete button.'); // Add log
         if (!window.confirm(`Are you sure you want to delete ${studentName}? This cannot be undone.`)) {
+          console.log('[handleDelete] User cancelled. Preventing default.'); // Add log
           event.preventDefault(); // Prevent form submission if user cancels
+        } else {
+          // If user confirms, default submission proceeds.
+          console.log('[handleDelete] User confirmed. Allowing default submission.'); // Add log
         }
       };
 
