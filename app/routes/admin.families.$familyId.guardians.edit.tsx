@@ -2,8 +2,8 @@ import invariant from "tiny-invariant";
 import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
-// Import PostgrestFilterBuilder for explicit typing
-import { createClient, type PostgrestFilterBuilder } from "@supabase/supabase-js";
+// Import PostgrestQueryBuilder for explicit typing
+import { createClient, type PostgrestQueryBuilder } from "@supabase/supabase-js"; // Changed Filter to Query
 import { Database, Tables, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -102,9 +102,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Explicitly type the array elements as PostgrestFilterBuilder
+    // Explicitly type the array elements as PostgrestQueryBuilder
     // We need to specify the schema, table, and return type for the builder
-    type GuardianUpdateBuilder = PostgrestFilterBuilder<
+    type GuardianUpdateBuilder = PostgrestQueryBuilder<
         Database["public"], // Schema
         Tables<"guardians">, // Row type (not strictly needed for update, but good practice)
         null // Expected result type after .then()
