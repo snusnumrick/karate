@@ -139,13 +139,11 @@ export default function EditFamilyPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Edit Family: {family.name}</h1>
-                <Button asChild variant="outline" size="sm">
-                    <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
-                </Button>
+                {/* Top Cancel button removed */}
             </div>
 
             <Card>
-                <CardHeader>
+            <CardHeader>
                     <CardTitle>Edit Family Details</CardTitle>
                     <CardDescription>Update the information for the {family.name} family.</CardDescription>
                 </CardHeader>

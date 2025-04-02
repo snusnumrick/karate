@@ -91,10 +91,83 @@ export async function loader({params, request}: LoaderFunctionArgs) {
     return json({family}, {headers: response.headers});
 }
 
+// Action function to handle deletions etc.
+export async function action({ request, params }: ActionFunctionArgs) {
+    invariant(params.familyId, "Missing familyId parameter");
+    const familyId = params.familyId; // Keep familyId for potential redirects/context
+    const formData = await request.formData();
+    const intent = formData.get("intent");
+
+        if (intent === "deleteStudent") {
+            const studentId = formData.get("studentId") as string;
+            invariant(studentId, "Missing studentId for deletion");
+
+            console.log(`[Action] Attempting to delete student ${studentId} from family ${familyId}`);
+
+            const supabaseUrl = process.env.SUPABASE_URL;
+            const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+            if (!supabaseUrl || !supabaseServiceKey) {
+                console.error("[Action Delete Student] Missing Supabase URL or Service Role Key env vars.");
+                return json({ error: "Server configuration error" }, { status: 500 });
+            }
+            const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+
+            const { error } = await supabaseServer
+              .from('students')
+              .delete()
+              .eq('id', studentId);
+
+            if (error) {
+                console.error(`[Action Delete Student] Supabase error deleting student ${studentId}:`, error.message);
+                // Return error in JSON format for the fetcher
+                return json({ error: `Database error: ${error.message}` }, { status: 500 });
+            }
+
+            console.log(`[Action] Successfully deleted student ${studentId}`);
+            // Return success, fetcher will cause UI update via revalidation
+            return json({ success: true });
+            // Or redirect if preferred, though fetcher works better without full reload:
+            // return redirect(`/admin/families/${familyId}`);
+        }
+
+        // Handle other intents or return error if intent is unknown
+        return json({ error: `Unknown intent: ${intent}` }, { status: 400 });
+    }
+
+    // Helper component for the delete button/form
+    function DeleteStudentButton({ studentId, studentName }: { studentId: string, studentName: string }) {
+      const fetcher = useFetcher();
+      const isDeleting = fetcher.state !== 'idle';
+
+      const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
+        if (!window.confirm(`Are you sure you want to delete ${studentName}? This cannot be undone.`)) {
+          event.preventDefault(); // Prevent form submission if user cancels
+        }
+      };
+
+      return (
+        <fetcher.Form method="post">
+            <input type="hidden" name="intent" value="deleteStudent" />
+            <input type="hidden" name="studentId" value={studentId} />
+            <Button
+                type="submit"
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={isDeleting}
+            >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+            {/* Optionally display fetcher errors */}
+            {fetcher.data?.error && <p className="text-xs text-destructive mt-1">{fetcher.data.error}</p>}
+        </fetcher.Form>
+      );
+}
+
 export default function FamilyDetailPage() {
     const {family} = useLoaderData<LoaderData>();
-    const params = useParams(); // Get params again for edit link if needed
-    const outlet = useOutlet(); // Check if a child route is being rendered
+    const params = useParams(); // Get params again for edit link if needed    const outlet = useOutlet(); // Check if a child route is being rendered
 
     return (
         <div className="space-y-6">
@@ -159,9 +232,9 @@ export default function FamilyDetailPage() {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Students</CardTitle>
-                            {/* TODO: Create this route: /admin/families/$familyId/students/edit */}
+                            {/* Link to add a new student for this family */}
                             <Button asChild variant="outline" size="sm">
-                                <Link to={`/admin/families/${params.familyId}/students/edit`}>Edit Students</Link>
+                                <Link to={`/admin/families/${params.familyId}/students/new`}>Add Student</Link>
                             </Button>
                         </CardHeader>
                         <CardContent className="pt-4"> {/* Add padding top if needed */}
@@ -179,9 +252,12 @@ export default function FamilyDetailPage() {
                                                         Belt: {student.belt_rank ?? 'N/A'}
                                                     </p>
                                                 </div>
-                                                <Button asChild variant="secondary" size="sm">
-                                                    <Link to={`/admin/students/${student.id}`}>View Details</Link>
-                                                </Button>
+                                                <div className="flex space-x-2">
+                                                     <Button asChild variant="secondary" size="sm">
+                                                         <Link to={`/admin/students/${student.id}`}>View Details</Link>
+                                                     </Button>
+                                                     <DeleteStudentButton studentId={student.id} studentName={`${student.first_name} ${student.last_name}`} />
+                                                </div>
                                             </div>
                                         </li>
                                     ))}

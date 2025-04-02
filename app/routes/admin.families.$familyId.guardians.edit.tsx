@@ -192,9 +192,7 @@ export default function EditGuardiansPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Edit Guardians for {familyName ?? 'Family'}</h1>
-                <Button asChild variant="outline" size="sm">
-                    <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
-                </Button>
+                {/* Top Cancel button removed */}
             </div>
 
             <Card>
