@@ -42,6 +42,14 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     const guardian1CellPhone = formData.get("guardian1CellPhone") as string;
     const guardian1Email = formData.get("guardian1Email") as string; // This might be the primary login email later
 
+    // Guardian 2 Data Extraction (Optional)
+    const guardian2FirstName = formData.get("guardian2FirstName") as string | null;
+    const guardian2LastName = formData.get("guardian2LastName") as string | null;
+    const guardian2Relationship = formData.get("guardian2Relationship") as string | null;
+    const guardian2HomePhone = formData.get("guardian2HomePhone") as string | null;
+    const guardian2CellPhone = formData.get("guardian2CellPhone") as string | null;
+    const guardian2Email = formData.get("guardian2Email") as string | null;
+
     // --- Basic Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
     if (!familyName) fieldErrors.familyName = "Family name is required.";
@@ -58,6 +66,22 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     if (!guardian1HomePhone) fieldErrors.guardian1HomePhone = "Guardian 1 home phone is required.";
     if (!guardian1CellPhone) fieldErrors.guardian1CellPhone = "Guardian 1 cell phone is required.";
     if (!guardian1Email) fieldErrors.guardian1Email = "Guardian 1 email is required.";
+
+    // --- Guardian 2 Conditional Validation ---
+    const hasGuardian2Data = [
+        guardian2FirstName, guardian2LastName, guardian2Relationship,
+        guardian2HomePhone, guardian2CellPhone, guardian2Email
+    ].some(Boolean); // Check if any Guardian 2 field is filled
+
+    if (hasGuardian2Data) {
+        if (!guardian2FirstName) fieldErrors.guardian2FirstName = "Guardian 2 first name is required if adding Guardian 2.";
+        if (!guardian2LastName) fieldErrors.guardian2LastName = "Guardian 2 last name is required if adding Guardian 2.";
+        if (!guardian2Relationship) fieldErrors.guardian2Relationship = "Guardian 2 relationship is required if adding Guardian 2.";
+        // Optional: Add validation for phone/email if needed for Guardian 2
+        // if (!guardian2HomePhone) fieldErrors.guardian2HomePhone = "Guardian 2 home phone is required.";
+        // if (!guardian2CellPhone) fieldErrors.guardian2CellPhone = "Guardian 2 cell phone is required.";
+        // if (!guardian2Email) fieldErrors.guardian2Email = "Guardian 2 email is required.";
+    }
 
     if (Object.values(fieldErrors).some(Boolean)) {
         return json({ error: "Please correct the errors below.", fieldErrors }, { status: 400 });
@@ -108,7 +132,24 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
         if (guardian1Error) throw new Error(`Failed to create guardian 1: ${guardian1Error.message}`);
 
-        // TODO: Add logic for Guardian 2 and Students if needed
+        // 3. Insert Guardian 2 (if data provided)
+        if (hasGuardian2Data && guardian2FirstName && guardian2LastName && guardian2Relationship) { // Ensure required fields are present
+             const { error: guardian2Error } = await supabaseAdmin
+                .from('guardians')
+                .insert({
+                    family_id: familyId,
+                    first_name: guardian2FirstName,
+                    last_name: guardian2LastName,
+                    relationship: guardian2Relationship,
+                    home_phone: guardian2HomePhone, // Can be null
+                    cell_phone: guardian2CellPhone, // Can be null
+                    email: guardian2Email,         // Can be null
+                });
+
+             if (guardian2Error) throw new Error(`Failed to create guardian 2: ${guardian2Error.message}`);
+        }
+
+        // TODO: Add logic for Students if needed
 
         // Redirect to the main families list on success
         return redirect(`/admin/families`);
@@ -256,7 +297,53 @@ export default function AdminNewFamilyPage() {
                     </div>
                 </section>
 
-                {/* TODO: Add Guardian 2 Section (optional) */}
+                {/* Guardian 2 Section (Optional) */}
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Guardian #2 Information (Optional)</h2>
+                    <p className="text-sm text-muted-foreground mb-4">Fill this section only if there is a second guardian.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <Label htmlFor="guardian2FirstName">First Name</Label>
+                            <Input id="guardian2FirstName" name="guardian2FirstName" />
+                            {actionData?.fieldErrors?.guardian2FirstName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2FirstName}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="guardian2LastName">Last Name</Label>
+                            <Input id="guardian2LastName" name="guardian2LastName" />
+                            {actionData?.fieldErrors?.guardian2LastName && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2LastName}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="guardian2Relationship">Relationship to Student(s)</Label>
+                             <Select name="guardian2Relationship">
+                                <SelectTrigger id="guardian2Relationship"><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Mother">Mother</SelectItem>
+                                    <SelectItem value="Father">Father</SelectItem>
+                                    <SelectItem value="Guardian">Guardian</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {actionData?.fieldErrors?.guardian2Relationship && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Relationship}</p>}
+                        </div>
+                         <div>
+                            <Label htmlFor="guardian2Email">Email</Label>
+                            <Input id="guardian2Email" name="guardian2Email" type="email" />
+                            {actionData?.fieldErrors?.guardian2Email && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Email}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="guardian2HomePhone">Home Phone</Label>
+                            <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel" />
+                            {actionData?.fieldErrors?.guardian2HomePhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="guardian2CellPhone">Cell Phone</Label>
+                            <Input id="guardian2CellPhone" name="guardian2CellPhone" type="tel" />
+                            {actionData?.fieldErrors?.guardian2CellPhone && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2CellPhone}</p>}
+                        </div>
+                        {/* Add optional guardian fields here (work phone, employer, etc.) */}
+                    </div>
+                </section>
+
                 {/* TODO: Add Student Section(s) (optional, dynamic add) */}
 
                 {/* Submit Button */}
