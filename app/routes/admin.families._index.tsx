@@ -108,9 +108,11 @@ export default function FamiliesAdminPage() {
                   <TableCell>{family.email}</TableCell>
                   <TableCell>{family.primary_phone}</TableCell>
                   <TableCell>
-                    <Button variant="outline" size="sm" asChild className="mr-2">
-                      {/* Link to the family detail page */}
-                      <Link to={`/admin/families/${family.id}`}>View Details</Link>
+                    {/* Wrap Link inside Button without asChild as a test */}
+                    <Button variant="outline" size="sm" className="mr-2 p-0"> {/* Remove padding for link */}
+                      <Link to={`/admin/families/${family.id}`} className="block w-full h-full px-3 py-1.5"> {/* Make link fill button area */}
+                        View Details
+                      </Link>
                     </Button>
                     {/* Add delete button/logic later */}
                   </TableCell>
