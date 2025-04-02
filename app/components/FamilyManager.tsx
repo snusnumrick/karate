@@ -230,7 +230,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                     school: '',
                     gradeLevel: '',
                     immunizationsUpToDate: false,
-                    beltRank: 'white' as const,
+                    // beltRank removed
                     familyId: family.id
                 }
             ]
@@ -405,24 +405,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     onChange={(e) => updateStudent(index, {birthDate: e.target.value})}
                                 />
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor={`student-belt-rank-${index}`}>Belt Rank</Label>
-                                <Select
-                                    value={student.beltRank}
-                                    onValueChange={(value) => updateStudent(index, {beltRank: value})}
-                                >
-                                    <SelectTrigger id={`student-belt-rank-${index}`}>
-                                        <SelectValue placeholder="Select belt rank"/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {BELT_RANKS.map((rank) => (
-                                            <SelectItem key={rank} value={rank} className="capitalize">
-                                                {rank}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {/* Belt Rank Select Removed */}
                             <div className="grid gap-2">
                                 <Label htmlFor={`student-gender-${index}`}>Gender</Label>
                                 <Select
