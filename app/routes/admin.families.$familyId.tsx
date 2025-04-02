@@ -219,7 +219,6 @@ export default function FamilyDetailPage() {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Guardians</CardTitle>
-                            {/* TODO: Create this route: /admin/families/$familyId/guardians/edit */}
                             <Button asChild variant="outline" size="sm">
                                 <Link to={`/admin/families/${params.familyId}/guardians/edit`}>Edit Guardians</Link>
                             </Button>
