@@ -140,7 +140,13 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - **Admin Attendance Reports**: Admins can view attendance summaries and rates at `/admin/attendance/report`.
 
 ### Next Priority Features
-1. **Automated Notifications**: Set up basic automated notifications (e.g., for attendance, upcoming payments, new waivers). (Next)
+*All major planned features implemented.*
+
+### Implemented Notifications
+- **Student Absence:** Email sent to family when student marked absent (`/admin/attendance/record`).
+- **Newly Required Waiver:** Email sent to families needing to sign when a waiver is marked as required (`/admin/waivers/:waiverId`).
+- **Payment Reminder (Scheduled):** Supabase Edge Function (`payment-reminder`) runs periodically (via Cron Job) to email families with students whose eligibility status is 'Expired'.
+- **Missing Waiver Reminder (Scheduled):** Supabase Edge Function (`missing-waiver-reminder`) runs periodically (via Cron Job) to email families who are missing required waiver signatures.
 
 ### Development Progress
 ```mermaid
@@ -169,10 +175,10 @@ gantt
     Attendance System (Basic):done,   attend_basic, 2024-05-25, 14d
     Attendance Admin Filters:done,    attend_admin_filter, after attend_basic, 7d
     Attendance Family View  :done,    attend_family_view, after attend_admin_filter, 3d
-    Attendance Reporting    :active,  attend_report, after attend_family_view, 7d
+    Attendance Reporting    :done,    attend_report, after attend_family_view, 7d %% Added admin report page
     Belt Award Tracking     :done,    belt_award, after attend_report, 10d %% Admin CRUD & User View Implemented
     Admin Pages (Missing Waivers, Pending Payments, New Family): done, admin_extra, after belt_award, 5d
-    Automated Notifications :         notify, after admin_extra, 14d
+    Automated Notifications :done,    notify, after admin_extra, 14d %% Implemented absence, new waiver, scheduled payment/waiver reminders via Supabase Functions/Cron + Resend
     %% Technical Debt Refactor (Button/Link structure was already correct): tech_debt, 2024-06-01, 0d
 ```
 
