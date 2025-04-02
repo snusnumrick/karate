@@ -3,8 +3,10 @@ import { Link, Form, useActionData, useNavigation } from "@remix-run/react";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
+import { useState } from "react";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea"; // Import Textarea
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import {
   Select,
@@ -149,7 +151,59 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
              if (guardian2Error) throw new Error(`Failed to create guardian 2: ${guardian2Error.message}`);
         }
 
-        // TODO: Add logic for Students if needed
+        // 4. Insert Students (if any provided)
+        const studentFirstNames = formData.getAll("studentFirstName[]") as string[];
+        const studentLastNames = formData.getAll("studentLastName[]") as string[];
+        const studentDobs = formData.getAll("studentDob[]") as string[];
+        const studentNotes = formData.getAll("studentNotes[]") as string[]; // Optional
+
+        const studentsToInsert = [];
+        for (let i = 0; i < studentFirstNames.length; i++) {
+            const firstName = studentFirstNames[i]?.trim();
+            const lastName = studentLastNames[i]?.trim();
+            const dob = studentDobs[i]?.trim();
+            const notes = studentNotes[i]?.trim() || null; // Handle optional notes
+
+            // Basic validation for each student
+            if (firstName && lastName && dob) {
+                 // TODO: Add more robust date validation if needed
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+                     // Add field error specific to this student index if possible,
+                     // or a general student error. For simplicity, adding general error.
+                     fieldErrors[`studentDob[${i}]`] = `Invalid date format for student ${i + 1}. Use YYYY-MM-DD.`;
+                     continue; // Skip this student
+                }
+
+                studentsToInsert.push({
+                    family_id: familyId,
+                    first_name: firstName,
+                    last_name: lastName,
+                    date_of_birth: dob,
+                    notes: notes,
+                    // Add other student fields if needed (e.g., grade, medical_info)
+                });
+            } else if (firstName || lastName || dob || notes) {
+                // If any field for a student is filled, require the core fields
+                if (!firstName) fieldErrors[`studentFirstName[${i}]`] = `First name required for student ${i + 1}.`;
+                if (!lastName) fieldErrors[`studentLastName[${i}]`] = `Last name required for student ${i + 1}.`;
+                if (!dob) fieldErrors[`studentDob[${i}]`] = `Date of birth required for student ${i + 1}.`;
+            }
+        }
+
+        // Re-check for errors after student validation
+        if (Object.values(fieldErrors).some(Boolean)) {
+            // Need to return fieldErrors related to students if any validation failed
+             return json({ error: "Please correct the errors below.", fieldErrors }, { status: 400 });
+        }
+
+
+        if (studentsToInsert.length > 0) {
+            const { error: studentError } = await supabaseAdmin
+                .from('students')
+                .insert(studentsToInsert);
+
+            if (studentError) throw new Error(`Failed to create students: ${studentError.message}`);
+        }
 
         // Redirect to the main families list on success
         return redirect(`/admin/families`);
@@ -162,10 +216,33 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 }
 
 
+// Interface for student state
+interface StudentFormEntry {
+    id: number; // Unique key for React list rendering
+    firstName?: string;
+    lastName?: string;
+    dob?: string;
+    notes?: string;
+}
+
 export default function AdminNewFamilyPage() {
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
+
+    // State for dynamic student forms
+    const [students, setStudents] = useState<StudentFormEntry[]>([{ id: Date.now() }]); // Start with one student form
+
+    // Function to add a new student form entry
+    const addStudent = () => {
+        setStudents([...students, { id: Date.now() }]); // Add new entry with unique id
+    };
+
+    // Function to remove a student form entry by id
+    const removeStudent = (idToRemove: number) => {
+        setStudents(students.filter(student => student.id !== idToRemove));
+    };
+
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -344,7 +421,58 @@ export default function AdminNewFamilyPage() {
                     </div>
                 </section>
 
-                {/* TODO: Add Student Section(s) (optional, dynamic add) */}
+                {/* Student Section(s) (Dynamic) */}
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Student Information</h2>
+                    <p className="text-sm text-muted-foreground mb-4">Add one or more students associated with this family.</p>
+
+                    {students.map((student, index) => (
+                        <div key={student.id} className="mb-6 p-4 border border-dashed border-border rounded relative">
+                             {students.length > 1 && ( // Show remove button only if more than one student
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute top-2 right-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900"
+                                    onClick={() => removeStudent(student.id)}
+                                    aria-label={`Remove Student ${index + 1}`}
+                                >
+                                    &times; Remove
+                                </Button>
+                            )}
+                            <h3 className="text-lg font-medium mb-3">Student #{index + 1}</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    {/* Use indexed names like studentFirstName[] */}
+                                    <Label htmlFor={`studentFirstName-${student.id}`}>First Name <span className="text-red-500">*</span></Label>
+                                    <Input id={`studentFirstName-${student.id}`} name="studentFirstName[]" required />
+                                    {actionData?.fieldErrors?.[`studentFirstName[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentFirstName[${index}]`]}</p>}
+                                </div>
+                                <div>
+                                    <Label htmlFor={`studentLastName-${student.id}`}>Last Name <span className="text-red-500">*</span></Label>
+                                    <Input id={`studentLastName-${student.id}`} name="studentLastName[]" required />
+                                     {actionData?.fieldErrors?.[`studentLastName[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentLastName[${index}]`]}</p>}
+                                </div>
+                                <div>
+                                    <Label htmlFor={`studentDob-${student.id}`}>Date of Birth (YYYY-MM-DD) <span className="text-red-500">*</span></Label>
+                                    <Input id={`studentDob-${student.id}`} name="studentDob[]" type="date" required placeholder="YYYY-MM-DD" />
+                                     {actionData?.fieldErrors?.[`studentDob[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentDob[${index}]`]}</p>}
+                                </div>
+                                <div className="md:col-span-2">
+                                    <Label htmlFor={`studentNotes-${student.id}`}>Notes (Optional)</Label>
+                                    <Textarea id={`studentNotes-${student.id}`} name="studentNotes[]" placeholder="Any relevant notes about the student (allergies, etc.)" />
+                                    {/* No error display needed for optional field unless specific validation added */}
+                                </div>
+                                {/* Add other student fields here if needed */}
+                            </div>
+                        </div>
+                    ))}
+
+                    <Button type="button" variant="outline" onClick={addStudent} className="mt-2">
+                        + Add Another Student
+                    </Button>
+                </section>
+
 
                 {/* Submit Button */}
                 <div className="flex justify-end gap-4 pt-4 border-t border-border">
