@@ -51,6 +51,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         status,
         payment_method,
         family_id,
+        receipt_url,
+        stripe_session_id,
         families ( name )
       `)
       .order('payment_date', { ascending: false }); // Show most recent first
@@ -122,7 +124,7 @@ export default function AdminPaymentsPage() {
             <TableBody>
               {payments.map((payment) => (
                 <TableRow key={payment.id}>
-                  <TableCell>{format(new Date(payment.payment_date), 'yyyy-MM-dd')}</TableCell>
+                  <TableCell>{payment.payment_date ? format(new Date(payment.payment_date), 'yyyy-MM-dd') : 'N/A'}</TableCell>
                   <TableCell>
                     <Link to={`/admin/families/${payment.family_id}`} className="text-green-600 hover:underline dark:text-green-400">
                       {payment.familyName}
@@ -131,7 +133,7 @@ export default function AdminPaymentsPage() {
                   {/* Divide by 100 to convert cents to dollars */}
                   <TableCell className="text-right">${(payment.amount / 100).toFixed(2)}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusVariant(payment.status)} className="capitalize">
+                    <Badge variant={getStatusVariant(payment.status as PaymentStatus)} className="capitalize">
                       {payment.status}
                     </Badge>
                   </TableCell>

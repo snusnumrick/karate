@@ -1,5 +1,8 @@
 import type { Database } from '~/types/supabase';
-import type { Family, Guardian, Student, Payment, WaiverSignature, Achievement, AttendanceRecord, Waiver } from '~/types/models';
+import type { Family, Guardian, Student, Payment, WaiverSignature, AttendanceRecord, Waiver } from '~/types/models';
+import {BELT_RANKS} from "~/utils/constants";
+import { PaymentStatus } from "~/types/models"; // Import the enum
+
 
 // Convert database student row to Student type
 export function mapStudentFromSupabase(row: Database['public']['Tables']['students']['Row']): Student {
@@ -13,13 +16,13 @@ export function mapStudentFromSupabase(row: Database['public']['Tables']['studen
     email: row.email || undefined,
     tShirtSize: row.t_shirt_size,
     school: row.school,
-    gradeLevel: row.grade_level,
+    gradeLevel: row.grade_level || '',
     specialNeeds: row.special_needs || undefined,
     allergies: row.allergies || undefined,
     medications: row.medications || undefined,
-    immunizationsUpToDate: row.immunizations_up_to_date,
+    immunizationsUpToDate: row.immunizations_up_to_date === 'true',
     immunizationNotes: row.immunization_notes || undefined,
-    beltRank: row.belt_rank,
+    beltRank: row.belt_rank || '',
     familyId: row.family_id,
     // Relationships are loaded separately
     achievements: [],
@@ -43,9 +46,9 @@ export function mapStudentToSupabase(student: Student): Database['public']['Tabl
     special_needs: student.specialNeeds,
     allergies: student.allergies,
     medications: student.medications,
-    immunizations_up_to_date: student.immunizationsUpToDate,
+    immunizations_up_to_date: student.immunizationsUpToDate ? 'true' : 'false',
     immunization_notes: student.immunizationNotes,
-    belt_rank: student.beltRank,
+    belt_rank: student.beltRank as (typeof BELT_RANKS[number]) | null | undefined,
     family_id: student.familyId // Assuming familyId exists on Student
   };
 }
@@ -124,7 +127,7 @@ export function mapPaymentFromSupabase(row: Database['public']['Tables']['paymen
     amount: row.amount,
     paymentDate: row.payment_date ?? '',
     paymentMethod: row.payment_method ?? '',
-    status: row.status,
+    status: row.status as PaymentStatus,
     studentIds: studentIds
   };
 }
@@ -137,27 +140,6 @@ export function mapPaymentToSupabase(payment: Payment): Database['public']['Tabl
     payment_date: payment.paymentDate,
     payment_method: payment.paymentMethod,
     status: payment.status
-  };
-}
-
-// Achievement mappers
-export function mapAchievementFromSupabase(row: Database['public']['Tables']['achievements']['Row']): Achievement {
-  return {
-    id: row.id,
-    studentId: row.student_id,
-    type: row.type,
-    description: row.description,
-    awardedDate: row.awarded_date
-  };
-}
-
-export function mapAchievementToSupabase(achievement: Achievement): Database['public']['Tables']['achievements']['Insert'] {
-  return {
-    id: achievement.id,
-    student_id: achievement.studentId,
-    type: achievement.type,
-    description: achievement.description,
-    awarded_date: achievement.awardedDate
   };
 }
 
@@ -219,6 +201,7 @@ export function mapWaiverSignatureToSupabase(signature: WaiverSignature): Databa
     id: signature.id,
     waiver_id: signature.waiverId,
     user_id: signature.userId,
+    agreement_version: signature.waiverId, // Use waiverId as the version identifier
     signature_data: signature.signatureData,
     signed_at: signature.signedAt
   };
