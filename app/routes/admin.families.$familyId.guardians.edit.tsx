@@ -157,11 +157,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
             // Type safety: firstName, lastName, etc., are confirmed non-null strings here due to the validation above.
             // Use the imported TablesUpdate type for better clarity
             const updatePayload: TablesUpdate<"guardians"> = {
-                first_name: firstName, // Non-null assertion (!) removed
-                last_name: lastName, // Non-null assertion (!) removed
-                relationship: relationship, // Non-null assertion (!) removed
-                cell_phone: cell_phone, // Non-null assertion (!) removed
-                email: email, // Non-null assertion (!) removed
+                first_name: firstName!, // Non-null assertion (!) removed
+                last_name: lastName!, // Non-null assertion (!) removed
+                relationship: relationship!, // Non-null assertion (!) removed
+                cell_phone: cell_phone!, // Non-null assertion (!) removed
+                email: email!, // Non-null assertion (!) removed
                 home_phone: home_phone, // Non-null assertion (!) removed
                 // Optional fields: pass null if empty/missing from form, matching DB schema
                 work_phone: work_phone || null,
