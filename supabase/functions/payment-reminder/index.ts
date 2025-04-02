@@ -1,3 +1,4 @@
+/* eslint-disable-next-line import/no-unresolved */
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Database } from '../_shared/database.types.ts' // Assuming you generate types for functions
