@@ -1,5 +1,5 @@
 import invariant from "tiny-invariant"; // Use tiny-invariant instead
-import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from "@remix-run/node"; // Use named imports
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from "@remix-run/node"; // Use named imports
 // Import isRouteErrorResponse from @remix-run/react
 import {Link, Outlet, useLoaderData, useParams, useRouteError, isRouteErrorResponse, useOutlet, useFetcher} from "@remix-run/react";
 // Import createClient directly
@@ -32,7 +32,7 @@ export const meta: MetaFunction<typeof loader> = ({data}) => {
 };
 
 
-export async function loader({params, request}: LoaderFunctionArgs) {
+export async function loader({params}: LoaderFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
     console.log(`[Loader] Fetching family details for ID: ${familyId}`); // Log the ID
@@ -135,7 +135,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     // Helper component for the delete button/form
     function DeleteStudentButton({ studentId, studentName }: { studentId: string, studentName: string }) {
-      const fetcher = useFetcher();
+      const fetcher = useFetcher<{ error?: string }>();
       const isDeleting = fetcher.state !== 'idle';
 
       const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -196,10 +196,20 @@ export default function FamilyDetailPage() {
                             </Button>
                         </CardHeader>
                         <CardContent className="space-y-2 pt-4"> {/* Add padding top if needed */}
+                            <p><strong>Name:</strong> {family.name}</p>
                             <p><strong>Email:</strong> {family.email}</p>
                             <p><strong>Primary Phone:</strong> {family.primary_phone ?? 'N/A'}</p>
-                            <p><strong>Secondary Phone:</strong> {family.secondary_phone ?? 'N/A'}</p>
                             <p><strong>Address:</strong> {family.address ?? 'N/A'}</p>
+                            <p><strong>City:</strong> {family.city ?? 'N/A'}</p>
+                            <p><strong>Province:</strong> {family.province ?? 'N/A'}</p>
+                            <p><strong>Postal Code:</strong> {family.postal_code ?? 'N/A'}</p>
+                            <p><strong>Emergency Contact:</strong> {family.emergency_contact ?? 'N/A'}</p>
+                            <p><strong>Health Info:</strong> {family.health_info ?? 'N/A'}</p>
+                            <p><strong>Notes:</strong> {family.notes ?? 'N/A'}</p>
+                            <p><strong>Referral Source:</strong> {family.referral_source ?? 'N/A'}</p>
+                            <p><strong>Referral Name:</strong> {family.referral_name ?? 'N/A'}</p>
+                            <p><strong>Created At:</strong> {family.created_at ? format(new Date(family.created_at), 'PPP p') : 'N/A'}</p>
+                            <p><strong>Updated At:</strong> {family.updated_at ? format(new Date(family.updated_at), 'PPP p') : 'N/A'}</p>
                         </CardContent>
                     </Card>
 

@@ -27,7 +27,15 @@ type ActionData = {
         name?: string;
         email?: string;
         primary_phone?: string;
-        // Add other fields as needed
+        address?: string;
+        city?: string;
+        province?: string;
+        postal_code?: string;
+        emergency_contact?: string;
+        health_info?: string;
+        notes?: string;
+        referral_source?: string;
+        referral_name?: string;
     };
 };
 
@@ -78,17 +86,30 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const familyId = params.familyId;
     const formData = await request.formData();
 
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
+    // Extract all fields from the form, matching the DB schema
+    const name = formData.get("name") as string | null;
+    const email = formData.get("email") as string | null;
     const primary_phone = formData.get("primary_phone") as string | null;
-    const secondary_phone = formData.get("secondary_phone") as string | null;
     const address = formData.get("address") as string | null;
+    const city = formData.get("city") as string | null;
+    const province = formData.get("province") as string | null;
+    const postal_code = formData.get("postal_code") as string | null;
+    const emergency_contact = formData.get("emergency_contact") as string | null;
+    const health_info = formData.get("health_info") as string | null;
+    const notes = formData.get("notes") as string | null;
+    const referral_source = formData.get("referral_source") as string | null;
+    const referral_name = formData.get("referral_name") as string | null;
 
     // Basic validation (consider using Zod for more complex validation)
     const fieldErrors: ActionData['fieldErrors'] = {};
     if (!name) fieldErrors.name = "Family name is required.";
     if (!email) fieldErrors.email = "Email is required.";
-    // Add more validation rules as needed (e.g., email format, phone format)
+    if (!address) fieldErrors.address = "Address is required.";
+    if (!city) fieldErrors.city = "City is required.";
+    if (!province) fieldErrors.province = "Province is required.";
+    if (!postal_code) fieldErrors.postal_code = "Postal code is required.";
+    if (!primary_phone) fieldErrors.primary_phone = "Primary phone is required.";
+    // Optional fields don't need presence validation unless specific formats are required
 
     if (Object.keys(fieldErrors).length > 0) {
         return json<ActionData>({ error: "Validation failed", fieldErrors }, { status: 400 });
@@ -107,12 +128,21 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const { error } = await supabaseServer
         .from('families')
         .update({
-            name,
-            email,
-            primary_phone: primary_phone || null, // Ensure null if empty
-            secondary_phone: secondary_phone || null,
-            address: address || null,
-            // updated_at: new Date().toISOString(), // Optional: track updates
+            // Already validated non-null
+            name: name!,
+            email: email!,
+            primary_phone: primary_phone!,
+            address: address!,
+            city: city!,
+            province: province!,
+            postal_code: postal_code!,
+            // Optional fields
+            emergency_contact: emergency_contact,
+            health_info: health_info,
+            notes: notes,
+            referral_source: referral_source,
+            referral_name: referral_name,
+            updated_at: new Date().toISOString(), // Explicitly track updates
         })
         .eq('id', familyId);
 
@@ -213,26 +243,162 @@ export default function EditFamilyPage() {
                                 )}
                             </div>
 
-                            {/* Secondary Phone */}
+                            {/* Address */}
                             <div className="space-y-2">
-                                <Label htmlFor="secondary_phone">Secondary Phone</Label>
+                                <Label htmlFor="address">Address</Label>
                                 <Input
-                                    id="secondary_phone"
-                                    name="secondary_phone"
-                                    type="tel"
-                                    defaultValue={family.secondary_phone ?? ''}
+                                    id="address"
+                                    name="address"
+                                    defaultValue={family.address ?? ''}
+                                    required
+                                    aria-invalid={!!actionData?.fieldErrors?.address}
+                                    aria-describedby="address-error"
                                 />
+                                {actionData?.fieldErrors?.address && (
+                                    <p id="address-error" className="text-sm text-destructive">
+                                        {actionData.fieldErrors.address}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* City */}
+                            <div className="space-y-2">
+                                <Label htmlFor="city">City</Label>
+                                <Input
+                                    id="city"
+                                    name="city"
+                                    defaultValue={family.city ?? ''}
+                                    required
+                                    aria-invalid={!!actionData?.fieldErrors?.city}
+                                    aria-describedby="city-error"
+                                />
+                                {actionData?.fieldErrors?.city && (
+                                    <p id="city-error" className="text-sm text-destructive">
+                                        {actionData.fieldErrors.city}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Province */}
+                            <div className="space-y-2">
+                                <Label htmlFor="province">Province</Label>
+                                <Input // Consider using a Select component if preferred
+                                    id="province"
+                                    name="province"
+                                    defaultValue={family.province ?? ''}
+                                    required
+                                    aria-invalid={!!actionData?.fieldErrors?.province}
+                                    aria-describedby="province-error"
+                                />
+                                {actionData?.fieldErrors?.province && (
+                                    <p id="province-error" className="text-sm text-destructive">
+                                        {actionData.fieldErrors.province}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Postal Code */}
+                            <div className="space-y-2">
+                                <Label htmlFor="postal_code">Postal Code</Label>
+                                <Input
+                                    id="postal_code"
+                                    name="postal_code"
+                                    defaultValue={family.postal_code ?? ''}
+                                    required
+                                    aria-invalid={!!actionData?.fieldErrors?.postal_code}
+                                    aria-describedby="postal_code-error"
+                                />
+                                {actionData?.fieldErrors?.postal_code && (
+                                    <p id="postal_code-error" className="text-sm text-destructive">
+                                        {actionData.fieldErrors.postal_code}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
-                        {/* Address */}
+                        {/* Emergency Contact */}
                         <div className="space-y-2">
-                            <Label htmlFor="address">Address</Label>
+                            <Label htmlFor="emergency_contact">Emergency Contact</Label>
                             <Input
-                                id="address"
-                                name="address"
-                                defaultValue={family.address ?? ''}
+                                id="emergency_contact"
+                                name="emergency_contact"
+                                defaultValue={family.emergency_contact ?? ''}
+                                aria-invalid={!!actionData?.fieldErrors?.emergency_contact}
+                                aria-describedby="emergency_contact-error"
                             />
+                             {actionData?.fieldErrors?.emergency_contact && (
+                                <p id="emergency_contact-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.emergency_contact}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Health Info */}
+                        <div className="space-y-2">
+                            <Label htmlFor="health_info">Health Info</Label>
+                            <Input // Consider Textarea if this can be long
+                                id="health_info"
+                                name="health_info"
+                                defaultValue={family.health_info ?? ''}
+                                aria-invalid={!!actionData?.fieldErrors?.health_info}
+                                aria-describedby="health_info-error"
+                            />
+                             {actionData?.fieldErrors?.health_info && (
+                                <p id="health_info-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.health_info}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Notes */}
+                        <div className="space-y-2">
+                            <Label htmlFor="notes">Notes</Label>
+                            <Input // Consider Textarea if this can be long
+                                id="notes"
+                                name="notes"
+                                defaultValue={family.notes ?? ''}
+                                aria-invalid={!!actionData?.fieldErrors?.notes}
+                                aria-describedby="notes-error"
+                            />
+                             {actionData?.fieldErrors?.notes && (
+                                <p id="notes-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.notes}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Referral Source */}
+                        <div className="space-y-2">
+                            <Label htmlFor="referral_source">Referral Source</Label>
+                            <Input
+                                id="referral_source"
+                                name="referral_source"
+                                defaultValue={family.referral_source ?? ''}
+                                aria-invalid={!!actionData?.fieldErrors?.referral_source}
+                                aria-describedby="referral_source-error"
+                            />
+                             {actionData?.fieldErrors?.referral_source && (
+                                <p id="referral_source-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.referral_source}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Referral Name */}
+                        <div className="space-y-2">
+                            <Label htmlFor="referral_name">Referral Name</Label>
+                            <Input
+                                id="referral_name"
+                                name="referral_name"
+                                defaultValue={family.referral_name ?? ''}
+                                aria-invalid={!!actionData?.fieldErrors?.referral_name}
+                                aria-describedby="referral_name-error"
+                            />
+                             {actionData?.fieldErrors?.referral_name && (
+                                <p id="referral_name-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.referral_name}
+                                </p>
+                            )}
                         </div>
 
                         <Separator className="my-4" />

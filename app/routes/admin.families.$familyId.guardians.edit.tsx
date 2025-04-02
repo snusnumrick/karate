@@ -159,17 +159,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
             // Required fields are guaranteed non-null here by validation.
             // Optional fields use '|| undefined' to match the expected type 'string | undefined'.
             const updatePayload: TablesUpdate<"guardians"> = {
-                first_name: firstName, // '!' removed
-                last_name: lastName, // '!' removed
-                relationship: relationship, // '!' removed
-                cell_phone: cell_phone, // '!' removed
-                email: email, // '!' removed
-                home_phone: home_phone, // '!' removed
+                first_name: firstName!,
+                last_name: lastName!,
+                relationship: relationship!,
+                cell_phone: cell_phone!,
+                email: email!,
+                home_phone: home_phone!,
                 // Optional fields
-                work_phone: work_phone || undefined, // Use || undefined
-                employer: employer || undefined, // Use || undefined
-                employer_phone: employer_phone || undefined, // Use || undefined
-                employer_notes: employer_notes || undefined, // Use || undefined
+                work_phone: work_phone,
+                employer: employer,
+                employer_phone: employer_phone,
+                employer_notes: employer_notes,
             };
 
             // Add update operation to the list
