@@ -17,6 +17,21 @@ export const links: LinksFunction = () => [
     },
 ];
 
+// Define default meta tags for the entire site
+export const meta: MetaFunction = () => {
+    return [
+        {title: siteConfig.name},
+        {name: "description", content: siteConfig.description},
+        // Add Open Graph tags for better social sharing
+        {property: "og:title", content: siteConfig.name},
+        {property: "og:description", content: siteConfig.description},
+        {property: "og:type", content: "website"},
+        // { property: "og:url", content: "YOUR_WEBSITE_URL" }, // Optional: Add your deployed URL
+        // { property: "og:image", content: "YOUR_IMAGE_URL" }, // Optional: Add a preview image URL
+    ];
+};
+
+
 // This Layout component now serves as the root structure and renders the Outlet directly.
 export function Layout() {
     // Suppress hydration warnings at the root level to handle browser extension interference
