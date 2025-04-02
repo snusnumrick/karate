@@ -2,7 +2,7 @@ import invariant from "tiny-invariant";
 import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type PostgrestSingleResponse } from "@supabase/supabase-js"; // Import PostgrestSingleResponse
 import { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -101,7 +101,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    const updates: Promise<any>[] = [];
+    // Use a more specific type for the Supabase update promise result
+    const updates: Promise<PostgrestSingleResponse<null>>[] = [];
     const fieldErrors: ActionData['fieldErrors'] = {};
 
     // Need a way to iterate through guardians submitted in the form.
@@ -182,11 +183,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const results = await Promise.allSettled(updates);
 
     // Check for errors during update
-    const updateErrors = results.filter(result => result.status === 'rejected');
+    const updateErrors = results
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map(result => result.reason); // Extract the rejection reason
+
     if (updateErrors.length > 0) {
         console.error(`[Guardians Edit Action] Supabase error updating guardians for family ${familyId}:`, updateErrors);
-        // Provide a general error message, or more specific if possible
-        return json<ActionData>({ error: `Database error during update: ${updateErrors.map((e: any) => e.reason?.message).join(', ')}` }, { status: 500 });
+        // Extract error messages more reliably
+        const errorMessages = updateErrors.map(error => error?.message || 'Unknown update error').join(', ');
+        return json<ActionData>({ error: `Database error during update: ${errorMessages}` }, { status: 500 });
     }
 
     // Redirect back to the family detail page after successful update
