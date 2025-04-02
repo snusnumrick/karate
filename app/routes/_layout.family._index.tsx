@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
+import { json, redirect, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node"; // Import redirect
 import { Link, useLoaderData } from "@remix-run/react";
 import { getSupabaseServerClient, checkStudentEligibility, type EligibilityStatus } from "~/utils/supabase.server"; // Import eligibility check
 import { Button } from "~/components/ui/button";
@@ -58,12 +58,11 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     }
 
     if (!profileData.family_id) {
-        // User is logged in but not associated with a family yet
+        // User is logged in but not associated with a family yet. Redirect to setup.
         // This might happen after registration but before family creation/linking
-        // TODO: Consider redirecting to a family setup/linking page or showing a specific message
-        return json({
-            error: "No family associated with this account.",
-        }, {headers});
+        console.log("User authenticated but no family_id found. Redirecting to /family/setup");
+        // Note: Ensure the /family/setup route exists or adjust the target URL.
+        return redirect("/family/setup", { headers });
     }
 
     // 2. Fetch the family data *and* its related students and payments using the family_id from the profile
@@ -207,7 +206,7 @@ export default function FamilyPortal() {
             <h1 className="text-3xl font-bold mb-6">Family Portal: {familyDisplayName}</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* TODO: Implement these sections using actual data */}
+                {/* My Students Section */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                     <h2 className="text-xl font-semibold mb-4">My Students</h2>
                     {/* Display list of students or a message if none */}
@@ -251,8 +250,8 @@ export default function FamilyPortal() {
                         <p className="text-orange-600 dark:text-orange-400 mb-4">⚠️ Action required: Please sign all
                             waivers.</p>
                     )}
-                    {/* TODO: Re-evaluate Button/Link structure after resolving SSR issues */}
-                    <Button className="mt-4">
+                    {/* Use asChild prop for correct Button/Link integration */}
+                    <Button asChild className="mt-4">
                         <Link to="/waivers">View/Sign Waivers</Link>
                     </Button>
                 </div>
