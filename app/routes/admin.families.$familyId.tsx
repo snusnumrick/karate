@@ -12,7 +12,6 @@ import { Button } from "~/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {Separator} from "~/components/ui/separator";
 import {format} from 'date-fns';
-import {createServerClient} from "@supabase/auth-helpers-remix"; // For formatting dates if needed
 
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
@@ -51,14 +50,8 @@ export async function loader({params, request}: LoaderFunctionArgs) {
     }
 
     // Now TypeScript knows supabaseUrl and supabaseServiceKey are strings
-    // const { supabaseServer, response } = getSupabaseServerClient(request);
-    // const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
     const response = new Response(); // Create a response object for potential header setting
-    const supabaseServer = createServerClient<Database>(
-        supabaseUrl,
-        supabaseServiceKey,
-        { request, response }
-    );
+    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     console.log('[Loader] Supabase client initialized. Fetching data...'); // Log before query
     const {data: familyData, error: familyError} = await supabaseServer // Use the server client
