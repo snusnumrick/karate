@@ -389,7 +389,7 @@ export default function StudentDetailPage() {
         <>
           {/* Display Student Information */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-            <h2 className="text-xl font-semibold mb-4 border-b pb-2">Information</h2>
+            <h2 className="text-xl font-semibold mb-4 border-b pb-2">General</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <p><strong>First Name:</strong> {student.first_name}</p>
               <p><strong>Last Name:</strong> {student.last_name}</p>
@@ -417,7 +417,7 @@ export default function StudentDetailPage() {
 
           {/* Health Information Section */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-             <h2 className="text-xl font-semibold mb-4 border-b pb-2">Health Information</h2>
+             <h2 className="text-xl font-semibold mb-4 border-b pb-2">Health</h2>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <p><strong>Immunizations Up-to-Date:</strong> {student.immunizations_up_to_date ? 'Yes' : 'No'}</p>
                 <p><strong>Immunization Notes:</strong> {student.immunization_notes || 'None'}</p>
