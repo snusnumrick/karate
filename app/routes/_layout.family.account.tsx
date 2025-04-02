@@ -656,9 +656,13 @@ export default function AccountSettingsPage() {
 
                         {/* --- Guardian Information Forms --- */}
                         {(guardians ?? []).map((guardian, index) => (
-                            <GuardianForm key={guardian.id} guardian={guardian} index={index + 1}
-                                          actionData={actionData}
-                                          isSubmitting={isSubmitting} navigation={navigation}/>
+                            <ClientOnly key={guardian.id} fallback={<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6 animate-pulse"><h2 className="text-xl font-semibold mb-4 border-b pb-2">Loading Guardian #{index + 1}...</h2></div>}>
+                                {() => (
+                                    <GuardianForm guardian={guardian} index={index + 1}
+                                                  actionData={actionData}
+                                                  isSubmitting={isSubmitting} navigation={navigation}/>
+                                )}
+                            </ClientOnly>
                         ))}
 
 
