@@ -19,7 +19,8 @@ module.exports = {
     commonjs: true,
     es6: true,
   },
-  ignorePatterns: ["!**/.server", "!**/.client"],
+  // Add 'supabase/functions/**' to ignore Deno-specific files
+  ignorePatterns: ["!**/.server", "!**/.client", "supabase/functions/**"],
 
   // Base config
   extends: ["eslint:recommended"],
