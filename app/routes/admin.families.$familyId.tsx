@@ -5,11 +5,10 @@ import type {LoaderFunctionArgs, MetaFunction} from "@remix-run/node"; // Keep t
 // Import isRouteErrorResponse from @remix-run/react
 import {Link, useLoaderData, useParams, useRouteError, isRouteErrorResponse} from "@remix-run/react";
 // Import createClient directly
-import {createClient} from "@supabase/supabase-js";
-// Import the missing helper function
-import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {Database} from "~/types/supabase";
-import {Button} from "~/components/ui/button";
+import { createClient } from "@supabase/supabase-js";
+// No longer need getSupabaseServerClient here
+import { Database } from "~/types/supabase";
+import { Button } from "~/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {Separator} from "~/components/ui/separator";
 import {format} from 'date-fns';
