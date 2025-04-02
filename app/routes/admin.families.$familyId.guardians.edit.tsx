@@ -2,9 +2,9 @@ import invariant from "tiny-invariant";
 import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
-// Import createClient and PostgrestQueryBuilder
+// Import createClient
 import { createClient } from "@supabase/supabase-js";
-import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
+// Remove unused PostgrestFilterBuilder import
 import { Database, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -103,13 +103,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Explicitly type the array elements as PostgrestFilterBuilder
-    type GuardianUpdateBuilder = PostgrestFilterBuilder<
-        Database["public"],
-        Database["public"]["Tables"]["guardians"], // Use the full table definition
-        null // Expected result type after .then()
-    >;
-    const updates: GuardianUpdateBuilder[] = []; // Ensure this line has the type
+    // Let TypeScript infer the type of the array elements (they are thenable builders)
+    const updates = [];
     const fieldErrors: ActionData['fieldErrors'] = {};
 
     // Need a way to iterate through guardians submitted in the form.
@@ -164,17 +159,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
             // Required fields are guaranteed non-null here by validation.
             // Optional fields use '|| undefined' to match the expected type 'string | undefined'.
             const updatePayload: TablesUpdate<"guardians"> = {
-                first_name: firstName!,
-                last_name: lastName!,
-                relationship: relationship!,
-                cell_phone: cell_phone!,
-                email: email!,
-                home_phone: home_phone!,
+                first_name: firstName, // '!' removed
+                last_name: lastName, // '!' removed
+                relationship: relationship, // '!' removed
+                cell_phone: cell_phone, // '!' removed
+                email: email, // '!' removed
+                home_phone: home_phone, // '!' removed
                 // Optional fields
-                work_phone: work_phone,
-                employer: employer,
-                employer_phone: employer_phone,
-                employer_notes: employer_notes,
+                work_phone: work_phone || undefined, // Use || undefined
+                employer: employer || undefined, // Use || undefined
+                employer_phone: employer_phone || undefined, // Use || undefined
+                employer_notes: employer_notes || undefined, // Use || undefined
             };
 
             // Add update operation to the list
