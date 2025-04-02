@@ -162,12 +162,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
                 relationship: relationship!, // Non-null assertion (!) removed
                 cell_phone: cell_phone!, // Non-null assertion (!) removed
                 email: email!, // Non-null assertion (!) removed
-                home_phone: home_phone, // Non-null assertion (!) removed
+                home_phone: home_phone!, // Non-null assertion (!) removed
                 // Optional fields: pass null if empty/missing from form, matching DB schema
-                work_phone: work_phone || null,
-                employer: employer || null,
-                employer_phone: employer_phone || null,
-                employer_notes: employer_notes || null,
+                work_phone: work_phone,
+                employer: employer,
+                employer_phone: employer_phone,
+                employer_notes: employer_notes,
             };
 
             // Add update operation to the list
