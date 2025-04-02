@@ -154,12 +154,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
         } else {
             // Type safety: firstName, lastName, etc., are confirmed non-null strings here due to the validation above.
             const updatePayload: Database['public']['Tables']['guardians']['Update'] = {
-                first_name: firstName,
-                last_name: lastName,
-                relationship: relationship,
-                cell_phone: cell_phone,
-                email: email,
-                home_phone: home_phone,
+                first_name: firstName!,
+                last_name: lastName!,
+                relationship: relationship!,
+                cell_phone: cell_phone!,
+                email: email!,
+                home_phone: home_phone!,
                 // Optional fields: pass null if empty/missing from form, matching DB schema
                 work_phone: work_phone || null,
                 employer: employer || null,
