@@ -115,10 +115,13 @@ export default function FamilyDetailPage() {
                     </div>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Family Details</CardTitle>
+                            <Button asChild variant="outline" size="sm">
+                                <Link to={`/admin/families/${params.familyId}/edit`}>Edit Details</Link>
+                            </Button>
                         </CardHeader>
-                        <CardContent className="space-y-2">
+                        <CardContent className="space-y-2 pt-4"> {/* Add padding top if needed */}
                             <p><strong>Email:</strong> {family.email}</p>
                             <p><strong>Primary Phone:</strong> {family.primary_phone ?? 'N/A'}</p>
                             <p><strong>Secondary Phone:</strong> {family.secondary_phone ?? 'N/A'}</p>
@@ -129,10 +132,14 @@ export default function FamilyDetailPage() {
                     <Separator/>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Guardians</CardTitle>
+                            {/* TODO: Create this route: /admin/families/$familyId/guardians/edit */}
+                            <Button asChild variant="outline" size="sm">
+                                <Link to={`/admin/families/${params.familyId}/guardians/edit`}>Edit Guardians</Link>
+                            </Button>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-4"> {/* Add padding top if needed */}
                             {family.guardians.length > 0 ? (
                                 <ul className="space-y-2">
                                     {family.guardians.map((guardian) => (
@@ -153,10 +160,14 @@ export default function FamilyDetailPage() {
                     <Separator/>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Students</CardTitle>
+                            {/* TODO: Create this route: /admin/families/$familyId/students/edit */}
+                            <Button asChild variant="outline" size="sm">
+                                <Link to={`/admin/families/${params.familyId}/students/edit`}>Edit Students</Link>
+                            </Button>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-4"> {/* Add padding top if needed */}
                             {family.students.length > 0 ? (
                                 <ul className="space-y-4">
                                     {family.students.map((student) => (
