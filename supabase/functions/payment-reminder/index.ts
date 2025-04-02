@@ -75,7 +75,7 @@ serve(async (req: Request) => {
         continue;
       }
 
-      const studentsToExpire: { name: string }[] = [];
+      const studentsToExpire: Array<{ name: string; daysUntilExpiration?: number }> = [];
 
       for (const student of family.students) {
         try {
@@ -147,7 +147,12 @@ serve(async (req: Request) => {
                 ).join('')}
               </ul>
             ` : ''}
-            <p>Their current status is 'Expired'. Please visit the family portal to make a payment and ensure continued participation.</p>
+            ${expiredStudents.length > 0 ? `
+              <p>Their current status is <strong>Expired</strong>. Please visit the family portal immediately to make a payment.</p>
+            ` : ''}
+            ${expiringSoonStudents.length > 0 ? `
+              <p>Payments will expire soon. Please renew before the due date to ensure continued participation.</p>
+            ` : ''}
             <p><a href="${siteUrl}/family/payment">Make Payment Now</a></p> {/* Use verified siteUrl variable */}
             <p>Thank you,<br/>Sensei Negin's Karate Class</p>
           `;
