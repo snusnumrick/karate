@@ -2,9 +2,8 @@ import invariant from "tiny-invariant";
 import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
-// Import createClient
-import { createClient } from "@supabase/supabase-js";
-// Remove unused PostgrestFilterBuilder import
+// Import createClient and PostgrestQueryBuilder
+import { createClient, type PostgrestQueryBuilder } from "@supabase/supabase-js";
 import { Database, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -103,8 +102,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Let TypeScript infer the type of the array elements (they are thenable builders)
-    const updates = [];
+    // Explicitly type the array elements as PostgrestQueryBuilder
+    type GuardianUpdateBuilder = PostgrestQueryBuilder<
+        Database["public"],
+        Database["public"]["Tables"]["guardians"], // Use the full table definition
+        null // Expected result type after .then()
+    >;
+    const updates: GuardianUpdateBuilder[] = [];
     const fieldErrors: ActionData['fieldErrors'] = {};
 
     // Need a way to iterate through guardians submitted in the form.
@@ -156,18 +160,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
         } else {
             // Type safety: firstName, lastName, etc., are confirmed non-null strings here due to the validation above.
             // Use the imported TablesUpdate type for better clarity
+            // Required fields are guaranteed non-null here by validation, so '!' is removed.
+            // Optional fields use '|| undefined' to match the expected type 'string | undefined'.
             const updatePayload: TablesUpdate<"guardians"> = {
-                first_name: firstName!, // Non-null assertion (!) removed
-                last_name: lastName!, // Non-null assertion (!) removed
-                relationship: relationship!, // Non-null assertion (!) removed
-                cell_phone: cell_phone!, // Non-null assertion (!) removed
-                email: email!, // Non-null assertion (!) removed
-                home_phone: home_phone!, // Non-null assertion (!) removed
-                // Optional fields: pass null if empty/missing from form, matching DB schema
-                work_phone: work_phone,
-                employer: employer,
-                employer_phone: employer_phone,
-                employer_notes: employer_notes,
+                first_name: firstName,
+                last_name: lastName,
+                relationship: relationship,
+                cell_phone: cell_phone,
+                email: email,
+                home_phone: home_phone,
+                // Optional fields: pass undefined if empty/missing
+                work_phone: work_phone || undefined,
+                employer: employer || undefined,
+                employer_phone: employer_phone || undefined,
+                employer_notes: employer_notes || undefined,
             };
 
             // Add update operation to the list
