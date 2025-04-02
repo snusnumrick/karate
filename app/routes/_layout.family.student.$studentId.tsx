@@ -238,7 +238,7 @@ export default function StudentDetailPage() {
       <div className="container mx-auto px-4 py-8">
         <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family Portal</Link>
 
-      <h1 className="text-3xl font-bold mb-6">Student Details: {student.first_name} {student.last_name}</h1>
+      <h1 className="text-3xl font-bold mb-6">Student Details</h1>
 
       {/* Display action feedback */}
       {actionData?.error && (

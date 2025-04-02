@@ -330,7 +330,6 @@ export type Database = {
       students: {
         Row: {
           allergies: string | null
-          belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
           birth_date: string
           cell_phone: string | null
           email: string | null
@@ -349,7 +348,6 @@ export type Database = {
         }
         Insert: {
           allergies?: string | null
-          belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           birth_date: string
           cell_phone?: string | null
           email?: string | null
@@ -368,7 +366,6 @@ export type Database = {
         }
         Update: {
           allergies?: string | null
-          belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           birth_date?: string
           cell_phone?: string | null
           email?: string | null
