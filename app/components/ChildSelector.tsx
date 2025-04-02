@@ -107,7 +107,7 @@ export default function ChildSelector({
               aria-label={`Select ${student.firstName} ${student.lastName}`}
             />
             <label htmlFor={`student-${student.id}`} className="ml-2 dark:text-gray-200">
-              {student.firstName} {student.lastName} ({student.beltRank} belt)
+              {student.firstName} {student.lastName} {/* Belt rank removed */}
             </label>
           </div>
         ))}
