@@ -10,6 +10,7 @@ import { Button } from "~/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {Separator} from "~/components/ui/separator";
 import {format} from 'date-fns';
+import React from "react";
 
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
