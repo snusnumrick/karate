@@ -3,8 +3,8 @@ import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
 // Import PostgrestFilterBuilder for explicit typing
-import { createClient, type PostgrestSingleResponse, type PostgrestFilterBuilder } from "@supabase/supabase-js";
-import { Database, Tables, TablesInsert, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
+import { createClient, type PostgrestFilterBuilder } from "@supabase/supabase-js";
+import { Database, Tables, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -162,9 +162,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
             // Type safety: firstName, lastName, etc., are confirmed non-null strings here due to the validation above.
             // Use the imported TablesUpdate type for better clarity
             const updatePayload: TablesUpdate<"guardians"> = {
-                first_name: firstName, // Non-null assertion (!) no longer needed due to validation check
-                last_name: lastName,
-                relationship: relationship,
+                first_name: firstName!, // Non-null assertion (!) no longer needed due to validation check
+                last_name: lastName!,
+                relationship: relationship!,
                 cell_phone: cell_phone!,
                 email: email!,
                 home_phone: home_phone!,
