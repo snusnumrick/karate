@@ -3,7 +3,8 @@ import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
 // Import PostgrestQueryBuilder for explicit typing
-import { createClient, type PostgrestQueryBuilder } from "@supabase/supabase-js"; // Changed Filter to Query
+import { createClient } from "@supabase/supabase-js"; // Changed Filter to Query
+import type { PostgrestQueryBuilder } from "@supabase/postgrest-js";
 import { Database, Tables, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
