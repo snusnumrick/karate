@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
 import { useState } from "react";
+import { isValid, parse } from 'date-fns'; // Import date-fns functions
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea"; // Import Textarea
@@ -164,17 +165,21 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             const dob = studentDobs[i]?.trim();
             const notes = studentNotes[i]?.trim() || null; // Handle optional notes
 
-            // Basic validation for each student
-            if (firstName && lastName && dob) {
-                 // TODO: Add more robust date validation if needed
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-                     // Add field error specific to this student index if possible,
-                     // or a general student error. For simplicity, adding general error.
-                     fieldErrors[`studentDob[${i}]`] = `Invalid date format for student ${i + 1}. Use YYYY-MM-DD.`;
-                     continue; // Skip this student
-                }
+           // Basic validation for each student
+           if (firstName && lastName && dob) {
+               // Validate date format first
+               if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+                   fieldErrors[`studentDob[${i}]`] = `Invalid date format for student ${i + 1}. Use YYYY-MM-DD.`;
+                   continue; // Skip this student
+               }
+               // Validate date value using date-fns
+               const parsedDate = parse(dob, 'yyyy-MM-dd', new Date());
+               if (!isValid(parsedDate)) {
+                   fieldErrors[`studentDob[${i}]`] = `Invalid date value for student ${i + 1}. Please enter a real date.`;
+                   continue; // Skip this student
+               }
 
-                studentsToInsert.push({
+               studentsToInsert.push({
                     family_id: familyId,
                     first_name: firstName,
                     last_name: lastName,
