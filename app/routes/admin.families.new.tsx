@@ -140,12 +140,12 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 .from('guardians')
                 .insert({
                     family_id: familyId,
-                    first_name: guardian2FirstName,
-                    last_name: guardian2LastName,
-                    relationship: guardian2Relationship,
-                    home_phone: guardian2HomePhone, // Can be null
-                    cell_phone: guardian2CellPhone,
-                    email: guardian2Email,         // Can be null
+                    first_name: guardian2FirstName!,
+                    last_name: guardian2LastName!,
+                    relationship: guardian2Relationship!,
+                    home_phone: guardian2HomePhone!, // Can be null
+                    cell_phone: guardian2CellPhone!,
+                    email: guardian2Email!,         // Can be null
                 });
 
              if (guardian2Error) throw new Error(`Failed to create guardian 2: ${guardian2Error.message}`);
