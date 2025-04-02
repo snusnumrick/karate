@@ -129,17 +129,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
         const firstName = formData.get(`guardian_${guardianId}_first_name`) as string | null;
         const lastName = formData.get(`guardian_${guardianId}_last_name`) as string | null;
         const relationship = formData.get(`guardian_${guardianId}_relationship`) as string | null;
-        const cell_phone = formData.get(`guardian_${guardianId}_cell_phone`) as string | null; // Changed from phone
+        const cell_phone = formData.get(`guardian_${guardianId}_cell_phone`) as string | null;
         const email = formData.get(`guardian_${guardianId}_email`) as string | null;
-        // Add other fields like home_phone, employer etc. if needed
+        const home_phone = formData.get(`guardian_${guardianId}_home_phone`) as string | null;
+        const work_phone = formData.get(`guardian_${guardianId}_work_phone`) as string | null;
+        const employer = formData.get(`guardian_${guardianId}_employer`) as string | null;
+        const employer_phone = formData.get(`guardian_${guardianId}_employer_phone`) as string | null;
+        const employer_notes = formData.get(`guardian_${guardianId}_employer_notes`) as string | null;
+
 
         // Basic Validation per guardian - Align with DB constraints
         const currentGuardianErrors: Record<string, string> = {};
         if (!firstName) currentGuardianErrors.first_name = "First name is required.";
         if (!lastName) currentGuardianErrors.last_name = "Last name is required.";
-        if (!relationship) currentGuardianErrors.relationship = "Relationship is required."; // Added validation
-        if (!cell_phone) currentGuardianErrors.cell_phone = "Cell phone is required."; // Added validation
-        if (!email) currentGuardianErrors.email = "Email is required."; // Added validation
+        if (!relationship) currentGuardianErrors.relationship = "Relationship is required.";
+        if (!cell_phone) currentGuardianErrors.cell_phone = "Cell phone is required.";
+        if (!email) currentGuardianErrors.email = "Email is required.";
+        if (!home_phone) currentGuardianErrors.home_phone = "Home phone is required."; // Added validation
+        // Optional fields don't need presence validation unless specific formats are required
         // Add more specific validation (email format, phone format, etc.)
 
         if (Object.keys(currentGuardianErrors).length > 0) {
@@ -151,11 +158,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
                     .from('guardians')
                     .update({
                         first_name: firstName, // Already validated non-null
-                        last_name: lastName, // Already validated non-null
-                        relationship: relationship, // DB requires non-null
-                        cell_phone: cell_phone, // DB requires non-null
-                        email: email, // DB requires non-null
-                        // Add other updatable fields here, ensuring nullability matches DB
+                        last_name: lastName,
+                        relationship: relationship,
+                        cell_phone: cell_phone,
+                        email: email,
+                        home_phone: home_phone, // DB requires non-null
+                        work_phone: work_phone || null, // Allow null
+                        employer: employer || null, // Allow null
+                        employer_phone: employer_phone || null, // Allow null
+                        employer_notes: employer_notes || null, // Allow null
                         // updated_at: new Date().toISOString(), // Optional: Supabase might handle this automatically
                     })
                     .eq('id', guardianId)
@@ -300,8 +311,45 @@ export default function EditGuardiansPage() {
                                                 )}
                                             </div>
 
+                                            {/* Home Phone */}
+                                            <div className="space-y-1">
+                                                <Label htmlFor={`guardian_${guardianId}_home_phone`}>Home Phone</Label>
+                                                <Input
+                                                    id={`guardian_${guardianId}_home_phone`}
+                                                    name={`guardian_${guardianId}_home_phone`}
+                                                    type="tel"
+                                                    defaultValue={guardian.home_phone ?? ''}
+                                                    required // Added required
+                                                    aria-invalid={!!errors?.home_phone}
+                                                    aria-describedby={`guardian_${guardianId}_home_phone-error`}
+                                                />
+                                                 {errors?.home_phone && (
+                                                    <p id={`guardian_${guardianId}_home_phone-error`} className="text-sm text-destructive">
+                                                        {errors.home_phone}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Work Phone */}
+                                            <div className="space-y-1">
+                                                <Label htmlFor={`guardian_${guardianId}_work_phone`}>Work Phone</Label>
+                                                <Input
+                                                    id={`guardian_${guardianId}_work_phone`}
+                                                    name={`guardian_${guardianId}_work_phone`}
+                                                    type="tel"
+                                                    defaultValue={guardian.work_phone ?? ''}
+                                                    aria-invalid={!!errors?.work_phone}
+                                                    aria-describedby={`guardian_${guardianId}_work_phone-error`}
+                                                />
+                                                 {errors?.work_phone && (
+                                                    <p id={`guardian_${guardianId}_work_phone-error`} className="text-sm text-destructive">
+                                                        {errors.work_phone}
+                                                    </p>
+                                                )}
+                                            </div>
+
                                             {/* Email */}
-                                            <div className="space-y-1 md:col-span-2"> {/* Span across columns */}
+                                            <div className="space-y-1"> {/* Removed col-span */}
                                                 <Label htmlFor={`guardian_${guardianId}_email`}>Email</Label>
                                                 <Input
                                                     id={`guardian_${guardianId}_email`}
@@ -318,8 +366,59 @@ export default function EditGuardiansPage() {
                                                     </p>
                                                 )}
                                             </div>
+
+                                            {/* Employer */}
+                                            <div className="space-y-1">
+                                                <Label htmlFor={`guardian_${guardianId}_employer`}>Employer</Label>
+                                                <Input
+                                                    id={`guardian_${guardianId}_employer`}
+                                                    name={`guardian_${guardianId}_employer`}
+                                                    defaultValue={guardian.employer ?? ''}
+                                                    aria-invalid={!!errors?.employer}
+                                                    aria-describedby={`guardian_${guardianId}_employer-error`}
+                                                />
+                                                 {errors?.employer && (
+                                                    <p id={`guardian_${guardianId}_employer-error`} className="text-sm text-destructive">
+                                                        {errors.employer}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Employer Phone */}
+                                            <div className="space-y-1">
+                                                <Label htmlFor={`guardian_${guardianId}_employer_phone`}>Employer Phone</Label>
+                                                <Input
+                                                    id={`guardian_${guardianId}_employer_phone`}
+                                                    name={`guardian_${guardianId}_employer_phone`}
+                                                    type="tel"
+                                                    defaultValue={guardian.employer_phone ?? ''}
+                                                    aria-invalid={!!errors?.employer_phone}
+                                                    aria-describedby={`guardian_${guardianId}_employer_phone-error`}
+                                                />
+                                                 {errors?.employer_phone && (
+                                                    <p id={`guardian_${guardianId}_employer_phone-error`} className="text-sm text-destructive">
+                                                        {errors.employer_phone}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Employer Notes */}
+                                            <div className="space-y-1 md:col-span-2"> {/* Span across columns */}
+                                                <Label htmlFor={`guardian_${guardianId}_employer_notes`}>Employer Notes</Label>
+                                                <Input // Consider using Textarea if notes can be long
+                                                    id={`guardian_${guardianId}_employer_notes`}
+                                                    name={`guardian_${guardianId}_employer_notes`}
+                                                    defaultValue={guardian.employer_notes ?? ''}
+                                                    aria-invalid={!!errors?.employer_notes}
+                                                    aria-describedby={`guardian_${guardianId}_employer_notes-error`}
+                                                />
+                                                 {errors?.employer_notes && (
+                                                    <p id={`guardian_${guardianId}_employer_notes-error`} className="text-sm text-destructive">
+                                                        {errors.employer_notes}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
-                                        {/* Add fields for relationship, phone, email etc. */}
                                     </div>
                                 );
                             })}
