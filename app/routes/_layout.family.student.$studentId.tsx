@@ -395,17 +395,18 @@ export default function StudentDetailPage() {
               <p><strong>Last Name:</strong> {student.last_name}</p>
               <p><strong>Gender:</strong> {student.gender}</p>
               <p><strong>Birth Date:</strong> {new Date(student.birth_date).toLocaleDateString()}</p>
-              <div className="flex items-center">
+              {/* Wrap belt display in <p> for consistent styling */}
+              <p className="flex items-center">
                  <strong className="mr-2">Current Belt:</strong> {/* Updated Label */}
                  {currentBeltRank ? (
-                   <>
+                   <span className="flex items-center"> {/* Use span for inline display */}
                      <div className={`h-4 w-8 rounded mr-2 ${beltColorMap[currentBeltRank] || 'bg-gray-400'}`}></div>
                      <span className="capitalize">{currentBeltRank}</span>
-                   </>
+                   </span>
                  ) : (
                    'N/A'
                  )}
-              </div>
+              </p>
               <p><strong>T-Shirt Size:</strong> {student.t_shirt_size}</p>
               <p><strong>School:</strong> {student.school}</p>
               <p><strong>Grade Level:</strong> {student.grade_level}</p>
