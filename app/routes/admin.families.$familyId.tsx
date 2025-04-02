@@ -99,10 +99,10 @@ export default function FamilyDetailPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Family: {family.name}</h1>
-                {/* Add Edit button later if an edit route exists */}
-                {/* <Button asChild variant="outline">
+                {/* Link to the edit page for this family */}
+                 <Button asChild variant="outline">
           <Link to={`/admin/families/${params.familyId}/edit`}>Edit Family</Link>
-        </Button> */}
+        </Button> 
             </div>
 
             <Card>
