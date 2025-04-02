@@ -155,17 +155,41 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         const studentFirstNames = formData.getAll("studentFirstName[]") as string[];
         const studentLastNames = formData.getAll("studentLastName[]") as string[];
         const studentDobs = formData.getAll("studentDob[]") as string[];
-        const studentNotes = formData.getAll("studentNotes[]") as string[]; // Optional
+        // Extract new student fields
+        const studentGenders = formData.getAll("studentGender[]") as string[];
+        const studentSchools = formData.getAll("studentSchool[]") as string[];
+        const studentTShirtSizes = formData.getAll("studentTShirtSize[]") as string[];
+        const studentCellPhones = formData.getAll("studentCellPhone[]") as string[]; // Optional
+        const studentEmails = formData.getAll("studentEmail[]") as string[]; // Optional
+        const studentGradeLevels = formData.getAll("studentGradeLevel[]") as string[]; // Optional
+        const studentAllergies = formData.getAll("studentAllergies[]") as string[]; // Optional
+        const studentMedications = formData.getAll("studentMedications[]") as string[]; // Optional
+        const studentSpecialNeeds = formData.getAll("studentSpecialNeeds[]") as string[]; // Optional
+        const studentImmunizationsUpToDate = formData.getAll("studentImmunizationsUpToDate[]") as string[]; // Optional
+        const studentImmunizationNotes = formData.getAll("studentImmunizationNotes[]") as string[]; // Optional
+
 
         const studentsToInsert = [];
         for (let i = 0; i < studentFirstNames.length; i++) {
             const firstName = studentFirstNames[i]?.trim();
             const lastName = studentLastNames[i]?.trim();
             const dob = studentDobs[i]?.trim();
-            const notes = studentNotes[i]?.trim() || null; // Handle optional notes
+            // Get new field values, trimming and setting null if empty for optional fields
+            const gender = studentGenders[i]?.trim();
+            const school = studentSchools[i]?.trim();
+            const tShirtSize = studentTShirtSizes[i]?.trim();
+            const cellPhone = studentCellPhones[i]?.trim() || null;
+            const email = studentEmails[i]?.trim() || null;
+            const gradeLevel = studentGradeLevels[i]?.trim() || null;
+            const allergies = studentAllergies[i]?.trim() || null;
+            const medications = studentMedications[i]?.trim() || null;
+            const specialNeeds = studentSpecialNeeds[i]?.trim() || null;
+            const immunizationsUpToDate = studentImmunizationsUpToDate[i]?.trim() || null;
+            const immunizationNotes = studentImmunizationNotes[i]?.trim() || null;
+
 
            // Basic validation for each student
-           if (firstName && lastName && dob) {
+           if (firstName && lastName && dob && gender && school && tShirtSize) { // Check all required fields
                // Validate date format first
                if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
                    fieldErrors[`studentDob[${i}]`] = `Invalid date format for student ${i + 1}. Use YYYY-MM-DD.`;
@@ -182,15 +206,28 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                     family_id: familyId,
                     first_name: firstName,
                     last_name: lastName,
-                    date_of_birth: dob,
-                    notes: notes,
-                    // Add other student fields if needed (e.g., grade, medical_info)
+                    birth_date: dob, // Renamed from date_of_birth
+                    gender: gender, // Required
+                    school: school, // Required
+                    t_shirt_size: tShirtSize, // Required
+                    cell_phone: cellPhone, // Optional
+                    email: email, // Optional
+                    grade_level: gradeLevel, // Optional
+                    allergies: allergies, // Optional
+                    medications: medications, // Optional
+                    special_needs: specialNeeds, // Optional
+                    immunizations_up_to_date: immunizationsUpToDate, // Optional
+                    immunization_notes: immunizationNotes, // Optional
+                    // belt_rank is likely set later, not during initial creation
                 });
-            } else if (firstName || lastName || dob || notes) {
+            } else if (firstName || lastName || dob || gender || school || tShirtSize || cellPhone || email || gradeLevel || allergies || medications || specialNeeds || immunizationsUpToDate || immunizationNotes) {
                 // If any field for a student is filled, require the core fields
                 if (!firstName) fieldErrors[`studentFirstName[${i}]`] = `First name required for student ${i + 1}.`;
                 if (!lastName) fieldErrors[`studentLastName[${i}]`] = `Last name required for student ${i + 1}.`;
                 if (!dob) fieldErrors[`studentDob[${i}]`] = `Date of birth required for student ${i + 1}.`;
+                if (!gender) fieldErrors[`studentGender[${i}]`] = `Gender required for student ${i + 1}.`; // Add validation message
+                if (!school) fieldErrors[`studentSchool[${i}]`] = `School required for student ${i + 1}.`; // Add validation message
+                if (!tShirtSize) fieldErrors[`studentTShirtSize[${i}]`] = `T-Shirt size required for student ${i + 1}.`; // Add validation message
             }
         }
 
@@ -226,7 +263,18 @@ interface StudentFormEntry {
     firstName?: string;
     lastName?: string;
     dob?: string;
-    notes?: string;
+    gender?: string;
+    school?: string;
+    tShirtSize?: string;
+    cellPhone?: string;
+    email?: string;
+    gradeLevel?: string;
+    allergies?: string;
+    medications?: string;
+    specialNeeds?: string;
+    immunizationsUpToDate?: string;
+    immunizationNotes?: string;
+    // Removed notes, replaced by specific fields
 }
 
 export default function AdminNewFamilyPage() {
@@ -463,12 +511,90 @@ export default function AdminNewFamilyPage() {
                                     <Input id={`studentDob-${student.id}`} name="studentDob[]" type="date" required placeholder="YYYY-MM-DD" />
                                      {actionData?.fieldErrors?.[`studentDob[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentDob[${index}]`]}</p>}
                                 </div>
-                                <div className="md:col-span-2">
-                                    <Label htmlFor={`studentNotes-${student.id}`}>Notes (Optional)</Label>
-                                    <Textarea id={`studentNotes-${student.id}`} name="studentNotes[]" placeholder="Any relevant notes about the student (allergies, etc.)" />
-                                    {/* No error display needed for optional field unless specific validation added */}
+                                <div>
+                                    <Label htmlFor={`studentGender-${student.id}`}>Gender <span className="text-red-500">*</span></Label>
+                                    <Select name="studentGender[]" required>
+                                        <SelectTrigger id={`studentGender-${student.id}`}><SelectValue placeholder="Select gender" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Male">Male</SelectItem>
+                                            <SelectItem value="Female">Female</SelectItem>
+                                            <SelectItem value="Non-binary">Non-binary</SelectItem>
+                                            <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                                            <SelectItem value="Other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {actionData?.fieldErrors?.[`studentGender[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentGender[${index}]`]}</p>}
                                 </div>
-                                {/* Add other student fields here if needed */}
+                                <div>
+                                    <Label htmlFor={`studentSchool-${student.id}`}>School <span className="text-red-500">*</span></Label>
+                                    <Input id={`studentSchool-${student.id}`} name="studentSchool[]" required />
+                                    {actionData?.fieldErrors?.[`studentSchool[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentSchool[${index}]`]}</p>}
+                                </div>
+                                <div>
+                                    <Label htmlFor={`studentGradeLevel-${student.id}`}>Grade Level</Label>
+                                    <Input id={`studentGradeLevel-${student.id}`} name="studentGradeLevel[]" />
+                                    {/* Optional field, no error display unless specific validation added */}
+                                </div>
+                                <div>
+                                    <Label htmlFor={`studentTShirtSize-${student.id}`}>T-Shirt Size <span className="text-red-500">*</span></Label>
+                                    <Select name="studentTShirtSize[]" required>
+                                        <SelectTrigger id={`studentTShirtSize-${student.id}`}><SelectValue placeholder="Select size" /></SelectTrigger>
+                                        <SelectContent>
+                                            {/* Add appropriate sizes */}
+                                            <SelectItem value="Youth S">Youth S</SelectItem>
+                                            <SelectItem value="Youth M">Youth M</SelectItem>
+                                            <SelectItem value="Youth L">Youth L</SelectItem>
+                                            <SelectItem value="Youth XL">Youth XL</SelectItem>
+                                            <SelectItem value="Adult S">Adult S</SelectItem>
+                                            <SelectItem value="Adult M">Adult M</SelectItem>
+                                            <SelectItem value="Adult L">Adult L</SelectItem>
+                                            <SelectItem value="Adult XL">Adult XL</SelectItem>
+                                            <SelectItem value="Adult XXL">Adult XXL</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {actionData?.fieldErrors?.[`studentTShirtSize[${index}]`] && <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentTShirtSize[${index}]`]}</p>}
+                                </div>
+                                <div>
+                                    <Label htmlFor={`studentCellPhone-${student.id}`}>Cell Phone</Label>
+                                    <Input id={`studentCellPhone-${student.id}`} name="studentCellPhone[]" type="tel" />
+                                </div>
+                                <div>
+                                    <Label htmlFor={`studentEmail-${student.id}`}>Email</Label>
+                                    <Input id={`studentEmail-${student.id}`} name="studentEmail[]" type="email" />
+                                </div>
+                            </div>
+                            {/* Health Information Sub-section */}
+                            <div className="mt-4 pt-4 border-t border-dashed">
+                                <h4 className="text-md font-medium mb-3">Health Information (Optional)</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="md:col-span-2">
+                                        <Label htmlFor={`studentAllergies-${student.id}`}>Allergies</Label>
+                                        <Textarea id={`studentAllergies-${student.id}`} name="studentAllergies[]" placeholder="List any known allergies" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label htmlFor={`studentMedications-${student.id}`}>Medications</Label>
+                                        <Textarea id={`studentMedications-${student.id}`} name="studentMedications[]" placeholder="List any medications the student takes" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label htmlFor={`studentSpecialNeeds-${student.id}`}>Special Needs / Considerations</Label>
+                                        <Textarea id={`studentSpecialNeeds-${student.id}`} name="studentSpecialNeeds[]" placeholder="Any special needs, learning considerations, or other relevant info" />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor={`studentImmunizationsUpToDate-${student.id}`}>Immunizations Up-to-Date?</Label>
+                                        <Select name="studentImmunizationsUpToDate[]">
+                                            <SelectTrigger id={`studentImmunizationsUpToDate-${student.id}`}><SelectValue placeholder="Select status" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Yes">Yes</SelectItem>
+                                                <SelectItem value="No">No</SelectItem>
+                                                <SelectItem value="Unknown">Unknown</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label htmlFor={`studentImmunizationNotes-${student.id}`}>Immunization Notes</Label>
+                                        <Textarea id={`studentImmunizationNotes-${student.id}`} name="studentImmunizationNotes[]" placeholder="Any notes regarding immunizations" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     ))}
