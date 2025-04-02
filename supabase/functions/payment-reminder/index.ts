@@ -34,6 +34,13 @@ serve(async (req: Request) => {
         const supabaseAdmin: SupabaseClient<Database> = createClient(supabaseUrl, supabaseServiceKey);
         console.log("Supabase client created.");
 
+        // Check for SITE_URL needed for email links
+        const siteUrl = Deno.env.get('SITE_URL');
+        if (!siteUrl) {
+            throw new Error("Missing SITE_URL environment variable.");
+        }
+        console.log("SITE_URL verified.");
+
         // 4. Fetch all families with their students
         const { data: families, error: familiesError } = await supabaseAdmin
             .from('families')
@@ -93,10 +100,10 @@ serve(async (req: Request) => {
             <p>This is a reminder that the karate class payment is due or overdue for the following student(s):</p>                                                                                                      
             <ul>                                                                                                                                                                                                         
               ${studentsToExpire.map(s => `<li><strong>${s.name}</strong></li>`).join('')}                                                                                                                               
-            </ul>                                                                                                                                                                                                        
-            <p>Their current status is 'Expired'. Please visit the family portal to make a payment and ensure continued participation.</p>                                                                               
-            <p><a href="${Deno.env.get('SITE_URL')}/family/payment">Make Payment Now</a></p> {/* Use SITE_URL env var */}                                                                                                
-            <p>Thank you,<br/>Sensei Negin's Karate Class</p>                                                                                                                                                            
+            </ul>
+            <p>Their current status is 'Expired'. Please visit the family portal to make a payment and ensure continued participation.</p>
+            <p><a href="${siteUrl}/family/payment">Make Payment Now</a></p> {/* Use verified siteUrl variable */}
+            <p>Thank you,<br/>Sensei Negin's Karate Class</p>
           `;
 
                     const emailSent = await sendEmail({

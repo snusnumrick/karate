@@ -30,6 +30,13 @@ serve(async (req: Request) => {
         const supabaseAdmin: SupabaseClient<Database> = createClient(supabaseUrl, supabaseServiceKey);
         console.log("Supabase client created.");
 
+        // Check for SITE_URL needed for email links
+        const siteUrl = Deno.env.get('SITE_URL');
+        if (!siteUrl) {
+            throw new Error("Missing SITE_URL environment variable.");
+        }
+        console.log("SITE_URL verified.");
+
         // 4. Fetch all *required* waivers
         const { data: requiredWaivers, error: waiversError } = await supabaseAdmin
             .from('waivers')
@@ -117,10 +124,10 @@ serve(async (req: Request) => {
             <p>This is a friendly reminder to please sign the following required waiver(s) for participation in karate class:</p>                                                                                        
             <ul>                                                                                                                                                                                                         
               ${missingWaivers.map(w => `<li><strong>${w.title}</strong></li>`).join('')}                                                                                                                                
-            </ul>                                                                                                                                                                                                        
-            <p>You can sign these by logging into your family portal.</p>                                                                                                                                                
-            <p><a href="${Deno.env.get('SITE_URL')}/waivers">Sign Waivers Now</a></p> {/* Use SITE_URL env var */}                                                                                                       
-            <p>Thank you,<br/>Sensei Negin's Karate Class</p>                                                                                                                                                            
+            </ul>
+            <p>You can sign these by logging into your family portal.</p>
+            <p><a href="${siteUrl}/waivers">Sign Waivers Now</a></p> {/* Use verified siteUrl variable */}
+            <p>Thank you,<br/>Sensei Negin's Karate Class</p>
           `;
 
                     const emailSent = await sendEmail({
