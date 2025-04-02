@@ -155,8 +155,8 @@ serve(async (req: Request) => {
         });
 
     } catch (error) {
-        console.error("Error in Missing Waiver Reminder function:", error.message);
-        return new Response(JSON.stringify({ error: error.message }), {
+        console.error("Error in Missing Waiver Reminder function:", error instanceof Error ? error.message : String(error));
+        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         });
