@@ -40,7 +40,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 // Loader to fetch existing family data
-export async function loader({ params, request }: LoaderFunctionArgs) {
+export async function loader({ params}: LoaderFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
 
