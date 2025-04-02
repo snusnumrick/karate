@@ -4,7 +4,8 @@ const { json } = node; // Destructure only json
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node"; // Keep type imports separate
 // Import isRouteErrorResponse from @remix-run/react
 import { Link, useLoaderData, useParams, useRouteError, isRouteErrorResponse } from "@remix-run/react";
-import { getSupabaseServerClient } from "~/utils/supabase.server"; // Corrected import name
+// Import createClient directly
+import { createClient } from "@supabase/supabase-js";
 import { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
