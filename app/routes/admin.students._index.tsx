@@ -19,7 +19,6 @@ import {
 // Define types for loader data
 type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'>; // Omit removed column
 type FamilyName = Pick<Database['public']['Tables']['families']['Row'], 'name'> | null;
-type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Use BeltAwardRow
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 
 // Extend the student type to include eligibility and current belt rank

@@ -18,7 +18,7 @@
     // For example, if you need unstable APIs:
     // "unstable": true,
     // "lib": ["deno.window", "deno.unstable"] // Example if using unstable features
-  },
+  }
   // If you have import maps, specify them here:
   // "importMap": "./import_map.json"
 }

@@ -21,7 +21,6 @@ import { format } from 'date-fns';
 // Define types
 type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'>; // Omit removed column
 type FamilyRow = Database['public']['Tables']['families']['Row'];
-type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Use BeltAwardRow
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 
 // Extend student type to include family name and current belt
@@ -43,7 +42,7 @@ type ActionData = {
 };
 
 
-import {BELT_RANKS, beltColorMap} from "~/utils/constants";
+import {beltColorMap} from "~/utils/constants";
 
 
 export async function loader({ params }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
@@ -65,10 +64,7 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
     // Fetch student data and related family name using service role
     const { data: studentData, error } = await supabaseAdmin
         .from('students')
-        .select(`
-            *
-            families ( id, name )
-        `)
+        .select(`*, families ( id, name )`)
         .eq('id', studentId)
         .single();
 

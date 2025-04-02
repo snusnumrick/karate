@@ -1,6 +1,5 @@
 import type { Database } from '~/types/supabase';
 import type { Family, Guardian, Student, Payment, WaiverSignature, AttendanceRecord, Waiver } from '~/types/models';
-import {BELT_RANKS} from "~/utils/constants";
 import { PaymentStatus } from "~/types/models"; // Import the enum
 
 
