@@ -223,35 +223,35 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 gantt
     title Project Development Timeline
     dateFormat  YYYY-MM-DD
-    axisFormat %Y-%m-%d
     
     section Core Features
-    Authentication          :done, auth, 2024-03-01, 14d
-    Family Management       :done,    family, 2024-03-15, 21d
-    Family Portal           :done,    portal, 2024-03-29, 14d
-    Student Detail Page     :done,    student, after portal, 7d
-    Security Implementation :done,    sec, 2024-04-05, 14d
+    Authentication          :auth, 2024-03-01, 14d
+    Family Management       :family, after auth, 21d
+    Family Portal           :portal, 2024-03-29, 14d
+    Student Detail Page     :student, after portal, 7d
+    Security Implementation :sec, 2024-04-05, 14d
+    
     section Payments
-    Gateway Integration     :done,    pay, 2024-04-20, 21d
-    Transaction Tracking    :done,    pay_track, after pay, 14d
-    Dynamic Pricing Logic   :done,    pay_dynamic, after pay_track, 7d
-    Student Selection UI    :done,    pay_select, after pay_dynamic, 5d
-    Eligibility Display     :done,    pay_eligibility, after pay_select, 3d
+    Gateway Integration     :pay, 2024-04-20, 21d
+    Transaction Tracking    :pay_track, after pay, 14d
+    Dynamic Pricing Logic   :pay_dynamic, after pay_track, 7d
+    Student Selection UI    :pay_select, after pay_dynamic, 5d
+    Eligibility Display     :pay_eligibility, after pay_select, 3d
+    
     section User Management
-    Account Settings Link   :done,    acct_link, after pay_eligibility, 1d
-    Account Settings Page   :done,    acct_page, after acct_link, 7d
-    Student Edit/Delete     :done,    student_edit, after acct_page, 3d
-    Instructor Profile Page :done,    instructor, 2024-03-15, 7d    %% Assuming /about covers this
-    %% User Onboarding Flow (Handled by redirect in _layout.family._index.tsx): onboard, 2024-06-01, 0d
+    Account Settings Link   :acct_link, after pay_eligibility, 1d
+    Account Settings Page   :acct_page, after acct_link, 7d
+    Student Edit/Delete     :student_edit, after acct_page, 3d
+    Instructor Profile Page :instructor, 2024-03-15, 7d
+    
     section Reporting & Features
-    Attendance System (Basic):done,   attend_basic, 2024-05-25, 14d
-    Attendance Admin Filters:done,    attend_admin_filter, after attend_basic, 7d
-    Attendance Family View  :done,    attend_family_view, after attend_admin_filter, 3d
-    Attendance Reporting    :done,    attend_report, after attend_family_view, 7d %% Added admin report page
-    Belt Award Tracking     :done,    belt_award, after attend_report, 10d %% Admin CRUD & User View Implemented
-    Admin Pages (Missing Waivers, Pending Payments, New Family): done, admin_extra, after belt_award, 5d
-    Automated Notifications :done,    notify, after admin_extra, 14d %% Implemented absence, new waiver, scheduled payment/waiver reminders via Supabase Functions/Cron + Resend
-    %% Technical Debt Refactor (Button/Link structure was already correct): tech_debt, 2024-06-01, 0d
+    Attendance System       :attend_basic, 2024-05-25, 14d
+    Attendance Admin Filters:attend_admin_filter, after attend_basic, 7d
+    Attendance Family View  :attend_family_view, after attend_admin_filter, 3d
+    Attendance Reporting    :attend_report, after attend_family_view, 7d
+    Belt Award Tracking     :belt_award, after attend_report, 10d
+    Admin Pages             :admin_extra, after belt_award, 5d
+    Automated Notifications :notify, after admin_extra, 14d
 ```
 
 ### Technical Health
