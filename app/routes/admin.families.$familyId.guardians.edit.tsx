@@ -2,8 +2,9 @@ import invariant from "tiny-invariant";
 import { json, redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { Form, useLoaderData, useActionData, Link, useParams, useNavigation } from "@remix-run/react";
-import { createClient, type PostgrestSingleResponse } from "@supabase/supabase-js"; // Import PostgrestSingleResponse
-import { Database } from "~/types/supabase";
+// Import PostgrestFilterBuilder for explicit typing
+import { createClient, type PostgrestSingleResponse, type PostgrestFilterBuilder } from "@supabase/supabase-js";
+import { Database, Tables, TablesInsert, TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -101,8 +102,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Let TypeScript infer the type of the array elements (they are thenable builders)
-    const updates = [];
+    // Explicitly type the array elements as PostgrestFilterBuilder
+    // We need to specify the schema, table, and return type for the builder
+    type GuardianUpdateBuilder = PostgrestFilterBuilder<
+        Database["public"], // Schema
+        Tables<"guardians">, // Row type (not strictly needed for update, but good practice)
+        null // Expected result type after .then()
+    >;
+    const updates: GuardianUpdateBuilder[] = [];
     const fieldErrors: ActionData['fieldErrors'] = {};
 
     // Need a way to iterate through guardians submitted in the form.
@@ -153,10 +160,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
             fieldErrors[guardianId] = currentGuardianErrors;
         } else {
             // Type safety: firstName, lastName, etc., are confirmed non-null strings here due to the validation above.
-            const updatePayload: Database['public']['Tables']['guardians']['Update'] = {
-                first_name: firstName!,
-                last_name: lastName!,
-                relationship: relationship!,
+            // Use the imported TablesUpdate type for better clarity
+            const updatePayload: TablesUpdate<"guardians"> = {
+                first_name: firstName, // Non-null assertion (!) no longer needed due to validation check
+                last_name: lastName,
+                relationship: relationship,
                 cell_phone: cell_phone!,
                 email: email!,
                 home_phone: home_phone!,
