@@ -167,7 +167,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function FamilyDetailPage() {
     const {family} = useLoaderData<LoaderData>();
-    const params = useParams(); // Get params again for edit link if needed    const outlet = useOutlet(); // Check if a child route is being rendered
+    const params = useParams(); // Get params again for edit link if needed
+    const outlet = useOutlet(); // Check if a child route is being rendered
 
     return (
         <div className="space-y-6">
