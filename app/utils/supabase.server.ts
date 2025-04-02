@@ -22,13 +22,14 @@ export function getSupabaseServerClient(request: Request) : SupabaseServerClient
   const response = new Response();
   
   const supabaseUrl = process.env.SUPABASE_URL || '';
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
-  
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing Supabase environment variables');
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+    // Throw an error instead of just logging. This prevents proceeding with invalid config.
+    throw new Error('Missing required Supabase environment variables (URL, Anon Key, or Service Role Key). Check server configuration.');
   }
-  
+
   const supabaseServer = createServerClient<Database>(
     supabaseUrl,
     supabaseServiceKey,
@@ -53,8 +54,8 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing Supabase environment variables for admin check.');
-    return false; // Cannot perform check if env vars are missing
+    // Throw an error for missing configuration
+    throw new Error('Missing Supabase environment variables (URL or Service Role Key) required for admin check.');
   }
 
   // Create a temporary client instance with service role privileges
@@ -85,8 +86,8 @@ export async function createInitialPaymentRecord(
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing Supabase environment variables for payment record creation.');
-    return { data: null, error: 'Server configuration error for payment record creation.' };
+    // Throw an error for missing configuration
+    throw new Error('Missing Supabase environment variables (URL or Service Role Key) required for payment record creation.');
   }
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
@@ -223,8 +224,8 @@ export async function updatePaymentStatus(
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing Supabase environment variables for payment update.');
-    throw new Error('Server configuration error for payment update.');
+    // Throw an error for missing configuration
+    throw new Error('Missing Supabase environment variables (URL or Service Role Key) required for payment update.');
   }
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
