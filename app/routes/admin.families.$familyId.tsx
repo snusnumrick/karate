@@ -215,18 +215,45 @@ export default function FamilyDetailPage() {
                         </CardHeader>
                         <CardContent className="pt-4"> {/* Add padding top if needed */}
                             {family.guardians.length > 0 ? (
-                                <ul className="space-y-1"> {/* Reduced space-y from 2 to 1 */}
+                                <ul className="space-y-4"> {/* Changed space-y from 1 to 4 */}
                                     {family.guardians.map((guardian) => (
-                                        <li key={guardian.id} className="border-b pb-1 pt-1 last:border-b-0 text-sm"> {/* Reduced pb, added pt, smaller text */}
-                                            <p><strong>Name:</strong> {guardian.first_name} {guardian.last_name}</p>
-                                            <p><strong>Relationship:</strong> {guardian.relationship}</p> {/* Required field, no need for ?? 'N/A' */}
-                                            <p><strong>Email:</strong> {guardian.email}</p> {/* Required field */}
-                                            <p><strong>Cell Phone:</strong> {guardian.cell_phone}</p> {/* Required field */}
-                                            <p><strong>Home Phone:</strong> {guardian.home_phone}</p> {/* Required field */}
-                                            {guardian.work_phone && <p><strong>Work Phone:</strong> {guardian.work_phone}</p>}
-                                            {guardian.employer && <p><strong>Employer:</strong> {guardian.employer}</p>}
-                                            {guardian.employer_phone && <p><strong>Employer Phone:</strong> {guardian.employer_phone}</p>}
-                                            {guardian.employer_notes && <p><strong>Employer Notes:</strong> {guardian.employer_notes}</p>}
+                                        <li key={guardian.id} className="border p-4 rounded-md shadow-sm"> {/* Applied student list item classes */}
+                                            {/* Removed flex justify-between as there's no button here */}
+                                            <div>
+                                                <p className="font-semibold">{guardian.first_name} {guardian.last_name}</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                    <strong>Relationship:</strong> {guardian.relationship}
+                                                </p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                    <strong>Email:</strong> {guardian.email}
+                                                </p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                    <strong>Cell Phone:</strong> {guardian.cell_phone}
+                                                </p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                    <strong>Home Phone:</strong> {guardian.home_phone}
+                                                </p>
+                                                {guardian.work_phone && (
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        <strong>Work Phone:</strong> {guardian.work_phone}
+                                                    </p>
+                                                )}
+                                                {guardian.employer && (
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        <strong>Employer:</strong> {guardian.employer}
+                                                    </p>
+                                                )}
+                                                {guardian.employer_phone && (
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        <strong>Employer Phone:</strong> {guardian.employer_phone}
+                                                    </p>
+                                                )}
+                                                {guardian.employer_notes && (
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        <strong>Employer Notes:</strong> {guardian.employer_notes}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
