@@ -101,8 +101,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Use a more specific type for the Supabase update promise result
-    const updates: Promise<PostgrestSingleResponse<null>>[] = [];
+    // Let TypeScript infer the type of the array elements (they are thenable builders)
+    const updates = [];
     const fieldErrors: ActionData['fieldErrors'] = {};
 
     // Need a way to iterate through guardians submitted in the form.
