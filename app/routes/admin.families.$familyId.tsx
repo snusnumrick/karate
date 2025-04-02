@@ -4,7 +4,7 @@ import node from "@remix-run/node"; // Import default
 const { json, isRouteErrorResponse } = node; // Destructure needed functions
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node"; // Keep type imports separate
 import { Link, useLoaderData, useParams, useRouteError } from "@remix-run/react"; // Added useRouteError
-import { createServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient } from "~/utils/supabase.server"; // Corrected import name
 import { Database } from "~/types/supabase";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -36,9 +36,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   invariant(params.familyId, "Missing familyId parameter");
   const familyId = params.familyId;
 
-  const { supabaseClient: supabase, response } = createServerClient(request);
+  // Use the correct function and destructure the result
+  const { supabaseClient, response } = getSupabaseServerClient(request);
 
-  const { data: familyData, error: familyError } = await supabase
+  const { data: familyData, error: familyError } = await supabaseClient // Use the destructured client
     .from('families')
     .select(`
       *,
