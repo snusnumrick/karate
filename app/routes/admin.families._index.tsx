@@ -109,8 +109,8 @@ export default function FamiliesAdminPage() {
                   <TableCell>{family.primary_phone}</TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" asChild className="mr-2">
-                      {/* Link to a future detail/edit page */}
-                      <Link to={`/admin/families/${family.id}`}>View/Edit</Link>
+                      {/* Link to the family detail page */}
+                      <Link to={`/admin/families/${family.id}`}>View Details</Link>
                     </Button>
                     {/* Add delete button/logic later */}
                   </TableCell>
