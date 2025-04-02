@@ -40,10 +40,19 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const familyId = params.familyId;
   console.log(`[Loader] Fetching family details for ID: ${familyId}`); // Log the ID
 
-  // Use the correct function and destructure the server client
-  // const { supabaseServer, response } = getSupabaseServerClient(request);
-  const supabaseServer = createClient<Database>(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const response = new Response();
+  // Retrieve and validate environment variables first
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("[Loader] Missing Supabase URL or Service Role Key env vars.");
+    // Throw a standard Response for Remix loaders
+    throw new Response("Server configuration error: Missing Supabase credentials.", { status: 500 });
+  }
+
+  // Now TypeScript knows supabaseUrl and supabaseServiceKey are strings
+  const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+  const response = new Response(); // Create a response object for potential header setting
 
   console.log('[Loader] Supabase client initialized. Fetching data...'); // Log before query
   const { data: familyData, error: familyError } = await supabaseServer // Use the server client
