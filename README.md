@@ -180,10 +180,10 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
   - Mobile-optimized responsive layout
 - **SEO Enhancements:**
   - Default and page-specific Meta Tags (Title, Description, Open Graph) via Remix `meta` function.
-  - `robots.txt` to guide search engine crawlers (disallowing `/admin`, `/family`). Note: Sitemap URL within this file needs manual/build-time updates if `SITE_URL` changes.
-  - Dynamically generated `sitemap.xml` for improved content discovery (uses `SITE_URL` env var).
-  - JSON-LD Structured Data (Organization, Person, SportsActivityLocation) for richer search results (uses `SITE_URL` env var).
-  - Canonical URLs specified for key pages (uses `SITE_URL` env var).
+  - `robots.txt` to guide search engine crawlers (disallowing `/admin`, `/family`). Note: Sitemap URL within this file needs manual/build-time updates if `VITE_SITE_URL` changes.
+  - Dynamically generated `sitemap.xml` for improved content discovery (uses `VITE_SITE_URL` env var).
+  - JSON-LD Structured Data (Organization, Person, SportsActivityLocation) for richer search results (uses `VITE_SITE_URL` env var).
+  - Canonical URLs specified for key pages (uses `VITE_SITE_URL` env var).
   - Basic internal linking added between relevant pages (About, Contact, Classes).
   - Semantic HTML structure in layouts (nav, main, footer).
 
