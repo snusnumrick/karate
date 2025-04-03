@@ -26,8 +26,8 @@ function mergeMeta(
 export const meta: MetaFunction = (args: MetaArgs) => {
     // Find the parent 'root' route match
     const parentMatch = args.matches.find((match) => match.id === "root");
-    // Get the meta tags from the parent route function
-    const parentMeta = parentMatch?.meta ? parentMatch.meta(args) : [];
+    // Get the already computed meta tags from the parent route match
+    const parentMeta = parentMatch?.meta || [];
 
     // Define meta tags specific to this Index page
     const indexPageTitle = "Karate Classes - Sensei Negin";
