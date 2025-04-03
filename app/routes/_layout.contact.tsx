@@ -1,17 +1,46 @@
 import { siteConfig } from "~/config/site"; // Import site config
-import type { MetaFunction } from "@remix-run/node"; // Import MetaFunction
+// Import types needed for merging parent meta
+import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "Contact Us | Greenegin Karate" },
-    { name: "description", content: "Contact Sensei Negin for kids karate classes in Colwood. Find class schedules, location, phone number, and email address." },
+// Helper function to merge meta tags, giving precedence to child tags
+// (Same helper function as in about.tsx - could be extracted to a util file)
+function mergeMeta(
+    parentMeta: MetaDescriptor[],
+    childMeta: MetaDescriptor[]
+): MetaDescriptor[] {
+    const merged: Record<string, MetaDescriptor> = {};
+    const getKey = (tag: MetaDescriptor): string | null => {
+        if ('title' in tag) return 'title';
+        if ('name' in tag) return `name=${tag.name}`;
+        if ('property' in tag) return `property=${tag.property}`;
+        if ('tagName' in tag && tag.tagName === 'link' && tag.rel === 'canonical') return 'canonical';
+        if ('script:ld+json' in tag) return 'script:ld+json';
+        try { return JSON.stringify(tag); } catch { return null; }
+    };
+    parentMeta.forEach(tag => { const key = getKey(tag); if (key) merged[key] = tag; });
+    childMeta.forEach(tag => { const key = getKey(tag); if (key) merged[key] = tag; });
+    return Object.values(merged);
+}
+
+export const meta: MetaFunction = (args: MetaArgs) => {
+    // Find the parent 'root' route match
+    const parentMatch = args.matches.find((match) => match.id === "root");
+    // Get the meta tags from the parent route function
+    const parentMeta = parentMatch?.meta ? parentMatch.meta(args) : [];
+
+    // Define meta tags specific to this Contact page
+    const contactMeta: MetaDescriptor[] = [
+        { title: "Contact Us | Greenegin Karate" },
+        { name: "description", content: "Contact Sensei Negin for kids karate classes in Colwood. Find class schedules, location, phone number, and email address." },
     // You can override OG tags here too if needed
-    { property: "og:title", content: "Contact Us | Greenegin Karate" },
-    { property: "og:description", content: "Contact Sensei Negin for kids karate classes in Colwood." },
-    { property: "og:type", content: "website" }, // Add OG type (website is suitable for contact)
-    { property: "og:url", content: `${siteConfig.url}/contact` }, // Add OG URL
-    // Add SportsActivityLocation Schema
-    {
+        // Override specific OG tags
+        { property: "og:title", content: "Contact Us | Greenegin Karate" },
+        { property: "og:description", content: "Contact Sensei Negin for kids karate classes in Colwood." },
+        // { property: "og:type", content: "website" }, // Default 'website' is fine, no need to override unless different
+        { property: "og:url", content: `${siteConfig.url}/contact` }, // Specific OG URL for this page
+
+        // Add SportsActivityLocation Schema
+        {
         "script:ld+json": {
             "@context": "https://schema.org",
             "@type": "SportsActivityLocation",
@@ -45,10 +74,13 @@ export const meta: MetaFunction = () => {
                 "url": siteConfig.url // Use siteConfig
             }
         }
-    },
-    // Add canonical link for the Contact page
-    { tagName: "link", rel: "canonical", href: `${siteConfig.url}/contact` }, // Use siteConfig
-  ];
+        },
+        // Override canonical link for this page
+        { tagName: "link", rel: "canonical", href: `${siteConfig.url}/contact` },
+    ];
+
+    // Merge parent defaults with specific tags for this page
+    return mergeMeta(parentMeta, contactMeta);
 };
 
 

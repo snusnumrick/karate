@@ -1,18 +1,62 @@
-import {siteConfig} from "~/config/site"; // Import site config
 import { siteConfig } from "~/config/site"; // Import site config
-import type { MetaFunction } from "@remix-run/node"; // Import MetaFunction
+// Import types needed for merging parent meta
+import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "About Sensei Negin | Greenegin Karate" },
-    { name: "description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor with a Master's in Sport Psychology, teaching kids karate in Colwood." },
+// Helper function to merge meta tags, giving precedence to child tags
+function mergeMeta(
+    parentMeta: MetaDescriptor[],
+    childMeta: MetaDescriptor[]
+): MetaDescriptor[] {
+    const merged: Record<string, MetaDescriptor> = {};
+    const getKey = (tag: MetaDescriptor): string | null => {
+        if ('title' in tag) return 'title';
+        if ('name' in tag) return `name=${tag.name}`;
+        if ('property' in tag) return `property=${tag.property}`;
+        // Handle canonical link specifically
+        if ('tagName' in tag && tag.tagName === 'link' && tag.rel === 'canonical') return 'canonical';
+        // Key for JSON-LD script
+        if ('script:ld+json' in tag) return 'script:ld+json';
+        // Fallback for other potential tags (less common)
+        try {
+            return JSON.stringify(tag);
+        } catch {
+            return null; // Cannot stringify
+        }
+    };
+
+    parentMeta.forEach(tag => {
+        const key = getKey(tag);
+        if (key) merged[key] = tag;
+    });
+
+    childMeta.forEach(tag => {
+        const key = getKey(tag);
+        if (key) merged[key] = tag; // Child overwrites parent
+    });
+
+    return Object.values(merged);
+}
+
+
+export const meta: MetaFunction = (args: MetaArgs) => {
+    // Find the parent 'root' route match
+    const parentMatch = args.matches.find((match) => match.id === "root");
+    // Get the meta tags from the parent route function
+    const parentMeta = parentMatch?.meta ? parentMatch.meta(args) : [];
+
+    // Define meta tags specific to this About page
+    const aboutMeta: MetaDescriptor[] = [
+        { title: "About Sensei Negin | Greenegin Karate" },
+        { name: "description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor with a Master's in Sport Psychology, teaching kids karate in Colwood." },
     // You can override OG tags here too if needed
-    { property: "og:title", content: "About Sensei Negin | Greenegin Karate" },
-    { property: "og:description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor." },
-    { property: "og:type", content: "profile" }, // Add OG type (profile is suitable for an about page)
-    { property: "og:url", content: `${siteConfig.url}/about` }, // Add OG URL
-    // Add Person Schema for Sensei Negin
-    {
+        // Override specific OG tags
+        { property: "og:title", content: "About Sensei Negin | Greenegin Karate" },
+        { property: "og:description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor." },
+        { property: "og:type", content: "profile" }, // Specific OG type for this page
+        { property: "og:url", content: `${siteConfig.url}/about` }, // Specific OG URL for this page
+
+        // Add Person Schema for Sensei Negin
+        {
       "script:ld+json": {
         "@context": "https://schema.org",
         "@type": "Person",
@@ -32,10 +76,13 @@ export const meta: MetaFunction = () => {
             "url": siteConfig.url // Use siteConfig
         }
       }
-    },
-    // Add canonical link for the About page
-    { tagName: "link", rel: "canonical", href: `${siteConfig.url}/about` }, // Use siteConfig
-  ];
+        },
+        // Override canonical link for this page
+        { tagName: "link", rel: "canonical", href: `${siteConfig.url}/about` },
+    ];
+
+    // Merge parent defaults with specific tags for this page
+    return mergeMeta(parentMeta, aboutMeta);
 };
 
 export default function AboutPage() {
