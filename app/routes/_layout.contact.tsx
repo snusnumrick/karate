@@ -49,7 +49,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
             "address": {
                 "@type": "PostalAddress",
                 // Use specific address if known, otherwise use locality/region
-                // "streetAddress": siteConfig.location.address, // Use if this is the exact class address
+                "streetAddress": siteConfig.location.address, // Uncommented street address
                 "addressLocality": "Colwood", // Assuming Colwood
                 "addressRegion": "BC",
                 "addressCountry": "CA"

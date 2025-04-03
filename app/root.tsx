@@ -81,7 +81,7 @@ export function Layout() {
                     "address": {
                         "@type": "PostalAddress",
                         // Add address details if available and appropriate for Organization schema
-                        // "streetAddress": siteConfig.location.address,
+                        "streetAddress": siteConfig.location.address, // Uncommented street address
                         "addressLocality": "Colwood", // Assuming Colwood based on description
                         "addressRegion": "BC", // Assuming British Columbia
                         "addressCountry": "CA" // Assuming Canada
