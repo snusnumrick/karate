@@ -49,11 +49,11 @@ export const meta: MetaFunction = (args: MetaArgs) => {
             "description": `Kids Karate Classes (${siteConfig.classes.ageRange}) at ${siteConfig.location.address}.`,
             "address": {
                 "@type": "PostalAddress",
-                // Use specific address if known, otherwise use locality/region
-                "streetAddress": siteConfig.location.address, // Uncommented street address
-                "addressLocality": "Colwood", // Assuming Colwood
-                "addressRegion": "BC",
-                "addressCountry": "CA"
+                "streetAddress": siteConfig.location.address,
+                "addressLocality": siteConfig.location.locality, // Use siteConfig
+                "addressRegion": siteConfig.location.region, // Use siteConfig
+                "postalCode": siteConfig.location.postalCode, // Use siteConfig
+                "addressCountry": siteConfig.location.country // Use siteConfig
             },
             "telephone": siteConfig.contact.phone,
             "url": `${siteConfig.url}/contact`, // Use siteConfig

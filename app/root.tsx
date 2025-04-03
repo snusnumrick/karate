@@ -80,11 +80,11 @@ export function Layout() {
                     },
                     "address": {
                         "@type": "PostalAddress",
-                        // Add address details if available and appropriate for Organization schema
-                        "streetAddress": siteConfig.location.address, // Uncommented street address
-                        "addressLocality": "Colwood", // Assuming Colwood based on description
-                        "addressRegion": "BC", // Assuming British Columbia
-                        "addressCountry": "CA" // Assuming Canada
+                        "streetAddress": siteConfig.location.address,
+                        "addressLocality": siteConfig.location.locality, // Use siteConfig
+                        "addressRegion": siteConfig.location.region, // Use siteConfig
+                        "postalCode": siteConfig.location.postalCode, // Use siteConfig
+                        "addressCountry": siteConfig.location.country // Use siteConfig
                     },
                     "sameAs": [ // Add social media links
                         siteConfig.socials.instagram

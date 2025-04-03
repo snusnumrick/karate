@@ -8,6 +8,10 @@ export const siteConfig = {
     url: siteUrl, // Use the environment variable
     location: {
         address: "650 Allandale Rd Suite A101",
+        locality: "Colwood",
+        region: "BC",
+        postalCode: "V9B 0J8", // Add postal code
+        country: "CA",
         description: " our Colwood studio",
         // Add other location details if needed, e.g., map link
     },
