@@ -154,6 +154,41 @@ export default function Index() {
                 </div>
             </div>
 
+            {/* Our Studio Section */}
+            <div className="bg-white dark:bg-gray-800 py-16">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 className="text-3xl font-bold text-center text-green-600 dark:text-green-400 mb-12">
+                        Our Training Environment
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                        {/* Floor Info */}
+                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md">
+                            {/* Placeholder for a floor/safety icon */}
+                            {/* <div className="text-4xl text-green-600 dark:text-green-400 mb-4">👣</div> */}
+                            <h3 className="text-xl font-bold text-green-700 dark:text-green-300 mb-3">Engineered for Safety & Performance</h3>
+                            <p className="text-gray-600 dark:text-gray-300 mb-4">
+                                Our studio floors are designed to support various martial arts styles. Countless hours went into creating the 3 1/4" closed-cell subfloor, providing exceptional comfort and helping prevent injuries.
+                            </p>
+                            <p className="text-gray-600 dark:text-gray-300 italic">
+                                And stay tuned for news about our new tatami mats!
+                            </p>
+                        </div>
+                        {/* Ventilation Info */}
+                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md">
+                            {/* Placeholder for a ventilation/air icon */}
+                            {/* <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🌬️</div> */}
+                            <h3 className="text-xl font-bold text-green-700 dark:text-green-300 mb-3">Optimized Air Quality</h3>
+                            <p className="text-gray-600 dark:text-gray-300 mb-4">
+                                In a high-performance environment, air quality matters. Our space features CO2 sensors that regulate the ventilation system, ensuring maximum oxygen flow for peak performance and comfort during training.
+                            </p>
+                            <p className="text-gray-600 dark:text-gray-300">
+                                We're committed to matching the quality of our space with the excellence of our teaching. Come experience the difference!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Benefits Section */}
             <div className="bg-green-50 dark:bg-gray-700 py-16">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
