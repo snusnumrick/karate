@@ -1,16 +1,51 @@
-import type {MetaFunction} from "@remix-run/node";
-import {Link} from "@remix-run/react";
-import {siteConfig} from "~/config/site"; // Import site config
+// Import types needed for merging parent meta
+import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
+import { Link } from "@remix-run/react";
+import { siteConfig } from "~/config/site"; // Import site config
 
-export const meta: MetaFunction = () => {
-    return [
-        {title: "Karate Classes - Sensei Negin"},
-        {
-            name: "description",
-            content: `Discover the art of karate with Sensei Negin at ${siteConfig.location.address}. ` +
-                `Classes for children ages ${siteConfig.classes.ageRange} on ${siteConfig.classes.days}.`
-        },
+// Helper function to merge meta tags, giving precedence to child tags
+// (Same helper function as in about.tsx/contact.tsx - could be extracted to a util file)
+function mergeMeta(
+    parentMeta: MetaDescriptor[],
+    childMeta: MetaDescriptor[]
+): MetaDescriptor[] {
+    const merged: Record<string, MetaDescriptor> = {};
+    const getKey = (tag: MetaDescriptor): string | null => {
+        if ('title' in tag) return 'title';
+        if ('name' in tag) return `name=${tag.name}`;
+        if ('property' in tag) return `property=${tag.property}`;
+        if ('tagName' in tag && tag.tagName === 'link' && tag.rel === 'canonical') return 'canonical';
+        if ('script:ld+json' in tag) return 'script:ld+json';
+        try { return JSON.stringify(tag); } catch { return null; }
+    };
+    parentMeta.forEach(tag => { const key = getKey(tag); if (key) merged[key] = tag; });
+    childMeta.forEach(tag => { const key = getKey(tag); if (key) merged[key] = tag; });
+    return Object.values(merged);
+}
+
+export const meta: MetaFunction = (args: MetaArgs) => {
+    // Find the parent 'root' route match
+    const parentMatch = args.matches.find((match) => match.id === "root");
+    // Get the meta tags from the parent route function
+    const parentMeta = parentMatch?.meta ? parentMatch.meta(args) : [];
+
+    // Define meta tags specific to this Index page
+    const indexPageTitle = "Karate Classes - Sensei Negin";
+    const indexPageDescription = `Discover the art of karate with Sensei Negin at ${siteConfig.location.description}. Classes for children ages ${siteConfig.classes.ageRange} on ${siteConfig.classes.days}. Free trial available!`;
+
+    const indexMeta: MetaDescriptor[] = [
+        { title: indexPageTitle },
+        { name: "description", content: indexPageDescription },
+        // Override specific OG tags for the index page
+        { property: "og:title", content: indexPageTitle },
+        { property: "og:description", content: indexPageDescription },
+        // og:type="website" and og:url="/" will be inherited correctly from root defaults
+        // Override canonical link for the index page (which is the root URL)
+        { tagName: "link", rel: "canonical", href: siteConfig.url },
     ];
+
+    // Merge parent defaults with specific tags for this page
+    return mergeMeta(parentMeta, indexMeta);
 };
 
 export default function Index() {
