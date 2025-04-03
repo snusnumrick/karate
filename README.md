@@ -80,73 +80,120 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Payments**: Stripe or PayPal integration for robust payment processing.
 - **Deployment**: Cloud-based deployment solutions (e.g., Vercel or Netlify).
 
-## Setup Instructions
+## Customization Guide
 
-### Supabase Configuration
+- **Site Configuration:** Basic site details (name, instructor info, class schedule, location, pricing tiers) are managed in `app/config/site.ts`.
+- **Styling:** Uses Tailwind CSS and Shadcn UI components. Customize Tailwind configuration in `tailwind.config.ts` and component styles within `app/components/ui/`.
+- **Pricing Logic:** Payment tier calculation logic is within the payment route (`/family/payment` - *route needs confirmation*). Eligibility logic is in `app/utils/supabase.server.ts`.
+- **Email Templates:** Email content is generally defined within the server-side code that sends the email (e.g., routes, Supabase functions). Check `app/utils/email.server.ts` and `supabase/functions/`.
 
-#### Local Development:
-1. Create a Supabase project at https://supabase.com
-2. Enable Email auth provider in Authentication settings
-3. Create tables following the database schema from the code
-4. Get credentials:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+## Local Development Setup
 
-#### Vercel Deployment:
-1. Add environment variables in Vercel:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY` 
-   - `SUPABASE_SERVICE_ROLE_KEY`
+1.  **Clone Repository:**
+    ```bash
+    git clone <repository-url>
+    cd <repository-directory>
+    ```
+2.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
+3.  **Environment Variables:**
+    - Copy `.env.example` to `.env`.
+    - Fill in the required values for Supabase, Stripe (optional for local testing, required for payments), and Resend (for email sending).
+4.  **Supabase Setup:**
+    - Create a Supabase project at [supabase.com](https://supabase.com).
+    - In your Supabase project dashboard:
+        - Navigate to Authentication -> Providers and enable the "Email" provider. Disable "Confirm email" if you want easier local testing, but **ensure it's enabled for production**.
+        - Navigate to the SQL Editor and run the SQL commands necessary to create the database schema (refer to `app/types/supabase.ts` or existing migrations if available).
+    - Obtain your Supabase Project URL, Anon Key, and Service Role Key and add them to your `.env` file.
+5.  **Stripe Setup (Optional for Local):**
+    - Create a Stripe account at [stripe.com](https://stripe.com).
+    - Obtain your Publishable Key and Secret Key and add them to `.env`.
+    - For webhook testing locally, you might need the Stripe CLI. Set a webhook secret in `.env`.
+6.  **Resend Setup (Optional for Local):**
+    - Create a Resend account at [resend.com](https://resend.com).
+    - Obtain an API Key and add it to `.env`.
+    - Set the `FROM_EMAIL` in `.env` (e.g., `"Your Name <you@yourdomain.com>"`). You may need to verify your domain with Resend.
+7.  **Generate Supabase Types:**
+    ```bash
+    npx supabase login # If not already logged in
+    npx supabase link --project-ref YOUR_PROJECT_ID
+    npx supabase gen types typescript --linked --schema public > supabase/functions/_shared/database.types.ts
+    # Also recommended to copy to app/types for frontend use:
+    cp supabase/functions/_shared/database.types.ts app/types/database.types.ts
+    ```
+    *(Replace `YOUR_PROJECT_ID` with your actual Supabase project ID)*
+8.  **Run Development Server:**
+    ```bash
+    npm run dev
+    ```
 
-### Stripe Configuration
+## Deployment Guide (Vercel Example)
 
-#### Local Development:
-1. Create Stripe account at https://stripe.com
-2. Get API keys:
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_PUBLISHABLE_KEY`
-3. Set webhook secret in `.env`:
-   - `STRIPE_WEBHOOK_SECRET`
+1.  **Push to Git:** Ensure your code is pushed to a Git repository (GitHub, GitLab, Bitbucket).
+2.  **Import Project:** In Vercel, import the project from your Git repository.
+3.  **Configure Build Settings:** Vercel should automatically detect Remix. Default settings are usually sufficient.
+4.  **Environment Variables:** Add the following environment variables in the Vercel project settings:
+    - `SUPABASE_URL`
+    - `SUPABASE_ANON_KEY`
+    - `SUPABASE_SERVICE_ROLE_KEY`
+    - `STRIPE_SECRET_KEY`
+    - `STRIPE_PUBLISHABLE_KEY`
+    - `STRIPE_WEBHOOK_SECRET`
+    - `RESEND_API_KEY`
+    - `FROM_EMAIL`
+    - `VITE_SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com`)
+5.  **Deploy:** Trigger a deployment in Vercel.
+6.  **Stripe Webhook:**
+    - Once deployed, get your production URL.
+    - In your Stripe Dashboard, go to Developers -> Webhooks.
+    - Add an endpoint:
+        - URL: `https://<your-vercel-domain>/api/stripe/webhook` (*Confirm this is the correct webhook route*)
+        - Select the events your application listens for (e.g., `checkout.session.completed`, `payment_intent.succeeded`, etc.).
+        - Use the `STRIPE_WEBHOOK_SECRET` from your environment variables.
+7.  **Supabase Production Setup:**
+    - Ensure "Confirm email" is **enabled** in Supabase Auth settings for production.
+    - Set up database backups in Supabase.
+8.  **Resend Domain Verification:** Ensure your sending domain is verified in Resend for reliable email delivery.
+9.  **Supabase Edge Functions:** Deploy the functions to your *linked* Supabase project:
+    ```bash
+    # Ensure you are linked to the correct Supabase project
+    npx supabase functions deploy payment-reminder --no-verify-jwt
+    npx supabase functions deploy missing-waiver-reminder --no-verify-jwt
+    ```
+    - **Schedule Functions:** In the Supabase Dashboard (Database -> Edge Functions), set up Cron Jobs to trigger `payment-reminder` and `missing-waiver-reminder` periodically (e.g., daily).
 
-#### Vercel Deployment:
-1. Add Stripe environment variables:
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_PUBLISHABLE_KEY`
-   - `STRIPE_WEBHOOK_SECRET`
-2. Configure webhook endpoint in Stripe Dashboard to point to your Vercel domain
+## Developer Information
 
-### Resend Configuration
+- **Project Structure:**
+    - `app/routes/`: Contains all Remix route modules (UI and server logic).
+    - `app/components/`: Shared React components (UI elements, layout parts).
+    - `app/utils/`: Utility functions (database interactions, email sending, helpers).
+    - `app/config/`: Site-wide configuration.
+    - `app/types/`: TypeScript type definitions (including `database.types.ts`).
+    - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
+        - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
+- **UI:** Built with [Shadcn UI](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn-ui@latest add <component>` to add new components consistently.
+- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio.
+- **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.
+- **Environment Variables:** Managed via `.env` locally and platform environment variables in production (see Deployment). Use `.env.example` as a template.
+- **Email:** Uses Resend for transactional emails. See `app/utils/email.server.ts` and function-specific email logic.
 
-#### Local Development:
-1. Create account at https://resend.com
-2. Get API key:
-   - `RESEND_API_KEY`
-3. Set from email in `.env`:
-   - `FROM_EMAIL` (format: "Name <email@domain.com>")
-
-#### Vercel Deployment:
-1. Add Resend environment variables:
-   - `RESEND_API_KEY`
-   - `FROM_EMAIL`
-2. Verify sending domain in Resend dashboard
-
-### General Setup
-
-1. Clone repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Copy `.env.example` to `.env` and fill in values
-4. Generate Supabase types:
-   ```bash
-   npx supabase gen types typescript --project-id YOUR_PROJECT_ID --schema public > supabase/functions/_shared/database.types.ts
-   ```
-5. Deploy Supabase functions:
-   ```bash
-   npx supabase functions deploy payment-reminder --no-verify-jwt
-   npx supabase functions deploy missing-waiver-reminder --no-verify-jwt
+### Technical Health
+```json
+{
+  "Security": {
+    "CSP": "active",
+    "HSTS": "enabled",
+    "Auth": "Supabase Auth (JWT)"
+  },
+  "Monitoring": {
+    "ErrorLogging": "Basic Remix ErrorBoundary",
+    "PaymentTracking": "Via Stripe Dashboard / DB records"
+  }
+}
+```
 ## Current Status & Future Work
 
 The application includes the core features listed above. All major planned functionalities are implemented.
