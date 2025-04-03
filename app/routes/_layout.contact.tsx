@@ -8,6 +8,8 @@ export const meta: MetaFunction = () => {
     // You can override OG tags here too if needed
     { property: "og:title", content: "Contact Us | Greenegin Karate" },
     { property: "og:description", content: "Contact Sensei Negin for kids karate classes in Colwood." },
+    { property: "og:type", content: "website" }, // Add OG type (website is suitable for contact)
+    { property: "og:url", content: `${siteConfig.url}/contact` }, // Add OG URL
     // Add SportsActivityLocation Schema
     {
         "script:ld+json": {

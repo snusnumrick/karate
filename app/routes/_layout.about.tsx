@@ -9,6 +9,8 @@ export const meta: MetaFunction = () => {
     // You can override OG tags here too if needed
     { property: "og:title", content: "About Sensei Negin | Greenegin Karate" },
     { property: "og:description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor." },
+    { property: "og:type", content: "profile" }, // Add OG type (profile is suitable for an about page)
+    { property: "og:url", content: `${siteConfig.url}/about` }, // Add OG URL
     // Add Person Schema for Sensei Negin
     {
       "script:ld+json": {
