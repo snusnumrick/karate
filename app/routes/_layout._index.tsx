@@ -162,7 +162,7 @@ export default function Index() {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                         {/* Floor Info */}
-                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md">
+                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md flex flex-col h-full">
                             {/* Placeholder for a floor/safety icon */}
                             {/* <div className="text-4xl text-green-600 dark:text-green-400 mb-4">👣</div> */}
                             <h3 className="text-xl font-bold text-green-700 dark:text-green-300 mb-3">Engineered for Safety & Performance</h3>
@@ -174,7 +174,7 @@ export default function Index() {
                             </p>
                         </div>
                         {/* Ventilation Info */}
-                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md">
+                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md flex flex-col h-full">
                             {/* Placeholder for a ventilation/air icon */}
                             {/* <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🌬️</div> */}
                             <h3 className="text-xl font-bold text-green-700 dark:text-green-300 mb-3">Optimized Air Quality</h3>
