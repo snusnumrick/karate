@@ -45,7 +45,8 @@ export const meta: MetaFunction = (args: MetaArgs) => {
             "@context": "https://schema.org",
             "@type": "SportsActivityLocation",
             "name": "Greenegin Karate Class Location",
-            "description": `Kids Karate Classes (${siteConfig.classes.ageRange}) at Lighthouse Christian Academy.`,
+            // Use siteConfig.location.address in the description
+            "description": `Kids Karate Classes (${siteConfig.classes.ageRange}) at ${siteConfig.location.address}.`,
             "address": {
                 "@type": "PostalAddress",
                 // Use specific address if known, otherwise use locality/region
@@ -113,7 +114,8 @@ export default function ContactPage() {
                                     <span className="text-green-600 mr-3">📍</span>
                                     <div>
                                         <p className="font-medium">Location</p>
-                                        <p>Lighthouse Christian Academy</p>
+                                        {/* Use the address from siteConfig */}
+                                        <p>{siteConfig.location.address}</p>
                                     </div>
                                 </li>
                             </ul>

@@ -31,7 +31,8 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
     // Define meta tags specific to this Index page
     const indexPageTitle = "Karate Classes - Sensei Negin";
-    const indexPageDescription = `Discover the art of karate with Sensei Negin at ${siteConfig.location.description}. Classes for children ages ${siteConfig.classes.ageRange} on ${siteConfig.classes.days}. Free trial available!`;
+    // Use siteConfig.location.address for consistency in description
+    const indexPageDescription = `Discover the art of karate with Sensei Negin at ${siteConfig.location.address}. Classes for children ages ${siteConfig.classes.ageRange} on ${siteConfig.classes.days}. Free trial available!`;
 
     const indexMeta: MetaDescriptor[] = [
         { title: indexPageTitle },
@@ -99,7 +100,7 @@ export default function Index() {
                         <ul className="space-y-4 text-lg">
                             <li className="flex items-center">
                                 <span className="mr-2">📍</span>
-                                <span>{siteConfig.location.address}</span>
+                                <span>{siteConfig.location.address}</span> {/* Already using siteConfig here, good! */}
                             </li>
                             <li className="flex items-center">
                                 <span className="mr-2">🕕</span>
