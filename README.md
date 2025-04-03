@@ -7,55 +7,70 @@ Sensei Negin's classes (details managed in `app/config/site.ts`),
 incorporating efficient family-oriented registration, 
 achievement tracking, attendance monitoring, payment integration, and waiver management.
 
-## Website Functionality
+## Features
 
-### User-facing Features:
+### Core User Experience
+- **Public Pages:**
+    - Home Page: Introduction, class schedule, location (`app/config/site.ts`).
+    - Instructor Profile (`/about`): Bio for Sensei Negin.
+    - Contact Page (`/contact`).
+- **Authentication:** Secure user registration, login, email confirmation, and password management.
+- **Family Portal (`/family`):** Central dashboard for logged-in users.
+    - View associated family details.
+    - List registered students with links to individual pages.
+    - Manage family/guardian information and change password (`/family/account`).
+    - View student attendance history (`/family/attendance`).
+    - Track required waiver signature status.
+- **Student Management (Family View):**
+    - View detailed student information (`/family/student/:studentId`).
+    - Edit student details.
+    - *Note: Student deletion might be restricted to Admins.*
+- **Waiver Management:** Digitally sign required waivers (Liability, Code of Conduct, Photo/Video, Payment/Dress Code).
+- **Payments:**
+    - Secure payment processing (Stripe integration planned/configured).
+    - View payment history (Placeholder).
+    - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing).
+    - Student eligibility status ("Trial", "Active", "Expired") based on payment history (`app/utils/supabase.server.ts`).
 
-- Home Page:
+### Administrative Panel (`/admin`)
+- **Dashboard:** Overview statistics (Families, Students, Payments, Attendance, Waivers).
+- **Family Management:**
+    - View all families (`/admin/families`).
+    - Register new families (`/admin/families/new`).
+    - View/Edit family details, guardians, and associated students (`/admin/families/:familyId`).
+    - Edit guardian details (`/admin/families/:familyId/guardians/edit`).
+    - Add new students to a family (`/admin/families/:familyId/students/new`).
+- **Student Management:**
+    - View all students (`/admin/students`).
+    - View/Edit individual student details (`/admin/students/:studentId`).
+    - Manage student belt awards (promotions) (`/admin/student-belts/:studentId`).
+    - Delete students (available on family detail page `/admin/families/:familyId`).
+- **Attendance Tracking:**
+    - Record daily attendance (`/admin/attendance/record`).
+    - View attendance history with filtering (`/admin/attendance`).
+    - View attendance reports with rates (`/admin/attendance/report`).
+- **Waiver Management:**
+    - View/Edit waiver documents (`/admin/waivers`, `/admin/waivers/:waiverId`).
+    - Mark waivers as required, triggering notifications.
+    - View report of families/students with missing required waivers (`/admin/waivers/missing`).
+- **Payment Management:**
+    - Record manual payments (`/admin/payments/new`).
+    - View pending payments (e.g., from failed online transactions) (`/admin/payments/pending`).
+    - *Note: Full payment history/reporting might be a future enhancement.*
 
-    - Introduction to karate emphasizing personal growth and defense techniques.
-    - Class schedule and location details (see `app/config/site.ts`).
+### Automated Notifications
+- **Student Absence:** Email to family when student marked absent.
+- **Newly Required Waiver:** Email to families needing to sign a newly required waiver.
+- **Payment Reminder (Scheduled):** Supabase Edge Function (`payment-reminder`) emails families with 'Expired' student eligibility.
+- **Missing Waiver Reminder (Scheduled):** Supabase Edge Function (`missing-waiver-reminder`) emails families missing required signatures.
 
-- Instructor Profile:
-
-  - Comprehensive bio for Sensei Negin detailing certifications and achievements.
-
-- Registration and Family Management:
-
-    - Family-centric registration allowing multiple children per family.
-    - Secure login and family account management.
-    - Detailed input fields for family information, guardian(s), and student details.
-
-- Attendance and Achievement Tracking:
-
-    - Automated attendance tracking system.
-    - Real-time reporting to identify absentees.
-    - Achievement logging for each student to track progress and milestones.
-
-- Payment Integration:
-
-  - Linking parent payments directly to individual children, accommodating multiple children per family.
-  - Secure payment processing with transaction records for families.
-  - Pricing Structure: Free Trial, $49/1st mo, $100/2nd mo, $121/monthly ongoing (details in `app/config/site.ts`).
-  - **Dynamic Tier Calculation:** The payment tier for each student (1st Month, 2nd Month, Ongoing) is calculated dynamically on the payment page (`/family/payment`). It checks the count of past *successful* payments linked to the student via the `payments` and `payment_students` tables.
-    - 0 past payments -> 1st Month price
-    - 1 past payment -> 2nd Month price
-    - 2+ past payments -> Ongoing Monthly price
-    - This avoids storing a separate "tier" status in the database.
-  - **Eligibility Check:** Student eligibility ("Trial", "Active", "Expired") is determined based on the date of their *most recent* successful payment (within the last ~35 days) or if they have zero payment history ("Trial"). This logic is in `app/utils/supabase.server.ts` and displayed in the Family Portal and Admin panels.
-
-- Online Waivers and Policies:
-
-    - Digitally accessible and signable waivers including:
-      - Liability Release
-      - Code of Conduct
-      - Photo/Video consent
-      - Payment and Dress Code agreement
-
-### Administrative Features:
-- Secure and intuitive admin interface for managing families, students, attendance, payments, and waivers.
-- Detailed reporting tools for attendance, financials, and student achievements.
-- Notification system for attendance irregularities.
+### Technical & SEO
+- Built with Remix for SSR and performance.
+- Uses Supabase for backend (database, auth, edge functions).
+- UI components from Shadcn.
+- Mobile-optimized responsive design.
+- Production-ready security headers (CSP, HSTS).
+- SEO enhancements: Meta tags, `robots.txt`, dynamic `sitemap.xml`, JSON-LD structured data, canonical URLs.
 
 ## Technology Stack
 
