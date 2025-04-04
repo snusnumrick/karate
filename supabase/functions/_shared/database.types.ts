@@ -180,6 +180,99 @@ export type Database = {
           },
         ]
       }
+      one_on_one_session_usage: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          recorded_by: string | null
+          session_purchase_id: string
+          student_id: string
+          usage_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string | null
+          session_purchase_id: string
+          student_id: string
+          usage_date?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string | null
+          session_purchase_id?: string
+          student_id?: string
+          usage_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "one_on_one_session_usage_session_purchase_id_fkey"
+            columns: ["session_purchase_id"]
+            isOneToOne: false
+            referencedRelation: "one_on_one_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "one_on_one_session_usage_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      one_on_one_sessions: {
+        Row: {
+          created_at: string
+          family_id: string
+          id: string
+          payment_id: string
+          purchase_date: string
+          quantity_purchased: number
+          quantity_remaining: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          id?: string
+          payment_id: string
+          purchase_date?: string
+          quantity_purchased: number
+          quantity_remaining: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          id?: string
+          payment_id?: string
+          purchase_date?: string
+          quantity_purchased?: number
+          quantity_remaining?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "one_on_one_sessions_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "one_on_one_sessions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_students: {
         Row: {
           id: string
@@ -459,12 +552,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      family_one_on_one_balance: {
+        Row: {
+          family_id: string | null
+          total_remaining_sessions: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "one_on_one_sessions_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       count_successful_student_payments: {
         Args: {
           p_student_id: string
+        }
+        Returns: number
+      }
+      get_family_one_on_one_balance: {
+        Args: {
+          p_family_id: string
         }
         Returns: number
       }
