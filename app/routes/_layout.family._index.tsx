@@ -281,7 +281,7 @@ export default function FamilyPortal() {
                     <p className="text-gray-600 dark:text-gray-400 mb-4">Remaining Sessions</p>
                     {/* Optionally link to purchase more */}
                     <Button asChild variant="secondary">
-                        <Link to="/family/payment?option=one_on_one">Purchase More</Link>
+                        <Link to="/family/payment?option=one_on_one_session">Purchase More</Link> {/* Corrected option value */}
                     </Button>
                 </div>
 

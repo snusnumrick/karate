@@ -91,7 +91,7 @@ export default function PaymentHistoryPage() {
                                     ${(payment.amount / 100).toFixed(2)}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize"> {/* Added Type Cell */}
-                                    {payment.type?.replace(/_/g, ' ') ?? 'N/A'}
+                                    {payment.type?.replace(/_/g, ' ') ?? 'N/A'} {/* Use global replace */}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm">
                                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

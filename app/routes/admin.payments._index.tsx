@@ -133,7 +133,7 @@ export default function AdminPaymentsPage() {
                                     {/* Amount is stored in cents */}
                                     <TableCell className="text-right">${(payment.amount / 100).toFixed(2)}</TableCell>
                                     <TableCell className="capitalize"> {/* Added Type Cell */}
-                                        {payment.type?.replace('_', ' ') ?? 'N/A'}
+                                        {payment.type?.replace(/_/g, ' ') ?? 'N/A'} {/* Use global replace */}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant={getStatusVariant(payment.status as PaymentStatus)}

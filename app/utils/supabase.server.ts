@@ -252,7 +252,9 @@ export async function updatePaymentStatus(
     status: "pending" | "succeeded" | "failed", // Use the specific enum values
     receiptUrl?: string | null, // Stripe might provide this in the webhook event
     paymentMethod?: string | null, // Added parameter for payment method
-    paymentType?: Database['public']['Enums']['payment_type_enum'] | null
+    paymentType?: Database['public']['Enums']['payment_type_enum'] | null,
+    familyId?: string | null, // Added: Needed for 1:1 session insert
+    quantity?: number | null // Added: Needed for 1:1 session insert
 ) {
     // Use the standard client with service role for webhooks/server-side updates
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -281,7 +283,7 @@ export async function updatePaymentStatus(
         .from('payments')
         .update(updateData)
         .eq('stripe_session_id', stripeSessionId) // Find record using the Stripe session ID
-        .select()
+        .select('id, family_id') // Select id and family_id
         .single();
 
     if (error) {
@@ -293,7 +295,41 @@ export async function updatePaymentStatus(
         console.error(`No payment record found for Stripe session ${stripeSessionId} during update.`);
         throw new Error(`Payment record not found for session ${stripeSessionId}.`);
     }
+    if (!data) {
+        console.error(`No payment record found for Stripe session ${stripeSessionId} during update.`);
+        throw new Error(`Payment record not found for session ${stripeSessionId}.`);
+    }
 
-    console.log(`Payment status updated successfully for Stripe session ${stripeSessionId} to ${status}`);
-    return data;
+    console.log(`Payment status updated successfully for Stripe session ${stripeSessionId} to ${status}. Payment ID: ${data.id}`);
+
+    // If payment succeeded, type is 1:1, and quantity is provided, insert the session record
+    if (status === 'succeeded' && paymentType === 'one_on_one_session' && quantity && quantity > 0) {
+        // Use family_id from the updated payment record OR the passed familyId as fallback
+        const targetFamilyId = data.family_id || familyId;
+        if (!targetFamilyId) {
+            console.error(`Cannot record 1:1 session for payment ${data.id}: Missing family ID.`);
+            // Return the payment data but log the error - session not recorded
+            return data;
+        }
+
+        console.log(`Recording ${quantity} 1:1 session(s) for payment ${data.id}, family ${targetFamilyId}`);
+        const { error: sessionInsertError } = await supabaseAdmin
+            .from('one_on_one_sessions')
+            .insert({
+                payment_id: data.id,
+                family_id: targetFamilyId,
+                quantity_purchased: quantity,
+                quantity_remaining: quantity,
+            });
+
+        if (sessionInsertError) {
+            console.error(`Failed to insert 1:1 session record for payment ${data.id}:`, sessionInsertError.message);
+            // Critical: Payment succeeded but session credit failed. Needs monitoring/alerting.
+            // Throw an error here to indicate the webhook handler should potentially return an error status to Stripe.
+            throw new Error(`Payment ${data.id} succeeded, but failed to record 1:1 session credits: ${sessionInsertError.message}`);
+        }
+        console.log(`Successfully recorded 1:1 session purchase for payment ${data.id}.`);
+    }
+
+    return data; // Return the updated payment data
 }

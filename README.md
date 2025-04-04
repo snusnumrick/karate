@@ -29,7 +29,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Waiver Management:** Digitally sign required waivers (Liability, Code of Conduct, Photo/Video, Payment/Dress Code).
 - **Payments:**
     - Secure payment processing via Stripe.
-    - Multiple payment options: Monthly Group, Yearly Group, One-off 1:1 Sessions (purchased in quantities).
+    - Multiple payment options: Monthly Group, Yearly Group, 1-on-1 Sessions (purchased in quantities).
     - View payment history, including payment type (`/family/payment-history`).
     - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly).
     - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
@@ -57,7 +57,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - Mark waivers as required, triggering notifications.
     - View report of families/students with missing required waivers (`/admin/waivers/missing`).
 - **Payment Management:**
-    - Record manual payments, specifying type (Monthly, Yearly, 1:1 Session, Other) and quantity for 1:1 sessions (`/admin/payments/new`).
+    - Record manual payments, specifying type (Monthly, Yearly, 1-on-1 Session, Other) and quantity for 1:1 sessions (`/admin/payments/new`).
     - View payment history including payment type (`/admin/payments`).
     - View pending payments (e.g., from failed online transactions) (`/admin/payments/pending`).
     - *Note: Full payment history/reporting might be a future enhancement.*

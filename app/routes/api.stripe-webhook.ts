@@ -24,6 +24,7 @@ export async function action({request}: ActionFunctionArgs) {
             const session = event.data.object as Stripe.Checkout.Session & {
                 receipt_url?: string;
                 // Define expected metadata structure more precisely
+                // Define expected metadata structure more precisely
                 metadata: {
                     paymentId: string; // Our internal DB payment ID
                     paymentType: Database['public']['Enums']['payment_type_enum'];
