@@ -43,7 +43,7 @@ export async function loader({request}: LoaderFunctionArgs) {
 
 export default function PaymentSuccess() {
     const loaderData = useLoaderData<typeof loader>();
-    console.log('Loader data:', loaderData);
+    // console.log('Loader data:', loaderData); // Removed log
 
     // Handle case where loader returned an error
     if ('error' in loaderData) {
@@ -63,7 +63,7 @@ export default function PaymentSuccess() {
 
     // Now we know payment exists
     const {payment} = loaderData;
-    console.log('Payment:', payment);
+    // console.log('Payment:', payment); // Removed log
 
     // Type assertion for easier access, matching the updated enum
     const typedPayment = payment as {
@@ -78,7 +78,7 @@ export default function PaymentSuccess() {
         formatted_payment_date: string | null; // Add the formatted date field
         is_pending_update: boolean; // Add the pending flag field
     };
-    console.log('Typed Payment:', typedPayment);
+    // console.log('Typed Payment:', typedPayment); // Removed log
 
     return (
         <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">

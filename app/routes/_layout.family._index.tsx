@@ -156,9 +156,9 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
                 // Don't fail the whole page load, just default to 0
             } else if (balanceData) {
                 individualSessionBalance = balanceData.total_remaining_sessions ?? 0;
-                console.log(`[Family Loader] Fetched individualSessionBalance: ${individualSessionBalance}`); // Log successful fetch
+                // console.log(`[Family Loader] Fetched individualSessionBalance: ${individualSessionBalance}`); // Removed log
             } else {
-                 console.log(`[Family Loader] No balance data found for family ${profileData.family_id}, setting balance to 0.`);
+                 // console.log(`[Family Loader] No balance data found for family ${profileData.family_id}, setting balance to 0.`); // Removed log
                  individualSessionBalance = 0; // Explicitly set to 0 if no data found
             }
     } catch (error: unknown) { // Outer catch handles errors from waiver or balance fetching

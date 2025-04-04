@@ -300,12 +300,12 @@ export async function updatePaymentStatus(
         throw new Error(`Payment record not found for session ${stripeSessionId}.`);
     }
 
-    console.log(`Payment status updated successfully for Stripe session ${stripeSessionId} to ${status}. Payment ID: ${data.id}`);
+    // console.log(`Payment status updated successfully for Stripe session ${stripeSessionId} to ${status}. Payment ID: ${data.id}`); // Removed log
 
     // If payment succeeded, type is individual_session, and quantity is provided, insert the session record
-    console.log(`[updatePaymentStatus] Checking condition for individual session insert: status=${status}, paymentType=${paymentType}, quantity=${quantity}`);
+    // console.log(`[updatePaymentStatus] Checking condition for individual session insert: status=${status}, paymentType=${paymentType}, quantity=${quantity}`); // Removed log
     if (status === 'succeeded' && paymentType === 'individual_session' && quantity && quantity > 0) {
-        console.log(`[updatePaymentStatus] Condition met for individual session insert for payment ${data.id}.`);
+        // console.log(`[updatePaymentStatus] Condition met for individual session insert for payment ${data.id}.`); // Removed log
         // Use family_id from the updated payment record OR the passed familyId as fallback
         const targetFamilyId = data.family_id || familyId;
         if (!targetFamilyId) {
@@ -314,7 +314,7 @@ export async function updatePaymentStatus(
             return data;
         }
 
-        console.log(`Recording ${quantity} Individual Session(s) for payment ${data.id}, family ${targetFamilyId}`);
+        // console.log(`Recording ${quantity} Individual Session(s) for payment ${data.id}, family ${targetFamilyId}`); // Removed log
         const { error: sessionInsertError } = await supabaseAdmin
             .from('one_on_one_sessions') // Table name remains the same
             .insert({
@@ -330,9 +330,9 @@ export async function updatePaymentStatus(
             // Throw an error here to indicate the webhook handler should potentially return an error status to Stripe.
             throw new Error(`Payment ${data.id} succeeded, but failed to record Individual Session credits: ${sessionInsertError.message}`);
         }
-        console.log(`[updatePaymentStatus] Successfully recorded Individual Session purchase for payment ${data.id}.`);
+        console.log(`[updatePaymentStatus] Recorded Individual Session purchase for payment ${data.id}.`); // Simplified log
     } else if (status === 'succeeded' && paymentType === 'individual_session') {
-        // Log if the condition was almost met but quantity was missing/invalid
+        // Keep this warning for debugging potential future issues
         console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${paymentType}', Quantity='${quantity}'. Session record NOT created.`);
     }
 

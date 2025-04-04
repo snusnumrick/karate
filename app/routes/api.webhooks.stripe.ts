@@ -43,16 +43,16 @@ export async function action({request}: ActionFunctionArgs) {
     // Handle the checkout.session.completed event
     if (event.type === 'checkout.session.completed') {
         const sessionFromEvent = event.data.object as Stripe.Checkout.Session; // Session from webhook event
-        console.log(`Processing checkout.session.completed for session: ${sessionFromEvent.id}`);
+        // console.log(`Processing checkout.session.completed for session: ${sessionFromEvent.id}`); // Keep this one maybe? Or make less verbose. Let's remove for now.
 
         // --- Retrieve the session again with payment_intent expanded ---
         let session: Stripe.Checkout.Session;
         try {
-            console.log(`[Webhook ${request.url}] Retrieving session ${sessionFromEvent.id} with payment_intent expanded...`);
+            // console.log(`[Webhook ${request.url}] Retrieving session ${sessionFromEvent.id} with payment_intent expanded...`); // Removed log
             session = await stripe.checkout.sessions.retrieve(sessionFromEvent.id, {
                 expand: ['payment_intent'],
             });
-            console.log(`[Webhook ${request.url}] Full session object RETRIEVED with expansion.`);
+            // console.log(`[Webhook ${request.url}] Full session object RETRIEVED with expansion.`); // Removed log
         } catch (retrieveError) {
             console.error(`[Webhook ${request.url}] Failed to retrieve session ${sessionFromEvent.id} with expansion:`, retrieveError);
             return json({ error: "Failed to retrieve full session details." }, { status: 500 });
@@ -82,7 +82,7 @@ export async function action({request}: ActionFunctionArgs) {
              console.warn(`[Webhook ${request.url}] Metadata not found on expanded Payment Intent object. Payment Intent:`, paymentIntent);
              // Fallback to session metadata (unlikely to work)
              metadataSource = session.metadata;
-             console.log(`[Webhook ${request.url}] Falling back to session metadata:`, metadataSource);
+             // console.log(`[Webhook ${request.url}] Falling back to session metadata:`, metadataSource); // Removed log
         }
 
         if (!metadataSource) {
@@ -122,7 +122,7 @@ export async function action({request}: ActionFunctionArgs) {
                     }
                     // Payment method types are often on the Payment Intent
                     paymentMethod = paymentIntent.payment_method_types?.[0] ?? null; // Get the first type
-                    console.log(`Retrieved Payment Intent ${paymentIntent.id}, Receipt URL: ${receiptUrl}, Method: ${paymentMethod}`);
+                    // console.log(`Retrieved Payment Intent ${paymentIntent.id}, Receipt URL: ${receiptUrl}, Method: ${paymentMethod}`); // Removed log
                 } catch (piError) {
                     console.error(`Error retrieving Payment Intent ${session.payment_intent}: ${piError instanceof Error ? piError.message : String(piError)}`);
                     // Proceed without receipt/method if PI retrieval fails
@@ -145,7 +145,7 @@ export async function action({request}: ActionFunctionArgs) {
         // AND we have a valid payment type from metadata
         if (dbStatus === "succeeded" && paymentType && familyId) { // Also ensure familyId is present
             try {
-                console.log(`[Webhook ${request.url}] Calling updatePaymentStatus for Stripe session ${stripeSessionId} to ${dbStatus} with type ${paymentType}, quantity ${quantity}, familyId ${familyId}`);
+                // console.log(`[Webhook ${request.url}] Calling updatePaymentStatus for Stripe session ${stripeSessionId} to ${dbStatus} with type ${paymentType}, quantity ${quantity}, familyId ${familyId}`); // Removed log
                 // Pass paymentType, familyId, and quantity to the updated function
                 await updatePaymentStatus(
                     stripeSessionId,
@@ -156,13 +156,14 @@ export async function action({request}: ActionFunctionArgs) {
                     familyId, // Pass familyId
                     quantity  // Pass quantity (will be null if not applicable or parsing failed)
                 );
-                console.log(`[Webhook ${request.url}] Successfully updated payment status and potentially session balance for Stripe session ${stripeSessionId}`);
+                console.log(`[Webhook ${request.url}] updatePaymentStatus completed for Stripe session ${stripeSessionId}`); // Simplified log
             } catch (updateError) {
                 console.error(`[Webhook ${request.url}] Failed to update payment status/session balance for session ${stripeSessionId}: ${updateError instanceof Error ? updateError.message : updateError}`);
                 // Return 500 so Stripe retries the webhook
                 return json({error: "Database update failed."}, {status: 500});
             }
         } else {
+            // Keep this log for cases where update is skipped
             console.log(`[Webhook ${request.url}] No database update performed for session ${stripeSessionId}. Conditions: dbStatus='${dbStatus}', paymentType='${paymentType}', familyId='${familyId}'.`);
         }
 

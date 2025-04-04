@@ -82,10 +82,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
     try {
         // --- Construct Line Items & Calculate Total ---
-        console.log(`[Checkout Action] Processing paymentOption received: '${paymentOption}'`); // <-- Add this log
+        // console.log(`[Checkout Action] Processing paymentOption received: '${paymentOption}'`); // Removed log
         if (paymentOption === 'individual') {
             paymentType = 'individual_session';
-            console.log(`[Checkout Action] Individual session selected. Price ID from form: ${priceIdFromForm}, Quantity from form: ${quantityFromForm}`);
+            // console.log(`[Checkout Action] Individual session selected. Price ID from form: ${priceIdFromForm}, Quantity from form: ${quantityFromForm}`); // Removed log
             const quantity = parseInt(quantityFromForm!, 10);
             if (isNaN(quantity) || quantity <= 0) {
                 console.error(`[Checkout Action] Invalid quantity parsed: ${quantity}`);
@@ -100,15 +100,15 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                 quantity: quantity,
             });
             // Fetch price amount from Stripe to calculate total accurately
-            console.log(`[Checkout Action] Retrieving Stripe price object for ID: ${priceIdFromForm}`);
+            // console.log(`[Checkout Action] Retrieving Stripe price object for ID: ${priceIdFromForm}`); // Removed log
             const priceObject = await stripe.prices.retrieve(priceIdFromForm);
-            console.log(`[Checkout Action] Stripe price object retrieved:`, priceObject); // Log the whole object
+            // console.log(`[Checkout Action] Stripe price object retrieved:`, priceObject); // Removed log
             if (!priceObject || typeof priceObject.unit_amount !== 'number') {
                  console.error(`[Checkout Action] Invalid price object or unit_amount missing/invalid for price ID ${priceIdFromForm}. Unit amount: ${priceObject?.unit_amount}`);
                 throw new Error(`Could not retrieve valid price details for ${priceIdFromForm}`);
             }
             totalAmountInCents = priceObject.unit_amount * quantity;
-            console.log(`[Checkout Action] Calculated totalAmountInCents for individual session: ${totalAmountInCents}`);
+            // console.log(`[Checkout Action] Calculated totalAmountInCents for individual session: ${totalAmountInCents}`); // Removed log
 
         } else if (paymentOption === 'yearly') {
             paymentType = 'yearly_group';
@@ -144,7 +144,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             }
         }
 
-        console.log(`[Checkout Action] Before final check - line_items count: ${line_items.length}, totalAmountInCents: ${totalAmountInCents}`);
+        // console.log(`[Checkout Action] Before final check - line_items count: ${line_items.length}, totalAmountInCents: ${totalAmountInCents}`); // Removed log
         if (line_items.length === 0 || totalAmountInCents <= 0) {
              console.error(`[Checkout Action] Failing validation: line_items.length=${line_items.length}, totalAmountInCents=${totalAmountInCents}`);
             return json({error: "Calculated payment amount is invalid or no items selected."}, {status: 400});
@@ -199,8 +199,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             // customer_email: userEmail,
         });
 
-        // Log the metadata returned by Stripe AFTER session creation
-        console.log(`[Checkout Action] Metadata on session object returned by Stripe:`, session.metadata);
+        // console.log(`[Checkout Action] Metadata on session object returned by Stripe:`, session.metadata); // Removed log
 
         if (!session.id) {
             throw new Error('Stripe session creation failed: Missing session ID.');
