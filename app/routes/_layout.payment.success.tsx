@@ -2,6 +2,7 @@ import type {LoaderFunctionArgs} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {Link, useLoaderData} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {format} from 'date-fns'; // Import format function
 
 export async function loader({request}: LoaderFunctionArgs) {
     const url = new URL(request.url);
@@ -27,7 +28,15 @@ export async function loader({request}: LoaderFunctionArgs) {
         return json({error: "Payment not found"}, {status: 404});
     }
 
-    return json({payment});
+    // Format the date in the loader for consistency
+    const formattedDate = payment.payment_date ? format(new Date(payment.payment_date), 'PPP') : null; // Use 'PPP' for readable format like 'MMM d, yyyy'
+
+    return json({
+        payment: {
+            ...payment,
+            formatted_payment_date: formattedDate // Add the formatted date string
+        }
+    });
 }
 
 export default function PaymentSuccess() {
@@ -64,6 +73,7 @@ export default function PaymentSuccess() {
         status: "pending" | "succeeded" | "failed";
         family: { name: string } | null;
         receipt_url?: string | null;
+        formatted_payment_date: string | null; // Add the formatted date field
     };
     console.log('Typed Payment:', typedPayment);
 
@@ -92,7 +102,7 @@ export default function PaymentSuccess() {
                     </p>
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                         <span
-                            className="font-semibold">Date:</span> {typedPayment.payment_date ? new Date(typedPayment.payment_date).toLocaleDateString() : 'Processing...'}
+                            className="font-semibold">Date:</span> {typedPayment.formatted_payment_date ?? 'Processing...'} {/* Use pre-formatted date */}
                     </p>
                 </div>
 
