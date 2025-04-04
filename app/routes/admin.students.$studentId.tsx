@@ -387,18 +387,7 @@ export default function AdminStudentDetailPage() {
                     <AlertDescription>{actionData.message}</AlertDescription>
                 </Alert>
             )}
-            {/* Success message for Record Usage */}
-            {actionData?.intent === 'recordUsage' && actionData?.success && actionData.message && (
-                 <Alert variant="default" className="mb-4 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
-                    <AlertTitle>Success</AlertTitle>
-                    <AlertDescription>
-                        {actionData.message}
-                        {actionData.newBalance !== null && actionData.newBalance !== undefined && (
-                            ` Remaining family balance: ${actionData.newBalance}.`
-                        )}
-                    </AlertDescription>
-                </Alert>
-            )}
+            {/* Success message for Record Usage - MOVED BELOW */}
 
             {isEditing ? (
                 // --- Edit Form ---
@@ -618,6 +607,18 @@ export default function AdminStudentDetailPage() {
 
                     {/* Individual Session Usage Recording Section */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mt-6">
+                        {/* Success message for Record Usage - MOVED HERE */}
+                        {actionData?.intent === 'recordUsage' && actionData?.success && actionData.message && (
+                             <Alert variant="default" className="mb-4 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
+                                <AlertTitle>Success</AlertTitle>
+                                <AlertDescription>
+                                    {actionData.message}
+                                    {actionData.newBalance !== null && actionData.newBalance !== undefined && (
+                                        ` Remaining family balance: ${actionData.newBalance}.`
+                                    )}
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         <h2 className="text-xl font-semibold mb-4 border-b pb-2">Record Individual Session Usage</h2>
                         {student.familyIndividualSessionBalance > 0 ? ( // Use renamed field
                             <Form method="post" id="record-usage-form" className="space-y-4"> {/* Add form ID */}
