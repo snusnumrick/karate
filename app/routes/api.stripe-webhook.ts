@@ -36,6 +36,7 @@ export async function action({request}: ActionFunctionArgs) {
                 console.log('[Webhook] Full session object RETRIEVED with expansion:', JSON.stringify(session, null, 2));
             } catch (retrieveError) {
                 console.error(`[Webhook] Failed to retrieve session ${sessionFromEvent.id} with expansion:`, retrieveError);
+                // It's crucial to return here if retrieval fails
                 return json({ error: "Failed to retrieve full session details." }, { status: 500 });
             }
 
@@ -53,6 +54,8 @@ export async function action({request}: ActionFunctionArgs) {
 
             if (paymentIntent && paymentIntent.metadata) {
                  console.log('[Webhook] Found metadata on expanded Payment Intent object.');
+                 // Log the actual metadata found
+                 console.log('[Webhook] payment_intent.metadata content:', JSON.stringify(paymentIntent.metadata, null, 2));
                  metadataSource = paymentIntent.metadata;
             } else {
                  console.warn(`[Webhook] Metadata not found on expanded Payment Intent object. Payment Intent:`, paymentIntent);

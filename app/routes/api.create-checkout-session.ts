@@ -173,6 +173,16 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         const successUrl = process.env.STRIPE_SUCCESS_URL || new URL('/payment/success', requestUrl.origin).toString();
         const cancelUrl = process.env.STRIPE_CANCEL_URL || new URL('/family/payment', requestUrl.origin).toString(); // Return to payment page on cancel
 
+        // Build metadata object explicitly
+        const paymentIntentMetadata: { [key: string]: string } = {
+            paymentId: supabasePaymentId,
+            paymentType: paymentType,
+            familyId: familyId,
+        };
+        if (paymentType === 'individual_session' && quantityFromForm) {
+            paymentIntentMetadata.quantity = quantityFromForm;
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: line_items, // Use the dynamically constructed line items
@@ -183,14 +193,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             // --- CRITICAL METADATA --- moved to payment_intent_data
             // metadata: { ... } // Removed from top level
             payment_intent_data: {
-                metadata: {
-                    paymentId: supabasePaymentId, // Our internal DB payment ID
-                    paymentType: paymentType,     // The type ('monthly_group', 'yearly_group', 'individual_session')
-                    familyId: familyId,           // Needed for individual session recording in webhook
-                    // Add quantity only if it's an individual session payment
-                    ...(paymentType === 'individual_session' && quantityFromForm && { quantity: quantityFromForm }),
-                    // studentIds: studentIds.join(','), // Avoid if too long, paymentId is key
-                }
+                metadata: paymentIntentMetadata // Use the constructed object
             }
             // TODO: Consider adding customer_email if available from user session/profile
             // customer_email: userEmail,
