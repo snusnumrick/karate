@@ -265,8 +265,7 @@ export default function FamilyPortal() {
                         <p className="text-gray-600 dark:text-gray-400">No students registered yet.</p>
                     )}
                     {/* Link to the new dedicated page for adding a student to the current family */}
-                    {/* Removed asChild for testing */}
-                    <Button className="mt-4">
+                    <Button asChild className="mt-4">
                         <Link to="/family/add-student">Add Student</Link>
                     </Button>
                 </div>
@@ -277,8 +276,7 @@ export default function FamilyPortal() {
                     <p className="text-3xl font-bold mb-2">{individualSessionBalance ?? 0}</p>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">Remaining Sessions</p>
                     {/* Optionally link to purchase more */}
-                    {/* Removed asChild for testing */}
-                    <Button variant="secondary">
+                    <Button asChild variant="secondary">
                         <Link to="/family/payment?option=individual_session">Purchase More</Link> {/* Corrected option value */}
                     </Button>
                 </div>
@@ -294,8 +292,7 @@ export default function FamilyPortal() {
                             waivers.</p>
                     )}
                     {/* Use asChild prop for correct Button/Link integration */}
-                    {/* Removed asChild for testing */}
-                    <Button className="mt-4">
+                    <Button asChild className="mt-4">
                         <Link to="/waivers">View/Sign Waivers</Link>
                     </Button>
                 </div>
@@ -310,8 +307,7 @@ export default function FamilyPortal() {
                         <p className="text-gray-600 dark:text-gray-400 mb-4">Proceed to make a payment for class
                             fees.</p>
                         {family.students && family.students.length > 0 ? (
-                            /* Removed asChild for testing */
-                            <Button>
+                            <Button asChild>
                                 <Link to="/family/payment">Make Payment</Link>
                             </Button>
                         ) : (
@@ -357,8 +353,7 @@ export default function FamilyPortal() {
                                 )}
                                 {/* Link to full history page */}
                                 <div className="pt-2">
-                                    {/* Removed asChild as a test for the SSR error */}
-                                    <Button variant="link" className="p-0 h-auto text-sm">
+                                    <Button variant="link" asChild className="p-0 h-auto text-sm">
                                         <Link to="/family/payment-history">View Full Payment History</Link>
                                     </Button>
                                 </div>
@@ -374,8 +369,7 @@ export default function FamilyPortal() {
                     <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">Update your family information, guardian
                         details, and account preferences.</p>
-                    {/* Removed asChild for testing */}
-                    <Button className="mt-4">
+                    <Button asChild className="mt-4">
                         <Link to="/family/account">Manage Account</Link>
                     </Button>
                 </div>
