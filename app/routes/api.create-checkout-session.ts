@@ -180,14 +180,17 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: cancelUrl,
             // client_reference_id: supabasePaymentId, // Optional: Supabase ID here if needed
-            // --- CRITICAL METADATA ---
-            metadata: {
-                paymentId: supabasePaymentId, // Our internal DB payment ID
-                paymentType: paymentType,     // The type ('monthly_group', 'yearly_group', 'individual_session')
-                familyId: familyId,           // Needed for individual session recording in webhook
-                // Add quantity only if it's an individual session payment
-                ...(paymentType === 'individual_session' && quantityFromForm && { quantity: quantityFromForm }),
-                // studentIds: studentIds.join(','), // Avoid if too long, paymentId is key
+            // --- CRITICAL METADATA --- moved to payment_intent_data
+            // metadata: { ... } // Removed from top level
+            payment_intent_data: {
+                metadata: {
+                    paymentId: supabasePaymentId, // Our internal DB payment ID
+                    paymentType: paymentType,     // The type ('monthly_group', 'yearly_group', 'individual_session')
+                    familyId: familyId,           // Needed for individual session recording in webhook
+                    // Add quantity only if it's an individual session payment
+                    ...(paymentType === 'individual_session' && quantityFromForm && { quantity: quantityFromForm }),
+                    // studentIds: studentIds.join(','), // Avoid if too long, paymentId is key
+                }
             }
             // TODO: Consider adding customer_email if available from user session/profile
             // customer_email: userEmail,
