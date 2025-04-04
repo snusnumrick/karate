@@ -328,10 +328,8 @@ export default function FamilyPaymentPage() {
             setClientError("Payment system is not ready. Please wait a moment or refresh.");
             return;
         }
-        if (selectedStudentIds.size === 0) {
-            setClientError("Please select at least one student to pay for.");
-            return;
-        }
+        // Removed the unconditional student selection check here
+
         const calculatedTotal = calculateTotal();
         // Enforce positive total for all options
         if (calculatedTotal <= 0) {
@@ -339,12 +337,14 @@ export default function FamilyPaymentPage() {
             return;
         }
         // Specific checks based on option
+        // Check student selection ONLY for monthly/yearly
         if ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) {
             setClientError("Please select at least one student for group class payments.");
             return;
         }
-        if (paymentOption === 'one_on_one' && oneOnOneQuantity <= 0) {
-            setClientError("Please select a valid quantity for 1:1 sessions.");
+        // Check quantity ONLY for individual sessions (using correct option value)
+        if (paymentOption === 'individual' && oneOnOneQuantity <= 0) {
+            setClientError("Please select a valid quantity for Individual Sessions.");
             return;
         }
 
