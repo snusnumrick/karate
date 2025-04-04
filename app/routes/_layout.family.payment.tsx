@@ -251,8 +251,8 @@ export default function FamilyPaymentPage() {
                     total += amount * 100; // Add amount in cents
                 }
             });
-        } else if (paymentOption === 'one_on_one') {
-            total = siteConfig.pricing.oneOnOneSession * oneOnOneQuantity * 100; // Use 1:1 price * quantity
+        } else if (paymentOption === 'individual') { // Corrected check
+            total = siteConfig.pricing.oneOnOneSession * oneOnOneQuantity * 100; // Use individual price * quantity
         }
         return total;
     };
