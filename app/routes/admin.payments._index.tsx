@@ -113,6 +113,7 @@ export default function AdminPaymentsPage() {
                                 <TableHead>Date</TableHead>
                                 <TableHead>Family</TableHead>
                                 <TableHead className="text-right">Amount</TableHead>
+                                <TableHead>Type</TableHead> {/* Added Type Header */}
                                 <TableHead>Status</TableHead>
                                 <TableHead>Method</TableHead>
                                 <TableHead>Actions</TableHead>
@@ -128,8 +129,11 @@ export default function AdminPaymentsPage() {
                                             {payment.familyName}
                                         </Link>
                                     </TableCell>
-                                    {/* Divide by 100 to convert cents to dollars */}
+                                    {/* Amount is stored in cents */}
                                     <TableCell className="text-right">${(payment.amount / 100).toFixed(2)}</TableCell>
+                                    <TableCell className="capitalize"> {/* Added Type Cell */}
+                                        {payment.type?.replace('_', ' ') ?? 'N/A'}
+                                    </TableCell>
                                     <TableCell>
                                         <Badge variant={getStatusVariant(payment.status as PaymentStatus)}
                                                className="capitalize">

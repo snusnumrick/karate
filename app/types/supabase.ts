@@ -210,6 +210,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "one_on_one_session_usage_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "one_on_one_session_usage_session_purchase_id_fkey"
             columns: ["session_purchase_id"]
             isOneToOne: false
@@ -424,6 +431,13 @@ export type Database = {
             referencedRelation: "families"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       students: {
@@ -494,29 +508,46 @@ export type Database = {
       waiver_signatures: {
         Row: {
           agreement_version: string
+          family_id: string
           id: string
-          signature_data: string
+          signature_data: string | null
           signed_at: string
-          user_id: string
+          signed_by_user_id: string
           waiver_id: string
         }
         Insert: {
           agreement_version: string
+          family_id: string
           id?: string
-          signature_data: string
+          signature_data?: string | null
           signed_at?: string
-          user_id: string
+          signed_by_user_id: string
           waiver_id: string
         }
         Update: {
           agreement_version?: string
+          family_id?: string
           id?: string
-          signature_data?: string
+          signature_data?: string | null
           signed_at?: string
-          user_id?: string
+          signed_by_user_id?: string
           waiver_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "waiver_signatures_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiver_signatures_signed_by_user_id_fkey"
+            columns: ["signed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "waiver_signatures_waiver_id_fkey"
             columns: ["waiver_id"]
@@ -533,6 +564,7 @@ export type Database = {
           id: string
           required: boolean
           title: string
+          version: string
         }
         Insert: {
           content: string
@@ -540,6 +572,7 @@ export type Database = {
           id?: string
           required?: boolean
           title: string
+          version?: string
         }
         Update: {
           content?: string
@@ -547,6 +580,7 @@ export type Database = {
           id?: string
           required?: boolean
           title?: string
+          version?: string
         }
         Relationships: []
       }

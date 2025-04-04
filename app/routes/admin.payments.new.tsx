@@ -27,7 +27,8 @@ type ActionData = {
         paymentDate?: string;
         paymentMethod?: string;
         status?: string;
-        paymentType?: string; // Added for payment type validation
+        paymentType?: string;
+        quantity?: string; // Added for 1:1 session quantity
     };
 };
 
@@ -89,9 +90,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const amountStr = formData.get("amount") as string;
     const paymentDate = formData.get("paymentDate") as string || getTodayDateString();
     const paymentMethod = formData.get("paymentMethod") as string;
-    const status = formData.get("status") as string || 'succeeded'; // Default to succeeded (was completed)
-    const notes = formData.get("notes") as string | null; // Get notes
-    const paymentType = formData.get("paymentType") as string || 'monthly_group'; // Get payment type, default monthly
+    const status = formData.get("status") as string || 'succeeded'; // Default to succeeded
+    const notes = formData.get("notes") as string | null;
+    const paymentType = formData.get("paymentType") as string || 'monthly_group';
+    const quantityStr = formData.get("quantity") as string; // Get quantity for 1:1
 
     // --- Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
@@ -108,6 +110,14 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     // Use the actual enum values for type validation
     if (!paymentType || !['monthly_group', 'yearly_group', 'one_on_one_session', 'other'].includes(paymentType)) {
         fieldErrors.paymentType = "Invalid payment type selected.";
+    }
+    let quantity: number | null = null;
+    if (paymentType === 'one_on_one_session') {
+        if (!quantityStr || isNaN(parseInt(quantityStr)) || parseInt(quantityStr) <= 0) {
+            fieldErrors.quantity = "A valid positive quantity is required for 1:1 sessions.";
+        } else {
+            quantity = parseInt(quantityStr);
+        }
     }
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -135,30 +145,59 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     try {
-        // console.log("Admin new payment action: Inserting payment record...");
-        const {error: insertError} = await supabaseAdmin
+        console.log("Admin new payment action: Inserting payment record...");
+        // Insert payment and select the inserted record to get its ID
+        const { data: paymentData, error: insertError } = await supabaseAdmin
             .from('payments')
             .insert({
                 family_id: familyId,
-                amount: amount,
+                amount: Math.round(amount * 100), // Store amount in cents
                 payment_date: paymentDate,
                 payment_method: paymentMethod,
                 status: status as Database['public']['Enums']['payment_status'], // Use correct enum type
-                type: paymentType as Database['public']['Enums']['payment_type_enum'], // Add payment type
+                type: paymentType as Database['public']['Enums']['payment_type_enum'],
                 notes: notes
-            });
+            })
+            .select('id') // Select the ID of the inserted payment
+            .single(); // Expect only one row back
 
-        if (insertError) {
-            console.error("Error inserting payment:", insertError.message);
-            return json<ActionData>({error: `Failed to record payment: ${insertError.message}`}, {
+        if (insertError || !paymentData?.id) {
+            console.error("Error inserting payment:", insertError?.message);
+            return json<ActionData>({error: `Failed to record payment: ${insertError?.message || 'Could not retrieve payment ID'}`}, {
                 status: 500,
                 headers: Object.fromEntries(headers)
             });
         }
 
-        // console.log("Admin new payment action: Payment recorded successfully.");
+        const paymentId = paymentData.id;
+        console.log(`Payment ${paymentId} recorded successfully.`);
+
+        // If it's a 1:1 session payment, record the session purchase
+        if (paymentType === 'one_on_one_session' && quantity !== null) {
+            console.log(`Recording 1:1 session purchase for payment ${paymentId}, quantity: ${quantity}`);
+            const { error: sessionInsertError } = await supabaseAdmin
+                .from('one_on_one_sessions')
+                .insert({
+                    payment_id: paymentId,
+                    family_id: familyId,
+                    quantity_purchased: quantity,
+                    quantity_remaining: quantity, // Initially, remaining equals purchased
+                    // purchase_date, created_at, updated_at have defaults
+                });
+
+            if (sessionInsertError) {
+                console.error(`Error inserting 1:1 session record for payment ${paymentId}:`, sessionInsertError.message);
+                // Note: Payment is already created. Might need manual cleanup or a more robust transaction.
+                // For now, return an error indicating partial success.
+                return json<ActionData>({error: `Payment recorded, but failed to record 1:1 session details: ${sessionInsertError.message}`}, {
+                    status: 500, // Or maybe a different status?
+                    headers: Object.fromEntries(headers)
+                });
+            }
+            console.log(`1:1 session purchase recorded for payment ${paymentId}.`);
+        }
+
         // Redirect to the payments index page on success
-        // Add success=true query param for potential feedback message on redirect target
         headers.set('Location', '/admin/payments?success=true');
         return redirect("/admin/payments?success=true", {headers: Object.fromEntries(headers)});
 
@@ -261,10 +300,29 @@ export default function AdminNewPaymentPage() {
                             )}
                         </div>
 
+                        {/* Conditionally show Quantity for 1:1 sessions */}
+                        {selectedPaymentType === 'one_on_one_session' && (
+                            <div>
+                                <Label htmlFor="quantity">Quantity (Number of Sessions)</Label>
+                                <Input
+                                    id="quantity"
+                                    name="quantity"
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    placeholder="e.g., 5"
+                                    required={selectedPaymentType === 'one_on_one_session'} // Required only if type is 1:1
+                                    className="mt-1"
+                                />
+                                {actionData?.fieldErrors?.quantity && (
+                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.quantity}</p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Amount */}
                         <div>
-                            <Label htmlFor="amount">Amount ($)</Label>
+                            <Label htmlFor="amount">Amount ($)</Label> {/* Amount is still required regardless of type */}
                             <Input
                                 id="amount"
                                 name="amount"
