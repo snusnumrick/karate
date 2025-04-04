@@ -102,7 +102,7 @@ export async function action({request}: ActionFunctionArgs) {
                  console.error(`[Webhook ${request.url}] Failed to parse quantity string '${quantityStr}' from metadata.`);
             }
         }
-        console.log(`[Webhook ${request.url}] Extracted: paymentType=${paymentType}, familyId=${familyId}, quantity=${quantity}`);
+        // console.log(`[Webhook ${request.url}] Extracted: paymentType=${paymentType}, familyId=${familyId}, quantity=${quantity}`); // Removed log
 
         // Determine the final status for your database
         let dbStatus: Database['public']['Enums']['payment_status'] = "pending"; // Use the enum type
