@@ -265,8 +265,8 @@ export default function FamilyPortal() {
                         <p className="text-gray-600 dark:text-gray-400">No students registered yet.</p>
                     )}
                     {/* Link to the new dedicated page for adding a student to the current family */}
-                    {/* Removing asChild from Add Student button for testing */}
-                    <Button className="mt-4">
+                    {/* Restore asChild here */}
+                    <Button asChild className="mt-4">
                         <Link to="/family/add-student">Add Student</Link>
                     </Button>
                 </div>
@@ -277,7 +277,8 @@ export default function FamilyPortal() {
                     <p className="text-3xl font-bold mb-2">{individualSessionBalance ?? 0}</p>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">Remaining Sessions</p>
                     {/* Optionally link to purchase more */}
-                    <Button asChild variant="secondary">
+                    {/* Remove asChild from Purchase More button for testing */}
+                    <Button variant="secondary">
                         <Link to="/family/payment?option=individual_session">Purchase More</Link> {/* Corrected option value */}
                     </Button>
                 </div>
