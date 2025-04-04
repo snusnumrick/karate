@@ -265,7 +265,6 @@ export default function FamilyPortal() {
                         <p className="text-gray-600 dark:text-gray-400">No students registered yet.</p>
                     )}
                     {/* Link to the new dedicated page for adding a student to the current family */}
-                    {/* Restore asChild here */}
                     <Button asChild className="mt-4">
                         <Link to="/family/add-student">Add Student</Link>
                     </Button>
