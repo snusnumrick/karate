@@ -114,6 +114,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // 4. Fetch required waivers and user's signatures to determine status
     let allWaiversSigned = false;
+    let individualSessionBalance = 0; // Declare balance variable outside the try block
+
     try {
         const {data: requiredWaivers, error: requiredWaiversError} = await supabaseServer
             .from('waivers')
@@ -141,11 +143,10 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         }
 
         // 5. Fetch individual session balance using the view
-        let individualSessionBalance = 0;
-        try {
-            const { data: balanceData, error: balanceError } = await supabaseServer
-                .from('family_one_on_one_balance') // View name remains the same
-                .select('total_remaining_sessions')
+        // Remove inner try...catch, outer catch will handle errors
+        const { data: balanceData, error: balanceError } = await supabaseServer
+            .from('family_one_on_one_balance') // View name remains the same
+            .select('total_remaining_sessions')
                 .eq('family_id', profileData.family_id)
                 .maybeSingle(); // Use maybeSingle as a family might not have any sessions yet
 
@@ -161,16 +162,18 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             } else {
                 console.error("Error fetching Individual Session balance:", error);
             }
-            // Default to 0 on error
+            // Default to 0 on error - balance remains 0 as declared outside
         }
-    } catch (error: unknown) {
+
+    } catch (error: unknown) { // Outer catch handles errors from waiver or balance fetching
         if (error instanceof Error) {
-            console.error("Error checking waiver status:", error.message);
+            console.error("Error checking waiver status or balance:", error.message);
         } else {
-            console.error("Error checking waiver status:", error);
+            console.error("Error checking waiver status or balance:", error);
         }
-        // Default to false if there's an error checking status, but don't block portal load
+        // Default waiver status and balance if there's an error
         allWaiversSigned = false;
+        individualSessionBalance = 0; // Ensure balance is reset if outer catch is hit
     }
 
     // console.log('Family data with eligibility:', familyDataWithEligibility);
