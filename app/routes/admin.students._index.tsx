@@ -1,5 +1,5 @@
 import {json} from "@remix-run/node";
-import {Link, useLoaderData, useRouteError} from "@remix-run/react";
+import {Link, useLoaderData, useNavigate, useRouteError} from "@remix-run/react"; // Import useNavigate
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/supabase";
 import {checkStudentEligibility, type EligibilityStatus} from "~/utils/supabase.server";
@@ -100,6 +100,7 @@ export async function loader() {
 
 export default function StudentsAdminPage() {
     const {students} = useLoaderData<{ students: StudentWithFamilyEligibilityAndBelt[] }>(); // Update type
+    const navigate = useNavigate(); // Get navigate function
 
     // Helper to determine badge variant based on eligibility (Updated reasons)
     const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
@@ -167,12 +168,13 @@ export default function StudentsAdminPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="space-x-2 whitespace-nowrap">
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link to={`/admin/students/${student.id}`}>View/Edit</Link>
+                                        {/* Use onClick with navigate instead of asChild/Link */}
+                                        <Button variant="outline" size="sm" onClick={() => navigate(`/admin/students/${student.id}`)}>
+                                            View/Edit
                                         </Button>
-                                        <Button variant="secondary" size="sm" asChild>
-                                            <Link
-                                                to={`/admin/student-belts/${student.id}`}>Belts</Link> {/* Renamed link and text */}
+                                        {/* Use onClick with navigate instead of asChild/Link */}
+                                        <Button variant="secondary" size="sm" onClick={() => navigate(`/admin/student-belts/${student.id}`)}>
+                                            Belts
                                         </Button>
                                         {/* Add delete button/logic here if needed */}
                                     </TableCell>
