@@ -353,7 +353,8 @@ export default function FamilyPortal() {
                                 )}
                                 {/* Link to full history page */}
                                 <div className="pt-2">
-                                    <Button variant="link" asChild className="p-0 h-auto text-sm">
+                                    {/* Removed asChild as a test for the SSR error */}
+                                    <Button variant="link" className="p-0 h-auto text-sm">
                                         <Link to="/family/payment-history">View Full Payment History</Link>
                                     </Button>
                                 </div>
