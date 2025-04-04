@@ -27,6 +27,7 @@ export const siteConfig = {
     },
     socials: {
         instagram: "https://www.instagram.com/greenegin.karate/",
+        facebook: "https://www.facebook.com/greenegin.karate/",
     },
     pricing: {
         currency: "$",

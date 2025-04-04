@@ -97,6 +97,12 @@ export async function loader({params}: LoaderFunctionArgs): Promise<TypedRespons
         // Handle error as needed, here we'll proceed with null belt rank
     }
 
+    // Extend student type to include family name and current belt
+    type StudentWithFamilyAndBelt = StudentRow & {
+        families: Pick<FamilyRow, 'id' | 'name'> | null;
+        currentBeltRank: BeltRankEnum | null; // Add derived current belt rank
+    };
+
     // Combine student data with the derived belt rank
     const studentWithDetails: StudentWithFamilyAndBelt = {
         ...studentData,
