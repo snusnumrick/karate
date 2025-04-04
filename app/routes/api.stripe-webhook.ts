@@ -33,6 +33,9 @@ export async function action({request}: ActionFunctionArgs) {
                 };
             };
 
+            // Log the entire session object received in the webhook event
+            console.log('[Webhook] Full session object received:', JSON.stringify(session, null, 2));
+
             // Extract necessary info from metadata
             const paymentId = session.metadata.paymentId;
             const paymentType = session.metadata.paymentType;
