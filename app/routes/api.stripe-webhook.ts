@@ -49,7 +49,7 @@ export async function action({request}: ActionFunctionArgs) {
                 paymentType?: Database['public']['Enums']['payment_type_enum'];
                 familyId?: string;
                 quantity?: string;
-            } | null = null;
+            } | null = null; // Keep this outer type for assignment flexibility
 
             if (paymentIntent && paymentIntent.metadata) {
                  console.log('[Webhook] Found metadata on expanded Payment Intent object.');
@@ -66,11 +66,22 @@ export async function action({request}: ActionFunctionArgs) {
                 return json({error: "Missing critical payment metadata."}, {status: 400});
             }
 
+            // Log the metadata object we are about to read from
+            console.log('[Webhook] Determined metadataSource:', JSON.stringify(metadataSource, null, 2));
+
             // Extract necessary info from the determined metadata source
-            const paymentId = metadataSource.paymentId;
-            const paymentType = metadataSource.paymentType;
-            const familyId = metadataSource.familyId;
-            const quantityStr = metadataSource.quantity; // Get the string from metadata
+            // Use a more specific type assertion here if needed, assuming metadataSource is not null
+            const typedMetadata = metadataSource as {
+                 paymentId: string;
+                 paymentType: Database['public']['Enums']['payment_type_enum'];
+                 familyId: string;
+                 quantity?: string; // Keep optional here for safety before validation
+            };
+
+            const paymentId = typedMetadata.paymentId;
+            const paymentType = typedMetadata.paymentType;
+            const familyId = typedMetadata.familyId;
+            const quantityStr = typedMetadata.quantity; // Get the string from metadata
             console.log(`[Webhook] Raw quantity string from determined metadata source: '${quantityStr}' (type: ${typeof quantityStr})`); // Log raw value
 
             let quantity: number | null = null; // Initialize as null
