@@ -39,12 +39,11 @@ export const siteConfig = {
         oneOnOneSession: 80, // Example price for a single 1:1 session
         tiers: [
             {label: "Free Trial", description: "Your first class is on us!"},
-            {label: "1st Month", price: 49},
-            {label: "2nd Month", price: 100},
-            {label: "Monthly", price: 121, description: "(Ongoing after 2nd month)"},
-            // Optional: Add yearly/session info here if needed for display elsewhere
-            {label: "Yearly Membership", price: 1200, description: "(Paid Annually)"},
-            {label: "1:1 Session", price: 80, description: "(Per Session)"},
+            {label: "1st Month", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.firstMonth})`}, // Display price from main config
+            {label: "2nd Month", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.secondMonth})`}, // Display price from main config
+            {label: "Monthly", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.monthly} - Ongoing)`}, // Display price from main config
+            {label: "Yearly Membership", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.yearly} - Paid Annually)`}, // Display price from main config
+            {label: "1:1 Session", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.oneOnOneSession} - Per Session)`}, // Display price from main config
         ]
     },
     stripe: {

@@ -57,7 +57,7 @@ export async function action({request}: ActionFunctionArgs) {
         // const internalPaymentId = session.metadata?.paymentId; // Remove reliance on this if possible
 
         // Determine the final status for your database
-        let dbStatus: "pending" | "succeeded" | "failed" = "pending";
+        let dbStatus: Database['public']['Enums']['payment_status'] = "pending"; // Use the enum type
         if (paymentStatus === 'paid') {
             dbStatus = "succeeded";
             // Try to get receipt URL and payment method details if payment succeeded
