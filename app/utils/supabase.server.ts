@@ -303,7 +303,9 @@ export async function updatePaymentStatus(
     console.log(`Payment status updated successfully for Stripe session ${stripeSessionId} to ${status}. Payment ID: ${data.id}`);
 
     // If payment succeeded, type is individual_session, and quantity is provided, insert the session record
+    console.log(`[updatePaymentStatus] Checking condition for individual session insert: status=${status}, paymentType=${paymentType}, quantity=${quantity}`);
     if (status === 'succeeded' && paymentType === 'individual_session' && quantity && quantity > 0) {
+        console.log(`[updatePaymentStatus] Condition met for individual session insert for payment ${data.id}.`);
         // Use family_id from the updated payment record OR the passed familyId as fallback
         const targetFamilyId = data.family_id || familyId;
         if (!targetFamilyId) {
@@ -323,12 +325,15 @@ export async function updatePaymentStatus(
             });
 
         if (sessionInsertError) {
-            console.error(`Failed to insert Individual Session record for payment ${data.id}:`, sessionInsertError.message);
+            console.error(`[updatePaymentStatus] FAILED to insert Individual Session record for payment ${data.id}:`, sessionInsertError.message);
             // Critical: Payment succeeded but session credit failed. Needs monitoring/alerting.
             // Throw an error here to indicate the webhook handler should potentially return an error status to Stripe.
             throw new Error(`Payment ${data.id} succeeded, but failed to record Individual Session credits: ${sessionInsertError.message}`);
         }
-        console.log(`Successfully recorded Individual Session purchase for payment ${data.id}.`);
+        console.log(`[updatePaymentStatus] Successfully recorded Individual Session purchase for payment ${data.id}.`);
+    } else if (status === 'succeeded' && paymentType === 'individual_session') {
+        // Log if the condition was almost met but quantity was missing/invalid
+        console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${paymentType}', Quantity='${quantity}'. Session record NOT created.`);
     }
 
     return data; // Return the updated payment data

@@ -57,15 +57,23 @@ export async function action({request}: ActionFunctionArgs) {
 
             // Update payment status in database using our internal paymentId from metadata
             // Pass all necessary details to the updated function
-            await updatePaymentStatus(
-                session.id, // Pass stripe_session_id for lookup
-                'succeeded',
+            console.log(`[Webhook] Calling updatePaymentStatus for Stripe session ${session.id} with status 'succeeded', type '${paymentType}', quantity ${quantity}`);
+            try {
+                await updatePaymentStatus(
+                    session.id, // Pass stripe_session_id for lookup
+                    'succeeded',
                 session.receipt_url,
                 session.payment_method_types?.[0], // Pass payment method if available
                 paymentType,
-                familyId,
-                quantity // Pass quantity (will be null/undefined if not 1:1)
-            );
+                    familyId,
+                    quantity // Pass quantity (will be null/undefined if not individual)
+                );
+                console.log(`[Webhook] updatePaymentStatus call completed successfully for payment ${paymentId}.`);
+            } catch (updateError) {
+                console.error(`[Webhook] Error calling updatePaymentStatus for payment ${paymentId}:`, updateError);
+                // Return 500 to indicate webhook processing failed internally
+                return json({error: "Failed to update payment status internally."}, {status: 500});
+            }
             console.log(`Webhook processing complete for payment ${paymentId}`);
         }
         // TODO: Handle other events like payment_intent.succeeded, payment_intent.payment_failed if needed
