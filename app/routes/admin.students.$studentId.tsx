@@ -663,7 +663,8 @@ export default function AdminStudentDetailPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Confirm Session Usage</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Are you sure you want to record the usage of one individual session for this student? This will decrement the family's balance.
+                                                Are you sure you want to record the usage of one individual session for this student?
+                                                This will decrement the family&apos;s balance.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -687,7 +688,7 @@ export default function AdminStudentDetailPage() {
                             </Form>
                         ) : (
                             <p className="text-gray-500 dark:text-gray-400">
-                                This student's family has no available Individual Sessions.
+                                This student&apos;s family has no available Individual Sessions.
                                 <Link to={`/admin/payments/new?familyId=${student.families?.id}&type=individual_session`} className="text-blue-600 hover:underline ml-2">
                                     Record a purchase?
                                 </Link>

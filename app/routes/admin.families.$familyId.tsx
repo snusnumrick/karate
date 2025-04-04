@@ -24,7 +24,6 @@ import React from "react";
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 type StudentRow = Database['public']['Tables']['students']['Row'];
-type OneOnOneBalanceRow = Database['public']['Views']['family_one_on_one_balance']['Row'];
 
 // Define the shape of the data returned by the loader
 type LoaderData = {
