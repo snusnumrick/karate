@@ -320,50 +320,44 @@ export default function FamilyPortal() {
                         <h3 className="text-lg font-medium mb-4">Recent Payment</h3>
                         {family.payments && family.payments.length > 0 ? (
                             // Display only the most recent payment (first in the sorted list)
-                            (() => {
-                                const latestPayment = family.payments[0];
-                                return (
-                                    <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                                            <span
-                                                className="font-semibold">Date:</span> {latestPayment.payment_date ? new Date(latestPayment.payment_date).toLocaleDateString() : 'N/A'}
-                                        </p>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                                            <span
-                                                className="font-semibold">Amount:</span> ${(latestPayment.amount / 100).toFixed(2)}
-                                        </p>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
-                                            <span className="font-semibold mr-2">Status:</span>
-                                            <span
-                                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                    latestPayment.status === 'succeeded' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                                        latestPayment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                                            'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                                }`}>
-                        {latestPayment.status}
-                      </span>
-                                        </p>
-                                        {latestPayment.receipt_url && (
-                                            <p className="text-sm">
-                                                <a
-                                                    href={latestPayment.receipt_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
-                                                >
-                                                    View Receipt
-                                                </a>
-                                            </p>
-                                        )}
-                                        {/* Link to full history page */}
-                                        <div className="pt-2">
-                                            <Button variant="link" asChild className="p-0 h-auto text-sm">
-                                                <Link to="/family/payment-history">View Full Payment History</Link>
-                                            </Button>
-                                        </div>
-                                    </div>
-                                );
-                            })()
+                            // Removed IIFE for simplicity
+                            <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    <span className="font-semibold">Date:</span> {family.payments[0].payment_date ? new Date(family.payments[0].payment_date).toLocaleDateString() : 'N/A'}
+                                </p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    <span className="font-semibold">Amount:</span> ${(family.payments[0].amount / 100).toFixed(2)}
+                                </p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
+                                    <span className="font-semibold mr-2">Status:</span>
+                                    <span
+                                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                            family.payments[0].status === 'succeeded' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                                family.payments[0].status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                        }`}>
+                                        {family.payments[0].status}
+                                    </span>
+                                </p>
+                                {family.payments[0].receipt_url && (
+                                    <p className="text-sm">
+                                        <a
+                                            href={family.payments[0].receipt_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                        >
+                                            View Receipt
+                                        </a>
+                                    </p>
+                                )}
+                                {/* Link to full history page */}
+                                <div className="pt-2">
+                                    <Button variant="link" asChild className="p-0 h-auto text-sm">
+                                        <Link to="/family/payment-history">View Full Payment History</Link>
+                                    </Button>
+                                </div>
+                            </div>
                         ) : (
                             <p className="text-gray-600 dark:text-gray-400">No payment history found.</p>
                         )}
