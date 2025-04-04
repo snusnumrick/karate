@@ -36,6 +36,21 @@ $$
     END
 $$;
 
+-- Create payment_type enum type if it doesn't exist
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_type_enum') THEN
+            CREATE TYPE public.payment_type_enum AS ENUM (
+                'monthly_group',
+                'yearly_group',
+                'one_on_one_session',
+                'other'
+                );
+        END IF;
+    END
+$$;
+
 
 -- Create tables with IF NOT EXISTS to avoid errors on subsequent runs
 
@@ -147,7 +162,34 @@ ALTER TABLE payments
 ALTER TABLE payments
     ALTER COLUMN payment_date DROP NOT NULL; -- Make payment_date nullable
 ALTER TABLE payments
-    ALTER COLUMN payment_method DROP NOT NULL; -- Make payment_method nullable
+    ALTER COLUMN payment_method DROP NOT NULL;
+-- Make payment_method nullable
+
+-- Add payment type column idempotently
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS type public.payment_type_enum DEFAULT 'monthly_group';
+
+-- Add notes column idempotently
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- Make type column non-nullable (only if it exists and is currently nullable)
+-- This assumes the ADD COLUMN above succeeded or it already existed.
+-- We check if it's nullable before trying to set NOT NULL.
+DO
+$$
+    BEGIN
+        IF EXISTS (SELECT 1
+                   FROM information_schema.columns
+                   WHERE table_schema = 'public'
+                     AND table_name = 'payments'
+                     AND column_name = 'type'
+                     AND is_nullable = 'YES') THEN
+            ALTER TABLE public.payments
+                ALTER COLUMN type SET NOT NULL;
+        END IF;
+    END
+$$;
 
 
 DO
@@ -348,6 +390,10 @@ CREATE TABLE IF NOT EXISTS profiles
     role      text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'instructor')),
     family_id uuid REFERENCES families (id) ON DELETE SET NULL
 );
+
+-- Add family_id column idempotently before attempting to index it
+ALTER TABLE profiles
+    ADD COLUMN IF NOT EXISTS family_id uuid REFERENCES families (id) ON DELETE SET NULL;
 
 DO
 $$
@@ -608,6 +654,25 @@ $$
             EXECUTE FUNCTION update_modified_column();
         END IF;
     END
+$$;
+
+CREATE OR REPLACE FUNCTION count_successful_student_payments(p_student_id UUID)
+    RETURNS INT
+    LANGUAGE plpgsql
+AS
+$$
+DECLARE
+    payment_count INT;
+BEGIN
+    SELECT COUNT(*)
+    INTO payment_count
+    FROM public.payment_students ps
+             JOIN public.payments p ON ps.payment_id = p.id
+    WHERE ps.student_id = p_student_id
+      AND p.status = 'succeeded'; -- Ensure using the correct enum value
+
+    RETURN payment_count;
+END;
 $$;
 
 -- Verification queries (commented out - uncomment to run)
