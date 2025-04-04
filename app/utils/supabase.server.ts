@@ -253,8 +253,8 @@ export async function updatePaymentStatus(
     receiptUrl?: string | null, // Stripe might provide this in the webhook event
     paymentMethod?: string | null, // Added parameter for payment method
     paymentType?: Database['public']['Enums']['payment_type_enum'] | null,
-    familyId?: string | null, // Added: Needed for 1:1 session insert
-    quantity?: number | null // Added: Needed for 1:1 session insert
+    familyId?: string | null, // Added: Needed for individual session insert
+    quantity?: number | null // Added: Needed for individual session insert
 ) {
     // Use the standard client with service role for webhooks/server-side updates
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -323,12 +323,12 @@ export async function updatePaymentStatus(
             });
 
         if (sessionInsertError) {
-            console.error(`Failed to insert 1:1 session record for payment ${data.id}:`, sessionInsertError.message);
+            console.error(`Failed to insert Individual Session record for payment ${data.id}:`, sessionInsertError.message);
             // Critical: Payment succeeded but session credit failed. Needs monitoring/alerting.
             // Throw an error here to indicate the webhook handler should potentially return an error status to Stripe.
-            throw new Error(`Payment ${data.id} succeeded, but failed to record 1:1 session credits: ${sessionInsertError.message}`);
+            throw new Error(`Payment ${data.id} succeeded, but failed to record Individual Session credits: ${sessionInsertError.message}`);
         }
-        console.log(`Successfully recorded 1:1 session purchase for payment ${data.id}.`);
+        console.log(`Successfully recorded Individual Session purchase for payment ${data.id}.`);
     }
 
     return data; // Return the updated payment data

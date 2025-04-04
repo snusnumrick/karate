@@ -245,10 +245,10 @@ export default function FamilyDetailPage() {
                         </CardContent>
                     </Card>
 
-                    {/* 1:1 Session Balance Card */}
+                    {/* Individual Session Balance Card */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>1-on-1 Session Balance</CardTitle>
+                            <CardTitle>Individual Session Balance</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <p className="text-2xl font-bold">{oneOnOneBalance ?? 0}</p>

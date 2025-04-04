@@ -28,7 +28,7 @@ type ActionData = {
         paymentMethod?: string;
         status?: string;
         paymentType?: string;
-        quantity?: string; // Added for 1:1 session quantity
+        quantity?: string; // Added for individual session quantity
     };
 };
 
@@ -93,7 +93,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const status = formData.get("status") as string || 'succeeded'; // Default to succeeded
     const notes = formData.get("notes") as string | null;
     const paymentType = formData.get("paymentType") as string || 'monthly_group';
-    const quantityStr = formData.get("quantity") as string; // Get quantity for 1:1
+    const quantityStr = formData.get("quantity") as string; // Get quantity for individual session
 
     // --- Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
@@ -108,13 +108,13 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         fieldErrors.status = "Invalid status selected.";
     }
     // Use the actual enum values for type validation
-    if (!paymentType || !['monthly_group', 'yearly_group', 'one_on_one_session', 'other'].includes(paymentType)) {
+    if (!paymentType || !['monthly_group', 'yearly_group', 'individual_session', 'other'].includes(paymentType)) {
         fieldErrors.paymentType = "Invalid payment type selected.";
     }
     let quantity: number | null = null;
-    if (paymentType === 'one_on_one_session') {
+    if (paymentType === 'individual_session') {
         if (!quantityStr || isNaN(parseInt(quantityStr)) || parseInt(quantityStr) <= 0) {
-            fieldErrors.quantity = "A valid positive quantity is required for 1:1 sessions.";
+            fieldErrors.quantity = "A valid positive quantity is required for Individual Sessions.";
         } else {
             quantity = parseInt(quantityStr);
         }
@@ -172,11 +172,11 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         const paymentId = paymentData.id;
         console.log(`Payment ${paymentId} recorded successfully.`);
 
-        // If it's a 1:1 session payment, record the session purchase
-        if (paymentType === 'one_on_one_session' && quantity !== null) {
-            console.log(`Recording 1:1 session purchase for payment ${paymentId}, quantity: ${quantity}`);
+        // If it's an individual session payment, record the session purchase
+        if (paymentType === 'individual_session' && quantity !== null) {
+            console.log(`Recording Individual Session purchase for payment ${paymentId}, quantity: ${quantity}`);
             const { error: sessionInsertError } = await supabaseAdmin
-                .from('one_on_one_sessions')
+                .from('one_on_one_sessions') // Table name remains the same
                 .insert({
                     payment_id: paymentId,
                     family_id: familyId,
@@ -186,15 +186,15 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                 });
 
             if (sessionInsertError) {
-                console.error(`Error inserting 1:1 session record for payment ${paymentId}:`, sessionInsertError.message);
+                console.error(`Error inserting Individual Session record for payment ${paymentId}:`, sessionInsertError.message);
                 // Note: Payment is already created. Might need manual cleanup or a more robust transaction.
                 // For now, return an error indicating partial success.
-                return json<ActionData>({error: `Payment recorded, but failed to record 1:1 session details: ${sessionInsertError.message}`}, {
+                return json<ActionData>({error: `Payment recorded, but failed to record Individual Session details: ${sessionInsertError.message}`}, {
                     status: 500, // Or maybe a different status?
                     headers: Object.fromEntries(headers)
                 });
             }
-            console.log(`1:1 session purchase recorded for payment ${paymentId}.`);
+            console.log(`Individual Session purchase recorded for payment ${paymentId}.`);
         }
 
         // Redirect to the payments index page on success
@@ -291,7 +291,7 @@ export default function AdminNewPaymentPage() {
                                 <SelectContent>
                                     <SelectItem value="monthly_group">Monthly Group Class</SelectItem>
                                     <SelectItem value="yearly_group">Yearly Group Class</SelectItem>
-                                    <SelectItem value="one_on_one_session">One-on-One Session</SelectItem>
+                                    <SelectItem value="individual_session">Individual Session</SelectItem>
                                     <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -300,8 +300,8 @@ export default function AdminNewPaymentPage() {
                             )}
                         </div>
 
-                        {/* Conditionally show Quantity for 1:1 sessions */}
-                        {selectedPaymentType === 'one_on_one_session' && (
+                        {/* Conditionally show Quantity for Individual sessions */}
+                        {selectedPaymentType === 'individual_session' && (
                             <div>
                                 <Label htmlFor="quantity">Quantity (Number of Sessions)</Label>
                                 <Input
@@ -311,7 +311,7 @@ export default function AdminNewPaymentPage() {
                                     min="1"
                                     step="1"
                                     placeholder="e.g., 5"
-                                    required={selectedPaymentType === 'one_on_one_session'} // Required only if type is 1:1
+                                    required={selectedPaymentType === 'individual_session'} // Required only if type is individual
                                     className="mt-1"
                                 />
                                 {actionData?.fieldErrors?.quantity && (

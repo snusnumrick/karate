@@ -19,14 +19,14 @@ type FamilyRow = Database['public']['Tables']['families']['Row'];
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 
 // Extend student type to include family name and current belt
-type OneOnOneSessionRow = Database['public']['Tables']['one_on_one_sessions']['Row'];
+type IndividualSessionRow = Database['public']['Tables']['one_on_one_sessions']['Row']; // Renamed type alias
 
-// Extend student type to include family name, current belt, and family's 1:1 balance
+// Extend student type to include family name, current belt, and family's individual session balance
 type StudentWithDetails = StudentRow & {
     families: Pick<FamilyRow, 'id' | 'name'> | null;
     currentBeltRank: BeltRankEnum | null;
-    familyOneOnOneBalance: number; // Add balance
-    availableOneOnOneSessions: Pick<OneOnOneSessionRow, 'id' | 'quantity_remaining' | 'purchase_date'>[]; // Sessions with balance > 0
+    familyIndividualSessionBalance: number; // Renamed balance field
+    availableIndividualSessions: Pick<IndividualSessionRow, 'id' | 'quantity_remaining' | 'purchase_date'>[]; // Renamed available sessions field
 };
 
 type LoaderData = {
@@ -117,9 +117,9 @@ export async function loader({params}: LoaderFunctionArgs): Promise<TypedRespons
             .order('purchase_date', { ascending: true }); // Use oldest sessions first (FIFO)
 
         if (sessionsError) {
-            console.error(`Error fetching available 1:1 sessions for family ${studentWithDetails.families.id}:`, sessionsError.message);
+            console.error(`Error fetching available Individual Sessions for family ${studentWithDetails.families.id}:`, sessionsError.message);
         } else {
-            availableOneOnOneSessions = sessionsData ?? [];
+            availableIndividualSessions = sessionsData ?? [];
         }
     }
 
@@ -127,8 +127,8 @@ export async function loader({params}: LoaderFunctionArgs): Promise<TypedRespons
     // Add balance and available sessions to the student object
     const finalStudentData: StudentWithDetails = {
         ...studentWithDetails,
-        familyOneOnOneBalance,
-        availableOneOnOneSessions,
+        familyIndividualSessionBalance, // Use renamed field
+        availableIndividualSessions, // Use renamed field
     };
 
     return json({student: finalStudentData}); // Return combined data
@@ -160,7 +160,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     // Placeholder - Ideally, pass user ID from a secure context if needed.
     const adminUserId: string | null = null; // TODO: Get actual admin user ID if required by policy/audit trail
 
-    // --- Handle "Record 1:1 Session Usage" Intent ---
+    // --- Handle "Record Individual Session Usage" Intent ---
     if (intent === "recordUsage") {
         const sessionPurchaseId = formData.get("sessionPurchaseId") as string;
         const usageDate = formData.get("usageDate") as string || format(new Date(), 'yyyy-MM-dd'); // Default to today
@@ -225,10 +225,10 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             }
 
             console.log(`Successfully recorded usage for session ${sessionPurchaseId} by student ${studentId}`);
-            return json({success: true, message: "1-on-1 session usage recorded successfully."});
+            return json({success: true, message: "Individual Session usage recorded successfully."});
 
         } catch (error) {
-            console.error("Admin record 1:1 usage error:", error);
+            console.error("Admin record Individual Session usage error:", error);
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
             return json({error: `Failed to record usage: ${errorMessage}`}, {status: 500});
         }
@@ -567,10 +567,10 @@ export default function AdminStudentDetailPage() {
                         </Button>
                     </div>
 
-                    {/* 1-on-1 Session Usage Recording Section */}
+                    {/* Individual Session Usage Recording Section */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mt-6">
-                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Record 1-on-1 Session Usage</h2>
-                        {student.familyOneOnOneBalance > 0 ? (
+                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Record Individual Session Usage</h2>
+                        {student.familyIndividualSessionBalance > 0 ? ( // Use renamed field
                             <Form method="post" className="space-y-4">
                                 <input type="hidden" name="intent" value="recordUsage"/>
                                 <div>
@@ -580,7 +580,7 @@ export default function AdminStudentDetailPage() {
                                             <SelectValue placeholder="Select session batch to use"/>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {student.availableOneOnOneSessions.map(session => (
+                                            {student.availableIndividualSessions.map(session => ( // Use renamed field
                                                 <SelectItem key={session.id} value={session.id}>
                                                     Purchased: {format(new Date(session.purchase_date), 'yyyy-MM-dd')} - Remaining: {session.quantity_remaining}
                                                 </SelectItem>
@@ -610,8 +610,8 @@ export default function AdminStudentDetailPage() {
                             </Form>
                         ) : (
                             <p className="text-gray-500 dark:text-gray-400">
-                                This student's family has no available 1-on-1 sessions.
-                                <Link to={`/admin/payments/new?familyId=${student.families?.id}&type=one_on_one_session`} className="text-blue-600 hover:underline ml-2">
+                                This student's family has no available Individual Sessions.
+                                <Link to={`/admin/payments/new?familyId=${student.families?.id}&type=individual_session`} className="text-blue-600 hover:underline ml-2">
                                     Record a purchase?
                                 </Link>
                             </p>

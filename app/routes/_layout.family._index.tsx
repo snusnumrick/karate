@@ -26,7 +26,7 @@ export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
 interface LoaderData {
     profile?: { familyId: string };
     family?: FamilyData;
-    oneOnOneBalance?: number; // Add balance field
+    individualSessionBalance?: number; // Renamed balance field
     error?: string;
     allWaiversSigned?: boolean;
 }
@@ -179,7 +179,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     return json({
         profile: {familyId: String(profileData.family_id)},
         family: familyDataWithEligibility, // Use the updated data
-        oneOnOneBalance, // Include the balance in the response
+        individualSessionBalance, // Include the renamed balance in the response
         allWaiversSigned
     }, {headers});
 }
@@ -202,8 +202,8 @@ const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "defau
 };
 
 export default function FamilyPortal() {
-    // Now loader returns profile, family data, waiver status, and 1:1 balance
-    const {family, oneOnOneBalance, error, allWaiversSigned} = useLoaderData<typeof loader>();
+    // Now loader returns profile, family data, waiver status, and individual session balance
+    const {family, individualSessionBalance, error, allWaiversSigned} = useLoaderData<typeof loader>();
 
     // Handle specific error messages from the loader
     if (error) {
@@ -274,14 +274,14 @@ export default function FamilyPortal() {
                     </Button>
                 </div>
 
-                {/* 1:1 Session Balance */}
+                {/* Individual Session Balance */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                    <h2 className="text-xl font-semibold mb-4">1-on-1 Sessions</h2>
-                    <p className="text-3xl font-bold mb-2">{oneOnOneBalance ?? 0}</p>
+                    <h2 className="text-xl font-semibold mb-4">Individual Sessions</h2>
+                    <p className="text-3xl font-bold mb-2">{individualSessionBalance ?? 0}</p>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">Remaining Sessions</p>
                     {/* Optionally link to purchase more */}
                     <Button asChild variant="secondary">
-                        <Link to="/family/payment?option=one_on_one_session">Purchase More</Link> {/* Corrected option value */}
+                        <Link to="/family/payment?option=individual_session">Purchase More</Link> {/* Corrected option value */}
                     </Button>
                 </div>
 

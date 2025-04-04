@@ -6,7 +6,7 @@ import type {Database} from "~/types/supabase";
 import {siteConfig} from "~/config/site"; // Import site config for price IDs
 
 // Define expected form data structure
-type PaymentOption = 'monthly' | 'yearly' | 'one_on_one';
+type PaymentOption = 'monthly' | 'yearly' | 'individual'; // Renamed option
 type PaymentTypeEnum = Database['public']['Enums']['payment_type_enum'];
 
 // Helper function to get Supabase admin client (avoids repetition)
@@ -56,8 +56,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     if ((paymentOption === 'monthly' || paymentOption === 'yearly') && studentIds.length === 0) {
         return json({error: "Please select at least one student for group payments."}, {status: 400});
     }
-    if (paymentOption === 'one_on_one' && (!priceIdFromForm || !quantityFromForm || parseInt(quantityFromForm, 10) <= 0)) {
-        return json({error: "Missing or invalid price/quantity for 1:1 session."}, {status: 400});
+    if (paymentOption === 'individual' && (!priceIdFromForm || !quantityFromForm || parseInt(quantityFromForm, 10) <= 0)) {
+        return json({error: "Missing or invalid price/quantity for Individual Session."}, {status: 400});
     }
     if (paymentOption === 'yearly' && !priceIdFromForm) {
         return json({error: "Missing price information for yearly payment."}, {status: 400});
@@ -79,8 +79,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
     try {
         // --- Construct Line Items & Calculate Total ---
-        if (paymentOption === 'one_on_one') {
-            paymentType = 'one_on_one_session';
+        if (paymentOption === 'individual') {
+            paymentType = 'individual_session';
             const quantity = parseInt(quantityFromForm!, 10);
             line_items.push({
                 price: priceIdFromForm!,
@@ -163,10 +163,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             // --- CRITICAL METADATA ---
             metadata: {
                 paymentId: supabasePaymentId, // Our internal DB payment ID
-                paymentType: paymentType,     // The type ('monthly_group', 'yearly_group', 'one_on_one_session')
-                familyId: familyId,           // Needed for 1:1 session recording in webhook
-                // Add quantity only if it's a 1:1 session payment
-                ...(paymentType === 'one_on_one_session' && quantityFromForm && { quantity: quantityFromForm }),
+                paymentType: paymentType,     // The type ('monthly_group', 'yearly_group', 'individual_session')
+                familyId: familyId,           // Needed for individual session recording in webhook
+                // Add quantity only if it's an individual session payment
+                ...(paymentType === 'individual_session' && quantityFromForm && { quantity: quantityFromForm }),
                 // studentIds: studentIds.join(','), // Avoid if too long, paymentId is key
             }
             // TODO: Consider adding customer_email if available from user session/profile

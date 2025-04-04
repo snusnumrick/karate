@@ -18,7 +18,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Family Portal (`/family`):** Central dashboard for logged-in users.
     - View associated family details.
     - List registered students with links to individual pages.
-    - View remaining 1-on-1 session balance.
+    - View remaining Individual Session balance.
     - Manage family/guardian information and change password (`/family/account`).
     - View student attendance history (`/family/attendance`).
     - Track required waiver signature status.
@@ -29,7 +29,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Waiver Management:** Digitally sign required waivers (Liability, Code of Conduct, Photo/Video, Payment/Dress Code).
 - **Payments:**
     - Secure payment processing via Stripe.
-    - Multiple payment options: Monthly Group, Yearly Group, 1-on-1 Sessions (purchased in quantities).
+    - Multiple payment options: Monthly Group, Yearly Group, Individual Sessions (purchased in quantities).
     - View payment history, including payment type (`/family/payment-history`).
     - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly).
     - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
@@ -39,13 +39,13 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Family Management:**
     - View all families (`/admin/families`).
     - Register new families (`/admin/families/new`).
-    - View/Edit family details, guardians, associated students, and 1-on-1 session balance (`/admin/families/:familyId`).
+    - View/Edit family details, guardians, associated students, and Individual Session balance (`/admin/families/:familyId`).
     - Edit guardian details (`/admin/families/:familyId/guardians/edit`).
     - Add new students to a family (`/admin/families/:familyId/students/new`).
 - **Student Management:**
     - View all students (`/admin/students`).
     - View/Edit individual student details (`/admin/students/:studentId`).
-    - View family's 1-on-1 session balance and record usage of a session for the student (`/admin/students/:studentId`).
+    - View family's Individual Session balance and record usage of a session for the student (`/admin/students/:studentId`).
     - Manage student belt awards (promotions) (`/admin/student-belts/:studentId`).
     - Delete students (available on family detail page `/admin/families/:familyId`).
 - **Attendance Tracking:**
@@ -57,7 +57,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - Mark waivers as required, triggering notifications.
     - View report of families/students with missing required waivers (`/admin/waivers/missing`).
 - **Payment Management:**
-    - Record manual payments, specifying type (Monthly, Yearly, 1-on-1 Session, Other) and quantity for 1:1 sessions (`/admin/payments/new`).
+    - Record manual payments, specifying type (Monthly, Yearly, Individual Session, Other) and quantity for Individual Sessions (`/admin/payments/new`).
     - View payment history including payment type (`/admin/payments`).
     - View pending payments (e.g., from failed online transactions) (`/admin/payments/pending`).
     - *Note: Full payment history/reporting might be a future enhancement.*

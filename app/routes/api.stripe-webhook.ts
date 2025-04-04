@@ -29,7 +29,7 @@ export async function action({request}: ActionFunctionArgs) {
                     paymentId: string; // Our internal DB payment ID
                     paymentType: Database['public']['Enums']['payment_type_enum'];
                     familyId: string;
-                    quantity?: string; // Optional, expected for 1:1 sessions
+                    quantity?: string; // Optional, expected for individual sessions
                 };
             };
 
@@ -46,11 +46,11 @@ export async function action({request}: ActionFunctionArgs) {
                  return json({error: "Missing required metadata in Stripe session."}, {status: 400});
             }
 
-            // Validate quantity if it's a 1:1 session
-            if (paymentType === 'one_on_one_session' && (!quantity || quantity <= 0)) {
-                console.error(`Stripe webhook error: Invalid or missing quantity in metadata for 1:1 session payment ${paymentId}`);
+            // Validate quantity if it's an individual session
+            if (paymentType === 'individual_session' && (!quantity || quantity <= 0)) {
+                console.error(`Stripe webhook error: Invalid or missing quantity in metadata for Individual Session payment ${paymentId}`);
                 // Return 400 - the metadata was incorrect
-                return json({error: "Invalid quantity for 1:1 session payment."}, {status: 400});
+                return json({error: "Invalid quantity for Individual Session payment."}, {status: 400});
             }
 
             console.log(`Webhook received for session ${session.id}, payment ${paymentId}, type ${paymentType}, quantity ${quantity}`);
