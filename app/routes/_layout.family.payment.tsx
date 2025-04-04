@@ -461,16 +461,16 @@ export default function FamilyPaymentPage() {
                         <Label htmlFor="opt-yearly">Pay Yearly Group Class Fees
                             ({siteConfig.pricing.currency}{siteConfig.pricing.yearly}/student)</Label>
                     </div>
-                    {/* Option 3: One-on-One Session */}
+                    {/* Option 3: Individual Session */}
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="one_on_one" id="opt-one-on-one"/>
-                        <Label htmlFor="opt-one-on-one">Purchase 1:1 Session(s)
+                        <RadioGroupItem value="individual" id="opt-individual"/> {/* Corrected value */}
+                        <Label htmlFor="opt-individual">Purchase Individual Session(s) {/* Corrected label */}
                             ({siteConfig.pricing.currency}{siteConfig.pricing.oneOnOneSession}/session)</Label>
                     </div>
                 </RadioGroup>
 
-                {/* Conditional UI for 1:1 Quantity */}
-                {paymentOption === 'one_on_one' && (
+                {/* Conditional UI for Individual Session Quantity */}
+                {paymentOption === 'individual' && ( // Corrected check
                     <div className="mt-4 pl-6">
                         <Label htmlFor="oneOnOneQuantity">Number of Sessions:</Label>
                         <Input
@@ -603,7 +603,7 @@ export default function FamilyPaymentPage() {
                         !stripe ||
                         currentTotalInCents <= 0 ||
                         ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
-                        (paymentOption === 'one_on_one' && oneOnOneQuantity <= 0)
+                        (paymentOption === 'individual' && oneOnOneQuantity <= 0) // Corrected check
                     }
                 >
                     {isProcessing ? "Processing..." : `Proceed to Pay ${currentTotalDisplay}`}
