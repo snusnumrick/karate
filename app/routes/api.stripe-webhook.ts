@@ -37,8 +37,19 @@ export async function action({request}: ActionFunctionArgs) {
             const paymentId = session.metadata.paymentId;
             const paymentType = session.metadata.paymentType;
             const familyId = session.metadata.familyId;
-            const quantityStr = session.metadata.quantity;
-            const quantity = quantityStr ? parseInt(quantityStr, 10) : null;
+            const quantityStr = session.metadata.quantity; // Get the string from metadata
+            console.log(`[Webhook] Raw quantity string from metadata: '${quantityStr}' (type: ${typeof quantityStr})`); // Log raw value
+
+            let quantity: number | null = null; // Initialize as null
+            if (quantityStr) {
+                const parsedQuantity = parseInt(quantityStr, 10);
+                if (!isNaN(parsedQuantity)) {
+                    quantity = parsedQuantity; // Assign only if parsing is successful
+                } else {
+                    console.error(`[Webhook] Failed to parse quantity string '${quantityStr}' to a number.`);
+                }
+            }
+            console.log(`[Webhook] Parsed quantity value: ${quantity} (type: ${typeof quantity})`); // Log parsed value
 
             if (!paymentId || !paymentType || !familyId) {
                  console.error(`Stripe webhook error: Missing critical metadata (paymentId, paymentType, or familyId) for session ${session.id}`);
@@ -46,10 +57,9 @@ export async function action({request}: ActionFunctionArgs) {
                  return json({error: "Missing required metadata in Stripe session."}, {status: 400});
             }
 
-            // Validate quantity if it's an individual session
-            if (paymentType === 'individual_session' && (!quantity || quantity <= 0)) {
-                console.error(`Stripe webhook error: Invalid or missing quantity in metadata for Individual Session payment ${paymentId}`);
-                // Return 400 - the metadata was incorrect
+            // Validate quantity if it's an individual session (check against the parsed 'quantity' variable)
+            if (paymentType === 'individual_session' && (quantity === null || quantity <= 0)) { // Check for null or non-positive
+                console.error(`[Webhook] Invalid or missing quantity for Individual Session payment ${paymentId}. Parsed quantity: ${quantity}`);
                 return json({error: "Invalid quantity for Individual Session payment."}, {status: 400});
             }
 
