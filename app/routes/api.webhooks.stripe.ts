@@ -74,9 +74,8 @@ export async function action({request}: ActionFunctionArgs) {
         } | null = null;
 
         if (paymentIntent && paymentIntent.metadata) {
-             console.log(`[Webhook ${request.url}] Found metadata on expanded Payment Intent object:`, JSON.stringify(paymentIntent.metadata, null, 2));
-             // Log the keys present in the metadata object
-             console.log(`[Webhook ${request.url}] Keys in payment_intent.metadata:`, Object.keys(paymentIntent.metadata));
+             // console.log(`[Webhook ${request.url}] Found metadata on expanded Payment Intent object:`, JSON.stringify(paymentIntent.metadata, null, 2)); // Removed log
+             // console.log(`[Webhook ${request.url}] Keys in payment_intent.metadata:`, Object.keys(paymentIntent.metadata)); // Removed log
              metadataSource = paymentIntent.metadata;
         } else {
              console.warn(`[Webhook ${request.url}] Metadata not found on expanded Payment Intent object. Payment Intent:`, paymentIntent);
