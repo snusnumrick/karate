@@ -193,6 +193,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             // customer_email: userEmail,
         });
 
+        // Log the metadata returned by Stripe AFTER session creation
+        console.log(`[Checkout Action] Metadata on session object returned by Stripe:`, session.metadata);
+
         if (!session.id) {
             throw new Error('Stripe session creation failed: Missing session ID.');
         }
