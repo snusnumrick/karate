@@ -127,7 +127,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         // If there are no required waivers, consider them "signed"
         if (!requiredWaivers || requiredWaivers.length === 0) {
             allWaiversSigned = true;
-        } else {
+        }
+        else {
             const {data: signedWaivers, error: signedWaiversError} = await supabaseServer
                 .from('waiver_signatures')
                 .select('waiver_id')
@@ -153,18 +154,10 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             if (balanceError) {
                 console.error("Error fetching Individual Session balance:", balanceError.message);
                 // Don't fail the whole page load, just default to 0
-            } else if (balanceData) {
+            }
+            else if (balanceData) {
                 individualSessionBalance = balanceData.total_remaining_sessions ?? 0;
             }
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                console.error("Error fetching Individual Session balance:", error.message);
-            } else {
-                console.error("Error fetching Individual Session balance:", error);
-            }
-            // Default to 0 on error - balance remains 0 as declared outside
-        }
-    // The main 'try' block should close HERE, before the 'catch'
     } catch (error: unknown) { // Outer catch handles errors from waiver or balance fetching
         if (error instanceof Error) {
             console.error("Error checking waiver status or balance:", error.message);
