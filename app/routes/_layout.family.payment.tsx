@@ -357,8 +357,8 @@ export default function FamilyPaymentPage() {
         // Add payment option and quantity/price info for the backend API
         formData.set('paymentOption', paymentOption);
 
-        if (paymentOption === 'one_on_one') {
-            formData.set('priceId', siteConfig.stripe.priceIds.oneOnOneSession);
+        if (paymentOption === 'individual') { // Corrected check
+            formData.set('priceId', siteConfig.stripe.priceIds.oneOnOneSession); // Ensure this price ID is correct
             formData.set('quantity', String(oneOnOneQuantity));
         } else if (paymentOption === 'yearly') {
             // Yearly: Pass the single yearly price ID. Backend creates line items per student.
