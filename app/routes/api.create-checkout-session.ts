@@ -51,7 +51,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     if (!familyId || !familyName || !paymentOption) {
         return json({error: "Missing required information (familyId, familyName, paymentOption)."}, {status: 400});
     }
-    const studentIds = studentIdsString ? studentIdsString.split(',').filter(id => id) : []; // Ensure empty array if string is empty/null
+    // Only require studentIds for monthly/yearly payments
+    const studentIds = (paymentOption === 'monthly' || paymentOption === 'yearly')
+        ? (studentIdsString ? studentIdsString.split(',').filter(id => id) : [])
+        : []; // Default to empty array for individual sessions
 
     if ((paymentOption === 'monthly' || paymentOption === 'yearly') && studentIds.length === 0) {
         return json({error: "Please select at least one student for group payments."}, {status: 400});
