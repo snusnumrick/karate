@@ -167,7 +167,9 @@ export default function Index() {
                             {/* <div className="text-4xl text-green-600 dark:text-green-400 mb-4">👣</div> */}
                             <h3 className="text-xl font-bold text-green-700 dark:text-green-300 mb-3">Engineered for Safety & Performance</h3>
                             <p className="text-gray-600 dark:text-gray-300 mb-4">
-                                Our studio floors are designed to support various martial arts styles. Countless hours went into creating the 3 1/4" closed-cell subfloor, providing exceptional comfort and helping prevent injuries.
+                                Our studio floors are designed to support various martial arts styles.
+                                Countless hours went into creating the 3¼″  closed-cell subfloor,
+                                providing exceptional comfort and helping prevent injuries.
                             </p>
                             <p className="text-gray-600 dark:text-gray-300 italic">
                                 And stay tuned for news about our new tatami mats!
@@ -182,7 +184,7 @@ export default function Index() {
                                 In a high-performance environment, air quality matters. Our space features CO<sub>2</sub> sensors that regulate the ventilation system, ensuring maximum oxygen flow for peak performance and comfort during training.
                             </p>
                             <p className="text-gray-600 dark:text-gray-300">
-                                We're committed to matching the quality of our space with the excellence of our teaching. Come experience the difference!
+                                We&apos;re committed to matching the quality of our space with the excellence of our teaching. Come experience the difference!
                             </p>
                         </div>
                     </div>

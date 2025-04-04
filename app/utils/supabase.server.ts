@@ -77,9 +77,9 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 // Renamed from createPaymentSession - This function ONLY creates the initial DB record.
 export async function createInitialPaymentRecord(
     familyId: string,
-    amount: number, // Amount in smallest currency unit (e.g., cents)
-    studentIds: string[],
-    // No longer needs request object or Stripe logic here
+    amount: number, // Amount in smallest currency unit (e.g., cents) - Calculated by caller
+    studentIds: string[], // Can be empty for non-student specific payments like 1:1? Let's assume 1:1 is still family-linked.
+    paymentType: Database['public']['Enums']['payment_type_enum'] // Add payment type
 ) {
     // Use the standard client with service role for creating payment records server-side
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -97,10 +97,10 @@ export async function createInitialPaymentRecord(
         .from('payments')
         .insert({
             family_id: familyId,
-            amount: amount, // Store amount in cents
+            amount: amount, // Use amount calculated by caller
             status: 'pending',
-            // payment_date and payment_method are nullable and set later
-            // stripe_session_id and receipt_url are nullable and set later
+            type: paymentType, // Set the payment type
+            // payment_date, payment_method, stripe_session_id, receipt_url are set later
         })
         .select('id') // Select the ID of the newly created record
         .single();
@@ -112,22 +112,29 @@ export async function createInitialPaymentRecord(
 
     const paymentId = paymentRecord.id;
 
-    // 2. Insert records into the payment_students junction table
-    const studentInserts = studentIds.map(studentId => ({
-        payment_id: paymentId,
-        student_id: studentId,
-    }));
+    // 2. Insert records into the payment_students junction table *if* student IDs are provided
+    //    (Relevant for monthly/yearly group payments)
+    if (studentIds && studentIds.length > 0) {
+        const studentInserts = studentIds.map(studentId => ({
+            payment_id: paymentId,
+            student_id: studentId,
+        }));
 
-    const {error: junctionError} = await supabaseAdmin
-        .from('payment_students')
-        .insert(studentInserts);
+        const {error: junctionError} = await supabaseAdmin
+            .from('payment_students')
+            .insert(studentInserts);
 
-    if (junctionError) {
-        console.error('Supabase payment_students insert error:', junctionError.message);
-        // Attempt to delete the payment record if linking students fails? Or just log?
-        // For now, log the error and return failure. The payment record exists but isn't linked.
-        // await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Optional cleanup
-        return {data: null, error: `Failed to link students to payment: ${junctionError.message}`};
+        if (junctionError) {
+            console.error('Supabase payment_students insert error:', junctionError.message);
+            // Attempt to delete the payment record if linking students fails
+            await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Cleanup payment record
+            return {data: null, error: `Failed to link students to payment: ${junctionError.message}`};
+        }
+    } else if (paymentType === 'monthly_group' || paymentType === 'yearly_group') {
+        // If it's a group payment but no students were selected/provided, this is an error
+        console.error('Group payment type selected but no student IDs provided.');
+        await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Cleanup payment record
+        return {data: null, error: 'No students selected for group payment.'};
     }
 
     // Return the newly created payment record ID and null error
@@ -137,12 +144,14 @@ export async function createInitialPaymentRecord(
 // --- Student Eligibility Check ---
 
 // Define the eligibility window in days
-const PAYMENT_ELIGIBILITY_WINDOW_DAYS = 35;
+const MONTHLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS = 35; // ~1 month + buffer
+const YEARLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS = 370; // ~1 year + buffer
 
 export type EligibilityStatus = {
     eligible: boolean;
-    reason: 'Trial' | 'Paid' | 'Expired'; // Changed 'Not Paid' to 'Expired' for clarity
+    reason: 'Trial' | 'Paid - Monthly' | 'Paid - Yearly' | 'Expired'; // More specific reasons
     lastPaymentDate?: string; // Optional: ISO date string of the last successful payment
+    paymentType?: Database['public']['Enums']['payment_type_enum']; // Added payment type
 };
 
 /**
@@ -158,61 +167,82 @@ export async function checkStudentEligibility(
     studentId: string,
     supabaseAdmin: ReturnType<typeof createClient<Database>>
 ): Promise<EligibilityStatus> {
-    const today = new Date();
-    const eligibilityCutoffDate = new Date(today);
-    eligibilityCutoffDate.setDate(today.getDate() - PAYMENT_ELIGIBILITY_WINDOW_DAYS);
-
-    // 1. Fetch successful payments linked to this student, ordered by date descending
+    // 1. Fetch successful payments linked to this student, ordered by date descending.
+    //    We will filter by type *after* fetching to simplify the initial query.
     const {data: paymentLinks, error: linkError} = await supabaseAdmin
         .from('payment_students')
-        .select(`
-      payment_id,
-      payments ( id, payment_date, status )
-    `)
+        .select(`                                                                                                                                                                                                        
+            payment_id,                                                                                                                                                                                                  
+            payments!inner ( id, payment_date, status, type )                                                                                                                                                            
+        `) // Use !inner join syntax to ensure payment exists, select type
         .eq('student_id', studentId)
-        .eq('payments.status', 'succeeded') // Ensure we only join with successful payments
+        .eq('payments.status', 'succeeded') // Keep filter for successful payments
         .order('payment_date', {foreignTable: 'payments', ascending: false}); // Get most recent first
 
     if (linkError) {
-        console.error(`Error fetching payment links for student ${studentId}:`, linkError.message);
+        console.error(`Error fetching successful payment links for student ${studentId}:`, linkError.message);
         // Default to not eligible if we can't verify payments
         return {eligible: false, reason: 'Expired'}; // Use 'Expired'
     }
 
-    // Filter out null payments just in case, although the join condition should prevent this
-    const successfulPayments = paymentLinks
+    // Filter out null payments and filter for the correct *type* here in the code
+    const successfulGroupPayments = paymentLinks
         ?.map(link => link.payments)
-        .filter(payment => payment !== null && payment.payment_date !== null) as Array<{
+        .filter(payment =>
+            payment !== null &&
+            payment.payment_date !== null &&
+            payment.type !== null &&
+            ['monthly_group', 'yearly_group'].includes(payment.type) // Filter for group types now
+        ) as Array<{
         id: string,
         payment_date: string,
-        status: string
+        status: string,
+        type: Database['public']['Enums']['payment_type_enum']
     }> ?? [];
 
 
-    // 2. Check for Free Trial (zero successful payments)
-    if (successfulPayments.length === 0) {
+    // 2. Check for Free Trial (zero successful group payments)
+    if (successfulGroupPayments.length === 0) {
         return {eligible: true, reason: 'Trial'};
     }
 
-    // 3. Check the most recent payment date against the eligibility window
-    // Since we ordered by date descending, the first payment is the most recent
-    const mostRecentPayment = successfulPayments[0];
-    const lastPaymentDate = new Date(mostRecentPayment.payment_date); // Assumes payment_date is valid date string
+    // 3. Check the most recent group payment date against the appropriate eligibility window
+    const mostRecentGroupPayment = successfulGroupPayments[0];
+    const lastPaymentDate = new Date(mostRecentGroupPayment.payment_date);
+    const paymentType = mostRecentGroupPayment.type;
+
+    const today = new Date();
+    const eligibilityCutoffDate = new Date(today);
+
+    let reason: EligibilityStatus['reason'] = 'Expired'; // Default if checks fail
+    let eligibilityWindowDays: number;
+
+    if (paymentType === 'yearly_group') {
+        eligibilityWindowDays = YEARLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS;
+        reason = 'Paid - Yearly';
+    } else { // Default to monthly for 'monthly_group' (or any unexpected type that slipped through)
+        eligibilityWindowDays = MONTHLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS;
+        reason = 'Paid - Monthly';
+    }
+
+    eligibilityCutoffDate.setDate(today.getDate() - eligibilityWindowDays);
 
     if (lastPaymentDate >= eligibilityCutoffDate) {
         // Payment is recent enough
         return {
             eligible: true,
-            reason: 'Paid',
-            lastPaymentDate: mostRecentPayment.payment_date // Pass the date for display
+            reason: reason, // Use the determined reason
+            lastPaymentDate: mostRecentGroupPayment.payment_date,
+            paymentType: paymentType,
         };
     }
 
-    // 4. If not on trial and the most recent payment is outside the window
+    // 4. If not on trial and the most recent group payment is outside the window
     return {
         eligible: false,
         reason: 'Expired',
-        lastPaymentDate: mostRecentPayment.payment_date // Still pass the date for context
+        lastPaymentDate: mostRecentGroupPayment.payment_date, // Still pass the date for context
+        paymentType: paymentType,
     };
 }
 
@@ -221,7 +251,8 @@ export async function updatePaymentStatus(
     stripeSessionId: string, // Use Stripe session ID to find the record
     status: "pending" | "succeeded" | "failed", // Use the specific enum values
     receiptUrl?: string | null, // Stripe might provide this in the webhook event
-    paymentMethod?: string | null // Added parameter for payment method
+    paymentMethod?: string | null, // Added parameter for payment method
+    paymentType?: Database['public']['Enums']['payment_type_enum'] | null
 ) {
     // Use the standard client with service role for webhooks/server-side updates
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -237,7 +268,8 @@ export async function updatePaymentStatus(
     const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {
         status,
         receipt_url: receiptUrl,
-        payment_method: paymentMethod, // Add paymentMethod to the update object
+        payment_method: paymentMethod,
+        type: paymentType || undefined, // Add paymentType to the update object
     };
 
     // Set payment_date only when status becomes 'succeeded'

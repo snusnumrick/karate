@@ -1,10 +1,10 @@
 /* eslint-disable-next-line import/no-unresolved */
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { Database } from '../_shared/database.types.ts'; // Assuming you generate types for functions
-import { sendEmail } from '../_shared/email.ts'; // Shared email utility for functions
-import { checkStudentEligibility, EligibilityStatus } from '../_shared/eligibility.ts'; // Shared eligibility logic for functions
-import { corsHeaders } from '../_shared/cors.ts';
+import {serve} from 'https://deno.land/std@0.177.0/http/server.ts';
+import {createClient, SupabaseClient} from 'https://esm.sh/@supabase/supabase-js@2';
+import {Database} from '../_shared/database.types.ts'; // Assuming you generate types for functions
+import {sendEmail} from '../_shared/email.ts'; // Shared email utility for functions
+import {checkStudentEligibility, EligibilityStatus} from '../_shared/eligibility.ts'; // Shared eligibility logic for functions
+import {corsHeaders} from '../_shared/cors.ts';
 
 console.log('Payment Reminder Function Initializing');
 
@@ -83,38 +83,62 @@ serve(async (req: Request) => {
             student.id,
             supabaseAdmin,
           );
-          
-          // Calculate expiration timeframe
+
           const now = new Date();
-          const expirationThresholdDays = 5; // Warn when expiration is within 5 days
-          
+          const expirationThresholdDays = 7; // Warn when expiration is within 7 days
+
           if (eligibility.reason === 'Expired') {
             console.log(
-              `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} has expired eligibility.`,
+              `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} has expired eligibility. Last payment: ${
+                eligibility.lastPaymentDate || 'N/A'
+              } (${
+                eligibility.paymentType ||
+                'N/A'
+              })`,
             );
             studentsToExpire.push({ name: `${student.first_name} ${student.last_name}` });
           } else if (
-            eligibility.reason === 'Paid' && 
-            eligibility.lastPaymentDate
+            (eligibility.reason === 'Paid - Monthly' || eligibility.reason === 'Paid - Yearly') &&
+            eligibility.lastPaymentDate &&
+            eligibility.paymentType
           ) {
             const lastPaymentDate = new Date(eligibility.lastPaymentDate);
             const expirationDate = new Date(lastPaymentDate);
-            expirationDate.setDate(expirationDate.getDate() + 30); // Payments cover 30 days
-            
+
+            // Calculate expiration based on payment type
+            const paymentDurationDays = eligibility.paymentType === 'yearly_group' ? 365 : 30;
+            expirationDate.setDate(expirationDate.getDate() + paymentDurationDays);
+
             const daysUntilExpiration = Math.ceil(
-              (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+              (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
             );
 
-            if (daysUntilExpiration <= expirationThresholdDays) {
+            // Only add to reminder list if within threshold AND not already expired (days > 0)
+            if (daysUntilExpiration > 0 && daysUntilExpiration <= expirationThresholdDays) {
               console.log(
-                `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} expires in ${daysUntilExpiration} days.`
+                `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} (${eligibility.paymentType}) expires in ${daysUntilExpiration} days.`,
               );
-              studentsToExpire.push({ 
+              studentsToExpire.push({
                 name: `${student.first_name} ${student.last_name}`,
-                daysUntilExpiration 
+                daysUntilExpiration,
               });
+            } else if (daysUntilExpiration <= 0) {
+              // This case should ideally be caught by eligibility.reason === 'Expired', but added as safety
+              console.log(
+                `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} (${eligibility.paymentType}) is already expired (calculated ${daysUntilExpiration} days). Adding to 
+expired list.`,
+              );
+              // Avoid duplicates if already added via 'Expired' reason check
+              if (
+                !studentsToExpire.some((s) =>
+                  s.name === `${student.first_name} ${student.last_name}` && !s.daysUntilExpiration
+                )
+              ) {
+                studentsToExpire.push({ name: `${student.first_name} ${student.last_name}` });
+              }
             }
           }
+          // Note: 'Trial' students are ignored by this reminder logic.
         } catch (eligibilityError) {
           console.error(
             `Error checking eligibility for student ${student.id} in family ${family.id}:`,
@@ -127,32 +151,50 @@ serve(async (req: Request) => {
       // If any students in the family have expired eligibility, send ONE email to the family
       if (studentsToExpire.length > 0) {
         try {
-          const expiredStudents = studentsToExpire.filter(s => !('daysUntilExpiration' in s));
-          const expiringSoonStudents = studentsToExpire.filter(s => 'daysUntilExpiration' in s);
-          
+          const expiredStudents = studentsToExpire.filter((s) => !('daysUntilExpiration' in s));
+          const expiringSoonStudents = studentsToExpire.filter((s) => 'daysUntilExpiration' in s);
+
           const subject = `Action Required: Karate Payment Due for ${family.name}`;
           const htmlBody = `
             <p>Hello ${family.name},</p>
-            ${expiredStudents.length > 0 ? `
+            ${
+            expiredStudents.length > 0
+              ? `
               <p>This is a reminder that the karate class payment is <strong>overdue</strong> for:</p>
               <ul>
-                ${expiredStudents.map(s => `<li><strong>${s.name}</strong></li>`).join('')}
+                ${expiredStudents.map((s) => `<li><strong>${s.name}</strong></li>`).join('')}
               </ul>
-            ` : ''}
-            ${expiringSoonStudents.length > 0 ? `
+            `
+              : ''
+          }
+            ${
+            expiringSoonStudents.length > 0
+              ? `
               <p>The following students have payments expiring soon:</p>
               <ul>
-                ${expiringSoonStudents.map(s => 
+                ${
+                expiringSoonStudents.map((s) =>
                   `<li><strong>${s.name}</strong> - Expires in ${s.daysUntilExpiration} days</li>`
-                ).join('')}
+                ).join('')
+              }
               </ul>
-            ` : ''}
-            ${expiredStudents.length > 0 ? `
+            `
+              : ''
+          }
+            ${
+            expiredStudents.length > 0
+              ? `
               <p>Their current status is <strong>Expired</strong>. Please visit the family portal immediately to make a payment.</p>
-            ` : ''}
-            ${expiringSoonStudents.length > 0 ? `
+            `
+              : ''
+          }
+            ${
+            expiringSoonStudents.length > 0
+              ? `
               <p>Payments will expire soon. Please renew before the due date to ensure continued participation.</p>
-            ` : ''}
+            `
+              : ''
+          }
             <p><a href="${siteUrl}/family/payment">Make Payment Now</a></p> {/* Use verified siteUrl variable */}
             <p>Thank you,<br/>Sensei Negin's Karate Class</p>
           `;

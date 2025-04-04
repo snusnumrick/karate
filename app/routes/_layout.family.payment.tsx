@@ -4,13 +4,16 @@ import React, {useEffect, useState} from "react"; // Add React hooks
 import {loadStripe, type Stripe} from '@stripe/stripe-js'; // Import Stripe.js
 import {checkStudentEligibility, type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check // Remove createPaymentSession import
 import {Button} from "~/components/ui/button";
+import {Input} from "~/components/ui/input";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ExclamationTriangleIcon, InfoCircledIcon} from "@radix-ui/react-icons";
 import {siteConfig} from "~/config/site";
-import {Checkbox} from "~/components/ui/checkbox"; // Import Checkbox
-import {format} from 'date-fns'; // Import format
+import {Checkbox} from "~/components/ui/checkbox";
+import {format} from 'date-fns';
+import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group"; // Import RadioGroup
+import {Label} from "~/components/ui/label"; // Import Label
 
-// Payment Calculation
+// Payment Calculation (Existing logic needs adjustment)
 //
 // The logic resides entirely within the loader function of the payment page (app/routes/_layout.family.payment.tsx). It does not rely on a specific "tier" field stored in the database. Instead, it calculates the next
 // appropriate tier dynamically each time the payment page is loaded:
@@ -38,9 +41,14 @@ interface StudentPaymentDetail {
     nextPaymentAmount: number; // Amount in dollars for their next tier
     nextPaymentTierLabel: string; // Label for their next tier (1st Month, 2nd Month, Monthly)
     pastPaymentCount: number; // Needed to determine next tier
+    // Add calculated price IDs for monthly tiers
+    nextPaymentPriceId: string; // Stripe Price ID for their next monthly tier
 }
 
-// Updated Loader data interface - remove totalAmountInCents
+// Define payment options
+type PaymentOption = 'monthly' | 'yearly' | 'one_on_one';
+
+// Updated Loader data interface
 export interface LoaderData {
     familyId: string;
     familyName: string;
@@ -157,32 +165,38 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         const pastPaymentCount = paymentStudentLinks.filter(link => link.student_id === student.id).length;
         let nextPaymentAmount = 0;
         let nextPaymentTierLabel = "";
+        let nextPaymentPriceId = ""; // Stripe Price ID
+
+        // Determine next MONTHLY tier and price ID
         if (pastPaymentCount === 0) {
             nextPaymentAmount = siteConfig.pricing.firstMonth;
             nextPaymentTierLabel = "1st Month";
+            nextPaymentPriceId = siteConfig.stripe.priceIds.firstMonth;
         } else if (pastPaymentCount === 1) {
             nextPaymentAmount = siteConfig.pricing.secondMonth;
             nextPaymentTierLabel = "2nd Month";
+            nextPaymentPriceId = siteConfig.stripe.priceIds.secondMonth;
         } else { // 2 or more past payments
             nextPaymentAmount = siteConfig.pricing.monthly;
             nextPaymentTierLabel = "Monthly";
+            nextPaymentPriceId = siteConfig.stripe.priceIds.monthly;
         }
 
-        // 3. Determine if payment is needed now
+        // 3. Determine if group class payment is needed now
+        // Eligibility check already filters for group payments ('Paid - Monthly', 'Paid - Yearly', 'Expired', 'Trial')
         const needsPayment = eligibility.reason === 'Trial' || eligibility.reason === 'Expired';
 
         studentPaymentDetails.push({
             studentId: student.id,
             firstName: student.first_name,
             lastName: student.last_name,
-            eligibility: eligibility, // Include eligibility status
-            needsPayment: needsPayment, // Include flag
-            nextPaymentAmount: nextPaymentAmount,
-            nextPaymentTierLabel: nextPaymentTierLabel,
+            eligibility: eligibility,
+            needsPayment: needsPayment,
+            nextPaymentAmount: nextPaymentAmount, // This is the calculated MONTHLY amount
+            nextPaymentTierLabel: nextPaymentTierLabel, // Monthly tier label
+            nextPaymentPriceId: nextPaymentPriceId, // Monthly tier Price ID
             pastPaymentCount: pastPaymentCount,
         });
-
-        // totalAmountInCents += nextPaymentAmount * 100; // Remove pre-calculation
     }
 
     // --- Prepare and Return Data ---
@@ -218,19 +232,28 @@ export default function FamilyPaymentPage() {
     const fetcher = useFetcher<{ sessionId?: string; error?: string }>();
     const [stripe, setStripe] = useState<Stripe | null>(null);
     const [clientError, setClientError] = useState<string | null>(null);
-    const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set()); // State for selected students
+    const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+    const [paymentOption, setPaymentOption] = useState<PaymentOption>('monthly'); // State for payment option
+    const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1); // State for 1:1 session quantity
 
     const isProcessing = fetcher.state !== 'idle';
 
     // --- Dynamic Calculation ---
     const calculateTotal = () => {
         let total = 0;
-        selectedStudentIds.forEach(id => {
-            const detail = studentPaymentDetails!.find(d => d.studentId === id);
-            if (detail) {
-                total += detail.nextPaymentAmount * 100; // Add amount in cents
-            }
-        });
+        if (paymentOption === 'monthly' || paymentOption === 'yearly') {
+            selectedStudentIds.forEach(id => {
+                const detail = studentPaymentDetails!.find(d => d.studentId === id);
+                if (detail) {
+                    const amount = paymentOption === 'yearly'
+                        ? siteConfig.pricing.yearly // Use fixed yearly price
+                        : detail.nextPaymentAmount; // Use calculated monthly price
+                    total += amount * 100; // Add amount in cents
+                }
+            });
+        } else if (paymentOption === 'one_on_one') {
+            total = siteConfig.pricing.oneOnOneSession * oneOnOneQuantity * 100; // Use 1:1 price * quantity
+        }
         return total;
     };
 
@@ -310,19 +333,44 @@ export default function FamilyPaymentPage() {
             return;
         }
         const calculatedTotal = calculateTotal();
+        // Enforce positive total for all options
         if (calculatedTotal <= 0) {
             setClientError("Calculated payment amount must be greater than zero.");
             return;
         }
+        // Specific checks based on option
+        if ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) {
+            setClientError("Please select at least one student for group class payments.");
+            return;
+        }
+        if (paymentOption === 'one_on_one' && oneOnOneQuantity <= 0) {
+            setClientError("Please select a valid quantity for 1:1 sessions.");
+            return;
+        }
+
 
         const formData = new FormData(event.currentTarget);
-        // Set the CALCULATED total amount in cents
-        formData.set('amountInCents', String(calculatedTotal));
-        // Set the SELECTED student IDs
+        // Set the CALCULATED total amount in cents (optional, backend should recalculate)
+        // formData.set('amountInCents', String(calculatedTotal));
+        // Set the SELECTED student IDs (only relevant for group payments)
         formData.set('studentIds', Array.from(selectedStudentIds).join(','));
+        // Add payment option and quantity/price info for the backend API
+        formData.set('paymentOption', paymentOption);
+
+        if (paymentOption === 'one_on_one') {
+            formData.set('priceId', siteConfig.stripe.priceIds.oneOnOneSession);
+            formData.set('quantity', String(oneOnOneQuantity));
+        } else if (paymentOption === 'yearly') {
+            // Yearly: Pass the single yearly price ID. Backend creates line items per student.
+            formData.set('priceId', siteConfig.stripe.priceIds.yearly);
+            // Quantity is implicitly the number of studentIds passed
+        } else { // Monthly
+            // Monthly: Backend needs to determine the correct price ID for each student based on their history.
+            // We only pass the student IDs and the 'monthly' option.
+            // No single priceId is sent from the frontend for 'monthly'.
+        }
 
         console.log("Submitting to API with formData:", Object.fromEntries(formData));
-
         fetcher.submit(formData, {
             method: 'post',
             action: '/api/create-checkout-session',
@@ -394,63 +442,125 @@ export default function FamilyPaymentPage() {
                     <ExclamationTriangleIcon className="h-4 w-4"/>
                     <AlertTitle>Payment Error</AlertTitle>
                     <AlertDescription>{clientError || fetcher.data?.error}</AlertDescription>
-                </Alert> // Add missing closing tag
+                </Alert>
             )}
 
-            {/* Student Selection & Payment Details Section */}
+            {/* Payment Option Selection */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-                <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">Select Students to Pay
-                    For</h2>
+                <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">Choose Payment Option</h2>
+                <RadioGroup defaultValue="monthly" value={paymentOption}
+                            onValueChange={(value) => setPaymentOption(value as PaymentOption)} className="space-y-2">
+                    {/* Option 1: Monthly Group Fees */}
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="monthly" id="opt-monthly"/>
+                        <Label htmlFor="opt-monthly">Pay Monthly Group Class Fees</Label>
+                    </div>
+                    {/* Option 2: Yearly Group Fees */}
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yearly" id="opt-yearly"/>
+                        <Label htmlFor="opt-yearly">Pay Yearly Group Class Fees
+                            ({siteConfig.pricing.currency}{siteConfig.pricing.yearly}/student)</Label>
+                    </div>
+                    {/* Option 3: One-on-One Session */}
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="one_on_one" id="opt-one-on-one"/>
+                        <Label htmlFor="opt-one-on-one">Purchase 1:1 Session(s)
+                            ({siteConfig.pricing.currency}{siteConfig.pricing.oneOnOneSession}/session)</Label>
+                    </div>
+                </RadioGroup>
 
-                {/* Student List with Checkboxes */}
-                <div className="space-y-4 mb-6">
-                    {studentPaymentDetails.map(detail => (
-                        <div key={detail.studentId}
-                             className={`flex items-start space-x-3 p-3 rounded-md ${detail.needsPayment ? 'border border-gray-200 dark:border-gray-700' : 'opacity-70 bg-gray-50 dark:bg-gray-700/50'}`}>
-                            {detail.needsPayment ? (
-                                <Checkbox
-                                    id={`student-${detail.studentId}`}
-                                    checked={selectedStudentIds.has(detail.studentId)}
-                                    onCheckedChange={(checked) => handleCheckboxChange(detail.studentId, checked)}
-                                    className="mt-1" // Align checkbox better
-                                />
-                            ) : (
-                                <div className="w-4 h-4 mt-1"> {/* Placeholder for alignment */} </div>
-                            )}
-                            <div className="flex-1">
-                                <label
-                                    htmlFor={detail.needsPayment ? `student-${detail.studentId}` : undefined}
-                                    className={`font-medium ${detail.needsPayment ? 'cursor-pointer' : 'cursor-default'}`}
-                                >
-                                    {detail.firstName} {detail.lastName}
-                                </label>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    {detail.eligibility.reason === 'Paid' && detail.eligibility.lastPaymentDate &&
-                                        `Active (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
-                                    }
-                                    {detail.eligibility.reason === 'Trial' &&
-                                        `On Free Trial`
-                                    }
-                                    {detail.eligibility.reason === 'Expired' && detail.eligibility.lastPaymentDate &&
-                                        `Expired (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
-                                    }
-                                    {detail.eligibility.reason === 'Expired' && !detail.eligibility.lastPaymentDate &&
-                                        `Expired (No payment history)`
-                                    }
-                                </p>
-                                {detail.needsPayment && (
-                                    <p className="text-sm font-semibold text-green-700 dark:text-green-400 mt-1">
-                                        Next
-                                        Payment: {siteConfig.pricing.currency}{detail.nextPaymentAmount.toFixed(2)} ({detail.nextPaymentTierLabel})
-                                    </p>
+                {/* Conditional UI for 1:1 Quantity */}
+                {paymentOption === 'one_on_one' && (
+                    <div className="mt-4 pl-6">
+                        <Label htmlFor="oneOnOneQuantity">Number of Sessions:</Label>
+                        <Input
+                            id="oneOnOneQuantity"
+                            type="number"
+                            min="1"
+                            value={oneOnOneQuantity}
+                            onChange={(e) => setOneOnOneQuantity(parseInt(e.target.value, 10) || 1)}
+                            className="mt-1 w-20"
+                        />
+                    </div>
+                )}
+            </div>
+
+
+            {/* Student Selection & Payment Details Section (Conditional) */}
+            {(paymentOption === 'monthly' || paymentOption === 'yearly') && studentPaymentDetails && studentPaymentDetails.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">
+                        {paymentOption === 'yearly' ? 'Select Students for Yearly Payment' : 'Select Students for Monthly Payment'}
+                    </h2>
+
+                    {/* Student List with Checkboxes */}
+                    <div className="space-y-4 mb-6">
+                        {studentPaymentDetails.map(detail => (
+                            <div key={detail.studentId}
+                                 className={`flex items-start space-x-3 p-3 rounded-md ${detail.needsPayment ? 'border border-gray-200 dark:border-gray-700' : 'opacity-70 bg-gray-50 dark:bg-gray-700/50'}`}>
+                                {detail.needsPayment ? (
+                                    <Checkbox
+                                        id={`student-${detail.studentId}`}
+                                        checked={selectedStudentIds.has(detail.studentId)}
+                                        onCheckedChange={(checked) => handleCheckboxChange(detail.studentId, checked)}
+                                        className="mt-1" // Align checkbox better
+                                    />
+                                ) : (
+                                    <div className="w-4 h-4 mt-1"> {/* Placeholder for alignment */} </div>
                                 )}
+                                <div className="flex-1">
+                                    <label
+                                        htmlFor={detail.needsPayment ? `student-${detail.studentId}` : undefined}
+                                        className={`font-medium ${detail.needsPayment ? 'cursor-pointer' : 'cursor-default'}`}
+                                    >
+                                        {detail.firstName} {detail.lastName}
+                                    </label>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        { (detail.eligibility.reason === 'Paid - Monthly' ||detail.eligibility.reason === 'Paid - Yearly')
+                                            && detail.eligibility.lastPaymentDate &&
+                                            `Active (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
+                                        }
+                                        {detail.eligibility.reason === 'Trial' &&
+                                            `On Free Trial`
+                                        }
+                                        {detail.eligibility.reason === 'Expired' && detail.eligibility.lastPaymentDate &&
+                                            `Expired (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
+                                        }
+                                        {detail.eligibility.reason === 'Expired' && !detail.eligibility.lastPaymentDate &&
+                                            `Expired (No payment history)`
+                                        }
+                                    </p>
+                                    {/* Show relevant price based on selection */}
+                                    {detail.needsPayment && paymentOption === 'monthly' && (
+                                        <p className="text-sm font-semibold text-green-700 dark:text-green-400 mt-1">
+                                            Next Monthly
+                                            Payment: {siteConfig.pricing.currency}{detail.nextPaymentAmount.toFixed(2)} ({detail.nextPaymentTierLabel})
+                                        </p>
+                                    )}
+                                    {detail.needsPayment && paymentOption === 'yearly' && (
+                                        <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mt-1">
+                                            Yearly
+                                            Payment: {siteConfig.pricing.currency}{siteConfig.pricing.yearly.toFixed(2)}
+                                        </p>
+                                    )}
+                                    {/* Show message if payment not needed */}
+                                    {!detail.needsPayment && (
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                            Group class payment not currently due.
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
+            )} {/* End conditional student selection div */}
 
+
+            {/* Combined Total & Pricing Info Section */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
                 {/* Calculated Total Amount */}
-                <div className="border-t pt-4 mt-4 dark:border-gray-600">
+                <div className="border-b pb-4 mb-4 dark:border-gray-600">
                     <div className="flex justify-between items-center font-bold text-lg">
                         <span>Total Due:</span>
                         <span>{currentTotalDisplay}</span>
@@ -459,16 +569,20 @@ export default function FamilyPaymentPage() {
 
                 {/* Pricing Info Alert */}
                 <Alert variant="default"
-                       className="mt-6 bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
+                       className="bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
                     <InfoCircledIcon className="h-4 w-4 text-blue-600 dark:text-blue-300"/>
                     <AlertTitle className="text-blue-800 dark:text-blue-200">How Pricing Works</AlertTitle>
                     <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
+                        Your first class is a <span
+                        className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
                         Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
-                        The 1st month fee is {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth},
-                        2nd month is {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth},
-                        and the ongoing rate is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per
-                        student.
-                        The total above reflects the calculated amount based on each student&apos;s payment history.
+                        Monthly fees are
+                        tiered: {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth} (1st), {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth} (2nd),
+                        then
+                        {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/mo per student.
+                        Yearly fee: {siteConfig.pricing.currency}{siteConfig.pricing.yearly}/year per student.
+                        1:1 Sessions: {siteConfig.pricing.currency}{siteConfig.pricing.oneOnOneSession}/session.
+                        The total above reflects your current selection.
                     </AlertDescription>
                 </Alert>
             </div>
@@ -483,8 +597,14 @@ export default function FamilyPaymentPage() {
                 <Button
                     type="submit"
                     className="w-full"
-                    // Disable if processing, stripe not loaded, no student selected, or total is 0
-                    disabled={isProcessing || !stripe || selectedStudentIds.size === 0 || currentTotalInCents <= 0}
+                    // Updated disabled logic
+                    disabled={
+                        isProcessing ||
+                        !stripe ||
+                        currentTotalInCents <= 0 ||
+                        ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
+                        (paymentOption === 'one_on_one' && oneOnOneQuantity <= 0)
+                    }
                 >
                     {isProcessing ? "Processing..." : `Proceed to Pay ${currentTotalDisplay}`}
                 </Button>

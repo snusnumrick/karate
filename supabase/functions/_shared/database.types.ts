@@ -218,31 +218,37 @@ export type Database = {
           amount: number
           family_id: string
           id: string
+          notes: string | null
           payment_date: string | null
           payment_method: string | null
           receipt_url: string | null
           status: Database["public"]["Enums"]["payment_status"]
           stripe_session_id: string | null
+          type: Database["public"]["Enums"]["payment_type_enum"]
         }
         Insert: {
           amount: number
           family_id: string
           id?: string
+          notes?: string | null
           payment_date?: string | null
           payment_method?: string | null
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           stripe_session_id?: string | null
+          type?: Database["public"]["Enums"]["payment_type_enum"]
         }
         Update: {
           amount?: number
           family_id?: string
           id?: string
+          notes?: string | null
           payment_date?: string | null
           payment_method?: string | null
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           stripe_session_id?: string | null
+          type?: Database["public"]["Enums"]["payment_type_enum"]
         }
         Relationships: [
           {
@@ -456,7 +462,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      count_successful_student_payments: {
+        Args: {
+          p_student_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       belt_rank_enum:
@@ -470,6 +481,11 @@ export type Database = {
         | "brown"
         | "black"
       payment_status: "pending" | "succeeded" | "failed"
+      payment_type_enum:
+        | "monthly_group"
+        | "yearly_group"
+        | "one_on_one_session"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never

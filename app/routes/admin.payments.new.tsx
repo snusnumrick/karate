@@ -27,6 +27,7 @@ type ActionData = {
         paymentDate?: string;
         paymentMethod?: string;
         status?: string;
+        paymentType?: string; // Added for payment type validation
     };
 };
 
@@ -88,8 +89,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const amountStr = formData.get("amount") as string;
     const paymentDate = formData.get("paymentDate") as string || getTodayDateString();
     const paymentMethod = formData.get("paymentMethod") as string;
-    const status = formData.get("status") as string || 'completed'; // Default to completed
+    const status = formData.get("status") as string || 'succeeded'; // Default to succeeded (was completed)
     const notes = formData.get("notes") as string | null; // Get notes
+    const paymentType = formData.get("paymentType") as string || 'monthly_group'; // Get payment type, default monthly
 
     // --- Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
@@ -99,8 +101,13 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     }
     if (!paymentDate) fieldErrors.paymentDate = "Payment date is required.";
     if (!paymentMethod) fieldErrors.paymentMethod = "Payment method is required.";
-    if (!status || !['pending', 'completed', 'failed'].includes(status)) {
+    // Use the actual enum values for status validation
+    if (!status || !['pending', 'succeeded', 'failed'].includes(status)) {
         fieldErrors.status = "Invalid status selected.";
+    }
+    // Use the actual enum values for type validation
+    if (!paymentType || !['monthly_group', 'yearly_group', 'one_on_one_session', 'other'].includes(paymentType)) {
+        fieldErrors.paymentType = "Invalid payment type selected.";
     }
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -136,8 +143,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                 amount: amount,
                 payment_date: paymentDate,
                 payment_method: paymentMethod,
-                status: status as Database['public']['Tables']['payments']['Row']['status'],
-                notes: notes // Add notes to insert data
+                status: status as Database['public']['Enums']['payment_status'], // Use correct enum type
+                type: paymentType as Database['public']['Enums']['payment_type_enum'], // Add payment type
+                notes: notes
             });
 
         if (insertError) {
@@ -177,7 +185,8 @@ export default function AdminNewPaymentPage() {
     // State for controlled Select components
     const [selectedFamily, setSelectedFamily] = useState<string | undefined>(undefined);
     const [selectedMethod, setSelectedMethod] = useState<string | undefined>(undefined);
-    const [selectedStatus, setSelectedStatus] = useState<string>('completed'); // Default to completed
+    const [selectedStatus, setSelectedStatus] = useState<string>('succeeded'); // Default to succeeded
+    const [selectedPaymentType, setSelectedPaymentType] = useState<string>('monthly_group'); // Default type
 
     // console.log("Rendering AdminNewPaymentPage component...");
     // console.log("Action Data:", actionData);
@@ -227,6 +236,31 @@ export default function AdminNewPaymentPage() {
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyId}</p>
                             )}
                         </div>
+
+                        {/* Payment Type */}
+                        <div>
+                            <Label htmlFor="paymentType">Payment Type</Label>
+                            <Select
+                                name="paymentType"
+                                value={selectedPaymentType}
+                                onValueChange={setSelectedPaymentType}
+                                required
+                            >
+                                <SelectTrigger id="paymentType">
+                                    <SelectValue placeholder="Select payment type"/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="monthly_group">Monthly Group Class</SelectItem>
+                                    <SelectItem value="yearly_group">Yearly Group Class</SelectItem>
+                                    <SelectItem value="one_on_one_session">One-on-One Session</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {actionData?.fieldErrors?.paymentType && (
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.paymentType}</p>
+                            )}
+                        </div>
+
 
                         {/* Amount */}
                         <div>
@@ -300,7 +334,8 @@ export default function AdminNewPaymentPage() {
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="completed">Completed</SelectItem>
+                                    {/* Use correct status enum values */}
+                                    <SelectItem value="succeeded">Succeeded</SelectItem>
                                     <SelectItem value="pending">Pending</SelectItem>
                                     <SelectItem value="failed">Failed</SelectItem>
                                 </SelectContent>

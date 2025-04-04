@@ -1,7 +1,8 @@
 import type {ActionFunctionArgs} from "@remix-run/node";
 import {json} from "@remix-run/node";
 import Stripe from "stripe";
-import {updatePaymentStatus} from "~/utils/supabase.server"; // Import the updated function
+import {updatePaymentStatus} from "~/utils/supabase.server";
+import type {Database} from "~/types/supabase"; // Import Database types
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -50,6 +51,10 @@ export async function action({request}: ActionFunctionArgs) {
         const paymentStatus = session.payment_status; // 'paid', 'unpaid', 'no_payment_required'
         let receiptUrl: string | null = null;
         let paymentMethod: string | null = null;
+        // Extract payment type from metadata (ensure it's added during session creation)
+        const paymentType = session.metadata?.paymentType as Database['public']['Enums']['payment_type_enum'] | undefined ?? null;
+        // IMPORTANT: We need to identify the payment record. Using stripe_session_id is better than internal ID from metadata
+        // const internalPaymentId = session.metadata?.paymentId; // Remove reliance on this if possible
 
         // Determine the final status for your database
         let dbStatus: "pending" | "succeeded" | "failed" = "pending";
@@ -88,14 +93,15 @@ export async function action({request}: ActionFunctionArgs) {
         }
 
         // Only update if the status is determined to be 'succeeded'
-        if (dbStatus === "succeeded") {
+        // AND we have a valid payment type from metadata
+        if (dbStatus === "succeeded" && paymentType) {
             try {
-                console.log(`Updating payment status for Stripe session ${stripeSessionId} to ${dbStatus}`);
-                await updatePaymentStatus(stripeSessionId, dbStatus, receiptUrl, paymentMethod);
+                console.log(`Updating payment status for Stripe session ${stripeSessionId} to ${dbStatus} with type ${paymentType}`);
+                // Pass paymentType to the updated function
+                await updatePaymentStatus(stripeSessionId, dbStatus, receiptUrl, paymentMethod, paymentType);
                 console.log(`Successfully updated payment status for Stripe session ${stripeSessionId}`);
             } catch (updateError) {
-                console.error(`Failed to update payment status for session ${stripeSessionId}: ${updateError instanceof Error ? updateError.message : updateError}`);
-                // Return 500 so Stripe retries the webhook
+                console.error(`Failed to update payment status for session ${stripeSessionId}: ${updateError instanceof Error ? updateError.message : updateError}`);                // Return 500 so Stripe retries the webhook
                 return json({error: "Database update failed."}, {status: 500});
             }
         } else {

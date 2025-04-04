@@ -27,10 +27,11 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - *Note: Student deletion might be restricted to Admins.*
 - **Waiver Management:** Digitally sign required waivers (Liability, Code of Conduct, Photo/Video, Payment/Dress Code).
 - **Payments:**
-    - Secure payment processing (Stripe integration planned/configured).
+    - Secure payment processing via Stripe.
+    - Multiple payment options: Monthly Group, Yearly Group, One-off 1:1 Sessions.
     - View payment history (Placeholder).
-    - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing).
-    - Student eligibility status ("Trial", "Active", "Expired") based on payment history (`app/utils/supabase.server.ts`).
+    - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly).
+    - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
 
 ### Administrative Panel (`/admin`)
 - **Dashboard:** Overview statistics (Families, Students, Payments, Attendance, Waivers).
@@ -54,7 +55,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - Mark waivers as required, triggering notifications.
     - View report of families/students with missing required waivers (`/admin/waivers/missing`).
 - **Payment Management:**
-    - Record manual payments (`/admin/payments/new`).
+    - Record manual payments, specifying type (Monthly, Yearly, 1:1 Session, Other) (`/admin/payments/new`).
     - View pending payments (e.g., from failed online transactions) (`/admin/payments/pending`).
     - *Note: Full payment history/reporting might be a future enhancement.*
 
@@ -84,7 +85,8 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 
 - **Site Configuration:** Basic site details (name, instructor info, class schedule, location, pricing tiers) are managed in `app/config/site.ts`.
 - **Styling:** Uses Tailwind CSS and Shadcn UI components. Customize Tailwind configuration in `tailwind.config.ts` and component styles within `app/components/ui/`.
-- **Pricing Logic:** Payment tier calculation logic is within the payment route (`/family/payment` - *route needs confirmation*). Eligibility logic is in `app/utils/supabase.server.ts`.
+- **Pricing Logic:** Payment tier calculation logic is within the payment route (`/family/payment` - *route needs confirmation*). Pricing values are in `app/config/site.ts`. Eligibility logic (handling monthly/yearly)
+  is in `app/utils/supabase.server.ts`.
 - **Email Templates:** Email content is generally defined within the server-side code that sends the email (e.g., routes, Supabase functions). Check `app/utils/email.server.ts` and `supabase/functions/`.
 
 ## Local Development Setup
