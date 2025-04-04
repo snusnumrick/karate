@@ -265,7 +265,8 @@ export default function FamilyPortal() {
                         <p className="text-gray-600 dark:text-gray-400">No students registered yet.</p>
                     )}
                     {/* Link to the new dedicated page for adding a student to the current family */}
-                    <Button asChild className="mt-4">
+                    {/* Removed asChild for testing */}
+                    <Button className="mt-4">
                         <Link to="/family/add-student">Add Student</Link>
                     </Button>
                 </div>
@@ -276,7 +277,8 @@ export default function FamilyPortal() {
                     <p className="text-3xl font-bold mb-2">{individualSessionBalance ?? 0}</p>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">Remaining Sessions</p>
                     {/* Optionally link to purchase more */}
-                    <Button asChild variant="secondary">
+                    {/* Removed asChild for testing */}
+                    <Button variant="secondary">
                         <Link to="/family/payment?option=individual_session">Purchase More</Link> {/* Corrected option value */}
                     </Button>
                 </div>
@@ -292,7 +294,8 @@ export default function FamilyPortal() {
                             waivers.</p>
                     )}
                     {/* Use asChild prop for correct Button/Link integration */}
-                    <Button asChild className="mt-4">
+                    {/* Removed asChild for testing */}
+                    <Button className="mt-4">
                         <Link to="/waivers">View/Sign Waivers</Link>
                     </Button>
                 </div>
@@ -307,7 +310,8 @@ export default function FamilyPortal() {
                         <p className="text-gray-600 dark:text-gray-400 mb-4">Proceed to make a payment for class
                             fees.</p>
                         {family.students && family.students.length > 0 ? (
-                            <Button asChild>
+                            /* Removed asChild for testing */
+                            <Button>
                                 <Link to="/family/payment">Make Payment</Link>
                             </Button>
                         ) : (
@@ -370,7 +374,8 @@ export default function FamilyPortal() {
                     <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">Update your family information, guardian
                         details, and account preferences.</p>
-                    <Button asChild className="mt-4">
+                    {/* Removed asChild for testing */}
+                    <Button className="mt-4">
                         <Link to="/family/account">Manage Account</Link>
                     </Button>
                 </div>
