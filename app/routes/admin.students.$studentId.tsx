@@ -46,10 +46,12 @@ type LoaderData = {
 
 // Define potential action data structure
 type ActionData = {
+    intent?: 'edit' | 'recordUsage'; // Add intent to distinguish actions
     success?: boolean;
     message?: string;
     error?: string;
     fieldErrors?: { [key: string]: string | undefined };
+    newBalance?: number | null; // Add field for remaining balance after usage
 };
 
 
@@ -236,8 +238,31 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                 return json({error: `Failed to record session usage details: ${usageInsertError.message}`}, {status: 500});
             }
 
-            console.log(`Successfully recorded usage for session ${sessionPurchaseId} by student ${studentId}`);
-            return json({success: true, message: "Individual Session usage recorded successfully."});
+            // 4. Fetch the updated balance for the family
+            let newBalance: number | null = null;
+            if (sessionData.family_id) {
+                const { data: balanceData, error: balanceFetchError } = await supabaseAdmin
+                    .from('family_one_on_one_balance')
+                    .select('total_remaining_sessions')
+                    .eq('family_id', sessionData.family_id)
+                    .maybeSingle();
+
+                if (balanceFetchError) {
+                    console.error(`Error fetching updated balance for family ${sessionData.family_id}:`, balanceFetchError.message);
+                    // Proceed without balance in message if fetch fails
+                } else {
+                    newBalance = balanceData?.total_remaining_sessions ?? 0;
+                }
+            }
+
+            console.log(`Successfully recorded usage for session ${sessionPurchaseId} by student ${studentId}. New balance: ${newBalance}`);
+            // Return success with intent, message, and new balance
+            return json({
+                intent: "recordUsage",
+                success: true,
+                message: "Individual Session usage recorded successfully.",
+                newBalance: newBalance
+            });
 
         } catch (error) {
             console.error("Admin record Individual Session usage error:", error);
@@ -355,11 +380,23 @@ export default function AdminStudentDetailPage() {
                     {/* Optionally list field errors */}
                 </Alert>
             )}
-            {actionData?.success && actionData.message && !isEditing && ( // Show success only when not editing
-                <Alert variant="default"
-                       className="mb-4 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
+            {/* Success message for Edit */}
+            {actionData?.intent === 'edit' && actionData?.success && actionData.message && !isEditing && (
+                <Alert variant="default" className="mb-4 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
                     <AlertTitle>Success</AlertTitle>
                     <AlertDescription>{actionData.message}</AlertDescription>
+                </Alert>
+            )}
+            {/* Success message for Record Usage */}
+            {actionData?.intent === 'recordUsage' && actionData?.success && actionData.message && (
+                 <Alert variant="default" className="mb-4 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
+                    <AlertTitle>Success</AlertTitle>
+                    <AlertDescription>
+                        {actionData.message}
+                        {actionData.newBalance !== null && actionData.newBalance !== undefined && (
+                            ` Remaining family balance: ${actionData.newBalance}.`
+                        )}
+                    </AlertDescription>
                 </Alert>
             )}
 
