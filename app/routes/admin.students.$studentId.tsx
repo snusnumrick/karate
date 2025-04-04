@@ -293,6 +293,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         return json({error: `Failed to update student: ${errorMessage}`}, {status: 500});
     }
+    } // <-- Add missing closing brace for the "if (intent === 'edit')" block
 
     // Fallback for unknown intent
     return json({error: `Invalid intent: ${intent}`}, {status: 400});
