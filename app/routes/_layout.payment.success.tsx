@@ -30,11 +30,13 @@ export async function loader({request}: LoaderFunctionArgs) {
 
     // Format the date in the loader for consistency
     const formattedDate = payment.payment_date ? format(new Date(payment.payment_date), 'PPP') : null; // Use 'PPP' for readable format like 'MMM d, yyyy'
+    const isPending = payment.status === 'pending'; // Check if status is still pending
 
     return json({
         payment: {
             ...payment,
-            formatted_payment_date: formattedDate // Add the formatted date string
+            formatted_payment_date: formattedDate, // Add the formatted date string
+            is_pending_update: isPending // Add a flag for the component
         }
     });
 }
@@ -74,6 +76,7 @@ export default function PaymentSuccess() {
         family: { name: string } | null;
         receipt_url?: string | null;
         formatted_payment_date: string | null; // Add the formatted date field
+        is_pending_update: boolean; // Add the pending flag field
     };
     console.log('Typed Payment:', typedPayment);
 
@@ -102,8 +105,11 @@ export default function PaymentSuccess() {
                     </p>
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                         <span
-                            className="font-semibold">Date:</span> {typedPayment.formatted_payment_date ?? 'Processing...'} {/* Use pre-formatted date */}
+                            className="font-semibold">Date:</span> {typedPayment.formatted_payment_date ?? (typedPayment.is_pending_update ? 'Processing...' : 'N/A')} {/* Adjust display based on pending status */}
                     </p>
+                    {typedPayment.is_pending_update && (
+                         <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Note: Final details are being processed.</p>
+                    )}
                 </div>
 
                 <div className="flex justify-center space-x-4">
