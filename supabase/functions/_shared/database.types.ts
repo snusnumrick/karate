@@ -597,7 +597,7 @@ export type Database = {
       payment_type_enum:
         | "monthly_group"
         | "yearly_group"
-        | "one_on_one_session"
+        | "individual_session"
         | "other"
     }
     CompositeTypes: {

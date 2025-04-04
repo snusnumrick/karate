@@ -37,14 +37,16 @@ export const siteConfig = {
         monthly: 121,
         yearly: 1200, // Example yearly price (e.g., ~10% discount)
         oneOnOneSession: 80, // Example price for a single 1:1 session
-        tiers: [
-            {label: "Free Trial", description: "Your first class is on us!"},
-            {label: "1st Month", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.firstMonth})`}, // Display price from main config
-            {label: "2nd Month", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.secondMonth})`}, // Display price from main config
-            {label: "Monthly", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.monthly} - Ongoing)`}, // Display price from main config
-            {label: "Yearly Membership", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.yearly} - Paid Annually)`}, // Display price from main config
-            {label: "1:1 Session", description: `(${siteConfig.pricing.currency}${siteConfig.pricing.oneOnOneSession} - Per Session)`}, // Display price from main config
-        ]
+        get tiers(): { label: string; description: string }[] {
+            return [
+                {label: "Free Trial", description: "Your first class is on us!"},
+                {label: "1st Month", description: `(${this.currency}${this.firstMonth})`}, // Display price from main config
+                {label: "2nd Month", description: `(${this.currency}${this.secondMonth})`}, // Display price from main config
+                {label: "Monthly", description: `(${this.currency}${this.monthly} - Ongoing)`}, // Display price from main config
+                {label: "Yearly Membership", description: `(${this.currency}${this.yearly} - Paid Annually)`}, // Display price from main config
+                {label: "1:1 Session", description: `(${this.currency}${this.oneOnOneSession} - Per Session)`}, // Display price from main config
+            ];
+        }
     },
     stripe: {
         // Replace with your actual Stripe Price IDs from your Stripe Dashboard (Test or Live)

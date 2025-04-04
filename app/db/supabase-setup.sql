@@ -819,3 +819,93 @@ WHERE conrelid::regclass::text IN ('families', 'students');
 -- Check RLS policies
 SELECT * FROM pg_policies;
 */
+
+
+-- 1. Create the table to track purchased 1:1 sessions
+CREATE TABLE public.one_on_one_sessions (
+                                            id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+                                            payment_id uuid NOT NULL REFERENCES public.payments(id) ON DELETE CASCADE,
+                                            family_id uuid NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
+                                            purchase_date timestamp with time zone DEFAULT now() NOT NULL,
+                                            quantity_purchased integer NOT NULL CHECK (quantity_purchased > 0),
+                                            quantity_remaining integer NOT NULL CHECK (quantity_remaining >= 0),
+                                            created_at timestamp with time zone DEFAULT now() NOT NULL,
+                                            updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                                            CONSTRAINT check_remaining_not_greater_than_purchased CHECK (quantity_remaining <= quantity_purchased)
+);
+
+-- Add indexes for common queries
+CREATE INDEX idx_one_on_one_sessions_family_id ON public.one_on_one_sessions(family_id);
+CREATE INDEX idx_one_on_one_sessions_payment_id ON public.one_on_one_sessions(payment_id);
+
+-- Enable Row Level Security (Important!)
+ALTER TABLE public.one_on_one_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Grant access to authenticated users (adjust based on your policies)
+-- Example: Allow families to see their own session balances
+-- CREATE POLICY "Allow family members to view their own sessions" ON public.one_on_one_sessions
+-- FOR SELECT USING (auth.uid() IN (SELECT user_id FROM profiles WHERE family_id = one_on_one_sessions.family_id));
+
+-- Grant access to service_role (for backend operations)
+-- Policies for service_role are typically not needed as it bypasses RLS,
+-- but ensure your backend uses the service role key for modifications.
+
+
+-- 2. Create the table to track usage of 1:1 sessions
+CREATE TABLE public.one_on_one_session_usage (
+                                                 id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+                                                 session_purchase_id uuid NOT NULL REFERENCES public.one_on_one_sessions(id) ON DELETE RESTRICT, -- Prevent deleting purchase if usage exists
+                                                 student_id uuid NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
+                                                 usage_date timestamp with time zone DEFAULT now() NOT NULL,
+                                                 recorded_by uuid NULL REFERENCES auth.users(id) ON DELETE SET NULL, -- Link to admin user who recorded it
+                                                 notes text NULL,
+                                                 created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Add indexes
+CREATE INDEX idx_one_on_one_session_usage_session_purchase_id ON public.one_on_one_session_usage(session_purchase_id);
+CREATE INDEX idx_one_on_one_session_usage_student_id ON public.one_on_one_session_usage(student_id);
+CREATE INDEX idx_one_on_one_session_usage_recorded_by ON public.one_on_one_session_usage(recorded_by);
+
+-- Enable Row Level Security
+ALTER TABLE public.one_on_one_session_usage ENABLE ROW LEVEL SECURITY;
+
+-- Grant access policies as needed (similar structure to above)
+-- Example: Allow families to see usage linked to their sessions
+-- CREATE POLICY "Allow family members to view usage of their sessions" ON public.one_on_one_session_usage
+-- FOR SELECT USING (session_purchase_id IN (SELECT id FROM one_on_one_sessions WHERE family_id = (SELECT family_id FROM profiles WHERE user_id = auth.uid())));
+
+-- Grant admin access (adjust role name if needed)
+-- CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_session_usage
+-- FOR ALL USING (auth.role() = 'authenticated' AND EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin')) -- Check user is admin
+-- WITH CHECK (auth.role() = 'authenticated' AND EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin'));
+
+
+-- Optional: Create a function or view to easily get the remaining balance per family
+CREATE OR REPLACE FUNCTION public.get_family_one_on_one_balance(p_family_id uuid)
+    RETURNS integer
+    LANGUAGE sql
+    STABLE -- Indicates the function doesn't modify the database
+AS $$
+SELECT COALESCE(SUM(quantity_remaining), 0)
+FROM public.one_on_one_sessions
+WHERE family_id = p_family_id;
+$$;
+
+-- Example Usage: SELECT public.get_family_one_on_one_balance('your_family_id_here');
+
+-- Or create a view (might be simpler for Remix loaders)
+CREATE OR REPLACE VIEW public.family_one_on_one_balance AS
+SELECT
+    family_id,
+    COALESCE(SUM(quantity_remaining), 0) AS total_remaining_sessions
+FROM
+    public.one_on_one_sessions
+GROUP BY
+    family_id;
+
+-- Grant select access on the view
+GRANT SELECT ON public.family_one_on_one_balance TO authenticated; -- Or specific roles
+-- RLS for views often relies on the underlying table policies or can be defined on the view itself if needed.
+
+ALTER TYPE public.payment_type_enum RENAME VALUE 'one_on_one_session' TO 'individual_session';
