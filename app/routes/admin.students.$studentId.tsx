@@ -10,6 +10,17 @@ import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Checkbox} from "~/components/ui/checkbox"; // Import Checkbox
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select"; // Import Select components
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Import Alert components
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "~/components/ui/alert-dialog"; // Import AlertDialog
 import {format} from 'date-fns';
 import {beltColorMap} from "~/utils/constants";
 
@@ -572,7 +583,7 @@ export default function AdminStudentDetailPage() {
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mt-6">
                         <h2 className="text-xl font-semibold mb-4 border-b pb-2">Record Individual Session Usage</h2>
                         {student.familyIndividualSessionBalance > 0 ? ( // Use renamed field
-                            <Form method="post" className="space-y-4">
+                            <Form method="post" id="record-usage-form" className="space-y-4"> {/* Add form ID */}
                                 <input type="hidden" name="intent" value="recordUsage"/>
                                 <div>
                                     <Label htmlFor="sessionPurchaseId">Session Batch</Label>
@@ -601,9 +612,36 @@ export default function AdminStudentDetailPage() {
                                     <Label htmlFor="notes">Notes (Optional)</Label>
                                     <Textarea id="notes" name="notes" rows={2} placeholder="e.g., Focus on kata"/>
                                 </div>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting && navigation.formData?.get('intent') === 'recordUsage' ? 'Recording...' : 'Record Usage'}
-                                </Button>
+
+                                {/* Confirmation Dialog */}
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        {/* Change original button type to "button" to only trigger dialog */}
+                                        <Button type="button" disabled={isSubmitting}>
+                                            {isSubmitting && navigation.formData?.get('intent') === 'recordUsage' ? 'Recording...' : 'Record Usage'}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirm Session Usage</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Are you sure you want to record the usage of one individual session for this student? This will decrement the family's balance.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            {/* This button submits the form */}
+                                            <AlertDialogAction
+                                                type="submit"
+                                                form="record-usage-form" // Reference the form ID
+                                                disabled={isSubmitting}
+                                            >
+                                                {isSubmitting && navigation.formData?.get('intent') === 'recordUsage' ? 'Recording...' : 'Confirm & Record'}
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+
                                 {/* Display general usage recording errors */}
                                 {actionData?.intent === 'recordUsage' && actionData.error && !actionData.fieldErrors && (
                                      <p className="text-red-500 text-sm mt-2">{actionData.error}</p>
