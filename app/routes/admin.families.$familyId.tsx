@@ -197,7 +197,7 @@ function DeleteStudentButton({studentId, studentName}: { studentId: string, stud
 }
 
 export default function FamilyDetailPage() {
-    const {family} = useLoaderData<LoaderData>();
+    const {family, oneOnOneBalance} = useLoaderData<LoaderData>(); // Destructure oneOnOneBalance here
     const params = useParams(); // Get params again for edit link if needed
     const outlet = useOutlet(); // Check if a child route is being rendered
 
