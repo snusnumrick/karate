@@ -46,6 +46,7 @@ export async function loader({request}: LoaderFunctionArgs) {
         family_id,
         receipt_url,
         stripe_session_id,
+        type, // <-- Add the missing type column here
         families ( name )
       `)
             .order('payment_date', {ascending: false}); // Show most recent first
