@@ -87,7 +87,8 @@ export function Layout() {
                         "addressCountry": siteConfig.location.country // Use siteConfig
                     },
                     "sameAs": [ // Add social media links
-                        siteConfig.socials.instagram
+                        siteConfig.socials.instagram,
+                        siteConfig.socials.facebook // Add Facebook link
                     ],
                     "description": siteConfig.description
                 })
