@@ -82,6 +82,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
     try {
         // --- Construct Line Items & Calculate Total ---
+        console.log(`[Checkout Action] Processing paymentOption received: '${paymentOption}'`); // <-- Add this log
         if (paymentOption === 'individual') {
             paymentType = 'individual_session';
             console.log(`[Checkout Action] Individual session selected. Price ID from form: ${priceIdFromForm}, Quantity from form: ${quantityFromForm}`);
