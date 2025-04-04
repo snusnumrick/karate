@@ -285,24 +285,7 @@ export default function FamilyPortal() {
                     </Button>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                    <h2 className="text-xl font-semibold mb-4">Waivers</h2>
-                    {/* Display waiver status */}
-                                            ` (Last Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
-                                        }
-                                    </Badge>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-gray-600 dark:text-gray-400">No students registered yet.</p>
-                    )}
-                    {/* Link to the new dedicated page for adding a student to the current family */}
-                    <Button asChild className="mt-4">
-                        <Link to="/family/add-student">Add Student</Link>
-                    </Button>
-                </div>
-
+                {/* Correct Waivers Section */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                     <h2 className="text-xl font-semibold mb-4">Waivers</h2>
                     {/* Display waiver status */}
