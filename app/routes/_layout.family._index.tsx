@@ -164,8 +164,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             }
             // Default to 0 on error - balance remains 0 as declared outside
         }
-
-    } catch (error: unknown) { // Outer catch handles errors from waiver or balance fetching
+    } // <-- Add missing closing brace for the main try block here
+    catch (error: unknown) { // Outer catch handles errors from waiver or balance fetching
         if (error instanceof Error) {
             console.error("Error checking waiver status or balance:", error.message);
         } else {
