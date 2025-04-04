@@ -76,7 +76,7 @@ export async function action({request}: ActionFunctionArgs) {
                 session.payment_method_types?.[0], // Pass payment method if available
                 paymentType,
                     familyId,
-                    quantity // Pass quantity (will be null/undefined if not individual)
+                    quantity // Pass the parsed quantity (number or null)
                 );
                 console.log(`[Webhook] updatePaymentStatus call completed successfully for payment ${paymentId}.`);
             } catch (updateError) {
