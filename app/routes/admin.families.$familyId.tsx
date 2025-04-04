@@ -24,6 +24,7 @@ import React from "react";
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 type StudentRow = Database['public']['Tables']['students']['Row'];
+type OneOnOneBalanceRow = Database['public']['Views']['family_one_on_one_balance']['Row'];
 
 // Define the shape of the data returned by the loader
 type LoaderData = {
@@ -31,6 +32,7 @@ type LoaderData = {
         guardians: GuardianRow[];
         students: StudentRow[];
     };
+    oneOnOneBalance: number; // Add balance
 };
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
@@ -95,8 +97,24 @@ export async function loader({params}: LoaderFunctionArgs) {
         students: familyData.students ?? [],
     };
 
+    // Fetch 1:1 balance
+    let oneOnOneBalance = 0;
+    const { data: balanceData, error: balanceError } = await supabaseServer
+        .from('family_one_on_one_balance')
+        .select('total_remaining_sessions')
+        .eq('family_id', familyId)
+        .maybeSingle();
 
-    return json({family}, {headers: response.headers});
+    if (balanceError) {
+        console.error(`[Loader] Error fetching 1:1 balance for family ${familyId}:`, balanceError.message);
+        // Don't fail load, just show 0
+    } else if (balanceData) {
+        oneOnOneBalance = balanceData.total_remaining_sessions ?? 0;
+    }
+
+    console.log(`[Loader] Family ${familyId} 1:1 balance: ${oneOnOneBalance}`);
+
+    return json({family, oneOnOneBalance}, {headers: response.headers});
 }
 
 // Action function to handle deletions etc.
@@ -224,6 +242,18 @@ export default function FamilyDetailPage() {
                             <p><strong>Updated
                                 At:</strong> {family.updated_at ? format(new Date(family.updated_at), 'PPP p') : 'N/A'}
                             </p>
+                        </CardContent>
+                    </Card>
+
+                    {/* 1:1 Session Balance Card */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>1-on-1 Session Balance</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-2xl font-bold">{oneOnOneBalance ?? 0}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Remaining Sessions</p>
+                            {/* Optional: Link to record usage (might be better on student page) */}
                         </CardContent>
                     </Card>
 

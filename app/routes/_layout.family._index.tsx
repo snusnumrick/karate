@@ -26,6 +26,7 @@ export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
 interface LoaderData {
     profile?: { familyId: string };
     family?: FamilyData;
+    oneOnOneBalance?: number; // Add balance field
     error?: string;
     allWaiversSigned?: boolean;
 }
@@ -138,6 +139,30 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             // Check if every required waiver ID is present in the signed waiver IDs
             allWaiversSigned = [...requiredWaiverIds].every(id => signedWaiverIds.has(id));
         }
+
+        // 5. Fetch 1:1 session balance using the view
+        let oneOnOneBalance = 0;
+        try {
+            const { data: balanceData, error: balanceError } = await supabaseServer
+                .from('family_one_on_one_balance')
+                .select('total_remaining_sessions')
+                .eq('family_id', profileData.family_id)
+                .maybeSingle(); // Use maybeSingle as a family might not have any sessions yet
+
+            if (balanceError) {
+                console.error("Error fetching 1:1 session balance:", balanceError.message);
+                // Don't fail the whole page load, just default to 0
+            } else if (balanceData) {
+                oneOnOneBalance = balanceData.total_remaining_sessions ?? 0;
+            }
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                console.error("Error fetching 1:1 session balance:", error.message);
+            } else {
+                console.error("Error fetching 1:1 session balance:", error);
+            }
+            // Default to 0 on error
+        }
     } catch (error: unknown) {
         if (error instanceof Error) {
             console.error("Error checking waiver status:", error.message);
@@ -154,15 +179,18 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     return json({
         profile: {familyId: String(profileData.family_id)},
         family: familyDataWithEligibility, // Use the updated data
+        oneOnOneBalance, // Include the balance in the response
         allWaiversSigned
     }, {headers});
 }
 
 
-// Helper function for badge variants (can be moved to utils if reused)
+// Helper function for eligibility badge variants
 const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-        case 'Paid':
+        // Adjusted cases based on the actual reasons in EligibilityStatus
+        case 'Paid - Monthly':
+        case 'Paid - Yearly':
             return 'default'; // Greenish
         case 'Trial':
             return 'secondary'; // Bluish/Grayish
@@ -174,8 +202,8 @@ const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "defau
 };
 
 export default function FamilyPortal() {
-    // Now loader returns profile, family data, and waiver status
-    const {family, error, allWaiversSigned} = useLoaderData<typeof loader>();
+    // Now loader returns profile, family data, waiver status, and 1:1 balance
+    const {family, oneOnOneBalance, error, allWaiversSigned} = useLoaderData<typeof loader>();
 
     // Handle specific error messages from the loader
     if (error) {
@@ -225,13 +253,41 @@ export default function FamilyPortal() {
                                     >
                                         {student.first_name} {student.last_name}
                                     </Link>
+                                    {/* Display Eligibility Badge */}
                                     <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)}
                                            className="ml-2 text-xs">
-                                        {student.eligibility.reason === 'Paid' ? 'Active' : student.eligibility.reason}
-                                        {student.eligibility.reason === 'Paid' && student.eligibility.lastPaymentDate &&
-                                            ` (Last Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
+                                        {student.eligibility.reason.startsWith('Paid') ? 'Active' : student.eligibility.reason}
+                                        {/* Show last payment date for Paid or Expired */}
+                                        {(student.eligibility.reason.startsWith('Paid') || student.eligibility.reason === 'Expired') && student.eligibility.lastPaymentDate &&
+                                            ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
                                         }
-                                        {student.eligibility.reason === 'Expired' && student.eligibility.lastPaymentDate &&
+                                    </Badge>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-gray-600 dark:text-gray-400">No students registered yet.</p>
+                    )}
+                    {/* Link to the new dedicated page for adding a student to the current family */}
+                    <Button asChild className="mt-4">
+                        <Link to="/family/add-student">Add Student</Link>
+                    </Button>
+                </div>
+
+                {/* 1:1 Session Balance */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold mb-4">1-on-1 Sessions</h2>
+                    <p className="text-3xl font-bold mb-2">{oneOnOneBalance ?? 0}</p>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Remaining Sessions</p>
+                    {/* Optionally link to purchase more */}
+                    <Button asChild variant="secondary">
+                        <Link to="/family/payment?option=one_on_one">Purchase More</Link>
+                    </Button>
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold mb-4">Waivers</h2>
+                    {/* Display waiver status */}
                                             ` (Last Paid ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
                                         }
                                     </Badge>

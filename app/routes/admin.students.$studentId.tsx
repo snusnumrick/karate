@@ -19,13 +19,18 @@ type FamilyRow = Database['public']['Tables']['families']['Row'];
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 
 // Extend student type to include family name and current belt
-type StudentWithFamilyAndBelt = StudentRow & {
+type OneOnOneSessionRow = Database['public']['Tables']['one_on_one_sessions']['Row'];
+
+// Extend student type to include family name, current belt, and family's 1:1 balance
+type StudentWithDetails = StudentRow & {
     families: Pick<FamilyRow, 'id' | 'name'> | null;
-    currentBeltRank: BeltRankEnum | null; // Add derived current belt rank
+    currentBeltRank: BeltRankEnum | null;
+    familyOneOnOneBalance: number; // Add balance
+    availableOneOnOneSessions: Pick<OneOnOneSessionRow, 'id' | 'quantity_remaining' | 'purchase_date'>[]; // Sessions with balance > 0
 };
 
 type LoaderData = {
-    student: StudentWithFamilyAndBelt; // Update type
+    student: StudentWithDetails; // Update type
 };
 
 // Define potential action data structure
@@ -83,11 +88,50 @@ export async function loader({params}: LoaderFunctionArgs): Promise<TypedRespons
     const studentWithDetails: StudentWithFamilyAndBelt = {
         ...studentData,
         families: studentData.families ?? null,
-        currentBeltRank: latestBeltAward?.type ?? null,
     };
 
+    // Fetch family's 1:1 balance
+    let familyOneOnOneBalance = 0;
+    if (studentWithDetails.families?.id) {
+        const { data: balanceData, error: balanceError } = await supabaseAdmin
+            .from('family_one_on_one_balance')
+            .select('total_remaining_sessions')
+            .eq('family_id', studentWithDetails.families.id)
+            .maybeSingle();
 
-    return json({student: studentWithDetails}); // Return combined data
+        if (balanceError) {
+            console.error(`Error fetching 1:1 balance for family ${studentWithDetails.families.id}:`, balanceError.message);
+        } else if (balanceData) {
+            familyOneOnOneBalance = balanceData.total_remaining_sessions ?? 0;
+        }
+    }
+
+    // Fetch available 1:1 session purchase records for the family (with remaining > 0)
+    let availableOneOnOneSessions: Pick<OneOnOneSessionRow, 'id' | 'quantity_remaining' | 'purchase_date'>[] = [];
+    if (studentWithDetails.families?.id) {
+        const { data: sessionsData, error: sessionsError } = await supabaseAdmin
+            .from('one_on_one_sessions')
+            .select('id, quantity_remaining, purchase_date')
+            .eq('family_id', studentWithDetails.families.id)
+            .gt('quantity_remaining', 0) // Only fetch sessions with a balance
+            .order('purchase_date', { ascending: true }); // Use oldest sessions first (FIFO)
+
+        if (sessionsError) {
+            console.error(`Error fetching available 1:1 sessions for family ${studentWithDetails.families.id}:`, sessionsError.message);
+        } else {
+            availableOneOnOneSessions = sessionsData ?? [];
+        }
+    }
+
+
+    // Add balance and available sessions to the student object
+    const finalStudentData: StudentWithDetails = {
+        ...studentWithDetails,
+        familyOneOnOneBalance,
+        availableOneOnOneSessions,
+    };
+
+    return json({student: finalStudentData}); // Return combined data
 }
 
 // Action function to handle student updates
@@ -98,11 +142,103 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     }
 
     const formData = await request.formData();
-    const intent = formData.get("intent");
+    const intent = formData.get("intent") as string;
 
-    if (intent !== "edit") {
-        return json({error: "Invalid intent"}, {status: 400});
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+        return json({error: "Server configuration error."}, {status: 500});
     }
+    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+
+    // --- Get Current User ID (for recording who used the session) ---
+    // Note: This requires auth context, which might not be directly available here.
+    // We might need to adjust how we get the admin user ID.
+    // For now, let's assume we can get it or make it nullable.
+    // const { data: { user } } = await supabaseAdmin.auth.getUser(); // This uses service key, won't get request user
+    // Placeholder - Ideally, pass user ID from a secure context if needed.
+    const adminUserId: string | null = null; // TODO: Get actual admin user ID if required by policy/audit trail
+
+    // --- Handle "Record 1:1 Session Usage" Intent ---
+    if (intent === "recordUsage") {
+        const sessionPurchaseId = formData.get("sessionPurchaseId") as string;
+        const usageDate = formData.get("usageDate") as string || format(new Date(), 'yyyy-MM-dd'); // Default to today
+        const notes = formData.get("notes") as string | null;
+
+        if (!sessionPurchaseId) {
+            return json({error: "Session purchase ID is required to record usage."}, {status: 400});
+        }
+
+        try {
+            // Use Supabase Edge Function (RPC) for transactional update if possible,
+            // otherwise, perform operations sequentially (less safe).
+            // Let's assume sequential for now.
+
+            // 1. Fetch the session to ensure it still has remaining quantity
+            const { data: sessionData, error: fetchError } = await supabaseAdmin
+                .from('one_on_one_sessions')
+                .select('quantity_remaining, family_id') // Fetch family_id for verification if needed
+                .eq('id', sessionPurchaseId)
+                .single();
+
+            if (fetchError || !sessionData) {
+                return json({error: `Session purchase record not found or error fetching: ${fetchError?.message}`}, {status: 404});
+            }
+
+            if (sessionData.quantity_remaining <= 0) {
+                return json({error: "Selected session has no remaining quantity."}, {status: 400});
+            }
+
+            // 2. Decrement the quantity_remaining
+            const { error: updateError } = await supabaseAdmin
+                .from('one_on_one_sessions')
+                .update({ quantity_remaining: sessionData.quantity_remaining - 1, updated_at: new Date().toISOString() })
+                .eq('id', sessionPurchaseId);
+
+            if (updateError) {
+                console.error(`Error decrementing session ${sessionPurchaseId}:`, updateError.message);
+                return json({error: `Failed to update session balance: ${updateError.message}`}, {status: 500});
+            }
+
+            // 3. Insert the usage record
+            const { error: usageInsertError } = await supabaseAdmin
+                .from('one_on_one_session_usage')
+                .insert({
+                    session_purchase_id: sessionPurchaseId,
+                    student_id: studentId,
+                    usage_date: usageDate,
+                    notes: notes,
+                    recorded_by: adminUserId, // Link to admin if available
+                });
+
+            if (usageInsertError) {
+                console.error(`Error inserting usage record for session ${sessionPurchaseId}:`, usageInsertError.message);
+                // Attempt to rollback decrement? Difficult without transactions. Log critical error.
+                // For now, return success but maybe with a warning? Or return error? Let's return error.
+                // Consider adding the quantity back if usage insert fails.
+                 await supabaseAdmin
+                    .from('one_on_one_sessions')
+                    .update({ quantity_remaining: sessionData.quantity_remaining, updated_at: new Date().toISOString() })
+                    .eq('id', sessionPurchaseId); // Attempt rollback
+                return json({error: `Failed to record session usage details: ${usageInsertError.message}`}, {status: 500});
+            }
+
+            console.log(`Successfully recorded usage for session ${sessionPurchaseId} by student ${studentId}`);
+            return json({success: true, message: "1-on-1 session usage recorded successfully."});
+
+        } catch (error) {
+            console.error("Admin record 1:1 usage error:", error);
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+            return json({error: `Failed to record usage: ${errorMessage}`}, {status: 500});
+        }
+    }
+
+    // --- Handle "Edit Student" Intent ---
+    if (intent === "edit") {
+        // --- Data Extraction ---
+        const updateData: Partial<StudentRow> = {
+            first_name: formData.get('first_name') as string,
 
     // --- Data Extraction ---
     const updateData: Partial<StudentRow> = {
@@ -161,6 +297,9 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         return json({error: `Failed to update student: ${errorMessage}`}, {status: 500});
     }
+
+    // Fallback for unknown intent
+    return json({error: `Invalid intent: ${intent}`}, {status: 400});
 }
 
 
@@ -430,11 +569,59 @@ export default function AdminStudentDetailPage() {
                             View Attendance
                         </Button>
                     </div>
+
+                    {/* 1-on-1 Session Usage Recording Section */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mt-6">
+                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Record 1-on-1 Session Usage</h2>
+                        {student.familyOneOnOneBalance > 0 ? (
+                            <Form method="post" className="space-y-4">
+                                <input type="hidden" name="intent" value="recordUsage"/>
+                                <div>
+                                    <Label htmlFor="sessionPurchaseId">Session Batch</Label>
+                                    <Select name="sessionPurchaseId" required>
+                                        <SelectTrigger id="sessionPurchaseId">
+                                            <SelectValue placeholder="Select session batch to use"/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {student.availableOneOnOneSessions.map(session => (
+                                                <SelectItem key={session.id} value={session.id}>
+                                                    Purchased: {format(new Date(session.purchase_date), 'yyyy-MM-dd')} - Remaining: {session.quantity_remaining}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {/* Display potential action error specific to usage recording */}
+                                    {actionData?.intent === 'recordUsage' && actionData.fieldErrors?.sessionPurchaseId && (
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.sessionPurchaseId}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <Label htmlFor="usageDate">Usage Date</Label>
+                                    <Input id="usageDate" name="usageDate" type="date" defaultValue={format(new Date(), 'yyyy-MM-dd')} required />
+                                </div>
+                                <div>
+                                    <Label htmlFor="notes">Notes (Optional)</Label>
+                                    <Textarea id="notes" name="notes" rows={2} placeholder="e.g., Focus on kata"/>
+                                </div>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && navigation.formData?.get('intent') === 'recordUsage' ? 'Recording...' : 'Record Usage'}
+                                </Button>
+                                {/* Display general usage recording errors */}
+                                {actionData?.intent === 'recordUsage' && actionData.error && !actionData.fieldErrors && (
+                                     <p className="text-red-500 text-sm mt-2">{actionData.error}</p>
+                                )}
+                            </Form>
+                        ) : (
+                            <p className="text-gray-500 dark:text-gray-400">
+                                This student's family has no available 1-on-1 sessions.
+                                <Link to={`/admin/payments/new?familyId=${student.families?.id}&type=one_on_one_session`} className="text-blue-600 hover:underline ml-2">
+                                    Record a purchase?
+                                </Link>
+                            </p>
+                        )}
+                    </div>
                 </>
             )}
-
-            {/* Removed Outlet and surrounding div */}
-
         </div>
     );
 }

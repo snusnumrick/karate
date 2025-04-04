@@ -164,7 +164,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             metadata: {
                 paymentId: supabasePaymentId, // Our internal DB payment ID
                 paymentType: paymentType,     // The type ('monthly_group', 'yearly_group', 'one_on_one_session')
-                familyId: familyId,           // Optional but helpful for context
+                familyId: familyId,           // Needed for 1:1 session recording in webhook
+                // Add quantity only if it's a 1:1 session payment
+                ...(paymentType === 'one_on_one_session' && quantityFromForm && { quantity: quantityFromForm }),
                 // studentIds: studentIds.join(','), // Avoid if too long, paymentId is key
             }
             // TODO: Consider adding customer_email if available from user session/profile
