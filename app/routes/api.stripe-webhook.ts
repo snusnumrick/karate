@@ -21,44 +21,57 @@ export async function action({request}: ActionFunctionArgs) {
 
         // Handle the checkout.session.completed event
         if (event.type === 'checkout.session.completed') {
-            const session = event.data.object as Stripe.Checkout.Session; // Base type
+            const sessionFromEvent = event.data.object as Stripe.Checkout.Session; // Session from webhook event
 
-            // Log the entire session object received in the webhook event
-            console.log('[Webhook] Full session object received:', JSON.stringify(session, null, 2));
+            // Log the session object received directly from the webhook event
+            console.log('[Webhook] Session object from EVENT:', JSON.stringify(sessionFromEvent, null, 2));
 
-            // --- Attempt to retrieve metadata from Payment Intent ---
-            // Stripe might include the payment_intent object or just its ID.
+            // --- Retrieve the session again with payment_intent expanded ---
+            let session: Stripe.Checkout.Session;
+            try {
+                console.log(`[Webhook] Retrieving session ${sessionFromEvent.id} with payment_intent expanded...`);
+                session = await stripe.checkout.sessions.retrieve(sessionFromEvent.id, {
+                    expand: ['payment_intent'],
+                });
+                console.log('[Webhook] Full session object RETRIEVED with expansion:', JSON.stringify(session, null, 2));
+            } catch (retrieveError) {
+                console.error(`[Webhook] Failed to retrieve session ${sessionFromEvent.id} with expansion:`, retrieveError);
+                return json({ error: "Failed to retrieve full session details." }, { status: 500 });
+            }
+
+            // --- Attempt to retrieve metadata from the EXPANDED Payment Intent ---
             // If it's just the ID, we'd need another API call to retrieve it with its metadata.
-            // Let's assume it might be included directly for now.
-            const paymentIntent = session.payment_intent as Stripe.PaymentIntent | null | string; // Could be object, ID string, or null
+            // Now session.payment_intent should be the full PaymentIntent object
+            const paymentIntent = session.payment_intent as Stripe.PaymentIntent | null; // Should be object or null
 
-            let paymentIntentMetadata: {
+            let metadataSource: {
                 paymentId?: string;
                 paymentType?: Database['public']['Enums']['payment_type_enum'];
                 familyId?: string;
                 quantity?: string;
             } | null = null;
 
-            if (typeof paymentIntent === 'object' && paymentIntent !== null && paymentIntent.metadata) {
-                 console.log('[Webhook] Found Payment Intent object with metadata directly in session.');
-                 paymentIntentMetadata = paymentIntent.metadata;
+            if (paymentIntent && paymentIntent.metadata) {
+                 console.log('[Webhook] Found metadata on expanded Payment Intent object.');
+                 metadataSource = paymentIntent.metadata;
             } else {
-                 console.warn(`[Webhook] Payment Intent object or its metadata not found directly in session object. Payment Intent value: ${paymentIntent}. Metadata might need to be fetched separately if only ID is present.`);
-                 // Attempt to fallback to session metadata just in case, though we know it wasn't working
-                 paymentIntentMetadata = session.metadata;
+                 console.warn(`[Webhook] Metadata not found on expanded Payment Intent object. Payment Intent:`, paymentIntent);
+                 // Fallback to session metadata as a last resort (unlikely to work based on previous logs)
+                 metadataSource = session.metadata;
+                 console.log('[Webhook] Falling back to session metadata:', metadataSource);
             }
 
-            if (!paymentIntentMetadata) {
-                console.error(`[Webhook] CRITICAL: Could not find required metadata on session OR payment intent for session ${session.id}.`);
+            if (!metadataSource) {
+                console.error(`[Webhook] CRITICAL: Could not find required metadata on expanded payment intent OR session for session ${session.id}.`);
                 return json({error: "Missing critical payment metadata."}, {status: 400});
             }
 
             // Extract necessary info from the determined metadata source
-            const paymentId = paymentIntentMetadata.paymentId;
-            const paymentType = paymentIntentMetadata.paymentType;
-            const familyId = paymentIntentMetadata.familyId;
-            const quantityStr = paymentIntentMetadata.quantity; // Get the string from metadata
-            console.log(`[Webhook] Raw quantity string from determined metadata: '${quantityStr}' (type: ${typeof quantityStr})`); // Log raw value
+            const paymentId = metadataSource.paymentId;
+            const paymentType = metadataSource.paymentType;
+            const familyId = metadataSource.familyId;
+            const quantityStr = metadataSource.quantity; // Get the string from metadata
+            console.log(`[Webhook] Raw quantity string from determined metadata source: '${quantityStr}' (type: ${typeof quantityStr})`); // Log raw value
 
             let quantity: number | null = null; // Initialize as null
             if (quantityStr) {
