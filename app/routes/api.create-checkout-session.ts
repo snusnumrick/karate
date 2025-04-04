@@ -84,17 +84,30 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         // --- Construct Line Items & Calculate Total ---
         if (paymentOption === 'individual') {
             paymentType = 'individual_session';
+            console.log(`[Checkout Action] Individual session selected. Price ID from form: ${priceIdFromForm}, Quantity from form: ${quantityFromForm}`);
             const quantity = parseInt(quantityFromForm!, 10);
+            if (isNaN(quantity) || quantity <= 0) {
+                console.error(`[Checkout Action] Invalid quantity parsed: ${quantity}`);
+                return json({error: "Invalid quantity provided for Individual Session."}, {status: 400});
+            }
+            if (!priceIdFromForm) {
+                 console.error(`[Checkout Action] Missing priceId for Individual Session.`);
+                 return json({error: "Missing price information for Individual Session."}, {status: 400});
+            }
             line_items.push({
                 price: priceIdFromForm!,
                 quantity: quantity,
             });
             // Fetch price amount from Stripe to calculate total accurately
-            const priceObject = await stripe.prices.retrieve(priceIdFromForm!);
+            console.log(`[Checkout Action] Retrieving Stripe price object for ID: ${priceIdFromForm}`);
+            const priceObject = await stripe.prices.retrieve(priceIdFromForm);
+            console.log(`[Checkout Action] Stripe price object retrieved:`, priceObject); // Log the whole object
             if (!priceObject || typeof priceObject.unit_amount !== 'number') {
-                throw new Error(`Could not retrieve price details for ${priceIdFromForm}`);
+                 console.error(`[Checkout Action] Invalid price object or unit_amount missing/invalid for price ID ${priceIdFromForm}. Unit amount: ${priceObject?.unit_amount}`);
+                throw new Error(`Could not retrieve valid price details for ${priceIdFromForm}`);
             }
             totalAmountInCents = priceObject.unit_amount * quantity;
+            console.log(`[Checkout Action] Calculated totalAmountInCents for individual session: ${totalAmountInCents}`);
 
         } else if (paymentOption === 'yearly') {
             paymentType = 'yearly_group';
@@ -130,7 +143,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             }
         }
 
+        console.log(`[Checkout Action] Before final check - line_items count: ${line_items.length}, totalAmountInCents: ${totalAmountInCents}`);
         if (line_items.length === 0 || totalAmountInCents <= 0) {
+             console.error(`[Checkout Action] Failing validation: line_items.length=${line_items.length}, totalAmountInCents=${totalAmountInCents}`);
             return json({error: "Calculated payment amount is invalid or no items selected."}, {status: 400});
         }
 
