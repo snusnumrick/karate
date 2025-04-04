@@ -169,7 +169,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
         // 3. Create Stripe checkout session
         const requestUrl = new URL(request.url);
-        const successUrl = process.env.STRIPE_SUCCESS_URL || new URL('/family/payment/success', requestUrl.origin).toString(); // More specific success URL
+        // Correct the success URL path to match the file route (_layout.payment.success.tsx -> /payment/success)
+        const successUrl = process.env.STRIPE_SUCCESS_URL || new URL('/payment/success', requestUrl.origin).toString();
         const cancelUrl = process.env.STRIPE_CANCEL_URL || new URL('/family/payment', requestUrl.origin).toString(); // Return to payment page on cancel
 
         const session = await stripe.checkout.sessions.create({
