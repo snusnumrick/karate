@@ -140,26 +140,26 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             allWaiversSigned = [...requiredWaiverIds].every(id => signedWaiverIds.has(id));
         }
 
-        // 5. Fetch 1:1 session balance using the view
-        let oneOnOneBalance = 0;
+        // 5. Fetch individual session balance using the view
+        let individualSessionBalance = 0;
         try {
             const { data: balanceData, error: balanceError } = await supabaseServer
-                .from('family_one_on_one_balance')
+                .from('family_one_on_one_balance') // View name remains the same
                 .select('total_remaining_sessions')
                 .eq('family_id', profileData.family_id)
                 .maybeSingle(); // Use maybeSingle as a family might not have any sessions yet
 
             if (balanceError) {
-                console.error("Error fetching 1:1 session balance:", balanceError.message);
+                console.error("Error fetching Individual Session balance:", balanceError.message);
                 // Don't fail the whole page load, just default to 0
             } else if (balanceData) {
-                oneOnOneBalance = balanceData.total_remaining_sessions ?? 0;
+                individualSessionBalance = balanceData.total_remaining_sessions ?? 0;
             }
         } catch (error: unknown) {
             if (error instanceof Error) {
-                console.error("Error fetching 1:1 session balance:", error.message);
+                console.error("Error fetching Individual Session balance:", error.message);
             } else {
-                console.error("Error fetching 1:1 session balance:", error);
+                console.error("Error fetching Individual Session balance:", error);
             }
             // Default to 0 on error
         }

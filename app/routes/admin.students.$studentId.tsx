@@ -88,29 +88,30 @@ export async function loader({params}: LoaderFunctionArgs): Promise<TypedRespons
     const studentWithDetails: StudentWithFamilyAndBelt = {
         ...studentData,
         families: studentData.families ?? null,
+        currentBeltRank: latestBeltAward?.type ?? null, // Keep belt rank logic
     };
 
-    // Fetch family's 1:1 balance
-    let familyOneOnOneBalance = 0;
+    // Fetch family's individual session balance
+    let familyIndividualSessionBalance = 0;
     if (studentWithDetails.families?.id) {
         const { data: balanceData, error: balanceError } = await supabaseAdmin
-            .from('family_one_on_one_balance')
+            .from('family_one_on_one_balance') // View name remains the same
             .select('total_remaining_sessions')
             .eq('family_id', studentWithDetails.families.id)
             .maybeSingle();
 
         if (balanceError) {
-            console.error(`Error fetching 1:1 balance for family ${studentWithDetails.families.id}:`, balanceError.message);
+            console.error(`Error fetching Individual Session balance for family ${studentWithDetails.families.id}:`, balanceError.message);
         } else if (balanceData) {
-            familyOneOnOneBalance = balanceData.total_remaining_sessions ?? 0;
+            familyIndividualSessionBalance = balanceData.total_remaining_sessions ?? 0;
         }
     }
 
-    // Fetch available 1:1 session purchase records for the family (with remaining > 0)
-    let availableOneOnOneSessions: Pick<OneOnOneSessionRow, 'id' | 'quantity_remaining' | 'purchase_date'>[] = [];
+    // Fetch available individual session purchase records for the family (with remaining > 0)
+    let availableIndividualSessions: Pick<IndividualSessionRow, 'id' | 'quantity_remaining' | 'purchase_date'>[] = [];
     if (studentWithDetails.families?.id) {
         const { data: sessionsData, error: sessionsError } = await supabaseAdmin
-            .from('one_on_one_sessions')
+            .from('one_on_one_sessions') // Table name remains the same
             .select('id, quantity_remaining, purchase_date')
             .eq('family_id', studentWithDetails.families.id)
             .gt('quantity_remaining', 0) // Only fetch sessions with a balance

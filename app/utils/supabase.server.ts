@@ -302,19 +302,19 @@ export async function updatePaymentStatus(
 
     console.log(`Payment status updated successfully for Stripe session ${stripeSessionId} to ${status}. Payment ID: ${data.id}`);
 
-    // If payment succeeded, type is 1:1, and quantity is provided, insert the session record
-    if (status === 'succeeded' && paymentType === 'one_on_one_session' && quantity && quantity > 0) {
+    // If payment succeeded, type is individual_session, and quantity is provided, insert the session record
+    if (status === 'succeeded' && paymentType === 'individual_session' && quantity && quantity > 0) {
         // Use family_id from the updated payment record OR the passed familyId as fallback
         const targetFamilyId = data.family_id || familyId;
         if (!targetFamilyId) {
-            console.error(`Cannot record 1:1 session for payment ${data.id}: Missing family ID.`);
+            console.error(`Cannot record Individual Session for payment ${data.id}: Missing family ID.`);
             // Return the payment data but log the error - session not recorded
             return data;
         }
 
-        console.log(`Recording ${quantity} 1:1 session(s) for payment ${data.id}, family ${targetFamilyId}`);
+        console.log(`Recording ${quantity} Individual Session(s) for payment ${data.id}, family ${targetFamilyId}`);
         const { error: sessionInsertError } = await supabaseAdmin
-            .from('one_on_one_sessions')
+            .from('one_on_one_sessions') // Table name remains the same
             .insert({
                 payment_id: data.id,
                 family_id: targetFamilyId,
