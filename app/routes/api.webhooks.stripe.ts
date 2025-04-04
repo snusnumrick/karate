@@ -42,19 +42,66 @@ export async function action({request}: ActionFunctionArgs) {
 
     // Handle the checkout.session.completed event
     if (event.type === 'checkout.session.completed') {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const sessionFromEvent = event.data.object as Stripe.Checkout.Session; // Session from webhook event
+        console.log(`Processing checkout.session.completed for session: ${sessionFromEvent.id}`);
 
-        console.log(`Processing checkout.session.completed for session: ${session.id}`);
+        // --- Retrieve the session again with payment_intent expanded ---
+        let session: Stripe.Checkout.Session;
+        try {
+            console.log(`[Webhook ${request.url}] Retrieving session ${sessionFromEvent.id} with payment_intent expanded...`);
+            session = await stripe.checkout.sessions.retrieve(sessionFromEvent.id, {
+                expand: ['payment_intent'],
+            });
+            console.log(`[Webhook ${request.url}] Full session object RETRIEVED with expansion.`);
+        } catch (retrieveError) {
+            console.error(`[Webhook ${request.url}] Failed to retrieve session ${sessionFromEvent.id} with expansion:`, retrieveError);
+            return json({ error: "Failed to retrieve full session details." }, { status: 500 });
+        }
 
         // Extract necessary data
         const stripeSessionId = session.id;
         const paymentStatus = session.payment_status; // 'paid', 'unpaid', 'no_payment_required'
         let receiptUrl: string | null = null;
         let paymentMethod: string | null = null;
-        // Extract payment type from metadata (ensure it's added during session creation)
-        const paymentType = session.metadata?.paymentType as Database['public']['Enums']['payment_type_enum'] | undefined ?? null;
-        // IMPORTANT: We need to identify the payment record. Using stripe_session_id is better than internal ID from metadata
-        // const internalPaymentId = session.metadata?.paymentId; // Remove reliance on this if possible
+
+        // --- Attempt to retrieve metadata from the EXPANDED Payment Intent ---
+        const paymentIntent = session.payment_intent as Stripe.PaymentIntent | null; // Should be object or null
+        let metadataSource: {
+            paymentId?: string; // Keep internal payment ID for logging/reference if needed
+            paymentType?: Database['public']['Enums']['payment_type_enum'];
+            familyId?: string;
+            quantity?: string;
+        } | null = null;
+
+        if (paymentIntent && paymentIntent.metadata) {
+             console.log(`[Webhook ${request.url}] Found metadata on expanded Payment Intent object:`, JSON.stringify(paymentIntent.metadata, null, 2));
+             metadataSource = paymentIntent.metadata;
+        } else {
+             console.warn(`[Webhook ${request.url}] Metadata not found on expanded Payment Intent object. Payment Intent:`, paymentIntent);
+             // Fallback to session metadata (unlikely to work)
+             metadataSource = session.metadata;
+             console.log(`[Webhook ${request.url}] Falling back to session metadata:`, metadataSource);
+        }
+
+        if (!metadataSource) {
+            console.error(`[Webhook ${request.url}] CRITICAL: Could not find required metadata for session ${session.id}.`);
+            return json({error: "Missing critical payment metadata."}, {status: 400});
+        }
+
+        // Extract values from the determined metadata source
+        const paymentType = metadataSource.paymentType ?? null;
+        const familyId = metadataSource.familyId ?? null; // Needed for updatePaymentStatus
+        const quantityStr = metadataSource.quantity;
+        let quantity: number | null = null;
+        if (quantityStr) {
+            const parsedQuantity = parseInt(quantityStr, 10);
+            if (!isNaN(parsedQuantity)) {
+                quantity = parsedQuantity;
+            } else {
+                 console.error(`[Webhook ${request.url}] Failed to parse quantity string '${quantityStr}' from metadata.`);
+            }
+        }
+        console.log(`[Webhook ${request.url}] Extracted: paymentType=${paymentType}, familyId=${familyId}, quantity=${quantity}`);
 
         // Determine the final status for your database
         let dbStatus: Database['public']['Enums']['payment_status'] = "pending"; // Use the enum type
@@ -94,18 +141,27 @@ export async function action({request}: ActionFunctionArgs) {
 
         // Only update if the status is determined to be 'succeeded'
         // AND we have a valid payment type from metadata
-        if (dbStatus === "succeeded" && paymentType) {
+        if (dbStatus === "succeeded" && paymentType && familyId) { // Also ensure familyId is present
             try {
-                console.log(`Updating payment status for Stripe session ${stripeSessionId} to ${dbStatus} with type ${paymentType}`);
-                // Pass paymentType to the updated function
-                await updatePaymentStatus(stripeSessionId, dbStatus, receiptUrl, paymentMethod, paymentType);
-                console.log(`Successfully updated payment status for Stripe session ${stripeSessionId}`);
+                console.log(`[Webhook ${request.url}] Calling updatePaymentStatus for Stripe session ${stripeSessionId} to ${dbStatus} with type ${paymentType}, quantity ${quantity}, familyId ${familyId}`);
+                // Pass paymentType, familyId, and quantity to the updated function
+                await updatePaymentStatus(
+                    stripeSessionId,
+                    dbStatus,
+                    receiptUrl,
+                    paymentMethod,
+                    paymentType,
+                    familyId, // Pass familyId
+                    quantity  // Pass quantity (will be null if not applicable or parsing failed)
+                );
+                console.log(`[Webhook ${request.url}] Successfully updated payment status and potentially session balance for Stripe session ${stripeSessionId}`);
             } catch (updateError) {
-                console.error(`Failed to update payment status for session ${stripeSessionId}: ${updateError instanceof Error ? updateError.message : updateError}`);                // Return 500 so Stripe retries the webhook
+                console.error(`[Webhook ${request.url}] Failed to update payment status/session balance for session ${stripeSessionId}: ${updateError instanceof Error ? updateError.message : updateError}`);
+                // Return 500 so Stripe retries the webhook
                 return json({error: "Database update failed."}, {status: 500});
             }
         } else {
-            console.log(`No database update performed for session ${stripeSessionId} with status ${paymentStatus}.`);
+            console.log(`[Webhook ${request.url}] No database update performed for session ${stripeSessionId}. Conditions: dbStatus='${dbStatus}', paymentType='${paymentType}', familyId='${familyId}'.`);
         }
 
     } else {
