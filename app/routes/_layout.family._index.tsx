@@ -164,7 +164,6 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             }
             // Default to 0 on error - balance remains 0 as declared outside
         }
-    } // <-- This closes the 'else' block for waiver checking
     // The main 'try' block should close HERE, before the 'catch'
     } catch (error: unknown) { // Outer catch handles errors from waiver or balance fetching
         if (error instanceof Error) {
