@@ -239,11 +239,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         // --- Data Extraction ---
         const updateData: Partial<StudentRow> = {
             first_name: formData.get('first_name') as string,
-
-    // --- Data Extraction ---
-    const updateData: Partial<StudentRow> = {
-        first_name: formData.get('first_name') as string,
-        last_name: formData.get('last_name') as string,
+            last_name: formData.get('last_name') as string,
         gender: formData.get('gender') as string,
         birth_date: formData.get('birth_date') as string,
         cell_phone: formData.get('cell_phone') as string || null,
