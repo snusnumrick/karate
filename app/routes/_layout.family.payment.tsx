@@ -46,7 +46,7 @@ interface StudentPaymentDetail {
 }
 
 // Define payment options
-type PaymentOption = 'monthly' | 'yearly' | 'one_on_one';
+type PaymentOption = 'monthly' | 'yearly' | 'individual';
 
 // Updated Loader data interface
 export interface LoaderData {

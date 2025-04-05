@@ -28,7 +28,7 @@ type ActionData = {
         paymentMethod?: string;
         status?: string;
         paymentType?: string;
-        quantity?: string; // Added for individual session quantity
+        quantity?: string; // Added for one_on_one session quantity
     };
 };
 
@@ -93,7 +93,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const status = formData.get("status") as string || 'succeeded'; // Default to succeeded
     const notes = formData.get("notes") as string | null;
     const paymentType = formData.get("paymentType") as string || 'monthly_group';
-    const quantityStr = formData.get("quantity") as string; // Get quantity for individual session
+    const quantityStr = formData.get("quantity") as string; // Get quantity for one_on_one session
 
     // --- Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
