@@ -78,17 +78,16 @@ export default function Footer() {
                     {/* Internal Grid: 2 cols always (mobile and md+) */}
                     <div className="grid grid-cols-2 gap-6 md:col-span-2 md:grid-cols-2">
 
-                        {/* Quick Links (Column 2 in md+, Col 1 of 2 mobile) */}
-                        {/* Align content: center mobile, left md+ */}
-                        <div className="space-y-3 text-center md:text-left">
+                        {/* Quick Links Column (Col 1 of 2 mobile, Col 1 of 2 in md+) */}
+                        <div className="text-center md:text-left"> {/* Alignment container */}
                             <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
                                 Quick Links
                             </Button>
-                        {/* Align items: center mobile, start md+ */}
-                        <div className="flex flex-col items-center md:items-start gap-0">
-                            {quickLinks.map((linkItem) => (
-                                <Button
-                                    key={linkItem.path}
+                            {/* Links List: Align items center mobile, start md+. Add margin top. */}
+                            <div className="mt-3 flex flex-col items-center md:items-start gap-0">
+                                {quickLinks.map((linkItem) => (
+                                    <Button
+                                        key={linkItem.path}
                                     asChild
                                     variant="link"
                                     // Justify button content: center mobile, start md+
@@ -99,18 +98,16 @@ export default function Footer() {
                                     </Link>
                                 </Button>
                             ))}
-                        </div>
-                        </div>
-                        {/* Removed extra closing div here */}
+                            </div> {/* Closes Links List div */}
+                        </div> {/* Closes Quick Links Alignment container */}
 
-                        {/* Contact Info (Column 3 in md+, Col 2 of 2 mobile) */}
-                        {/* Align content: center mobile, left md+ */}
-                        <div className="space-y-3 text-center md:text-left">
+                        {/* Contact Info Column (Col 2 of 2 mobile, Col 2 of 2 in md+) */}
+                        <div className="text-center md:text-left"> {/* Alignment container */}
                             <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
                                 Contact Us
                             </Button>
-                            {/* Align items: center mobile, start md+ */}
-                            <div className="space-y-2 text-green-100 dark:text-gray-300 flex flex-col items-center md:items-start">
+                            {/* Contact List: Align items center mobile, start md+. Add margin top. */}
+                            <div className="mt-3 space-y-2 text-green-100 dark:text-gray-300 flex flex-col items-center md:items-start">
                                 {[
                                     {icon: "📍", label: siteConfig.location.address},
                                 {icon: "📞", label: siteConfig.contact.phone},
@@ -128,9 +125,9 @@ export default function Footer() {
                                     {item.label}
                                 </Button>
                             ))}
-                        </div>
-                    </div>
-                </div>
+                            </div> {/* Closes Contact List div */}
+                        </div> {/* Closes Contact Info Alignment container */}
+                    </div> {/* Closes the 2-column wrapper grid */}
 
                 <Separator className="my-6 bg-green-700 dark:bg-gray-700"/>
 
