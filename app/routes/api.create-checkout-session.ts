@@ -214,6 +214,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             paymentIntentMetadata.quantity = quantityFromForm;
         }
 
+        // TEMPORARY LOG: Verify customer email being sent to Stripe
+        console.log(`[TEMP DEBUG] Creating Stripe session with customer_email: ${customerEmail}`);
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: line_items, // Use the dynamically constructed line items
