@@ -84,13 +84,15 @@ export default function Footer() {
                             <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
                                 Quick Links
                             </Button>
-                        <div className="flex flex-col gap-0">
+                        {/* Align items: center mobile, start md+ */}
+                        <div className="flex flex-col items-center md:items-start gap-0">
                             {quickLinks.map((linkItem) => (
                                 <Button
                                     key={linkItem.path}
                                     asChild
                                     variant="link"
-                                    className="text-green-100 justify-start hover:text-white"
+                                    // Justify button content: center mobile, start md+
+                                    className="text-green-100 justify-center md:justify-start hover:text-white"
                                 >
                                     <Link to={linkItem.path}>
                                         {linkItem.label}
