@@ -1,7 +1,7 @@
 import {type ActionFunctionArgs, json, TypedResponse} from "@remix-run/node";
 import {createClient, SupabaseClient} from "@supabase/supabase-js";
 import Stripe from 'stripe';
-import {createInitialPaymentRecord} from '~/utils/supabase.server';
+import {createInitialPaymentRecord, getSupabaseServerClient} from '~/utils/supabase.server'; // Import getSupabaseServerClient
 import type {Database} from "~/types/supabase";
 import {siteConfig} from "~/config/site"; // Import site config for price IDs
 
@@ -47,9 +47,16 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const priceIdFromForm = formData.get('priceId') as string | null; // Only for yearly/1:1
     const quantityFromForm = formData.get('quantity') as string | null; // Only for 1:1
 
+    // --- Get Supabase Client with Auth Context ---
+    // Use request-specific client for auth check
+    const { supabaseClient, response } = getSupabaseServerClient(request);
+    // --- End Get Supabase Client ---
+
+
     // --- Basic Validation ---
     if (!familyId || !familyName || !paymentOption) {
-        return json({error: "Missing required information (familyId, familyName, paymentOption)."}, {status: 400});
+        // Include response headers in JSON response
+        return json({error: "Missing required information (familyId, familyName, paymentOption)."}, {status: 400, headers: response.headers});
     }
     // Only require studentIds for monthly/yearly payments
     const studentIds = (paymentOption === 'monthly' || paymentOption === 'yearly')
@@ -57,13 +64,16 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         : []; // Default to empty array for individual sessions
 
     if ((paymentOption === 'monthly' || paymentOption === 'yearly') && studentIds.length === 0) {
-        return json({error: "Please select at least one student for group payments."}, {status: 400});
+        // Include response headers in JSON response
+        return json({error: "Please select at least one student for group payments."}, {status: 400, headers: response.headers});
     }
     if (paymentOption === 'individual' && (!priceIdFromForm || !quantityFromForm || parseInt(quantityFromForm, 10) <= 0)) {
-        return json({error: "Missing or invalid price/quantity for Individual Session."}, {status: 400});
+        // Include response headers in JSON response
+        return json({error: "Missing or invalid price/quantity for Individual Session."}, {status: 400, headers: response.headers});
     }
     if (paymentOption === 'yearly' && !priceIdFromForm) {
-        return json({error: "Missing price information for yearly payment."}, {status: 400});
+        // Include response headers in JSON response
+        return json({error: "Missing price information for yearly payment."}, {status: 400, headers: response.headers});
     }
     // --- End Validation ---
 
@@ -71,32 +81,25 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeSecretKey) {
         console.error("STRIPE_SECRET_KEY is not set.");
-        return json({error: "Payment processing is not configured."}, {status: 500});
+        // Include response headers in JSON response
+        return json({error: "Payment processing is not configured."}, {status: 500, headers: response.headers});
     }
     const stripe = new Stripe(stripeSecretKey);
 
-    // --- Fetch Family Email ---
+    // --- Get Email from Authenticated User ---
     let customerEmail: string | undefined;
-    try {
-        const {data: familyData, error: familyError} = await supabaseAdmin
-            .from('families')
-            .select('email')
-            .eq('id', familyId)
-            .single(); // Expect only one family
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
 
-        if (familyError) {
-            console.warn(`Could not fetch email for family ${familyId}: ${familyError.message}. Proceeding without email.`);
-        } else if (familyData?.email) {
-            customerEmail = familyData.email;
-        } else {
-            console.warn(`Family ${familyId} found, but no email address is associated. Proceeding without email.`);
-        }
-    } catch (e) {
-        console.error(`Unexpected error fetching family email for ${familyId}:`, e);
-        // Decide if this should be a fatal error or just proceed without email
-        // Proceeding without email for now.
+    if (authError) {
+        console.warn("Auth error while fetching user for Stripe email:", authError.message);
+        // Proceed without email, but maybe log more details or handle differently?
+    } else if (user?.email) {
+        customerEmail = user.email;
+        // console.log(`[Checkout Action] Using authenticated user email: ${customerEmail}`); // Optional log
+    } else {
+        console.warn(`[Checkout Action] User is authenticated but no email found. Proceeding without email.`);
     }
-    // --- End Fetch Family Email ---
+    // --- End Get Email ---
 
 
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
@@ -113,11 +116,13 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             const quantity = parseInt(quantityFromForm!, 10);
             if (isNaN(quantity) || quantity <= 0) {
                 console.error(`[Checkout Action] Invalid quantity parsed: ${quantity}`);
-                return json({error: "Invalid quantity provided for Individual Session."}, {status: 400});
+                // Include response headers in JSON response
+                return json({error: "Invalid quantity provided for Individual Session."}, {status: 400, headers: response.headers});
             }
             if (!priceIdFromForm) {
                  console.error(`[Checkout Action] Missing priceId for Individual Session.`);
-                 return json({error: "Missing price information for Individual Session."}, {status: 400});
+                 // Include response headers in JSON response
+                 return json({error: "Missing price information for Individual Session."}, {status: 400, headers: response.headers});
             }
             line_items.push({
                 price: priceIdFromForm!,
@@ -171,7 +176,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         // console.log(`[Checkout Action] Before final check - line_items count: ${line_items.length}, totalAmountInCents: ${totalAmountInCents}`); // Removed log
         if (line_items.length === 0 || totalAmountInCents <= 0) {
              console.error(`[Checkout Action] Failing validation: line_items.length=${line_items.length}, totalAmountInCents=${totalAmountInCents}`);
-            return json({error: "Calculated payment amount is invalid or no items selected."}, {status: 400});
+             // Include response headers in JSON response
+            return json({error: "Calculated payment amount is invalid or no items selected."}, {status: 400, headers: response.headers});
         }
 
         // 1. Create initial payment record in Supabase (BEFORE Stripe)
@@ -185,7 +191,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
         if (paymentError || !paymentRecordResult?.id) {
             console.error("Failed to create initial payment record:", paymentError);
-            return json({error: "Failed to initialize payment. Please try again."}, {status: 500});
+            // Include response headers in JSON response
+            return json({error: "Failed to initialize payment. Please try again."}, {status: 500, headers: response.headers});
         }
         // Assign the successful result to the outer variable
         paymentData = paymentRecordResult;
@@ -239,12 +246,14 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             console.error(`Failed to update payment record ${supabasePaymentId} with Stripe session ID ${session.id}:`, updateError.message);
             // Critical: Payment might proceed but won't be trackable via webhook easily.
             // Log for manual intervention. Return error to user.
-            return json({error: "Failed to link payment session. Please contact support."}, {status: 500});
+            // Include response headers in JSON response
+            return json({error: "Failed to link payment session. Please contact support."}, {status: 500, headers: response.headers});
         }
 
         // 5. Return the Stripe session ID to the client
         console.log(`Successfully created Stripe session ${session.id} for payment ${supabasePaymentId}`);
-        return json({sessionId: session.id});
+        // Include response headers in JSON response
+        return json({sessionId: session.id}, { headers: response.headers });
 
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -254,6 +263,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             console.log(`Attempting to delete pending payment record ${paymentData.id} due to Stripe error.`);
             await supabaseAdmin.from('payments').delete().eq('id', paymentData.id);
         }
-        return json({error: `Payment initiation failed: ${errorMessage}`}, {status: 500});
+        // Include response headers in JSON response
+        return json({error: `Payment initiation failed: ${errorMessage}`}, {status: 500, headers: response.headers});
     }
 }
