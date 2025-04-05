@@ -140,7 +140,7 @@ export default function Footer() {
                             reserved.</Link>
                     </Button>
                 </div>
-            </div>
+            </div> {/* This closes the max-w-7xl div */}
         </footer>
     );
 }
