@@ -128,12 +128,13 @@ export default function Footer() {
                         </div> {/* Closes Contact Info Alignment container */}
                     </div> {/* Closes the 2-column wrapper grid */}
 
-                <Separator className="my-6 bg-green-700 dark:bg-gray-700"/>
+                <Separator className="bg-green-700 dark:bg-gray-700"/>
 
                 <div className="text-center text-green-200 dark:text-gray-400 text-sm">
                     <Button variant="link" className="text-green-200">
-                        <Link to="https://www.ponto.studio/">&copy; {new Date().getFullYear()} Ponto Studio. All rights
-                            reserved.</Link>
+                        <Link to="https://www.ponto.studio/">&copy; {new Date().getFullYear()}
+                            Ponto Studio. All rights reserved.
+                        </Link>
                     </Button>
                 </div>
             </div> {/* This closes the main grid div */}
