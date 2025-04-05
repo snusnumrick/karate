@@ -137,6 +137,7 @@ export default function Footer() {
                             reserved.</Link>
                     </Button>
                 </div>
+            </div> {/* This closes the main grid div */}
             </div> {/* This closes the max-w-7xl div */}
         </footer>
     );
