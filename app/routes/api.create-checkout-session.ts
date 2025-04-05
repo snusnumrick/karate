@@ -75,6 +75,30 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     }
     const stripe = new Stripe(stripeSecretKey);
 
+    // --- Fetch Family Email ---
+    let customerEmail: string | undefined;
+    try {
+        const {data: familyData, error: familyError} = await supabaseAdmin
+            .from('families')
+            .select('email')
+            .eq('id', familyId)
+            .single(); // Expect only one family
+
+        if (familyError) {
+            console.warn(`Could not fetch email for family ${familyId}: ${familyError.message}. Proceeding without email.`);
+        } else if (familyData?.email) {
+            customerEmail = familyData.email;
+        } else {
+            console.warn(`Family ${familyId} found, but no email address is associated. Proceeding without email.`);
+        }
+    } catch (e) {
+        console.error(`Unexpected error fetching family email for ${familyId}:`, e);
+        // Decide if this should be a fatal error or just proceed without email
+        // Proceeding without email for now.
+    }
+    // --- End Fetch Family Email ---
+
+
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     let paymentType: PaymentTypeEnum;
     let totalAmountInCents = 0; // Calculate total amount server-side
@@ -194,9 +218,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             // metadata: { ... } // Removed from top level
             payment_intent_data: {
                 metadata: paymentIntentMetadata // Use the constructed object
-            }
-            // TODO: Consider adding customer_email if available from user session/profile
-            // customer_email: userEmail,
+            },
+            // Add customer email if found
+            ...(customerEmail && {customer_email: customerEmail}),
         });
 
         // console.log(`[Checkout Action] Metadata on session object returned by Stripe:`, session.metadata); // Removed log
