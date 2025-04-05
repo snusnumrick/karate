@@ -101,7 +101,7 @@ export default function Footer() {
                             ))}
                         </div>
                         </div>
-                        </div>
+                        {/* Removed extra closing div here */}
 
                         {/* Contact Info (Column 3 in md+, Col 2 of 2 mobile) */}
                         {/* Align content: center mobile, left md+ */}
