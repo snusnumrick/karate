@@ -30,11 +30,11 @@ export default function Footer() {
     return (
         <footer className="bg-green-600 text-white dark:bg-gray-800">
             <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                {/* Add text-center for mobile, md:text-left for larger screens */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
-                    {/* Social Links Section */}
-                    <div className="space-y-3">
-                        {/* Button text will center due to parent */}
+                {/* Main Grid: 1 col mobile, 3 cols md+ */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Social Links Section (Column 1) */}
+                    {/* Align content: center mobile, left md+ */}
+                    <div className="space-y-3 text-center md:text-left">
                         <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
                             KARATE GREENEGIN
                         </Button>
@@ -42,7 +42,8 @@ export default function Footer() {
                             Discover the art of the &ldquo;empty hand&rdquo;
                             with Sensei Negin&apos;s karate classes for children ages 6-12.
                         </p>
-                        <div className="flex items-center gap-2">
+                        {/* Justify icons: center mobile, start md+ */}
+                        <div className="flex items-center justify-center md:justify-start gap-2">
                             <span className="text-sm text-green-100 dark:text-gray-300">Follow Us:</span>
                             <Button variant="secondary" size="icon" asChild
                                     className="bg-[#E1306C] hover:bg-[#C1355B] text-white">
@@ -72,11 +73,17 @@ export default function Footer() {
                         </div>
                     </div>
 
-                    {/* Quick Links */}
-                    <div className="space-y-3">
-                        <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
-                            Quick Links
-                        </Button>
+                    {/* Wrapper for Quick Links & Contact Info */}
+                    {/* Spans 1 col mobile (as part of parent's col-1), spans 2 cols md+ */}
+                    {/* Internal Grid: 2 cols always (mobile and md+) */}
+                    <div className="grid grid-cols-2 gap-6 md:col-span-2 md:grid-cols-2">
+
+                        {/* Quick Links (Column 2 in md+, Col 1 of 2 mobile) */}
+                        {/* Align content: center mobile, left md+ */}
+                        <div className="space-y-3 text-center md:text-left">
+                            <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
+                                Quick Links
+                            </Button>
                         <div className="flex flex-col gap-0">
                             {quickLinks.map((linkItem) => (
                                 <Button
@@ -91,16 +98,19 @@ export default function Footer() {
                                 </Button>
                             ))}
                         </div>
-                    </div>
+                        </div>
+                        </div>
 
-                    {/* Contact Info */}
-                    <div className="space-y-3">
-                        <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
-                            Contact Us
-                        </Button>
-                        <div className="space-y-2 text-green-100 dark:text-gray-300">
-                            {[
-                                {icon: "📍", label: siteConfig.location.address},
+                        {/* Contact Info (Column 3 in md+, Col 2 of 2 mobile) */}
+                        {/* Align content: center mobile, left md+ */}
+                        <div className="space-y-3 text-center md:text-left">
+                            <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
+                                Contact Us
+                            </Button>
+                            {/* Align items: center mobile, start md+ */}
+                            <div className="space-y-2 text-green-100 dark:text-gray-300 flex flex-col items-center md:items-start">
+                                {[
+                                    {icon: "📍", label: siteConfig.location.address},
                                 {icon: "📞", label: siteConfig.contact.phone},
                                 {icon: "✉️", label: siteConfig.contact.email},
                                 {icon: "🕒", label: `${siteConfig.classes.days}: ${siteConfig.classes.timeLong}`},
@@ -108,7 +118,9 @@ export default function Footer() {
                                 <Button
                                     key={item.label}
                                     variant="ghost"
-                                    className="w-full justify-start text-green-100 hover:bg-green-700/50 px-2 py-1 h-auto"
+                                    // Justify button content: center mobile, start md+
+                                    // Remove w-full
+                                    className="justify-center md:justify-start text-green-100 hover:bg-green-700/50 px-2 py-1 h-auto"
                                 >
                                     <span className="mr-2">{item.icon}</span>
                                     {item.label}
