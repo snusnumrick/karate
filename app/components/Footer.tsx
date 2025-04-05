@@ -79,19 +79,19 @@ export default function Footer() {
                     <div className="grid grid-cols-2 gap-6 md:col-span-2 md:grid-cols-2">
 
                         {/* Quick Links Column (Col 1 of 2 mobile, Col 1 of 2 in md+) */}
-                        <div className="text-center md:text-left"> {/* Alignment container */}
+                        <div className="text-left"> {/* Align text left */}
                             <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
                                 Quick Links
                             </Button>
-                            {/* Links List: Align items center mobile, start md+. Add margin top. */}
-                            <div className="mt-3 flex flex-col items-center md:items-start gap-0">
+                            {/* Links List: Align items start. Add margin top. */}
+                            <div className="mt-3 flex flex-col items-start gap-0"> {/* Align items start */}
                                 {quickLinks.map((linkItem) => (
                                     <Button
                                         key={linkItem.path}
                                     asChild
                                     variant="link"
-                                    // Justify button content: center mobile, start md+
-                                    className="text-green-100 justify-center md:justify-start hover:text-white"
+                                    // Justify button content: start
+                                    className="text-green-100 justify-start hover:text-white" /* Justify start */
                                 >
                                     <Link to={linkItem.path}>
                                         {linkItem.label}
@@ -102,12 +102,12 @@ export default function Footer() {
                         </div> {/* Closes Quick Links Alignment container */}
 
                         {/* Contact Info Column (Col 2 of 2 mobile, Col 2 of 2 in md+) */}
-                        <div className="text-center md:text-left"> {/* Alignment container */}
+                        <div className="text-right pr-4"> {/* Align text right, add padding right */}
                             <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
                                 Contact Us
                             </Button>
-                            {/* Contact List: Align items center mobile, start md+. Add margin top. */}
-                            <div className="mt-3 space-y-2 text-green-100 dark:text-gray-300 flex flex-col items-center md:items-start">
+                            {/* Contact List: Align items end. Add margin top. */}
+                            <div className="mt-3 space-y-2 text-green-100 dark:text-gray-300 flex flex-col items-end"> {/* Align items end */}
                                 {[
                                     {icon: "📍", label: siteConfig.location.address},
                                 {icon: "📞", label: siteConfig.contact.phone},
@@ -117,9 +117,8 @@ export default function Footer() {
                                 <Button
                                     key={item.label}
                                     variant="ghost"
-                                    // Justify button content: center mobile, start md+
-                                    // Remove w-full
-                                    className="justify-center md:justify-start text-green-100 hover:bg-green-700/50 px-2 py-1 h-auto"
+                                    // Justify button content: end
+                                    className="justify-end text-green-100 hover:bg-green-700/50 px-2 py-1 h-auto" /* Justify end */
                                 >
                                     <span className="mr-2">{item.icon}</span>
                                     {item.label}
