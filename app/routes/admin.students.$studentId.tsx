@@ -2,6 +2,7 @@ import {useEffect, useState} from "react"; // Import useState and useEffect
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node"; // Import ActionFunctionArgs, redirect
 import {Form, Link, useActionData, useLoaderData, useNavigate, useNavigation, useRouteError} from "@remix-run/react"; // Import Form, useActionData, useNavigation
 import {createClient} from '@supabase/supabase-js';
+import {getSupabaseServerClient} from "~/utils/supabase.server"; // Import server client helper
 import type {Database} from "~/types/supabase";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input"; // Import Input
@@ -164,21 +165,25 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     const formData = await request.formData();
     const intent = formData.get("intent") as string;
 
+    // Get Supabase clients and check auth
+    const { supabaseClient, response } = getSupabaseServerClient(request); // Use request-specific client for auth
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+
+    if (authError || !user) {
+        console.error("Admin student action: Auth error or no user found.", authError?.message);
+        // Redirecting to login might be better, but returning error for now
+        return json({ error: "Authentication required." }, { status: 401, headers: response.headers });
+    }
+    const adminUserId = user.id; // Get the authenticated admin user's ID
+
+    // Use admin client for operations requiring service role privileges
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
     if (!supabaseUrl || !supabaseServiceKey) {
         return json({error: "Server configuration error."}, {status: 500});
     }
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // --- Get Current User ID (for recording who used the session) ---
-    // Note: This requires auth context, which might not be directly available here.
-    // We might need to adjust how we get the admin user ID.
-    // For now, let's assume we can get it or make it nullable.
-    // const { data: { user } } = await supabaseAdmin.auth.getUser(); // This uses service key, won't get request user
-    // Placeholder - Ideally, pass user ID from a secure context if needed.
-    const adminUserId: string | null = null; // TODO: Get actual admin user ID if required by policy/audit trail
 
     // --- Handle "Record Individual Session Usage" Intent ---
     if (intent === "recordUsage") {
@@ -229,7 +234,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                     student_id: studentId,
                     usage_date: usageDate,
                     notes: notes,
-                    recorded_by: adminUserId, // Link to admin if available
+                    recorded_by: adminUserId, // Use the actual admin user ID
                 });
 
             if (usageInsertError) {
