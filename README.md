@@ -28,8 +28,8 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - *Note: Student deletion might be restricted to Admins.*
 - **Waiver Management:** Digitally sign required waivers (Liability, Code of Conduct, Photo/Video, Payment/Dress Code).
 - **Payments:**
-    - Secure payment processing via Stripe.
-    - Multiple payment options: Monthly Group, Yearly Group, Individual Sessions (purchased in quantities).
+    - Secure, embedded payment form using Stripe Elements (`/pay/:paymentId`).
+    - Multiple payment options initiated from Family Portal (`/family/payment`): Monthly Group, Yearly Group, Individual Sessions (purchased in quantities).
     - View payment history, including payment type (`/family/payment-history`).
     - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly).
     - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
@@ -81,15 +81,14 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Frontend**: Remix framework for optimal user experience, server-side rendering, and modern web practices.
 - **Backend**: Supabase for scalable database solutions, authentication, and real-time functionalities.
 - **UI Library**: Shadcn for clean, modern, and consistent UI components ensuring high usability.
-- **Payments**: Stripe or PayPal integration for robust payment processing.
+- **Payments**: Stripe integration using Payment Intents and Stripe Elements (`@stripe/react-stripe-js`, `@stripe/stripe-js`).
 - **Deployment**: Cloud-based deployment solutions (e.g., Vercel or Netlify).
 
 ## Customization Guide
 
 - **Site Configuration:** Basic site details (name, instructor info, class schedule, location, pricing tiers) are managed in `app/config/site.ts`.
 - **Styling:** Uses Tailwind CSS and Shadcn UI components. Customize Tailwind configuration in `tailwind.config.ts` and component styles within `app/components/ui/`.
-- **Pricing Logic:** Payment tier calculation logic is within the payment route (`/family/payment` - *route needs confirmation*). Pricing values are in `app/config/site.ts`. Eligibility logic (handling monthly/yearly)
-  is in `app/utils/supabase.server.ts`.
+- **Pricing Logic:** Payment tier calculation logic is within the payment initiation route (`/family/payment`). Payment completion happens on `/pay/:paymentId`. Pricing values are in `app/config/site.ts`. Eligibility logic (handling monthly/yearly) is in `app/utils/supabase.server.ts`.
 - **Email Templates:** Email content is generally defined within the server-side code that sends the email (e.g., routes, Supabase functions). Check `app/utils/email.server.ts` and `supabase/functions/`.
 
 ## Local Development Setup
@@ -115,7 +114,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 5.  **Stripe Setup (Optional for Local):**
     - Create a Stripe account at [stripe.com](https://stripe.com).
     - Obtain your Publishable Key and Secret Key and add them to `.env`.
-    - For webhook testing locally, you might need the Stripe CLI. Set a webhook secret in `.env`.
+    - For webhook testing locally, install the Stripe CLI (`brew install stripe/stripe-cli/stripe`). Set a webhook secret in `.env`. Use `stripe listen --forward-to localhost:<PORT>/api/webhooks/stripe` to forward events.
 6.  **Resend Setup (Optional for Local):**
     - Create a Resend account at [resend.com](https://resend.com).
     - Obtain an API Key and add it to `.env`.
@@ -154,8 +153,8 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - Once deployed, get your production URL.
     - In your Stripe Dashboard, go to Developers -> Webhooks.
     - Add an endpoint:
-        - URL: `https://<your-vercel-domain>/api/stripe/webhook` (*Confirm this is the correct webhook route*)
-        - Select the events your application listens for (e.g., `checkout.session.completed`, `payment_intent.succeeded`, etc.).
+        - URL: `https://<your-vercel-domain>/api/webhooks/stripe` (*Confirm this is the correct webhook route*)
+        - Select the events your application listens for (primarily `payment_intent.succeeded`, `payment_intent.payment_failed`).
         - Use the `STRIPE_WEBHOOK_SECRET` from your environment variables.
 7.  **Supabase Production Setup:**
     - Ensure "Confirm email" is **enabled** in Supabase Auth settings for production.
@@ -172,15 +171,17 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 ## Developer Information
 
 - **Project Structure:**
-    - `app/routes/`: Contains all Remix route modules (UI and server logic).
+    - `app/routes/`: Contains all Remix route modules (UI and server logic). Includes `$.tsx` for 404 handling.
     - `app/components/`: Shared React components (UI elements, layout parts).
     - `app/utils/`: Utility functions (database interactions, email sending, helpers).
     - `app/config/`: Site-wide configuration.
     - `app/types/`: TypeScript type definitions (including `database.types.ts`).
+    - `app/routes/api.create-payment-intent.ts`: Backend endpoint for Stripe Payment Intent creation.
+    - `app/routes/api.webhooks.stripe.ts`: Handles incoming Stripe webhook events.
     - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
 - **UI:** Built with [Shadcn UI](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn-ui@latest add <component>` to add new components consistently.
-- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio.
+- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script.
 - **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.
 - **Environment Variables:** Managed via `.env` locally and platform environment variables in production (see Deployment). Use `.env.example` as a template.
 - **Email:** Uses Resend for transactional emails. See `app/utils/email.server.ts` and function-specific email logic.

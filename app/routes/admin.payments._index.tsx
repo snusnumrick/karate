@@ -46,7 +46,11 @@ export async function loader({request}: LoaderFunctionArgs) {
         family_id,
         receipt_url,
         stripe_session_id,
+        stripe_payment_intent_id,
         type,
+        notes,
+        created_at,
+        updated_at,
         families ( name )
       `)
             .order('payment_date', {ascending: false}); // Show most recent first

@@ -27,7 +27,7 @@ type ActionData = {
         paymentDate?: string;
         paymentMethod?: string;
         status?: string;
-        paymentType?: string;
+        type?: string; // Use 'type'
         quantity?: string; // Added for one_on_one session quantity
     };
 };
@@ -92,7 +92,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const paymentMethod = formData.get("paymentMethod") as string;
     const status = formData.get("status") as string || 'succeeded'; // Default to succeeded
     const notes = formData.get("notes") as string | null;
-    const paymentType = formData.get("paymentType") as string || 'monthly_group';
+    const type = formData.get("type") as string || 'monthly_group'; // Use 'type' variable
     const quantityStr = formData.get("quantity") as string; // Get quantity for one_on_one session
 
     // --- Validation ---
@@ -108,11 +108,11 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         fieldErrors.status = "Invalid status selected.";
     }
     // Use the actual enum values for type validation
-    if (!paymentType || !['monthly_group', 'yearly_group', 'individual_session', 'other'].includes(paymentType)) {
-        fieldErrors.paymentType = "Invalid payment type selected.";
+    if (!type || !['monthly_group', 'yearly_group', 'individual_session', 'other'].includes(type)) { // Check 'type' variable
+        fieldErrors.type = "Invalid payment type selected."; // Use 'type' key
     }
     let quantity: number | null = null;
-    if (paymentType === 'individual_session') {
+    if (type === 'individual_session') { // Check 'type' variable
         if (!quantityStr || isNaN(parseInt(quantityStr)) || parseInt(quantityStr) <= 0) {
             fieldErrors.quantity = "A valid positive quantity is required for Individual Sessions.";
         } else {
@@ -155,7 +155,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                 payment_date: paymentDate,
                 payment_method: paymentMethod,
                 status: status as Database['public']['Enums']['payment_status'], // Use correct enum type
-                type: paymentType as Database['public']['Enums']['payment_type_enum'],
+                type: type as Database['public']['Enums']['payment_type_enum'], // Use 'type' variable
                 notes: notes
             })
             .select('id') // Select the ID of the inserted payment
@@ -173,7 +173,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         console.log(`Payment ${paymentId} recorded successfully.`);
 
         // If it's an individual session payment, record the session purchase
-        if (paymentType === 'individual_session' && quantity !== null) {
+        if (type === 'individual_session' && quantity !== null) { // Check 'type' variable
             console.log(`Recording Individual Session purchase for payment ${paymentId}, quantity: ${quantity}`);
             const { error: sessionInsertError } = await supabaseAdmin
                 .from('one_on_one_sessions') // Table name remains the same
@@ -225,7 +225,7 @@ export default function AdminNewPaymentPage() {
     const [selectedFamily, setSelectedFamily] = useState<string | undefined>(undefined);
     const [selectedMethod, setSelectedMethod] = useState<string | undefined>(undefined);
     const [selectedStatus, setSelectedStatus] = useState<string>('succeeded'); // Default to succeeded
-    const [selectedPaymentType, setSelectedPaymentType] = useState<string>('monthly_group'); // Default type
+    const [selectedType, setSelectedType] = useState<string>('monthly_group'); // Use selectedType state
 
     // console.log("Rendering AdminNewPaymentPage component...");
     // console.log("Action Data:", actionData);
@@ -278,14 +278,14 @@ export default function AdminNewPaymentPage() {
 
                         {/* Payment Type */}
                         <div>
-                            <Label htmlFor="paymentType">Payment Type</Label>
+                            <Label htmlFor="type">Payment Type</Label> {/* Update htmlFor */}
                             <Select
-                                name="paymentType"
-                                value={selectedPaymentType}
-                                onValueChange={setSelectedPaymentType}
+                                name="type" // Update name
+                                value={selectedType} // Update value
+                                onValueChange={setSelectedType} // Update handler
                                 required
                             >
-                                <SelectTrigger id="paymentType">
+                                <SelectTrigger id="type"> {/* Update id */}
                                     <SelectValue placeholder="Select payment type"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -295,13 +295,13 @@ export default function AdminNewPaymentPage() {
                                     <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
-                            {actionData?.fieldErrors?.paymentType && (
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.paymentType}</p>
+                            {actionData?.fieldErrors?.type && ( // Check 'type' field error
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.type}</p>
                             )}
                         </div>
 
                         {/* Conditionally show Quantity for Individual sessions */}
-                        {selectedPaymentType === 'individual_session' && (
+                        {selectedType === 'individual_session' && ( // Check selectedType state
                             <div>
                                 <Label htmlFor="quantity">Quantity (Number of Sessions)</Label>
                                 <Input
@@ -311,7 +311,7 @@ export default function AdminNewPaymentPage() {
                                     min="1"
                                     step="1"
                                     placeholder="e.g., 5"
-                                    required={selectedPaymentType === 'individual_session'} // Required only if type is individual
+                                    required={selectedType === 'individual_session'} // Check selectedType state
                                     className="mt-1"
                                 />
                                 {actionData?.fieldErrors?.quantity && (

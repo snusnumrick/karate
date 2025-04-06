@@ -44,7 +44,7 @@ $$
             CREATE TYPE public.payment_type_enum AS ENUM (
                 'monthly_group',
                 'yearly_group',
-                'one_on_one_session',
+                'individual_session', -- Use the correct value here
                 'other'
                 );
         END IF;
@@ -155,7 +155,9 @@ CREATE TABLE IF NOT EXISTS payments
 
 -- Add columns idempotently if table already exists
 ALTER TABLE payments
-    ADD COLUMN IF NOT EXISTS stripe_session_id text NULL;
+    ADD COLUMN IF NOT EXISTS stripe_session_id text NULL; -- Keep for potential legacy data or other flows
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS stripe_payment_intent_id text NULL; -- Add Payment Intent ID
 ALTER TABLE payments
     ADD COLUMN IF NOT EXISTS receipt_url text NULL;
 -- Modify existing columns to be nullable if needed (optional, depends on if script was run before)
@@ -171,6 +173,12 @@ ALTER TABLE public.payments
 -- Add notes column idempotently
 ALTER TABLE public.payments
     ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- Add timestamp columns idempotently
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
 -- Make type column non-nullable (only if it exists and is currently nullable)
 -- This assumes the ADD COLUMN above succeeded or it already existed.
@@ -196,6 +204,22 @@ $$
                        FROM pg_indexes
                        WHERE indexname = 'idx_payments_family_id') THEN
             CREATE INDEX idx_payments_family_id ON payments (family_id);
+        END IF;
+    END
+$$;
+
+-- Add update timestamp trigger for payments table
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_trigger
+                       WHERE tgname = 'payments_updated') THEN
+            CREATE TRIGGER payments_updated
+                BEFORE UPDATE
+                ON payments
+                FOR EACH ROW
+            EXECUTE FUNCTION update_modified_column();
         END IF;
     END
 $$;
@@ -821,8 +845,8 @@ SELECT * FROM pg_policies;
 */
 
 
--- 1. Create the table to track purchased 1:1 sessions
-CREATE TABLE public.one_on_one_sessions (
+-- 1. Create the table to track purchased 1:1 sessions (idempotently)
+CREATE TABLE IF NOT EXISTS public.one_on_one_sessions ( -- Add IF NOT EXISTS
                                             id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
                                             payment_id uuid NOT NULL REFERENCES public.payments(id) ON DELETE CASCADE,
                                             family_id uuid NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
@@ -834,9 +858,17 @@ CREATE TABLE public.one_on_one_sessions (
                                             CONSTRAINT check_remaining_not_greater_than_purchased CHECK (quantity_remaining <= quantity_purchased)
 );
 
--- Add indexes for common queries
-CREATE INDEX idx_one_on_one_sessions_family_id ON public.one_on_one_sessions(family_id);
-CREATE INDEX idx_one_on_one_sessions_payment_id ON public.one_on_one_sessions(payment_id);
+-- Add indexes for common queries (idempotently)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_family_id') THEN
+        CREATE INDEX idx_one_on_one_sessions_family_id ON public.one_on_one_sessions(family_id);
+    END IF;
+END $$;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_payment_id') THEN
+        CREATE INDEX idx_one_on_one_sessions_payment_id ON public.one_on_one_sessions(payment_id);
+    END IF;
+END $$;
 
 -- Enable Row Level Security (Important!)
 ALTER TABLE public.one_on_one_sessions ENABLE ROW LEVEL SECURITY;
@@ -851,8 +883,8 @@ ALTER TABLE public.one_on_one_sessions ENABLE ROW LEVEL SECURITY;
 -- but ensure your backend uses the service role key for modifications.
 
 
--- 2. Create the table to track usage of 1:1 sessions
-CREATE TABLE public.one_on_one_session_usage (
+-- 2. Create the table to track usage of 1:1 sessions (idempotently)
+CREATE TABLE IF NOT EXISTS public.one_on_one_session_usage ( -- Add IF NOT EXISTS
                                                  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
                                                  session_purchase_id uuid NOT NULL REFERENCES public.one_on_one_sessions(id) ON DELETE RESTRICT, -- Prevent deleting purchase if usage exists
                                                  student_id uuid NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
@@ -862,10 +894,22 @@ CREATE TABLE public.one_on_one_session_usage (
                                                  created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- Add indexes
-CREATE INDEX idx_one_on_one_session_usage_session_purchase_id ON public.one_on_one_session_usage(session_purchase_id);
-CREATE INDEX idx_one_on_one_session_usage_student_id ON public.one_on_one_session_usage(student_id);
-CREATE INDEX idx_one_on_one_session_usage_recorded_by ON public.one_on_one_session_usage(recorded_by);
+-- Add indexes (idempotently)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_session_purchase_id') THEN
+        CREATE INDEX idx_one_on_one_session_usage_session_purchase_id ON public.one_on_one_session_usage(session_purchase_id);
+    END IF;
+END $$;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_student_id') THEN
+        CREATE INDEX idx_one_on_one_session_usage_student_id ON public.one_on_one_session_usage(student_id);
+    END IF;
+END $$;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_recorded_by') THEN
+        CREATE INDEX idx_one_on_one_session_usage_recorded_by ON public.one_on_one_session_usage(recorded_by);
+    END IF;
+END $$;
 
 -- Enable Row Level Security
 ALTER TABLE public.one_on_one_session_usage ENABLE ROW LEVEL SECURITY;
@@ -908,4 +952,4 @@ GROUP BY
 GRANT SELECT ON public.family_one_on_one_balance TO authenticated; -- Or specific roles
 -- RLS for views often relies on the underlying table policies or can be defined on the view itself if needed.
 
-ALTER TYPE public.payment_type_enum RENAME VALUE 'one_on_one_session' TO 'individual_session';
+-- Remove the RENAME statement as the enum is now created with the correct value

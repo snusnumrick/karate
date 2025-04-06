@@ -79,7 +79,7 @@ export async function createInitialPaymentRecord(
     familyId: string,
     amount: number, // Amount in smallest currency unit (e.g., cents) - Calculated by caller
     studentIds: string[], // Can be empty for non-student specific payments like 1:1? Let's assume 1:1 is still family-linked.
-    paymentType: Database['public']['Enums']['payment_type_enum'] // Add payment type
+    type: Database['public']['Enums']['payment_type_enum'] // Use 'type' to match DB column
 ) {
     // Use the standard client with service role for creating payment records server-side
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -99,7 +99,7 @@ export async function createInitialPaymentRecord(
             family_id: familyId,
             amount: amount, // Use amount calculated by caller
             status: 'pending',
-            type: paymentType, // Set the payment type
+            type: type, // Set the 'type' column using the 'type' parameter
             // payment_date, payment_method, stripe_session_id, receipt_url are set later
         })
         .select('id') // Select the ID of the newly created record
@@ -130,7 +130,7 @@ export async function createInitialPaymentRecord(
             await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Cleanup payment record
             return {data: null, error: `Failed to link students to payment: ${junctionError.message}`};
         }
-    } else if (paymentType === 'monthly_group' || paymentType === 'yearly_group') {
+    } else if (type === 'monthly_group' || type === 'yearly_group') { // Check against 'type' parameter
         // If it's a group payment but no students were selected/provided, this is an error
         console.error('Group payment type selected but no student IDs provided.');
         await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Cleanup payment record
@@ -151,7 +151,7 @@ export type EligibilityStatus = {
     eligible: boolean;
     reason: 'Trial' | 'Paid - Monthly' | 'Paid - Yearly' | 'Expired'; // More specific reasons
     lastPaymentDate?: string; // Optional: ISO date string of the last successful payment
-    paymentType?: Database['public']['Enums']['payment_type_enum']; // Added payment type
+    type?: Database['public']['Enums']['payment_type_enum']; // Use 'type' to match DB column
 };
 
 /**
@@ -197,7 +197,7 @@ export async function checkStudentEligibility(
         id: string,
         payment_date: string,
         status: string,
-        type: Database['public']['Enums']['payment_type_enum']
+        type: Database['public']['Enums']['payment_type_enum'] // This 'type' is correct (from DB)
     }> ?? [];
 
 
@@ -209,7 +209,7 @@ export async function checkStudentEligibility(
     // 3. Check the most recent group payment date against the appropriate eligibility window
     const mostRecentGroupPayment = successfulGroupPayments[0];
     const lastPaymentDate = new Date(mostRecentGroupPayment.payment_date);
-    const paymentType = mostRecentGroupPayment.type;
+    const type = mostRecentGroupPayment.type; // Use 'type' variable
 
     const today = new Date();
     const eligibilityCutoffDate = new Date(today);
@@ -217,7 +217,7 @@ export async function checkStudentEligibility(
     let reason: EligibilityStatus['reason'] = 'Expired'; // Default if checks fail
     let eligibilityWindowDays: number;
 
-    if (paymentType === 'yearly_group') {
+    if (type === 'yearly_group') { // Check against 'type' variable
         eligibilityWindowDays = YEARLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS;
         reason = 'Paid - Yearly';
     } else { // Default to monthly for 'monthly_group' (or any unexpected type that slipped through)
@@ -233,7 +233,7 @@ export async function checkStudentEligibility(
             eligible: true,
             reason: reason, // Use the determined reason
             lastPaymentDate: mostRecentGroupPayment.payment_date,
-            paymentType: paymentType,
+            type: type, // Use 'type'
         };
     }
 
@@ -242,17 +242,18 @@ export async function checkStudentEligibility(
         eligible: false,
         reason: 'Expired',
         lastPaymentDate: mostRecentGroupPayment.payment_date, // Still pass the date for context
-        paymentType: paymentType,
+        type: type, // Use 'type'
     };
 }
 
 
 export async function updatePaymentStatus(
-    stripeSessionId: string, // Use Stripe session ID to find the record
+    supabasePaymentId: string, // Use Supabase Payment ID (from metadata) to find the record
     status: "pending" | "succeeded" | "failed", // Use the specific enum values
     receiptUrl?: string | null, // Stripe might provide this in the webhook event
     paymentMethod?: string | null, // Added parameter for payment method
-    paymentType?: Database['public']['Enums']['payment_type_enum'] | null,
+    stripePaymentIntentId?: string | null, // Optional: Store the PI ID if needed
+    type?: Database['public']['Enums']['payment_type_enum'] | null, // Use 'type' parameter
     familyId?: string | null, // Added: Needed for individual session insert
     quantity?: number | null // Added: Needed for individual session insert
 ) {
@@ -271,7 +272,8 @@ export async function updatePaymentStatus(
         status,
         receipt_url: receiptUrl,
         payment_method: paymentMethod,
-        type: paymentType || undefined, // Add paymentType to the update object
+        type: type || undefined, // Use 'type' parameter
+        stripe_payment_intent_id: stripePaymentIntentId || undefined, // Store the PI ID
     };
 
     // Set payment_date only when status becomes 'succeeded'
@@ -282,29 +284,25 @@ export async function updatePaymentStatus(
     const {data, error} = await supabaseAdmin
         .from('payments')
         .update(updateData)
-        .eq('stripe_session_id', stripeSessionId) // Find record using the Stripe session ID
+        .eq('id', supabasePaymentId) // Find record using the Supabase Payment ID
         .select('id, family_id') // Select id and family_id
         .single();
 
     if (error) {
-        console.error(`Payment update failed for Stripe session ${stripeSessionId}:`, error.message);
+        console.error(`Payment update failed for Supabase payment ID ${supabasePaymentId}:`, error.message);
         // Decide how to handle webhook errors - retry? log?
         throw new Error(`Payment update failed: ${error.message}`);
     }
     if (!data) {
-        console.error(`No payment record found for Stripe session ${stripeSessionId} during update.`);
-        throw new Error(`Payment record not found for session ${stripeSessionId}.`);
-    }
-    if (!data) {
-        console.error(`No payment record found for Stripe session ${stripeSessionId} during update.`);
-        throw new Error(`Payment record not found for session ${stripeSessionId}.`);
+        console.error(`No payment record found for Supabase payment ID ${supabasePaymentId} during update.`);
+        throw new Error(`Payment record not found for ID ${supabasePaymentId}.`);
     }
 
-    // console.log(`Payment status updated successfully for Stripe session ${stripeSessionId} to ${status}. Payment ID: ${data.id}`); // Removed log
+    // console.log(`Payment status updated successfully for Supabase payment ID ${supabasePaymentId} to ${status}.`); // Updated log message
 
     // If payment succeeded, type is individual_session, and quantity is provided, insert the session record
-    // console.log(`[updatePaymentStatus] Checking condition for individual session insert: status=${status}, paymentType=${paymentType}, quantity=${quantity}`); // Removed log
-    if (status === 'succeeded' && paymentType === 'individual_session' && quantity && quantity > 0) {
+    // console.log(`[updatePaymentStatus] Checking condition for individual session insert: status=${status}, type=${type}, quantity=${quantity}`); // Log updated
+    if (status === 'succeeded' && type === 'individual_session' && quantity && quantity > 0) { // Check against 'type' parameter
         // console.log(`[updatePaymentStatus] Condition met for individual session insert for payment ${data.id}.`); // Removed log
         // Use family_id from the updated payment record OR the passed familyId as fallback
         const targetFamilyId = data.family_id || familyId;
@@ -331,9 +329,9 @@ export async function updatePaymentStatus(
             throw new Error(`Payment ${data.id} succeeded, but failed to record Individual Session credits: ${sessionInsertError.message}`);
         }
         console.log(`[updatePaymentStatus] Recorded Individual Session purchase for payment ${data.id}.`); // Simplified log
-    } else if (status === 'succeeded' && paymentType === 'individual_session') {
+    } else if (status === 'succeeded' && type === 'individual_session') { // Check against 'type' parameter
         // Keep this warning for debugging potential future issues
-        console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${paymentType}', Quantity='${quantity}'. Session record NOT created.`);
+        console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${type}', Quantity='${quantity}'. Session record NOT created.`); // Log updated
     }
 
     return data; // Return the updated payment data

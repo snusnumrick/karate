@@ -1,17 +1,18 @@
-import {json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {Link, useFetcher, useLoaderData, useRouteError} from "@remix-run/react"; // Use useFetcher, remove Form, useNavigation, useActionData
-import React, {useEffect, useState} from "react"; // Add React hooks
-import {loadStripe, type Stripe} from '@stripe/stripe-js'; // Import Stripe.js
-import {checkStudentEligibility, type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check // Remove createPaymentSession import
-import {Button} from "~/components/ui/button";
-import {Input} from "~/components/ui/input";
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
+import { Link, useFetcher, useLoaderData, useNavigate, useRouteError } from "@remix-run/react";
+import { useState, useEffect, useRef } from "react"; // Add useRef
+// Remove Stripe imports
+import { checkStudentEligibility, createInitialPaymentRecord, type EligibilityStatus, getSupabaseServerClient } from "~/utils/supabase.server";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ExclamationTriangleIcon, InfoCircledIcon} from "@radix-ui/react-icons";
 import {siteConfig} from "~/config/site";
 import {Checkbox} from "~/components/ui/checkbox";
 import {format} from 'date-fns';
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group"; // Import RadioGroup
-import {Label} from "~/components/ui/label"; // Import Label
+import {Label} from "~/components/ui/label";
+import {Database} from "~/types/supabase";
 
 // Payment Calculation (Existing logic needs adjustment)
 //
@@ -54,7 +55,7 @@ export interface LoaderData {
     familyName: string;
     // No longer need the separate 'students' array, details are in studentPaymentDetails
     studentPaymentDetails?: StudentPaymentDetail[];
-    stripePublishableKey?: string;
+    // stripePublishableKey is no longer needed here
     error?: string;
 }
 
@@ -200,43 +201,154 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     }
 
     // --- Prepare and Return Data ---
-    const getStripePublishableKey = (): string | undefined => {
-        const key = process.env.STRIPE_PUBLISHABLE_KEY;
-        if (!key) {
-            console.warn("STRIPE_PUBLISHABLE_KEY is not set in environment variables.");
-            // Allow proceeding but component should handle missing key
-        }
-        return key;
-    };
-    const stripePublishableKey = getStripePublishableKey();
+    // Stripe key is no longer needed in the loader for this page
 
     // Return data without pre-calculated total
     return json({
         familyId,
         familyName,
         studentPaymentDetails, // This now contains all student info needed
-        stripePublishableKey
+        // stripePublishableKey removed
     }, {headers});
 }
 
+
+// --- Action Function ---
+type ActionResponse = {
+    error?: string;
+    fieldErrors?: { [key: string]: string };
+};
+
+// Update return type: Action returns JSON data (success/error)
+export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionResponse & { success?: boolean; paymentId?: string }>> {
+    const { supabaseServer, response } = getSupabaseServerClient(request);
+    const formData = await request.formData();
+
+    const familyId = formData.get('familyId') as string;
+    const paymentOption = formData.get('paymentOption') as PaymentOption;
+    const studentIdsString = formData.get('studentIds') as string; // Comma-separated, potentially empty
+    const oneOnOneQuantityStr = formData.get('oneOnOneQuantity') as string; // Quantity for individual
+
+    // --- Validation ---
+    const fieldErrors: ActionResponse['fieldErrors'] = {};
+    if (!familyId) fieldErrors.familyId = "Missing family information."; // Should not happen if form is correct
+    if (!paymentOption) fieldErrors.paymentOption = "Payment option is required.";
+
+    const studentIds = (paymentOption === 'monthly' || paymentOption === 'yearly')
+        ? (studentIdsString ? studentIdsString.split(',').filter(id => id) : [])
+        : [];
+
+    let oneOnOneQuantity = 1; // Default
+    if (paymentOption === 'individual') {
+        if (!oneOnOneQuantityStr || isNaN(parseInt(oneOnOneQuantityStr)) || parseInt(oneOnOneQuantityStr) <= 0) {
+            fieldErrors.oneOnOneQuantity = "A valid positive quantity is required for Individual Sessions.";
+        } else {
+            oneOnOneQuantity = parseInt(oneOnOneQuantityStr);
+        }
+    } else if ((paymentOption === 'monthly' || paymentOption === 'yearly') && studentIds.length === 0) {
+        fieldErrors.studentIds = "Please select at least one student for group payments.";
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+        return json({ error: "Please correct the errors below.", fieldErrors }, { status: 400, headers: response.headers });
+    }
+    // --- End Validation ---
+
+
+    // --- Server-Side Calculation & Payment Record Creation ---
+    let totalAmountInCents = 0;
+    let type: Database['public']['Enums']['payment_type_enum']; // Use 'type' variable
+
+    try {
+        console.log("[Action] Entered try block. Calculating amount...");
+        // --- Restore Original Logic ---
+        if (paymentOption === 'individual') {
+            type = 'individual_session'; // Assign to 'type'
+            totalAmountInCents = siteConfig.pricing.oneOnOneSession * oneOnOneQuantity * 100;
+        } else if (paymentOption === 'yearly') {
+            type = 'yearly_group'; // Assign to 'type'
+            totalAmountInCents = siteConfig.pricing.yearly * studentIds.length * 100;
+        } else { // Monthly
+            type = 'monthly_group'; // Assign to 'type'
+            // Need to fetch student history again server-side for accurate calculation
+            for (const studentId of studentIds) {
+                // Use the same logic as the API endpoint to get history
+                const { count: pastPaymentCount, error: countError } = await supabaseServer
+                    .from('payment_students')
+                    .select('payments!inner(status)', { count: 'exact', head: true })
+                    .eq('student_id', studentId)
+                    .eq('payments.status', 'succeeded');
+
+                if (countError) {
+                    console.error(`Action Error: Failed to get payment count for student ${studentId}`, countError.message);
+                    throw new Error(`Could not verify payment history for student ${studentId}.`);
+                }
+                const count = pastPaymentCount ?? 0;
+
+                let unitAmount: number; // Amount in cents
+                if (count === 0) unitAmount = siteConfig.pricing.firstMonth * 100;
+                else if (count === 1) unitAmount = siteConfig.pricing.secondMonth * 100;
+                else unitAmount = siteConfig.pricing.monthly * 100;
+                totalAmountInCents += unitAmount;
+            }
+        }
+        console.log(`[Action] Amount calculated: ${totalAmountInCents} cents. Type: ${type}`); // Log 'type'
+
+        if (totalAmountInCents <= 0) {
+            console.error("[Action] Calculated amount is zero or negative. Returning error.");
+            return json({ error: "Calculated payment amount must be positive." }, { status: 400, headers: response.headers });
+        }
+
+        // Create the initial payment record
+        console.log("[Action] Calling createInitialPaymentRecord...");
+        const { data: paymentRecord, error: createError } = await createInitialPaymentRecord(
+            familyId,
+            totalAmountInCents,
+            studentIds, // Pass selected student IDs (empty for individual)
+            type // Pass 'type' variable
+        );
+        console.log(`[Action] createInitialPaymentRecord result: data=${JSON.stringify(paymentRecord)}, error=${createError}`);
+
+        if (createError || !paymentRecord?.id) {
+            console.error("[Action] Error condition met after createInitialPaymentRecord. Returning JSON error.", createError);
+            return json({ error: `Failed to initialize payment: ${createError || 'Payment ID missing'}` }, { status: 500, headers: response.headers });
+        }
+
+        // Return full JSON success data including paymentId
+        const paymentId = paymentRecord.id;
+        console.log(`[Action] Payment record created successfully (ID: ${paymentId}). Returning success JSON with paymentId...`);
+        return json({ success: true, paymentId: paymentId }, { headers: response.headers }); // Return success and ID
+
+    } catch (error) {
+        // This catch block handles actual errors
+        console.log("[Action] Caught actual error in catch block:", error);
+        // No need to check for Response instance here anymore
+        const message = error instanceof Error ? error.message : "An unexpected error occurred during payment setup.";
+        console.error("Action Error (in catch):", message); // Clarify log source
+        return json({ error: message }, { status: 500, headers: response.headers });
+    } // The main try block ends here
+}
+
+
 export default function FamilyPaymentPage() {
-    // Destructure the updated loader data (no totalAmountInCents, no separate students array)
+    // Destructure the updated loader data (no stripePublishableKey)
     const {
         familyId,
-        familyName,
         studentPaymentDetails,
-        stripePublishableKey,
+        // stripePublishableKey removed
         error: loaderError
     } = useLoaderData<typeof loader>();
+    // Use fetcher instead of actionData/navigation for this form
+    const fetcher = useFetcher<ActionResponse & { success?: boolean; paymentId?: string }>();
+    const navigate = useNavigate();
+    const formRef = useRef<HTMLFormElement>(null); // Add ref for the form
 
-    const fetcher = useFetcher<{ sessionId?: string; error?: string }>();
-    const [stripe, setStripe] = useState<Stripe | null>(null);
-    const [clientError, setClientError] = useState<string | null>(null);
+    // --- Restore State & Calculations ---
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
     const [paymentOption, setPaymentOption] = useState<PaymentOption>('monthly'); // State for payment option
     const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1); // State for 1:1 session quantity
 
-    const isProcessing = fetcher.state !== 'idle';
+    const isSubmitting = fetcher.state === 'submitting'; // Use fetcher state
 
     // --- Dynamic Calculation ---
     const calculateTotal = () => {
@@ -262,49 +374,7 @@ export default function FamilyPaymentPage() {
     // --- End Dynamic Calculation ---
 
 
-    // Log fetcher state and data on every render for debugging
-    console.log("Fetcher state:", fetcher.state);
-    console.log("Fetcher data:", fetcher.data);
-
-
-    // Effect to load Stripe.js
-    useEffect(() => {
-        if (stripePublishableKey) {
-            loadStripe(stripePublishableKey).then(stripeInstance => {
-                setStripe(stripeInstance);
-            }).catch(error => {
-                console.error("Failed to load Stripe.js:", error);
-                setClientError("Failed to load payment library. Please refresh the page.");
-            });
-        } else {
-            console.error("Stripe publishable key is missing.");
-            setClientError("Payment processing is not configured correctly. Please contact support.");
-        }
-    }, [stripePublishableKey]);
-
-    // Effect to handle redirect after fetcher gets sessionId
-    useEffect(() => {
-        console.log("Effect check: fetcher.data:", fetcher.data, "stripe loaded:", !!stripe); // Log effect trigger
-        if (fetcher.data?.sessionId && stripe) {
-            console.log("Attempting redirect to Stripe Checkout with session ID:", fetcher.data.sessionId); // Log redirect attempt
-            stripe.redirectToCheckout({sessionId: fetcher.data.sessionId})
-                .then(result => {
-                    // If redirectToCheckout fails (e.g., network error), show error
-                    if (result.error) {
-                        console.error("Stripe redirectToCheckout error:", result.error);
-                        setClientError(result.error.message || "Failed to redirect to payment page. Please try again.");
-                    }
-                }).catch(error => {
-                console.error("Error during Stripe redirect:", error);
-                setClientError("An unexpected error occurred while redirecting to payment. Please try again.");
-            });
-        }
-        // Handle errors returned by the fetcher API call itself
-        if (fetcher.data?.error) {
-            setClientError(fetcher.data.error);
-        }
-    }, [fetcher.data, stripe]);
-
+    // Remove Stripe loading and redirection useEffect hooks
 
     // --- Event Handlers ---
     const handleCheckboxChange = (studentId: string, checked: boolean | 'indeterminate') => {
@@ -319,65 +389,31 @@ export default function FamilyPaymentPage() {
         });
     };
 
-    // Handle form submission
-    const handlePaymentSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setClientError(null);
+    // Remove handlePaymentSubmit function - logic moved to action
 
-        if (!stripe) {
-            setClientError("Payment system is not ready. Please wait a moment or refresh.");
-            return;
-        }
-        // Removed the unconditional student selection check here
-
-        const calculatedTotal = calculateTotal();
-        // Enforce positive total for all options
-        if (calculatedTotal <= 0) {
-            setClientError("Calculated payment amount must be greater than zero.");
-            return;
-        }
-        // Specific checks based on option
-        // Check student selection ONLY for monthly/yearly
-        if ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) {
-            setClientError("Please select at least one student for group class payments.");
-            return;
-        }
-        // Check quantity ONLY for individual sessions (using correct option value)
-        if (paymentOption === 'individual' && oneOnOneQuantity <= 0) {
-            setClientError("Please select a valid quantity for Individual Sessions.");
-            return;
-        }
-
-
-        const formData = new FormData(event.currentTarget);
-        // Set the CALCULATED total amount in cents (optional, backend should recalculate)
-        // formData.set('amountInCents', String(calculatedTotal));
-        // Set the SELECTED student IDs (only relevant for group payments)
-        formData.set('studentIds', Array.from(selectedStudentIds).join(','));
-        // Add payment option and quantity/price info for the backend API
-        formData.set('paymentOption', paymentOption);
-
-        if (paymentOption === 'individual') { // Corrected check
-            formData.set('priceId', siteConfig.stripe.priceIds.oneOnOneSession); // Ensure this price ID is correct
-            formData.set('quantity', String(oneOnOneQuantity));
-        } else if (paymentOption === 'yearly') {
-            // Yearly: Pass the single yearly price ID. Backend creates line items per student.
-            formData.set('priceId', siteConfig.stripe.priceIds.yearly);
-            // Quantity is implicitly the number of studentIds passed
-        } else { // Monthly
-            // Monthly: Backend needs to determine the correct price ID for each student based on their history.
-            // We only pass the student IDs and the 'monthly' option.
-            // No single priceId is sent from the frontend for 'monthly'.
-        }
-
-        console.log("Submitting to API with formData:", Object.fromEntries(formData));
-        fetcher.submit(formData, {
-            method: 'post',
-            action: '/api/create-checkout-session',
-        });
-        console.log("Form submitted to fetcher.");
-    };
     // --- End Event Handlers ---
+
+    // --- Effect for Client-Side Navigation (using fetcher data) ---
+    useEffect(() => {
+        console.log("[Effect] Running navigation effect. fetcher.data:", fetcher.data); // Log effect run and fetcher data
+        // Check for both success flag and paymentId before navigating
+        if (fetcher.data?.success && fetcher.data?.paymentId) {
+            console.log(`[Effect] Condition met: Fetcher successful. Navigating to /pay/${fetcher.data.paymentId}`);
+            navigate(`/pay/${fetcher.data.paymentId}`);
+        } else if (fetcher.data) {
+            // Log if fetcher.data exists but doesn't meet the success condition
+            console.log("[Effect] Condition NOT met: fetcher.data present but success/paymentId missing.", fetcher.data);
+            if (fetcher.data.error) {
+                 console.error("[Effect] Fetcher returned error:", fetcher.data.error);
+            }
+        } else {
+             // Only log if state is idle, otherwise it might just be loading
+             if (fetcher.state === 'idle') {
+                console.log("[Effect] Condition NOT met: fetcher.data is null/undefined and state is idle.");
+             }
+        }
+    }, [fetcher.data, fetcher.state, navigate]); // Add fetcher.state to dependencies
+    // --- End Effect ---
 
 
     // Handle case where loader found no students (error message comes from loader data)
@@ -397,20 +433,7 @@ export default function FamilyPaymentPage() {
         );
     }
 
-    // Handle missing Stripe key from loader
-    if (!stripePublishableKey) {
-        return (
-            <div className="container mx-auto px-4 py-8 max-w-md">
-                <Alert variant="destructive" className="mb-4">
-                    <ExclamationTriangleIcon className="h-4 w-4"/>
-                    <AlertTitle>Configuration Error</AlertTitle>
-                    <AlertDescription>
-                        Payment processing is not configured correctly. Please contact support.
-                    </AlertDescription>
-                </Alert>
-            </div>
-        );
-    }
+    // Remove Stripe key check - key is only needed on the /pay page now
 
     // Handle other potential loader errors (e.g., failed to get familyId)
     // studentPaymentDetails will be empty if students couldn't be loaded properly by the loader logic
@@ -436,16 +459,24 @@ export default function FamilyPaymentPage() {
         <div className="container mx-auto px-4 py-8 max-w-lg"> {/* Increased max-width */}
             <h1 className="text-2xl font-bold mb-6 text-center">Make Payment</h1>
 
-            {/* Display errors from client-side state (Stripe load/redirect) or fetcher */}
-            {(clientError || fetcher.data?.error) && (
+            {/* Display errors from fetcher.data */}
+            {fetcher.data?.error && (
                 <Alert variant="destructive" className="mb-4">
                     <ExclamationTriangleIcon className="h-4 w-4"/>
-                    <AlertTitle>Payment Error</AlertTitle>
-                    <AlertDescription>{clientError || fetcher.data?.error}</AlertDescription>
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{fetcher.data.error}</AlertDescription>
+                    {/* Optionally display field-specific errors */}
+                    {fetcher.data.fieldErrors && (
+                        <ul className="list-disc pl-5 mt-2 text-sm">
+                            {Object.entries(fetcher.data.fieldErrors).map(([field, error]) => (
+                                error ? <li key={field}>{error}</li> : null
+                            ))}
+                        </ul>
+                    )}
                 </Alert>
             )}
 
-            {/* Payment Option Selection */}
+            {/* Restore Payment Option Selection */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
                 <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">Choose Payment Option</h2>
                 <RadioGroup defaultValue="monthly" value={paymentOption}
@@ -481,17 +512,23 @@ export default function FamilyPaymentPage() {
                             onChange={(e) => setOneOnOneQuantity(parseInt(e.target.value, 10) || 1)}
                             className="mt-1 w-20"
                         />
+                         {fetcher.data?.fieldErrors?.oneOnOneQuantity && ( // Use fetcher.data
+                            <p className="text-red-500 text-sm mt-1">{fetcher.data.fieldErrors.oneOnOneQuantity}</p>
+                        )}
                     </div>
                 )}
             </div>
 
 
-            {/* Student Selection & Payment Details Section (Conditional) */}
+            {/* Restore Student Selection & Payment Details Section (Conditional) */}
             {(paymentOption === 'monthly' || paymentOption === 'yearly') && studentPaymentDetails && studentPaymentDetails.length > 0 && (
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">
                         {paymentOption === 'yearly' ? 'Select Students for Yearly Payment' : 'Select Students for Monthly Payment'}
                     </h2>
+                     {fetcher.data?.fieldErrors?.studentIds && ( // Use fetcher.data
+                        <p className="text-red-500 text-sm mb-3">{fetcher.data.fieldErrors.studentIds}</p>
+                    )}
 
                     {/* Student List with Checkboxes */}
                     <div className="space-y-4 mb-6">
@@ -587,30 +624,57 @@ export default function FamilyPaymentPage() {
                 </Alert>
             </div>
 
-            {/* Payment Form - Submits selected students and calculated total */}
-            <form onSubmit={handlePaymentSubmit}>
-                {/* Hidden fields for family info */}
+            {/* Payment Form - Use standard form with ref, no onSubmit */}
+            <form method="post" ref={formRef}>
+                {/* Hidden fields for family info and selections */}
                 <input type="hidden" name="familyId" value={familyId}/>
-                <input type="hidden" name="familyName" value={familyName}/>
-                {/* studentIds and amountInCents are added dynamically in handlePaymentSubmit */}
+                <input type="hidden" name="paymentOption" value={paymentOption}/>
+                {/* Pass selected student IDs */}
+                <input type="hidden" name="studentIds" value={Array.from(selectedStudentIds).join(',')}/>
+                {/* Pass quantity if individual option is selected */}
+                {paymentOption === 'individual' && (
+                    <input type="hidden" name="oneOnOneQuantity" value={oneOnOneQuantity}/>
+                )}
 
+                {/* Button removed from here */}
+            </form> {/* Form ends here */}
+
+            {/* Button moved outside the form */}
+            <div className="mt-6"> {/* Add some margin */}
                 <Button
-                    type="submit"
+                    type="button"
                     className="w-full"
-                    // Updated disabled logic
+                    onClick={(event) => { // Add event parameter
+                        try {
+                            event.stopPropagation(); // Stop event bubbling
+                            console.log("[onClick] Submit button clicked. Event propagation stopped."); // Update log
+
+                            if (!formRef.current) {
+                                console.error("Form ref not available.");
+                                return;
+                            }
+                            const formData = new FormData(formRef.current);
+                            console.log("[onClick] Submitting form data via fetcher:", Object.fromEntries(formData));
+                            fetcher.submit(formData, { method: 'post', action: '/family/payment' });
+                            console.log("[onClick] fetcher.submit called successfully.");
+                        } catch (error) {
+                            console.error("[onClick] Error occurred within onClick handler:", error);
+                        }
+                    }}
+                    // Restore original disabled logic (using fetcher.state)
                     disabled={
-                        isProcessing ||
-                        !stripe ||
+                        isSubmitting || // Disable during submission
                         currentTotalInCents <= 0 ||
                         ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
-                        (paymentOption === 'individual' && oneOnOneQuantity <= 0) // Corrected check
+                        (paymentOption === 'individual' && oneOnOneQuantity <= 0)
                     }
                 >
-                    {isProcessing ? "Processing..." : `Proceed to Pay ${currentTotalDisplay}`}
+                    {isSubmitting ? "Setting up payment..." : `Proceed to Pay ${currentTotalDisplay}`}
                 </Button>
-            </form>
+            </div>
+
             <div className="mt-4 text-center">
-                <Link to="/family" className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                <Link to="/family" className="text-sm text-blue-600 hover:underline dark:text-blue-400"> {/* Link to family portal */}
                     Cancel and return to Family Portal
                 </Link>
             </div>

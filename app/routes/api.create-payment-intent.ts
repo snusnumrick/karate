@@ -1,12 +1,12 @@
-import {type ActionFunctionArgs, json, TypedResponse} from "@remix-run/node";
-import {createClient, SupabaseClient} from "@supabase/supabase-js";
+import { type ActionFunctionArgs, json, TypedResponse } from "@remix-run/node";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import Stripe from 'stripe';
-import {createInitialPaymentRecord, getSupabaseServerClient} from '~/utils/supabase.server'; // Import getSupabaseServerClient
-import type {Database} from "~/types/supabase";
-import {siteConfig} from "~/config/site"; // Import site config for price IDs
+import { createInitialPaymentRecord, getSupabaseServerClient } from '~/utils/supabase.server';
+import type { Database } from "~/types/supabase";
+import { siteConfig } from "~/config/site";
 
 // Define expected form data structure
-type PaymentOption = 'monthly' | 'yearly' | 'individual'; // Renamed option
+type PaymentOption = 'monthly' | 'yearly' | 'individual';
 type PaymentTypeEnum = Database['public']['Enums']['payment_type_enum'];
 
 // Helper function to get Supabase admin client (avoids repetition)
@@ -35,10 +35,27 @@ async function getStudentPaymentHistory(studentId: string, supabaseAdmin: Supaba
     return count ?? 0; // Return the count
 }
 
-export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<{
-    sessionId?: string;
-    error?: string
-}>> {
+// Type for the successful response
+type ActionSuccessResponse = {
+    clientSecret: string;
+    supabasePaymentId: string;
+    totalAmount: number; // Send amount back for display confirmation if needed
+    error?: never; // Ensure error is not present on success
+};
+
+// Type for the error response
+type ActionErrorResponse = {
+    clientSecret?: never; // Ensure clientSecret is not present on error
+    supabasePaymentId?: never;
+    totalAmount?: never;
+    error: string;
+};
+
+// Combined response type
+type ActionResponse = ActionSuccessResponse | ActionErrorResponse;
+
+
+export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
     const formData = await request.formData();
     const familyId = formData.get('familyId') as string;
     const familyName = formData.get('familyName') as string;
@@ -101,17 +118,17 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     }
     // --- End Get Email ---
 
-
-    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-    let paymentType: PaymentTypeEnum;
+    // Removed line_items array, calculation logic remains the same for totalAmountInCents
+    let type: PaymentTypeEnum; // Use 'type' variable name
     let totalAmountInCents = 0; // Calculate total amount server-side
     let paymentData: { id: string } | null = null; // Declare outside try block
+    let quantityForMetadata: number | undefined = undefined; // For individual sessions
 
     try {
         // --- Construct Line Items & Calculate Total ---
         // console.log(`[Checkout Action] Processing paymentOption received: '${paymentOption}'`); // Removed log
         if (paymentOption === 'individual') {
-            paymentType = 'individual_session';
+            type = 'individual_session'; // Assign to 'type'
             // console.log(`[Checkout Action] Individual session selected. Price ID from form: ${priceIdFromForm}, Quantity from form: ${quantityFromForm}`); // Removed log
             const quantity = parseInt(quantityFromForm!, 10);
             if (isNaN(quantity) || quantity <= 0) {
@@ -124,12 +141,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                  // Include response headers in JSON response
                  return json({error: "Missing price information for Individual Session."}, {status: 400, headers: response.headers});
             }
-            line_items.push({
-                price: priceIdFromForm!,
-                quantity: quantity,
-            });
+            // No line_items needed for Payment Intent, just calculate total
+            quantityForMetadata = quantity; // Store quantity for metadata
+
             // Fetch price amount from Stripe to calculate total accurately
-            // console.log(`[Checkout Action] Retrieving Stripe price object for ID: ${priceIdFromForm}`); // Removed log
             const priceObject = await stripe.prices.retrieve(priceIdFromForm);
             // console.log(`[Checkout Action] Stripe price object retrieved:`, priceObject); // Removed log
             if (!priceObject || typeof priceObject.unit_amount !== 'number') {
@@ -140,44 +155,41 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             // console.log(`[Checkout Action] Calculated totalAmountInCents for individual session: ${totalAmountInCents}`); // Removed log
 
         } else if (paymentOption === 'yearly') {
-            paymentType = 'yearly_group';
-            line_items.push({
-                price: priceIdFromForm!,
-                quantity: studentIds.length, // One item per student
-            });
+            type = 'yearly_group'; // Assign to 'type'
+            // No line_items needed for Payment Intent, just calculate total
             const priceObject = await stripe.prices.retrieve(priceIdFromForm!);
             if (!priceObject || typeof priceObject.unit_amount !== 'number') {
-                throw new Error(`Could not retrieve price details for ${priceIdFromForm}`);
+                throw new Error(`Could not retrieve valid price details for ${priceIdFromForm}`);
             }
             totalAmountInCents = priceObject.unit_amount * studentIds.length;
 
         } else { // Monthly
-            paymentType = 'monthly_group';
+            type = 'monthly_group'; // Assign to 'type'
             for (const studentId of studentIds) {
                 const pastPaymentCount = await getStudentPaymentHistory(studentId, supabaseAdmin);
-                let priceId: string;
+                // let priceId: string;
                 let unitAmount: number; // Amount in cents
 
                 if (pastPaymentCount === 0) {
-                    priceId = siteConfig.stripe.priceIds.firstMonth;
+                    // priceId = siteConfig.stripe.priceIds.firstMonth;
                     unitAmount = siteConfig.pricing.firstMonth * 100;
                 } else if (pastPaymentCount === 1) {
-                    priceId = siteConfig.stripe.priceIds.secondMonth;
+                    // priceId = siteConfig.stripe.priceIds.secondMonth;
                     unitAmount = siteConfig.pricing.secondMonth * 100;
                 } else {
-                    priceId = siteConfig.stripe.priceIds.monthly;
+                    // priceId = siteConfig.stripe.priceIds.monthly;
                     unitAmount = siteConfig.pricing.monthly * 100;
                 }
-                line_items.push({price: priceId, quantity: 1});
+                // No line_items needed for Payment Intent, just calculate total
                 totalAmountInCents += unitAmount;
             }
         }
 
-        // console.log(`[Checkout Action] Before final check - line_items count: ${line_items.length}, totalAmountInCents: ${totalAmountInCents}`); // Removed log
-        if (line_items.length === 0 || totalAmountInCents <= 0) {
-             console.error(`[Checkout Action] Failing validation: line_items.length=${line_items.length}, totalAmountInCents=${totalAmountInCents}`);
+        // console.log(`[Checkout Action] Before final check - totalAmountInCents: ${totalAmountInCents}`); // Log updated
+        if (totalAmountInCents <= 0) {
+             console.error(`[Checkout Action] Failing validation: totalAmountInCents=${totalAmountInCents}`);
              // Include response headers in JSON response
-            return json({error: "Calculated payment amount is invalid or no items selected."}, {status: 400, headers: response.headers});
+            return json({error: "Calculated payment amount is invalid."}, {status: 400, headers: response.headers});
         }
 
         // 1. Create initial payment record in Supabase (BEFORE Stripe)
@@ -186,7 +198,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             familyId,
             totalAmountInCents, // Use server-calculated total
             studentIds, // Pass student IDs (empty for 1:1)
-            paymentType  // Pass the determined payment type
+            type  // Pass the determined 'type'
         );
 
         if (paymentError || !paymentRecordResult?.id) {
@@ -196,74 +208,68 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         }
         // Assign the successful result to the outer variable
         paymentData = paymentRecordResult;
-        const supabasePaymentId = paymentData.id; // Get the ID of the record we just created
+        const supabasePaymentId = paymentData.id;
 
-        // 3. Create Stripe checkout session
-        const requestUrl = new URL(request.url);
-        // Correct the success URL path to match the file route (_layout.payment.success.tsx -> /payment/success)
-        const successUrl = process.env.STRIPE_SUCCESS_URL || new URL('/payment/success', requestUrl.origin).toString();
-        const cancelUrl = process.env.STRIPE_CANCEL_URL || new URL('/family/payment', requestUrl.origin).toString(); // Return to payment page on cancel
-
+        // 3. Create Stripe Payment Intent instead of Checkout Session
         // Build metadata object explicitly
-        const paymentIntentMetadata: { [key: string]: string } = {
+        const paymentIntentMetadata: { [key: string]: string | number } = { // Allow number for quantity
             paymentId: supabasePaymentId,
-            paymentType: paymentType,
+            type: type, // Use 'type' key
             familyId: familyId,
+            // studentIds: studentIds.join(','), // Optionally include student IDs if needed later
         };
-        if (paymentType === 'individual_session' && quantityFromForm) {
-            paymentIntentMetadata.quantity = quantityFromForm;
+        if (type === 'individual_session' && quantityForMetadata) { // Check against 'type'
+            paymentIntentMetadata.quantity = quantityForMetadata; // Use the stored number
         }
 
-        const session = await stripe.checkout.sessions.create({
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: totalAmountInCents,
+            currency: 'usd', // Or get from config/environment
             payment_method_types: ['card'],
-            line_items: line_items, // Use the dynamically constructed line items
-            mode: 'payment',
-            success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: cancelUrl,
-            // client_reference_id: supabasePaymentId, // Optional: Supabase ID here if needed
-            // --- CRITICAL METADATA --- moved to payment_intent_data
-            // metadata: { ... } // Removed from top level
-            payment_intent_data: {
-                metadata: paymentIntentMetadata // Use the constructed object
-            },
-            // Add customer email if found
-            ...(customerEmail && {customer_email: customerEmail}),
+            metadata: paymentIntentMetadata, // Attach metadata directly
+            // Add customer email if found - Stripe might create/link a customer
+            receipt_email: customerEmail, // Send receipt to this email on success
+            // description: `Payment for ${paymentType} - Family: ${familyName}`, // Optional description
+            // statement_descriptor: 'Sensei Negin', // Optional, short descriptor on bank statements
         });
 
-        // console.log(`[Checkout Action] Metadata on session object returned by Stripe:`, session.metadata); // Removed log
-
-        if (!session.id) {
-            throw new Error('Stripe session creation failed: Missing session ID.');
+        if (!paymentIntent.client_secret) {
+            throw new Error('Stripe Payment Intent creation failed: Missing client_secret.');
         }
 
-        // 4. Update Supabase payment record with Stripe session ID (important for webhook lookup)
-        const {error: updateError} = await supabaseAdmin
+        // 4. Update Supabase payment record with Stripe Payment Intent ID (important for webhook lookup)
+        // **ASSUMPTION**: You have a 'stripe_payment_intent_id' column in your 'payments' table.
+        const { error: updateError } = await supabaseAdmin
             .from('payments')
-            .update({stripe_session_id: session.id})
+            .update({ stripe_payment_intent_id: paymentIntent.id }) // Store the Payment Intent ID
             .eq('id', supabasePaymentId);
 
         if (updateError) {
-            console.error(`Failed to update payment record ${supabasePaymentId} with Stripe session ID ${session.id}:`, updateError.message);
+            console.error(`Failed to update payment record ${supabasePaymentId} with Stripe Payment Intent ID ${paymentIntent.id}:`, updateError.message);
             // Critical: Payment might proceed but won't be trackable via webhook easily.
-            // Log for manual intervention. Return error to user.
-            // Include response headers in JSON response
-            return json({error: "Failed to link payment session. Please contact support."}, {status: 500, headers: response.headers});
+            // Log for manual intervention. Attempt to cancel the Payment Intent?
+            // await stripe.paymentIntents.cancel(paymentIntent.id); // Consider cancellation
+            return json({ error: "Failed to link payment intent. Please contact support." }, { status: 500, headers: response.headers });
         }
 
-        // 5. Return the Stripe session ID to the client
-        console.log(`Successfully created Stripe session ${session.id} for payment ${supabasePaymentId}`);
-        // Include response headers in JSON response
-        return json({sessionId: session.id}, { headers: response.headers });
+        // 5. Return the client_secret and Supabase payment ID to the client
+        console.log(`Successfully created Stripe Payment Intent ${paymentIntent.id} for Supabase payment ${supabasePaymentId}`);
+        return json({
+            clientSecret: paymentIntent.client_secret,
+            supabasePaymentId: supabasePaymentId,
+            totalAmount: totalAmountInCents // Send amount back for confirmation display
+        }, { headers: response.headers });
 
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("Error during checkout session creation:", errorMessage);
+        console.error("Error during Payment Intent creation:", errorMessage);
         // Attempt to clean up the pending Supabase payment record if Stripe fails
         if (paymentData?.id) {
             console.log(`Attempting to delete pending payment record ${paymentData.id} due to Stripe error.`);
+            // Consider also trying to cancel the Payment Intent if it was created before the DB update failed
             await supabaseAdmin.from('payments').delete().eq('id', paymentData.id);
         }
         // Include response headers in JSON response
-        return json({error: `Payment initiation failed: ${errorMessage}`}, {status: 500, headers: response.headers});
+        return json({ error: `Payment initiation failed: ${errorMessage}` }, { status: 500, headers: response.headers });
     }
 }

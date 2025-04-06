@@ -45,7 +45,7 @@ export default function Navbar() {
                     </nav>
 
                     <div className="flex items-center space-x-4">
-                        {/* Wrap ModeToggle in ClientOnly */}
+                        {/* Wrap ModeToggle in ClientOnly to prevent hydration mismatch */}
                         <ClientOnly
                             fallback={
                                 <Button variant="outline" size="icon" disabled>
@@ -58,28 +58,42 @@ export default function Navbar() {
                         </ClientOnly>
 
                         {/* Desktop Auth Buttons */}
-                        {user ? (
-                            <div className="hidden md:flex items-center space-x-4">
-                                <NavLink to="/family">Family Portal</NavLink>
-                                <Form action="/logout" method="post">
-                                    <Button
-                                        type="submit"
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                    >
-                                        <LogOut className="h-4 w-4 mr-1"/> Logout
-                                    </Button>
-                                </Form>
-                            </div>
-                        ) : (
-                            <Link
+                        {/* Wrap user-specific section in ClientOnly */}
+                        <ClientOnly fallback={<div className="hidden md:block h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
+                            {() => user ? (
+                                <div className="hidden md:flex items-center space-x-4">
+                                    <NavLink to="/family">Family Portal</NavLink>
+                                    <Form action="/logout" method="post">
+                                        <Button
+                                            type="submit"
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        >
+                                            <LogOut className="h-4 w-4 mr-1"/> Logout
+                                        </Button>
+                                    </Form>
+                                </div>
+                            ) : (
+                                // Render login link only if user is not present on client
+                                <Link
+                                    to="/login"
+                                    className="hidden md:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                                >
+                                    Login {/* Add text back inside Link */}
+                                </Link>
+                            )}
+                        </ClientOnly>
+                        {/* Fallback for non-user state (Login button) - Render this outside ClientOnly if needed when logged out */}
+                        {/* We render the login link within the ClientOnly block when user is null, so this separate block is not needed */}
+                        {/* {!user && (
+                             <Link
                                 to="/login"
                                 className="hidden md:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                            >
-                                Login
-                            </Link>
-                        )}
+                        )} */}
+                        {/* Remove stray characters > and </Link> */}
+                        {/* End Desktop Auth Buttons */}
+
 
                         {/* Mobile Menu Button */}
                         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -137,14 +151,14 @@ export default function Navbar() {
                                 </div>
                             </SheetContent>
                         </Sheet>
-                    </div>
-                </div>
-            </div>
-        </header>
-    );
+                    </div> {/* Closes Sheet div */}
+                </div> {/* Closes flex justify-between h-16 div */}
+            </div> {/* Closes max-w-7xl div */}
+        </header> // Header ends here
+    ); // Return statement ends here
 }
-
-function NavLink({to, children}: { to: string; children: React.ReactNode }) {
+// Correct the function definition syntax
+function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
     return (
         <Link
             to={to}

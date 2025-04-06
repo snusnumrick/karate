@@ -309,6 +309,7 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          created_at: string | null
           family_id: string
           id: string
           notes: string | null
@@ -316,11 +317,14 @@ export type Database = {
           payment_method: string | null
           receipt_url: string | null
           status: Database["public"]["Enums"]["payment_status"]
+          stripe_payment_intent_id: string | null
           stripe_session_id: string | null
           type: Database["public"]["Enums"]["payment_type_enum"]
+          updated_at: string | null
         }
         Insert: {
           amount: number
+          created_at?: string | null
           family_id: string
           id?: string
           notes?: string | null
@@ -328,11 +332,14 @@ export type Database = {
           payment_method?: string | null
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           type?: Database["public"]["Enums"]["payment_type_enum"]
+          updated_at?: string | null
         }
         Update: {
           amount?: number
+          created_at?: string | null
           family_id?: string
           id?: string
           notes?: string | null
@@ -340,8 +347,10 @@ export type Database = {
           payment_method?: string | null
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           type?: Database["public"]["Enums"]["payment_type_enum"]
+          updated_at?: string | null
         }
         Relationships: [
           {

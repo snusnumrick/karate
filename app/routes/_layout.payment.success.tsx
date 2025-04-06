@@ -1,16 +1,27 @@
-import type {LoaderFunctionArgs} from "@remix-run/node";
-import {json, redirect} from "@remix-run/node";
-import {Link, useLoaderData} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {format} from 'date-fns'; // Import format function
+import type { LoaderFunctionArgs } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
+import { Link, useLoaderData, useRevalidator } from "@remix-run/react"; // Import useRevalidator
+import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { format } from 'date-fns'; // Import format function
+import { useEffect } from "react";
+import {Database} from "~/types/supabase"; // Import useEffect
 
-export async function loader({request}: LoaderFunctionArgs) {
+export async function loader({ request }: LoaderFunctionArgs) {
     const url = new URL(request.url);
-    const sessionId = url.searchParams.get("session_id");
+    const paymentIntentId = url.searchParams.get("payment_intent"); // Expect payment_intent ID
+    // const paymentIntentClientSecret = url.searchParams.get("payment_intent_client_secret"); // Needed for potential retrieval/confirmation step if not done client-side
 
-    if (!sessionId) {
+    if (!paymentIntentId) {
+        console.warn("Payment Success page loaded without payment_intent query parameter.");
+        // Redirect or show a generic success/error? Redirecting home for now.
         return redirect("/");
     }
+    // We might not always need the client_secret here if status is confirmed via webhook,
+    // but it's useful if we need to retrieve the PI details directly.
+    // if (!paymentIntentClientSecret) {
+    //     console.warn("Payment Success page loaded without payment_intent_client_secret query parameter.");
+    //     return redirect("/");
+    // }
 
     const {supabaseServer} = getSupabaseServerClient(request);
 
@@ -18,14 +29,19 @@ export async function loader({request}: LoaderFunctionArgs) {
     const {data: payment, error} = await supabaseServer
         .from('payments')
         .select(`
-      *,
-      family:family_id (name)
-    `)
-        .eq('stripe_session_id', sessionId) // Use the correct column name
+            id, family_id, amount, payment_date, payment_method, status, stripe_payment_intent_id, receipt_url, type, notes,
+            family:family_id (name),
+            one_on_one_sessions ( quantity_purchased )
+        `)
+        // **ASSUMPTION**: Querying by 'stripe_payment_intent_id' column now
+        .eq('stripe_payment_intent_id', paymentIntentId)
         .single();
 
     if (error || !payment) {
-        return json({error: "Payment not found"}, {status: 404});
+        console.error(`Error fetching payment by Payment Intent ID ${paymentIntentId}:`, error?.message);
+        // Potentially try fetching from Stripe API as a fallback if needed?
+        // For now, return not found.
+        return json({ error: "Payment details not found. It might still be processing." }, { status: 404 });
     }
 
     // Format the date in the loader for consistency
@@ -43,6 +59,28 @@ export async function loader({request}: LoaderFunctionArgs) {
 
 export default function PaymentSuccess() {
     const loaderData = useLoaderData<typeof loader>();
+    const revalidator = useRevalidator(); // Get the revalidator function
+
+    // Effect to trigger revalidation if payment is still pending
+    // Moved BEFORE the early return to satisfy Rules of Hooks
+    useEffect(() => {
+        // Access payment data safely within the effect, checking if it exists
+        const payment = 'payment' in loaderData ? loaderData.payment : null;
+        if (payment?.is_pending_update && revalidator.state === 'idle') {
+            console.log("[PaymentSuccess Effect] Payment status is pending, scheduling revalidation...");
+            const timer = setTimeout(() => {
+                console.log("[PaymentSuccess Effect] Revalidating loader data...");
+                revalidator.revalidate();
+            }, 3000); // Revalidate after 3 seconds
+
+            // Cleanup timer on component unmount or if revalidator state changes
+            return () => clearTimeout(timer);
+        } else {
+            console.log(`[PaymentSuccess Effect] No revalidation needed. Pending: ${payment?.is_pending_update}, Revalidator state: ${revalidator.state}`);
+        }
+        // Dependencies: revalidate only when payment data changes or revalidator becomes idle again
+    }, [loaderData, revalidator]); // Depend on loaderData as a whole
+
     // console.log('Loader data:', loaderData); // Removed log
 
     // Handle case where loader returned an error
@@ -62,8 +100,10 @@ export default function PaymentSuccess() {
     }
 
     // Now we know payment exists
-    const {payment} = loaderData;
+    const { payment } = loaderData;
     // console.log('Payment:', payment); // Removed log
+
+    // useEffect hook moved to the top level
 
     // Type assertion for easier access, matching the updated enum
     const typedPayment = payment as {
@@ -73,12 +113,20 @@ export default function PaymentSuccess() {
         payment_date: string | null; // Can be null if webhook hasn't run yet
         payment_method: string | null; // Can be null
         status: "pending" | "succeeded" | "failed";
+        type: Database['public']['Enums']['payment_type_enum']; // Add the type property here
         family: { name: string } | null;
         receipt_url?: string | null;
-        formatted_payment_date: string | null; // Add the formatted date field
-        is_pending_update: boolean; // Add the pending flag field
+        formatted_payment_date: string | null;
+        is_pending_update: boolean;
+        // Add the nested one_on_one_sessions data structure
+        one_on_one_sessions: { quantity_purchased: number }[] | null;
     };
     // console.log('Typed Payment:', typedPayment); // Removed log
+    console.log('[PaymentSuccess Component] Receipt URL from loader data:', typedPayment.receipt_url); // Log receipt URL
+    // Extract quantity if available
+    const quantityPurchased = (typedPayment.type === 'individual_session' && typedPayment.one_on_one_sessions && typedPayment.one_on_one_sessions.length > 0)
+        ? typedPayment.one_on_one_sessions[0].quantity_purchased
+        : null;
 
     return (
         <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
@@ -105,8 +153,14 @@ export default function PaymentSuccess() {
                     </p>
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                         <span
-                            className="font-semibold">Date:</span> {typedPayment.formatted_payment_date ?? (typedPayment.is_pending_update ? 'Processing...' : 'N/A')} {/* Adjust display based on pending status */}
+                            className="font-semibold">Date:</span> {typedPayment.formatted_payment_date ?? (typedPayment.is_pending_update ? 'Processing...' : 'N/A')}
                     </p>
+                    {/* Conditionally display quantity purchased */}
+                    {quantityPurchased !== null && (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <span className="font-semibold">Quantity Purchased:</span> {quantityPurchased} session(s)
+                        </p>
+                    )}
                     {typedPayment.is_pending_update && (
                          <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Note: Final details are being processed.</p>
                     )}
