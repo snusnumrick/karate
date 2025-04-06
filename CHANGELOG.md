@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Updated `README.md` to reflect the new payment flow, technology stack, setup instructions, and project structure.
 -   Refactored code to consistently use `type` instead of `payment_type` for the corresponding database column.
 -   Made `app/db/supabase-setup.sql` script more idempotent (added `IF NOT EXISTS` for tables and indexes, corrected enum creation).
+-   Refactored Family Portal (`/family`) layout for better visual balance on wider screens.
 
 ### Fixed
 
