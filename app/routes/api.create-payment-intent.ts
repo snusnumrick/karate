@@ -192,31 +192,26 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             return json({error: "Calculated payment amount is invalid."}, {status: 400, headers: response.headers});
         }
 
-        // 1. Create initial payment record in Supabase (BEFORE Stripe)
-        // Assign to the outer variable, rename inner variable to avoid shadowing
-        const {data: paymentRecordResult, error: paymentError} = await createInitialPaymentRecord(
-            familyId,
-            totalAmountInCents, // Use server-calculated total
-            studentIds, // Pass student IDs (empty for 1:1)
-            type  // Pass the determined 'type'
-        );
-
-        if (paymentError || !paymentRecordResult?.id) {
-            console.error("Failed to create initial payment record:", paymentError);
-            // Include response headers in JSON response
-            return json({error: "Failed to initialize payment. Please try again."}, {status: 500, headers: response.headers});
+        // 1. Get the existing Supabase Payment ID passed from the client
+        // This ID corresponds to the 'pending' record created before navigating to the /pay page.
+        const supabasePaymentId = formData.get('supabasePaymentId') as string; // Get ID from form data
+        if (!supabasePaymentId) {
+            console.error("[API Create PI] CRITICAL: supabasePaymentId missing from form data.");
+            return json({ error: "Payment session identifier missing. Please restart the payment process." }, { status: 400, headers: response.headers });
         }
-        // Assign the successful result to the outer variable
-        paymentData = paymentRecordResult;
-        const supabasePaymentId = paymentData.id;
+        console.log(`[API Create PI] Using existing Supabase Payment ID: ${supabasePaymentId}`);
+        // We no longer create a new record here, so remove the paymentData variable assignment.
+        // paymentData = { id: supabasePaymentId }; // We just need the ID
 
-        // 3. Create Stripe Payment Intent instead of Checkout Session
+        // 2. Create Stripe Payment Intent instead of Checkout Session
         // Build metadata object explicitly
         const paymentIntentMetadata: { [key: string]: string | number } = { // Allow number for quantity
             paymentId: supabasePaymentId,
             type: type, // Use 'type' key
             familyId: familyId,
             // studentIds: studentIds.join(','), // Optionally include student IDs if needed later
+            // Ensure the familyName is included if needed by webhooks or later processing
+            familyName: familyName,
         };
         if (type === 'individual_session' && quantityForMetadata) { // Check against 'type'
             paymentIntentMetadata.quantity = quantityForMetadata; // Use the stored number
@@ -238,22 +233,31 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         }
 
         // 4. Update Supabase payment record with Stripe Payment Intent ID (important for webhook lookup)
-        // **ASSUMPTION**: You have a 'stripe_payment_intent_id' column in your 'payments' table.
+        console.log(`[API Create PI] Attempting to update Supabase payment record ${supabasePaymentId} with Stripe PI ID ${paymentIntent.id}`);
         const { error: updateError } = await supabaseAdmin
             .from('payments')
             .update({ stripe_payment_intent_id: paymentIntent.id }) // Store the Payment Intent ID
             .eq('id', supabasePaymentId);
 
         if (updateError) {
-            console.error(`Failed to update payment record ${supabasePaymentId} with Stripe Payment Intent ID ${paymentIntent.id}:`, updateError.message);
+            console.error(`[API Create PI] FAILED to update payment record ${supabasePaymentId} with Stripe Payment Intent ID ${paymentIntent.id}:`, updateError.message);
             // Critical: Payment might proceed but won't be trackable via webhook easily.
-            // Log for manual intervention. Attempt to cancel the Payment Intent?
-            // await stripe.paymentIntents.cancel(paymentIntent.id); // Consider cancellation
+            // Log for manual intervention. Attempt to cancel the Payment Intent.
+            console.log(`[API Create PI] Attempting to cancel Stripe Payment Intent ${paymentIntent.id} due to DB update failure.`);
+            try {
+                await stripe.paymentIntents.cancel(paymentIntent.id);
+                console.log(`[API Create PI] Successfully cancelled Stripe Payment Intent ${paymentIntent.id}.`);
+            } catch (cancelError) {
+                console.error(`[API Create PI] FAILED to cancel Stripe Payment Intent ${paymentIntent.id}:`, cancelError instanceof Error ? cancelError.message : cancelError);
+                // Log this, but still return the original error to the user.
+            }
             return json({ error: "Failed to link payment intent. Please contact support." }, { status: 500, headers: response.headers });
+        } else {
+            console.log(`[API Create PI] Successfully updated payment record ${supabasePaymentId} with Stripe PI ID ${paymentIntent.id}.`);
         }
 
         // 5. Return the client_secret and Supabase payment ID to the client
-        console.log(`Successfully created Stripe Payment Intent ${paymentIntent.id} for Supabase payment ${supabasePaymentId}`);
+        console.log(`[API Create PI] Successfully created Stripe Payment Intent ${paymentIntent.id} for Supabase payment ${supabasePaymentId}`);
         return json({
             clientSecret: paymentIntent.client_secret,
             supabasePaymentId: supabasePaymentId,
@@ -263,12 +267,14 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("Error during Payment Intent creation:", errorMessage);
-        // Attempt to clean up the pending Supabase payment record if Stripe fails
-        if (paymentData?.id) {
-            console.log(`Attempting to delete pending payment record ${paymentData.id} due to Stripe error.`);
-            // Consider also trying to cancel the Payment Intent if it was created before the DB update failed
-            await supabaseAdmin.from('payments').delete().eq('id', paymentData.id);
-        }
+        // Since we didn't create a new record here, we don't need to delete one on error.
+        // The original 'pending' record created on the previous page will remain 'pending'
+        // and can potentially be retried or cleaned up later.
+        // We should NOT delete the original pending record here, as the user might go back and try again.
+        // if (supabasePaymentId) { // Use the ID we received
+        //     console.log(`Stripe PI creation failed. The pending payment record ${supabasePaymentId} remains.`);
+        //     // DO NOT DELETE: await supabaseAdmin.from('payments').delete().eq('id', supabasePaymentId);
+        // }
         // Include response headers in JSON response
         return json({ error: `Payment initiation failed: ${errorMessage}` }, { status: 500, headers: response.headers });
     }

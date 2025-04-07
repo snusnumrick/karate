@@ -1,12 +1,12 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
-import { json, redirect } from "@remix-run/node";
-import { Link, useLoaderData, useRevalidator } from "@remix-run/react"; // Import useRevalidator
-import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { format } from 'date-fns'; // Import format function
-import { useEffect } from "react";
+import type {LoaderFunctionArgs} from "@remix-run/node";
+import {json, redirect} from "@remix-run/node";
+import {Link, useLoaderData, useRevalidator} from "@remix-run/react"; // Import useRevalidator
+import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {format} from 'date-fns'; // Import format function
+import {useEffect} from "react";
 import {Database} from "~/types/supabase"; // Import useEffect
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({request}: LoaderFunctionArgs) {
     const url = new URL(request.url);
     const paymentIntentId = url.searchParams.get("payment_intent"); // Expect payment_intent ID
     // const paymentIntentClientSecret = url.searchParams.get("payment_intent_client_secret"); // Needed for potential retrieval/confirmation step if not done client-side
@@ -30,20 +30,25 @@ export async function loader({ request }: LoaderFunctionArgs) {
         .from('payments')
         .select(`
             id, family_id, amount, payment_date, payment_method, status, stripe_payment_intent_id, receipt_url, type, notes,
-            family:family_id (name),
-            one_on_one_sessions ( quantity_purchased )
+            family:family_id (name),                                                                                                                                                                                  
+            one_on_one_sessions ( quantity_purchased )                                                                                                                                                                
         `)
-        // **ASSUMPTION**: Querying by 'stripe_payment_intent_id' column now
+        // Query by 'stripe_payment_intent_id'
         .eq('stripe_payment_intent_id', paymentIntentId)
-        .single();
+        .maybeSingle(); // Use maybeSingle to handle 0 rows gracefully
 
-    if (error || !payment) {
-        console.error(`Error fetching payment by Payment Intent ID ${paymentIntentId}:`, error?.message);
-        // Potentially try fetching from Stripe API as a fallback if needed?
-        // For now, return not found.
-        return json({ error: "Payment details not found. It might still be processing." }, { status: 404 });
+    // Handle potential errors or payment not found
+    if (error) {
+        console.error(`Error fetching payment by Payment Intent ID ${paymentIntentId}:`, error.message);
+        // Return a generic error, but log the specific one
+        return json({error: "Error retrieving payment details. Please check your payment history later or contact support."}, {status: 500});
     }
 
+    if (!payment) {
+        console.warn(`Payment record not found for Payment Intent ID ${paymentIntentId}. This might be temporary if the webhook is delayed.`);
+        // Return an error indicating the payment might still be processing
+        return json({error: "Payment details not yet available. Please wait a moment and check your payment history, or contact support if this persists."}, {status: 404});
+    }
     // Format the date in the loader for consistency
     const formattedDate = payment.payment_date ? format(new Date(payment.payment_date), 'PPP') : null; // Use 'PPP' for readable format like 'MMM d, yyyy'
     const isPending = payment.status === 'pending'; // Check if status is still pending
@@ -61,30 +66,80 @@ export default function PaymentSuccess() {
     const loaderData = useLoaderData<typeof loader>();
     const revalidator = useRevalidator(); // Get the revalidator function
 
-    // Effect to trigger revalidation if payment is still pending
+    // Log loaderData on each render
+    console.log('[PaymentSuccess Render] loaderData:', JSON.stringify(loaderData));
+    console.log('[PaymentSuccess Render] revalidator.state:', revalidator.state);
+
+
+    // Effect to trigger revalidation if payment is still pending OR if loader failed to find the record initially
     // Moved BEFORE the early return to satisfy Rules of Hooks
     useEffect(() => {
-        // Access payment data safely within the effect, checking if it exists
+        console.log("[PaymentSuccess Effect] Running effect. Current revalidator state:", revalidator.state);
+        // Check if payment is explicitly pending OR if the loader returned the specific 'not yet available' error
         const payment = 'payment' in loaderData ? loaderData.payment : null;
-        if (payment?.is_pending_update && revalidator.state === 'idle') {
-            console.log("[PaymentSuccess Effect] Payment status is pending, scheduling revalidation...");
+        const isExplicitlyPending = payment?.is_pending_update ?? false;
+        const isWaitingForWebhook = 'error' in loaderData && loaderData.error?.startsWith("Payment details not yet available");
+
+        console.log(`[PaymentSuccess Effect] Checking condition: isExplicitlyPending=${isExplicitlyPending}, isWaitingForWebhook=${isWaitingForWebhook}, revalidator.state=${revalidator.state}`);
+
+        // Revalidate if explicitly pending OR if waiting for webhook, and revalidator is idle
+        if ((isExplicitlyPending || isWaitingForWebhook) && revalidator.state === 'idle') {
+            console.log("[PaymentSuccess Effect] Condition met: Payment pending or waiting for webhook, scheduling revalidation...");
             const timer = setTimeout(() => {
-                console.log("[PaymentSuccess Effect] Revalidating loader data...");
+                console.log("[PaymentSuccess Effect] Timer fired. Calling revalidator.revalidate()...");
                 revalidator.revalidate();
+                console.log("[PaymentSuccess Effect] revalidator.revalidate() called.");
             }, 3000); // Revalidate after 3 seconds
 
             // Cleanup timer on component unmount or if revalidator state changes
-            return () => clearTimeout(timer);
+            return () => {
+                console.log("[PaymentSuccess Effect] Cleanup function called. Clearing timer.");
+                clearTimeout(timer);
+            };
         } else {
-            console.log(`[PaymentSuccess Effect] No revalidation needed. Pending: ${payment?.is_pending_update}, Revalidator state: ${revalidator.state}`);
+            console.log(`[PaymentSuccess Effect] Condition NOT met or already revalidating. No timer scheduled. isExplicitlyPending=${isExplicitlyPending}, isWaitingForWebhook=${isWaitingForWebhook}, Revalidator   
+state: ${revalidator.state}`);
         }
-        // Dependencies: revalidate only when payment data changes or revalidator becomes idle again
-    }, [loaderData, revalidator]); // Depend on loaderData as a whole
+        // Dependencies: revalidate whenever loaderData changes (including error state) or revalidator state changes
+    }, [loaderData, revalidator]); // Depend on loaderData and revalidator state
+    // Log loader data just before returning JSX
+    console.log('[PaymentSuccess Render] Final loaderData before JSX:', JSON.stringify(loaderData));
 
-    // console.log('Loader data:', loaderData); // Removed log
-
-    // Handle case where loader returned an error
-    if ('error' in loaderData) {
+    // Handle specific "not yet available" error by showing processing state
+    if ('error' in loaderData && loaderData.error?.startsWith("Payment details not yet available")) {
+        // Show processing state - the useEffect hook will trigger revalidation
+        return (
+            <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                <div className="text-center">
+                    {/* Processing Icon */}
+                    <div
+                        className="inline-flex items-center justify-center w-16 h-16 mb-6 bg-yellow-100 dark:bg-yellow-900 rounded-full">
+                        <svg className="w-8 h-8 text-yellow-600 dark:text-yellow-300" fill="none" stroke="currentColor"
+                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    {/* Processing Title & Text */}
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Payment Processing</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mb-6">
+                        Your payment is being processed. This page will update automatically once confirmed.
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">
+                        (If this screen persists, please check your payment history later or contact support.)
+                    </p>
+                    <Link
+                        to="/"
+                        className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                    >
+                        Return Home
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+    // Handle other generic errors
+    else if ('error' in loaderData) {
         return (
             <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg text-center">
                 <h1 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">Error Loading Payment Details</h1>
@@ -100,7 +155,7 @@ export default function PaymentSuccess() {
     }
 
     // Now we know payment exists
-    const { payment } = loaderData;
+    const {payment} = loaderData;
     // console.log('Payment:', payment); // Removed log
 
     // useEffect hook moved to the top level
@@ -121,53 +176,81 @@ export default function PaymentSuccess() {
         // Add the nested one_on_one_sessions data structure
         one_on_one_sessions: { quantity_purchased: number }[] | null;
     };
-    // console.log('Typed Payment:', typedPayment); // Removed log
+    // Log the status being used for rendering
+    console.log('[PaymentSuccess Render] Status used for rendering:', typedPayment.status);
     console.log('[PaymentSuccess Component] Receipt URL from loader data:', typedPayment.receipt_url); // Log receipt URL
     // Extract quantity if available
     const quantityPurchased = (typedPayment.type === 'individual_session' && typedPayment.one_on_one_sessions && typedPayment.one_on_one_sessions.length > 0)
         ? typedPayment.one_on_one_sessions[0].quantity_purchased
         : null;
 
+    const isSucceeded = typedPayment.status === 'succeeded';
+    const isPending = typedPayment.status === 'pending';
+
     return (
         <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
             <div className="text-center">
-                <div
-                    className="inline-flex items-center justify-center w-16 h-16 mb-6 bg-green-100 dark:bg-green-900 rounded-full">
-                    <svg className="w-8 h-8 text-green-600 dark:text-green-300" fill="none" stroke="currentColor"
-                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                </div>
+                {/* Conditional Icon */}
+                {isSucceeded && (
+                    <div
+                        className="inline-flex items-center justify-center w-16 h-16 mb-6 bg-green-100 dark:bg-green-900 rounded-full">
+                        <svg className="w-8 h-8 text-green-600 dark:text-green-300" fill="none" stroke="currentColor"
+                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                  d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                )}
+                {isPending && (
+                    <div
+                        className="inline-flex items-center justify-center w-16 h-16 mb-6 bg-yellow-100 dark:bg-yellow-900 rounded-full">
+                        {/* Simple Clock Icon */}
+                        <svg className="w-8 h-8 text-yellow-600 dark:text-yellow-300" fill="none" stroke="currentColor"
+                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                )}
+                {/* Add handling for 'failed' if needed, though usually redirect occurs */}
 
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Payment Successful!</h1>
+                {/* Conditional Title */}
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    {isSucceeded ? 'Payment Successful!' : 'Payment Processing'}
+                </h1>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
-                    Thank you for your payment of ${(typedPayment.amount / 100).toFixed(2)}
+                    {isSucceeded
+                        ? `Thank you for your payment of $${(typedPayment.amount / 100).toFixed(2)}`
+                        : `Your payment of $${(typedPayment.amount / 100).toFixed(2)} is being processed.`
+                    }
                 </p>
 
                 <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded text-left">
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                         <span className="font-semibold">Family:</span> {typedPayment.family?.name ?? 'N/A'}
                     </p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                        <span className="font-semibold">Transaction ID:</span> {typedPayment.id}
-                    </p>
+                    {/* Transaction ID Removed */}
+                    {/* Conditional Date Display */}
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                         <span
-                            className="font-semibold">Date:</span> {typedPayment.formatted_payment_date ?? (typedPayment.is_pending_update ? 'Processing...' : 'N/A')}
+                            className="font-semibold">Date:</span> {isSucceeded ? (typedPayment.formatted_payment_date ?? 'N/A') : 'Processing...'}
                     </p>
-                    {/* Conditionally display quantity purchased */}
-                    {quantityPurchased !== null && (
+                    {/* Conditionally display quantity purchased (only if succeeded) */}
+                    {isSucceeded && quantityPurchased !== null && (
                         <p className="text-sm text-gray-700 dark:text-gray-300">
                             <span className="font-semibold">Quantity Purchased:</span> {quantityPurchased} session(s)
                         </p>
                     )}
-                    {typedPayment.is_pending_update && (
-                         <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Note: Final details are being processed.</p>
+                    {/* Show processing note only if pending */}
+                    {isPending && (
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Note: Final details are being
+                            processed.</p>
                     )}
                 </div>
 
                 <div className="flex justify-center space-x-4">
-                    {typedPayment.receipt_url && (
+                    {/* Conditional Receipt Link */}
+                    {isSucceeded && typedPayment.receipt_url && (
                         <a
                             href={typedPayment.receipt_url}
                             target="_blank"

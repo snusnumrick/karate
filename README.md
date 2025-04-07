@@ -165,8 +165,56 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     # Ensure you are linked to the correct Supabase project
     npx supabase functions deploy payment-reminder --no-verify-jwt
     npx supabase functions deploy missing-waiver-reminder --no-verify-jwt
-    ```
-    - **Schedule Functions:** In the Supabase Dashboard (Database -> Edge Functions), set up Cron Jobs to trigger `payment-reminder` and `missing-waiver-reminder` periodically (e.g., daily).
+    npx supabase functions deploy sync-pending-payments --no-verify-jwt
+    ```                                                                                                                                                                                                               
+    - **Schedule Functions:** Use the SQL Editor in your Supabase Dashboard to schedule the functions using `pg_cron`.
+        - Go to SQL Editor -> + New query.
+        - Run the following commands, **replacing placeholders** with your actual values:
+            - `<YOUR_PROJECT_REF>`: Found in Project Settings -> General.
+            - `YOUR_SUPABASE_SERVICE_ROLE_KEY`: Found in Project Settings -> API -> Project API keys.
+        ```sql                                                                                                                                                                                                        
+        -- Schedule payment reminder (e.g., daily at 9 AM UTC)                                                                                                                                                        
+        SELECT cron.schedule(                                                                                                                                                                                         
+            'payment-reminder-job',                                                                                                                                                                                   
+            '0 9 * * *', -- Adjust schedule as needed                                                                                                                                                                 
+            $$                                                                                                                                                                                                        
+            SELECT net.http_post(                                                                                                                                                                                     
+                url:='https://<YOUR_PROJECT_REF>.supabase.co/functions/v1/payment-reminder',                                                                                                                          
+                headers:='{"Authorization": "Bearer YOUR_SUPABASE_SERVICE_ROLE_KEY"}'::jsonb,                                                                                                                         
+                body:='{}'::jsonb                                                                                                                                                                                     
+            );                                                                                                                                                                                                        
+            $$                                                                                                                                                                                                        
+        );                                                                                                                                                                                                            
+                                                                                                                                                                                                                      
+        -- Schedule missing waiver reminder (e.g., daily at 9:05 AM UTC)                                                                                                                                              
+        SELECT cron.schedule(                                                                                                                                                                                         
+            'missing-waiver-reminder-job',                                                                                                                                                                            
+            '5 9 * * *', -- Adjust schedule as needed                                                                                                                                                                 
+            $$                                                                                                                                                                                                        
+            SELECT net.http_post(                                                                                                                                                                                     
+                url:='https://<YOUR_PROJECT_REF>.supabase.co/functions/v1/missing-waiver-reminder',                                                                                                                   
+                headers:='{"Authorization": "Bearer YOUR_SUPABASE_SERVICE_ROLE_KEY"}'::jsonb,                                                                                                                         
+                body:='{}'::jsonb                                                                                                                                                                                     
+            );                                                                                                                                                                                                        
+            $$                                                                                                                                                                                                        
+        );                                                                                                                                                                                                            
+                                                                                                                                                                                                                      
+        -- Schedule pending payment sync (e.g., every 15 minutes)                                                                                                                                                     
+        SELECT cron.schedule(                                                                                                                                                                                         
+            'sync-pending-payments-job',                                                                                                                                                                              
+            '*/15 * * * *', -- Adjust schedule as needed                                                                                                                                                              
+            $$                                                                                                                                                                                                        
+            SELECT net.http_post(                                                                                                                                                                                     
+                url:='https://<YOUR_PROJECT_REF>.supabase.co/functions/v1/sync-pending-payments',                                                                                                                     
+                headers:='{"Authorization": "Bearer YOUR_SUPABASE_SERVICE_ROLE_KEY"}'::jsonb,                                                                                                                         
+                body:='{}'::jsonb                                                                                                                                                                                     
+            );                                                                                                                                                                                                        
+            $$                                                                                                                                                                                                        
+        );                                                                                                                                                                                                            
+                                                                                                                                                                                                                      
+        -- Optional: To unschedule later                                                                                                                                                                              
+        -- SELECT cron.unschedule('job-name');                                                                                                                                                                        
+        ```                                                                                                                                                                                                           
 
 ## Developer Information
 

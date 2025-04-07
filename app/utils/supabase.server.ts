@@ -276,8 +276,8 @@ export async function updatePaymentStatus(
         stripe_payment_intent_id: stripePaymentIntentId || undefined, // Store the PI ID
     };
 
-    // Set payment_date only when status becomes 'succeeded'
-    if (status === 'succeeded') {
+    // Set payment_date when status becomes 'succeeded' or 'failed'
+    if (status === 'succeeded' || status === 'failed') {
         updateData.payment_date = new Date().toISOString();
     }
 

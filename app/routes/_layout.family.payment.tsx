@@ -1,9 +1,7 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
-import { Link, useFetcher, useLoaderData, useNavigate, useRouteError } from "@remix-run/react";
+import { Link, useFetcher, useLoaderData, useNavigate, useRouteError, useSearchParams } from "@remix-run/react"; // Import useSearchParams
 import { useState, useEffect, useRef } from "react"; // Add useRef
-// Remove Stripe imports
-import { checkStudentEligibility, createInitialPaymentRecord, type EligibilityStatus, getSupabaseServerClient } from "~/utils/supabase.server";
-import { Button } from "~/components/ui/button";
+import { checkStudentEligibility, createInitialPaymentRecord, type EligibilityStatus, getSupabaseServerClient } from "~/utils/supabase.server";import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ExclamationTriangleIcon, InfoCircledIcon} from "@radix-ui/react-icons";
@@ -342,13 +340,16 @@ export default function FamilyPaymentPage() {
     const fetcher = useFetcher<ActionResponse & { success?: boolean; paymentId?: string }>();
     const navigate = useNavigate();
     const formRef = useRef<HTMLFormElement>(null); // Add ref for the form
+    const [searchParams] = useSearchParams(); // Get search params
 
     // --- Restore State & Calculations ---
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
-    const [paymentOption, setPaymentOption] = useState<PaymentOption>('monthly'); // State for payment option
+    // Set initial payment option based on URL query param, default to 'monthly'
+    const initialOption = searchParams.get('option') === 'individual' ? 'individual' : 'monthly';
+    const [paymentOption, setPaymentOption] = useState<PaymentOption>(initialOption); // State for payment option
     const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1); // State for 1:1 session quantity
 
-    const isSubmitting = fetcher.state === 'submitting'; // Use fetcher state
+    const isSubmitting = fetcher.state !== 'idle'; // Use fetcher state for disabling
 
     // --- Dynamic Calculation ---
     const calculateTotal = () => {
@@ -479,11 +480,12 @@ export default function FamilyPaymentPage() {
             {/* Restore Payment Option Selection */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
                 <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">Choose Payment Option</h2>
-                <RadioGroup defaultValue="monthly" value={paymentOption}
+                {/* Use value prop for controlled component, remove defaultValue */}
+                <RadioGroup value={paymentOption}
                             onValueChange={(value) => setPaymentOption(value as PaymentOption)} className="space-y-2">
                     {/* Option 1: Monthly Group Fees */}
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="monthly" id="opt-monthly"/>
+                    <RadioGroupItem value="monthly" id="opt-monthly"/>
                         <Label htmlFor="opt-monthly">Pay Monthly Group Class Fees</Label>
                     </div>
                     {/* Option 2: Yearly Group Fees */}
@@ -624,8 +626,8 @@ export default function FamilyPaymentPage() {
                 </Alert>
             </div>
 
-            {/* Payment Form - Use standard form with ref, no onSubmit */}
-            <form method="post" ref={formRef}>
+            {/* Payment Form - Use standard form with fetcher.Form and add ID */}
+            <fetcher.Form method="post" ref={formRef} id="payment-setup-form"> {/* Use fetcher.Form and add ID */}
                 {/* Hidden fields for family info and selections */}
                 <input type="hidden" name="familyId" value={familyId}/>
                 <input type="hidden" name="paymentOption" value={paymentOption}/>
@@ -636,40 +638,24 @@ export default function FamilyPaymentPage() {
                     <input type="hidden" name="oneOnOneQuantity" value={oneOnOneQuantity}/>
                 )}
 
-                {/* Button removed from here */}
-            </form> {/* Form ends here */}
+                {/* Button is now outside the form but linked by the 'form' attribute */}
+            </fetcher.Form> {/* fetcher.Form ends here */}
 
-            {/* Button moved outside the form */}
+            {/* Button moved outside the form, now submits the form directly */}
             <div className="mt-6"> {/* Add some margin */}
                 <Button
-                    type="button"
+                    type="submit" // Change type to submit
+                    form="payment-setup-form" // Associate with the form's new ID
                     className="w-full"
-                    onClick={(event) => { // Add event parameter
-                        try {
-                            event.stopPropagation(); // Stop event bubbling
-                            console.log("[onClick] Submit button clicked. Event propagation stopped."); // Update log
-
-                            if (!formRef.current) {
-                                console.error("Form ref not available.");
-                                return;
-                            }
-                            const formData = new FormData(formRef.current);
-                            console.log("[onClick] Submitting form data via fetcher:", Object.fromEntries(formData));
-                            fetcher.submit(formData, { method: 'post', action: '/family/payment' });
-                            console.log("[onClick] fetcher.submit called successfully.");
-                        } catch (error) {
-                            console.error("[onClick] Error occurred within onClick handler:", error);
-                        }
-                    }}
-                    // Restore original disabled logic (using fetcher.state)
+                    // Disable based on fetcher state and validation logic
                     disabled={
-                        isSubmitting || // Disable during submission
+                        fetcher.state !== 'idle' || // Disable if fetcher is not idle
                         currentTotalInCents <= 0 ||
                         ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
                         (paymentOption === 'individual' && oneOnOneQuantity <= 0)
                     }
                 >
-                    {isSubmitting ? "Setting up payment..." : `Proceed to Pay ${currentTotalDisplay}`}
+                    {fetcher.state !== 'idle' ? "Setting up payment..." : `Proceed to Pay ${currentTotalDisplay}`}
                 </Button>
             </div>
 

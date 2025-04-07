@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Added `ClientOnly` wrappers in `Navbar` to mitigate hydration issues.
 -   Added custom 404 page using a splat route (`app/routes/$.tsx`).
 -   Added `useFetcher` pattern for payment initiation form submission to improve reliability.
+-   Added "Retry Payment" / "Complete Payment" link to Payment History page for `failed` / `pending` payments.
+-   Added `warning` variant to `Alert` component.
+-   Added `sync-pending-payments` Supabase Edge Function to reconcile old pending payments via Stripe API check.
+-   Added pre-selection of payment option on `/family/payment` page via URL query parameter (`?option=individual`).
 
 ### Changed
 
@@ -31,10 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Updated `updatePaymentStatus` utility function to accept `supabasePaymentId` and handle `individual_session` recording.
 -   Updated `/family/payment` route to create a `pending` payment record before navigating to the payment form.
 -   Updated `/payment/success` loader to query by `payment_intent` and fetch necessary details.
--   Updated `README.md` to reflect the new payment flow, technology stack, setup instructions, and project structure.
+-   Updated `README.md` to reflect the new payment flow, technology stack, setup instructions, project structure, and SQL-based function scheduling.
 -   Refactored code to consistently use `type` instead of `payment_type` for the corresponding database column.
 -   Made `app/db/supabase-setup.sql` script more idempotent (added `IF NOT EXISTS` for tables and indexes, corrected enum creation).
 -   Refactored Family Portal (`/family`) layout for better visual balance on wider screens.
+-   Modified `/pay/:paymentId` loader to check Stripe status for `pending` payments to prevent double charges and redirect if already succeeded.
+-   Modified `updatePaymentStatus` to set `payment_date` for `failed` payments.
+-   Improved Payment History sorting to prioritize `created_at`.
+-   Improved Payment Success page display logic for `pending` status and when loader initially fails to find the record.
 
 ### Fixed
 
@@ -48,8 +56,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Removed duplicate code blocks (e.g., `catch` block, CSS `color` property).
 -   Corrected Supabase query parsing errors caused by comments within `select` statements.
 -   Handled potential `null` or missing `payment.type` property in `/pay/:paymentId` component.
+-   Prevented duplicate payment record creation by ensuring payment initiation action only runs once per attempt.
+-   Fixed `React.Children.only` error on Family Portal page (related to Button `asChild`).
+-   Fixed typo in Payment History loader query (`.from.from`).
+-   Made `/payment/success` loader query more robust (`maybeSingle`).
+-   Prevented double API calls for creating payment intents from `/pay/:paymentId` page.
+-   Corrected `/pay/:paymentId` loader logic to avoid incorrectly marking payments as `failed`.
+-   Fixed dark mode visibility for `destructive` Alert variant text.
 
 ### Removed
 
 -   Stripe Checkout session creation logic and redirection.
 -   Redundant `ALTER TYPE ... RENAME VALUE` statement from `supabase-setup.sql`.
+-   Local mutation of `payment` object in `/pay/:paymentId` loader.

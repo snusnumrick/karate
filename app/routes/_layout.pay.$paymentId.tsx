@@ -3,6 +3,8 @@ import {Link, useFetcher, useLoaderData, useNavigate, useRouteError} from "@remi
 import {useEffect, useMemo, useState} from "react"; // Ensure useMemo is imported
 import {loadStripe, StripeElementsOptions} from "@stripe/stripe-js";
 import {CardElement, Elements, useElements, useStripe} from "@stripe/react-stripe-js";
+import { createClient } from "@supabase/supabase-js"; // Import standard client for admin tasks
+import Stripe from "stripe"; // Import Stripe SDK for server-side API calls
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
@@ -19,12 +21,14 @@ type PaymentWithDetails = PaymentRow & {
     payment_students: Array<Pick<PaymentStudentRow, 'student_id'>>;
     // Add quantity if stored directly on payment (e.g., for pre-created individual sessions)
     // quantity?: number | null;
+    // status: Database['public']['Enums']['payment_status']; // Status is already part of PaymentRow
 };
 
 type LoaderData = {
     payment?: PaymentWithDetails; // Use the more detailed type
     stripePublishableKey: string;
     error?: string; // Add error field for loader errors
+    // paymentStatus is implicitly included in the payment object
 };
 
 // --- Action Response Types (Mirrored from API endpoint) ---
@@ -116,27 +120,105 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         });
     }
 
-    // Ensure payment is still pending before allowing payment attempt
-    if (payment.status !== 'pending') {
-        console.warn(`Attempted to pay for non-pending payment ${paymentId} with status ${payment.status}`);
-        // Redirect to success page if already succeeded, or maybe family dashboard otherwise?
-        if (payment.status === 'succeeded' && payment.stripe_payment_intent_id) {
-            // Use throw redirect helper
+    // --- Check Stripe Status if DB status is 'pending' ---
+    if (payment.status === 'pending' && payment.stripe_payment_intent_id) {
+        console.log(`[Loader] DB status is pending for ${paymentId}. Checking Stripe PI status for ${payment.stripe_payment_intent_id}...`);
+        const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!stripeSecretKey || !supabaseUrl || !supabaseServiceKey) {
+            console.error("[Loader] Missing Stripe Secret Key or Supabase Admin credentials for pending check.");
+            // Proceed cautiously, maybe let the user try, but log the config error
+        } else {
+            const stripe = new Stripe(stripeSecretKey);
+            const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+
+            try {
+                const paymentIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id, {
+                    expand: ['latest_charge'] // Expand charge to potentially get receipt URL
+                });
+                console.log(`[Loader] Stripe PI status for ${paymentIntent.id}: ${paymentIntent.status}`);
+
+                if (paymentIntent.status === 'succeeded') {
+                    console.log(`[Loader] Stripe PI ${paymentIntent.id} already succeeded. Updating Supabase record ${paymentId} and redirecting.`);
+                    // Update Supabase record (mimic webhook logic, but only for success)
+                    const receiptUrl = (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object') ? paymentIntent.latest_charge.receipt_url : null;
+                    const paymentMethod = paymentIntent.payment_method_types?.[0] ?? null;
+
+                    const { error: updateError } = await supabaseAdmin
+                        .from('payments')
+                        .update({
+                            status: 'succeeded',
+                            payment_date: new Date().toISOString(), // Set payment date
+                            receipt_url: receiptUrl,
+                            payment_method: paymentMethod,
+                            // No need to update stripe_payment_intent_id again
+                        })
+                        .eq('id', paymentId);
+
+                    if (updateError) {
+                        console.error(`[Loader] Failed to update Supabase record ${paymentId} to succeeded after Stripe check:`, updateError.message);
+                        // Proceed to payment page, but log the error
+                    } else {
+                        // Redirect to success page - THIS PREVENTS DOUBLE PAYMENT
+                        throw redirect(`/payment/success?payment_intent=${paymentIntent.id}`, { headers: response.headers });
+                    }
+                    // Only mark as failed in DB if Stripe status is definitively canceled
+                } else if (paymentIntent.status === 'canceled') {
+                    console.log(`[Loader] Stripe PI ${paymentIntent.id} status is terminal failure: ${paymentIntent.status}. Updating Supabase record ${paymentId} to failed.`);
+                    // Update Supabase record to 'failed'
+                    const { error: updateError } = await supabaseAdmin
+                        .from('payments')
+                        .update({
+                            status: 'failed',
+                            payment_date: new Date().toISOString(), // Set date of failure
+                        })
+                        .eq('id', paymentId);
+
+                    if (updateError) {
+                        console.error(`[Loader] Failed to update Supabase record ${paymentId} to failed after Stripe check:`, updateError.message);
+                    }
+                    // DO NOT update the local payment object here.
+                    // The component should reflect the DB state as fetched initially or after a successful update+refetch.
+                    // If the DB update fails, the component should still show 'pending'.
+                    // If the DB update succeeds, the component will show 'failed' because the loader refetches or the page reloads.
+
+                    // Proceed to load the payment page allowing retry
+                }
+                // For other statuses ('processing', 'requires_action', 'requires_confirmation'),
+                // DO NOTHING to the DB status. Let the page load with 'pending'.
+                // The user can wait, complete an action, or the webhook will eventually update.
+
+            } catch (stripeError) {
+                console.error(`[Loader] Error retrieving Stripe Payment Intent ${payment.stripe_payment_intent_id}:`, stripeError instanceof Error ? stripeError.message : stripeError);
+                // Proceed to load the payment page, but log the error
+            }
+        }
+    }
+    // --- End Stripe Status Check ---
+
+
+    // Ensure payment is not already successfully completed (check status *again* in case it was updated by the check above)
+    if (payment.status === 'succeeded') {
+        console.warn(`Attempted to access payment page for already succeeded payment ${paymentId}`);
+        // Redirect to success page if already succeeded
+        if (payment.stripe_payment_intent_id) {
             console.log(`Payment ${paymentId} already succeeded. Redirecting to success page.`);
             throw redirect(`/payment/success?payment_intent=${payment.stripe_payment_intent_id}`, {headers: response.headers});
+        } else {
+            // Should not happen if succeeded, but handle defensively
+            console.warn(`Payment ${paymentId} succeeded but missing Payment Intent ID. Redirecting to family portal.`);
+            throw redirect(`/family`, {headers: response.headers}); // Redirect to family dashboard as fallback
         }
-        // For failed or other statuses, return error
-        console.error(`Payment ${paymentId} is already ${payment.status}.`);
-        // Cast payment to PaymentWithDetails here as well
-        return json<LoaderData>({
-            error: `This payment is already ${payment.status}.`,
-            stripePublishableKey,
-            payment: payment as PaymentWithDetails
-        }, {status: 400, headers: response.headers});
     }
+    // Allow proceeding if status is 'pending' or 'failed'
 
     // Prepare the data object to be returned
-    const loaderReturnData: LoaderData = {payment: payment as PaymentWithDetails, stripePublishableKey};
+    const loaderReturnData: LoaderData = {
+        payment: payment as PaymentWithDetails, // Status is included within payment object
+        stripePublishableKey
+    };
     console.log('[Loader] Data prepared for return:', loaderReturnData);
 
     // Cast payment to PaymentWithDetails to satisfy LoaderData type
@@ -305,6 +387,7 @@ function CheckoutForm({payment, clientSecret}: { payment: PaymentWithDetails, cl
 // --- Main Payment Page Component ---
 export default function PaymentPage() {
     console.log("[PaymentPage] Component rendering started."); // Add log here
+    // payment object now contains the status
     const {payment, stripePublishableKey, error: loaderError} = useLoaderData<LoaderData>();
     // Use the combined type for the fetcher
     const paymentIntentFetcher = useFetcher<ApiActionResponse>();
@@ -325,14 +408,15 @@ export default function PaymentPage() {
 
     // --- Restore Fetcher Logic ---
     // Fetch the Payment Intent clientSecret when the component mounts or payment data changes
+    // Fetch the Payment Intent clientSecret when the component mounts or payment data changes
     useEffect(() => {
         // Only fetch if:
-        // 1. We have payment data
-        // 2. Fetcher is idle (not already fetching/submitting)
-        // 3. We don't already have fetcher data (success or error)
-        // 4. We don't already have a clientSecret in state
+        // 1. We have payment data.
+        // 2. Fetcher is currently idle.
+        // 3. Fetcher hasn't already successfully fetched data (check fetcher.data).
+        // 4. We don't already have a clientSecret set in the component's state.
         if (payment && paymentIntentFetcher.state === 'idle' && !paymentIntentFetcher.data && !clientSecret) {
-            console.log(`[PaymentPage Effect] Preparing to fetch clientSecret for payment ${payment.id}`);
+            console.log(`[PaymentPage Effect] Conditions met. Submitting to fetch clientSecret for payment ${payment.id}`);
             const formData = new FormData();
 
             // --- Data required by /api/create-payment-intent ---
@@ -507,6 +591,18 @@ export default function PaymentPage() {
     return (
         <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">Complete Your Payment</h1>
+
+            {/* Display message if retrying a failed payment */}
+            {payment?.status === 'failed' && (
+                <Alert variant="warning" className="mb-4"> {/* Use the new warning variant */}
+                    {/* Optional: Add an icon like ExclamationTriangleIcon if desired */}
+                    <AlertTitle>Previous Attempt Failed</AlertTitle>
+                    <AlertDescription>
+                        Your previous attempt to complete this payment failed. Please check your card details and try
+                        again.
+                    </AlertDescription>
+                </Alert>
+            )}
 
             {/* Display Payment Summary */}
             <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded text-left">

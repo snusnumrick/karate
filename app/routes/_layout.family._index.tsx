@@ -281,7 +281,7 @@ export default function FamilyPortal() {
                     {/* Optionally link to purchase more */}
                     {/* Remove asChild from Purchase More button for testing */}
                     <Button variant="secondary">
-                        <Link to="/family/payment?option=individual_session">Purchase More</Link> {/* Corrected option value */}
+                        <Link to="/family/payment?option=individual">Purchase More</Link> {/* Corrected option value */}
                     </Button>
                 </div>
 

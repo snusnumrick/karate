@@ -32,7 +32,9 @@ export async function loader({request}: LoaderFunctionArgs) {
         .from('payments')
         .select('*') // Select all payment columns
         .eq('family_id', familyId)
-        .order('payment_date', {ascending: false, nullsFirst: false});
+        // Order by creation date descending primarily, then payment date descending
+        .order('created_at', { ascending: false })
+        .order('payment_date', { ascending: false, nullsFirst: true }); // Keep nulls (pending) near the top after sorting by created_at
 
     if (paymentsError) {
         console.error("Payment History Loader Error: Failed to load payments", paymentsError.message);
@@ -79,6 +81,9 @@ export default function PaymentHistoryPage() {
                             <th scope="col"
                                 className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Receipt
                             </th>
+                            <th scope="col"
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions {/* New Actions Header */}
+                            </th>
                         </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -96,9 +101,9 @@ export default function PaymentHistoryPage() {
                                 <td className="px-4 py-4 whitespace-nowrap text-sm">
                                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                          payment.status === 'succeeded' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                             payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                     }`}>
+                                             payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                     }`}>
                        {payment.status}
                      </span>
                                 </td>
@@ -117,6 +122,18 @@ export default function PaymentHistoryPage() {
                                         </a>
                                     ) : (
                                         'N/A'
+                                    )}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"> {/* New Actions Cell */}
+                                    {(payment.status === 'pending' || payment.status === 'failed') ? (
+                                        <Link
+                                            to={`/pay/${payment.id}`}
+                                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
+                                        >
+                                            {payment.status === 'pending' ? 'Complete Payment' : 'Retry Payment'}
+                                        </Link>
+                                    ) : (
+                                        'N/A' // Or leave empty: ''
                                     )}
                                 </td>
                             </tr>
