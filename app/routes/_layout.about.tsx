@@ -1,6 +1,8 @@
+import { Link } from "@remix-run/react"; // Import Link for the button
 import { siteConfig } from "~/config/site"; // Import site config
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
+import { Button } from "~/components/ui/button"; // Import Button component
 
 // Helper function to merge meta tags, giving precedence to child tags
 function mergeMeta(
@@ -106,7 +108,7 @@ export default function AboutPage() {
                             </h2>
                             <p className="text-gray-600 dark:text-gray-300 mb-6">
                                 Sensei Negin is a highly accomplished karate instructor with over 20 years of experience
-                                in martial arts.
+                                in martial arts, including coaching at provincial and national levels and holding leadership roles within karate federations.
                                 As a 5th Dan Black Belt, she has dedicated her life to mastering the art of karate and
                                 sharing its
                                 principles with the next generation.
@@ -115,7 +117,7 @@ export default function AboutPage() {
                                 With a Master&apos;s degree in Sport Psychology, Sensei Negin brings a unique
                                 perspective to her teaching,
                                 focusing not just on physical techniques but also on mental strength, discipline, and
-                                personal growth.
+                                personal growth. She has applied this expertise directly, serving as a sport psychologist for university athletes.
                             </p>
                             <p className="text-gray-600 dark:text-gray-300 mb-6">
                                 As a certified Kids Sports Coach and award-winning youth instructor, she specializes in
@@ -130,8 +132,10 @@ export default function AboutPage() {
                                 <ul className="list-disc pl-5 space-y-2 text-gray-600 dark:text-gray-300">
                                     <li>5th Dan Black Belt in Karate</li>
                                     <li>M.S. of Sport Psychology</li>
+                                    <li>A Grade Degree of Coaching</li>
                                     <li>Kids Sports Certified Coach</li>
                                     <li>Award Winning Youth Coach</li>
+                                    <li>Certified Karate Referee (Kata & Kumite)</li>
                                     <li>Personal Trainer Certified</li>
                                     <li>Multiple national and international competition medals</li>
                                 </ul>
@@ -139,6 +143,12 @@ export default function AboutPage() {
                         </div>
                         <div
                             className="bg-green-600 dark:bg-green-700 p-8 md:p-12 text-white flex flex-col justify-center">
+                            {/* Haiku - Moved to top right */}
+                            <div className="mb-6 text-right italic text-green-100">
+                                <p>Silent dojo waits<br />
+                                Empty hands shape formless air<br />
+                                Warriors emerge</p>
+                            </div>
                             <h2 className="text-2xl font-bold mb-4">Teaching Philosophy</h2>
                             <p className="mb-6">
                                 &ldquo;This class is an introduction to one of the most sophisticated martial arts ‒ the
@@ -155,15 +165,22 @@ export default function AboutPage() {
                                 strength,
                                 discipline, respect, and confidence that will serve them throughout their lives.&rdquo;
                             </p>
+                            {/* Haiku removed from here */}
                             <div className="mt-8">
                                 <h3 className="text-xl font-semibold mb-4">Join us! OSS!</h3>
-                                <p>
+                                <p className="mb-6"> {/* Added margin-bottom */}
                                     Experience the transformative power of karate under the guidance of Sensei Negin at
                                     {siteConfig.location.description}. Classes are designed for children
                                     ages {siteConfig.classes.ageRange} and focus on
                                     building a strong foundation in karate techniques while developing character and
-                                    life skills. Ready to start? <a href="/contact" className="text-green-500 hover:underline">Contact us</a> to learn more or sign up for a free trial!
+                                    life skills. Ready to start? <a href="/contact" className="text-green-100 hover:underline font-semibold">Contact us</a> to learn more or sign up for a free trial!
                                 </p>
+                                {/* Add Register Button */}
+                                <div className="mt-6 text-center">
+                                    <Button asChild size="lg" variant="secondary" className="bg-white text-green-700 hover:bg-gray-100 dark:bg-gray-200 dark:text-green-800 dark:hover:bg-gray-300">
+                                        <Link to="/contact">Register Now</Link>
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>
