@@ -1,7 +1,8 @@
-import {json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {Link, useFetcher, useLoaderData, useRouteError} from "@remix-run/react"; // Removed useNavigate
-import {useEffect, useMemo, useState} from "react"; // Ensure useMemo is imported
-import {loadStripe, StripeElementsOptions} from "@stripe/stripe-js";
+import { json, type LoaderFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
+import { Link, useFetcher, useLoaderData, useRouteError } from "@remix-run/react"; // Removed useNavigate
+import { useEffect, useMemo, useState } from "react"; // Ensure useMemo is imported
+import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
+import { useTheme } from "next-themes"; // Import useTheme hook
 // Import PaymentElement and LinkAuthenticationElement
 import {PaymentElement, LinkAuthenticationElement, Elements, useElements, useStripe} from "@stripe/react-stripe-js";
 import { createClient } from "@supabase/supabase-js"; // Import standard client for admin tasks
@@ -370,6 +371,8 @@ export default function PaymentPage() {
     const [fetcherError, setFetcherError] = useState<string | null>(null);
     // State to hold the loaded Stripe promise/instance
     const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
+    // Get the current theme
+    const { theme } = useTheme();
 
     // Options for Stripe Elements provider - Memoize to prevent unnecessary re-renders
     // Moved to top level before early returns to satisfy Rules of Hooks
@@ -377,30 +380,47 @@ export default function PaymentPage() {
         if (!clientSecret) return undefined;
 
         // Define appearance based on common UI elements (Tailwind/shadcn defaults)
-        // Match colors from registration input: dark:bg-gray-700, dark:border-gray-600, dark:text-white, focus:ring-green-500
-        // Define appearance based on common UI elements (Tailwind/shadcn defaults)
-        // Match colors from registration input: dark:bg-gray-700, dark:border-gray-600, dark:text-white, focus:ring-green-500
+        // Determine effective theme (handle 'system')
+        // Note: This assumes your ThemeProvider resolves 'system' correctly.
+        // If using next-themes, it might return 'system' initially.
+        // A robust solution might involve checking resolvedTheme if available,
+        // or defaulting to light/dark based on media query if theme is 'system'.
+        // For simplicity here, we'll treat 'system' like 'light' initially,
+        // but Stripe's 'auto' theme might handle this better.
+        const effectiveTheme = theme === 'dark' ? 'dark' : 'light';
+
+        // Define appearance based on the effective theme
         const appearance: StripeElementsOptions['appearance'] = {
-            theme: 'stripe', // Use Stripe's adaptive theme
+            theme: effectiveTheme === 'dark' ? 'night' : 'stripe', // Use 'night' for dark, 'stripe' for light/auto
             variables: {
-                // --- Core Colors ---
+                // --- Common Variables (Apply to both themes unless overridden) ---
                 colorPrimary: '#22c55e',     // Focus ring/border (green-500)
-                colorBackground: '#374151', // Input background (dark:bg-gray-700)
-                colorText: '#ffffff',       // Input text (dark:text-white)
                 colorDanger: '#ef4444',     // Error text (red-500)
-                colorTextSecondary: '#d1d5db', // Labels etc (gray-300)
-                colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
-                colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
-                // --- Border ---
-                // @ts-expect-error - TS might complain, but this is a valid Stripe variable
-                colorBorder: '#4b5563',     // Input border (dark:border-gray-600)
-                // --- Sizing ---
                 borderRadius: '0.375rem',   // Match form inputs (rounded-md)
-                // spacingUnit: '4px',      // Adjust spacing if needed
-                // fontBase: '...',         // Set font family if needed
+
+                // --- Theme-Specific Overrides ---
+                ...(effectiveTheme === 'dark'
+                    ? { // Dark Theme Variables (match your existing dark mode)
+                        colorBackground: '#374151', // Input background (gray-700)
+                        colorText: '#ffffff',       // Input text (white)
+                        colorTextSecondary: '#d1d5db', // Labels etc (gray-300)
+                        colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
+                        colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
+                        // @ts-expect-error - TS might complain, but this is a valid Stripe variable
+                        colorBorder: '#4b5563',     // Input border (gray-600)
+                    }
+                    : { // Light Theme Variables (match typical light mode)
+                        colorBackground: '#ffffff', // Input background (white)
+                        colorText: '#1f2937',       // Input text (gray-800)
+                        colorTextSecondary: '#6b7280', // Labels etc (gray-500)
+                        colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
+                        colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
+                        // @ts-expect-error - TS might complain, but this is a valid Stripe variable
+                        colorBorder: '#d1d5db',     // Input border (gray-300)
+                    }),
             },
             rules: {
-                 // --- Focus State ---
+                // --- Focus State (Common) ---
                  // Ensure focus uses the primary color (green) and removes default Stripe shadow
                 '.Input--focus': {
                     boxShadow: `0 0 0 1px var(--colorPrimary)`, // Use variable for focus ring
@@ -422,7 +442,7 @@ export default function PaymentPage() {
 
         return {clientSecret, appearance};
 
-    }, [clientSecret]); // Only recreate options when clientSecret changes
+    }, [clientSecret, theme]); // Recreate options when clientSecret OR theme changes
 
     console.log('PaymentPage, payment: ', payment); // Keep log after hooks
 
