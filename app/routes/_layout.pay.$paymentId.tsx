@@ -2,7 +2,6 @@ import { json, type LoaderFunctionArgs, redirect, TypedResponse } from "@remix-r
 import { Link, useFetcher, useLoaderData, useRouteError } from "@remix-run/react"; // Removed useNavigate
 import { useEffect, useMemo, useState } from "react"; // Ensure useMemo is imported
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
-import { useTheme } from "next-themes"; // Import useTheme hook
 // Import PaymentElement and LinkAuthenticationElement
 import {PaymentElement, LinkAuthenticationElement, Elements, useElements, useStripe} from "@stripe/react-stripe-js";
 import { createClient } from "@supabase/supabase-js"; // Import standard client for admin tasks
@@ -371,8 +370,8 @@ export default function PaymentPage() {
     const [fetcherError, setFetcherError] = useState<string | null>(null);
     // State to hold the loaded Stripe promise/instance
     const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
-    // Get the current theme
-    const { theme } = useTheme();
+    // State to hold the detected theme ('light' or 'dark')
+    const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light'); // Default to light initially
 
     // Options for Stripe Elements provider - Memoize to prevent unnecessary re-renders
     // Moved to top level before early returns to satisfy Rules of Hooks
@@ -386,12 +385,9 @@ export default function PaymentPage() {
         // A robust solution might involve checking resolvedTheme if available,
         // or defaulting to light/dark based on media query if theme is 'system'.
         // For simplicity here, we'll treat 'system' like 'light' initially,
-        // but Stripe's 'auto' theme might handle this better.
-        const effectiveTheme = theme === 'dark' ? 'dark' : 'light';
-
-        // Define appearance based on the effective theme
+        // Define appearance based on the detected theme state
         const appearance: StripeElementsOptions['appearance'] = {
-            theme: effectiveTheme === 'dark' ? 'night' : 'stripe', // Use 'night' for dark, 'stripe' for light/auto
+            theme: currentTheme === 'dark' ? 'night' : 'stripe', // Use 'night' for dark, 'stripe' for light/auto
             variables: {
                 // --- Common Variables (Apply to both themes unless overridden) ---
                 colorPrimary: '#22c55e',     // Focus ring/border (green-500)
@@ -399,7 +395,7 @@ export default function PaymentPage() {
                 borderRadius: '0.375rem',   // Match form inputs (rounded-md)
 
                 // --- Theme-Specific Overrides ---
-                ...(effectiveTheme === 'dark'
+                ...(currentTheme === 'dark'
                     ? { // Dark Theme Variables (match your existing dark mode)
                         colorBackground: '#374151', // Input background (gray-700)
                         colorText: '#ffffff',       // Input text (white)
@@ -442,9 +438,41 @@ export default function PaymentPage() {
 
         return {clientSecret, appearance};
 
-    }, [clientSecret, theme]); // Recreate options when clientSecret OR theme changes
+    }, [clientSecret, currentTheme]); // Recreate options when clientSecret OR currentTheme changes
 
     console.log('PaymentPage, payment: ', payment); // Keep log after hooks
+
+    // --- Effect to Detect Theme ---
+    useEffect(() => {
+        // Function to check and set theme
+        const checkTheme = () => {
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            console.log("[PaymentPage Theme Effect] Checking theme. Is dark mode?", isDarkMode);
+            setCurrentTheme(isDarkMode ? 'dark' : 'light');
+        };
+
+        // Check theme on initial mount
+        checkTheme();
+
+        // Optional: Observe changes to the class attribute of the html element
+        // This is more robust if the theme can change while the page is open
+        const observer = new MutationObserver((mutationsList) => {
+            for (let mutation of mutationsList) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    console.log("[PaymentPage Theme Effect] Detected class change on <html>.");
+                    checkTheme(); // Re-check theme on class change
+                }
+            }
+        });
+
+        observer.observe(document.documentElement, { attributes: true });
+
+        // Cleanup observer on component unmount
+        return () => {
+            console.log("[PaymentPage Theme Effect] Cleaning up theme observer.");
+            observer.disconnect();
+        };
+    }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount
 
     // --- Restore Fetcher Logic ---
     // Fetch the Payment Intent clientSecret when the component mounts or payment data changes
