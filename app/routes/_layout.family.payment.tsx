@@ -486,18 +486,18 @@ export default function FamilyPaymentPage() {
                     {/* Option 1: Monthly Group Fees */}
                     <div className="flex items-center space-x-2">
                     <RadioGroupItem value="monthly" id="opt-monthly"/>
-                        <Label htmlFor="opt-monthly">Pay Monthly Group Class Fees</Label>
+                        <Label htmlFor="opt-monthly" className="text-sm">Pay Monthly Group Class Fees</Label>
                     </div>
                     {/* Option 2: Yearly Group Fees */}
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="yearly" id="opt-yearly"/>
-                        <Label htmlFor="opt-yearly">Pay Yearly Group Class Fees
+                        <Label htmlFor="opt-yearly" className="text-sm">Pay Yearly Group Class Fees
                             ({siteConfig.pricing.currency}{siteConfig.pricing.yearly}/student)</Label>
                     </div>
                     {/* Option 3: Individual Session */}
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="individual" id="opt-individual"/> {/* Corrected value */}
-                        <Label htmlFor="opt-individual">Purchase Individual Session(s) {/* Corrected label */}
+                        <Label htmlFor="opt-individual" className="text-sm">Purchase Individual Session(s) {/* Corrected label */}
                             ({siteConfig.pricing.currency}{siteConfig.pricing.oneOnOneSession}/session)</Label>
                     </div>
                 </RadioGroup>
