@@ -13,5 +13,6 @@ export function useClientEffect(cb: () => void, deps?: React.DependencyList) {
         if (hasMounted) {
             cb();
         }
-    }, [hasMounted, cb, ...(deps || [])]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasMounted, cb, ...(deps ?? [])]);
 }

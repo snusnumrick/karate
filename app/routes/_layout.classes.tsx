@@ -70,16 +70,17 @@ export default function ClassesPage() {
                                     <li key={tier.label} className="flex justify-between items-center">
                                         <span
                                             className="font-semibold text-gray-800 dark:text-gray-200">{tier.label}</span>
-                                        {tier.price ? (
+                                        {/* {tier.price ? ( // Price removed as it's not in siteConfig.tiers
                                             <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                        {siteConfig.pricing.currency}{tier.price}
+                                                {siteConfig.pricing.currency}{tier.price}
                                                 {tier.label.includes("Month") || tier.label === "Monthly" ? <span
                                                     className="text-sm font-normal text-gray-500 dark:text-gray-400"> / mo</span> : ""}
-                      </span>
-                                        ) : (
+                                            </span>
+                                        ) : ( */}
                                             <span
                                                 className="text-lg font-bold text-blue-700 dark:text-blue-300">{tier.description || "Free"}</span>
-                                        )}
+                                        {/* )} */}
+                                        {/* )} */} {/* This closing parenthesis was part of the original error, removing it */}
                                     </li>
                                 ))}
                                 {/* Add a clarifying note if needed */}

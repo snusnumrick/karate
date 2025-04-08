@@ -349,7 +349,7 @@ export default function FamilyPaymentPage() {
     const [paymentOption, setPaymentOption] = useState<PaymentOption>(initialOption); // State for payment option
     const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1); // State for 1:1 session quantity
 
-    const isSubmitting = fetcher.state !== 'idle'; // Use fetcher state for disabling
+    // const isSubmitting = fetcher.state !== 'idle'; // Unused: fetcher.state is used directly in button disabled prop
 
     // --- Dynamic Calculation ---
     const calculateTotal = () => {

@@ -1,7 +1,8 @@
 import { type ActionFunctionArgs, json, TypedResponse } from "@remix-run/node";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import Stripe from 'stripe';
-import { createInitialPaymentRecord, getSupabaseServerClient } from '~/utils/supabase.server';
+// createInitialPaymentRecord is no longer used here
+import { getSupabaseServerClient } from '~/utils/supabase.server';
 import type { Database } from "~/types/supabase";
 import { siteConfig } from "~/config/site";
 
@@ -121,7 +122,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     // Removed line_items array, calculation logic remains the same for totalAmountInCents
     let type: PaymentTypeEnum; // Use 'type' variable name
     let totalAmountInCents = 0; // Calculate total amount server-side
-    let paymentData: { id: string } | null = null; // Declare outside try block
+    // let paymentData: { id: string } | null = null; // Unused variable
     let quantityForMetadata: number | undefined = undefined; // For individual sessions
 
     try {

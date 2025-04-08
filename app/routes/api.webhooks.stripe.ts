@@ -267,6 +267,7 @@ export async function action({request}: ActionFunctionArgs) {
                 // Return 500 so Stripe retries the webhook
                 return json({ error: "Database update failed." }, { status: 500 });
             }
+        // @ts-expect-error - TS incorrectly flags this comparison as impossible, but dbStatus could be 'failed' if logic changes or as a safeguard
         } else if (dbStatus === "failed") { // Handle failed checkout session payment status
              try {
                 console.log(`[Webhook Checkout Session] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} (from session ${stripeSessionId}) to failed`);

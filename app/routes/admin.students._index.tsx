@@ -105,8 +105,9 @@ export default function StudentsAdminPage() {
     // Helper to determine badge variant based on eligibility (Updated reasons)
     const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
         switch (status) {
-            case 'Paid':
-                return 'default';
+            case 'Paid - Monthly':
+            case 'Paid - Yearly':
+                return 'default'; // Use default (often primary/blue) for active paid status
             case 'Trial':
                 return 'secondary';
             case 'Expired':
@@ -160,20 +161,23 @@ export default function StudentsAdminPage() {
                                     <TableCell>
                                         <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)}
                                                className="text-xs">
-                                            {student.eligibility.reason === 'Paid' ? 'Active' : student.eligibility.reason}
+                                            + {(student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly') ? 'Active' : student.eligibility.reason}
                                             {/* Optionally show last payment date for Paid/Expired */}
-                                            {student.eligibility.lastPaymentDate && (student.eligibility.reason === 'Paid' || student.eligibility.reason === 'Expired') &&
+                                            {student.eligibility.lastPaymentDate && (student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly' || student.eligibility.reason
+                                                    === 'Expired') &&
                                                 ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'yyyy-MM-dd')})` // Keep date format for admin view
                                             }
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="space-x-2 whitespace-nowrap">
                                         {/* Use onClick with navigate instead of asChild/Link */}
-                                        <Button variant="outline" size="sm" onClick={() => navigate(`/admin/students/${student.id}`)}>
+                                        <Button variant="outline" size="sm"
+                                                onClick={() => navigate(`/admin/students/${student.id}`)}>
                                             View/Edit
                                         </Button>
                                         {/* Use onClick with navigate instead of asChild/Link */}
-                                        <Button variant="secondary" size="sm" onClick={() => navigate(`/admin/student-belts/${student.id}`)}>
+                                        <Button variant="secondary" size="sm"
+                                                onClick={() => navigate(`/admin/student-belts/${student.id}`)}>
                                             Belts
                                         </Button>
                                         {/* Add delete button/logic here if needed */}

@@ -1,8 +1,9 @@
 import {json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {Link, useFetcher, useLoaderData, useNavigate, useRouteError} from "@remix-run/react";
+import {Link, useFetcher, useLoaderData, useRouteError} from "@remix-run/react"; // Removed useNavigate
 import {useEffect, useMemo, useState} from "react"; // Ensure useMemo is imported
 import {loadStripe, StripeElementsOptions} from "@stripe/stripe-js";
-import {CardElement, Elements, useElements, useStripe} from "@stripe/react-stripe-js";
+// Import PaymentElement and LinkAuthenticationElement
+import {PaymentElement, LinkAuthenticationElement, Elements, useElements, useStripe} from "@stripe/react-stripe-js";
 import { createClient } from "@supabase/supabase-js"; // Import standard client for admin tasks
 import Stripe from "stripe"; // Import Stripe SDK for server-side API calls
 import {getSupabaseServerClient} from "~/utils/supabase.server";
@@ -13,9 +14,11 @@ import type {Database} from "~/types/supabase";
 
 type PaymentRow = Database['public']['Tables']['payments']['Row'];
 type PaymentStudentRow = Database['public']['Tables']['payment_students']['Row'];
+type FamilyRow = Database['public']['Tables']['families']['Row']; // Add FamilyRow type
 
 type PaymentWithDetails = PaymentRow & {
-    family: { name: string } | null;
+    // Include email and postal_code in the family object type
+    family: Pick<FamilyRow, 'name' | 'email' | 'postal_code'> | null;
     type: Database['public']['Enums']['payment_type_enum']; // Use 'type' to match DB column
     // Add associated students directly to the payment object
     payment_students: Array<Pick<PaymentStudentRow, 'student_id'>>;
@@ -91,7 +94,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         .from('payments')
         .select(`
             id, family_id, amount, payment_date, payment_method, status, stripe_session_id, stripe_payment_intent_id, receipt_url, notes, type,
-            family:family_id (name),
+            family:family_id (name, email, postal_code),
             payment_students ( student_id )
         `)
         .eq('id', paymentId)
@@ -228,13 +231,21 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 // Remove top-level stripePromise initialization - it will be done inside the component
 
 // --- CheckoutForm Component (Handles Card Element and Submission) ---
-function CheckoutForm({payment, clientSecret}: { payment: PaymentWithDetails, clientSecret: string }) {
+interface CheckoutFormProps {
+    payment: PaymentWithDetails;
+    // clientSecret is passed via Elements options, not needed here
+    defaultEmail?: string | null;
+    defaultPostalCode?: string | null;
+}
+
+function CheckoutForm({payment, defaultEmail, defaultPostalCode}: CheckoutFormProps) {
     const stripe = useStripe();
     const elements = useElements();
-    const navigate = useNavigate();
+    // const navigate = useNavigate(); // Not used, Stripe handles redirect
+    // const [email, setEmail] = useState(''); // Not used, LinkAuthenticationElement handles email internally
     const [paymentError, setPaymentError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    console.log('Checkout Form, payemnt: ', payment);
+    console.log('Checkout Form, payment: ', payment);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -247,126 +258,88 @@ function CheckoutForm({payment, clientSecret}: { payment: PaymentWithDetails, cl
             return;
         }
 
-        const cardElement = elements.getElement(CardElement);
-        if (!cardElement) {
-            console.error("Card Element not found.");
-            setPaymentError("Payment input is missing. Please refresh the page.");
-            return;
-        }
+        // No need to get CardElement explicitly when using PaymentElement
 
         setIsProcessing(true);
 
-        // Use confirmCardPayment with the clientSecret obtained earlier
-        const {error, paymentIntent} = await stripe.confirmCardPayment(clientSecret, {
-            payment_method: {
-                card: cardElement,
-                // billing_details: { // Optional: Add billing details if needed/collected
-                //   name: 'Jenny Rosen', // Example: Collect name if required by Stripe settings
-                // },
+        // Use confirmPayment with the clientSecret obtained earlier
+        // paymentIntent is not needed here as success redirects automatically
+        const {error} = await stripe.confirmPayment({
+            elements, // Pass the elements provider instance
+            confirmParams: {
+                // Make sure to change this to your payment completion page
+                return_url: `${window.location.origin}/payment/success`,
+                // Optional: Add payment_method_data like billing_details if needed
+                // payment_method_data: {
+                //   billing_details: {
+                //     name: 'Jenny Rosen', // Example
+                //   },
+                // }
             },
-            // Simplify return_url. Stripe should append payment_intent details automatically.
-            return_url: `${window.location.origin}/payment/success`
+            // Optional: redirect: 'if_required' (default) or 'always'
+            // redirect: 'if_required'
         });
 
+        // If `confirmPayment` fails or requires user action, it will throw an error.
+        // If it succeeds, it redirects the user to the `return_url` you specified.
+        // Therefore, you only need to handle the error case here.
+        // The success case (navigation) is handled by Stripe.js based on the return_url.
+
         if (error) {
+            // This error could be either a type='card_error' or type='validation_error'
+            // or another type like 'api_error'.
             console.error("Stripe confirmCardPayment error:", error);
             // Handle specific error types if needed (e.g., card errors vs. API errors)
-            setPaymentError(error.message || "An unexpected error occurred during payment.");
-            setIsProcessing(false); // Keep processing state false on error
-        } else if (paymentIntent?.status === 'succeeded') {
-            console.log("Payment Succeeded:", paymentIntent);
-            // Manual navigation fallback in case Stripe's automatic redirect doesn't trigger
-            // Navigate to the success page, passing the payment intent ID
-            console.log(`[CheckoutForm] Navigating manually to success page for PI: ${paymentIntent.id}`);
-            navigate(`/payment/success?payment_intent=${paymentIntent.id}`);
-            // Keep isProcessing true until navigation occurs
-            // setIsProcessing(true); // No need to set false as we are navigating away
-
-            // Old comments below:
-            // Redirect is handled by Stripe via return_url if payment requires no further actions
-            // If redirection doesn't happen automatically (e.g., for certain payment methods or flows),
-            // you might need manual navigation here.
-            // navigate(`/payment/success?payment_intent=${paymentIntent.id}`);
-            // For card payments, usually the return_url handles it.
-            // We might just need to keep the user informed while Stripe redirects.
-            // setIsProcessing(true); // Keep showing processing until redirect happens
-        } else if (paymentIntent?.status === 'requires_action') {
-            console.log("Payment requires further action (e.g., 3D Secure).");
-            setPaymentError("Payment requires additional verification. Please follow the prompts.");
-            // Stripe.js automatically handles the redirect for 3D Secure if using confirmCardPayment
-            // No explicit redirect needed here usually. Keep processing state?
-            // setIsProcessing(true); // Keep showing processing while user handles action
-        } else {
-            // Handle other statuses like 'processing', 'requires_payment_method', etc.
-            console.warn("Payment status:", paymentIntent?.status);
-            setPaymentError(`Payment status: ${paymentIntent?.status}. Please try again or contact support.`);
-            // Set processing to false for these final, non-success states.
-            // The 'requires_action' case implicitly keeps isProcessing true as Stripe handles the redirect.
-            setIsProcessing(false); // Remove the problematic 'if' condition
+            console.error("Stripe confirmPayment error:", error);
+            setPaymentError(error.message || "An unexpected error occurred. Please try again.");
+            setIsProcessing(false); // Allow user to retry
         }
+        // No need for `else if (paymentIntent?.status === 'succeeded')` because
+        // `confirmPayment` automatically redirects on success based on `return_url`.
+        // If we reach here after the await, it means there was an error or redirection didn't happen (which shouldn't occur for standard flows).
+        // If redirection *doesn't* happen for some reason (e.g., popup blocker, unusual payment method flow),
+        // Stripe.js might still update the PaymentIntent status. You *could* add logic here to check
+        // paymentIntent.status again, but it's generally not required for typical card/wallet payments.
+        // The primary path is: success -> redirect; failure -> error message.
     };
 
-    // Basic styling for CardElement
-    const cardElementOptions = {
-        style: {
-            base: {
-                // Use a color that works in both light and dark modes, or detect theme.
-                // For simplicity, let's try a neutral dark gray for light mode
-                // and override with a light color for dark mode if possible,
-                // Set a base color suitable for light mode - REMOVED this duplicate
-                // color: "#32325d",
-                // Explicitly set a light color for dark mode visibility.
-                // This might look slightly off in light mode if the background isn't pure white,
-                // but visibility in dark mode is the priority here.
-                // A better long-term solution might involve Stripe's Appearance API.
-                // For now, let's force a light gray color.
-                // color: "#E0E0E0", // Light Gray
-                // Let's try white for maximum contrast on the dark background
-                color: "#FFFFFF", // White text for dark mode
-                // Let's try setting a light color directly, assuming dark mode has a dark background.
-                // This might look slightly off in light mode, but should be visible in dark.
-                // A better approach involves CSS variables or Stripe's Appearance API theme.
-                // Let's try a light gray that might work on both:
-                // color: "#333", // A dark gray for light mode
-                // Forcing light text for dark mode visibility:
-                // color: "#E0E0E0", // Light Gray - might be too light for light mode background
-                // Let's stick with the original dark color for now and rely on the container styling.
-                // The container has `bg-white dark:bg-gray-700`. Let's adjust the container instead.
+    // Remove cardElementOptions - Styling is handled by Appearance API via Elements options
 
-                fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
-                fontSmoothing: "antialiased",
-                fontSize: "16px",
-                "::placeholder": {
-                    color: "#aab7c4" // Placeholder color (light gray, should be okay on dark bg)
-                },
-                // TODO: Add styles for dark mode if needed, potentially using theme context
-            },
-            invalid: {
-                color: "#fa755a",
-                iconColor: "#fa755a"
-            }
+    // Define Payment Element options including wallets and default values
+    const paymentElementOptions = useMemo(() => ({
+        layout: "tabs" as const, // Use const assertion for layout type
+        wallets: {
+            applePay: 'auto' as const, // Show Apple Pay if available
+            googlePay: 'auto' as const // Show Google Pay if available
         },
-        // hidePostalCode: true // Remove this line to allow postal code collection
-    };
-
+        // Add defaultValues to prefill form fields
+        defaultValues: {
+            billingDetails: {
+                email: defaultEmail ?? undefined, // Use fetched email or undefined
+                address: {
+                    postal_code: defaultPostalCode ?? undefined, // Use fetched postal code or undefined
+                    country: 'CA', // Set country to Canada
+                },
+            },
+        },
+    }), [defaultEmail, defaultPostalCode]); // Recompute options if defaults change
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-                <label htmlFor="card-element"
-                       className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Card Details
-                </label>
-                {/* Ensure the container background contrasts with the text color */}
-                <div id="card-element"
-                     className="p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900"> {/* Changed dark bg */}
-                    {/* Ensure CardElement is only rendered when elements is available */}
-                    {elements && <CardElement options={cardElementOptions}/>}
-                </div>
-            </div>
+            {/* Add Link Authentication Element */}
+            <LinkAuthenticationElement
+                id="link-authentication-element"
+                // Prefill the email if it's available from user data (optional)
+                // defaultValue={userEmail}
+                // onChange={(e) => setEmail(e.value.email)} // setEmail was removed, remove handler
+                className="mb-4" // Add some spacing
+            />
+
+            {/* Pass options to PaymentElement */}
+            <PaymentElement id="payment-element" options={paymentElementOptions}/>
 
             {paymentError && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="mt-4"> {/* Add margin top */}
                     <AlertTitle>Payment Error</AlertTitle>
                     <AlertDescription>{paymentError}</AlertDescription>
                 </Alert>
@@ -374,9 +347,11 @@ function CheckoutForm({payment, clientSecret}: { payment: PaymentWithDetails, cl
 
             <Button
                 type="submit"
-                disabled={!stripe || !elements || isProcessing} // Disable if stripe/elements not loaded or processing
+                // Disable button if Stripe.js hasn't loaded, elements aren't available, or payment is processing.
+                disabled={!stripe || !elements || isProcessing}
                 className="w-full"
             >
+                {/* Text updates based on processing state */}
                 {isProcessing ? 'Processing...' : `Pay $${(payment.amount / 100).toFixed(2)}`}
             </Button>
         </form>
@@ -398,11 +373,56 @@ export default function PaymentPage() {
 
     // Options for Stripe Elements provider - Memoize to prevent unnecessary re-renders
     // Moved to top level before early returns to satisfy Rules of Hooks
-    const options = useMemo<StripeElementsOptions | undefined>(() => (
-        clientSecret
-            ? {clientSecret, appearance: {theme: 'stripe' /* or 'night', or custom */}}
-            : undefined
-    ), [clientSecret]); // Only recreate options when clientSecret changes
+    const options = useMemo<StripeElementsOptions | undefined>(() => {
+        if (!clientSecret) return undefined;
+
+        // Define appearance based on common UI elements (Tailwind/shadcn defaults)
+        // Match colors from registration input: dark:bg-gray-700, dark:border-gray-600, dark:text-white, focus:ring-green-500
+        // Define appearance based on common UI elements (Tailwind/shadcn defaults)
+        // Match colors from registration input: dark:bg-gray-700, dark:border-gray-600, dark:text-white, focus:ring-green-500
+        const appearance: StripeElementsOptions['appearance'] = {
+            theme: 'stripe', // Use Stripe's adaptive theme
+            variables: {
+                // --- Core Colors ---
+                colorPrimary: '#22c55e',     // Focus ring/border (green-500)
+                colorBackground: '#374151', // Input background (dark:bg-gray-700)
+                colorText: '#ffffff',       // Input text (dark:text-white)
+                colorDanger: '#ef4444',     // Error text (red-500)
+                colorTextSecondary: '#d1d5db', // Labels etc (gray-300)
+                colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
+                colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
+                // --- Border ---
+                // @ts-expect-error - TS might complain, but this is a valid Stripe variable
+                colorBorder: '#4b5563',     // Input border (dark:border-gray-600)
+                // --- Sizing ---
+                borderRadius: '0.375rem',   // Match form inputs (rounded-md)
+                // spacingUnit: '4px',      // Adjust spacing if needed
+                // fontBase: '...',         // Set font family if needed
+            },
+            rules: {
+                 // --- Focus State ---
+                 // Ensure focus uses the primary color (green) and removes default Stripe shadow
+                '.Input--focus': {
+                    boxShadow: `0 0 0 1px var(--colorPrimary)`, // Use variable for focus ring
+                    borderColor: `var(--colorPrimary)`,
+                },
+                // Add other rules if variables aren't sufficient for specific elements
+                // e.g., Tab styling if variables don't cover it adequately
+                '.Tab': {
+                    // Base tab styles if needed
+                },
+                '.Tab:hover': {
+                    // Hover styles
+                },
+                 '.Tab--selected': {
+                    // Selected tab styles - variables might handle this
+                 },
+            }
+        };
+
+        return {clientSecret, appearance};
+
+    }, [clientSecret]); // Only recreate options when clientSecret changes
 
     console.log('PaymentPage, payment: ', payment); // Keep log after hooks
 
@@ -635,7 +655,11 @@ export default function PaymentPage() {
             {/* Ensure stripePromise state is loaded and we have options (clientSecret) */}
             {stripePromise && options && !fetcherError ? (
                 <Elements stripe={stripePromise} options={options}> {/* Use stripePromise from state */}
-                    <CheckoutForm payment={payment} clientSecret={options.clientSecret!}/>
+                    <CheckoutForm
+                        payment={payment} // clientSecret removed from CheckoutForm props
+                        defaultEmail={payment.family?.email} // Pass family email
+                        defaultPostalCode={payment.family?.postal_code} // Pass family postal code
+                    />
                 </Elements>
             ) : (
                 // Show loading only if no error and not already initializing

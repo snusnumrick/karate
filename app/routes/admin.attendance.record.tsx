@@ -13,15 +13,15 @@ import {createClient, type SupabaseClient} from '@supabase/supabase-js'; // Impo
 import type {Database} from "~/types/supabase";
 import {checkStudentEligibility, type EligibilityStatus} from "~/utils/supabase.server"; // Import eligibility check
 import {sendEmail} from '~/utils/email.server'; // Import the email utility
-import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // Import Badge
 import {Label} from "~/components/ui/label";
 import {Input} from "~/components/ui/input"; // Import Input
-import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group";
-import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group";
 import {format, isValid, parse} from 'date-fns';
 import React from "react"; // Import isValid and parse
+import {Textarea} from "~/components/ui/textarea";
+import {Button} from "~/components/ui/button";
 
 // Define types
 type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'> & {
@@ -285,8 +285,9 @@ export default function RecordAttendancePage() {
     // Helper to determine badge variant based on eligibility (Updated reasons)
     const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
         switch (status) {
-            case 'Paid':
-                return 'default';
+            case 'Paid - Monthly':
+            case 'Paid - Yearly':
+                return 'default'; // Use default (often primary/blue) for active paid status
             case 'Trial':
                 return 'secondary';
             case 'Expired':
@@ -354,9 +355,13 @@ export default function RecordAttendancePage() {
                                         {/* Display eligibility badge - use 'Active' for 'Paid' */}
                                         <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)}
                                                className="ml-2 text-xs">
-                                            {student.eligibility.reason === 'Paid' ? 'Active' : student.eligibility.reason}
-                                            {/* Optionally add last payment date here too if desired */}
-                                            {/* {student.eligibility.lastPaymentDate && (student.eligibility.reason === 'Paid' || student.eligibility.reason === 'Expired') && ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`} */}
+                                            {/* Display 'Active' for Paid status */}
+                                            {(student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly') ? 'Active' : student.eligibility.reason}
+                                            {/* last payment date */}
+                                            {student.eligibility.lastPaymentDate &&
+                                                (student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly' || student.eligibility.reason === 'Expired') &&
+                                                ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
+                                            }
                                         </Badge>
                                     </div>
 

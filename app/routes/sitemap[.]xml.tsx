@@ -1,4 +1,3 @@
-import { type LoaderFunctionArgs } from "@remix-run/node";
 import { siteConfig } from "~/config/site"; // Import siteConfig
 
 // List your public-facing static routes here
@@ -18,7 +17,7 @@ const staticRoutes = [
 //   return ["/blog/post-1", "/blog/post-2"];
 // }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader() { // Removed unused LoaderFunctionArgs and empty pattern
     // const dynamicRoutes = await getDynamicRoutes();
     // const allRoutes = [...staticRoutes, ...dynamicRoutes];
     const allRoutes = [...staticRoutes]; // Using only static for now
