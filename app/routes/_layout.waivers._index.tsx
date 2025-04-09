@@ -83,10 +83,9 @@ export default function WaiversIndex() {
                                         )}
                                     </div>
 
-                                    {/* Stack buttons vertically on mobile, horizontally on sm+ */}
-                                    {/* Added items-baseline for better alignment with badge */}
-                                    <div className="flex flex-col items-start space-y-2 sm:flex-row sm:items-baseline sm:space-y-0 sm:space-x-4">
-                                        {/* Insert Required badge here */}
+                                    {/* Display badge and buttons in a row by default, adjust spacing */}
+                                    <div className="flex flex-row items-baseline space-x-2 sm:space-x-4">
+                                        {/* Required badge */}
                                         {waiver.required && (
                                             <span
                                                 className="inline-block px-2 py-1 text-xs bg-red-100 text-red-800 rounded mr-2"> {/* Added mr-2 */}
