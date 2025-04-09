@@ -74,12 +74,7 @@ export default function WaiversIndex() {
                                         <h2 className="text-xl font-semibold">{waiver.title}</h2>
                                         <p className="text-gray-600 dark:text-gray-300">{waiver.description}</p>
 
-                                        {waiver.required && (
-                                            <span
-                                                className="inline-block mt-1 px-2 py-1 text-xs bg-red-100 text-red-800 rounded">
-                        Required
-                      </span>
-                                        )}
+                                        {/* Required badge moved to the button row */}
 
                                         {isSigned && (
                                             <div className="mt-2 text-sm text-green-600">
@@ -89,10 +84,18 @@ export default function WaiversIndex() {
                                     </div>
 
                                     {/* Stack buttons vertically on mobile, horizontally on sm+ */}
-                                    <div className="flex flex-col items-start space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+                                    {/* Added items-baseline for better alignment with badge */}
+                                    <div className="flex flex-col items-start space-y-2 sm:flex-row sm:items-baseline sm:space-y-0 sm:space-x-4">
+                                        {/* Insert Required badge here */}
+                                        {waiver.required && (
+                                            <span
+                                                className="inline-block px-2 py-1 text-xs bg-red-100 text-red-800 rounded mr-2"> {/* Added mr-2 */}
+                                                Required
+                                            </span>
+                                        )}
                                         <Link
                                             to={`/waivers/${waiver.id}`}
-                                            className="text-blue-600 hover:underline" // Removed mr-4
+                                            className="text-blue-600 hover:underline" // Removed mr-4 - already removed, keeping comment for clarity
                                         >
                                             View
                                         </Link>
