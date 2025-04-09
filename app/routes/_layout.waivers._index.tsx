@@ -67,10 +67,12 @@ export default function WaiversIndex() {
 
                         return (
                             <div key={waiver.id} className="border rounded-lg p-4">
-                                <div className="flex justify-between items-center">
-                                    <div>
+                                {/* Stack vertically by default, row on sm screens and up */}
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start sm:space-x-4">
+                                    {/* Add bottom margin only on small screens */}
+                                    <div className="mb-4 sm:mb-0">
                                         <h2 className="text-xl font-semibold">{waiver.title}</h2>
-                                        <p className="text-gray-600">{waiver.description}</p>
+                                        <p className="text-gray-600 dark:text-gray-300">{waiver.description}</p>
 
                                         {waiver.required && (
                                             <span
