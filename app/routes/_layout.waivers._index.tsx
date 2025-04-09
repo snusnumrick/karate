@@ -88,10 +88,11 @@ export default function WaiversIndex() {
                                         )}
                                     </div>
 
-                                    <div>
+                                    {/* Stack buttons vertically on mobile, horizontally on sm+ */}
+                                    <div className="flex flex-col items-start space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
                                         <Link
                                             to={`/waivers/${waiver.id}`}
-                                            className="text-blue-600 hover:underline mr-4"
+                                            className="text-blue-600 hover:underline" // Removed mr-4
                                         >
                                             View
                                         </Link>
