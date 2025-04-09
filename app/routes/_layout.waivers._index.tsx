@@ -83,22 +83,26 @@ export default function WaiversIndex() {
                                         )}
                                     </div>
 
-                                    {/* Display badge and buttons in a row by default, adjust spacing */}
-                                    <div className="flex flex-row items-baseline space-x-2 sm:space-x-4">
-                                        {/* Required badge */}
-                                        {waiver.required && (
-                                            <span
-                                                className="inline-block px-2 py-1 text-xs bg-red-100 text-red-800 rounded mr-2"> {/* Added mr-2 */}
-                                                Required
-                                            </span>
-                                        )}
-                                        <Link
-                                            to={`/waivers/${waiver.id}`}
-                                            className="text-blue-600 hover:underline" // Removed mr-4 - already removed, keeping comment for clarity
-                                        >
-                                            View
-                                        </Link>
+                                    {/* Use justify-between to push Sign button right */}
+                                    <div className="flex flex-row items-baseline justify-between">
+                                        {/* Group Badge and View link */}
+                                        <div className="flex items-baseline space-x-2">
+                                            {/* Required badge */}
+                                            {waiver.required && (
+                                                <span
+                                                    className="inline-block px-2 py-1 text-xs bg-red-100 text-red-800 rounded"> {/* Removed mr-2 */}
+                                                    Required
+                                                </span>
+                                            )}
+                                            <Link
+                                                to={`/waivers/${waiver.id}`}
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                View
+                                            </Link>
+                                        </div>
 
+                                        {/* Sign Now button (remains direct child for justify-between) */}
                                         {!isSigned && (
                                             <Link
                                                 to={`/waivers/${waiver.id}/sign`}
