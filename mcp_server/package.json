@@ -1,0 +1,27 @@
+{
+  "name": "@karategreenegin/server-karate",
+  "version": "1.0.0",
+  "description": "Server to interact with Karate Class API for MCP purposes.",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts"
+  },
+  "keywords": [
+    "mcp",
+    "api-client"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "latest",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  }
+}

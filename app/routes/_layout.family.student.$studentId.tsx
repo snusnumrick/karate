@@ -161,28 +161,42 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
     // --- Handle Edit Intent ---
     if (intent === "edit") {
-        // Basic validation example (enhance with Zod if needed)
+        // Retrieve all required fields
         const firstName = formData.get('first_name') as string;
         const lastName = formData.get('last_name') as string;
-        // Add validation for other required fields...
+        const gender = formData.get('gender') as string;
+        const birthDate = formData.get('birth_date') as string;
+        const tShirtSize = formData.get('t_shirt_size') as string;
+        const school = formData.get('school') as string;
+        const gradeLevel = formData.get('grade_level') as string;
 
-        if (!firstName || !lastName) {
+        // Server-side validation for required fields
+        const fieldErrors: { [key: string]: string } = {};
+        if (!firstName) fieldErrors.first_name = 'First name is required.';
+        if (!lastName) fieldErrors.last_name = 'Last name is required.';
+        if (!gender) fieldErrors.gender = 'Gender is required.';
+        if (!birthDate) fieldErrors.birth_date = 'Birth date is required.';
+        if (!tShirtSize) fieldErrors.t_shirt_size = 'T-Shirt size is required.';
+        if (!school) fieldErrors.school = 'School is required.';
+        if (!gradeLevel) fieldErrors.grade_level = 'Grade level is required.';
+
+        if (Object.keys(fieldErrors).length > 0) {
             return json({
-                error: "First name and last name are required.",
-                fieldErrors: {first_name: !firstName ? 'Required' : '', last_name: !lastName ? 'Required' : ''}
-            }, {status: 400, headers});
+                error: "Please fill in all required fields.",
+                fieldErrors
+            }, { status: 400, headers });
         }
 
         const updateData: Partial<StudentRow> = {
-            first_name: firstName,
-            last_name: lastName,
-            gender: formData.get('gender') as string,
-            birth_date: formData.get('birth_date') as string,
+            first_name: firstName, // Already validated
+            last_name: lastName, // Already validated
+            gender: gender, // Already validated
+            birth_date: birthDate, // Already validated
             cell_phone: formData.get('cell_phone') as string || null,
             email: formData.get('email') as string || null,
-            t_shirt_size: formData.get('t_shirt_size') as string,
-            school: formData.get('school') as string,
-            grade_level: formData.get('grade_level') as string,
+            t_shirt_size: tShirtSize, // Already validated
+            school: school, // Already validated
+            grade_level: gradeLevel, // Already validated
             special_needs: formData.get('special_needs') as string || null,
             allergies: formData.get('allergies') as string || null,
             medications: formData.get('medications') as string || null,
@@ -263,13 +277,13 @@ export default function StudentDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="first_name">First Name</Label>
-                                <Input id="first_name" name="first_name" defaultValue={student.first_name} required/>
+                                <Input id="first_name" name="first_name" defaultValue={student.first_name} required className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.first_name &&
                                     <p className="text-red-500 text-sm">{actionData.fieldErrors.first_name}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="last_name">Last Name</Label>
-                                <Input id="last_name" name="last_name" defaultValue={student.last_name} required/>
+                                <Input id="last_name" name="last_name" defaultValue={student.last_name} required className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.last_name &&
                                     <p className="text-red-500 text-sm">{actionData.fieldErrors.last_name}</p>}
                             </div>
@@ -288,7 +302,7 @@ export default function StudentDetailPage() {
                             <div>
                                 <Label htmlFor="birth_date">Birth Date</Label>
                                 <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date}
-                                       required/>
+                                       required className="input-custom-styles"/>
                             </div>
                             {/* Belt Rank Select Removed */}
                             <div>
@@ -312,7 +326,7 @@ export default function StudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="school">School</Label>
-                                <Input id="school" name="school" defaultValue={student.school} required/>
+                                <Input id="school" name="school" defaultValue={student.school} required className="input-custom-styles"/>
                             </div>
                             <div>
                                 <Label htmlFor="grade_level">Grade Level</Label>
@@ -339,11 +353,11 @@ export default function StudentDetailPage() {
                             <div>
                                 <Label htmlFor="cell_phone">Cell Phone</Label>
                                 <Input id="cell_phone" name="cell_phone" type="tel"
-                                       defaultValue={student.cell_phone || ''}/>
+                                       defaultValue={student.cell_phone || ''} className="input-custom-styles"/>
                             </div>
                             <div>
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" name="email" type="email" defaultValue={student.email || ''}/>
+                                <Input id="email" name="email" type="email" defaultValue={student.email || ''} className="input-custom-styles"/>
                             </div>
                         </div>
                     </div>
@@ -363,22 +377,22 @@ export default function StudentDetailPage() {
                             <div className="md:col-span-2"> {/* Span across columns */}
                                 <Label htmlFor="immunization_notes">Immunization Notes</Label>
                                 <Textarea id="immunization_notes" name="immunization_notes"
-                                          defaultValue={student.immunization_notes || ''} rows={2}/>
+                                          defaultValue={student.immunization_notes || ''} rows={2} className="input-custom-styles"/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="allergies">Allergies</Label>
                                 <Textarea id="allergies" name="allergies" defaultValue={student.allergies || ''}
-                                          rows={2}/>
+                                          rows={2} className="input-custom-styles"/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="medications">Medications</Label>
                                 <Textarea id="medications" name="medications" defaultValue={student.medications || ''}
-                                          rows={2}/>
+                                          rows={2} className="input-custom-styles"/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="special_needs">Special Needs</Label>
                                 <Textarea id="special_needs" name="special_needs"
-                                          defaultValue={student.special_needs || ''} rows={2}/>
+                                          defaultValue={student.special_needs || ''} rows={2} className="input-custom-styles"/>
                             </div>
                         </div>
                     </div>

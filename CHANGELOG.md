@@ -5,7 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-04-06
+## [Unreleased] - 2025-04-09
+
+### Added
+
+-   Added dedicated guardian detail/edit page (`/family/guardian/:guardianId`).
+-   Added guardian service (`app/services/guardian.server.ts`).
+-   Added dedicated Guardian API endpoints:
+    -   `GET /api/v1/families/{familyId}/guardians` (List guardians for family)
+    -   `POST /api/v1/families/{familyId}/guardians` (Create guardian for family)
+    -   `GET /api/v1/guardians/{guardianId}` (Get specific guardian)
+    -   `PUT /api/v1/guardians/{guardianId}` (Update specific guardian)
+    -   `DELETE /api/v1/guardians/{guardianId}` (Delete specific guardian)
+-   Added server-side validation for required fields in web registration and student edit forms.
+-   Added dedicated `tsconfig.json` for `mcp_server` build.
+
+### Changed
+
+-   **Refactored Registration:** Simplified web registration (`/register`) to a single page, removing Guardian #2 and student entry sections.
+-   **Refactored API Registration:** Removed `guardian2` and `students` arguments from the `/api/v1/auth/register` endpoint and the corresponding MCP server tool.
+-   **Refactored Guardian Management:**
+    -   Removed guardian editing from the family account settings page (`/family/account`).
+    -   Removed automatic fetching of guardians from family detail service and API endpoints (`/family/me`, `/api/v1/families/:familyId`). Clients must now use dedicated guardian endpoints.
+-   Updated labels on registration page for clarity (Primary Guardian, Emergency Contact).
+-   Made Emergency Contact field optional on registration page.
+-   Applied consistent `.input-custom-styles` class to `Input` and `Textarea` components across various forms.
+
+### Fixed
+
+-   Resolved numerous TypeScript errors related to unused variables/imports, duplicate declarations, property access on potentially non-existent objects, and Supabase query typing.
+-   Fixed `process is not defined` errors in `mcp_server` build output by importing `process` in source files.
+-   Fixed `__importDefault is not defined` error in `mcp_server` build output by adding a dedicated `tsconfig.json`.
+-   Fixed invalid JSON error in `mcp_server/tsconfig.json`.
+-   Fixed incorrect property access (`responseBody.error`) in `mcp_server/src/apiClient.ts`.
+-   Removed invalid `email_redirect_to` option from Supabase admin `createUser` call.
+
+### Removed
+
+-   Multi-step logic and UI from the web registration form.
+-   Guardian #2 section and related logic from web registration form, API, and MCP server.
+-   Student section and related logic from web registration form, API, and MCP server.
+-   Guardian editing forms and logic from the family account settings page.
+-   "Add Guardian" button from family portal index page (pending creation of add guardian route).
+
+---
+
+*Previous entries moved below*
+
+## [2025-04-06]
 
 ### Added
 

@@ -23,12 +23,12 @@ type SerializedZodIssue = {
 
 // Define Supabase types for easier access
 type FamilyRow = Database['public']['Tables']['families']['Row'];
-type GuardianRow = Database['public']['Tables']['guardians']['Row'];
+// GuardianRow removed as it's no longer fetched/used here
 
 // Define expected loader data structure
 interface LoaderData {
     family?: FamilyRow;
-    guardians?: GuardianRow[];
+    // guardians removed
     waiverSignatures?: Database['public']['Tables']['waiver_signatures']['Row'][];
     userPreferences?: {
         receiveMarketingEmails: boolean;
@@ -101,27 +101,12 @@ const familySchema = z.object({
 });
 type FamilyFormData = z.infer<typeof familySchema>;
 
-const guardianSchema = z.object({
-    intent: z.literal('updateGuardian'),
-    guardianId: z.string().uuid("Invalid Guardian ID"),
-    first_name: z.string().trim().min(1, "First name is required"), // Added trim
-    last_name: z.string().trim().min(1, "Last name is required"), // Added trim
-    relationship: z.string().trim().min(1, "Relationship is required"), // Added trim
-    home_phone: z.string().trim().min(1, "Home phone is required"), // Added trim
-    cell_phone: z.string().trim().min(1, "Cell phone is required"), // Added trim
-    email: z.string().email("Invalid email address"),
-    // Optional fields
-    work_phone: z.string().optional().nullable(),
-    employer: z.string().optional().nullable(),
-    employer_phone: z.string().optional().nullable(),
-    employer_notes: z.string().optional().nullable(),
-});
-type GuardianFormData = z.infer<typeof guardianSchema>;
+// Removed guardianSchema and GuardianFormData
 
 // Combined schema for parsing intent in action
 const formSchema = z.union([
     familySchema,
-    guardianSchema,
+    // guardianSchema removed
     preferencesSchema
 ]);
 
@@ -156,11 +141,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         .eq('id', familyId)
         .single();
 
-    // Fetch associated guardians
-    const {data: guardiansData, error: guardiansError} = await supabaseServer
-        .from('guardians')
-        .select('*')
-        .eq('family_id', familyId);
+    // Removed guardian fetching logic
 
     // Fetch waiver signatures
     const {data: waiverSignaturesData} = await supabaseServer
@@ -176,22 +157,15 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     if (familyError || !familyData) {
         console.error("Error fetching family data for account page:", familyError?.message);
-        // Return null for family but still try to return guardians if fetched
-        return json({guardians: guardiansData ?? [], error: "Failed to load family details."}, {status: 500, headers});
+        // Return error if family data fails
+        return json({error: "Failed to load family details."}, {status: 500, headers});
     }
 
-    if (guardiansError) {
-        console.error("Error fetching guardians data for account page:", guardiansError?.message);
-        // Return family data but indicate error fetching guardians
-        return json({family: familyData, guardians: [], error: "Failed to load guardian details."}, {
-            status: 500,
-            headers
-        });
-    }
+    // Removed guardian error handling
 
     return json({
         family: familyData,
-        guardians: guardiansData ?? [],
+        // guardians removed
         waiverSignatures: waiverSignaturesData || [],
         userPreferences
     }, {headers});
@@ -202,8 +176,8 @@ type ActionResponse = {
     status: 'success' | 'error';
     message: string;
     errors?: SerializedZodIssue[]; // Use the serialized type
-    intent?: 'updateFamily' | 'updateGuardian' | 'updatePreferences';
-    guardianId?: string; // To identify which guardian form had an error
+    intent?: 'updateFamily' | 'updatePreferences'; // Removed 'updateGuardian'
+    // guardianId removed
 };
 
 export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
@@ -220,9 +194,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             status: 'error',
             message: 'Invalid form data.',
             errors: parsed.error.issues,
-            // Provide a more specific type than 'any'
-            intent: formData.get('intent') as 'updateFamily' | 'updateGuardian' | undefined,
-            guardianId: formData.get('guardianId') as string | undefined, // Pass guardianId back if present
+            intent: formData.get('intent') as 'updateFamily' | 'updatePreferences' | undefined, // Adjusted intent type
+            // guardianId removed
         }, {status: 400, headers});
     }
 
@@ -252,50 +225,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
             return json({status: 'success', message: 'Family information updated successfully.', intent}, {headers});
 
-        } else if (intent === 'updateGuardian') {
-            const {guardianId, ...restData} = parsed.data; // Exclude guardianId
-            const {intent, ...guardianUpdateData} = restData; // Exclude intent
-
-            // Verify guardianId belongs to the user's family before updating (security)
-            const {data: {user}} = await supabaseServer.auth.getUser();
-            if (!user) return json({status: 'error', message: 'User not authenticated.'}, {status: 401, headers});
-            const {data: profileData, error: profileError} = await supabaseServer
-                .from('profiles').select('family_id').eq('id', user.id).single();
-            if (profileError || !profileData?.family_id) {
-                return json({status: 'error', message: 'Could not find associated family.'}, {status: 404, headers});
-            }
-
-            const {data: guardianCheck, error: checkError} = await supabaseServer
-                .from('guardians')
-                .select('id')
-                .eq('id', guardianId)
-                .eq('family_id', profileData.family_id)
-                .maybeSingle(); // Use maybeSingle to handle null case
-
-            if (checkError || !guardianCheck) {
-                console.error("Guardian verification failed:", checkError?.message);
-                return json({
-                    status: 'error',
-                    message: 'Guardian not found or access denied.',
-                    intent,
-                    guardianId
-                }, {status: 404, headers});
-            }
-            // --- End verification ---
-
-            const {error: updateError} = await supabaseServer
-                .from('guardians')
-                .update(guardianUpdateData)
-                .eq('id', guardianId);
-
-            if (updateError) throw updateError;
-
-            return json({
-                status: 'success',
-                message: 'Guardian information updated successfully.',
-                intent,
-                guardianId
-            }, {headers});
+        // Removed 'updateGuardian' intent block
         } else if (intent === 'updatePreferences') {
             const {currentPassword, newPassword, receiveMarketingEmails} = parsed.data;
 
@@ -338,7 +268,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             status: 'error',
             message: `Failed to update information: ${message}`,
             intent: intent,
-            guardianId: intent === 'updateGuardian' ? parsed.data.guardianId : undefined,
+            // guardianId removed
         }, {status: 500, headers});
     }
 }
@@ -350,7 +280,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 const getDefaultValue = (value: string | null | undefined) => value ?? '';
 
 export default function AccountSettingsPage() {
-    const {family, guardians, userPreferences, error: loaderError} = useLoaderData<typeof loader>();
+    // guardians removed from loader data destructuring
+    const {family, userPreferences, error: loaderError} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
@@ -418,7 +349,7 @@ export default function AccountSettingsPage() {
     // We need a way to manage multiple forms. We can create them dynamically.
     // This example assumes you might have multiple guardians and creates a form instance for each.
     // Note: Managing dynamic forms with react-hook-form can get complex.
-    // For simplicity here, we'll render separate forms.
+    // Removed comment about dynamic guardian forms
 
     if (loaderError) {
         return <div className="text-red-500 p-4">Error loading account settings: {loaderError}</div>;
@@ -484,7 +415,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Family Last Name</FormLabel>
-                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -496,7 +427,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Primary Phone</FormLabel>
-                                                <FormControl><Input type="tel" {...field} /></FormControl>
+                                                <FormControl><Input type="tel" {...field} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -508,7 +439,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Family Email</FormLabel>
-                                                <FormControl><Input type="email" {...field} /></FormControl>
+                                                <FormControl><Input type="email" {...field} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -519,7 +450,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Home Address</FormLabel>
-                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -530,7 +461,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>City</FormLabel>
-                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -542,7 +473,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>Province</FormLabel>
                                                 {/* Wrap Select with ClientOnly */}
-                                                <ClientOnly fallback={<Input disabled placeholder="Province..."/>}>
+                                                <ClientOnly fallback={<Input disabled placeholder="Province..." className="input-custom-styles"/>}>
                                                     {() => (
                                                         <Select
                                                             onValueChange={field.onChange}
@@ -591,7 +522,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Postal Code</FormLabel>
-                                                <FormControl><Input {...field} /></FormControl>
+                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -604,7 +535,7 @@ export default function AccountSettingsPage() {
                                             <FormItem className="md:col-span-2">
                                                 <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)}/></FormControl>
+                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -617,7 +548,7 @@ export default function AccountSettingsPage() {
                                                 <FormLabel>Personal Health Number / Info</FormLabel>
                                                 {/* Removed duplicated FormItem and FormLabel */}
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)}/></FormControl>
+                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -629,7 +560,7 @@ export default function AccountSettingsPage() {
                                             <FormItem className="md:col-span-2">
                                                 <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)}/></FormControl>
+                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -642,7 +573,7 @@ export default function AccountSettingsPage() {
                                                 <FormLabel>Family Notes (Internal Use)</FormLabel>
                                                 {/* Removed duplicated FormItem and FormLabel */}
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)}/></FormControl>
+                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -655,21 +586,9 @@ export default function AccountSettingsPage() {
                             </Form>
                         </UIForm>
 
-                        {/* Policy Agreements section removed - will be handled in a separate route */}
+                        {/* Policy Agreements section removed */}
 
-                        {/* --- Guardian Information Forms --- */}
-                        {(guardians ?? []).map((guardian, index) => (
-                            <ClientOnly key={guardian.id} fallback={<div
-                                className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6 animate-pulse"><h2
-                                className="text-xl font-semibold mb-4 border-b pb-2">Loading Guardian
-                                #{index + 1}...</h2></div>}>
-                                {() => (
-                                    <GuardianForm guardian={guardian} index={index + 1}
-                                                  actionData={actionData}
-                                                  isSubmitting={isSubmitting} navigation={navigation}/>
-                                )}
-                            </ClientOnly>
-                        ))}
+                        {/* --- Guardian Information Forms (Removed) --- */}
 
 
                         {/* --- Account Preferences --- */}
@@ -699,7 +618,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>Current Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} />
+                                                    <Input type="password" {...field} className="input-custom-styles"/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -713,7 +632,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>New Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} />
+                                                    <Input type="password" {...field} className="input-custom-styles"/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -732,7 +651,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>Confirm Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} />
+                                                    <Input type="password" {...field} className="input-custom-styles"/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -777,230 +696,4 @@ export default function AccountSettingsPage() {
     );
 }
 
-
-// --- Guardian Form Component ---
-// Extracted for clarity and reusability if adding guardians later
-interface GuardianFormProps {
-    guardian: GuardianRow;
-    index: number;
-    actionData?: ActionResponse;
-    isSubmitting: boolean;
-    navigation: ReturnType<typeof useNavigation>;
-}
-
-function GuardianForm({guardian, index, actionData, isSubmitting, navigation}: GuardianFormProps) {
-    const guardianForm = useForm<GuardianFormData>({
-        resolver: zodResolver(guardianSchema),
-        // Initialize defaultValues directly from the guardian prop
-        defaultValues: {
-            intent: 'updateGuardian',
-            guardianId: guardian.id,
-            first_name: getDefaultValue(guardian.first_name),
-            last_name: getDefaultValue(guardian.last_name),
-            relationship: getDefaultValue(guardian.relationship),
-            home_phone: getDefaultValue(guardian.home_phone),
-            cell_phone: getDefaultValue(guardian.cell_phone),
-            email: getDefaultValue(guardian.email),
-            work_phone: getDefaultValue(guardian.work_phone),
-            employer: getDefaultValue(guardian.employer),
-            employer_phone: getDefaultValue(guardian.employer_phone),
-            employer_notes: getDefaultValue(guardian.employer_notes),
-        },
-    });
-
-    // Reset form with guardian data on client side using useEffect
-    useEffect(() => {
-        // Ensure this only runs client-side after hydration
-        if (typeof window !== 'undefined') {
-            guardianForm.reset({
-                intent: 'updateGuardian',
-                guardianId: guardian.id,
-                first_name: getDefaultValue(guardian.first_name),
-                last_name: getDefaultValue(guardian.last_name),
-                relationship: getDefaultValue(guardian.relationship),
-                home_phone: getDefaultValue(guardian.home_phone),
-                cell_phone: getDefaultValue(guardian.cell_phone),
-                email: getDefaultValue(guardian.email),
-                work_phone: getDefaultValue(guardian.work_phone),
-                employer: getDefaultValue(guardian.employer),
-                employer_phone: getDefaultValue(guardian.employer_phone),
-                employer_notes: getDefaultValue(guardian.employer_notes),
-            });
-        }
-    }, [guardian, guardianForm]); // Re-add dependencies
-
-    return (
-        // REMOVE ClientOnly wrapper from GuardianForm UI - rely on parent and specific component wrappers
-        // Fallback logic might need adjustment if loading state is desired here
-        <UIForm {...guardianForm}>
-            <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Guardian #{index} Information</h2>
-                <input type="hidden" name="intent" value="updateGuardian"/>
-                <input type="hidden" name="guardianId" value={guardian.id}/>
-
-                {/* Display field-specific errors for this guardian form */}
-                {actionData?.intent === 'updateGuardian' && actionData.guardianId === guardian.id && actionData.errors && (
-                    <Alert variant="destructive" className="mb-4">
-                        <AlertTitle>Validation Errors</AlertTitle>
-                        <AlertDescription>
-                            <ul className="list-disc pl-5">
-                                {/* Use the SerializedZodIssue type */}
-                                {actionData.errors.map((err: SerializedZodIssue, i: number) => <li
-                                    key={i}>{err.path.join('.')} : {err.message}</li>)}
-                            </ul>
-                        </AlertDescription>
-                    </Alert>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={guardianForm.control}
-                        name="first_name"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>First Name</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={guardianForm.control}
-                        name="last_name"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Last Name</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="relationship"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Relationship</FormLabel>
-                                {/* Wrap Select with ClientOnly */}
-                                <ClientOnly fallback={<Input disabled placeholder="Relationship..."/>}>
-                                    {() => (
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            value={field.value} // Use field.value directly
-                                            // Remove defaultValue
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger><SelectValue
-                                                    placeholder="Select relationship"/></SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="Mother">Mother</SelectItem>
-                                                <SelectItem value="Father">Father</SelectItem>
-                                                <SelectItem value="Guardian">Guardian</SelectItem>
-                                                <SelectItem value="Other">Other</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                </ClientOnly>
-                                {/* Add hidden input to ensure value is submitted with form */}
-                                <input
-                                    type="hidden"
-                                    name="relationship"
-                                    value={field.value || ''}
-                                />
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={guardianForm.control}
-                        name="home_phone"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Home Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field} /></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="cell_phone"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Cell Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field} /></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="email"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl><Input type="email" {...field} /></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="work_phone"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Work Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field}
-                                                    value={getDefaultValue(field.value)}/></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="employer"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Employer</FormLabel>
-                                <FormControl><Input {...field} value={getDefaultValue(field.value)}/></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="employer_phone"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Employer Phone</FormLabel>
-                                <FormControl><Input type="tel" {...field}
-                                                    value={getDefaultValue(field.value)}/></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={guardianForm.control}
-                        name="employer_notes"
-                        render={({field}) => (
-                            <FormItem className="md:col-span-2">
-                                <FormLabel>Employer Notes</FormLabel>
-                                <FormControl><Textarea {...field} value={getDefaultValue(field.value)}/></FormControl>
-                                <FormMessage className="dark:text-red-400"/>
-                            </FormItem>
-                        )}
-                    />
-                </div>
-
-                {/* Remove name="intent" and value={formIntent} from button */}
-                {/* Rely on the hidden input field above for the correct intent value */}
-                <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && navigation.formData?.get('guardianId') === guardian.id ? 'Saving...' : `Update Guardian #${index}`}
-                </Button>
-            </Form>
-        </UIForm>
-    );
-}
+// --- Guardian Form Component (Removed) ---

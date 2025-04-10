@@ -1,10 +1,15 @@
 import {json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node"; // Import redirect
 import {Link, useLoaderData} from "@remix-run/react";
 import {checkStudentEligibility, type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check
+import { AlertCircle } from 'lucide-react'; // Import an icon for the alert
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // Import Alert components
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // Import Badge
 import {Database} from "~/types/supabase";
 import {format} from 'date-fns'; // For formatting dates
+
+// Define Guardian type
+type GuardianRow = Database["public"]["Tables"]["guardians"]["Row"];
 
 // Extend student type within FamilyData to include eligibility
 type StudentWithEligibility = Database["public"]["Tables"]["students"]["Row"] & {
@@ -21,6 +26,7 @@ export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
         }[];
     }
         )[];
+    guardians?: GuardianRow[]; // Add guardians array
 };
 
 interface LoaderData {
@@ -73,7 +79,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         .select(`
           *,
           students(*),
-          payments(*, payment_students(student_id))
+          payments(*, payment_students(student_id)),
+          guardians(*) // Fetch associated guardians
         `)
         .eq('id', profileData.family_id)
         .order('payment_date', {
@@ -273,6 +280,54 @@ export default function FamilyPortal() {
                     </Button>
                 </div>
 
+                {/* Guardians Section */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold mb-4">Guardians</h2>
+                    {(!family.guardians || family.guardians.length < 1) && (
+                         <Alert variant="destructive" className="mb-4">
+                             <AlertCircle className="h-4 w-4"/>
+                             <AlertTitle>No Guardians Found</AlertTitle>
+                             <AlertDescription>
+                                 Please add at least one guardian to manage the family account.
+                             </AlertDescription>
+                         </Alert>
+                    )}
+                    {family.guardians && family.guardians.length > 0 ? (
+                        <ul className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300 mb-4">
+                            {family.guardians.map((guardian) => (
+                                <li key={guardian.id} className="flex justify-between items-center">
+                                    {/* Link the name itself */}
+                                    <Link
+                                        to={`/family/guardian/${guardian.id}`}
+                                        className="text-blue-600 hover:underline dark:text-blue-400"
+                                    >
+                                        {guardian.first_name} {guardian.last_name} ({guardian.relationship})
+                                    </Link>
+                                    {/* Optional: Keep a separate Edit link if preferred */}
+                                    {/* <Link
+                                        to={`/family/guardian/${guardian.id}`}
+                                        className="text-blue-600 hover:underline dark:text-blue-400 text-sm ml-4"
+                                    >
+                                        View/Edit
+                                    </Link> */}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                         <p className="text-gray-600 dark:text-gray-400 mb-4">No guardians added yet.</p>
+                    )}
+                     {/* Link to a future page for adding a guardian - Button removed for now */}
+                     {/* <Button asChild className="mt-2"> */}
+                         {/* TODO: Create this route */}
+                         {/* <Link to="/family/add-guardian">Add Guardian</Link> */}
+                     {/* </Button> */}
+                     {family.guardians && family.guardians.length === 1 && (
+                         <p className="text-sm text-muted-foreground mt-3">
+                             Consider adding a second guardian for backup contact purposes.
+                         </p>
+                     )}
+                </div>
+
                 {/* Individual Session Balance */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                     <h2 className="text-xl font-semibold mb-4">Individual Sessions</h2>
@@ -364,8 +419,8 @@ export default function FamilyPortal() {
                 {/* Account Settings Section - Moved to the end */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                     <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">Update your family information, guardian
-                        details, and account preferences.</p>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Update your family information and account
+                        preferences.</p>
                     <Button asChild className="mt-4">
                         <Link to="/family/account">Manage Account</Link>
                     </Button>

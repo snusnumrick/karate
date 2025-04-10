@@ -1,4 +1,4 @@
-import {useState} from "react";
+// Removed unused useState import
 import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLocation, useRouteError} from "@remix-run/react"; // Import Outlet and useLocation
 import type {ActionFunctionArgs} from "@remix-run/node"; // or cloudflare/deno
 import {json, redirect} from "@remix-run/node"; // or cloudflare/deno
@@ -11,7 +11,7 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/
 import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {siteConfig} from "~/config/site";
-import {BELT_RANKS} from "~/utils/constants"; // For ErrorBoundary
+// Removed unused BELT_RANKS import
 
 // Action function to handle form submission
 export async function action({request}: ActionFunctionArgs) {
@@ -21,12 +21,38 @@ export async function action({request}: ActionFunctionArgs) {
 
     // Validate matching emails and passwords
     const contact1Email = formData.get('contact1Email') as string;
-    const contact1EmailConfirm = formData.get('contact1EmailConfirm') as string;
     const password = formData.get('portalPassword') as string;
     const passwordConfirm = formData.get('portalPasswordConfirm') as string;
+    const referralSource = formData.get('referralSource') as string;
+    const familyName = formData.get('familyName') as string;
+    const address = formData.get('address') as string;
+    const city = formData.get('city') as string;
+    const province = formData.get('province') as string;
+    const postalCode = formData.get('postalCode') as string;
+    const primaryPhone = formData.get('primaryPhone') as string;
+    const contact1FirstName = formData.get('contact1FirstName') as string;
+    const contact1LastName = formData.get('contact1LastName') as string;
+    const contact1Type = formData.get('contact1Type') as string;
+    const contact1HomePhone = formData.get('contact1HomePhone') as string;
+    const contact1CellPhone = formData.get('contact1CellPhone') as string;
+    const contact1EmailConfirm = formData.get('contact1EmailConfirm') as string;
+
+    // --- Server-Side Validation ---
+    const requiredFields = {
+        referralSource, familyName, address, city, province, postalCode, primaryPhone,
+        contact1FirstName, contact1LastName, contact1Type, contact1HomePhone, contact1CellPhone,
+        contact1Email, contact1EmailConfirm, password, passwordConfirm
+    };
+    const missingFields = Object.entries(requiredFields)
+        .filter(([, value]) => !value || String(value).trim() === '')
+        .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+        return json({ error: `Missing required fields: ${missingFields.join(', ')}` }, { status: 400 });
+    }
 
     if (contact1Email !== contact1EmailConfirm) {
-        return json({error: 'Emails do not match'}, {status: 400});
+        return json({ error: 'Guardian emails do not match' }, { status: 400 });
     }
 
     if (password !== passwordConfirm) {
@@ -107,76 +133,23 @@ export async function action({request}: ActionFunctionArgs) {
             home_phone: formData.get('contact1HomePhone') as string,
             work_phone: formData.get('contact1WorkPhone') as string | null,
             cell_phone: formData.get('contact1CellPhone') as string,
-            email: contact1Email as string,
-            employer: formData.get('contact1Employer') as string | null,
-            employer_phone: formData.get('contact1EmployerPhone') as string | null,
-            employer_notes: formData.get('contact1EmployerNotes') as string | null
+            email: contact1Email as string
+            // Removed optional employer fields
+            // employer: formData.get('contact1Employer') as string | null,
+            // employer_phone: formData.get('contact1EmployerPhone') as string | null,
+            // employer_notes: formData.get('contact1EmployerNotes') as string | null
         });
 
         if (contact1Error) {
             console.error('Error inserting Guardian 1:', contact1Error);
             throw contact1Error;
         }
-        console.log('Contact #1 created:', contact1Data);
+        console.log('Contact #1 (Registering User) created:', contact1Data);
 
-        // Process Contact #2
-        const contact2FirstName = formData.get('contact2FirstName') as string;
-        const contact2LastName = formData.get('contact2LastName') as string;
-        const contact2Email = formData.get('contact2Email') as string;
-        // console.log(`Attempting to insert Guardian 2: Name=${contact2FirstName} ${contact2LastName}, Email=${contact2Email}`); // Added logging
-        const {data: contact2Data, error: contact2Error} = await supabaseServer.from('guardians').insert({
-            family_id: familyId,
-            first_name: contact2FirstName as string,
-            last_name: contact2LastName as string,
-            relationship: formData.get('contact2Type') as string,
-            home_phone: formData.get('contact2HomePhone') as string,
-            work_phone: formData.get('contact2WorkPhone') as string | null,
-            cell_phone: formData.get('contact2CellPhone') as string,
-            email: contact2Email as string,
-            employer: formData.get('contact2Employer') as string | null,
-            employer_phone: formData.get('contact2EmployerPhone') as string | null,
-            employer_notes: formData.get('contact2EmployerNotes') as string | null
-        });
-        if (contact2Error) {
-            console.error('Error inserting Guardian 2:', contact2Error);
-            throw contact2Error;
-        }
-        console.log('Contact #2 created:', contact2Data);
+        // Removed Guardian #2 processing logic
 
-        // Process Students
-        const studentEntries = Array.from(formData.entries())
-            .filter(([key]) => key.startsWith('students['));
-
-        const studentIndices = new Set<string>();
-        studentEntries.forEach(([key]) => {
-            const match = key.match(/students\[(\d+)\]/);
-            if (match) {
-                studentIndices.add(match[1]);
-            }
-        });
-
-        for (const index of studentIndices) {
-            const {data: studentData, error: studentError} = await supabaseServer.from('students').insert({
-                family_id: familyId,
-                first_name: formData.get(`students[${index}].firstName`) as string,
-                last_name: formData.get(`students[${index}].lastName`) as string,
-                gender: formData.get(`students[${index}].gender`) as string,
-                birth_date: formData.get(`students[${index}].birthDate`) as string,
-                t_shirt_size: formData.get(`students[${index}].tShirtSize`) as string,
-                school: formData.get(`students[${index}].school`) as string,
-                grade_level: formData.get(`students[${index}].gradeLevel`) as string,
-                special_needs: formData.get(`students[${index}].specialNeeds`) as string || undefined,
-                allergies: formData.get(`students[${index}].allergies`) as string || undefined,
-                medications: formData.get(`students[${index}].medications`) as string || undefined,
-                immunizations_up_to_date: formData.get(`students[${index}].immunizationsUpToDate`) as string || undefined,
-                immunization_notes: formData.get(`students[${index}].immunizationNotes`) as string || undefined,
-                belt_rank: formData.get(`students[${index}].beltRank`) as typeof BELT_RANKS[number]
-            });
-            if (studentError) throw studentError;
-            console.log('Student created:', studentData);
-        }
-
-        // Waiver signatures will be handled in a separate dedicated flow
+        // Waiver signatures will be handled in a separate dedicated flow.
+        // Students will be added via the family portal after registration.
 
         return redirect('/register/success');
 
@@ -192,32 +165,11 @@ export async function action({request}: ActionFunctionArgs) {
 
 export default function RegisterPage() {
     const actionData = useActionData<typeof action>();
-    const [currentStep, setCurrentStep] = useState(1);
-    const [students, setStudents] = useState([{id: Date.now().toString()}]);
-    const [familyName, setFamilyName] = useState(""); // State for family name
-    const [primaryPhone, setPrimaryPhone] = useState(""); // State for primary phone
+    // Removed multi-step state: const [currentStep, setCurrentStep] = useState(1);
+    // Removed state used for pre-filling: const [familyName, setFamilyName] = useState("");
+    // Removed state used for pre-filling: const [primaryPhone, setPrimaryPhone] = useState("");
 
-
-    const addStudent = () => {
-        setStudents([...students, {id: Date.now().toString()}]);
-    };
-
-    const nextStep = () => {
-        // Capture family name and primary phone when moving from step 1
-        if (currentStep === 1) {
-            const familyNameInput = document.getElementById('familyName') as HTMLInputElement;
-            const primaryPhoneInput = document.getElementById('primaryPhone') as HTMLInputElement;
-            if (familyNameInput) setFamilyName(familyNameInput.value);
-            if (primaryPhoneInput) setPrimaryPhone(primaryPhoneInput.value);
-        }
-        setCurrentStep(currentStep + 1);
-        window.scrollTo(0, 0);
-    };
-
-    const prevStep = () => {
-        setCurrentStep(currentStep - 1);
-        window.scrollTo(0, 0);
-    };
+    // Removed multi-step functions: nextStep, prevStep
 
     const location = useLocation(); // Get the current location
 
@@ -251,21 +203,11 @@ export default function RegisterPage() {
                             enroll in the classes of your choice!
                         </p>
 
-                        <div className="mb-6">
-                            <div className="w-full bg-muted rounded-full h-2.5">
-                                <div
-                                    className="bg-green-600 h-2.5 rounded-full"
-                                    style={{width: `${(currentStep / 4) * 100}%`}}
-                                ></div>
-                            </div>
-                            <p className="text-center mt-2 text-sm text-muted-foreground dark:text-muted-foreground">Step {currentStep} of
-                                4</p>
-                        </div>
+                        {/* Removed Step Indicator */}
 
                         <Form method="post" noValidate className="space-y-8">
-                            {/* --- All the step content (currentStep === 1, 2, 3, 4, 5) goes here --- */}
-                            {/* Step 1: Referral & Family Info */}
-                            <div className={currentStep === 1 ? '' : 'hidden'}>
+                            {/* Form sections are now rendered sequentially */}
+                            <div> {/* Wrap sections for structure if needed */}
                                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL
                                     INFORMATION</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -297,7 +239,7 @@ export default function RegisterPage() {
                                             type="text"
                                             id="referralName"
                                             name="referralName"
-                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                                            className="input-custom-styles"
                                         />
                                     </div>
                                 </div>
@@ -313,7 +255,7 @@ export default function RegisterPage() {
                                         id="familyName"
                                         name="familyName"
                                         required
-                                        className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                                        className="input-custom-styles"
                                     />
                                 </div>
 
@@ -329,7 +271,7 @@ export default function RegisterPage() {
                                             id="address"
                                             name="address"
                                             required
-                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                                            className="input-custom-styles"
                                         />
                                     </div>
 
@@ -342,7 +284,7 @@ export default function RegisterPage() {
                                             id="city"
                                             name="city"
                                             required
-                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                                            className="input-custom-styles"
                                         />
                                     </div>
 
@@ -382,7 +324,7 @@ export default function RegisterPage() {
                                             id="postalCode"
                                             name="postalCode"
                                             required
-                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                                            className="input-custom-styles"
                                         />
                                     </div>
 
@@ -395,38 +337,29 @@ export default function RegisterPage() {
                                             id="primaryPhone"
                                             name="primaryPhone"
                                             required
-                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                                            className="input-custom-styles"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="mt-8">
-                                    <Button
-                                        type="button"
-                                        onClick={nextStep}
-                                        className="w-full font-bold py-3 px-4 bg-green-600 text-white hover:bg-green-700"
-                                    >
-                                        Continue to Additional Info
-                                    </Button>
-                                </div>
+                                {/* Removed "Continue" button for Step 1 */}
                             </div>
 
-                            {/* Step 2: Additional Info & Contact 1 */}
-                            <div className={currentStep === 2 ? '' : 'hidden'}>
-                                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ADDITIONAL
+                            {/* Step 2: Additional Info & Contact 1 (Now part of the main flow) */}
+                            <div>
+                                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">ADDITIONAL
                                     INFO</h2>
                                 <div className="space-y-6">
                                     <div>
                                         <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
-                                            Emergency Contact Info (Not Guardian #1 or #2)<span
-                                            className="text-red-500">*</span>
+                                            Emergency Contact Info {/* Removed required asterisk */}
                                         </Label>
                                         <Textarea
                                             id="emergencyContact"
                                             name="emergencyContact"
                                             required
                                             rows={3}
-                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                                            className="input-custom-styles focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400" // Added custom style
                                         />
                                     </div>
 
@@ -438,24 +371,27 @@ export default function RegisterPage() {
                                             id="healthNumber"
                                             name="healthNumber"
                                             rows={3}
-                                            className="focus:ring-green-500"
+                                            className="input-custom-styles" // Applied custom style
                                         />
                                     </div>
                                 </div>
 
-                                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">GUARDIAN
-                                    #1</h2>
+                                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">Primary
+                                    Guardian</h2>
+                                <p className="text-sm text-muted-foreground mb-4 -mt-3">
+                                    This is the main contact for the family. You can add additional guardians later via the family portal.
+                                </p>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <Label htmlFor="contact1FirstName" className="block text-sm font-medium mb-1">
-                                            Guardian #1 First Name<span className="text-red-500">*</span>
+                                            First Name<span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             type="text"
                                             id="contact1FirstName"
                                             name="contact1FirstName"
                                             required
-                                            className="focus:ring-green-500"
+                                            className="input-custom-styles"
                                         />
                                     </div>
 
@@ -468,8 +404,8 @@ export default function RegisterPage() {
                                             id="contact1LastName"
                                             name="contact1LastName"
                                             required
-                                            defaultValue={familyName} // Prefill with family name
-                                            className="focus:ring-green-500"
+                                            // Removed defaultValue={familyName}
+                                            className="input-custom-styles"
                                         />
                                     </div>
 
@@ -504,22 +440,12 @@ export default function RegisterPage() {
                                             id="contact1HomePhone"
                                             name="contact1HomePhone"
                                             required
-                                            defaultValue={primaryPhone} // Prefill with primary phone
-                                            className="focus:ring-green-500"
+                                            // Removed defaultValue={primaryPhone}
+                                            className="input-custom-styles"
                                         />
                                     </div>
 
-                                    <div>
-                                        <Label htmlFor="contact1WorkPhone" className="block text-sm font-medium mb-1">
-                                            Work #
-                                        </Label>
-                                        <Input
-                                            type="tel"
-                                            id="contact1WorkPhone"
-                                            name="contact1WorkPhone"
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
+                                    {/* Removed Work Phone Input */}
 
                                     <div>
                                         <Label htmlFor="contact1CellPhone" className="block text-sm font-medium mb-1">
@@ -530,7 +456,7 @@ export default function RegisterPage() {
                                             id="contact1CellPhone"
                                             name="contact1CellPhone"
                                             required
-                                            className="focus:ring-green-500"
+                                            className="input-custom-styles"
                                         />
                                     </div>
                                 </div>
@@ -547,7 +473,7 @@ export default function RegisterPage() {
                                             id="contact1Email"
                                             name="contact1Email"
                                             required
-                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                                            className="input-custom-styles"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">(Emails are kept
                                             confidential)</p>
@@ -563,7 +489,7 @@ export default function RegisterPage() {
                                             id="contact1EmailConfirm"
                                             name="contact1EmailConfirm"
                                             required
-                                            className="focus:ring-green-500"
+                                            className="input-custom-styles"
                                         />
                                     </div>
 
@@ -576,7 +502,7 @@ export default function RegisterPage() {
                                             id="portalPassword"
                                             name="portalPassword"
                                             minLength={5}
-                                            className="focus:ring-green-500"
+                                            className="input-custom-styles"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">Minimum number of characters
                                             is 5</p>
@@ -592,7 +518,7 @@ export default function RegisterPage() {
                                             id="portalPasswordConfirm"
                                             name="portalPasswordConfirm"
                                             minLength={5}
-                                            className="focus:ring-green-500"
+                                            className="input-custom-styles"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">Minimum number of characters
                                             is 5</p>
@@ -616,550 +542,30 @@ export default function RegisterPage() {
                                     </p>
                                 </div>
 
-                                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <Label htmlFor="contact1Employer" className="block text-sm font-medium mb-1">
-                                            Employer
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="contact1Employer"
-                                            name="contact1Employer"
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="contact1EmployerPhone"
-                                               className="block text-sm font-medium mb-1">
-                                            Employer Phone
-                                        </Label>
-                                        <Input
-                                            type="tel"
-                                            id="contact1EmployerPhone"
-                                            name="contact1EmployerPhone"
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-
-                                    <div className="md:col-span-2">
-                                        <Label htmlFor="contact1EmployerNotes"
-                                               className="block text-sm font-medium mb-1">
-                                            Employer Notes
-                                        </Label>
-                                        <Textarea
-                                            id="contact1EmployerNotes"
-                                            name="contact1EmployerNotes"
-                                            rows={3}
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-between mt-8">
-                                    <Button
-                                        type="button"
-                                        onClick={prevStep}
-                                        variant="outline"
-                                        className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
-                                    >
-                                        Back
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        onClick={nextStep}
-                                        className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
-                                    >
-                                        Continue
-                                    </Button>
-                                </div>
+                                {/* Removed Employer Section for Guardian 1 */}
+                                {/* Removed Back/Continue buttons for Step 2 */}
                             </div>
 
-                            {/* Step 3: Contact 2 */}
-                            <div className={currentStep === 3 ? '' : 'hidden'}>
-                                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">GUARDIAN
-                                    #2</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <Label htmlFor="contact2FirstName" className="block text-sm font-medium mb-1">
-                                            Guardian #2 First Name<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="contact2FirstName"
-                                            name="contact2FirstName"
-                                            required
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
+                            {/* Step 3: Contact 2 (Removed) */}
 
-                                    <div>
-                                        <Label htmlFor="contact2LastName" className="block text-sm font-medium mb-1">
-                                            Last Name<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="contact2LastName"
-                                            name="contact2LastName"
-                                            required
-                                            defaultValue={familyName} // Prefill with family name
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="contact2Type" className="block text-sm font-medium mb-1">
-                                            Type<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Select name="contact2Type" required>
-                                            <SelectTrigger id="contact2Type"
-                                                           className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
-                                                <SelectValue placeholder="Select relationship"/>
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Father">Father</SelectItem>
-                                                <SelectItem value="Mother">Mother</SelectItem>
-                                                <SelectItem value="Guardian">Guardian</SelectItem>
-                                                <SelectItem value="Other">Other</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">HOW CAN WE CONTACT
-                                    YOU?</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <Label htmlFor="contact2HomePhone" className="block text-sm font-medium mb-1">
-                                            Home Phone<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="tel"
-                                            id="contact2HomePhone"
-                                            name="contact2HomePhone"
-                                            required
-                                            defaultValue={primaryPhone} // Prefill with primary phone
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="contact2WorkPhone" className="block text-sm font-medium mb-1">
-                                            Work #
-                                        </Label>
-                                        <Input
-                                            type="tel"
-                                            id="contact2WorkPhone"
-                                            name="contact2WorkPhone"
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="contact2CellPhone" className="block text-sm font-medium mb-1">
-                                            Cell #<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="tel"
-                                            id="contact2CellPhone"
-                                            name="contact2CellPhone"
-                                            required
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                    <div>
-                                        <Label htmlFor="contact2Email" className="block text-sm font-medium mb-1">
-                                            Email<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="email"
-                                            id="contact2Email"
-                                            name="contact2Email"
-                                            required
-                                            className="focus:ring-green-500"
-                                        />
-                                        <p className="text-xs text-muted-foreground mt-1">(Emails are kept
-                                            confidential)</p>
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="contact2EmailConfirm"
-                                               className="block text-sm font-medium mb-1">
-                                            Confirm Email<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="email"
-                                            id="contact2EmailConfirm"
-                                            name="contact2EmailConfirm"
-                                            required
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-                                </div>
-
-                                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">WHO IS YOUR EMPLOYER?</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <Label htmlFor="contact2Employer" className="block text-sm font-medium mb-1">
-                                            Employer
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="contact2Employer"
-                                            name="contact2Employer"
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="contact2EmployerPhone"
-                                               className="block text-sm font-medium mb-1">
-                                            Employer Phone
-                                        </Label>
-                                        <Input
-                                            type="tel"
-                                            id="contact2EmployerPhone"
-                                            name="contact2EmployerPhone"
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-
-                                    <div className="md:col-span-2">
-                                        <Label htmlFor="contact2EmployerNotes"
-                                               className="block text-sm font-medium mb-1">
-                                            Employer Notes
-                                        </Label>
-                                        <Textarea
-                                            id="contact2EmployerNotes"
-                                            name="contact2EmployerNotes"
-                                            rows={3}
-                                            className="focus:ring-green-500"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-between mt-8">
-                                    <Button
-                                        type="button"
-                                        onClick={prevStep}
-                                        variant="outline"
-                                        className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
-                                    >
-                                        Back
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        onClick={nextStep}
-                                        className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
-                                    >
-                                        Continue
-                                    </Button>
-                                </div>
+                            {/* Final Submit Button */}
+                            <div className="mt-8">
+                                <Button
+                                    type="submit"
+                                    className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
+                                >
+                                    SUBMIT REGISTRATION
+                                </Button>
                             </div>
 
-                            {/* Step 4: Student Info (Final Step) */}
-                            <div className={currentStep === 4 ? '' : 'hidden'}>
-                                {students.map((student, index) => (
-                                    <div key={student.id}
-                                         className="mb-8 pb-8 border-b border-border dark:border-gray-700">
-                                        <h2 className="text-xl font-semibold text-foreground mb-4">STUDENT
-                                            #{index + 1}</h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <Label htmlFor={`student${index}FirstName`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Student&apos;s First Name<span className="text-red-500">*</span>
-                                                </Label>
-                                                <Input
-                                                    type="text"
-                                                    id={`student${index}FirstName`}
-                                                    name={`students[${index}].firstName`}
-                                                    required
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor={`student${index}LastName`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Last Name<span className="text-red-500">*</span>
-                                                </Label>
-                                                <Input
-                                                    type="text"
-                                                    id={`student${index}LastName`}
-                                                    name={`students[${index}].lastName`}
-                                                    required
-                                                    defaultValue={familyName} // Prefill with family name
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor={`student${index}Gender`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Student Gender<span className="text-red-500">*</span>
-                                                </Label>
-                                                <Select name={`students[${index}].gender`} required>
-                                                    <SelectTrigger id={`student${index}Gender`}
-                                                                   className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
-                                                        <SelectValue placeholder="Select gender"/>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Male">Male</SelectItem>
-                                                        <SelectItem value="Female">Female</SelectItem>
-                                                        <SelectItem value="Other">Other</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor={`student${index}BirthDate`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Birth Date<span className="text-red-500">*</span>
-                                                </Label>
-                                                <Input
-                                                    type="date"
-                                                    id={`student${index}BirthDate`}
-                                                    name={`students[${index}].birthDate`}
-                                                    required
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor={`student${index}Cell`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Cell #
-                                                </Label>
-                                                <Input
-                                                    type="tel"
-                                                    id={`student${index}Cell`}
-                                                    name={`students[${index}].cellPhone`}
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <h3 className="text-lg font-medium text-foreground mt-6 mb-3">ADDITIONAL
-                                            INFO</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <Label htmlFor={`student${index}Email`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Student Email
-                                                </Label>
-                                                <Input
-                                                    type="email"
-                                                    id={`student${index}Email`}
-                                                    name={`students[${index}].email`}
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor={`student${index}TShirtSize`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    T-Shirt Size<span className="text-red-500">*</span>
-                                                </Label>
-                                                <Select name={`students[${index}].tShirtSize`} required>
-                                                    <SelectTrigger id={`student${index}TShirtSize`}
-                                                                   className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
-                                                        <SelectValue placeholder="Select size"/>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="YXS">Youth XS</SelectItem>
-                                                        <SelectItem value="YS">Youth S</SelectItem>
-                                                        <SelectItem value="YM">Youth M</SelectItem>
-                                                        <SelectItem value="YL">Youth L</SelectItem>
-                                                        <SelectItem value="YXL">Youth XL</SelectItem>
-                                                        <SelectItem value="AS">Adult S</SelectItem>
-                                                        <SelectItem value="AM">Adult M</SelectItem>
-                                                        <SelectItem value="AL">Adult L</SelectItem>
-                                                        <SelectItem value="AXL">Adult XL</SelectItem>
-                                                        <SelectItem value="A2XL">Adult 2XL</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor={`student${index}School`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    School<span className="text-red-500">*</span>
-                                                </Label>
-                                                <Input
-                                                    type="text"
-                                                    id={`student${index}School`}
-                                                    name={`students[${index}].school`}
-                                                    required
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor={`student${index}GradeLevel`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Grade Level<span className="text-red-500">*</span>
-                                                </Label>
-                                                <Select name={`students[${index}].gradeLevel`} required>
-                                                    <SelectTrigger id={`student${index}GradeLevel`}
-                                                                   className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
-                                                        <SelectValue placeholder="Select grade"/>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="K">Kindergarten</SelectItem>
-                                                        <SelectItem value="1">1st Grade</SelectItem>
-                                                        <SelectItem value="2">2nd Grade</SelectItem>
-                                                        <SelectItem value="3">3rd Grade</SelectItem>
-                                                        <SelectItem value="4">4th Grade</SelectItem>
-                                                        <SelectItem value="5">5th Grade</SelectItem>
-                                                        <SelectItem value="6">6th Grade</SelectItem>
-                                                        <SelectItem value="7">7th Grade</SelectItem>
-                                                        <SelectItem value="8">8th Grade</SelectItem>
-                                                        <SelectItem value="9">9th Grade</SelectItem>
-                                                        <SelectItem value="10">10th Grade</SelectItem>
-                                                        <SelectItem value="11">11th Grade</SelectItem>
-                                                        <SelectItem value="12">12th Grade</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div className="md:col-span-2">
-                                                <Label htmlFor={`student${index}SpecialNeeds`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Special Needs (Leave blank if NONE)
-                                                </Label>
-                                                <Input
-                                                    type="text"
-                                                    id={`student${index}SpecialNeeds`}
-                                                    name={`students[${index}].specialNeeds`}
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-
-                                            <div className="md:col-span-2">
-                                                <Label htmlFor={`student${index}Allergies`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Allergies (Leave blank if NONE)
-                                                </Label>
-                                                <Textarea
-                                                    id={`student${index}Allergies`}
-                                                    name={`students[${index}].allergies`}
-                                                    rows={3}
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-
-                                            <div className="md:col-span-2">
-                                                <Label htmlFor={`student${index}Medications`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Medications (Leave blank if NONE)
-                                                </Label>
-                                                <Textarea
-                                                    id={`student${index}Medications`}
-                                                    name={`students[${index}].medications`}
-                                                    rows={3}
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <Label htmlFor={`student${index}Immunizations`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Immunizations YN
-                                                </Label>
-                                                <Select name={`students[${index}].immunizationsUpToDate`}>
-                                                    <SelectTrigger id={`student${index}Immunizations`}
-                                                                   className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
-                                                        <SelectValue placeholder="Select option"/>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="No">No</SelectItem>
-                                                        <SelectItem value="Yes">Yes</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div className="md:col-span-2">
-                                                <Label htmlFor={`student${index}ImmunizationNotes`}
-                                                       className="block text-sm font-medium mb-1">
-                                                    Immunization Notes
-                                                </Label>
-                                                <Textarea
-                                                    id={`student${index}ImmunizationNotes`}
-                                                    name={`students[${index}].immunizationNotes`}
-                                                    rows={3}
-                                                    className="focus:ring-green-500"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <Label htmlFor={`student${index}BeltRank`}
-                                                   className="block text-sm font-medium mb-1">
-                                                Belt Rank
-                                            </Label>
-                                            <Select name={`students[${index}].beltRank`}>
-                                                <SelectTrigger id={`student${index}BeltRank`}
-                                                               className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
-                                                    <SelectValue placeholder="Select belt rank"/>
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {BELT_RANKS.map((rank) => (
-                                                        <SelectItem key={rank} value={rank} className="capitalize">
-                                                            {rank}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                <div className="mt-4 mb-8">
-                                    <Button
-                                        type="button"
-                                        onClick={addStudent}
-                                        variant="outline"
-                                        className="w-full flex items-center justify-center text-foreground"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-foreground"
-                                             viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd"
-                                                  d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                                  clipRule="evenodd"/>
-                                        </svg>
-                                        ADD ANOTHER STUDENT
-                                    </Button>
+                            {/* Display Action Error (if any) */}
+                            {actionData?.error && (
+                                <div
+                                    className="text-red-500 text-sm mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                    Error: {actionData.error}
                                 </div>
+                            )}
 
-                                {actionData?.error && (
-                                    <div
-                                        className="text-red-500 text-sm mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                                        Error: {actionData.error}
-                                    </div>
-                                )}
-
-                                <div className="flex justify-between mt-8">
-                                    <Button
-                                        type="button"
-                                        onClick={prevStep}
-                                        variant="outline"
-                                        className="font-bold py-3 px-6 border-border text-foreground hover:bg-muted"
-                                    >
-                                        Back
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
-                                    >
-                                        SUBMIT REGISTRATION
-                                    </Button>
-                                </div>
-                            </div>
                         </Form>
                     </div>
                 ) : (

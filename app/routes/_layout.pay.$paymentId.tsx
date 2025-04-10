@@ -402,7 +402,6 @@ export default function PaymentPage() {
                         colorTextSecondary: '#d1d5db', // Labels etc (gray-300)
                         colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
                         colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
-                        // @ts-expect-error - TS might complain, but this is a valid Stripe variable
                         colorBorder: '#4b5563',     // Input border (gray-600)
                     }
                     : { // Light Theme Variables (match typical light mode)
@@ -411,7 +410,6 @@ export default function PaymentPage() {
                         colorTextSecondary: '#6b7280', // Labels etc (gray-500)
                         colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
                         colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
-                        // @ts-expect-error - TS might complain, but this is a valid Stripe variable
                         colorBorder: '#d1d5db',     // Input border (gray-300)
                     }),
             },
@@ -457,7 +455,7 @@ export default function PaymentPage() {
         // Optional: Observe changes to the class attribute of the html element
         // This is more robust if the theme can change while the page is open
         const observer = new MutationObserver((mutationsList) => {
-            for (let mutation of mutationsList) {
+            for (const mutation of mutationsList) {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                     console.log("[PaymentPage Theme Effect] Detected class change on <html>.");
                     checkTheme(); // Re-check theme on class change

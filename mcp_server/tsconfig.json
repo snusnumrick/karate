@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2020", // Target a Node.js version supported by your environment
+    "module": "CommonJS", // Output CommonJS modules for Node.js
+    "lib": ["ES2020"],
+    "outDir": "./dist", // Output directory for compiled JS
+    "rootDir": "./src", // Source directory
+    "strict": true,
+    "esModuleInterop": true, // Allows default imports from CommonJS modules
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node", // Use Node.js module resolution
+    "sourceMap": true, // Generate source maps for debugging
+    "resolveJsonModule": true,
+    "declaration": true // Optional: Generate .d.ts files
+  },
+  "include": ["src/**/*.ts"], // Only include source files
+  "exclude": ["node_modules", "dist"] // Exclude node_modules and output dir
+}

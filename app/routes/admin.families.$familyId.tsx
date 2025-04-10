@@ -1,5 +1,6 @@
-import invariant from "tiny-invariant"; // Use tiny-invariant instead
-import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction} from "@remix-run/node"; // Use named imports
+import invariant from "tiny-invariant";
+// Response is globally available or comes from web fetch API, not @remix-run/node
+import { type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
 // Import isRouteErrorResponse from @remix-run/react
 import {
     isRouteErrorResponse,
@@ -9,32 +10,26 @@ import {
     useLoaderData,
     useOutlet,
     useParams,
-    useRouteError
+    useRouteError,
 } from "@remix-run/react";
-// Import createClient directly
-import {createClient} from "@supabase/supabase-js";
-// No longer need getSupabaseServerClient here
-import {Database} from "~/types/supabase";
-import {Button} from "~/components/ui/button";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
-import {Separator} from "~/components/ui/separator";
-import {format} from 'date-fns';
+// createClient is no longer needed here directly for loader/action
+// import { createClient } from "@supabase/supabase-js";
+// Removed unused createClient import
+// Removed unused Database import
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { format } from 'date-fns';
 import React from "react";
+import { getFamilyDetails, type FamilyDetails } from "~/services/family.server"; // Import service function and type
+import { deleteStudent } from "~/services/student.server"; // Import deleteStudent service function (removed .ts)
 
-type FamilyRow = Database['public']['Tables']['families']['Row'];
-type GuardianRow = Database['public']['Tables']['guardians']['Row'];
-type StudentRow = Database['public']['Tables']['students']['Row'];
-
-// Define the shape of the data returned by the loader
+// Define the shape of the data returned by the loader using the imported type
 type LoaderData = {
-    family: FamilyRow & {
-        guardians: GuardianRow[];
-        students: StudentRow[];
-    };
-    oneOnOneBalance: number; // Add balance
+    family: FamilyDetails; // Use the imported type which includes oneOnOneBalance
 };
 
-export const meta: MetaFunction<typeof loader> = ({data}) => {
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+    // Access family name via the nested structure
     const familyName = data?.family?.name ?? "Family Details";
     return [
         {title: `${familyName} | Admin Dashboard`},
@@ -43,77 +38,32 @@ export const meta: MetaFunction<typeof loader> = ({data}) => {
 };
 
 
-export async function loader({params}: LoaderFunctionArgs) {
+export async function loader({ params }: LoaderFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
-    console.log(`[Loader] Fetching family details for ID: ${familyId}`); // Log the ID
+    console.log(`[Loader] Requesting family details for ID: ${familyId}`);
 
-    // Retrieve and validate environment variables first
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // Create a response object for potential header setting (if needed later)
+    const response = new Response();
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Loader] Missing Supabase URL or Service Role Key env vars.");
-        // Throw a standard Response for Remix loaders
-        throw new Response("Server configuration error: Missing Supabase credentials.", {status: 500});
+    try {
+        // Call the service function to get family details
+        // No need to create supabaseAdmin here, service function handles it
+        const familyDetails = await getFamilyDetails(familyId);
+
+        // Return the data using Remix's json helper
+        // The service function returns the combined structure including balance
+        return json({ family: familyDetails }, { headers: response.headers });
+
+    } catch (error) {
+        console.error(`[Loader] Error caught while fetching family ${familyId}:`, error);
+        // Re-throw the error if it's already a Response (like 404 or 500 from the service)
+        if (error instanceof Response) {
+            throw error;
+        }
+        // Otherwise, wrap it in a generic 500 response
+        throw new Response("An unexpected error occurred while loading family details.", { status: 500, headers: response.headers });
     }
-
-    // Now TypeScript knows supabaseUrl and supabaseServiceKey are strings
-    const response = new Response(); // Create a response object for potential header setting
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
-
-    console.log('[Loader] Supabase client initialized. Fetching data...'); // Log before query
-    const {data: familyData, error: familyError} = await supabaseServer // Use the server client
-        .from('families')
-        .select(`
-      *,
-      guardians (*),
-      students (*)
-    `)
-        .eq('id', familyId)
-        .single();
-
-    // Log the result from Supabase
-    console.log('[Loader] Supabase query result:', {familyData, familyError});
-
-    if (familyError) {
-        console.error(`[Loader] Supabase error fetching family ${familyId}:`, familyError.message);
-        // Throw a 500 for actual DB errors, keeping response headers
-        throw new Response(`Database error: ${familyError.message}`, {status: 500, headers: response.headers});
-    }
-
-    // Check if any data was returned
-    if (!familyData) {
-        console.warn(`[Loader] No family data found for ID: ${familyId}. Throwing 404.`);
-        // Throw 404 specifically if no data is returned
-        throw new Response("Family not found", {status: 404, headers: response.headers});
-    }
-
-    // Ensure guardians and students are arrays even if null/undefined from query
-    const family = {
-        ...familyData, // Use the first result
-        guardians: familyData.guardians ?? [],
-        students: familyData.students ?? [],
-    };
-
-    // Fetch 1:1 balance
-    let oneOnOneBalance = 0;
-    const { data: balanceData, error: balanceError } = await supabaseServer
-        .from('family_one_on_one_balance')
-        .select('total_remaining_sessions')
-        .eq('family_id', familyId)
-        .maybeSingle();
-
-    if (balanceError) {
-        console.error(`[Loader] Error fetching 1:1 balance for family ${familyId}:`, balanceError.message);
-        // Don't fail load, just show 0
-    } else if (balanceData) {
-        oneOnOneBalance = balanceData.total_remaining_sessions ?? 0;
-    }
-
-    console.log(`[Loader] Family ${familyId} 1:1 balance: ${oneOnOneBalance}`);
-
-    return json({family, oneOnOneBalance}, {headers: response.headers});
 }
 
 // Action function to handle deletions etc.
@@ -121,7 +71,7 @@ export async function action({request, params}: ActionFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId; // Keep familyId for potential redirects/context
     const formData = await request.formData();
-    const intent = formData.get("intent");
+    const intent = formData.get("intent") as string; // Use 'as string' for simplicity here
 
     if (intent === "deleteStudent") {
         const studentId = formData.get("studentId") as string;
@@ -129,31 +79,22 @@ export async function action({request, params}: ActionFunctionArgs) {
 
         console.log(`[Action] Attempting to delete student ${studentId} from family ${familyId}`);
 
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        try {
+            // Call the service function to delete the student
+            // No need to create supabaseAdmin here, service function handles it
+            await deleteStudent(studentId);
 
-        if (!supabaseUrl || !supabaseServiceKey) {
-            console.error("[Action Delete Student] Missing Supabase URL or Service Role Key env vars.");
-            return json({error: "Server configuration error"}, {status: 500});
-        }
-        const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+            console.log(`[Action] Successfully deleted student ${studentId}`);
+            // Return success, fetcher will cause UI update via revalidation
+            return json({ success: true });
 
-        const {error} = await supabaseServer
-            .from('students')
-            .delete()
-            .eq('id', studentId);
-
-        if (error) {
-            console.error(`[Action Delete Student] Supabase error deleting student ${studentId}:`, error.message);
+        } catch (error) {
+            console.error(`[Action Delete Student] Error deleting student ${studentId}:`, error);
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
             // Return error in JSON format for the fetcher
-            return json({error: `Database error: ${error.message}`}, {status: 500});
+            // Use 500 for server-side errors from the service
+            return json({ error: `Failed to delete student: ${errorMessage}` }, { status: 500 });
         }
-
-        console.log(`[Action] Successfully deleted student ${studentId}`);
-        // Return success, fetcher will cause UI update via revalidation
-        return json({success: true});
-        // Or redirect if preferred, though fetcher works better without full reload:
-        // return redirect(`/admin/families/${familyId}`);
     }
 
     // Handle other intents or return error if intent is unknown
@@ -196,9 +137,10 @@ function DeleteStudentButton({studentId, studentName}: { studentId: string, stud
 }
 
 export default function FamilyDetailPage() {
-    const {family, oneOnOneBalance} = useLoaderData<LoaderData>(); // Destructure oneOnOneBalance here
-    const params = useParams(); // Get params again for edit link if needed
-    const outlet = useOutlet(); // Check if a child route is being rendered
+    // Destructure the nested family object which now contains oneOnOneBalance
+    const { family } = useLoaderData<LoaderData>();
+    const params = useParams();
+    const outlet = useOutlet();
 
     return (
         <div className="space-y-6">
@@ -250,73 +192,14 @@ export default function FamilyDetailPage() {
                             <CardTitle>Individual Session Balance</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-2xl font-bold">{oneOnOneBalance ?? 0}</p>
+                            {/* Access balance from the family object */}
+                            <p className="text-2xl font-bold">{family.oneOnOneBalance ?? 0}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Remaining Sessions</p>
-                            {/* Optional: Link to record usage (might be better on student page) */}
+                            {/* Optional: Link to record usage */}
                         </CardContent>
                     </Card>
 
-                    <Separator/>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle>Guardians</CardTitle>
-                            <Button asChild variant="outline" size="sm">
-                                <Link to={`/admin/families/${params.familyId}/guardians/edit`}>Edit Guardians</Link>
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="pt-4"> {/* Add padding top if needed */}
-                            {family.guardians.length > 0 ? (
-                                <ul className="space-y-4"> {/* Changed space-y from 1 to 4 */}
-                                    {family.guardians.map((guardian) => (
-                                        <li key={guardian.id}
-                                            className="border p-4 rounded-md shadow-sm"> {/* Applied student list item classes */}
-                                            {/* Removed flex justify-between as there's no button here */}
-                                            <div>
-                                                <p className="font-semibold">{guardian.first_name} {guardian.last_name}</p>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    <strong>Relationship:</strong> {guardian.relationship}
-                                                </p>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    <strong>Email:</strong> {guardian.email}
-                                                </p>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    <strong>Cell Phone:</strong> {guardian.cell_phone}
-                                                </p>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    <strong>Home Phone:</strong> {guardian.home_phone}
-                                                </p>
-                                                {guardian.work_phone && (
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                        <strong>Work Phone:</strong> {guardian.work_phone}
-                                                    </p>
-                                                )}
-                                                {guardian.employer && (
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                        <strong>Employer:</strong> {guardian.employer}
-                                                    </p>
-                                                )}
-                                                {guardian.employer_phone && (
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                        <strong>Employer Phone:</strong> {guardian.employer_phone}
-                                                    </p>
-                                                )}
-                                                {guardian.employer_notes && (
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                        <strong>Employer Notes:</strong> {guardian.employer_notes}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>No guardians associated with this family.</p>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Separator/>
+                    {/* Guardian Card and Separators Removed */}
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

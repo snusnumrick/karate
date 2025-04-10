@@ -226,6 +226,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - `app/types/`: TypeScript type definitions (including `database.types.ts`).
     - `app/routes/api.create-payment-intent.ts`: Backend endpoint for Stripe Payment Intent creation.
     - `app/routes/api.webhooks.stripe.ts`: Handles incoming Stripe webhook events.
+    - **Note:** While dedicated API routes exist for specific tasks, much of the core backend logic (data fetching, mutations) is handled within the `loader` and `action` functions of the standard Remix routes (`app/routes/`), serving as endpoints for the web UI itself rather than standalone APIs.
     - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
 - **UI:** Built with [Shadcn UI](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn-ui@latest add <component>` to add new components consistently.
@@ -233,6 +234,288 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.
 - **Environment Variables:** Managed via `.env` locally and platform environment variables in production (see Deployment). Use `.env.example` as a template.
 - **Email:** Uses Resend for transactional emails. See `app/utils/email.server.ts` and function-specific email logic.
+
+### External API (v1)
+
+A versioned API is available for external consumption (e.g., by an AI server or other applications).
+
+- **Base Path:** `/api/v1`
+- **Authentication:** All API endpoints require a valid Supabase JWT passed in the `Authorization` header as a Bearer token (`Authorization: Bearer <YOUR_SUPABASE_JWT>`). Clients must first authenticate with Supabase (e.g., using email/password) to obtain a token.
+- **Authorization:** Most endpoints currently require the authenticated user to have an 'admin' role (defined in Supabase user metadata). This may be adjusted per endpoint in the future.
+- **Format:** Requests and responses use JSON.
+- **Error Handling:** Errors are returned as JSON objects with an `error` key and appropriate HTTP status codes (e.g., 400, 401, 403, 404, 500).
+
+**Available Endpoints:**
+
+*   **`GET /api/v1/families/{familyId}`**
+    *   **Description:** Retrieves detailed information for a specific family, including students and their 1:1 session balance. Guardians should be fetched separately using the `/api/v1/families/{familyId}/guardians` endpoint.
+    *   **Authorization:** Requires `admin` role.
+    *   **Example Request:**
+        ```bash
+        curl -X GET "https://<your-domain>/api/v1/families/YOUR_FAMILY_ID" \
+             -H "Authorization: Bearer <YOUR_SUPABASE_JWT>"
+        ```
+    *   **Example Success Response (200 OK):**
+        ```json
+        {
+          "id": "uuid-for-family",
+          "created_at": "2023-10-26T10:00:00.000Z",
+          "updated_at": "2023-10-27T11:30:00.000Z",
+          "name": "Smith Family",
+          "email": "smith.family@example.com",
+          "primary_phone": "555-123-4567",
+          "address": "123 Main St",
+          "city": "Anytown",
+          "province": "ON",
+          "postal_code": "A1B 2C3",
+          "emergency_contact": "Jane Doe 555-987-6543",
+          "health_info": null,
+          "notes": "Likes morning classes.",
+          "referral_source": "Website",
+          "referral_name": null,
+          // "guardians" array removed - fetch separately
+          "students": [
+            {
+              "id": "uuid-for-student-1",
+              "created_at": "2023-10-26T10:05:00.000Z",
+              "updated_at": "2023-10-28T09:15:00.000Z",
+              "family_id": "uuid-for-family",
+              "first_name": "Alice",
+              "last_name": "Smith",
+              "gender": "Female",
+              "birth_date": "2015-03-10",
+              "cell_phone": null,
+              "email": null,
+              "t_shirt_size": "YM",
+              "school": "Anytown Elementary",
+              "grade_level": "3",
+              "special_needs": null,
+              "allergies": "Peanuts",
+              "medications": null,
+              "immunizations_up_to_date": "true",
+              "immunization_notes": null
+            }
+          ],
+          "oneOnOneBalance": 5
+        }
+        ```
+    *   **Example Error Responses:**
+        *   `401 Unauthorized`: `{"error": "Unauthorized: Missing or invalid Bearer token"}`
+        *   `403 Forbidden`: `{"error": "Forbidden: Requires 'admin' role."}` or `{"error": "Forbidden: User not found for token"}`
+        *   `404 Not Found`: `{"error": "Family not found"}`
+        *   `500 Internal Server Error`: `{"error": "Database error: <details>"}` or `{"error": "An unknown server error occurred."}`
+
+*   **`GET /api/v1/students/{studentId}`**
+    *   **Description:** Retrieves detailed information for a specific student, including family info, belt rank, and 1:1 session details.
+    *   **Authorization:** Requires `admin` role.
+    *   *(Details like example request/response can be added here)*
+
+*   **`GET /api/v1/family/me`**
+    *   **Description:** Retrieves detailed information for the *currently authenticated user's* family, including students and 1:1 session balance. Guardians should be fetched separately using the `/api/v1/families/{familyId}/guardians` endpoint (where `familyId` is obtained from this response or the user's profile).
+    *   **Authorization:** Requires standard user authentication (Bearer token). No specific role needed.
+    *   **Example Request:**
+        ```bash
+        curl -X GET "https://<your-domain>/api/v1/family/me" \
+             -H "Authorization: Bearer <YOUR_SUPABASE_JWT>"
+        ```
+    *   **Example Success Response (200 OK):**
+        *(Same structure as `GET /api/v1/families/{familyId}`)*
+        ```json
+        {
+          "id": "uuid-for-user-family",
+          "created_at": "...",
+          "updated_at": "...",
+          "name": "User Family Name",
+          "email": "user.family@example.com",
+          // ... other family fields
+          // "guardians" array removed - fetch separately
+          "students": [ ... ],
+          "oneOnOneBalance": 2
+        }
+        ```
+    *   **Example Error Responses:**
+        *   `401 Unauthorized`: `{"error": "Unauthorized: Missing or invalid Bearer token"}`
+        *   `403 Forbidden`: `{"error": "Forbidden: User not found for token"}`
+        *   `404 Not Found`: `{"error": "User is not associated with a family."}` or `{"error": "Family details not found for the associated family ID."}`
+        *   `500 Internal Server Error`: `{"error": "Failed to retrieve user profile information."}` or `{"error": "Database error: <details>"}`
+
+*   **`POST /api/v1/auth/register`**
+    *   **Description:** Registers a new user account, creates associated family and the *first* guardian record. Requires email confirmation (must be enabled in Supabase). Additional guardians must be added via the dedicated guardian endpoints.
+    *   **Authorization:** None required (public endpoint).
+    *   **Request Body (JSON):**
+        ```json
+        {
+          "email": "new.user@example.com",
+          "password": "yourSecurePassword",
+          "familyName": "New Family Name",
+          "guardianFirstName": "GuardianFirst",
+          "guardianLastName": "GuardianLast",
+          "guardianRelationship": "Parent/Guardian", // Optional, defaults to 'Parent/Guardian'
+          "guardianPhone": "555-123-9999" // Optional
+        }
+        ```
+    *   **Example Success Response (201 Created):**
+        ```json
+        {
+          "userId": "uuid-of-new-supabase-user",
+          "familyId": "uuid-of-new-family-record",
+          "message": "Registration successful. Please check your email to confirm your account."
+        }
+        ```
+    *   **Example Error Responses:**
+        *   `400 Bad Request`: `{"error": "Missing required fields: ..."}` or `{"error": "Invalid JSON body"}` or `{"error": "Password must be at least 6 characters long"}`
+        *   `409 Conflict`: `{"error": "Email address is already registered."}`
+        *   `500 Internal Server Error`: `{"error": "User creation failed: <details>"}` or `{"error": "Database error: Failed to create family record. <details>"}` or `{"error": "Server configuration error"}`
+
+*   **`GET /api/v1/families/{familyId}/guardians`**
+    *   **Description:** Retrieves a list of all guardians associated with a specific family.
+    *   **Authorization:** Requires standard user authentication. User must be an admin or belong to the specified family.
+    *   **Example Request:**
+        ```bash
+        curl -X GET "https://<your-domain>/api/v1/families/YOUR_FAMILY_ID/guardians" \
+             -H "Authorization: Bearer <YOUR_SUPABASE_JWT>"
+        ```
+    *   **Example Success Response (200 OK):**
+        ```json
+        [
+          {
+            "id": "uuid-for-guardian-1",
+            "created_at": "...",
+            "updated_at": "...",
+            "family_id": "YOUR_FAMILY_ID",
+            "first_name": "John",
+            "last_name": "Smith",
+            "relationship": "Father",
+            "email": "john.smith@example.com",
+            "cell_phone": "555-111-2222",
+            "home_phone": "555-123-4567",
+            "work_phone": null,
+            "employer": null,
+            "employer_phone": null,
+            "employer_notes": null
+          },
+          { ... } // Other guardians
+        ]
+        ```
+    *   **Example Error Responses:**
+        *   `401 Unauthorized`
+        *   `403 Forbidden`: `{"error": "Forbidden: You do not have permission to view guardians for this family."}` or `{"error": "Forbidden: User not found for token"}`
+        *   `500 Internal Server Error`
+
+*   **`POST /api/v1/families/{familyId}/guardians`**
+    *   **Description:** Creates a new guardian associated with a specific family.
+    *   **Authorization:** Requires standard user authentication. User must be an admin or belong to the specified family.
+    *   **Request Body (JSON):**
+        ```json
+        {
+          "first_name": "Jane",
+          "last_name": "Doe",
+          "relationship": "Mother",
+          "email": "jane.doe@example.com",
+          "home_phone": "555-123-4567",
+          "cell_phone": "555-333-4444",
+          "work_phone": null,
+          "employer": "Example Corp",
+          "employer_phone": null,
+          "employer_notes": null
+        }
+        ```
+    *   **Example Success Response (201 Created):**
+        ```json
+        {
+          "id": "uuid-for-new-guardian",
+          "created_at": "...",
+          "updated_at": "...",
+          "family_id": "YOUR_FAMILY_ID",
+          "first_name": "Jane",
+          // ... other fields
+        }
+        ```
+    *   **Example Error Responses:**
+        *   `400 Bad Request`: `{"error": "Invalid JSON body"}` or `{"error": "Missing required guardian fields (...)"}`
+        *   `401 Unauthorized`
+        *   `403 Forbidden`: `{"error": "Forbidden: You do not have permission to add a guardian to this family."}`
+        *   `409 Conflict`: `{"error": "Guardian creation failed: Duplicate entry."}` (If email or other unique constraint exists)
+        *   `500 Internal Server Error`
+
+*   **`GET /api/v1/guardians/{guardianId}`**
+    *   **Description:** Retrieves detailed information for a specific guardian.
+    *   **Authorization:** Requires standard user authentication. User must be an admin or belong to the guardian's family.
+    *   **Example Request:**
+        ```bash
+        curl -X GET "https://<your-domain>/api/v1/guardians/GUARDIAN_UUID" \
+             -H "Authorization: Bearer <YOUR_SUPABASE_JWT>"
+        ```
+    *   **Example Success Response (200 OK):**
+        ```json
+        {
+          "id": "GUARDIAN_UUID",
+          "created_at": "...",
+          "updated_at": "...",
+          "family_id": "uuid-for-family",
+          "first_name": "John",
+          "last_name": "Smith",
+          // ... other fields
+        }
+        ```
+    *   **Example Error Responses:**
+        *   `401 Unauthorized`
+        *   `403 Forbidden`: `{"error": "Forbidden: You do not have permission to view this guardian."}`
+        *   `404 Not Found`: `{"error": "Guardian not found"}`
+        *   `500 Internal Server Error`
+
+*   **`PUT /api/v1/guardians/{guardianId}`**
+    *   **Description:** Updates information for a specific guardian.
+    *   **Authorization:** Requires standard user authentication. User must be an admin or belong to the guardian's family.
+    *   **Request Body (JSON - include only fields to update):**
+        ```json
+        {
+          "cell_phone": "555-555-5555",
+          "employer": "New Employer Inc."
+        }
+        ```
+    *   **Example Success Response (200 OK):**
+        ```json
+        {
+          "id": "GUARDIAN_UUID",
+          "created_at": "...",
+          "updated_at": "...", // Should reflect update time
+          "family_id": "uuid-for-family",
+          "first_name": "John",
+          "last_name": "Smith",
+          "cell_phone": "555-555-5555", // Updated field
+          "employer": "New Employer Inc.", // Updated field
+          // ... other fields
+        }
+        ```
+    *   **Example Error Responses:**
+        *   `400 Bad Request`: `{"error": "Invalid JSON body for update"}` or `{"error": "Invalid or empty JSON body provided for update."}`
+        *   `401 Unauthorized`
+        *   `403 Forbidden`: `{"error": "Forbidden: You do not have permission to update this guardian."}`
+        *   `404 Not Found`: `{"error": "Guardian not found"}`
+        *   `500 Internal Server Error`
+
+*   **`DELETE /api/v1/guardians/{guardianId}`**
+    *   **Description:** Deletes a specific guardian.
+    *   **Authorization:** Requires standard user authentication. User must be an admin or belong to the guardian's family.
+    *   **Example Request:**
+        ```bash
+        curl -X DELETE "https://<your-domain>/api/v1/guardians/GUARDIAN_UUID" \
+             -H "Authorization: Bearer <YOUR_SUPABASE_JWT>"
+        ```
+    *   **Example Success Response (200 OK):**
+        ```json
+        {
+          "message": "Guardian deleted successfully"
+        }
+        ```
+        *(Alternatively, could return 204 No Content with an empty body)*
+    *   **Example Error Responses:**
+        *   `401 Unauthorized`
+        *   `403 Forbidden`: `{"error": "Forbidden: You do not have permission to delete this guardian."}`
+        *   `404 Not Found`: `{"error": "Guardian not found"}`
+        *   `500 Internal Server Error`
+
 
 ### Technical Health
 ```json
