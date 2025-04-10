@@ -183,10 +183,11 @@ export default function RegisterPage() {
                     // Render the multi-step form only on /register
                     <div
                         className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
-                        <div className="flex justify-between items-center mb-6">
+                        {/* Stack vertically on mobile, row on sm+, adjust spacing/alignment */}
+                        <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                             <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Registration</h1>
                             <Link to="/login"
-                                  className="text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300">
+                                  className="text-sm text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300 sm:text-base">
                                 Already a customer? Click here to login.
                             </Link>
                         </div>
