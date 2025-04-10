@@ -114,7 +114,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 5.  **Stripe Setup (Optional for Local):**
     - Create a Stripe account at [stripe.com](https://stripe.com).
     - Obtain your Publishable Key and Secret Key and add them to `.env`.
-    - For webhook testing locally, install the Stripe CLI (`brew install stripe/stripe-cli/stripe`). Create a webhook endpoint in your Stripe dashboard (pointing to a tool like `ngrok` or using the Stripe CLI's forwarding). Obtain the Webhook Signing Secret and add it as `STRIPE_WEBHOOK_SECRET` in your `.env` file. Use `stripe listen --forward-to localhost:<PORT>/api/webhooks/stripe` (replace `<PORT>` with your dev server port, e.g., 3000) to forward events from Stripe to your local server.
+    - For webhook testing locally, install the Stripe CLI (`brew install stripe/stripe-cli/stripe`). Create a webhook endpoint in your Stripe dashboard (pointing to a tool like `ngrok` or using the Stripe CLI's forwarding). Obtain the Webhook Signing Secret and add it as `STRIPE_WEBHOOK_SECRET` in your `.env` file. Use `stripe listen --forward-to localhost:<PORT>/api/webhooks/stripe --events payment_intent.succeeded,payment_intent.payment_failed` (replace `<PORT>` with your dev server port, e.g., 3000) to forward only the necessary events from Stripe to your local server.
 6.  **Resend Setup (Optional for Local):**
     - Create a Resend account at [resend.com](https://resend.com).
     - Obtain an API Key and add it to `.env`.
@@ -153,8 +153,10 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - Once deployed, get your production URL.
     - In your Stripe Dashboard, go to Developers -> Webhooks.
     - Add an endpoint:
-        - URL: `https://<your-vercel-domain>/api/webhooks/stripe` (*Confirm this is the correct webhook route*)
-        - Select the events your application listens for (primarily `payment_intent.succeeded`, `payment_intent.payment_failed`).
+        - URL: `https://<your-vercel-domain>/api/webhooks/stripe`
+        - Select the specific events your application needs to listen for. Click "+ Select events" and choose:
+            - `payment_intent.succeeded`
+            - `payment_intent.payment_failed`
         - Use the `STRIPE_WEBHOOK_SECRET` from your environment variables.
 7.  **Supabase Production Setup:**
     - Ensure "Confirm email" is **enabled** in Supabase Auth settings for production.
