@@ -473,6 +473,7 @@ export default function RegisterPage() {
                                             id="contact1Email"
                                             name="contact1Email"
                                             required
+                                            autoComplete="username" // Added autocomplete attribute
                                             className="input-custom-styles"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">(Emails are kept
