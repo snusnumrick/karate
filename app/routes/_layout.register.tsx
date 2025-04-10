@@ -313,7 +313,7 @@ export default function RegisterPage() {
                                         id="familyName"
                                         name="familyName"
                                         required
-                                        className="focus:ring-green-500"
+                                        className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
                                     />
                                 </div>
 
@@ -329,7 +329,7 @@ export default function RegisterPage() {
                                             id="address"
                                             name="address"
                                             required
-                                            className="focus:ring-green-500"
+                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
                                         />
                                     </div>
 
@@ -342,7 +342,7 @@ export default function RegisterPage() {
                                             id="city"
                                             name="city"
                                             required
-                                            className="focus:ring-green-500"
+                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
                                         />
                                     </div>
 
@@ -382,7 +382,7 @@ export default function RegisterPage() {
                                             id="postalCode"
                                             name="postalCode"
                                             required
-                                            className="focus:ring-green-500"
+                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
                                         />
                                     </div>
 
@@ -395,7 +395,7 @@ export default function RegisterPage() {
                                             id="primaryPhone"
                                             name="primaryPhone"
                                             required
-                                            className="focus:ring-green-500"
+                                            className="focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
                                         />
                                     </div>
                                 </div>
