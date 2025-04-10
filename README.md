@@ -108,9 +108,10 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 4.  **Supabase Setup:**
     - Create a Supabase project at [supabase.com](https://supabase.com).
     - In your Supabase project dashboard:
-        - Navigate to Authentication -> Providers and enable the "Email" provider. Disable "Confirm email" if you want easier local testing, but **ensure it's enabled for production**.
-        - Navigate to the SQL Editor and run the entire contents of the `app/db/supabase-setup.sql` file. This script creates all necessary tables, types, functions, and policies.
-    - Obtain your Supabase Project URL, Anon Key, and Service Role Key and add them to your `.env` file.
+        - Navigate to Authentication -> Providers (under the "Sign In Methods" section). Enable the "Email" provider.
+        - Navigate to Authentication -> Settings (under the "Configuration" section). Disable "Confirm email" if you want easier local testing, but **ensure it's enabled for production**.
+        - Navigate to the SQL Editor (Database -> SQL Editor) and run the entire contents of the `app/db/supabase-setup.sql` file. This script creates all necessary tables, types, functions, and policies.
+    - Obtain your Supabase Project URL, Anon Key, and Service Role Key (Project Settings -> API) and add them to your `.env` file.
 5.  **Stripe Setup (Optional for Local):**
     - Create a Stripe account at [stripe.com](https://stripe.com).
     - Obtain your Publishable Key and Secret Key and add them to `.env`.
