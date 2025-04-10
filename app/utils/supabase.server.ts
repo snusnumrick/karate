@@ -21,24 +21,34 @@ type SupabaseServerClientReturn = {
 export function getSupabaseServerClient(request: Request): SupabaseServerClientReturn {
     const response = new Response();
 
-    const supabaseUrl = process.env.SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+    // Trim potential whitespace and check for empty strings explicitly
+    const supabaseUrl = process.env.SUPABASE_URL?.trim() || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY?.trim() || '';
 
-    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
-        // Throw an error instead of just logging. This prevents proceeding with invalid config.
-        throw new Error('Missing required Supabase environment variables (URL, Anon Key, or Service Role Key). Check server configuration.');
+    // Provide specific error messages
+    if (!supabaseUrl) {
+        throw new Error('Missing or invalid SUPABASE_URL environment variable. Check server configuration.');
+    }
+    if (!supabaseAnonKey) {
+        throw new Error('Missing or invalid SUPABASE_ANON_KEY environment variable. Check server configuration.');
+    }
+    if (!supabaseServiceKey) {
+        throw new Error('Missing or invalid SUPABASE_SERVICE_ROLE_KEY environment variable. Check server configuration.');
     }
 
+    // Now we know the variables are non-empty strings, proceed with initialization
     const supabaseServer = createServerClient<Database>(
-        supabaseUrl,
+        supabaseUrl, // Use the validated variable
         supabaseServiceKey,
+        {request, response}
+        supabaseServiceKey, // Use the validated variable
         {request, response}
     );
 
     const supabaseClient = createServerClient<Database>(
-        supabaseUrl,
-        supabaseAnonKey,
+        supabaseUrl, // Use the validated variable
+        supabaseAnonKey, // Use the validated variable
         {request, response}
     );
 
