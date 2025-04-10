@@ -148,7 +148,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - `STRIPE_WEBHOOK_SECRET`
     - `RESEND_API_KEY`
     - `FROM_EMAIL`
-    - `VITE_SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com`)
+    - `SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com`)
 5.  **Deploy:** Trigger a deployment in Vercel.
 6.  **Stripe Webhook:**
     - Once deployed, get your production URL.

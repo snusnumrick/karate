@@ -39,10 +39,8 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
 
     // Now we know the variables are non-empty strings, proceed with initialization
     const supabaseServer = createServerClient<Database>(
-        supabaseUrl, // Use the validated variable
+        supabaseUrl,
         supabaseServiceKey,
-        {request, response}
-        supabaseServiceKey, // Use the validated variable
         {request, response}
     );
 
