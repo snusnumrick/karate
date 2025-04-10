@@ -114,7 +114,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 5.  **Stripe Setup (Optional for Local):**
     - Create a Stripe account at [stripe.com](https://stripe.com).
     - Obtain your Publishable Key and Secret Key and add them to `.env`.
-    - For webhook testing locally, install the Stripe CLI (`brew install stripe/stripe-cli/stripe`). Set a webhook secret in `.env`. Use `stripe listen --forward-to localhost:<PORT>/api/webhooks/stripe` to forward events.
+    - For webhook testing locally, install the Stripe CLI (`brew install stripe/stripe-cli/stripe`). Create a webhook endpoint in your Stripe dashboard (pointing to a tool like `ngrok` or using the Stripe CLI's forwarding). Obtain the Webhook Signing Secret and add it as `STRIPE_WEBHOOK_SECRET` in your `.env` file. Use `stripe listen --forward-to localhost:<PORT>/api/webhooks/stripe` (replace `<PORT>` with your dev server port, e.g., 3000) to forward events from Stripe to your local server.
 6.  **Resend Setup (Optional for Local):**
     - Create a Resend account at [resend.com](https://resend.com).
     - Obtain an API Key and add it to `.env`.
