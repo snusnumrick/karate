@@ -502,6 +502,7 @@ export default function RegisterPage() {
                                             id="portalPassword"
                                             name="portalPassword"
                                             minLength={5}
+                                            autoComplete="new-password" // Added autocomplete attribute
                                             className="input-custom-styles"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">Minimum number of characters
@@ -518,6 +519,7 @@ export default function RegisterPage() {
                                             id="portalPasswordConfirm"
                                             name="portalPasswordConfirm"
                                             minLength={5}
+                                            autoComplete="new-password" // Added autocomplete attribute
                                             className="input-custom-styles"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">Minimum number of characters
