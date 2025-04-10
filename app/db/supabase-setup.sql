@@ -208,6 +208,17 @@ $$
     END
 $$;
 
+-- Define the function to update the 'updated_at' column
+-- Moved this definition earlier to ensure it exists before triggers use it.
+CREATE OR REPLACE FUNCTION update_modified_column()
+    RETURNS TRIGGER AS
+$$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Add update timestamp trigger for payments table
 DO
 $$
@@ -783,16 +794,7 @@ $$
     END
 $$;
 
--- Add update timestamp triggers
-CREATE OR REPLACE FUNCTION update_modified_column()
-    RETURNS TRIGGER AS
-$$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
+-- Add update timestamp trigger for families table
 -- Only create trigger if it doesn't exist
 DO
 $$
