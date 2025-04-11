@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-04-11
+
 ### Changed
 
 -   Applied consistent `.input-custom-styles` class to `Input` and `Textarea` components in the Contact form (`/contact`).
