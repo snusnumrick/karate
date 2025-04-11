@@ -143,21 +143,28 @@ export default function FamilyDetailPage() {
     const outlet = useOutlet();
 
     return (
-        <div className="space-y-6">
+        // Added standard page container
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
             {/* Render child routes (like the edit page) here */}
             <Outlet/>
 
             {/* Only render the detail view if no child route (like edit) is active */}
             {!outlet && (
                 <>
-                    {/* Keep the detail view content below for now,
-                           or adjust structure if edit should replace details */}
-                    <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-bold">Family: {family.name}</h1>
-                        {/* Top-level Edit button removed */}
+                    {/* Updated header to match standard site styling */}
+                    <div className="text-center mb-10">
+                        {/* Adjusted header classes to match payments page */}
+                        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 sm:text-4xl">
+                            Family: {family.name}
+                        </h1>
+                        <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                            View and manage family details, students, and balances.
+                        </p>
                     </div>
+                    {/* Removed original header div */}
 
-                    <Card>
+                    {/* Added explicit background to match payments page table container */}
+                    <Card className="bg-white dark:bg-gray-800">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Family Details</CardTitle>
                             <Button asChild variant="outline" size="sm">
@@ -187,7 +194,8 @@ export default function FamilyDetailPage() {
                     </Card>
 
                     {/* Individual Session Balance Card */}
-                    <Card>
+                    {/* Added explicit background */}
+                    <Card className="bg-white dark:bg-gray-800">
                         <CardHeader>
                             <CardTitle>Individual Session Balance</CardTitle>
                         </CardHeader>
@@ -201,7 +209,8 @@ export default function FamilyDetailPage() {
 
                     {/* Guardian Card and Separators Removed */}
 
-                    <Card>
+                    {/* Added explicit background */}
+                    <Card className="bg-white dark:bg-gray-800">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Students</CardTitle>
                             {/* Link to add a new student for this family */}
@@ -225,7 +234,11 @@ export default function FamilyDetailPage() {
                                                 </div>
                                                 <div className="flex space-x-2">
                                                     <Button asChild variant="secondary" size="sm">
-                                                        <Link to={`/admin/students/${student.id}`}>View Details</Link>
+                                                        {/* Added green link styling */}
+                                                        <Link to={`/admin/students/${student.id}`}
+                                                              className="text-green-600 hover:underline dark:text-green-400">
+                                                            View Details
+                                                        </Link>
                                                     </Button>
                                                     <DeleteStudentButton studentId={student.id}
                                                                          studentName={`${student.first_name} ${student.last_name}`}/>

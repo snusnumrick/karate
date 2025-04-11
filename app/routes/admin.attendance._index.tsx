@@ -162,22 +162,22 @@ export default function AttendanceHistoryPage() { // Renamed component
                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start
                         Date</Label>
                     <Input type="date" id="startDate" name="startDate" defaultValue={filterParams.startDate}
-                           className="w-full md:w-auto dark:bg-gray-700"/>
+                           className="input-custom-styles w-full md:w-auto"/> {/* Applied custom style, removed redundant */}
                 </div>
                 <div>
                     <Label htmlFor="endDate"
                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</Label>
                     <Input type="date" id="endDate" name="endDate" defaultValue={filterParams.endDate}
-                           className="w-full md:w-auto dark:bg-gray-700"/>
+                           className="input-custom-styles w-full md:w-auto"/> {/* Applied custom style, removed redundant */}
                 </div>
                 <div>
                     <Label htmlFor="studentId"
                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Student</Label>
                     <Select name="studentId" defaultValue={filterParams.studentId}>
-                        <SelectTrigger id="studentId" className="w-full md:w-[200px] dark:bg-gray-700">
+                        <SelectTrigger id="studentId" className="input-custom-styles w-full md:w-[200px]"> {/* Applied custom style, removed redundant */}
                             <SelectValue placeholder="All Students"/>
                         </SelectTrigger>
-                        <SelectContent className="dark:bg-gray-700">
+                        <SelectContent className="dark:bg-gray-700"> {/* Keep dark bg for dropdown content */}
                             {/* Removed the explicit "All Students" item with value="" */}
                             {allStudents.map(student => (
                                 <SelectItem key={student.id} value={student.id}>

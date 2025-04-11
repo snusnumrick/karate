@@ -167,21 +167,21 @@ export default function AddStudentPage() {
                                 First Name<span className="text-red-500">*</span>
                             </Label>
                             <Input type="text" id="firstName" name="firstName" required
-                                   className="focus:ring-green-500"/>
+                                   className="input-custom-styles focus:ring-green-500"/>
                         </div>
                         <div>
                             <Label htmlFor="lastName" className="block text-sm font-medium mb-1">
                                 Last Name<span className="text-red-500">*</span>
                             </Label>
                             <Input type="text" id="lastName" name="lastName" required
-                                   className="focus:ring-green-500" /* defaultValue={studentLastName} */ />
+                                   className="input-custom-styles focus:ring-green-500" /* defaultValue={studentLastName} */ />
                         </div>
                         <div>
                             <Label htmlFor="birthDate" className="block text-sm font-medium mb-1">
                                 Birth Date<span className="text-red-500">*</span>
                             </Label>
                             <Input type="date" id="birthDate" name="birthDate" required
-                                   className="focus:ring-green-500 dark:[color-scheme:dark]"/>
+                                   className="input-custom-styles focus:ring-green-500 dark:[color-scheme:dark]"/>
                         </div>
                         <div>
                             <Label htmlFor="gender" className="block text-sm font-medium mb-1">
@@ -189,7 +189,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="gender" required>
                                 <SelectTrigger id="gender"
-                                               className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select gender"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -206,7 +206,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="tShirtSize" required>
                                 <SelectTrigger id="tShirtSize"
-                                               className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select size"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -227,7 +227,7 @@ export default function AddStudentPage() {
                             <Label htmlFor="school" className="block text-sm font-medium mb-1">
                                 School<span className="text-red-500">*</span>
                             </Label>
-                            <Input type="text" id="school" name="school" required className="focus:ring-green-500"/>
+                            <Input type="text" id="school" name="school" required className="input-custom-styles focus:ring-green-500"/>
                         </div>
                         <div>
                             <Label htmlFor="gradeLevel" className="block text-sm font-medium mb-1">
@@ -235,7 +235,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="gradeLevel" required>
                                 <SelectTrigger id="gradeLevel"
-                                               className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select grade"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -264,7 +264,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="beltRank">
                                 <SelectTrigger id="beltRank"
-                                               className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select belt rank (usually White)"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -286,31 +286,31 @@ export default function AddStudentPage() {
                             <Label htmlFor="email" className="block text-sm font-medium mb-1">
                                 Student Email
                             </Label>
-                            <Input type="email" id="email" name="email" className="focus:ring-green-500"/>
+                            <Input type="email" id="email" name="email" className="input-custom-styles focus:ring-green-500"/>
                         </div>
                         <div>
                             <Label htmlFor="cellPhone" className="block text-sm font-medium mb-1">
                                 Student Cell #
                             </Label>
-                            <Input type="tel" id="cellPhone" name="cellPhone" className="focus:ring-green-500"/>
+                            <Input type="tel" id="cellPhone" name="cellPhone" className="input-custom-styles focus:ring-green-500"/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="specialNeeds" className="block text-sm font-medium mb-1">
                                 Special Needs (Leave blank if NONE)
                             </Label>
-                            <Input type="text" id="specialNeeds" name="specialNeeds" className="focus:ring-green-500"/>
+                            <Input type="text" id="specialNeeds" name="specialNeeds" className="input-custom-styles focus:ring-green-500"/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="allergies" className="block text-sm font-medium mb-1">
                                 Allergies (Leave blank if NONE)
                             </Label>
-                            <Textarea id="allergies" name="allergies" rows={3} className="focus:ring-green-500"/>
+                            <Textarea id="allergies" name="allergies" rows={3} className="input-custom-styles focus:ring-green-500"/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="medications" className="block text-sm font-medium mb-1">
                                 Medications (Leave blank if NONE)
                             </Label>
-                            <Textarea id="medications" name="medications" rows={3} className="focus:ring-green-500"/>
+                            <Textarea id="medications" name="medications" rows={3} className="input-custom-styles focus:ring-green-500"/>
                         </div>
                         <div>
                             <Label htmlFor="immunizationsUpToDate" className="block text-sm font-medium mb-1">
@@ -318,7 +318,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="immunizationsUpToDate">
                                 <SelectTrigger id="immunizationsUpToDate"
-                                               className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select option"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -333,7 +333,7 @@ export default function AddStudentPage() {
                                 Immunization Notes
                             </Label>
                             <Textarea id="immunizationNotes" name="immunizationNotes" rows={3}
-                                      className="focus:ring-green-500"/>
+                                      className="input-custom-styles focus:ring-green-500"/>
                         </div>
                     </div>
 

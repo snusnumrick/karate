@@ -10,6 +10,7 @@ import {Label} from "~/components/ui/label";
 import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
+import { siteConfig } from "~/config/site"; // Import siteConfig
 
 // Define potential action data structure
 type ActionData = {
@@ -347,20 +348,12 @@ export default function AdminNewFamilyPage() {
                                 <SelectTrigger id="province"><SelectValue
                                     placeholder="Select province"/></SelectTrigger>
                                 <SelectContent>
-                                    {/* Add all provinces/territories */}
-                                    <SelectItem value="AB">Alberta</SelectItem>
-                                    <SelectItem value="BC">British Columbia</SelectItem>
-                                    <SelectItem value="MB">Manitoba</SelectItem>
-                                    <SelectItem value="NB">New Brunswick</SelectItem>
-                                    <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
-                                    <SelectItem value="NS">Nova Scotia</SelectItem>
-                                    <SelectItem value="ON">Ontario</SelectItem>
-                                    <SelectItem value="PE">Prince Edward Island</SelectItem>
-                                    <SelectItem value="QC">Quebec</SelectItem>
-                                    <SelectItem value="SK">Saskatchewan</SelectItem>
-                                    <SelectItem value="NT">Northwest Territories</SelectItem>
-                                    <SelectItem value="NU">Nunavut</SelectItem>
-                                    <SelectItem value="YT">Yukon</SelectItem>
+                                    {/* Use provinces from siteConfig */}
+                                    {siteConfig.provinces.map((prov) => (
+                                        <SelectItem key={prov.value} value={prov.value}>
+                                            {prov.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             {actionData?.fieldErrors?.province &&

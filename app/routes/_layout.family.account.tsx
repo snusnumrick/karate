@@ -14,6 +14,7 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Fo
 import {ClientOnly} from "~/components/client-only";
 import {useEffect} from "react";
 import {Checkbox} from "~/components/ui/checkbox"; // Import Checkbox for preferences
+import { siteConfig } from "~/config/site"; // Import siteConfig
 
 // Define a type for serialized Zod issues (plain objects)
 type SerializedZodIssue = {
@@ -481,26 +482,17 @@ export default function AccountSettingsPage() {
                                                             // Remove defaultValue
                                                         >
                                                             <FormControl>
-                                                                <SelectTrigger><SelectValue
+                                                                {/* Applied input-custom-styles for consistency */}
+                                                                <SelectTrigger className="input-custom-styles"><SelectValue
                                                                     placeholder="Select province"/></SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent>
-                                                                {/* ... SelectItems ... */}
-                                                                <SelectItem value="AB">Alberta</SelectItem>
-                                                                <SelectItem value="BC">British Columbia</SelectItem>
-                                                                <SelectItem value="MB">Manitoba</SelectItem>
-                                                                <SelectItem value="NB">New Brunswick</SelectItem>
-                                                                <SelectItem value="NL">Newfoundland and
-                                                                    Labrador</SelectItem>
-                                                                <SelectItem value="NS">Nova Scotia</SelectItem>
-                                                                <SelectItem value="ON">Ontario</SelectItem>
-                                                                <SelectItem value="PE">Prince Edward Island</SelectItem>
-                                                                <SelectItem value="QC">Quebec</SelectItem>
-                                                                <SelectItem value="SK">Saskatchewan</SelectItem>
-                                                                <SelectItem value="NT">Northwest
-                                                                    Territories</SelectItem>
-                                                                <SelectItem value="NU">Nunavut</SelectItem>
-                                                                <SelectItem value="YT">Yukon</SelectItem>
+                                                                {/* Use provinces from siteConfig */}
+                                                                {siteConfig.provinces.map((prov) => (
+                                                                    <SelectItem key={prov.value} value={prov.value}>
+                                                                        {prov.label}
+                                                                    </SelectItem>
+                                                                ))}
                                                             </SelectContent>
                                                         </Select>
                                                     )}

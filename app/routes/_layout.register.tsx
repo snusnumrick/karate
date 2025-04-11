@@ -8,9 +8,9 @@ import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
-import {Textarea} from "~/components/ui/textarea";
-import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {siteConfig} from "~/config/site";
+import { Textarea } from "~/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { siteConfig } from "~/config/site";
 // Removed unused BELT_RANKS import
 
 // Action function to handle form submission
@@ -218,7 +218,7 @@ export default function RegisterPage() {
                                         </Label>
                                         <Select name="referralSource" required>
                                             <SelectTrigger id="referralSource"
-                                                           className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
+                                                           className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
                                                 <SelectValue placeholder="Select an option"/>
                                             </SelectTrigger>
                                             <SelectContent>
@@ -295,23 +295,16 @@ export default function RegisterPage() {
                                         </Label>
                                         <Select name="province" required>
                                             <SelectTrigger id="province"
-                                                           className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
+                                                           className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
                                                 <SelectValue placeholder="Select a province"/>
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="AB">Alberta</SelectItem>
-                                                <SelectItem value="BC">British Columbia</SelectItem>
-                                                <SelectItem value="MB">Manitoba</SelectItem>
-                                                <SelectItem value="NB">New Brunswick</SelectItem>
-                                                <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
-                                                <SelectItem value="NS">Nova Scotia</SelectItem>
-                                                <SelectItem value="ON">Ontario</SelectItem>
-                                                <SelectItem value="PE">Prince Edward Island</SelectItem>
-                                                <SelectItem value="QC">Quebec</SelectItem>
-                                                <SelectItem value="SK">Saskatchewan</SelectItem>
-                                                <SelectItem value="NT">Northwest Territories</SelectItem>
-                                                <SelectItem value="NU">Nunavut</SelectItem>
-                                                <SelectItem value="YT">Yukon</SelectItem>
+                                                {/* Use provinces from siteConfig */}
+                                                {siteConfig.provinces.map((prov) => (
+                                                    <SelectItem key={prov.value} value={prov.value}>
+                                                        {prov.label}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -360,7 +353,7 @@ export default function RegisterPage() {
                                             name="emergencyContact"
                                             required
                                             rows={3}
-                                            className="input-custom-styles focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400" // Added custom style
+                                            className="input-custom-styles" // Removed redundant focus/dark styles
                                         />
                                     </div>
 
@@ -416,7 +409,7 @@ export default function RegisterPage() {
                                         </Label>
                                         <Select name="contact1Type" required>
                                             <SelectTrigger id="contact1Type"
-                                                           className="w-full focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400">
+                                                           className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
                                                 <SelectValue placeholder="Select relationship"/>
                                             </SelectTrigger>
                                             <SelectContent>

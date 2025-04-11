@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+-   Applied consistent `.input-custom-styles` class to `Input` and `Textarea` components in the Contact form (`/contact`).
+-   Ensured consistent application of `.input-custom-styles` in the Registration form (`/register`), removing redundant styles from `Textarea` and `SelectTrigger` components.
+-   Ensured consistent application of `.input-custom-styles` in the Add Student form (`/family/add-student`), removing redundant styles from `SelectTrigger` components.
+-   Ensured consistent application of `.input-custom-styles` in the Admin Attendance Report form (`/admin/attendance/report`), removing redundant styles from date `Input` components.
+-   Ensured consistent application of `.input-custom-styles` in the Admin Attendance Record form (`/admin/attendance/record`), removing redundant styles from date `Input` and applying to `Textarea`.
+-   Ensured consistent application of `.input-custom-styles` in the Admin Attendance History filter form (`/admin/attendance`), removing redundant styles from date `Input` and `SelectTrigger` components.
+-   Ensured consistent application of `.input-custom-styles` in the `FamilyManager` component (`app/components/FamilyManager.tsx`) for all `Input` and `SelectTrigger` elements.
+-   Standardized page header styling on the Contact page (`/contact`) to match the About page (`/about`).
+-   Applied `.input-custom-styles` to the Province `SelectTrigger` in the Family Account Settings form (`/family/account`) for consistent styling.
+-   Applied `.input-custom-styles` to the Relationship `SelectTrigger` in the Admin Edit Guardians form (`/admin/families/:familyId/guardians/edit`) for consistent styling.
+-   Applied `.input-custom-styles` to the Relationship `SelectTrigger` in the Family Guardian Edit form (`/family/guardian/:guardianId`) for consistent styling.
+-   Applied `.input-custom-styles` to the Relationship `SelectTrigger` in the Family Add Guardian form (`/family/add-guardian`) for consistent styling.
+-   Ensured consistent application of `.input-custom-styles` in the Admin Edit Family form (`/admin/families/:familyId/edit`) for all `Input` components.
+-   Changed Province field in Admin Edit Family form (`/admin/families/:familyId/edit`) from `Input` to `Select` for consistency.
+-   Wrapped Province `Select` in Admin Edit Family form (`/admin/families/:familyId/edit`) with `ClientOnly` and added hidden input, mirroring Family Account page pattern.
+-   Changed Referral Source field in Admin Edit Family form (`/admin/families/:familyId/edit`) from `Input` to `Select` for consistency, wrapped in `ClientOnly`.
+-   Centralized the list of Canadian provinces/territories in `app/config/site.ts` and updated relevant forms (`Admin Edit Family`, `Family Account`, `Register`, `Admin New Family`) to use this central list.
+-   Standardized page header styling on the Admin Family Detail page (`/admin/families/:familyId`) to match other site pages.
+-   Applied consistent container padding/width and link styling to Admin Family Detail page (`/admin/families/:familyId`) to match Payments page.
+-   Applied consistent Card background colors (`bg-white dark:bg-gray-800`) on Admin Family Detail page (including Students card) to match Payments page table container.
+-   Applied consistent container, header, and card background styling to Admin Attendance Report page (`/admin/attendance/report`).
+-   Updated "Record Today's Attendance" button on Admin Attendance Report page to use default variant for consistency.
+-   Renamed "Generate Report" button to "Update Report" on Admin Attendance Report page for clarity.
+
+### Fixed
+
+-   Fixed Supabase query parse error in `getFamilyDetails` service by removing comments from the `select` string.
+-   Fixed build error (`Unexpected "{"`) in Admin Edit Family form (`/admin/families/:familyId/edit`) by correcting a missing closing brace in the `ActionData` type definition.
+-   Fixed ESLint errors (unused import `MetaFunction`, extra semicolon) in Admin Edit Family form (`/admin/families/:familyId/edit`).
+
 ## [1.0.0] - 2025-04-10
 
 ### Added

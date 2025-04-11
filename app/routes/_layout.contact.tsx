@@ -89,9 +89,18 @@ export default function ContactPage() {
     return (
         <div className="min-h-screen bg-green-50 dark:bg-gray-900 py-12">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md dark:text-gray-100">
-                    <h1 className="text-3xl font-bold text-green-600 mb-6">Contact Sensei Negin</h1>
+                {/* Added text-center div and updated header styles to match About page */}
+                <div className="text-center mb-10"> {/* Added margin-bottom */}
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                        Contact Sensei Negin
+                    </h1>
+                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                        Get in touch for class info, registration, or questions
+                    </p>
+                </div>
 
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md dark:text-gray-100">
+                    {/* Removed original h1 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                         <div>
                             <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
@@ -155,7 +164,7 @@ export default function ContactPage() {
                                     <input
                                         type="text"
                                         id="name"
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
+                                        className="input-custom-styles w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
                                         placeholder="Enter your name"
                                     />
                                 </div>
@@ -168,7 +177,7 @@ export default function ContactPage() {
                                     <input
                                         type="email"
                                         id="email"
-                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
+                                        className="input-custom-styles w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
                                         placeholder="Enter your email"
                                     />
                                 </div>
@@ -182,7 +191,7 @@ export default function ContactPage() {
                                 <input
                                     type="text"
                                     id="subject"
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
+                                    className="input-custom-styles w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="Enter subject"
                                 />
                             </div>
@@ -195,7 +204,7 @@ export default function ContactPage() {
                                 <textarea
                                     id="message"
                                     rows={4}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
+                                    className="input-custom-styles w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
                                     placeholder="Enter your message"
                                 ></textarea>
                             </div>

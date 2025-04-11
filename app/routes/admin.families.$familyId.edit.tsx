@@ -1,16 +1,19 @@
 import invariant from "tiny-invariant";
-import type {ActionFunctionArgs, LoaderFunctionArgs, MetaFunction} from "@remix-run/node";
-import {json, redirect} from "@remix-run/node";
-import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
-import {createClient} from "@supabase/supabase-js";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node"; // Removed MetaFunction import
+import { json, redirect } from "@remix-run/node";
+import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
+import { createClient } from "@supabase/supabase-js";
 import {Database} from "~/types/supabase";
 import {Button} from "~/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
-import {Input} from "~/components/ui/input";
-import {Label} from "~/components/ui/label";
-import {Separator} from "~/components/ui/separator";
-import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Separator } from "~/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"; // Import Select components
+import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
+import { siteConfig } from "~/config/site"; // Import siteConfig
 
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 
@@ -36,16 +39,19 @@ type ActionData = {
         notes?: string;
         referral_source?: string;
         referral_name?: string;
-    };
+    }; // <-- Added missing closing brace for fieldErrors
 };
 
-export const meta: MetaFunction<typeof loader> = ({data}) => {
+// Province options moved inside the component
+
+// Reverted meta function signature to simplified typed version
+export function meta({ data }: { data: LoaderData | undefined }) {
     const familyName = data?.family?.name ?? "Edit Family";
     return [
-        {title: `Edit ${familyName} | Admin Dashboard`},
+        { title: `Edit ${familyName} | Admin Dashboard` },
         {name: "description", content: `Edit details for the ${familyName} family.`},
     ];
-};
+} // Removed extra semicolon
 
 // Loader to fetch existing family data
 export async function loader({params}: LoaderFunctionArgs) {
@@ -165,6 +171,18 @@ export default function EditFamilyPage() {
 
     const isSubmitting = navigation.state === "submitting";
 
+    // Province options are now imported from siteConfig
+
+    // Define referral source options inside the component
+    const referralSources = [
+        { value: "friend", label: "Friend" },
+        { value: "social", label: "Social Media" },
+        { value: "search", label: "Search Engine" },
+        { value: "flyer", label: "Flyer" },
+        { value: "event", label: "Event" },
+        { value: "other", label: "Other" },
+    ];
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -196,6 +214,7 @@ export default function EditFamilyPage() {
                                     name="name"
                                     defaultValue={family.name}
                                     required
+                                    className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.name}
                                     aria-describedby="name-error"
                                 />
@@ -215,6 +234,7 @@ export default function EditFamilyPage() {
                                     type="email"
                                     defaultValue={family.email}
                                     required
+                                    className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.email}
                                     aria-describedby="email-error"
                                 />
@@ -233,6 +253,7 @@ export default function EditFamilyPage() {
                                     name="primary_phone"
                                     type="tel"
                                     defaultValue={family.primary_phone ?? ''}
+                                    className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.primary_phone}
                                     aria-describedby="primary_phone-error"
                                 />
@@ -251,6 +272,7 @@ export default function EditFamilyPage() {
                                     name="address"
                                     defaultValue={family.address ?? ''}
                                     required
+                                    className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.address}
                                     aria-describedby="address-error"
                                 />
@@ -269,6 +291,7 @@ export default function EditFamilyPage() {
                                     name="city"
                                     defaultValue={family.city ?? ''}
                                     required
+                                    className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.city}
                                     aria-describedby="city-error"
                                 />
@@ -282,14 +305,40 @@ export default function EditFamilyPage() {
                             {/* Province */}
                             <div className="space-y-2">
                                 <Label htmlFor="province">Province</Label>
-                                <Input // Consider using a Select component if preferred
-                                    id="province"
-                                    name="province"
-                                    defaultValue={family.province ?? ''}
-                                    required
-                                    aria-invalid={!!actionData?.fieldErrors?.province}
-                                    aria-describedby="province-error"
-                                />
+                                {/* Wrapped Select with ClientOnly and added hidden input */}
+                                <ClientOnly fallback={<Input disabled placeholder="Province..." className="input-custom-styles w-full"/>}>
+                                    {() => (
+                                        <Select
+                                            name="province_select" // Use different name for select to avoid conflict
+                                            defaultValue={family.province ?? ''}
+                                            required
+                                            // Update hidden input value on change
+                                            onValueChange={(value) => {
+                                                const hiddenInput = document.getElementById('province-hidden') as HTMLInputElement | null;
+                                                if (hiddenInput) hiddenInput.value = value;
+                                            }}
+                                        >
+                                            <SelectTrigger
+                                                id="province" // Keep id for label association
+                                                className="input-custom-styles w-full"
+                                                aria-invalid={!!actionData?.fieldErrors?.province}
+                                                aria-describedby="province-error"
+                                            >
+                                                <SelectValue placeholder="Select a province"/>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {/* Use provinces from siteConfig */}
+                                                {siteConfig.provinces.map((prov) => (
+                                                    <SelectItem key={prov.value} value={prov.value}>
+                                                        {prov.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                </ClientOnly>
+                                {/* Hidden input to submit the actual value */}
+                                <input type="hidden" name="province" id="province-hidden" defaultValue={family.province ?? ''} />
                                 {actionData?.fieldErrors?.province && (
                                     <p id="province-error" className="text-sm text-destructive">
                                         {actionData.fieldErrors.province}
@@ -305,6 +354,7 @@ export default function EditFamilyPage() {
                                     name="postal_code"
                                     defaultValue={family.postal_code ?? ''}
                                     required
+                                    className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.postal_code}
                                     aria-describedby="postal_code-error"
                                 />
@@ -323,6 +373,7 @@ export default function EditFamilyPage() {
                                 id="emergency_contact"
                                 name="emergency_contact"
                                 defaultValue={family.emergency_contact ?? ''}
+                                className="input-custom-styles" // Added custom style
                                 aria-invalid={!!actionData?.fieldErrors?.emergency_contact}
                                 aria-describedby="emergency_contact-error"
                             />
@@ -340,6 +391,7 @@ export default function EditFamilyPage() {
                                 id="health_info"
                                 name="health_info"
                                 defaultValue={family.health_info ?? ''}
+                                className="input-custom-styles" // Added custom style
                                 aria-invalid={!!actionData?.fieldErrors?.health_info}
                                 aria-describedby="health_info-error"
                             />
@@ -357,6 +409,7 @@ export default function EditFamilyPage() {
                                 id="notes"
                                 name="notes"
                                 defaultValue={family.notes ?? ''}
+                                className="input-custom-styles" // Added custom style
                                 aria-invalid={!!actionData?.fieldErrors?.notes}
                                 aria-describedby="notes-error"
                             />
@@ -370,16 +423,41 @@ export default function EditFamilyPage() {
                         {/* Referral Source */}
                         <div className="space-y-2">
                             <Label htmlFor="referral_source">Referral Source</Label>
-                            <Input
-                                id="referral_source"
-                                name="referral_source"
-                                defaultValue={family.referral_source ?? ''}
-                                aria-invalid={!!actionData?.fieldErrors?.referral_source}
-                                aria-describedby="referral_source-error"
-                            />
+                            {/* Replaced Input with Select, wrapped in ClientOnly */}
+                            <ClientOnly fallback={<Input disabled placeholder="Referral Source..." className="input-custom-styles w-full"/>}>
+                                {() => (
+                                    <Select
+                                        name="referral_source_select" // Use different name for select
+                                        defaultValue={family.referral_source ?? ''}
+                                        // Update hidden input value on change
+                                        onValueChange={(value) => {
+                                            const hiddenInput = document.getElementById('referral_source-hidden') as HTMLInputElement | null;
+                                            if (hiddenInput) hiddenInput.value = value;
+                                        }}
+                                    >
+                                        <SelectTrigger
+                                            id="referral_source" // Keep id for label association
+                                            className="input-custom-styles w-full"
+                                            aria-invalid={!!actionData?.fieldErrors?.referral_source}
+                                            aria-describedby="referral_source-error"
+                                        >
+                                            <SelectValue placeholder="Select a source"/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {referralSources.map((source) => (
+                                                <SelectItem key={source.value} value={source.value}>
+                                                    {source.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </ClientOnly>
+                            {/* Hidden input to submit the actual value */}
+                            <input type="hidden" name="referral_source" id="referral_source-hidden" defaultValue={family.referral_source ?? ''} />
                             {actionData?.fieldErrors?.referral_source && (
                                 <p id="referral_source-error" className="text-sm text-destructive">
-                                    {actionData.fieldErrors.referral_source}
+                                    {actionData.fieldErrors.referral_source} {/* Keep error display */}
                                 </p>
                             )}
                         </div>
@@ -391,6 +469,7 @@ export default function EditFamilyPage() {
                                 id="referral_name"
                                 name="referral_name"
                                 defaultValue={family.referral_name ?? ''}
+                                className="input-custom-styles" // Added custom style
                                 aria-invalid={!!actionData?.fieldErrors?.referral_name}
                                 aria-describedby="referral_name-error"
                             />

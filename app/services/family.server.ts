@@ -44,9 +44,8 @@ export async function getFamilyDetails(
         .from('families')
         .select(`
             *,
-            // guardians (*), // Removed - fetch guardians separately
             students (*)
-        `)
+        `) // Removed comments causing parse error
         .eq('id', familyId)
         .single<FamilyWithStudents>(); // Explicitly type the expected result
 

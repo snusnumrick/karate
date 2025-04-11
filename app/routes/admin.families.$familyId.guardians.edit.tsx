@@ -302,8 +302,10 @@ export default function EditGuardiansPage() {
                                                     defaultValue={guardian.relationship ?? ''}
                                                     required
                                                 >
+                                                    {/* Applied input-custom-styles for consistency */}
                                                     <SelectTrigger
                                                         id={`guardian_${guardianId}_relationship`}
+                                                        className="input-custom-styles"
                                                         aria-invalid={!!errors?.relationship}
                                                         aria-describedby={`guardian_${guardianId}_relationship-error`}
                                                     >

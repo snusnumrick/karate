@@ -158,17 +158,20 @@ export default function AttendanceReportPage() {
     const formattedEndDate = format(new Date(filterParams.endDate + 'T00:00:00'), 'MMM d, yyyy');
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        // Updated container class for consistency
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                 <div>
                     <Link to="/admin/attendance" className="text-green-600 hover:underline mb-2 inline-block">
                         &larr; Back to Attendance History
                     </Link>
-                    <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                    {/* Updated header classes for consistency */}
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 sm:text-4xl">
                         Attendance Report ({formattedStartDate} - {formattedEndDate})
                     </h1>
                 </div>
-                <Button asChild variant="outline">
+                {/* Removed variant="outline" for consistency with other primary action buttons */}
+                <Button asChild>
                     <Link to="/admin/attendance/record">Record Today&apos;s Attendance</Link>
                 </Button>
             </div>
@@ -181,20 +184,22 @@ export default function AttendanceReportPage() {
                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start
                         Date</Label>
                     <Input type="date" id="startDate" name="startDate" defaultValue={filterParams.startDate}
-                           className="w-full md:w-auto dark:bg-gray-700"/>
+                           className="input-custom-styles w-full md:w-auto"/> {/* Applied custom style, removed redundant */}
                 </div>
                 <div>
                     <Label htmlFor="endDate"
                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</Label>
                     <Input type="date" id="endDate" name="endDate" defaultValue={filterParams.endDate}
-                           className="w-full md:w-auto dark:bg-gray-700"/>
+                           className="input-custom-styles w-full md:w-auto"/> {/* Applied custom style, removed redundant */}
                 </div>
-                <Button type="submit">Generate Report</Button>
+                {/* Renamed button for clarity */}
+                <Button type="submit">Update Report</Button>
             </Form>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card>
+                {/* Added explicit background */}
+                <Card className="bg-white dark:bg-gray-800">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Overall Attendance Rate</CardTitle>
                         {/* Icon can go here */}

@@ -260,6 +260,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                         type="text"
                         value={family.name}
                         onChange={(e) => setFamily({...family, name: e.target.value})}
+                        className="input-custom-styles" // Added custom style
                     />
                 </div>
 
@@ -270,6 +271,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                         type="text"
                         value={family.address}
                         onChange={(e) => setFamily({...family, address: e.target.value})}
+                        className="input-custom-styles" // Added custom style
                     />
                 </div>
 
@@ -280,6 +282,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                         type="tel"
                         value={family.primaryPhone}
                         onChange={(e) => setFamily({...family, primaryPhone: e.target.value})}
+                        className="input-custom-styles" // Added custom style
                     />
                 </div>
 
@@ -290,6 +293,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                         type="email"
                         value={family.email}
                         onChange={(e) => setFamily({...family, email: e.target.value})}
+                        className="input-custom-styles" // Added custom style
                     />
                 </div>
             </div>
@@ -306,6 +310,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="text"
                                     value={guardian.firstName}
                                     onChange={(e) => updateGuardian(index, {firstName: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -315,6 +320,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="text"
                                     value={guardian.lastName}
                                     onChange={(e) => updateGuardian(index, {lastName: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -324,6 +330,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="text"
                                     value={guardian.relationship}
                                     onChange={(e) => updateGuardian(index, {relationship: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -333,6 +340,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="tel"
                                     value={guardian.homePhone}
                                     onChange={(e) => updateGuardian(index, {homePhone: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -342,6 +350,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="tel"
                                     value={guardian.cellPhone}
                                     onChange={(e) => updateGuardian(index, {cellPhone: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -351,6 +360,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="email"
                                     value={guardian.email}
                                     onChange={(e) => updateGuardian(index, {email: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                         </div>
@@ -378,6 +388,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="text"
                                     value={student.firstName}
                                     onChange={(e) => updateStudent(index, {firstName: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -387,6 +398,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="text"
                                     value={student.lastName}
                                     onChange={(e) => updateStudent(index, {lastName: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -396,6 +408,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="date"
                                     value={student.birthDate}
                                     onChange={(e) => updateStudent(index, {birthDate: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             {/* Belt Rank Select Removed */}
@@ -405,7 +418,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     value={student.gender}
                                     onValueChange={(value) => updateStudent(index, {gender: value})}
                                 >
-                                    <SelectTrigger id={`student-gender-${index}`}>
+                                    <SelectTrigger id={`student-gender-${index}`} className="input-custom-styles"> {/* Added custom style */}
                                         <SelectValue placeholder="Select gender"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -422,6 +435,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="text"
                                     value={student.school}
                                     onChange={(e) => updateStudent(index, {school: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -431,6 +445,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                                     type="text"
                                     value={student.gradeLevel}
                                     onChange={(e) => updateStudent(index, {gradeLevel: e.target.value})}
+                                    className="input-custom-styles" // Added custom style
                                 />
                             </div>
                         </div>
@@ -457,6 +472,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
 
                 {family.id && (
                     <Form method="post" action="/api/create-checkout-session">
+                        {/* These are hidden inputs, using plain HTML is standard and correct here */}
                         <input type="hidden" name="familyId" value={family.id}/>
                         <input type="hidden" name="amount" value="9900"/>
                         <input type="hidden" name="studentIds"

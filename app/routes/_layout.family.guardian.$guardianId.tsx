@@ -348,7 +348,8 @@ export default function GuardianDetailPage() {
                                                 <FormLabel>Relationship</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl>
-                                                        <SelectTrigger><SelectValue
+                                                        {/* Applied input-custom-styles for consistency */}
+                                                        <SelectTrigger className="input-custom-styles"><SelectValue
                                                             placeholder="Select relationship"/></SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>

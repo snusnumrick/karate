@@ -313,7 +313,7 @@ export default function RecordAttendancePage() {
                         name="attendance-date-picker" // Name not strictly needed if using onChange navigation
                         value={selectedDate}
                         onChange={handleDateChange}
-                        className="w-auto inline-block dark:bg-gray-700 dark:border-gray-600"
+                        className="input-custom-styles w-auto inline-block" // Applied custom style, removed redundant
                     />
                 </div>
             </div>
@@ -395,7 +395,7 @@ export default function RecordAttendancePage() {
                                                 defaultValue={defaultNotes}
                                                 rows={2}
                                                 placeholder="e.g., Left early, arrived late"
-                                                className="mt-1"
+                                                className="input-custom-styles mt-1" // Applied custom style
                                             />
                                         </div>
                                     </div>
