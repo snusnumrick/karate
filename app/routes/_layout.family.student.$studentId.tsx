@@ -1,7 +1,8 @@
 import {useEffect, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
+import {Form, Link, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import { createClient } from '@supabase/supabase-js'; // Import createClient
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Input} from "~/components/ui/input";
@@ -9,6 +10,16 @@ import {Label} from "~/components/ui/label";
 import {Textarea} from "~/components/ui/textarea";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "~/components/ui/alert-dialog"; // Added AlertDialog components
 import type {Database} from "~/types/supabase";
 import {Badge} from "~/components/ui/badge"; // Import Badge
 import {format} from 'date-fns'; // Import date-fns
@@ -144,19 +155,35 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
     // --- Handle Delete Intent ---
     if (intent === "delete") {
+        console.log(`[Action/DeleteStudent] Attempting to delete student ID: ${studentId} for user ID: ${user.id}`);
+
+        // Explicitly create an admin client to bypass RLS for deletion
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error("[Action/DeleteStudent] Missing Supabase URL or Service Role Key");
+            return json({ error: "Server configuration error." }, { status: 500, headers });
+        }
+        const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+
+        console.log(`[Action/DeleteStudent] Executing delete for student ID: ${studentId}`);
         // Add checks for related data if necessary (e.g., attendance, payments) before deleting
-        const {error: deleteError} = await supabaseServer
+        const deleteResult = await supabaseAdmin // Use explicit admin client
             .from('students')
             .delete()
             .eq('id', studentId);
 
-        if (deleteError) {
-            console.error("Error deleting student:", deleteError);
-            return json({error: "Failed to delete student. " + deleteError.message}, {status: 500, headers});
+        console.log(`[Action/DeleteStudent] Delete result for student ID ${studentId}:`, JSON.stringify(deleteResult)); // Log the full result
+
+        if (deleteResult.error) {
+            console.error(`[Action/DeleteStudent] Error deleting student ID ${studentId}:`, deleteResult.error);
+            return json({error: "Failed to delete student. " + deleteResult.error.message}, {status: 500, headers});
         }
 
-        // Redirect to family page after successful deletion
-        return redirect("/family", {headers});
+        console.log(`[Action/DeleteStudent] Assumed successful deletion for student ID: ${studentId}. Redirecting...`);
+        // Redirect to family page after successful deletion. Rely on default revalidation.
+        return redirect("/family"); // Removed {headers}
     }
 
     // --- Handle Edit Intent ---
@@ -229,12 +256,16 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
 export default function StudentDetailPage() {
     // Update to use the extended LoaderData type including currentBeltRank
+    // Update to use the extended LoaderData type including currentBeltRank
     const {student, beltAwards, currentBeltRank} = useLoaderData<LoaderData>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
+    const submit = useSubmit(); // Get submit hook
     const [isEditing, setIsEditing] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete dialog
 
     const isSubmitting = navigation.state === "submitting";
+    const formIntent = navigation.formData?.get('intent'); // Get intent for loading state
 
     // Reset edit mode on successful update
     useEffect(() => {
@@ -497,21 +528,43 @@ export default function StudentDetailPage() {
                             </Button>
                         </div>
 
-                        {/* Delete Form */}
-                        <Form
-                            method="post"
-                            onSubmit={(e) => {
-                                if (!confirm(`Are you sure you want to delete student ${student.first_name} ${student.last_name}? This cannot be undone.`)) {
-                                    e.preventDefault();
-                                }
-                            }}
+                        {/* Delete Button triggers Dialog */}
+                        <Button
+                            type="button" // Change type
+                            variant="destructive"
+                            onClick={() => setIsDeleteDialogOpen(true)} // Open dialog
+                            disabled={isSubmitting && formIntent === 'delete'}
                         >
-                            <input type="hidden" name="intent" value="delete"/>
-                            <Button type="submit" variant="destructive" disabled={isSubmitting}>
-                                {isSubmitting ? 'Deleting...' : 'Delete Student'}
-                            </Button>
-                        </Form>
+                            {isSubmitting && formIntent === 'delete' ? 'Deleting...' : 'Delete Student'}
+                        </Button>
                     </div>
+
+                    {/* Delete Confirmation Dialog */}
+                    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the student
+                                    <span className="font-semibold"> {student.first_name} {student.last_name}</span> and remove their data from our servers.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isSubmitting && formIntent === 'delete'}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={() => {
+                                        const formData = new FormData();
+                                        formData.append('intent', 'delete');
+                                        submit(formData, { method: 'post', replace: true });
+                                    }}
+                                    disabled={isSubmitting && formIntent === 'delete'}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                    {isSubmitting && formIntent === 'delete' ? 'Deleting...' : 'Delete Student'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </>
             )}
 

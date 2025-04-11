@@ -10,3 +10,7 @@ node_modules
 coverage/
 .vscode/
 /diagrams/  # Add this line to exclude generated diagrams
+.idea/
+dist/
+.temp/
+

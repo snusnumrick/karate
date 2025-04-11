@@ -316,11 +316,11 @@ export default function FamilyPortal() {
                     ) : (
                          <p className="text-gray-600 dark:text-gray-400 mb-4">No guardians added yet.</p>
                     )}
-                     {/* Link to a future page for adding a guardian - Button removed for now */}
-                     {/* <Button asChild className="mt-2"> */}
+                     {/* Link to a future page for adding a guardian */}
+                     <Button asChild className="mt-2">
                          {/* TODO: Create this route */}
-                         {/* <Link to="/family/add-guardian">Add Guardian</Link> */}
-                     {/* </Button> */}
+                         <Link to="/family/add-guardian">Add Guardian</Link>
+                     </Button>
                      {family.guardians && family.guardians.length === 1 && (
                          <p className="text-sm text-muted-foreground mt-3">
                              Consider adding a second guardian for backup contact purposes.

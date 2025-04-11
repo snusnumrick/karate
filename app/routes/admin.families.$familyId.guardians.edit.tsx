@@ -10,9 +10,11 @@ import {Button} from "~/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select"; // Import Select components
 import {Separator} from "~/components/ui/separator";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
+import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
 
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 
@@ -240,9 +242,11 @@ export default function EditGuardiansPage() {
                     {guardians.length === 0 ? (
                         <p>There are no guardians associated with this family to edit.</p>
                     ) : (
-                        <Form method="post" className="space-y-6">
-                            {guardians.map((guardian, index) => {
-                                const guardianId = guardian.id;
+                        <ClientOnly fallback={<div className="text-center p-8">Loading form...</div>}>
+                            {() => (
+                                <Form method="post" className="space-y-6">
+                                    {guardians.map((guardian, index) => {
+                                        const guardianId = guardian.id;
                                 const errors = actionData?.fieldErrors?.[guardianId];
                                 return (
                                     <div key={guardianId} className="p-4 border rounded-md space-y-4">
@@ -291,16 +295,27 @@ export default function EditGuardiansPage() {
 
                                             {/* Relationship */}
                                             <div className="space-y-1">
-                                                <Label
-                                                    htmlFor={`guardian_${guardianId}_relationship`}>Relationship</Label>
-                                                <Input
-                                                    id={`guardian_${guardianId}_relationship`}
+                                                <Label htmlFor={`guardian_${guardianId}_relationship`}>Relationship</Label>
+                                                {/* Use Select component */}
+                                                <Select
                                                     name={`guardian_${guardianId}_relationship`}
                                                     defaultValue={guardian.relationship ?? ''}
-                                                    required // Added required
-                                                    aria-invalid={!!errors?.relationship}
-                                                    aria-describedby={`guardian_${guardianId}_relationship-error`}
-                                                />
+                                                    required
+                                                >
+                                                    <SelectTrigger
+                                                        id={`guardian_${guardianId}_relationship`}
+                                                        aria-invalid={!!errors?.relationship}
+                                                        aria-describedby={`guardian_${guardianId}_relationship-error`}
+                                                    >
+                                                        <SelectValue placeholder="Select relationship"/>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Mother">Mother</SelectItem>
+                                                        <SelectItem value="Father">Father</SelectItem>
+                                                        <SelectItem value="Guardian">Guardian</SelectItem>
+                                                        <SelectItem value="Other">Other</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                                 {errors?.relationship && (
                                                     <p id={`guardian_${guardianId}_relationship-error`}
                                                        className="text-sm text-destructive">
@@ -459,7 +474,9 @@ export default function EditGuardiansPage() {
                                     {isSubmitting ? "Saving Guardians..." : "Save All Changes"}
                                 </Button>
                             </div>
-                        </Form>
+                                </Form>
+                            )}
+                        </ClientOnly>
                     )}
                 </CardContent>
             </Card>

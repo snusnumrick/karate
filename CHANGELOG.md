@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-04-09
+## [Unreleased] - 2025-04-10
 
 ### Added
 
 -   Added dedicated guardian detail/edit page (`/family/guardian/:guardianId`).
+-   Added dedicated "Add Guardian" page (`/family/add-guardian.tsx`) for family portal users.
 -   Added guardian service (`app/services/guardian.server.ts`).
 -   Added dedicated Guardian API endpoints:
     -   `GET /api/v1/families/{familyId}/guardians` (List guardians for family)
@@ -39,6 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Fixed invalid JSON error in `mcp_server/tsconfig.json`.
 -   Fixed incorrect property access (`responseBody.error`) in `mcp_server/src/apiClient.ts`.
 -   Removed invalid `email_redirect_to` option from Supabase admin `createUser` call.
+-   Fixed guardian deletion not persisting by using explicit admin client and ensuring correct redirect behavior.
+-   Fixed validation error for `relationship` field in guardian forms by using `<Select>` component and ensuring value submission.
+-   Fixed `useLayoutEffect` server-side warning in admin guardian edit form by wrapping content in `<ClientOnly>`.
+-   Fixed RLS errors during guardian creation/deletion by using explicit admin client.
+-   Fixed duplicate variable declarations (`guardian`, `actionData`) in guardian detail page.
+-   Replaced browser confirm dialog with Shadcn `AlertDialog` for student deletion confirmation (`/family/student/:studentId`).
+-   Fixed student deletion not persisting by using explicit admin client (`/family/student/:studentId`).
 
 ### Removed
 
@@ -46,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Guardian #2 section and related logic from web registration form, API, and MCP server.
 -   Student section and related logic from web registration form, API, and MCP server.
 -   Guardian editing forms and logic from the family account settings page.
--   "Add Guardian" button from family portal index page (pending creation of add guardian route).
+-   Unused imports/variables in guardian-related routes.
 
 ---
 

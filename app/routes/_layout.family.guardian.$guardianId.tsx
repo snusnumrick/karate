@@ -1,9 +1,21 @@
 import {useEffect, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
+import {Form, Link, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import { createClient } from '@supabase/supabase-js'; // Import createClient
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    // Removed unused AlertDialogTrigger
+} from "~/components/ui/alert-dialog"; // Added AlertDialog components
 import {Input} from "~/components/ui/input";
 // Removed unused Label import
 import {Textarea} from "~/components/ui/textarea";
@@ -135,19 +147,37 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
     // --- Handle Delete Intent ---
     if (intent === "deleteGuardian") {
-        // Optional: Add checks if this guardian is the only one, or primary contact, etc.
-        const {error: deleteError} = await supabaseServer
+        console.log(`[Action/Delete] Attempting to delete guardian ID: ${guardianId} for user ID: ${user.id}`);
+
+        // Explicitly create an admin client to bypass RLS for deletion
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error("[Action/Delete] Missing Supabase URL or Service Role Key");
+            return json({ status: 'error', message: "Server configuration error." }, { status: 500, headers });
+        }
+        const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+
+        console.log(`[Action/Delete] Executing delete for guardian ID: ${guardianId}`);
+        const deleteResult = await supabaseAdmin // Use explicit admin client
             .from('guardians')
             .delete()
             .eq('id', guardianId);
 
-        if (deleteError) {
-            console.error("Error deleting guardian:", deleteError);
-            return json({status: 'error', message: "Failed to delete guardian. " + deleteError.message}, {status: 500, headers});
+        console.log(`[Action/Delete] Delete result for guardian ID ${guardianId}:`, JSON.stringify(deleteResult)); // Log the full result
+
+        if (deleteResult.error) {
+            console.error(`[Action/Delete] Error deleting guardian ID ${guardianId}:`, deleteResult.error);
+            return json({status: 'error', message: "Failed to delete guardian. " + deleteResult.error.message}, {status: 500, headers});
         }
 
-        // Redirect to family page after successful deletion
-        return redirect("/family", {headers});
+        // Check if the operation actually affected any rows (though .delete() might not return count reliably depending on settings)
+        // Supabase delete often returns { data: null, error: null } on success.
+
+        console.log(`[Action/Delete] Assumed successful deletion for guardian ID: ${guardianId}. Redirecting...`);
+        // Redirect to family page after successful deletion.
+        return redirect("/family"); // Removed {headers} to ensure default revalidation
     }
 
     // --- Handle Edit Intent ---
@@ -194,7 +224,10 @@ export default function GuardianDetailPage() {
     const {guardian} = useLoaderData<LoaderData>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
+    const submit = useSubmit(); // Get the submit function
     const [isEditing, setIsEditing] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete dialog
+    // Removed deleteFormRef
 
     const isSubmitting = navigation.state === "submitting";
     const formIntent = navigation.formData?.get('intent');
@@ -452,22 +485,47 @@ export default function GuardianDetailPage() {
                             Edit Guardian
                         </Button>
 
-                        {/* Delete Form */}
-                        <Form
-                            method="post"
-                            onSubmit={(e) => {
-                                if (!confirm(`Are you sure you want to delete guardian ${guardian.first_name} ${guardian.last_name}? This cannot be undone.`)) {
-                                    e.preventDefault();
-                                }
-                            }}
+                        {/* Delete Button triggers Dialog */}
+                        <Button
+                            type="button" // Change type to button
+                            variant="destructive"
+                            onClick={() => setIsDeleteDialogOpen(true)} // Open dialog on click
+                            disabled={isSubmitting && formIntent === 'deleteGuardian'}
                         >
-                            <input type="hidden" name="intent" value="deleteGuardian"/>
-                            <Button type="submit" variant="destructive"
-                                    disabled={isSubmitting && formIntent === 'deleteGuardian'}>
-                                {isSubmitting && formIntent === 'deleteGuardian' ? 'Deleting...' : 'Delete Guardian'}
-                            </Button>
-                        </Form>
+                            {isSubmitting && formIntent === 'deleteGuardian' ? 'Deleting...' : 'Delete Guardian'}
+                        </Button>
                     </div>
+
+                    {/* Delete Confirmation Dialog */}
+                    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the guardian
+                                    <span className="font-semibold"> {guardian.first_name} {guardian.last_name}</span> and remove their data from our servers.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isSubmitting && formIntent === 'deleteGuardian'}>Cancel</AlertDialogCancel>
+                                {/* Removed hidden form */}
+                                {/* Action button triggers form submission via useSubmit */}
+                                <AlertDialogAction
+                                    onClick={() => {
+                                        // No need for e.preventDefault()
+                                        const formData = new FormData();
+                                        formData.append('intent', 'deleteGuardian');
+                                        submit(formData, { method: 'post', replace: true }); // Use submit hook, replace history entry
+                                    }}
+                                    disabled={isSubmitting && formIntent === 'deleteGuardian'} // Disable during submission
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90" // Style as destructive
+                                >
+                                    {/* Show loading state */}
+                                    {isSubmitting && formIntent === 'deleteGuardian' ? 'Deleting...' : 'Delete Guardian'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </>
             )}
         </div>
