@@ -7,7 +7,6 @@ import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {BELT_RANKS} from "~/utils/constants";
 
 // Loader to get family ID and name for context
 export async function loader({request}: LoaderFunctionArgs) {
@@ -87,7 +86,7 @@ export async function action({request}: ActionFunctionArgs) {
     const medications = formData.get("medications") as string | null;
     const immunizationsUpToDate = formData.get("immunizationsUpToDate") as string | null;
     const immunizationNotes = formData.get("immunizationNotes") as string | null;
-    const beltRank = formData.get("beltRank") as string | null;
+    // const beltRank = formData.get("beltRank") as string | null; // Removed - belt rank managed via belt_awards
     const email = formData.get("email") as string | null;
     const cellPhone = formData.get("cellPhone") as string | null;
 
@@ -112,10 +111,11 @@ export async function action({request}: ActionFunctionArgs) {
             medications: medications,
             immunizations_up_to_date: immunizationsUpToDate,
             immunization_notes: immunizationNotes,
-            belt_rank: beltRank as typeof BELT_RANKS[number] | null,
+            // belt_rank: beltRank as typeof BELT_RANKS[number] | null, // Removed - belt rank managed via belt_awards
             email: email,
             cell_phone: cellPhone,
             // Add other fields as necessary, ensure they match your DB schema
+            // Note: Initial belt rank (White) should be added via belt_awards by an admin if needed.
         });
 
         if (studentInsertError) {
@@ -258,25 +258,7 @@ export default function AddStudentPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div>
-                            <Label htmlFor="beltRank" className="block text-sm font-medium mb-1">
-                                Starting Belt Rank
-                            </Label>
-                            <Select name="beltRank">
-                                <SelectTrigger id="beltRank"
-                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
-                                    <SelectValue placeholder="Select belt rank (usually White)"/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {BELT_RANKS.map((rank) => (
-                                        <SelectItem key={rank} value={rank} className="capitalize">
-                                            {rank}
-                                        </SelectItem>
-                                    ))}
-                                    {/* Add other ranks if needed */}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {/* Belt Rank Select Removed - Managed via belt_awards table */}
                     </div>
 
                     <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border dark:border-gray-700">Optional

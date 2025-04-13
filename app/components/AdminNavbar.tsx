@@ -76,43 +76,51 @@ export default function AdminNavbar() {
                             </Button>
                         </Form>
 
-                        {/* Mobile Menu Button */}
-                        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                            <SheetTrigger asChild className="md:hidden">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => setIsOpen(!isOpen)}
-                                >
-                                    {isOpen ? <X className="h-5 w-5"/> : <Menu className="h-5 w-5"/>}
-                                </Button>
-                            </SheetTrigger>
-
-                            <SheetContent
-                                side="right"
-                                className="w-[300px] sm:w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
-                            >
-                                <div className="flex flex-col space-y-2 mt-6">
-                                    {adminNavItems.map((item) => (
-                                        <AdminMobileNavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)}>
-                                            <item.icon className="h-5 w-5 mr-2 inline-block"/>
-                                            {item.label}
-                                        </AdminMobileNavLink>
-                                    ))}
-                                    {/* Mobile Logout */}
-                                    <Form action="/logout" method="post" className="mt-4 px-4">
+                        {/* Mobile Menu Button - Wrap Sheet in ClientOnly */}
+                        <ClientOnly fallback={
+                            <Button variant="outline" size="icon" className="md:hidden" disabled>
+                                <Menu className="h-5 w-5" />
+                            </Button>
+                        }>
+                            {() => (
+                                <Sheet open={isOpen} onOpenChange={setIsOpen}>
+                                    <SheetTrigger asChild className="md:hidden">
                                         <Button
-                                            type="submit"
                                             variant="outline"
-                                            className="w-full text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300"
-                                            onClick={() => setIsOpen(false)}
+                                            size="icon"
+                                            onClick={() => setIsOpen(!isOpen)}
                                         >
-                                            <LogOut className="h-4 w-4 mr-1"/> Logout
+                                            {isOpen ? <X className="h-5 w-5"/> : <Menu className="h-5 w-5"/>}
                                         </Button>
-                                    </Form>
-                                </div>
-                            </SheetContent>
-                        </Sheet>
+                                    </SheetTrigger>
+
+                                    <SheetContent
+                                        side="right"
+                                        className="w-[300px] sm:w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
+                                    >
+                                        <div className="flex flex-col space-y-2 mt-6">
+                                            {adminNavItems.map((item) => (
+                                                <AdminMobileNavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)}>
+                                                    <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                    {item.label}
+                                                </AdminMobileNavLink>
+                                            ))}
+                                            {/* Mobile Logout */}
+                                            <Form action="/logout" method="post" className="mt-4 px-4">
+                                                <Button
+                                                    type="submit"
+                                                    variant="outline"
+                                                    className="w-full text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300"
+                                                    onClick={() => setIsOpen(false)}
+                                                >
+                                                    <LogOut className="h-4 w-4 mr-1"/> Logout
+                                                </Button>
+                                            </Form>
+                                        </div>
+                                    </SheetContent>
+                                </Sheet>
+                            )}
+                        </ClientOnly>
                     </div>
                 </div>
             </div>

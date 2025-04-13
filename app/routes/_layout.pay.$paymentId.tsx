@@ -11,20 +11,29 @@ import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {siteConfig} from "~/config/site"; // Assuming price IDs might be needed indirectly or for display
 import type {Database} from "~/types/supabase";
+import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
 
-type PaymentRow = Database['public']['Tables']['payments']['Row'];
+// Import types for payment table columns
+type PaymentColumns = Database['public']['Tables']['payments']['Row'];
 type PaymentStudentRow = Database['public']['Tables']['payment_students']['Row'];
-type FamilyRow = Database['public']['Tables']['families']['Row']; // Add FamilyRow type
+type FamilyRow = Database['public']['Tables']['families']['Row'];
+type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row'];
+type TaxRateRow = Database['public']['Tables']['tax_rates']['Row']; // Add TaxRateRow type
 
-type PaymentWithDetails = PaymentRow & {
-    // Include email and postal_code in the family object type
+// Define the detailed payment type including new amount columns and taxes with description
+type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount'> & { // Omit old amount and single tax_amount
+    subtotal_amount: number;
+    total_amount: number;
     family: Pick<FamilyRow, 'name' | 'email' | 'postal_code'> | null;
-    type: Database['public']['Enums']['payment_type_enum']; // Use 'type' to match DB column
-    // Add associated students directly to the payment object
+    type: Database['public']['Enums']['payment_type_enum'];
+    // Update payment_taxes to include the related tax rate description
+    payment_taxes: Array<
+        Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_amount'> & {
+            tax_rates: Pick<TaxRateRow, 'description'> | null; // Fetch description from related tax_rates
+        }
+    >;
     payment_students: Array<Pick<PaymentStudentRow, 'student_id'>>;
-    // Add quantity if stored directly on payment (e.g., for pre-created individual sessions)
-    // quantity?: number | null;
-    // status: Database['public']['Enums']['payment_status']; // Status is already part of PaymentRow
+    // quantity?: number | null; // Keep if needed
 };
 
 type LoaderData = {
@@ -35,17 +44,22 @@ type LoaderData = {
 };
 
 // --- Action Response Types (Mirrored from API endpoint) ---
-// Type for the successful response from /api/create-payment-intent
+// Type for the successful response from /api/create-payment-intent (includes subtotal, tax, total)
 type ActionSuccessResponse = {
     clientSecret: string;
     supabasePaymentId: string;
-    totalAmount: number;
-    error?: never;
+    subtotalAmount: number; // Amount before tax in cents
+    taxAmount: number;      // Calculated tax amount in cents (can be 0)
+    totalAmount: number;    // Total amount in cents (subtotal + tax)
+    error?: never; // Ensure error is not present on success
 };
-// Type for the error response from /api/create-payment-intent
+
+// Type for the error response from /api/create-payment-intent (ensure new fields are not present)
 type ActionErrorResponse = {
-    clientSecret?: never;
+    clientSecret?: never; // Ensure clientSecret is not present on error
     supabasePaymentId?: never;
+    subtotalAmount?: never;
+    taxAmount?: never;
     totalAmount?: never;
     error: string;
 };
@@ -90,12 +104,18 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     // Fetch payment, family name, and associated student IDs in one go
     // Restore full select statement
+    // Fetch payment, including new amount columns and related taxes
     const {data: payment, error} = await supabaseServer
         .from('payments')
         .select(`
-            id, family_id, amount, payment_date, payment_method, status, stripe_session_id, stripe_payment_intent_id, receipt_url, notes, type,
+            id, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, stripe_payment_intent_id, receipt_url, notes, type,
             family:family_id (name, email, postal_code),
-            payment_students ( student_id )
+            payment_students ( student_id ),
+            payment_taxes (
+                tax_name_snapshot,
+                tax_amount,
+                tax_rates ( description )
+            )
         `)
         .eq('id', paymentId)
         .maybeSingle(); // Use maybeSingle to handle not found gracefully
@@ -272,7 +292,7 @@ function CheckoutForm({payment, defaultEmail, defaultPostalCode}: CheckoutFormPr
                 // Optional: Add payment_method_data like billing_details if needed
                 // payment_method_data: {
                 //   billing_details: {
-                //     name: 'Jenny Rosen', // Example
+                //     // name: 'Jenny Rosen', // Example - Link Auth Element often handles this
                 //   },
                 // }
             },
@@ -351,8 +371,8 @@ function CheckoutForm({payment, defaultEmail, defaultPostalCode}: CheckoutFormPr
                 disabled={!stripe || !elements || isProcessing}
                 className="w-full"
             >
-                {/* Text updates based on processing state */}
-                {isProcessing ? 'Processing...' : `Pay $${(payment.amount / 100).toFixed(2)}`}
+                {/* Display FINAL total amount on button */}
+                {isProcessing ? 'Processing...' : `Pay $${(payment.total_amount / 100).toFixed(2)}`}
             </Button>
         </form>
     );
@@ -490,6 +510,10 @@ export default function PaymentPage() {
             formData.append('familyId', payment.family_id);
             formData.append('familyName', payment.family?.name ?? 'Unknown Family'); // Need family name
             formData.append('supabasePaymentId', payment.id); // Pass Supabase ID for linking/update
+            // Pass existing amounts (in cents) to the API to prevent recalculation mismatches
+            formData.append('subtotalAmount', payment.subtotal_amount.toString());
+            formData.append('totalAmount', payment.total_amount.toString());
+
 
             // Determine paymentOption, priceId, quantity, studentIds based on payment.payment_type
             // This logic is CRUCIAL and depends heavily on how you store payment details
@@ -519,16 +543,17 @@ export default function PaymentPage() {
                     paymentOption = 'individual';
                     priceId = siteConfig.stripe.priceIds.oneOnOneSession; // Use correct property name: oneOnOneSession
                     // Determine quantity: This depends on how you created the payment record.
-                    // If the quantity is stored on the payment record itself (e.g., in a 'quantity' column
-                    // or metadata), use that. Otherwise, calculate based on amount/price.
-                    // For now, let's assume the amount on the payment record is correct and calculate quantity.
-                    if (siteConfig.pricing.oneOnOneSession > 0) {
-                        const calculatedQuantity = Math.round(payment.amount / (siteConfig.pricing.oneOnOneSession * 100));
+                    // If the quantity is stored on the payment record itself (e.g., in a 'quantity' column), use that.
+                    // Otherwise, calculate based on subtotal_amount / price.
+                    // Let's assume quantity needs calculation based on subtotal.
+                    if (siteConfig.pricing.oneOnOneSession > 0 && payment.subtotal_amount) {
+                        const pricePerSessionCents = siteConfig.pricing.oneOnOneSession * 100;
+                        const calculatedQuantity = Math.round(payment.subtotal_amount / pricePerSessionCents);
                         quantity = calculatedQuantity > 0 ? calculatedQuantity.toString() : '1'; // Default to 1 if calculation fails
-                        console.log(`[PaymentPage Effect] Calculated quantity ${quantity} for individual session payment ${payment.id} based on amount ${payment.amount} and price ${siteConfig.pricing.oneOnOneSession * 100}`);
+                        console.log(`[PaymentPage Effect] Calculated quantity ${quantity} for individual session payment ${payment.id} based on subtotal ${payment.subtotal_amount} and price ${pricePerSessionCents}`);
                     } else {
-                        console.error("Individual session price is zero or not configured. Cannot determine quantity.");
-                        setFetcherError("Configuration error: Individual session price missing.");
+                        console.error("Individual session price is zero, not configured, or subtotal_amount missing. Cannot determine quantity.");
+                        setFetcherError("Configuration error: Cannot determine individual session quantity.");
                         return;
                     }
                     break;
@@ -592,13 +617,29 @@ export default function PaymentPage() {
                     console.log(`[PaymentPage Effect] Received SAME clientSecret. No state update needed.`);
                 }
 
-                // Verify amounts match as a sanity check
-                if (payment && paymentIntentFetcher.data.totalAmount && payment.amount !== paymentIntentFetcher.data.totalAmount) {
-                    console.error(`Amount mismatch! Payment record: ${payment.amount}, Intent created: ${paymentIntentFetcher.data.totalAmount}`);
-                    setFetcherError("Payment amount mismatch detected. Please contact support immediately.");
-                    setClientSecret(null); // Prevent payment attempt with wrong amount
+                // Verify amounts match as a sanity check (compare subtotal, tax, and total)
+                if (payment) {
+                    let mismatch = false;
+                    if (paymentIntentFetcher.data.subtotalAmount !== payment.subtotal_amount) {
+                        console.error(`Subtotal Amount mismatch! DB record: ${payment.subtotal_amount}, Intent created: ${paymentIntentFetcher.data.subtotalAmount}`);
+                        mismatch = true;
+                    }
+                    // Verify total tax amount (Commented out comparison - only check subtotal and total)
+                    // const dbTotalTax = payment.payment_taxes?.reduce((sum, tax) => sum + tax.tax_amount, 0) ?? 0;
+                    // if (paymentIntentFetcher.data.taxAmount !== dbTotalTax) {
+                    //     console.error(`Total Tax Amount mismatch! DB record sum: ${dbTotalTax}, Intent created: ${paymentIntentFetcher.data.taxAmount}`);
+                    //     mismatch = true;
+                    // }
+                    if (paymentIntentFetcher.data.totalAmount !== payment.total_amount) {
+                        console.error(`Total Amount mismatch! DB record: ${payment.total_amount}, Intent created: ${paymentIntentFetcher.data.totalAmount}`);
+                        mismatch = true;
+                    }
+                    if (mismatch) {
+                        setFetcherError("Payment amount mismatch detected. Please contact support immediately.");
+                        setClientSecret(null); // Prevent payment attempt with wrong amount
+                    }
                 }
-                // Check if it's an error response
+            // Check if it's an error response
             } else if ('error' in paymentIntentFetcher.data && paymentIntentFetcher.data.error) {
                 console.error("[PaymentPage Effect] Error fetching clientSecret:", paymentIntentFetcher.data.error);
                 setFetcherError(paymentIntentFetcher.data.error);
@@ -675,11 +716,26 @@ export default function PaymentPage() {
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span className="font-semibold">Family:</span> {payment.family?.name ?? 'N/A'}
                 </p>
+                {/* Display Subtotal, Tax, and Total */}
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <span className="font-semibold">Amount:</span> ${(payment.amount / 100).toFixed(2)}
+                    <span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)}
                 </p>
-                {/* Payment ID removed */}
-                {/* TODO: Add more details if needed */}
+                {/* Display Tax Breakdown */}
+                {/* Display Tax Breakdown using description */}
+                {payment.payment_taxes && payment.payment_taxes.length > 0 && (
+                    payment.payment_taxes.map((tax, index) => (
+                        <p key={index} className="text-sm text-gray-700 dark:text-gray-300">
+                            {/* Use tax_rates.description, fallback to tax_name_snapshot */}
+                            <span className="font-semibold">
+                                {tax.tax_rates?.description || tax.tax_name_snapshot}:
+                            </span> ${(tax.tax_amount / 100).toFixed(2)}
+                        </p>
+                    ))
+                )}
+                 <p className="text-lg font-bold text-gray-800 dark:text-gray-100 mt-2 border-t pt-2 dark:border-gray-600">
+                    {/* Display the final total amount */}
+                    <span className="font-semibold">Total Amount:</span> ${(payment.total_amount / 100).toFixed(2)} CAD
+                </p>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span
                         className="font-semibold">Product:</span> {getPaymentProductDescription(payment.type)} {/* Use helper function */}
@@ -697,22 +753,26 @@ export default function PaymentPage() {
                 </Alert>
             )}
 
-            {/* Restore Stripe Elements Form */}
-            {/* Ensure stripePromise state is loaded and we have options (clientSecret) */}
-            {stripePromise && options && !fetcherError ? (
-                <Elements stripe={stripePromise} options={options}> {/* Use stripePromise from state */}
-                    <CheckoutForm
-                        payment={payment} // clientSecret removed from CheckoutForm props
-                        defaultEmail={payment.family?.email} // Pass family email
-                        defaultPostalCode={payment.family?.postal_code} // Pass family postal code
-                    />
-                </Elements>
-            ) : (
-                // Show loading only if no error and not already initializing
-                !fetcherError && paymentIntentFetcher.state !== 'submitting' &&
-                <p className="text-center text-gray-600 dark:text-gray-400">Loading payment form...</p>
-            )}
-            {/* End Restore Stripe Elements Form */}
+            {/* Wrap Stripe Elements Form in ClientOnly */}
+            <ClientOnly fallback={<p className="text-center text-gray-600 dark:text-gray-400 py-8">Loading payment form...</p>}>
+                {() => (
+                    // Ensure stripePromise state is loaded and we have options (clientSecret)
+                    stripePromise && options && !fetcherError ? (
+                        <Elements stripe={stripePromise} options={options}> {/* Use stripePromise from state */}
+                            <CheckoutForm
+                                payment={payment} // clientSecret removed from CheckoutForm props
+                                defaultEmail={payment.family?.email} // Pass family email
+                                defaultPostalCode={payment.family?.postal_code} // Pass family postal code
+                            />
+                        </Elements>
+                    ) : (
+                        // Show loading only if no error and not already initializing inside ClientOnly
+                        !fetcherError && paymentIntentFetcher.state !== 'submitting' &&
+                        <p className="text-center text-gray-600 dark:text-gray-400 py-8">Initializing payment form...</p>
+                    )
+                )}
+            </ClientOnly>
+            {/* End Stripe Elements Form Wrapper */}
 
 
             {/* Cancel Link - Use standard <a> tag for full page navigation */}

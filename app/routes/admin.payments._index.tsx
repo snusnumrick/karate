@@ -37,22 +37,7 @@ export async function loader({request}: LoaderFunctionArgs) {
         console.log("Admin payments loader: Fetching payments with family names...");
         const {data, error} = await supabaseAdmin
             .from('payments')
-            .select(`
-        id,
-        payment_date,
-        amount,
-        status,
-        payment_method,
-        family_id,
-        receipt_url,
-        stripe_session_id,
-        stripe_payment_intent_id,
-        type,
-        notes,
-        created_at,
-        updated_at,
-        families ( name )
-      `)
+            .select(`*, family:family_id (name)`)
             .order('payment_date', {ascending: false}); // Show most recent first
 
         if (error) {
@@ -63,8 +48,8 @@ export async function loader({request}: LoaderFunctionArgs) {
         // Format data for easier use in the component
         const formattedPayments = data?.map(p => ({
             ...p,
-            familyName: p.families?.name ?? 'N/A' // Handle cases where family might be deleted or relation is null
-        })) || [];
+            familyName: p.family?.name ?? 'N/A' // Access `family.name`, handling potential nulls
+        })) || []; // Ensure at least an empty array if `data` is null
 
         console.log(`Admin payments loader: Fetched ${formattedPayments.length} payments.`);
         return json<LoaderData>({payments: formattedPayments}, {headers: Object.fromEntries(headers)});
@@ -114,15 +99,8 @@ export default function AdminPaymentsPage() {
                 <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
                     <Table>
                         <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Family</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
-                                <TableHead>Type</TableHead> {/* Added Type Header */}
-                                <TableHead>Status</TableHead>
-                                <TableHead>Method</TableHead>
-                                <TableHead>Actions</TableHead>
-                            </TableRow>
+                            {/* Removed whitespace between TableRow and TableHead */}
+                            <TableRow><TableHead>Date</TableHead><TableHead>Family</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Type</TableHead><TableHead>Status</TableHead><TableHead>Method</TableHead><TableHead>Actions</TableHead></TableRow>
                         </TableHeader>
                         <TableBody>
                             {payments.map((payment) => (
@@ -134,8 +112,9 @@ export default function AdminPaymentsPage() {
                                             {payment.familyName}
                                         </Link>
                                     </TableCell>
-                                    {/* Amount is stored in cents */}
-                                    <TableCell className="text-right">${(payment.amount / 100).toFixed(2)}</TableCell>
+                                    {/* Use total_amount */}
+                                    <TableCell
+                                        className="text-right">${(payment.total_amount / 100).toFixed(2)}</TableCell>
                                     <TableCell className="capitalize"> {/* Added Type Cell */}
                                         {payment.type?.replace(/_/g, ' ') ?? 'N/A'} {/* Use global replace */}
                                     </TableCell>

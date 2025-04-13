@@ -85,9 +85,11 @@ export enum PaymentStatus {
 export interface Payment {
     id: string;
     familyId: string;
-    amount: number; // Amount in cents
-    paymentDate: string;
-    paymentMethod: string;
+    subtotalAmount: number;
+    // taxAmount removed - tax details are handled via payment_taxes relation
+    totalAmount: number; // Amount in cents
+    paymentDate?: string;
+    paymentMethod?: string;
     status: PaymentStatus; // Use the enum here
     studentIds: string[]; // Which students this payment covers
 }

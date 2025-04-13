@@ -143,28 +143,40 @@ $$;
 -- Payments table
 CREATE TABLE IF NOT EXISTS payments
 (
-    id                uuid PRIMARY KEY                                         DEFAULT gen_random_uuid(),
-    family_id         uuid REFERENCES families (id) ON DELETE CASCADE NOT NULL,
-    amount            numeric(10, 2)                                  NOT NULL,
-    payment_date      date                                            NULL, -- Set on successful completion
-    payment_method    text                                            NULL, -- Method might be determined by Stripe/provider
-    status            payment_status                                  NOT NULL DEFAULT 'pending',
-    stripe_session_id text                                            NULL, -- Added for Stripe integration
-    receipt_url       text                                            NULL  -- Added for Stripe integration
+    id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    family_id                uuid REFERENCES families (id) ON DELETE CASCADE NOT NULL,
+    -- Replace 'amount' with subtotal, tax, and total (store in cents as integers)
+    subtotal_amount          integer NOT NULL CHECK (subtotal_amount >= 0),
+    -- tax_amount removed, will be stored in payment_taxes junction table
+    total_amount             integer NOT NULL CHECK (total_amount >= 0), -- Now subtotal + sum of payment_taxes
+    payment_date             date NULL, -- Set on successful completion
+    payment_method           text NULL, -- Method might be determined by Stripe/provider
+    status                   payment_status NOT NULL DEFAULT 'pending',
+    stripe_session_id        text NULL, -- Added for Stripe integration
+    receipt_url              text NULL, -- Added for Stripe integration
+    card_last4               text NULL  -- Added for card last 4 digits display,
 );
 
 -- Add columns idempotently if table already exists
-ALTER TABLE payments
-    ADD COLUMN IF NOT EXISTS stripe_session_id text NULL; -- Keep for potential legacy data or other flows
-ALTER TABLE payments
-    ADD COLUMN IF NOT EXISTS stripe_payment_intent_id text NULL; -- Add Payment Intent ID
-ALTER TABLE payments
-    ADD COLUMN IF NOT EXISTS receipt_url text NULL;
+-- Add subtotal and total columns (integers for cents) if they don't exist
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS subtotal_amount integer NULL CHECK (subtotal_amount >= 0);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS total_amount integer NULL CHECK (total_amount >= 0);
+
+-- Drop the old single tax_amount column if it exists
+ALTER TABLE payments DROP COLUMN IF EXISTS tax_amount;
+
+-- Drop the old numeric amount column if it exists (kept from previous state)
+ALTER TABLE payments DROP COLUMN IF EXISTS amount;
+
+-- Add other columns idempotently
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_session_id text NULL; -- Keep for potential legacy data or other flows
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_payment_intent_id text NULL; -- Add Payment Intent ID
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_url text NULL;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS card_last4 text NULL; -- Add card_last4 column
+
 -- Modify existing columns to be nullable if needed (optional, depends on if script was run before)
-ALTER TABLE payments
-    ALTER COLUMN payment_date DROP NOT NULL; -- Make payment_date nullable
-ALTER TABLE payments
-    ALTER COLUMN payment_method DROP NOT NULL; -- Make payment_method nullable
+ALTER TABLE payments ALTER COLUMN payment_date DROP NOT NULL; -- Make payment_date nullable
+ALTER TABLE payments ALTER COLUMN payment_method DROP NOT NULL; -- Make payment_method nullable
 
 -- Add payment type column idempotently
 ALTER TABLE public.payments
@@ -620,9 +632,105 @@ ALTER TABLE waivers
     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waiver_signatures
     ENABLE ROW LEVEL SECURITY;
--- policy_agreements table removed
+-- policy_agreements table removed (kept from previous state)
 ALTER TABLE profiles
     ENABLE ROW LEVEL SECURITY;
+
+-- New Tax Tables --
+
+-- Tax Rates Table
+CREATE TABLE IF NOT EXISTS public.tax_rates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    name text NOT NULL UNIQUE, -- e.g., 'GST', 'PST_BC'
+    rate numeric(5, 4) NOT NULL CHECK (rate >= 0 AND rate < 1), -- e.g., 0.05 for 5%
+    description text NULL,
+    region text NULL, -- e.g., 'BC', 'CA' (for federal) - Can be used for filtering applicability
+    is_active boolean NOT NULL DEFAULT true, -- To enable/disable taxes
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Enable RLS for tax_rates (Admins manage, Authenticated users can view active ones)
+ALTER TABLE public.tax_rates ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow authenticated users to view active tax rates' AND tablename = 'tax_rates') THEN
+        CREATE POLICY "Allow authenticated users to view active tax rates" ON public.tax_rates
+        FOR SELECT TO authenticated USING (is_active = true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage tax rates' AND tablename = 'tax_rates') THEN
+        CREATE POLICY "Allow admins to manage tax rates" ON public.tax_rates
+        FOR ALL USING (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        ) WITH CHECK (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        );
+    END IF;
+END $$;
+
+-- Insert initial tax rates (BC Example) - Make idempotent
+INSERT INTO public.tax_rates (name, rate, description, region, is_active)
+VALUES
+    ('GST', 0.05, 'Goods and Services Tax', 'CA', true),
+    ('PST_BC', 0.07, 'Provincial Sales Tax (British Columbia)', 'BC', true)
+ON CONFLICT (name) DO UPDATE SET
+    rate = EXCLUDED.rate,
+    description = EXCLUDED.description,
+    region = EXCLUDED.region,
+    is_active = EXCLUDED.is_active,
+    updated_at = now();
+
+
+-- Payment Taxes Junction Table
+CREATE TABLE IF NOT EXISTS public.payment_taxes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    payment_id uuid NOT NULL REFERENCES public.payments(id) ON DELETE CASCADE,
+    tax_rate_id uuid NOT NULL REFERENCES public.tax_rates(id) ON DELETE RESTRICT, -- Don't delete tax rate if used
+    tax_amount integer NOT NULL CHECK (tax_amount >= 0), -- Tax amount in cents for this specific tax on this payment
+    tax_rate_snapshot numeric(5, 4) NOT NULL, -- Store the rate applied at the time of payment
+    tax_name_snapshot text NOT NULL, -- Store the name at the time of payment
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Add indexes
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_payment_id') THEN
+        CREATE INDEX idx_payment_taxes_payment_id ON public.payment_taxes(payment_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_tax_rate_id') THEN
+        CREATE INDEX idx_payment_taxes_tax_rate_id ON public.payment_taxes(tax_rate_id);
+    END IF;
+END $$;
+
+-- Enable RLS for payment_taxes
+ALTER TABLE public.payment_taxes ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    -- Allow family members to view taxes linked to their payments
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view their payment taxes' AND tablename = 'payment_taxes') THEN
+        CREATE POLICY "Allow family members to view their payment taxes" ON public.payment_taxes
+        FOR SELECT USING (
+            EXISTS (
+                SELECT 1
+                FROM public.payments pay
+                JOIN public.profiles p ON pay.family_id = p.family_id
+                WHERE payment_taxes.payment_id = pay.id AND p.id = auth.uid()
+            )
+        );
+    END IF;
+
+    -- Allow admins to manage all payment taxes
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage payment taxes' AND tablename = 'payment_taxes') THEN
+        CREATE POLICY "Allow admins to manage payment taxes" ON public.payment_taxes
+        FOR ALL USING (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        ) WITH CHECK (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        );
+    END IF;
+END $$;
+
+-- End New Tax Tables --
 
 -- Add RLS policies conditionally
 DO
@@ -673,6 +781,21 @@ $$
                         FROM profiles
                         WHERE profiles.family_id = students.family_id
                           AND profiles.id = auth.uid())
+                );
+        END IF;
+
+        -- Policy to allow family members to INSERT students into their own family
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'students'
+                         AND policyname = 'Family members can insert students into their family') THEN
+            CREATE POLICY "Family members can insert students into their family" ON students
+                FOR INSERT
+                WITH CHECK (
+                    EXISTS (SELECT 1
+                            FROM profiles
+                            WHERE profiles.id = auth.uid()
+                              AND profiles.family_id = students.family_id)
                 );
         END IF;
 
@@ -875,13 +998,41 @@ END $$;
 -- Enable Row Level Security (Important!)
 ALTER TABLE public.one_on_one_sessions ENABLE ROW LEVEL SECURITY;
 
--- Grant access to authenticated users (adjust based on your policies)
--- Example: Allow families to see their own session balances
--- CREATE POLICY "Allow family members to view their own sessions" ON public.one_on_one_sessions
--- FOR SELECT USING (auth.uid() IN (SELECT user_id FROM profiles WHERE family_id = one_on_one_sessions.family_id));
+-- Grant access to authenticated users
+DO $$ BEGIN
+    -- Allow families to view their own session balances
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view their own sessions' AND tablename = 'one_on_one_sessions') THEN
+        CREATE POLICY "Allow family members to view their own sessions" ON public.one_on_one_sessions
+        FOR SELECT USING (
+            EXISTS (
+                SELECT 1
+                FROM public.profiles p
+                WHERE p.id = auth.uid() AND p.family_id = one_on_one_sessions.family_id
+            )
+        );
+    END IF;
 
--- Grant access to service_role (for backend operations)
--- Policies for service_role are typically not needed as it bypasses RLS,
+    -- Allow admins to manage all sessions (SELECT, INSERT, UPDATE, DELETE)
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage all sessions' AND tablename = 'one_on_one_sessions') THEN
+        CREATE POLICY "Allow admins to manage all sessions" ON public.one_on_one_sessions
+        FOR ALL USING (
+            EXISTS (
+                SELECT 1
+                FROM public.profiles p
+                WHERE p.id = auth.uid() AND p.role = 'admin'
+            )
+        ) WITH CHECK (
+            EXISTS (
+                SELECT 1
+                FROM public.profiles p
+                WHERE p.id = auth.uid() AND p.role = 'admin'
+            )
+        );
+    END IF;
+END $$;
+
+-- Grant access to service_role (for backend operations) - Note: service_role bypasses RLS by default.
+-- Policies for service_role are typically not needed,
 -- but ensure your backend uses the service role key for modifications.
 
 
@@ -916,15 +1067,40 @@ END $$;
 -- Enable Row Level Security
 ALTER TABLE public.one_on_one_session_usage ENABLE ROW LEVEL SECURITY;
 
--- Grant access policies as needed (similar structure to above)
--- Example: Allow families to see usage linked to their sessions
--- CREATE POLICY "Allow family members to view usage of their sessions" ON public.one_on_one_session_usage
--- FOR SELECT USING (session_purchase_id IN (SELECT id FROM one_on_one_sessions WHERE family_id = (SELECT family_id FROM profiles WHERE user_id = auth.uid())));
+-- Grant access policies as needed
+DO $$ BEGIN
+    -- Allow families to see usage linked to their sessions
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view usage of their sessions' AND tablename = 'one_on_one_session_usage') THEN
+        CREATE POLICY "Allow family members to view usage of their sessions" ON public.one_on_one_session_usage
+        FOR SELECT USING (
+            EXISTS (
+                SELECT 1
+                FROM public.one_on_one_sessions s
+                JOIN public.profiles p ON s.family_id = p.family_id
+                WHERE one_on_one_session_usage.session_purchase_id = s.id
+                  AND p.id = auth.uid()
+            )
+        );
+    END IF;
 
--- Grant admin access (adjust role name if needed)
--- CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_session_usage
--- FOR ALL USING (auth.role() = 'authenticated' AND EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin')) -- Check user is admin
--- WITH CHECK (auth.role() = 'authenticated' AND EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin'));
+    -- Allow admins to manage all session usage (SELECT, INSERT, UPDATE, DELETE)
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage session usage' AND tablename = 'one_on_one_session_usage') THEN
+        CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_session_usage
+        FOR ALL USING (
+            EXISTS (
+                SELECT 1
+                FROM public.profiles p
+                WHERE p.id = auth.uid() AND p.role = 'admin'
+            )
+        ) WITH CHECK (
+            EXISTS (
+                SELECT 1
+                FROM public.profiles p
+                WHERE p.id = auth.uid() AND p.role = 'admin'
+            )
+        );
+    END IF;
+END $$;
 
 
 -- Optional: Create a function or view to easily get the remaining balance per family
@@ -955,3 +1131,5 @@ GRANT SELECT ON public.family_one_on_one_balance TO authenticated; -- Or specifi
 -- RLS for views often relies on the underlying table policies or can be defined on the view itself if needed.
 
 -- Remove the RENAME statement as the enum is now created with the correct value
+
+-- Removed debugging functions get_payment_status_by_pi_id and get_payment_status_by_supabase_id

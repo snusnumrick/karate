@@ -93,7 +93,8 @@ export default function PaymentHistoryPage() {
                                     {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                    ${(payment.amount / 100).toFixed(2)}
+                                    {/* Use total_amount */}
+                                    ${(payment.total_amount / 100).toFixed(2)}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize"> {/* Added Type Cell */}
                                     {payment.type?.replace(/_/g, ' ') ?? 'N/A'} {/* Use global replace */}

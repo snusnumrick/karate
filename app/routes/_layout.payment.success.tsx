@@ -4,7 +4,8 @@ import {Link, useLoaderData, useRevalidator} from "@remix-run/react"; // Import 
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {format} from 'date-fns'; // Import format function
 import {useEffect} from "react";
-import {Database} from "~/types/supabase"; // Import useEffect
+import {Database} from "~/types/supabase";
+import {PostgrestError} from "@supabase/supabase-js";
 
 export async function loader({request}: LoaderFunctionArgs) {
     const url = new URL(request.url);
@@ -25,11 +26,27 @@ export async function loader({request}: LoaderFunctionArgs) {
 
     const {supabaseServer} = getSupabaseServerClient(request);
 
+    type PaymentWithRelations =
+
+        Database["public"]["Tables"]["payments"]["Row"] & {
+        family: {
+            name: string; // The `name` field from the `family` table
+        } | null; // Relation data can potentially be null
+        one_on_one_sessions: {
+            quantity_purchased: number; // The `quantity_purchased` field from the `one_on_one_sessions` table
+        }[]; // It's an array because there may be multiple sessions
+
+    };
+
+
     // Get payment details
-    const {data: payment, error} = await supabaseServer
+    const {data: payment, error}: {
+        data: PaymentWithRelations | null,
+        error: PostgrestError | null
+    } = await supabaseServer
         .from('payments')
         .select(`
-            id, family_id, amount, payment_date, payment_method, status, stripe_payment_intent_id, receipt_url, type, notes,
+            *,
             family:family_id (name),                                                                                                                                                                                  
             one_on_one_sessions ( quantity_purchased )                                                                                                                                                                
         `)
@@ -158,34 +175,17 @@ state: ${revalidator.state}`);
     const {payment} = loaderData;
     // console.log('Payment:', payment); // Removed log
 
-    // useEffect hook moved to the top level
-
-    // Type assertion for easier access, matching the updated enum
-    const typedPayment = payment as {
-        amount: number;
-        family_id: string;
-        id: string;
-        payment_date: string | null; // Can be null if webhook hasn't run yet
-        payment_method: string | null; // Can be null
-        status: "pending" | "succeeded" | "failed";
-        type: Database['public']['Enums']['payment_type_enum']; // Add the type property here
-        family: { name: string } | null;
-        receipt_url?: string | null;
-        formatted_payment_date: string | null;
-        is_pending_update: boolean;
-        // Add the nested one_on_one_sessions data structure
-        one_on_one_sessions: { quantity_purchased: number }[] | null;
-    };
     // Log the status being used for rendering
-    console.log('[PaymentSuccess Render] Status used for rendering:', typedPayment.status);
-    console.log('[PaymentSuccess Component] Receipt URL from loader data:', typedPayment.receipt_url); // Log receipt URL
+    console.log('[PaymentSuccess Render] Status used for rendering:', payment.status);
+    console.log('[PaymentSuccess Component] Receipt URL from loader data:', payment.receipt_url); // Log receipt URL
     // Extract quantity if available
-    const quantityPurchased = (typedPayment.type === 'individual_session' && typedPayment.one_on_one_sessions && typedPayment.one_on_one_sessions.length > 0)
-        ? typedPayment.one_on_one_sessions[0].quantity_purchased
+    const quantityPurchased =
+        (payment.type === 'individual_session' && payment.one_on_one_sessions && payment.one_on_one_sessions.length > 0)
+        ? payment.one_on_one_sessions[0].quantity_purchased
         : null;
 
-    const isSucceeded = typedPayment.status === 'succeeded';
-    const isPending = typedPayment.status === 'pending';
+    const isSucceeded = payment.status === 'succeeded';
+    const isPending = payment.status === 'pending';
 
     return (
         <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
@@ -220,20 +220,20 @@ state: ${revalidator.state}`);
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
                     {isSucceeded
-                        ? `Thank you for your payment of $${(typedPayment.amount / 100).toFixed(2)}`
-                        : `Your payment of $${(typedPayment.amount / 100).toFixed(2)} is being processed.`
+                        ? `Thank you for your payment of $${(payment.total_amount / 100).toFixed(2)}`
+                        : `Your payment of $${(payment.total_amount / 100).toFixed(2)} is being processed.`
                     }
                 </p>
 
                 <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded text-left">
                     <p className="text-sm text-gray-700 dark:text-gray-300">
-                        <span className="font-semibold">Family:</span> {typedPayment.family?.name ?? 'N/A'}
+                        <span className="font-semibold">Family:</span> {payment.family?.name ?? 'N/A'}
                     </p>
                     {/* Transaction ID Removed */}
                     {/* Conditional Date Display */}
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                         <span
-                            className="font-semibold">Date:</span> {isSucceeded ? (typedPayment.formatted_payment_date ?? 'N/A') : 'Processing...'}
+                            className="font-semibold">Date:</span> {isSucceeded ? (payment.formatted_payment_date ?? 'N/A') : 'Processing...'}
                     </p>
                     {/* Conditionally display quantity purchased (only if succeeded) */}
                     {isSucceeded && quantityPurchased !== null && (
@@ -250,9 +250,9 @@ state: ${revalidator.state}`);
 
                 <div className="flex justify-center space-x-4">
                     {/* Conditional Receipt Link */}
-                    {isSucceeded && typedPayment.receipt_url && (
+                    {isSucceeded && payment.receipt_url && (
                         <a
-                            href={typedPayment.receipt_url}
+                            href={payment.receipt_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"

@@ -353,7 +353,6 @@ export type Database = {
       }
       payments: {
         Row: {
-          card_last4: string | null
           created_at: string | null
           family_id: string
           id: string
@@ -368,9 +367,9 @@ export type Database = {
           total_amount: number
           type: Database["public"]["Enums"]["payment_type_enum"]
           updated_at: string | null
+          card_last4?: string | null // Added card_last4
         }
         Insert: {
-          card_last4?: string | null
           created_at?: string | null
           family_id: string
           id?: string
@@ -385,9 +384,9 @@ export type Database = {
           total_amount: number
           type?: Database["public"]["Enums"]["payment_type_enum"]
           updated_at?: string | null
+          card_last4?: string | null // Added card_last4
         }
         Update: {
-          card_last4?: string | null
           created_at?: string | null
           family_id?: string
           id?: string
@@ -402,6 +401,7 @@ export type Database = {
           total_amount?: number
           type?: Database["public"]["Enums"]["payment_type_enum"]
           updated_at?: string | null
+          card_last4?: string | null // Added card_last4
         }
         Relationships: [
           {

@@ -58,7 +58,7 @@ export async function loader({request}: LoaderFunctionArgs) {
         ] = await Promise.all([
             supabaseAdmin.from('families').select('id', {count: 'exact', head: true}), // Use admin client
             supabaseAdmin.from('students').select('id', {count: 'exact', head: true}), // Use admin client
-            supabaseAdmin.from('payments').select('amount').eq('status', PaymentStatus.Succeeded), // Use enum
+            supabaseAdmin.from('payments').select('total_amount').eq('status', PaymentStatus.Succeeded), // Use total_amount
             supabaseAdmin.from('attendance')
                 .select('id', {count: 'exact', head: true})
                 .eq('class_date', new Date().toISOString().split('T')[0]) // Today's date
@@ -90,7 +90,8 @@ export async function loader({request}: LoaderFunctionArgs) {
         // We'll use the pending payment count directly. Missing waivers needs refinement.
 
         // --- Data Processing ---
-        const totalPaymentAmount = completedPayments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
+        // Use total_amount from the fetched payments
+        const totalPaymentAmount = completedPayments?.reduce((sum, payment) => sum + (payment.total_amount || 0), 0) || 0;
 
         // Placeholder for missing waivers count - needs refinement
         // Fetch total active users vs signed users (using admin client)

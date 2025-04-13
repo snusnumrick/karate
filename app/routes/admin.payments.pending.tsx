@@ -9,14 +9,21 @@ import {format} from 'date-fns';
 import {PaymentStatus} from "~/types/models"; // Import the enum
 
 // Define types
+// Define the structure for pending payments, including the nested family object
 type PendingPayment =
-    Pick<Database['public']['Tables']['payments']['Row'], 'id' | 'amount' | 'family_id' | 'status' | 'payment_date'>
+    Pick<Database['public']['Tables']['payments']['Row'], 'id' | 'subtotal_amount' | 'total_amount' | 'family_id' | 'status' | 'payment_date' | 'created_at' | 'type'> // Removed tax_amount
     & {
-    families: { name: string } | null; // Include family name
+    family: Pick<Database['public']['Tables']['families']['Row'], 'name'> | null; // Add nested family object
 };
 
+// Define the type for the formatted data returned by the loader
+type FormattedPendingPayment = Omit<PendingPayment, 'family'> & { // Omit the nested 'family' object
+    familyName: string | null; // Keep familyName for the component
+};
+
+
 type LoaderData = {
-    pendingPayments: Array<Omit<PendingPayment, 'families'> & { familyName: string }>;
+    pendingPayments: FormattedPendingPayment[]; // Return the formatted type
 };
 
 export async function loader(): Promise<TypedResponse<LoaderData>> {
@@ -32,27 +39,30 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     try {
-        // Fetch payments with status 'pending' and related family name
+        // Fetch payments with status 'pending' and related family name using correct syntax
         const {data, error} = await supabaseAdmin
             .from('payments')
             .select(`
                 id,
-                amount,
+                subtotal_amount,
+                total_amount,
                 family_id,
                 status,
                 payment_date,
-                families ( name )
+                created_at,
+                type,
+                family:family_id ( name )
             `)
             .eq('status', PaymentStatus.Pending) // Filter by pending status using enum
-            .order('payment_date', {ascending: true, nullsFirst: true}); // Show oldest pending first
+            .order('created_at', {ascending: true, nullsFirst: true}); // Show oldest pending first based on creation
 
         if (error) throw new Error(`Failed to fetch pending payments: ${error.message}`);
 
-        // Format data for easier use
-        const formattedPayments = data?.map(p => ({
-            ...p,
-            familyName: p.families?.name ?? 'N/A'
-        })) || [];
+        // Format data to add familyName at the top level for easier use in the component
+        const formattedPayments: FormattedPendingPayment[] = data?.map(p => ({
+            ...p, // Spread the original payment data (id, amounts, status, etc.)
+            familyName: p.family?.name ?? 'N/A' // Extract family name from the nested object
+        })) ?? [];
 
         console.log(`Found ${formattedPayments.length} pending payments.`);
         return json({pendingPayments: formattedPayments});
@@ -99,9 +109,11 @@ export default function PendingPaymentsPage() {
                                         </Link>
                                     </TableCell>
                                     <TableCell>
-                                        {payment.payment_date ? format(new Date(payment.payment_date), 'yyyy-MM-dd') : 'N/A'}
+                                        {/* Display created_at date as the primary date for pending */}
+                                        {payment.created_at ? format(new Date(payment.created_at), 'yyyy-MM-dd HH:mm') : 'N/A'}
                                     </TableCell>
-                                    <TableCell className="text-right">${(payment.amount / 100).toFixed(2)}</TableCell>
+                                     {/* Use total_amount */}
+                                    <TableCell className="text-right">${(payment.total_amount / 100).toFixed(2)}</TableCell>
                                     <TableCell>
                                         <Badge variant="secondary" className="capitalize"> {/* Pending status */}
                                             {payment.status}

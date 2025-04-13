@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-04-13
+
+### Added
+- Implemented dynamic, multi-tax support based on configurable rates in the database (`tax_rates` table).
+- Implemented custom, self-hosted payment receipts (`/family/receipt/:paymentId`) with tax breakdown and print-friendly styling.
+- Added display of last 4 card digits on payment receipts.
+- Added receipt link to the "Recent Payment" section on the Family Portal.
+
+### Changed
+- Payment processing now uses dynamic server-side tax calculation based on `tax_rates`, replacing the previous manual calculation method.
+
+### Fixed
+- Numerous fixes related to payment processing, data fetching, type safety, and UI consistency introduced during the implementation of the above features.
+
+### Removed
+- *No significant removals in this section.*
+
 ## [1.0.1] - 2025-04-11
 
 ### Changed

@@ -2,6 +2,8 @@ import {createServerClient} from "@supabase/auth-helpers-remix";
 import {createClient} from "@supabase/supabase-js"; // Import standard client
 import type {Database} from "~/types/supabase";
 
+import { siteConfig } from "~/config/site"; // Import siteConfig for tax rate
+
 // Initialize Stripe
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 if (!stripeSecretKey) {
@@ -85,43 +87,116 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 // Renamed from createPaymentSession - This function ONLY creates the initial DB record.
 export async function createInitialPaymentRecord(
     familyId: string,
-    amount: number, // Amount in smallest currency unit (e.g., cents) - Calculated by caller
+    subtotalAmount: number, // Expect subtotal in cents, calculated by caller
     studentIds: string[], // Can be empty for non-student specific payments like 1:1? Let's assume 1:1 is still family-linked.
     type: Database['public']['Enums']['payment_type_enum'] // Use 'type' to match DB column
 ) {
-    // Use the standard client with service role for creating payment records server-side
+    // Fetch the apply_sales_tax setting from the database
+    // Use the standard client with service role for DB operations server-side
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        // Throw an error for missing configuration
-        throw new Error('Missing Supabase environment variables (URL or Service Role Key) required for payment record creation.');
+        throw new Error('Missing Supabase environment variables required for payment record creation.');
     }
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
+    // --- Multi-Tax Calculation ---
+    // 1. Fetch active tax rates applicable to this site/region
+    const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
+    const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
+        .from('tax_rates')
+        .select('id, name, rate')
+        .in('name', applicableTaxNames)
+        .eq('is_active', true);
 
-    // Create a pending payment record in Supabase
-    const {data: paymentRecord, error: insertError} = await supabaseAdmin // Use supabaseAdmin here
+    if (taxRatesError) {
+        console.error('Error fetching tax rates:', taxRatesError.message);
+        return { data: null, error: `Failed to fetch tax rates: ${taxRatesError.message}` };
+    }
+    if (!taxRatesData || taxRatesData.length === 0) {
+        console.warn(`No active tax rates found for names: ${applicableTaxNames.join(', ')}. Proceeding without tax.`);
+        // Proceed without tax if none are configured/active
+    }
+
+    // 2. Calculate individual taxes and total tax
+    let totalTaxAmount = 0;
+    const paymentTaxesToInsert: Array<{
+        tax_rate_id: string;
+        tax_amount: number;
+        tax_rate_snapshot: number;
+        tax_name_snapshot: string;
+    }> = [];
+
+    if (taxRatesData) {
+        for (const taxRate of taxRatesData) {
+            // Ensure rate is a number before calculation
+            const rate = Number(taxRate.rate);
+            if (isNaN(rate)) {
+                console.error(`Invalid tax rate found for ${taxRate.name}: ${taxRate.rate}`);
+                continue; // Skip this tax rate
+            }
+            const taxAmountForThisRate = Math.round(subtotalAmount * rate);
+            totalTaxAmount += taxAmountForThisRate;
+            paymentTaxesToInsert.push({
+                tax_rate_id: taxRate.id,
+                tax_amount: taxAmountForThisRate,
+                tax_rate_snapshot: rate, // Store the rate used
+                tax_name_snapshot: taxRate.name, // Store the name used
+            });
+        }
+    }
+
+    // 3. Calculate final total amount
+    const totalAmount = subtotalAmount + totalTaxAmount;
+    // --- End Multi-Tax Calculation ---
+
+
+    // 4. Create the main payment record in Supabase (without tax_amount column)
+    const { data: paymentRecord, error: insertPaymentError } = await supabaseAdmin
         .from('payments')
         .insert({
             family_id: familyId,
-            amount: amount, // Use amount calculated by caller
+            subtotal_amount: subtotalAmount, // Store subtotal
+            // tax_amount column removed
+            total_amount: totalAmount,       // Store calculated total (subtotal + sum of taxes)
             status: 'pending',
             type: type, // Set the 'type' column using the 'type' parameter
-            // payment_date, payment_method, stripe_session_id, receipt_url are set later
+            // payment_date, payment_method, stripe_payment_intent_id, receipt_url updated later
         })
         .select('id') // Select the ID of the newly created record
         .single();
 
-    if (insertError || !paymentRecord) {
-        console.error('Supabase payment insert error:', insertError?.message);
-        return {data: null, error: `Failed to create payment record: ${insertError.message}`};
+    if (insertPaymentError || !paymentRecord) {
+        console.error('Supabase payment insert error:', insertPaymentError?.message);
+        return { data: null, error: `Failed to create payment record: ${insertPaymentError?.message || 'Unknown error'}` };
     }
 
     const paymentId = paymentRecord.id;
+    console.log(`[createInitialPaymentRecord] Created payment record ${paymentId}. Subtotal: ${subtotalAmount}, Total Tax: ${totalTaxAmount}, Total: ${totalAmount}`);
 
-    // 2. Insert records into the payment_students junction table *if* student IDs are provided
-    //    (Relevant for monthly/yearly group payments)
+    // 5. Insert records into the payment_taxes junction table
+    if (paymentTaxesToInsert.length > 0) {
+        const taxesWithPaymentId = paymentTaxesToInsert.map(tax => ({
+            ...tax,
+            payment_id: paymentId,
+        }));
+        const { error: insertTaxesError } = await supabaseAdmin
+            .from('payment_taxes')
+            .insert(taxesWithPaymentId);
+
+        if (insertTaxesError) {
+            console.error(`Supabase payment_taxes insert error for payment ${paymentId}:`, insertTaxesError.message);
+            // Attempt cleanup: Delete the payment record if tax insertion fails
+            await supabaseAdmin.from('payments').delete().eq('id', paymentId);
+            return { data: null, error: `Failed to record tax details: ${insertTaxesError.message}` };
+        }
+        console.log(`[createInitialPaymentRecord] Inserted ${taxesWithPaymentId.length} tax records for payment ${paymentId}.`);
+    }
+
+
+    // 6. Insert records into the payment_students junction table *if* student IDs are provided
+    //    (Relevant for monthly/yearly group payments) - This logic remains the same
     if (studentIds && studentIds.length > 0) {
         const studentInserts = studentIds.map(studentId => ({
             payment_id: paymentId,
@@ -255,15 +330,40 @@ export async function checkStudentEligibility(
 }
 
 
+// Helper function to get the base site URL
+function getSiteUrl(): string {
+    // Ensure this environment variable is set in your deployment environment (Vercel, Netlify, etc.)
+    // and in your local .env file for development.
+    const siteUrl = process.env.SITE_URL;
+    if (!siteUrl) {
+        console.error("FATAL: SITE_URL environment variable is not set. Cannot generate absolute receipt URLs.");
+        // Throw an error or return a default that makes it obvious something is wrong
+        // Throwing an error might be better to prevent unexpected behavior.
+        throw new Error("SITE_URL environment variable is not configured.");
+        // Or fallback to relative path if absolutely necessary, but log loudly:
+        // console.warn("SITE_URL environment variable is not set. Defaulting to relative paths for receipts, which might not work in emails.");
+        // return "";
+    }
+    // Ensure it doesn't end with a slash for clean joining
+    return siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
+}
+
+
 export async function updatePaymentStatus(
     supabasePaymentId: string, // Use Supabase Payment ID (from metadata) to find the record
     status: "pending" | "succeeded" | "failed", // Use the specific enum values
-    receiptUrl?: string | null, // Stripe might provide this in the webhook event
+    _stripeReceiptUrl?: string | null, // Stripe receipt URL - renamed as we won't store it directly
     paymentMethod?: string | null, // Added parameter for payment method
     stripePaymentIntentId?: string | null, // Optional: Store the PI ID if needed
     type?: Database['public']['Enums']['payment_type_enum'] | null, // Use 'type' parameter
     familyId?: string | null, // Added: Needed for individual session insert
-    quantity?: number | null // Added: Needed for individual session insert
+    quantity?: number | null, // Added: Needed for individual session insert
+    // Add amounts from metadata for verification/logging if needed
+    subtotalAmountFromMeta?: number | null,
+    taxAmountFromMeta?: number | null,
+    totalAmountFromMeta?: number | null,
+    // Add card last 4
+    cardLast4?: string | null
 ) {
     // Use the standard client with service role for webhooks/server-side updates
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -278,22 +378,42 @@ export async function updatePaymentStatus(
 
     const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {
         status,
-        receipt_url: receiptUrl,
+        // receipt_url: receiptUrl, // Don't store the Stripe receipt URL directly anymore
         payment_method: paymentMethod,
         type: type || undefined, // Use 'type' parameter
         stripe_payment_intent_id: stripePaymentIntentId || undefined, // Store the PI ID
+        card_last4: cardLast4 || undefined, // Store card last 4 digits
     };
 
-    // Set payment_date when status becomes 'succeeded' or 'failed'
-    if (status === 'succeeded' || status === 'failed') {
+    // Set payment_date and generate our internal receipt_url when status becomes 'succeeded'
+    if (status === 'succeeded') {
         updateData.payment_date = new Date().toISOString();
+        try {
+            // Construct the ABSOLUTE URL to our custom receipt page
+            const siteBaseUrl = getSiteUrl(); // Get base URL (e.g., https://yourdomain.com)
+            updateData.receipt_url = `${siteBaseUrl}/family/receipt/${supabasePaymentId}`;
+            console.log(`[updatePaymentStatus] Generated receipt URL for ${supabasePaymentId}: ${updateData.receipt_url}`);
+        } catch (e) {
+             console.error(`[updatePaymentStatus] Failed to generate receipt URL for ${supabasePaymentId} due to missing SITE_URL. Payment status updated, but receipt URL is null.`, e);
+             updateData.receipt_url = null; // Ensure it's null if generation fails
+        }
+    } else if (status === 'failed') {
+        // Also set payment_date for failed payments, but no receipt URL
+        updateData.payment_date = new Date().toISOString();
+        updateData.receipt_url = null; // Ensure no receipt URL for failed payments
+    } else {
+        // For pending status, ensure receipt_url is null
+        updateData.receipt_url = null;
     }
+
+    // ---> ADDED LOG: Log the FINAL updateData object just before the DB update call <---
+    console.log(`[updatePaymentStatus] FINAL update data for payment ${supabasePaymentId}:`, JSON.stringify(updateData));
 
     const {data, error} = await supabaseAdmin
         .from('payments')
         .update(updateData)
         .eq('id', supabasePaymentId) // Find record using the Supabase Payment ID
-        .select('id, family_id') // Select id and family_id
+        .select('id, family_id, subtotal_amount, total_amount') // Select amounts for verification/logging
         .single();
 
     if (error) {
@@ -304,6 +424,17 @@ export async function updatePaymentStatus(
     if (!data) {
         console.error(`No payment record found for Supabase payment ID ${supabasePaymentId} during update.`);
         throw new Error(`Payment record not found for ID ${supabasePaymentId}.`);
+    }
+
+    // Optional: Log/verify amounts from metadata against DB record
+    if (status === 'succeeded') {
+        if (subtotalAmountFromMeta !== null && data.subtotal_amount !== subtotalAmountFromMeta) {
+            console.warn(`[Webhook ${supabasePaymentId}] Subtotal mismatch! DB: ${data.subtotal_amount}, Meta: ${subtotalAmountFromMeta}`);
+        }
+        if (totalAmountFromMeta !== null && data.total_amount !== totalAmountFromMeta) {
+            console.warn(`[Webhook ${supabasePaymentId}] Total amount mismatch! DB: ${data.total_amount}, Meta: ${totalAmountFromMeta}`);
+            // Potentially throw error or alert if amounts don't match
+        }
     }
 
     // console.log(`Payment status updated successfully for Supabase payment ID ${supabasePaymentId} to ${status}.`); // Updated log message

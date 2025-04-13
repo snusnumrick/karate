@@ -25,13 +25,16 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Student Management (Family View):**
     - View detailed student information (`/family/student/:studentId`).
     - Edit student details.
+    - Add new students (`/family/add-student`).
     - *Note: Student deletion might be restricted to Admins.*
 - **Waiver Management:** Digitally sign required waivers (Liability, Code of Conduct, Photo/Video, Payment/Dress Code).
 - **Payments:**
     - Secure, embedded payment form using Stripe Elements (`/pay/:paymentId`).
     - Multiple payment options initiated from Family Portal (`/family/payment`): Monthly Group, Yearly Group, Individual Sessions (purchased in quantities).
     - View payment history, including payment type (`/family/payment-history`).
-    - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly).
+    - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly). Prices shown are before tax.
+    - Applicable sales taxes (e.g., GST, PST) are calculated based on active rates defined in the `tax_rates` database table and the `applicableTaxNames` setting in `app/config/site.ts`. The breakdown is stored in the `payment_taxes` table, and the total amount (subtotal + all taxes) is stored in the `payments` table and sent to Stripe.
+    - Custom, print-friendly payment receipts including tax breakdown are generated and accessible via the Family Portal (`/family/receipt/:paymentId`) instead of using Stripe's default receipts. The URL is stored in the `payments.receipt_url` field. Requires `SITE_URL` environment variable to be set correctly.
     - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
 
 ### Administrative Panel (`/admin`)
@@ -88,7 +91,9 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 
 - **Site Configuration:** Basic site details (name, instructor info, class schedule, location, pricing tiers) are managed in `app/config/site.ts`.
 - **Styling:** Uses Tailwind CSS and Shadcn UI components. Customize Tailwind configuration in `tailwind.config.ts` and component styles within `app/components/ui/`.
-- **Pricing Logic:** Payment tier calculation logic is within the payment initiation route (`/family/payment`). Payment completion happens on `/pay/:paymentId`. Pricing values are in `app/config/site.ts`. Eligibility logic (handling monthly/yearly) is in `app/utils/supabase.server.ts`.
+- **Pricing Logic:** Payment tier calculation logic is within the payment initiation route (`/family/payment`). Payment completion happens on `/pay/:paymentId`. Pricing values (before tax) are in `app/config/site.ts`.
+- **Tax Logic:** Taxes are defined in the `tax_rates` database table. Which taxes apply is determined by `siteConfig.applicableTaxNames`. Calculation occurs server-side (in `app/utils/supabase.server.ts`, `app/routes/api.create-payment-intent.ts`, `app/routes/admin.payments.new.tsx`) based on the subtotal. The breakdown is stored in `payment_taxes`.
+- **Eligibility Logic:** Student eligibility (Trial, Paid, Expired) based on payment history is handled in `app/utils/supabase.server.ts`.
 - **Email Templates:** Email content is generally defined within the server-side code that sends the email (e.g., routes, Supabase functions). Check `app/utils/email.server.ts` and `supabase/functions/`.
 
 ## Local Development Setup
@@ -148,9 +153,10 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - `STRIPE_WEBHOOK_SECRET`
     - `RESEND_API_KEY`
     - `FROM_EMAIL`
-    - `SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com`)
-5.  **Deploy:** Trigger a deployment in Vercel.
-6.  **Stripe Webhook:**
+    - `SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com` - **Required** for generating correct absolute receipt URLs)
+5.  **Tax Configuration:** Ensure the `tax_rates` table in your production Supabase database contains the correct tax rates (e.g., GST, PST_BC) and that they are marked `is_active = true`. Verify `applicableTaxNames` in `app/config/site.ts` matches the desired active taxes for your site. Stripe Tax configuration in the dashboard is **not** used for calculation.
+6.  **Deploy:** Trigger a deployment in Vercel.
+7.  **Stripe Webhook:**
     - Once deployed, get your production URL.
     - In your Stripe Dashboard, go to Developers -> Webhooks.
     - Add an endpoint:

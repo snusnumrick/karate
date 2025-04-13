@@ -51,53 +51,106 @@ export async function action({request}: ActionFunctionArgs) {
         const type = metadata?.type as Database['public']['Enums']['payment_type_enum'] | undefined; // Extract 'type'
         const familyId = metadata?.familyId;
         const quantityStr = metadata?.quantity;
+        // Extract all amounts from metadata
+        const subtotalAmountStr = metadata?.subtotal_amount; // Expecting subtotal from metadata
+        // Tax and Total are also expected from metadata now
+        const taxAmountStr = metadata?.tax_amount;
+        const totalAmountStr = metadata?.total_amount;
+
         let quantity: number | null = null;
         if (quantityStr) {
             const parsedQuantity = parseInt(quantityStr, 10);
             quantity = !isNaN(parsedQuantity) ? parsedQuantity : null;
         }
 
-        if (!supabasePaymentId || !type || !familyId) { // Check for 'type'
-            console.error(`CRITICAL: Missing required metadata (paymentId, type, familyId) in payment_intent.succeeded event ${paymentIntent.id}. Metadata:`, metadata); // Update error message
+        // Parse amounts (expecting cents as strings)
+        const subtotalAmountFromMeta = subtotalAmountStr ? parseInt(subtotalAmountStr, 10) : null;
+        const taxAmountFromMeta = taxAmountStr ? parseInt(taxAmountStr, 10) : null;
+        const totalAmountFromMeta = totalAmountStr ? parseInt(totalAmountStr, 10) : null;
+
+        // Validate required metadata (including amounts)
+        if (!supabasePaymentId || !type || !familyId || subtotalAmountFromMeta === null || taxAmountFromMeta === null || totalAmountFromMeta === null) { // Check for 'type' and amounts
+            console.error(`CRITICAL: Missing required metadata (paymentId, type, familyId, amounts) in payment_intent.succeeded event ${paymentIntent.id}. Metadata:`, metadata); // Update error message
             // Return 400 - Bad request, missing essential info
-            return json({ error: "Missing critical payment metadata." }, { status: 400 });
+            return json({ error: "Missing critical payment metadata (paymentId, type, familyId, amounts)." }, { status: 400 }); // Updated error message
         }
 
         // Extract other details
-        let receiptUrl: string | null = null; // Initialize receiptUrl
-        const paymentMethod = paymentIntent.payment_method_types?.[0] ?? null;
-        const stripePaymentIntentId = paymentIntent.id; // The ID of the payment intent itself
+        let receiptUrl: string | null = null;
+        const paymentMethodType = paymentIntent.payment_method_types?.[0] ?? null; // e.g., 'card'
+        const stripePaymentIntentId = paymentIntent.id;
+        let cardLast4: string | null = null;
+        let cardBrand: string | null = null;
 
-        // --- Retrieve PI again to get latest_charge.receipt_url ---
+        // --- Retrieve PI again with expanded payment_method to get card details ---
         try {
-            console.log(`[Webhook PI Succeeded] Retrieving Payment Intent ${paymentIntent.id} with expanded charge...`);
+            console.log(`[Webhook PI Succeeded] Retrieving Payment Intent ${paymentIntent.id} with expanded payment_method and latest_charge...`);
             const retrievedPI = await stripe.paymentIntents.retrieve(paymentIntent.id, {
-                expand: ['latest_charge']
+                // Expand both payment_method and latest_charge
+                expand: ['payment_method', 'latest_charge']
             });
+
+            // Get receipt URL from latest_charge
             if (retrievedPI.latest_charge && typeof retrievedPI.latest_charge !== 'string') {
                 receiptUrl = retrievedPI.latest_charge.receipt_url;
                 console.log(`[Webhook PI Succeeded] Found receipt_url on expanded charge: ${receiptUrl}`);
             } else {
                 console.warn(`[Webhook PI Succeeded] latest_charge not found or not expanded on retrieved PI ${paymentIntent.id}.`);
             }
+
+            // Get card details from payment_method if it's a card payment
+            if (retrievedPI.payment_method && typeof retrievedPI.payment_method === 'object' && retrievedPI.payment_method.card) {
+                cardLast4 = retrievedPI.payment_method.card.last4;
+                cardBrand = retrievedPI.payment_method.card.brand; // e.g., 'visa', 'mastercard'
+                console.log(`[Webhook PI Succeeded] Found card details: Brand=${cardBrand}, Last4=${cardLast4}`); // Existing log
+                // ---> ADDED LOG: Confirm extracted value <---
+                console.log(`[Webhook PI Succeeded] Extracted cardLast4 value: ${cardLast4}`);
+            } else {
+                 console.warn(`[Webhook PI Succeeded] Payment method details or card details not found/expanded on retrieved PI ${paymentIntent.id}. cardLast4 will be null.`);
+                 // ---> ADDED LOG: Confirm null value <---
+                 console.log(`[Webhook PI Succeeded] Extracted cardLast4 value (not found): ${cardLast4}`);
+            }
+
         } catch (retrieveError) {
             console.error(`[Webhook PI Succeeded] Error retrieving expanded Payment Intent ${paymentIntent.id}:`, retrieveError instanceof Error ? retrieveError.message : retrieveError);
-            // Proceed without receipt URL if retrieval fails
+            // Proceed without receipt URL or card details if retrieval fails
         }
         // --- End Retrieve PI ---
 
+        // Verify total amount charged by Stripe matches the total amount from metadata
+        const totalAmountChargedByStripe = paymentIntent.amount; // Amount charged by Stripe (should be total)
+        if (totalAmountChargedByStripe !== totalAmountFromMeta) {
+            console.error(`[Webhook PI Succeeded] CRITICAL: Amount mismatch! Stripe charged ${totalAmountChargedByStripe}, but metadata total was ${totalAmountFromMeta} for PI ${paymentIntent.id}. Check manual tax calculation logic.`);
+            // Return 500 - indicates a problem needing investigation
+            return json({ error: "Internal calculation error: Amount mismatch." }, { status: 500 });
+        }
+        // Tax amount is read directly from metadata (taxAmountFromMeta)
 
         try {
-            console.log(`[Webhook PI Succeeded] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} to succeeded`);
+            // Construct payment method string including brand if available
+            let paymentMethodString = paymentMethodType;
+            if (paymentMethodType === 'card' && cardBrand) {
+                paymentMethodString = `${cardBrand.charAt(0).toUpperCase() + cardBrand.slice(1)} card`; // e.g., "Visa card"
+            }
+
+            // ---> ADDED LOG: Confirm value before calling updatePaymentStatus <---
+            console.log(`[Webhook PI Succeeded] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId}. Passing cardLast4: ${cardLast4}`);
+            console.log(`[Webhook PI Succeeded] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} to succeeded. Amounts from metadata: Subtotal=${subtotalAmountFromMeta}, Tax=${taxAmountFromMeta}, Total=${totalAmountFromMeta}`);
             await updatePaymentStatus(
                 supabasePaymentId, // Use the ID from metadata
                 "succeeded",
                 receiptUrl, // Use the potentially retrieved receiptUrl
-                paymentMethod,
+                paymentMethodString, // Pass the constructed string (e.g., "Visa card", "interac_present")
                 stripePaymentIntentId, // Pass the PI ID
                 type, // Pass 'type'
                 familyId,
-                quantity
+                quantity,
+                // Pass amounts from metadata for verification/logging in updatePaymentStatus
+                subtotalAmountFromMeta,
+                taxAmountFromMeta,
+                totalAmountFromMeta,
+                // Pass card details
+                cardLast4 // Pass the extracted last 4 digits
             );
             console.log(`[Webhook PI Succeeded] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
         } catch (updateError) {
@@ -121,15 +174,36 @@ export async function action({request}: ActionFunctionArgs) {
 
          try {
             console.log(`[Webhook PI Failed] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} to failed`);
-            // Note: We don't pass quantity/type/familyId here as they aren't strictly needed for 'failed' status update
-            // and might not be present if the PI failed very early.
+            // Extract card details even for failed attempts if possible (might not always be available)
+            let failedCardLast4: string | null = null;
+            let failedCardBrand: string | null = null;
+            let failedPaymentMethodString = paymentIntent.payment_method_types?.[0] ?? null;
+            try {
+                 const retrievedPI = await stripe.paymentIntents.retrieve(paymentIntent.id, { expand: ['payment_method'] });
+                 if (retrievedPI.payment_method && typeof retrievedPI.payment_method === 'object' && retrievedPI.payment_method.card) {
+                     failedCardLast4 = retrievedPI.payment_method.card.last4;
+                     failedCardBrand = retrievedPI.payment_method.card.brand;
+                     if (failedPaymentMethodString === 'card' && failedCardBrand) {
+                         failedPaymentMethodString = `${failedCardBrand.charAt(0).toUpperCase() + failedCardBrand.slice(1)} card`;
+                     }
+                 }
+            } catch (retrieveError) {
+                 console.warn(`[Webhook PI Failed] Could not retrieve expanded PI ${paymentIntent.id} to get card details for failed payment.`);
+            }
+
             await updatePaymentStatus(
                 supabasePaymentId,
                 "failed",
                 null, // No receipt URL
-                paymentIntent.payment_method_types?.[0] ?? null, // Still useful to store method type
-                paymentIntent.id // Store the PI ID
-                // paymentType, familyId, quantity are omitted
+                failedPaymentMethodString, // Store method type (potentially with brand)
+                paymentIntent.id, // Store the PI ID
+                undefined, // type - not strictly needed for failed
+                undefined, // familyId - not strictly needed for failed
+                undefined, // quantity - not strictly needed for failed
+                undefined, // subtotal - not strictly needed for failed
+                undefined, // tax - not strictly needed for failed
+                undefined, // total - not strictly needed for failed
+                failedCardLast4 // Store last4 if available
             );
             console.log(`[Webhook PI Failed] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
         } catch (updateError) {

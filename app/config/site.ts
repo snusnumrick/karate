@@ -38,6 +38,11 @@ export const siteConfig = {
         monthly: 121,
         yearly: 1200, // Example yearly price (e.g., ~10% discount)
         oneOnOneSession: 80, // Example price for a single 1:1 session
+        // taxRateBC removed - Tax rates are now managed in the database (tax_rates table)
+        // Define applicable tax *names* (matching tax_rates table) for the region/site
+        // This example assumes BC taxes apply site-wide. Adjust logic if region-specific taxes are needed.
+        // applicableTaxNames: ['GST', 'PST_BC'],
+        applicableTaxNames: ['PST_BC'],
         get tiers(): { label: string; description: string }[] {
             return [
                 {label: "Free Trial", description: "Your first class is on us!"},

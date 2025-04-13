@@ -72,27 +72,19 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         return redirect("/family/setup", {headers});
     }
 
-    // 2. Fetch the family data *and* its related students and payments using the family_id from the profile
-    const {data: familyData, error: familyError} = await supabaseServer
+    // 2. Fetch the family data *and* its related students and guardians (without payments initially)
+    const {data: familyBaseData, error: familyError} = await supabaseServer
         .from('families')
-        // Fetch family details, related students, and related payments (ordered by date descending)
         .select(`
           *,
           students(*),
-          payments(*, payment_students(student_id)),
-          guardians(*) // Fetch associated guardians
+          guardians(*)
         `)
         .eq('id', profileData.family_id)
-        .order('payment_date', {
-            foreignTable: 'payments',
-            ascending: false,
-            nullsFirst: false
-        }) // Order payments by date
-        .single<FamilyData>(); // Apply the specific type here
-    // console.log("Family Data:", familyData);
+        .single(); // Fetch the single family record
 
-    if (familyError || !familyData) { // Check if familyData itself is null/undefined
-        console.error("Error fetching family data:", familyError?.message ?? "Family not found");
+    if (familyError || !familyBaseData) { // Check if familyBaseData itself is null/undefined
+        console.error("Error fetching base family data:", familyError?.message ?? "Family not found");
         return json({
             profile: {familyId: String(profileData.family_id)},
             error: "Failed to load family data.",
@@ -100,10 +92,33 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         }, {status: 500, headers});
     }
 
-    // 3. Fetch eligibility for each student IN the fetched family data
+    // 3. Fetch the single most recent *successful* payment separately
+    const { data: recentPaymentData, error: paymentError } = await supabaseServer
+        .from('payments')
+        .select(`
+            *,
+            payment_students(student_id)
+        `)
+        .eq('family_id', profileData.family_id) // Filter by family_id
+        .eq('status', 'succeeded')             // Filter by status
+        .order('payment_date', { ascending: false, nullsFirst: false }) // Order by date
+        .order('created_at', { ascending: false }) // Then by time
+        .limit(1)                              // Limit to one
+        .maybeSingle(); // Use maybeSingle as there might be no successful payments
+
+    if (paymentError) {
+        console.error("Error fetching recent payment data:", paymentError.message);
+        // Don't fail the whole page, just proceed without payment info
+    }
+
+    // Log the fetched recent payment
+    console.log("Most Recent Successful Payment Data:", recentPaymentData);
+
+
+    // 4. Fetch eligibility for each student IN the fetched family data
     const studentsWithEligibility: StudentWithEligibility[] = [];
-    if (familyData.students && familyData.students.length > 0) {
-        for (const student of familyData.students) {
+    if (familyBaseData.students && familyBaseData.students.length > 0) {
+        for (const student of familyBaseData.students) {
             const eligibility = await checkStudentEligibility(student.id, supabaseServer); // Use supabaseServer (service role)
             studentsWithEligibility.push({
                 ...student,
@@ -112,14 +127,15 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         }
     }
 
-    // Replace the original students array with the one containing eligibility
-    const familyDataWithEligibility: FamilyData = {
-        ...familyData,
+    // Combine base family data, students with eligibility, and the single payment (if found)
+    const finalFamilyData: FamilyData = {
+        ...familyBaseData,
         students: studentsWithEligibility,
+        payments: recentPaymentData ? [recentPaymentData] : [], // Add payment as an array (or empty array)
     };
 
 
-    // 4. Fetch required waivers and user's signatures to determine status
+    // 5. Fetch required waivers and user's signatures to determine status
     let allWaiversSigned = false;
     let individualSessionBalance = 0; // Declare balance variable outside the try block
 
@@ -181,10 +197,10 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // console.log('Family data with eligibility:', familyDataWithEligibility);
 
-    // Return profile, family data (with eligibility), and waiver status
+    // Return profile, combined family data, and waiver status
     return json({
         profile: {familyId: String(profileData.family_id)},
-        family: familyDataWithEligibility, // Use the updated data
+        family: finalFamilyData, // Use the combined data
         individualSessionBalance, // Include the renamed balance in the response
         allWaiversSigned
     }, {headers});
@@ -378,7 +394,8 @@ export default function FamilyPortal() {
                                 <span className="font-semibold">Date:</span> {family.payments[0].payment_date ? new Date(family.payments[0].payment_date).toLocaleDateString() : 'N/A'}
                             </p>
                             <p className="text-sm text-gray-700 dark:text-gray-300">
-                                <span className="font-semibold">Amount:</span> ${(family.payments[0].amount / 100).toFixed(2)}
+                                {/* Use total_amount for display */}
+                                <span className="font-semibold">Amount:</span> ${(family.payments[0].total_amount / 100).toFixed(2)}
                             </p>
                             <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
                                 <span className="font-semibold mr-2">Status:</span>
@@ -391,16 +408,18 @@ export default function FamilyPortal() {
                                     {family.payments[0].status}
                                 </span>
                             </p>
-                            {family.payments[0].receipt_url && (
+                            {/* Show receipt link only if status is succeeded and URL exists */}
+                            {family.payments[0].status === 'succeeded' && family.payments[0].receipt_url && (
                                 <p className="text-sm">
-                                    <a
-                                        href={family.payments[0].receipt_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <Link
+                                        to={family.payments[0].receipt_url} // Use Link component and the internal URL
+                                        target="_blank" // Optional: Keep opening in new tab
+                                        rel="noopener noreferrer" // Keep for security
                                         className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                        prefetch="intent" // Optional: Prefetch the receipt page
                                     >
                                         View Receipt
-                                    </a>
+                                    </Link>
                                 </p>
                             )}
                             <div className="pt-2">

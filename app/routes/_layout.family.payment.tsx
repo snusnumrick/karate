@@ -268,7 +268,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             totalAmountInCents = siteConfig.pricing.yearly * studentIds.length * 100;
         } else { // Monthly
             type = 'monthly_group'; // Assign to 'type'
-            // Need to fetch student history again server-side for accurate calculation
+            // Need to fetch student history again server-side for accurate subtotal calculation
             for (const studentId of studentIds) {
                 // Use the same logic as the API endpoint to get history
                 const { count: pastPaymentCount, error: countError } = await supabaseServer
@@ -287,21 +287,24 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 if (count === 0) unitAmount = siteConfig.pricing.firstMonth * 100;
                 else if (count === 1) unitAmount = siteConfig.pricing.secondMonth * 100;
                 else unitAmount = siteConfig.pricing.monthly * 100;
-                totalAmountInCents += unitAmount;
+                totalAmountInCents += unitAmount; // This is actually the subtotal
             }
         }
-        console.log(`[Action] Amount calculated: ${totalAmountInCents} cents. Type: ${type}`); // Log 'type'
+        // Rename totalAmountInCents to subtotalAmountInCents for clarity
+        const subtotalAmountInCents = totalAmountInCents;
+        console.log(`[Action] Subtotal calculated: ${subtotalAmountInCents} cents. Type: ${type}`); // Log 'type'
 
-        if (totalAmountInCents <= 0) {
-            console.error("[Action] Calculated amount is zero or negative. Returning error.");
-            return json({ error: "Calculated payment amount must be positive." }, { status: 400, headers: response.headers });
+        // Explicitly cast type for comparison if needed, though the type should be correct
+        if (subtotalAmountInCents <= 0 && (type as string) !== 'other') { // Allow $0 for 'other' type if needed, otherwise check subtotal
+            console.error("[Action] Calculated subtotal is zero or negative. Returning error.");
+            return json({ error: "Calculated payment subtotal must be positive." }, { status: 400, headers: response.headers });
         }
 
         // Create the initial payment record
-        console.log("[Action] Calling createInitialPaymentRecord...");
+        console.log("[Action] Calling createInitialPaymentRecord with subtotal...");
         const { data: paymentRecord, error: createError } = await createInitialPaymentRecord(
             familyId,
-            totalAmountInCents,
+            subtotalAmountInCents, // Pass the calculated subtotal
             studentIds, // Pass selected student IDs (empty for individual)
             type // Pass 'type' variable
         );
@@ -351,9 +354,9 @@ export default function FamilyPaymentPage() {
 
     // const isSubmitting = fetcher.state !== 'idle'; // Unused: fetcher.state is used directly in button disabled prop
 
-    // --- Dynamic Calculation ---
-    const calculateTotal = () => {
-        let total = 0;
+    // --- Dynamic Calculation (Subtotal, Tax, Total) ---
+    const calculateAmounts = () => {
+        let subtotal = 0;
         if (paymentOption === 'monthly' || paymentOption === 'yearly') {
             selectedStudentIds.forEach(id => {
                 const detail = studentPaymentDetails!.find(d => d.studentId === id);
@@ -361,17 +364,23 @@ export default function FamilyPaymentPage() {
                     const amount = paymentOption === 'yearly'
                         ? siteConfig.pricing.yearly // Use fixed yearly price
                         : detail.nextPaymentAmount; // Use calculated monthly price
-                    total += amount * 100; // Add amount in cents
+                    subtotal += amount * 100; // Add amount in cents to subtotal
                 }
             });
         } else if (paymentOption === 'individual') { // Corrected check
-            total = siteConfig.pricing.oneOnOneSession * oneOnOneQuantity * 100; // Use individual price * quantity
+            subtotal = siteConfig.pricing.oneOnOneSession * oneOnOneQuantity * 100; // Calculate subtotal
         }
-        return total;
+
+        // Tax is calculated by Stripe, only return subtotal for display here
+        const total = subtotal; // For display purposes, total initially equals subtotal
+
+        return { subtotal, total }; // Removed tax from return
     };
 
-    const currentTotalInCents = calculateTotal();
-    const currentTotalDisplay = `${siteConfig.pricing.currency}${(currentTotalInCents / 100).toFixed(2)}`;
+    const { subtotal: currentSubtotalInCents, total: currentTotalInCents } = calculateAmounts(); // Removed tax destructuring
+    const currentSubtotalDisplay = `${siteConfig.pricing.currency}${(currentSubtotalInCents / 100).toFixed(2)}`;
+    // currentTaxDisplay removed
+    const currentTotalDisplay = `${siteConfig.pricing.currency}${(currentTotalInCents / 100).toFixed(2)} + Tax`; // Indicate tax will be added
     // --- End Dynamic Calculation ---
 
 
@@ -598,11 +607,17 @@ export default function FamilyPaymentPage() {
 
             {/* Combined Total & Pricing Info Section */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-                {/* Calculated Total Amount */}
-                <div className="border-b pb-4 mb-4 dark:border-gray-600">
-                    <div className="flex justify-between items-center font-bold text-lg">
+                {/* Calculated Amounts */}
+                <div className="space-y-2 border-b pb-4 mb-4 dark:border-gray-600">
+                    <div className="flex justify-between items-center text-md">
+                        <span>Subtotal:</span>
+                        <span>{currentSubtotalDisplay}</span>
+                    </div>
+                    {/* Tax line removed - will be calculated by Stripe */}
+                    <div className="flex justify-between items-center font-bold text-lg mt-2">
                         <span>Total Due:</span>
-                        <span>{currentTotalDisplay}</span>
+                        {/* Display subtotal + Tax indicator */}
+                        <span>{currentSubtotalDisplay} + Tax</span>
                     </div>
                 </div>
 
@@ -617,11 +632,10 @@ export default function FamilyPaymentPage() {
                         Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
                         Monthly fees are
                         tiered: {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth} (1st), {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth} (2nd),
-                        then
-                        {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/mo per student.
+                        then {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/mo per student.
                         Yearly fee: {siteConfig.pricing.currency}{siteConfig.pricing.yearly}/year per student.
                         1:1 Sessions: {siteConfig.pricing.currency}{siteConfig.pricing.oneOnOneSession}/session.
-                        The total above reflects your current selection.
+                        Prices shown are before tax. Applicable taxes (e.g., GST, PST) will be added to the final amount.
                     </AlertDescription>
                 </Alert>
             </div>
@@ -650,11 +664,12 @@ export default function FamilyPaymentPage() {
                     // Disable based on fetcher state and validation logic
                     disabled={
                         fetcher.state !== 'idle' || // Disable if fetcher is not idle
-                        currentTotalInCents <= 0 ||
+                        currentSubtotalInCents <= 0 || // Check subtotal instead of total
                         ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
                         (paymentOption === 'individual' && oneOnOneQuantity <= 0)
                     }
                 >
+                    {/* Display calculated total on button */}
                     {fetcher.state !== 'idle' ? "Setting up payment..." : `Proceed to Pay ${currentTotalDisplay}`}
                 </Button>
             </div>
