@@ -328,7 +328,6 @@ export default function FamilyPortal() {
                     )}
                     {/* Link to a future page for adding a guardian */}
                     <Button asChild className="mt-2">
-                        {/* TODO: Create this route */}
                         <Link to="/family/add-guardian">Add Guardian</Link>
                     </Button>
                     {family.guardians && family.guardians.length === 1 && (
