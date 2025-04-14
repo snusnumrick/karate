@@ -689,8 +689,12 @@ CREATE TABLE IF NOT EXISTS public.payment_taxes (
     tax_amount integer NOT NULL CHECK (tax_amount >= 0), -- Tax amount in cents for this specific tax on this payment
     tax_rate_snapshot numeric(5, 4) NOT NULL, -- Store the rate applied at the time of payment
     tax_name_snapshot text NOT NULL, -- Store the name at the time of payment
+    tax_description_snapshot text NULL, -- Store the description at the time of payment
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
+
+-- Add tax_description_snapshot column idempotently
+ALTER TABLE public.payment_taxes ADD COLUMN IF NOT EXISTS tax_description_snapshot text NULL;
 
 -- Add indexes
 DO $$ BEGIN

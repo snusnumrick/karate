@@ -175,7 +175,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
         const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
             .from('tax_rates')
-            .select('id, name, rate')
+            .select('id, name, rate, description') // Fetch description as well
             .in('name', applicableTaxNames)
             .eq('is_active', true);
 
@@ -189,6 +189,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             tax_amount: number;
             tax_rate_snapshot: number;
             tax_name_snapshot: string;
+            tax_description_snapshot: string | null; // Add description snapshot
         }> = [];
 
         if (taxRatesData) {
@@ -202,6 +203,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                     tax_amount: taxAmountForThisRate,
                     tax_rate_snapshot: rate,
                     tax_name_snapshot: taxRate.name,
+                    tax_description_snapshot: taxRate.description, // Store description
                 });
             }
         }

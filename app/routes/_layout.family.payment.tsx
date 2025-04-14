@@ -74,7 +74,6 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         .select('family_id')
         .eq('id', user.id)
         .single() as { data: { family_id: string | null } | null, error: Error };
-    console.log("Profile Data:", profileData, "Profile Error:", profileError);
 
     if (profileError || !profileData?.family_id) {
         console.error("Payment Loader Error: Failed to load profile or family_id", profileError?.message);
@@ -258,7 +257,6 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     let type: Database['public']['Enums']['payment_type_enum']; // Use 'type' variable
 
     try {
-        console.log("[Action] Entered try block. Calculating amount...");
         // --- Restore Original Logic ---
         if (paymentOption === 'individual') {
             type = 'individual_session'; // Assign to 'type'
@@ -292,7 +290,6 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         }
         // Rename totalAmountInCents to subtotalAmountInCents for clarity
         const subtotalAmountInCents = totalAmountInCents;
-        console.log(`[Action] Subtotal calculated: ${subtotalAmountInCents} cents. Type: ${type}`); // Log 'type'
 
         // Explicitly cast type for comparison if needed, though the type should be correct
         if (subtotalAmountInCents <= 0 && (type as string) !== 'other') { // Allow $0 for 'other' type if needed, otherwise check subtotal
@@ -301,14 +298,14 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         }
 
         // Create the initial payment record
-        console.log("[Action] Calling createInitialPaymentRecord with subtotal...");
+        // console.log("[Action] Calling createInitialPaymentRecord with subtotal...");
         const { data: paymentRecord, error: createError } = await createInitialPaymentRecord(
             familyId,
             subtotalAmountInCents, // Pass the calculated subtotal
             studentIds, // Pass selected student IDs (empty for individual)
             type // Pass 'type' variable
         );
-        console.log(`[Action] createInitialPaymentRecord result: data=${JSON.stringify(paymentRecord)}, error=${createError}`);
+        // console.log(`[Action] createInitialPaymentRecord result: data=${JSON.stringify(paymentRecord)}, error=${createError}`);
 
         if (createError || !paymentRecord?.id) {
             console.error("[Action] Error condition met after createInitialPaymentRecord. Returning JSON error.", createError);
@@ -317,12 +314,11 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
         // Return full JSON success data including paymentId
         const paymentId = paymentRecord.id;
-        console.log(`[Action] Payment record created successfully (ID: ${paymentId}). Returning success JSON with paymentId...`);
+        // console.log(`[Action] Payment record created successfully (ID: ${paymentId}). Returning success JSON with paymentId...`);
         return json({ success: true, paymentId: paymentId }, { headers: response.headers }); // Return success and ID
 
     } catch (error) {
         // This catch block handles actual errors
-        console.log("[Action] Caught actual error in catch block:", error);
         // No need to check for Response instance here anymore
         const message = error instanceof Error ? error.message : "An unexpected error occurred during payment setup.";
         console.error("Action Error (in catch):", message); // Clarify log source
@@ -405,10 +401,10 @@ export default function FamilyPaymentPage() {
 
     // --- Effect for Client-Side Navigation (using fetcher data) ---
     useEffect(() => {
-        console.log("[Effect] Running navigation effect. fetcher.data:", fetcher.data); // Log effect run and fetcher data
+        // console.log("[Effect] Running navigation effect. fetcher.data:", fetcher.data); // Log effect run and fetcher data
         // Check for both success flag and paymentId before navigating
         if (fetcher.data?.success && fetcher.data?.paymentId) {
-            console.log(`[Effect] Condition met: Fetcher successful. Navigating to /pay/${fetcher.data.paymentId}`);
+            // console.log(`[Effect] Condition met: Fetcher successful. Navigating to /pay/${fetcher.data.paymentId}`);
             navigate(`/pay/${fetcher.data.paymentId}`);
         } else if (fetcher.data) {
             // Log if fetcher.data exists but doesn't meet the success condition

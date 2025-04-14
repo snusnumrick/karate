@@ -79,7 +79,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         console.error(`[API Create PI] Invalid amounts received: subtotal=${subtotalAmountString}, total=${totalAmountString}`);
         return json({ error: "Invalid payment amount details received." }, { status: 400, headers: response.headers });
     }
-    console.log(`[API Create PI] Received amounts from form: Subtotal=${subtotalAmountFromForm}, Total=${totalAmountFromForm}`);
+    // console.log(`[API Create PI] Received amounts from form: Subtotal=${subtotalAmountFromForm}, Total=${totalAmountFromForm}`);
 
 
     // Only require studentIds for monthly/yearly payments
@@ -164,7 +164,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
         const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
             .from('tax_rates')
-            .select('id, name, rate')
+            .select('id, name, rate, description') // Fetch description
             .in('name', applicableTaxNames)
             .eq('is_active', true);
 
@@ -172,19 +172,20 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             console.error('[API Create PI] Error fetching tax rates for breakdown:', JSON.stringify(taxRatesError, null, 2));
             throw new Error(`Failed to fetch tax rates for breakdown: ${taxRatesError.message}`);
         }
-        console.log('[API Create PI] Fetched tax rates data for breakdown:', JSON.stringify(taxRatesData, null, 2));
+        // console.log('[API Create PI] Fetched tax rates data for breakdown:', JSON.stringify(taxRatesData, null, 2));
 
         const paymentTaxesToInsert: Array<{
             tax_rate_id: string;
             tax_amount: number; // This will be recalculated based on fetched rates and FORM subtotal
             tax_rate_snapshot: number;
             tax_name_snapshot: string;
+            tax_description_snapshot: string | null; // Add description snapshot
         }> = [];
-        const taxDetailsForMetadata: Array<{ name: string; amount: number; rate: number }> = [];
+        const taxDetailsForMetadata: Array<{ name: string; description: string | null; amount: number; rate: number }> = [];
         let recalculatedTaxCheck = 0; // For verification
 
         if (taxRatesData && taxRatesData.length > 0) {
-            console.log(`[API Create PI] Recalculating tax breakdown based on ${taxRatesData.length} rates and FORM subtotal ${subtotalAmountInCents}.`);
+            // console.log(`[API Create PI] Recalculating tax breakdown based on ${taxRatesData.length} rates and FORM subtotal ${subtotalAmountInCents}.`);
             for (const taxRate of taxRatesData) {
                 const rate = Number(taxRate.rate);
                 if (isNaN(rate)) {
@@ -199,9 +200,11 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                     tax_amount: taxAmountForThisRate, // Use recalculated amount for DB
                     tax_rate_snapshot: rate,
                     tax_name_snapshot: taxRate.name,
+                    tax_description_snapshot: taxRate.description, // Store description
                 });
                 taxDetailsForMetadata.push({
                     name: taxRate.name,
+                    description: taxRate.description, // Add description to metadata
                     amount: taxAmountForThisRate, // Use recalculated amount for metadata
                     rate: rate,
                 });
@@ -211,7 +214,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                  console.warn(`[API Create PI] Tax amount mismatch during breakdown recalculation! Form-derived tax: ${totalTaxAmountInCents}, Recalculated tax sum: ${recalculatedTaxCheck}. Using form-derived total for Stripe, but storing recalculated breakdown.`);
                  // This might indicate a rounding difference or an issue upstream. Proceeding, but needs monitoring.
             } else {
-                 console.log(`[API Create PI] Tax breakdown recalculation successful. Total tax: ${recalculatedTaxCheck}`);
+                 // console.log(`[API Create PI] Tax breakdown recalculation successful. Total tax: ${recalculatedTaxCheck}`);
             }
         } else {
             console.log(`[API Create PI] No applicable tax rates found for breakdown. Tax amount is ${totalTaxAmountInCents}.`);
@@ -220,7 +223,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
 
         // --- Validation (using amounts from form) ---
-        console.log(`[API Create PI] Using amounts from form: Subtotal=${subtotalAmountInCents}, Total Tax=${totalTaxAmountInCents}, Total=${totalAmountInCents}`);
+        // console.log(`[API Create PI] Using amounts from form: Subtotal=${subtotalAmountInCents}, Total Tax=${totalTaxAmountInCents}, Total=${totalAmountInCents}`);
         // Validate total amount is positive
         if (totalAmountInCents <= 0) {
              console.error(`[API Create PI] Failing validation: totalAmountInCents=${totalAmountInCents}`);
@@ -236,7 +239,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             console.error("[API Create PI] CRITICAL: supabasePaymentId missing from form data.");
             return json({ error: "Payment session identifier missing. Please restart the payment process." }, { status: 400, headers: response.headers });
         }
-        console.log(`[API Create PI] Using existing Supabase Payment ID: ${supabasePaymentId}`);
+        // console.log(`[API Create PI] Using existing Supabase Payment ID: ${supabasePaymentId}`);
         // We no longer create a new record here, so remove the paymentData variable assignment.
         // paymentData = { id: supabasePaymentId }; // We just need the ID
 
@@ -282,7 +285,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         //    - Update subtotal_amount and total_amount (in case they changed if user went back/forth).
         //    - Clear existing tax details for this payment (in payment_taxes).
         //    - Insert new tax details into payment_taxes.
-        console.log(`[API Create PI] Updating Supabase payment ${supabasePaymentId} with PI ${paymentIntent.id}, amounts, and tax details.`);
+        // console.log(`[API Create PI] Updating Supabase payment ${supabasePaymentId} with PI ${paymentIntent.id}, amounts, and tax details.`);
 
         // Step 4a: Update the main payment record
         const { error: updatePaymentError } = await supabaseAdmin
@@ -310,7 +313,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             }
             return json({ error: "Failed to link payment intent. Please contact support." }, { status: 500, headers: response.headers });
         } else {
-            console.log(`[API Create PI] Successfully updated main payment record ${supabasePaymentId}.`);
+            // console.log(`[API Create PI] Successfully updated main payment record ${supabasePaymentId}.`);
         }
 
         // Step 4b: Delete existing tax records for this payment ID
@@ -344,11 +347,11 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 try { await stripe.paymentIntents.cancel(paymentIntent.id); } catch (cancelError) { /* Log cancel error */ }
                 return json({ error: "Failed to record tax details. Please contact support." }, { status: 500, headers: response.headers });
             }
-            console.log(`[API Create PI] Inserted ${taxesWithPaymentId.length} new tax records for payment ${supabasePaymentId}.`);
+            // console.log(`[API Create PI] Inserted ${taxesWithPaymentId.length} new tax records for payment ${supabasePaymentId}.`);
         }
 
         // 5. Return the client_secret, Supabase payment ID, and the amounts *received from the form* to the client
-        console.log(`[API Create PI] Successfully created/updated Stripe PI ${paymentIntent.id} and Supabase payment ${supabasePaymentId} using amounts from form.`);
+        // console.log(`[API Create PI] Successfully created/updated Stripe PI ${paymentIntent.id} and Supabase payment ${supabasePaymentId} using amounts from form.`);
         return json({
             clientSecret: paymentIntent.client_secret,
             supabasePaymentId: supabasePaymentId,

@@ -173,7 +173,6 @@ export async function createInitialPaymentRecord(
     }
 
     const paymentId = paymentRecord.id;
-    console.log(`[createInitialPaymentRecord] Created payment record ${paymentId}. Subtotal: ${subtotalAmount}, Total Tax: ${totalTaxAmount}, Total: ${totalAmount}`);
 
     // 5. Insert records into the payment_taxes junction table
     if (paymentTaxesToInsert.length > 0) {
@@ -191,7 +190,7 @@ export async function createInitialPaymentRecord(
             await supabaseAdmin.from('payments').delete().eq('id', paymentId);
             return { data: null, error: `Failed to record tax details: ${insertTaxesError.message}` };
         }
-        console.log(`[createInitialPaymentRecord] Inserted ${taxesWithPaymentId.length} tax records for payment ${paymentId}.`);
+        // console.log(`[createInitialPaymentRecord] Inserted ${taxesWithPaymentId.length} tax records for payment ${paymentId}.`);
     }
 
 
@@ -333,15 +332,15 @@ export async function checkStudentEligibility(
 // Helper function to get the base site URL
 function getSiteUrl(): string {
     // Ensure this environment variable is set in your deployment environment (Vercel, Netlify, etc.)
-    // and in your local .env file for development.
-    const siteUrl = process.env.SITE_URL;
+    // and in your local .env file for development. Use VITE_ prefix for consistency.
+    const siteUrl = process.env.VITE_SITE_URL;
     if (!siteUrl) {
-        console.error("FATAL: SITE_URL environment variable is not set. Cannot generate absolute receipt URLs.");
+        console.error("FATAL: VITE_SITE_URL environment variable is not set. Cannot generate absolute receipt URLs.");
         // Throw an error or return a default that makes it obvious something is wrong
         // Throwing an error might be better to prevent unexpected behavior.
-        throw new Error("SITE_URL environment variable is not configured.");
+        throw new Error("VITE_SITE_URL environment variable is not configured.");
         // Or fallback to relative path if absolutely necessary, but log loudly:
-        // console.warn("SITE_URL environment variable is not set. Defaulting to relative paths for receipts, which might not work in emails.");
+        // console.warn("VITE_SITE_URL environment variable is not set. Defaulting to relative paths for receipts, which might not work in emails.");
         // return "";
     }
     // Ensure it doesn't end with a slash for clean joining
@@ -392,9 +391,9 @@ export async function updatePaymentStatus(
             // Construct the ABSOLUTE URL to our custom receipt page
             const siteBaseUrl = getSiteUrl(); // Get base URL (e.g., https://yourdomain.com)
             updateData.receipt_url = `${siteBaseUrl}/family/receipt/${supabasePaymentId}`;
-            console.log(`[updatePaymentStatus] Generated receipt URL for ${supabasePaymentId}: ${updateData.receipt_url}`);
+            // console.log(`[updatePaymentStatus] Generated receipt URL for ${supabasePaymentId}: ${updateData.receipt_url}`);
         } catch (e) {
-             console.error(`[updatePaymentStatus] Failed to generate receipt URL for ${supabasePaymentId} due to missing SITE_URL. Payment status updated, but receipt URL is null.`, e);
+             console.error(`[updatePaymentStatus] Failed to generate receipt URL for ${supabasePaymentId} due to missing VITE_SITE_URL. Payment status updated, but receipt URL is null.`, e);
              updateData.receipt_url = null; // Ensure it's null if generation fails
         }
     } else if (status === 'failed') {
@@ -406,8 +405,7 @@ export async function updatePaymentStatus(
         updateData.receipt_url = null;
     }
 
-    // ---> ADDED LOG: Log the FINAL updateData object just before the DB update call <---
-    console.log(`[updatePaymentStatus] FINAL update data for payment ${supabasePaymentId}:`, JSON.stringify(updateData));
+    // console.log(`[updatePaymentStatus] FINAL update data for payment ${supabasePaymentId}:`, JSON.stringify(updateData));
 
     const {data, error} = await supabaseAdmin
         .from('payments')
@@ -467,7 +465,7 @@ export async function updatePaymentStatus(
             // Throw an error here to indicate the webhook handler should potentially return an error status to Stripe.
             throw new Error(`Payment ${data.id} succeeded, but failed to record Individual Session credits: ${sessionInsertError.message}`);
         }
-        console.log(`[updatePaymentStatus] Recorded Individual Session purchase for payment ${data.id}.`); // Simplified log
+        // console.log(`[updatePaymentStatus] Recorded Individual Session purchase for payment ${data.id}.`); // Simplified log
     } else if (status === 'succeeded' && type === 'individual_session') { // Check against 'type' parameter
         // Keep this warning for debugging potential future issues
         console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${type}', Quantity='${quantity}'. Session record NOT created.`); // Log updated

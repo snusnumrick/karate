@@ -84,33 +84,32 @@ export default function PaymentSuccess() {
     const revalidator = useRevalidator(); // Get the revalidator function
 
     // Log loaderData on each render
-    console.log('[PaymentSuccess Render] loaderData:', JSON.stringify(loaderData));
-    console.log('[PaymentSuccess Render] revalidator.state:', revalidator.state);
+    // console.log('[PaymentSuccess Render] loaderData:', JSON.stringify(loaderData));
+    // console.log('[PaymentSuccess Render] revalidator.state:', revalidator.state);
 
 
     // Effect to trigger revalidation if payment is still pending OR if loader failed to find the record initially
     // Moved BEFORE the early return to satisfy Rules of Hooks
     useEffect(() => {
-        console.log("[PaymentSuccess Effect] Running effect. Current revalidator state:", revalidator.state);
+        // console.log("[PaymentSuccess Effect] Running effect. Current revalidator state:", revalidator.state);
         // Check if payment is explicitly pending OR if the loader returned the specific 'not yet available' error
         const payment = 'payment' in loaderData ? loaderData.payment : null;
         const isExplicitlyPending = payment?.is_pending_update ?? false;
         const isWaitingForWebhook = 'error' in loaderData && loaderData.error?.startsWith("Payment details not yet available");
 
-        console.log(`[PaymentSuccess Effect] Checking condition: isExplicitlyPending=${isExplicitlyPending}, isWaitingForWebhook=${isWaitingForWebhook}, revalidator.state=${revalidator.state}`);
+        // console.log(`[PaymentSuccess Effect] Checking condition: isExplicitlyPending=${isExplicitlyPending}, isWaitingForWebhook=${isWaitingForWebhook}, revalidator.state=${revalidator.state}`);
 
         // Revalidate if explicitly pending OR if waiting for webhook, and revalidator is idle
         if ((isExplicitlyPending || isWaitingForWebhook) && revalidator.state === 'idle') {
-            console.log("[PaymentSuccess Effect] Condition met: Payment pending or waiting for webhook, scheduling revalidation...");
+            // console.log("[PaymentSuccess Effect] Condition met: Payment pending or waiting for webhook, scheduling revalidation...");
             const timer = setTimeout(() => {
-                console.log("[PaymentSuccess Effect] Timer fired. Calling revalidator.revalidate()...");
                 revalidator.revalidate();
-                console.log("[PaymentSuccess Effect] revalidator.revalidate() called.");
+                // console.log("[PaymentSuccess Effect] revalidator.revalidate() called.");
             }, 3000); // Revalidate after 3 seconds
 
             // Cleanup timer on component unmount or if revalidator state changes
             return () => {
-                console.log("[PaymentSuccess Effect] Cleanup function called. Clearing timer.");
+                // console.log("[PaymentSuccess Effect] Cleanup function called. Clearing timer.");
                 clearTimeout(timer);
             };
         } else {
@@ -120,7 +119,7 @@ state: ${revalidator.state}`);
         // Dependencies: revalidate whenever loaderData changes (including error state) or revalidator state changes
     }, [loaderData, revalidator]); // Depend on loaderData and revalidator state
     // Log loader data just before returning JSX
-    console.log('[PaymentSuccess Render] Final loaderData before JSX:', JSON.stringify(loaderData));
+    // console.log('[PaymentSuccess Render] Final loaderData before JSX:', JSON.stringify(loaderData));
 
     // Handle specific "not yet available" error by showing processing state
     if ('error' in loaderData && loaderData.error?.startsWith("Payment details not yet available")) {
@@ -173,11 +172,8 @@ state: ${revalidator.state}`);
 
     // Now we know payment exists
     const {payment} = loaderData;
-    // console.log('Payment:', payment); // Removed log
-
-    // Log the status being used for rendering
-    console.log('[PaymentSuccess Render] Status used for rendering:', payment.status);
-    console.log('[PaymentSuccess Component] Receipt URL from loader data:', payment.receipt_url); // Log receipt URL
+    // console.log('[PaymentSuccess Render] Status used for rendering:', payment.status);
+    // console.log('[PaymentSuccess Component] Receipt URL from loader data:', payment.receipt_url);
     // Extract quantity if available
     const quantityPurchased =
         (payment.type === 'individual_session' && payment.one_on_one_sessions && payment.one_on_one_sessions.length > 0)

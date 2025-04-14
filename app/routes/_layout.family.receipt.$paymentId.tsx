@@ -9,14 +9,14 @@ import { siteConfig } from "~/config/site"; // Import site config for business d
 import { format } from 'date-fns'; // For formatting dates
 
 // Define the types for the data needed for the receipt
-type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row'];
+type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row']; // Includes tax_description_snapshot now
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 type PaymentRow = Database['public']['Tables']['payments']['Row']; // Includes card_last4 now
 type OneOnOneSessionRow = Database['public']['Tables']['one_on_one_sessions']['Row'];
 
 type ReceiptPaymentData = PaymentRow & {
     families: Pick<FamilyRow, 'name' | 'email' | 'address' | 'city' | 'province' | 'postal_code'> | null;
-    payment_taxes: Array<Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_amount' | 'tax_rate_snapshot'>>;
+    payment_taxes: Array<Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_description_snapshot' | 'tax_amount' | 'tax_rate_snapshot'>>; // Added tax_description_snapshot
     one_on_one_sessions: Array<Pick<OneOnOneSessionRow, 'quantity_purchased'>>; // Fetch quantity if applicable
     // card_last4 is already included via PaymentRow
 };
@@ -80,11 +80,12 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
             *,
             card_last4,
             families ( name, email, address, city, province, postal_code ),
-            payment_taxes ( tax_name_snapshot, tax_amount, tax_rate_snapshot ),
+            payment_taxes ( tax_name_snapshot, tax_description_snapshot, tax_amount, tax_rate_snapshot ),
             one_on_one_sessions ( quantity_purchased )
         `)
         .eq('id', paymentId)
         .maybeSingle(); // Use maybeSingle to handle not found case
+    // console.log('payment.payment_taxes: ', paymentData?.payment_taxes);
 
     if (dbError) {
         console.error(`[Receipt Loader] Error fetching payment ${paymentId}:`, dbError.message);
@@ -213,10 +214,10 @@ export default function PaymentReceiptPage() {
 
                 <section className="mb-8">
                     <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200 print:text-black">Bill To:</h3>
-                    <p className="text-gray-700 dark:text-gray-300 print:text-black">{payment.families.name}</p>
-                    <p className="text-gray-700 dark:text-gray-300 print:text-black">{payment.families.email}</p>
-                    <p className="text-gray-700 dark:text-gray-300 print:text-black">{payment.families.address}</p>
-                    <p className="text-gray-700 dark:text-gray-300 print:text-black">{payment.families.city}, {payment.families.province} {payment.families.postal_code}</p>
+                    <p className="text-gray-700 dark:text-gray-300 print:text-black">{payment.families?.name}</p>
+                    <p className="text-gray-700 dark:text-gray-300 print:text-black">{payment.families?.email}</p>
+                    <p className="text-gray-700 dark:text-gray-300 print:text-black">{payment.families?.address}</p>
+                    <p className="text-gray-700 dark:text-gray-300 print:text-black">{payment.families?.city}, {payment.families?.province} {payment.families?.postal_code}</p>
                 </section>
 
                 {/* Add print:break-inside-avoid to try and keep this section together */}
@@ -238,8 +239,10 @@ export default function PaymentReceiptPage() {
                             {/* Tax Rows */}
                             {payment.payment_taxes && payment.payment_taxes.map((tax, index) => (
                                 <tr key={index} className="border-b border-gray-200 dark:border-gray-700 print:border-gray-400">
-                                    {/* Indent tax lines slightly */}
-                                    <td className="py-3 pr-2 text-gray-700 dark:text-gray-300 print:text-black pl-4">{tax.tax_name_snapshot} ({ (tax.tax_rate_snapshot * 100).toFixed(2) }%)</td>
+                                    {/* Indent tax lines slightly - Use description, fallback to name */}
+                                    <td className="py-3 pr-2 text-gray-700 dark:text-gray-300 print:text-black pl-4">
+                                        {tax.tax_description_snapshot || tax.tax_name_snapshot} ({ (tax.tax_rate_snapshot * 100).toFixed(2) }%)
+                                    </td>
                                     <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">${(tax.tax_amount / 100).toFixed(2)}</td>
                                 </tr>
                             ))}
@@ -253,10 +256,10 @@ export default function PaymentReceiptPage() {
                         </tfoot>
                     </table>
                     {/* Display Payment Method and Last 4 */}
-                    {payment.payment_method && (
+                    {payment?.payment_method && (
                          <p className="text-sm text-gray-600 dark:text-gray-400 print:text-black mt-4">
                              Paid via: {payment.payment_method}
-                             {payment.card_last4 && ` ending in ${payment.card_last4}`}
+                             {payment?.card_last4 && ` ending in ${payment.card_last4}`}
                          </p>
                     )}
                 </section>

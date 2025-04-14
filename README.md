@@ -33,8 +33,8 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - Multiple payment options initiated from Family Portal (`/family/payment`): Monthly Group, Yearly Group, Individual Sessions (purchased in quantities).
     - View payment history, including payment type (`/family/payment-history`).
     - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly). Prices shown are before tax.
-    - Applicable sales taxes (e.g., GST, PST) are calculated based on active rates defined in the `tax_rates` database table and the `applicableTaxNames` setting in `app/config/site.ts`. The breakdown is stored in the `payment_taxes` table, and the total amount (subtotal + all taxes) is stored in the `payments` table and sent to Stripe.
-    - Custom, print-friendly payment receipts including tax breakdown are generated and accessible via the Family Portal (`/family/receipt/:paymentId`) instead of using Stripe's default receipts. The URL is stored in the `payments.receipt_url` field. Requires `SITE_URL` environment variable to be set correctly.
+    - Applicable sales taxes (e.g., GST, PST) are calculated based on active rates defined in the `tax_rates` database table and the `applicableTaxNames` setting in `app/config/site.ts`. The breakdown (including tax name, description, rate, and amount) is stored in the `payment_taxes` table, and the total amount (subtotal + all taxes) is stored in the `payments` table and sent to Stripe.
+    - Custom, print-friendly payment receipts including tax breakdown (displaying tax description) are generated and accessible via the Family Portal (`/family/receipt/:paymentId`) instead of using Stripe's default receipts. The URL is stored in the `payments.receipt_url` field. Requires `VITE_SITE_URL` environment variable to be set correctly.
     - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
 
 ### Administrative Panel (`/admin`)
@@ -92,7 +92,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
 - **Site Configuration:** Basic site details (name, instructor info, class schedule, location, pricing tiers) are managed in `app/config/site.ts`.
 - **Styling:** Uses Tailwind CSS and Shadcn UI components. Customize Tailwind configuration in `tailwind.config.ts` and component styles within `app/components/ui/`.
 - **Pricing Logic:** Payment tier calculation logic is within the payment initiation route (`/family/payment`). Payment completion happens on `/pay/:paymentId`. Pricing values (before tax) are in `app/config/site.ts`.
-- **Tax Logic:** Taxes are defined in the `tax_rates` database table. Which taxes apply is determined by `siteConfig.applicableTaxNames`. Calculation occurs server-side (in `app/utils/supabase.server.ts`, `app/routes/api.create-payment-intent.ts`, `app/routes/admin.payments.new.tsx`) based on the subtotal. The breakdown is stored in `payment_taxes`.
+- **Tax Logic:** Taxes are defined in the `tax_rates` database table (including name, description, rate). Which taxes apply is determined by `siteConfig.applicableTaxNames`. Calculation occurs server-side (in `app/routes/api.create-payment-intent.ts`, `app/routes/admin.payments.new.tsx`) based on the subtotal. The breakdown (including snapshots of name, description, rate, and calculated amount) is stored in `payment_taxes`. Receipts display the `tax_description_snapshot`.
 - **Eligibility Logic:** Student eligibility (Trial, Paid, Expired) based on payment history is handled in `app/utils/supabase.server.ts`.
 - **Email Templates:** Email content is generally defined within the server-side code that sends the email (e.g., routes, Supabase functions). Check `app/utils/email.server.ts` and `supabase/functions/`.
 
@@ -153,7 +153,7 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - `STRIPE_WEBHOOK_SECRET`
     - `RESEND_API_KEY`
     - `FROM_EMAIL`
-    - `SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com` - **Required** for generating correct absolute receipt URLs)
+    - `VITE_SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com` - **Required** for generating correct absolute receipt URLs and for frontend config)
 5.  **Tax Configuration:** Ensure the `tax_rates` table in your production Supabase database contains the correct tax rates (e.g., GST, PST_BC) and that they are marked `is_active = true`. Verify `applicableTaxNames` in `app/config/site.ts` matches the desired active taxes for your site. Stripe Tax configuration in the dashboard is **not** used for calculation.
 6.  **Deploy:** Trigger a deployment in Vercel.
 7.  **Stripe Webhook:**
@@ -169,7 +169,15 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - Ensure "Confirm email" is **enabled** in Supabase Auth settings for production.
     - Set up database backups in Supabase.
 8.  **Resend Domain Verification:** Ensure your sending domain is verified in Resend for reliable email delivery.
-9.  **Supabase Edge Functions:** Deploy the functions to your *linked* Supabase project:
+9.  **Supabase Edge Functions:**
+    - **Set Secrets:** Edge Functions need their own environment variables (secrets). Set them using the Supabase CLI (recommended) or the Dashboard (Edge Functions -> Select Function -> Secrets). You need to set `VITE_SITE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `RESEND_API_KEY`.
+        ```bash
+        # Example using Supabase CLI (run for each secret)
+        supabase secrets set VITE_SITE_URL=https://your-production-domain.com
+        supabase secrets set RESEND_API_KEY=your_resend_api_key
+        # ... set others similarly ...
+        ```
+    - **Deploy Functions:** Deploy the functions to your *linked* Supabase project:
     ```bash
     # Ensure you are linked to the correct Supabase project
     npx supabase functions deploy payment-reminder --no-verify-jwt

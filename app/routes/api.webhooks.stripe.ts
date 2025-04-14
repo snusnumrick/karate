@@ -33,7 +33,7 @@ export async function action({request}: ActionFunctionArgs) {
     try {
         // Verify the event signature
         event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-        console.log(`Received Stripe event: ${event.type}`);
+        // console.log(`Received Stripe event: ${event.type}`);
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         console.error(`Webhook signature verification failed: ${errorMessage}`);
@@ -43,7 +43,7 @@ export async function action({request}: ActionFunctionArgs) {
     // --- Handle Payment Intent Events ---
     if (event.type === 'payment_intent.succeeded') {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        console.log(`Processing payment_intent.succeeded for PI: ${paymentIntent.id}`);
+        // console.log(`Processing payment_intent.succeeded for PI: ${paymentIntent.id}`);
 
         // Extract metadata - CRITICAL
         const metadata = paymentIntent.metadata;
@@ -84,7 +84,7 @@ export async function action({request}: ActionFunctionArgs) {
 
         // --- Retrieve PI again with expanded payment_method to get card details ---
         try {
-            console.log(`[Webhook PI Succeeded] Retrieving Payment Intent ${paymentIntent.id} with expanded payment_method and latest_charge...`);
+            // console.log(`[Webhook PI Succeeded] Retrieving Payment Intent ${paymentIntent.id} with expanded payment_method and latest_charge...`);
             const retrievedPI = await stripe.paymentIntents.retrieve(paymentIntent.id, {
                 // Expand both payment_method and latest_charge
                 expand: ['payment_method', 'latest_charge']
@@ -93,7 +93,7 @@ export async function action({request}: ActionFunctionArgs) {
             // Get receipt URL from latest_charge
             if (retrievedPI.latest_charge && typeof retrievedPI.latest_charge !== 'string') {
                 receiptUrl = retrievedPI.latest_charge.receipt_url;
-                console.log(`[Webhook PI Succeeded] Found receipt_url on expanded charge: ${receiptUrl}`);
+                // console.log(`[Webhook PI Succeeded] Found receipt_url on expanded charge: ${receiptUrl}`);
             } else {
                 console.warn(`[Webhook PI Succeeded] latest_charge not found or not expanded on retrieved PI ${paymentIntent.id}.`);
             }
@@ -102,13 +102,9 @@ export async function action({request}: ActionFunctionArgs) {
             if (retrievedPI.payment_method && typeof retrievedPI.payment_method === 'object' && retrievedPI.payment_method.card) {
                 cardLast4 = retrievedPI.payment_method.card.last4;
                 cardBrand = retrievedPI.payment_method.card.brand; // e.g., 'visa', 'mastercard'
-                console.log(`[Webhook PI Succeeded] Found card details: Brand=${cardBrand}, Last4=${cardLast4}`); // Existing log
-                // ---> ADDED LOG: Confirm extracted value <---
-                console.log(`[Webhook PI Succeeded] Extracted cardLast4 value: ${cardLast4}`);
+                // console.log(`[Webhook PI Succeeded] Found card details: Brand=${cardBrand}, Last4=${cardLast4}`); // Existing log
             } else {
                  console.warn(`[Webhook PI Succeeded] Payment method details or card details not found/expanded on retrieved PI ${paymentIntent.id}. cardLast4 will be null.`);
-                 // ---> ADDED LOG: Confirm null value <---
-                 console.log(`[Webhook PI Succeeded] Extracted cardLast4 value (not found): ${cardLast4}`);
             }
 
         } catch (retrieveError) {
@@ -133,9 +129,7 @@ export async function action({request}: ActionFunctionArgs) {
                 paymentMethodString = `${cardBrand.charAt(0).toUpperCase() + cardBrand.slice(1)} card`; // e.g., "Visa card"
             }
 
-            // ---> ADDED LOG: Confirm value before calling updatePaymentStatus <---
-            console.log(`[Webhook PI Succeeded] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId}. Passing cardLast4: ${cardLast4}`);
-            console.log(`[Webhook PI Succeeded] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} to succeeded. Amounts from metadata: Subtotal=${subtotalAmountFromMeta}, Tax=${taxAmountFromMeta}, Total=${totalAmountFromMeta}`);
+            // console.log(`[Webhook PI Succeeded] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} to succeeded. Amounts from metadata: Subtotal=${subtotalAmountFromMeta}, Tax=${taxAmountFromMeta}, Total=${totalAmountFromMeta}`);
             await updatePaymentStatus(
                 supabasePaymentId, // Use the ID from metadata
                 "succeeded",
@@ -152,7 +146,7 @@ export async function action({request}: ActionFunctionArgs) {
                 // Pass card details
                 cardLast4 // Pass the extracted last 4 digits
             );
-            console.log(`[Webhook PI Succeeded] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
+            // console.log(`[Webhook PI Succeeded] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
         } catch (updateError) {
             console.error(`[Webhook PI Succeeded] Failed to update payment status/session balance for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
             // Return 500 so Stripe retries the webhook
@@ -161,7 +155,7 @@ export async function action({request}: ActionFunctionArgs) {
 
     } else if (event.type === 'payment_intent.payment_failed') {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        console.log(`Processing payment_intent.payment_failed for PI: ${paymentIntent.id}`);
+        console.warn(`Processing payment_intent.payment_failed for PI: ${paymentIntent.id}`);
 
         const metadata = paymentIntent.metadata;
         const supabasePaymentId = metadata?.paymentId; // Our internal ID from metadata
@@ -173,7 +167,7 @@ export async function action({request}: ActionFunctionArgs) {
         }
 
          try {
-            console.log(`[Webhook PI Failed] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} to failed`);
+            console.warn(`[Webhook PI Failed] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} to failed`);
             // Extract card details even for failed attempts if possible (might not always be available)
             let failedCardLast4: string | null = null;
             let failedCardBrand: string | null = null;
@@ -205,7 +199,7 @@ export async function action({request}: ActionFunctionArgs) {
                 undefined, // total - not strictly needed for failed
                 failedCardLast4 // Store last4 if available
             );
-            console.log(`[Webhook PI Failed] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
+            // console.log(`[Webhook PI Failed] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
         } catch (updateError) {
             console.error(`[Webhook PI Failed] Failed to update payment status for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
             // Return 500 so Stripe retries the webhook

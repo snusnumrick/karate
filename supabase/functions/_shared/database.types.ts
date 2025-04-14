@@ -312,6 +312,7 @@ export type Database = {
           id: string
           payment_id: string
           tax_amount: number
+          tax_description_snapshot: string | null
           tax_name_snapshot: string
           tax_rate_id: string
           tax_rate_snapshot: number
@@ -321,6 +322,7 @@ export type Database = {
           id?: string
           payment_id: string
           tax_amount: number
+          tax_description_snapshot?: string | null
           tax_name_snapshot: string
           tax_rate_id: string
           tax_rate_snapshot: number
@@ -330,6 +332,7 @@ export type Database = {
           id?: string
           payment_id?: string
           tax_amount?: number
+          tax_description_snapshot?: string | null
           tax_name_snapshot?: string
           tax_rate_id?: string
           tax_rate_snapshot?: number

@@ -35,12 +35,12 @@ serve(async (req: Request) => {
     const supabaseAdmin: SupabaseClient<Database> = createClient(supabaseUrl, supabaseServiceKey);
     console.log('Supabase client created.');
 
-    // Check for SITE_URL needed for email links
-    const siteUrl = Deno.env.get('SITE_URL');
+    // Check for VITE_SITE_URL needed for email links
+    const siteUrl = Deno.env.get('VITE_SITE_URL'); // Use VITE_ prefix
     if (!siteUrl) {
-      throw new Error('Missing SITE_URL environment variable.');
+      throw new Error('Missing VITE_SITE_URL environment variable.'); // Update error message
     }
-    console.log('SITE_URL verified.');
+    console.log('VITE_SITE_URL verified.'); // Update log message
 
     // 4. Fetch all families with their students
     const { data: families, error: familiesError } = await supabaseAdmin

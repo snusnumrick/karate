@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-04-14
+
+### Changed
+- Changed payment receipts to display the tax description (e.g., "Goods and Services Tax") instead of the short name (e.g., "GST"), with fallback to the name if description is missing.
+
 ## [1.1.0] - 2025-04-13
 
 ### Added

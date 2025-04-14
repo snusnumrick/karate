@@ -84,7 +84,6 @@ function getPaymentProductDescription(type: Database['public']['Enums']['payment
 
 // --- Loader ---
 export async function loader({request, params}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    console.log('paymentId loader parames: ', params);
     const paymentId = params.paymentId;
     if (!paymentId) {
         // Use json response for errors instead of throwing
@@ -119,9 +118,6 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         `)
         .eq('id', paymentId)
         .maybeSingle(); // Use maybeSingle to handle not found gracefully
-
-    // Log the raw data received from Supabase on the server
-    console.log(`[Loader] Raw payment data fetched for ID ${paymentId}:`, payment);
 
     if (error) {
         // Log the specific database error message
@@ -161,7 +157,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
                 const paymentIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id, {
                     expand: ['latest_charge'] // Expand charge to potentially get receipt URL
                 });
-                console.log(`[Loader] Stripe PI status for ${paymentIntent.id}: ${paymentIntent.status}`);
+                // console.log(`[Loader] Stripe PI status for ${paymentIntent.id}: ${paymentIntent.status}`);
 
                 if (paymentIntent.status === 'succeeded') {
                     console.log(`[Loader] Stripe PI ${paymentIntent.id} already succeeded. Updating Supabase record ${paymentId} and redirecting.`);
@@ -242,7 +238,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         payment: payment as PaymentWithDetails, // Status is included within payment object
         stripePublishableKey
     };
-    console.log('[Loader] Data prepared for return:', loaderReturnData);
+    // console.log('[Loader] Data prepared for return:', loaderReturnData);
 
     // Cast payment to PaymentWithDetails to satisfy LoaderData type
     return json<LoaderData>(loaderReturnData, {headers: response.headers});
@@ -265,7 +261,7 @@ function CheckoutForm({payment, defaultEmail, defaultPostalCode}: CheckoutFormPr
     // const [email, setEmail] = useState(''); // Not used, LinkAuthenticationElement handles email internally
     const [paymentError, setPaymentError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    console.log('Checkout Form, payment: ', payment);
+    // console.log('Checkout Form, payment: ', payment);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -381,7 +377,7 @@ function CheckoutForm({payment, defaultEmail, defaultPostalCode}: CheckoutFormPr
 
 // --- Main Payment Page Component ---
 export default function PaymentPage() {
-    console.log("[PaymentPage] Component rendering started."); // Add log here
+    // console.log("[PaymentPage] Component rendering started.");
     // payment object now contains the status
     const {payment, stripePublishableKey, error: loaderError} = useLoaderData<LoaderData>();
     // Use the combined type for the fetcher
@@ -458,14 +454,14 @@ export default function PaymentPage() {
 
     }, [clientSecret, currentTheme]); // Recreate options when clientSecret OR currentTheme changes
 
-    console.log('PaymentPage, payment: ', payment); // Keep log after hooks
+    // console.log('PaymentPage, payment: ', payment);
 
     // --- Effect to Detect Theme ---
     useEffect(() => {
         // Function to check and set theme
         const checkTheme = () => {
             const isDarkMode = document.documentElement.classList.contains('dark');
-            console.log("[PaymentPage Theme Effect] Checking theme. Is dark mode?", isDarkMode);
+            // console.log("[PaymentPage Theme Effect] Checking theme. Is dark mode?", isDarkMode);
             setCurrentTheme(isDarkMode ? 'dark' : 'light');
         };
 
@@ -502,7 +498,7 @@ export default function PaymentPage() {
         // 3. Fetcher hasn't already successfully fetched data (check fetcher.data).
         // 4. We don't already have a clientSecret set in the component's state.
         if (payment && paymentIntentFetcher.state === 'idle' && !paymentIntentFetcher.data && !clientSecret) {
-            console.log(`[PaymentPage Effect] Conditions met. Submitting to fetch clientSecret for payment ${payment.id}`);
+            // console.log(`[PaymentPage Effect] Conditions met. Submitting to fetch clientSecret for payment ${payment.id}`);
             const formData = new FormData();
 
             // --- Data required by /api/create-payment-intent ---
@@ -550,7 +546,7 @@ export default function PaymentPage() {
                         const pricePerSessionCents = siteConfig.pricing.oneOnOneSession * 100;
                         const calculatedQuantity = Math.round(payment.subtotal_amount / pricePerSessionCents);
                         quantity = calculatedQuantity > 0 ? calculatedQuantity.toString() : '1'; // Default to 1 if calculation fails
-                        console.log(`[PaymentPage Effect] Calculated quantity ${quantity} for individual session payment ${payment.id} based on subtotal ${payment.subtotal_amount} and price ${pricePerSessionCents}`);
+                        // console.log(`[PaymentPage Effect] Calculated quantity ${quantity} for individual session payment ${payment.id} based on subtotal ${payment.subtotal_amount} and price ${pricePerSessionCents}`);
                     } else {
                         console.error("Individual session price is zero, not configured, or subtotal_amount missing. Cannot determine quantity.");
                         setFetcherError("Configuration error: Cannot determine individual session quantity.");
@@ -598,7 +594,7 @@ export default function PaymentPage() {
             if (quantity) formData.append('quantity', quantity);
 
 
-            console.log("[PaymentPage Effect] Submitting to /api/create-payment-intent with formData:", Object.fromEntries(formData));
+            // console.log("[PaymentPage Effect] Submitting to /api/create-payment-intent with formData:", Object.fromEntries(formData));
             paymentIntentFetcher.submit(formData, {method: 'post', action: '/api/create-payment-intent'});
         }
     }, [payment, paymentIntentFetcher, clientSecret]); // Add clientSecret to dependency array and check below

@@ -201,7 +201,7 @@ async function sendNewRequiredWaiverNotification(
         console.log(`Identified ${usersToNotify.length} users needing notification for waiver "${waiverTitle}".`);
 
         // 4. Send email to each user who needs to sign
-        const siteUrl = process.env.SITE_URL || ''; // Get site URL for the link
+        const siteUrl = process.env.VITE_SITE_URL || ''; // Get site URL for the link (Use VITE_ prefix)
 
         for (const profile of usersToNotify) {
             // Type guard for family email

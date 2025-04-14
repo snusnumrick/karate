@@ -57,11 +57,7 @@ export function Layout() {
             form-action 'self';
           `.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()}
             />
-            {/* Add favicon links */}
-            <link rel="icon" href="/favicon.ico" sizes="any"/>
-            <link rel="icon" href="/icon.svg" type="image/svg+xml"/>
-            <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
-            <link rel="manifest" href="/manifest.webmanifest"/>
+            {/* Favicon links are now managed solely by the links function */}
             <Meta/>
             <Links/>
             {/* Add Organization Schema */}

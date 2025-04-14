@@ -1,8 +1,8 @@
 import {json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node"; // Import redirect
 import {Link, useLoaderData} from "@remix-run/react";
 import {checkStudentEligibility, type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check
-import { AlertCircle } from 'lucide-react'; // Import an icon for the alert
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // Import Alert components
+import {AlertCircle} from 'lucide-react'; // Import an icon for the alert
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Import Alert components
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // Import Badge
 import {Database} from "~/types/supabase";
@@ -67,7 +67,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     if (!profileData.family_id) {
         // User is logged in but not associated with a family yet. Redirect to setup.
         // This might happen after registration but before family creation/linking
-        console.log("User authenticated but no family_id found. Redirecting to /family/setup");
+        console.warn("User authenticated but no family_id found. Redirecting to /family/setup");
         // Note: Ensure the /family/setup route exists or adjust the target URL.
         return redirect("/family/setup", {headers});
     }
@@ -93,7 +93,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     }
 
     // 3. Fetch the single most recent *successful* payment separately
-    const { data: recentPaymentData, error: paymentError } = await supabaseServer
+    const {data: recentPaymentData, error: paymentError} = await supabaseServer
         .from('payments')
         .select(`
             *,
@@ -101,8 +101,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         `)
         .eq('family_id', profileData.family_id) // Filter by family_id
         .eq('status', 'succeeded')             // Filter by status
-        .order('payment_date', { ascending: false, nullsFirst: false }) // Order by date
-        .order('created_at', { ascending: false }) // Then by time
+        .order('payment_date', {ascending: false, nullsFirst: false}) // Order by date
+        .order('created_at', {ascending: false}) // Then by time
         .limit(1)                              // Limit to one
         .maybeSingle(); // Use maybeSingle as there might be no successful payments
 
@@ -111,9 +111,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         // Don't fail the whole page, just proceed without payment info
     }
 
-    // Log the fetched recent payment
-    console.log("Most Recent Successful Payment Data:", recentPaymentData);
-
+    // console.log("Most Recent Successful Payment Data:", recentPaymentData);
 
     // 4. Fetch eligibility for each student IN the fetched family data
     const studentsWithEligibility: StudentWithEligibility[] = [];
@@ -150,8 +148,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         // If there are no required waivers, consider them "signed"
         if (!requiredWaivers || requiredWaivers.length === 0) {
             allWaiversSigned = true;
-        }
-        else {
+        } else {
             const {data: signedWaivers, error: signedWaiversError} = await supabaseServer
                 .from('waiver_signatures')
                 .select('waiver_id')
@@ -168,22 +165,21 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
         // 5. Fetch individual session balance using the view
         // Remove inner try...catch, outer catch will handle errors
-        const { data: balanceData, error: balanceError } = await supabaseServer
+        const {data: balanceData, error: balanceError} = await supabaseServer
             .from('family_one_on_one_balance') // View name remains the same
             .select('total_remaining_sessions')
-                .eq('family_id', profileData.family_id)
-                .maybeSingle(); // Use maybeSingle as a family might not have any sessions yet
+            .eq('family_id', profileData.family_id)
+            .maybeSingle(); // Use maybeSingle as a family might not have any sessions yet
 
-            if (balanceError) {
-                console.error("[Family Loader] Error fetching Individual Session balance:", balanceError.message);
-                // Don't fail the whole page load, just default to 0
-            } else if (balanceData) {
-                individualSessionBalance = balanceData.total_remaining_sessions ?? 0;
-                // console.log(`[Family Loader] Fetched individualSessionBalance: ${individualSessionBalance}`); // Removed log
-            } else {
-                 // console.log(`[Family Loader] No balance data found for family ${profileData.family_id}, setting balance to 0.`); // Removed log
-                 individualSessionBalance = 0; // Explicitly set to 0 if no data found
-            }
+        if (balanceError) {
+            console.error("[Family Loader] Error fetching Individual Session balance:", balanceError.message);
+            // Don't fail the whole page load, just default to 0
+        } else if (balanceData) {
+            individualSessionBalance = balanceData.total_remaining_sessions ?? 0;
+            // console.log(`[Family Loader] Fetched individualSessionBalance: ${individualSessionBalance}`);
+        } else {
+            individualSessionBalance = 0; // Explicitly set to 0 if no data found
+        }
     } catch (error: unknown) { // Outer catch handles errors from waiver or balance fetching
         if (error instanceof Error) {
             console.error("Error checking waiver status or balance:", error.message);
@@ -194,8 +190,6 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         allWaiversSigned = false;
         individualSessionBalance = 0; // Ensure balance is reset if outer catch is hit
     }
-
-    // console.log('Family data with eligibility:', familyDataWithEligibility);
 
     // Return profile, combined family data, and waiver status
     return json({
@@ -300,13 +294,13 @@ export default function FamilyPortal() {
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                     <h2 className="text-xl font-semibold mb-4">Guardians</h2>
                     {(!family.guardians || family.guardians.length < 1) && (
-                         <Alert variant="destructive" className="mb-4">
-                             <AlertCircle className="h-4 w-4"/>
-                             <AlertTitle>No Guardians Found</AlertTitle>
-                             <AlertDescription>
-                                 Please add at least one guardian to manage the family account.
-                             </AlertDescription>
-                         </Alert>
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertCircle className="h-4 w-4"/>
+                            <AlertTitle>No Guardians Found</AlertTitle>
+                            <AlertDescription>
+                                Please add at least one guardian to manage the family account.
+                            </AlertDescription>
+                        </Alert>
                     )}
                     {family.guardians && family.guardians.length > 0 ? (
                         <ul className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300 mb-4">
@@ -330,18 +324,18 @@ export default function FamilyPortal() {
                             ))}
                         </ul>
                     ) : (
-                         <p className="text-gray-600 dark:text-gray-400 mb-4">No guardians added yet.</p>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">No guardians added yet.</p>
                     )}
-                     {/* Link to a future page for adding a guardian */}
-                     <Button asChild className="mt-2">
-                         {/* TODO: Create this route */}
-                         <Link to="/family/add-guardian">Add Guardian</Link>
-                     </Button>
-                     {family.guardians && family.guardians.length === 1 && (
-                         <p className="text-sm text-muted-foreground mt-3">
-                             Consider adding a second guardian for backup contact purposes.
-                         </p>
-                     )}
+                    {/* Link to a future page for adding a guardian */}
+                    <Button asChild className="mt-2">
+                        {/* TODO: Create this route */}
+                        <Link to="/family/add-guardian">Add Guardian</Link>
+                    </Button>
+                    {family.guardians && family.guardians.length === 1 && (
+                        <p className="text-sm text-muted-foreground mt-3">
+                            Consider adding a second guardian for backup contact purposes.
+                        </p>
+                    )}
                 </div>
 
                 {/* Individual Session Balance */}
@@ -391,11 +385,13 @@ export default function FamilyPortal() {
                     {family.payments && family.payments.length > 0 ? (
                         <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
                             <p className="text-sm text-gray-700 dark:text-gray-300">
-                                <span className="font-semibold">Date:</span> {family.payments[0].payment_date ? new Date(family.payments[0].payment_date).toLocaleDateString() : 'N/A'}
+                                <span
+                                    className="font-semibold">Date:</span> {family.payments[0].payment_date ? new Date(family.payments[0].payment_date).toLocaleDateString() : 'N/A'}
                             </p>
                             <p className="text-sm text-gray-700 dark:text-gray-300">
                                 {/* Use total_amount for display */}
-                                <span className="font-semibold">Amount:</span> ${(family.payments[0].total_amount / 100).toFixed(2)}
+                                <span
+                                    className="font-semibold">Amount:</span> ${(family.payments[0].total_amount / 100).toFixed(2)}
                             </p>
                             <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
                                 <span className="font-semibold mr-2">Status:</span>

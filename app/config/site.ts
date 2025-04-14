@@ -1,6 +1,6 @@
-// Ensure SITE_URL is defined in your environment variables (.env file)
+// Ensure VITE_SITE_URL is defined in your environment variables (.env file)
 // Vite exposes env variables prefixed with VITE_ on `import.meta.env`
-const siteUrl = import.meta.env.SITE_URL || 'http://localhost:3000'; // Fallback for local dev if not set
+const siteUrl = import.meta.env.VITE_SITE_URL || 'http://localhost:3000'; // Fallback for local dev if not set
 
 export const siteConfig = {
     name: "Greenegin Karate", // Added site name
