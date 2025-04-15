@@ -26,21 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added utility functions for currency and date/time formatting (`app/utils/misc.ts`).
 
 ### Fixed
-- Resolved foreign key dependency error in `supabase-setup.sql` by reordering table creation.
-- Added `decrement_variant_stock` function definition to Supabase TypeScript types (`app/types/supabase.ts`, `supabase/functions/_shared/database.types.ts`) to fix TS error.
-- Fixed type mismatch for `payments` relation in admin order detail loader.
-- Moved `ALLOWED_IMAGE_TYPES` constant to module scope in admin product routes to fix TS error.
-- Removed various unused variables and imports across multiple files to resolve ESLint errors.
-- Resolved `Constants` import error in admin orders list route.
-- Resolved `formatCurrency` import error by creating `app/utils/misc.ts`.
-- Fixed duplicate action logic and missing intent handling in admin product/variant edit actions.
-- Fixed `variants.count` access in admin product deletion logic (prior to refactor).
-- Added missing `redirect` import in admin product edit route.
-- Removed duplicate `Alert` component import in admin variant edit route.
-- Resolved 404 error for family store purchase route by creating the missing file.
+- Resolved foreign key dependency error in `supabase-setup.sql` that could prevent successful database setup.
+- Fixed an issue preventing the family store purchase page (`/family/store/purchase/:studentId`) from loading (404 error).
+- Corrected logic for handling product/variant updates and deletions in the admin panel.
+- Fixed data loading issue in the admin order details page.
 
 ### Changed
-- Updated Admin Students page (`/admin/students`) to consider orders with status `paid_pending_pickup` OR `completed` when determining the last 'Gi' purchase date.
+- Updated Admin Students page (`/admin/students`) to correctly consider completed store orders when determining the last 'Gi' purchase date.
 
 ## [1.1.2] - 2025-04-14
 
