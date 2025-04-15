@@ -19,6 +19,7 @@ type StudentWithFamilyEligibilityAndBelt = StudentRow & {
     families: FamilyName;
     eligibility: EligibilityStatus;
     currentBeltRank: BeltRankEnum | null; // Store the derived current rank
+    lastGiPurchaseDate: string | null; // Add field for last Gi purchase date
 };
 
 export async function loader() {
@@ -35,6 +36,66 @@ export async function loader() {
     // Use service role client for admin data access
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
+    // --- REMOVED FIRST TRY/CATCH BLOCK THAT RETURNED EARLY ---
+
+    // --- Fetch Last Gi Purchase Dates ---
+    // Fetch orders that are paid or completed to check for Gi purchases
+    const { data: giPurchaseData, error: giError } = await supabaseAdmin
+        .from('orders')
+        .select(`
+            id,
+            student_id,
+            created_at,
+            order_items (
+                product_variants (
+                    products ( name )
+                )
+            )
+        `)
+        .or('status.eq.paid_pending_pickup,status.eq.completed') // Filter by paid OR completed orders
+        // We need to filter based on the nested product name. Supabase doesn't directly support filtering on nested relations like this in a single query efficiently.
+        // Fetching completed orders and filtering client-side might be inefficient if there are many orders.
+        // Alternative: A database function or view.
+        // For now, let's fetch orders and filter in code, acknowledging potential inefficiency.
+        // Consider optimizing with a DB function if performance becomes an issue.
+        .order('created_at', { ascending: false });
+
+    if (giError) {
+        console.error("Error fetching Gi purchase data:", giError.message);
+        // Continue without Gi data, maybe log the error or return partial data
+        // For simplicity, we'll proceed, and dates will be null.
+    }
+
+    const lastGiPurchaseMap = new Map<string, string>();
+    if (giPurchaseData) {
+        // Process orders to find the latest 'Gi' purchase date for each student
+        for (const order of giPurchaseData) {
+            // Check if this student already has a newer date recorded
+            if (!order.student_id || lastGiPurchaseMap.has(order.student_id)) {
+                continue; // Skip if no student ID or if we already found the latest for this student (due to ordering)
+            }
+
+            // Check if any item in this order is a 'Gi'
+            let foundGiInOrder = false;
+            for (const item of order.order_items) {
+                 const productName = item.product_variants?.products?.name;
+                 // Using includes('gi') is simple but might match unintended products (e.g., "Gifts").
+                 // Consider a more specific check if product names allow (e.g., exact match, category, tag).
+                 if (productName?.toLowerCase().includes('gi')) {
+                     foundGiInOrder = true;
+                     break; // Found a Gi, no need to check other items in this order
+                 }
+            }
+
+            if (foundGiInOrder) {
+                // Store the date of the most recent Gi purchase found so far for this student
+                lastGiPurchaseMap.set(order.student_id, order.created_at);
+            }
+        }
+    }
+    // --- End Fetch Last Gi Purchase Dates ---
+
+
     try {
         console.log("Admin students loader - Fetching all students and related family names using service role...");
         // Fetch student data and related family name
@@ -42,7 +103,7 @@ export async function loader() {
             .from('students')
             .select(`
         *,
-        families ( name ) 
+        families ( name )
       `) // Fetch name from the related families table
             .order('last_name', {ascending: true})
             .order('first_name', {ascending: true});
@@ -52,7 +113,7 @@ export async function loader() {
             throw new Response("Failed to load student data.", {status: 500});
         }
 
-        console.log(`Admin students loader - Fetched ${students?.length ?? 0} students. Now checking eligibility and latest belt...`);
+        console.log(`Admin students loader - Fetched ${students?.length ?? 0} students. Now checking eligibility, latest belt, and mapping Gi dates...`);
 
         // Fetch eligibility and latest belt for each student
         const studentsWithDetails: StudentWithFamilyEligibilityAndBelt[] = [];
@@ -75,16 +136,20 @@ export async function loader() {
                     // Decide how to handle error: skip student, show 'Error', or null? Let's use null.
                 }
 
+                // Get last Gi purchase date from the map
+                const lastGiPurchaseDate = lastGiPurchaseMap.get(student.id) ?? null;
+
                 studentsWithDetails.push({
                     ...student,
                     families: student.families ?? null,
                     eligibility: eligibility,
                     currentBeltRank: latestBeltAward?.type ?? null, // Store the rank or null
+                    lastGiPurchaseDate: lastGiPurchaseDate, // Add the date here
                 });
             }
         }
 
-        console.log("Admin students loader - Eligibility and belt checks complete.");
+        console.log("Admin students loader - Eligibility, belt checks, and Gi date mapping complete.");
         return json({students: studentsWithDetails});
 
     } catch (error) {
@@ -138,6 +203,7 @@ export default function StudentsAdminPage() {
                                 <TableHead>Family Name</TableHead>
                                 <TableHead>Current Belt</TableHead> {/* Changed header */}
                                 <TableHead>Eligibility</TableHead>
+                                <TableHead>Last Gi Purchase</TableHead> {/* New header */}
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -168,6 +234,11 @@ export default function StudentsAdminPage() {
                                                 ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'yyyy-MM-dd')})` // Keep date format for admin view
                                             }
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell> {/* New cell for Gi purchase date */}
+                                        {student.lastGiPurchaseDate
+                                            ? format(new Date(student.lastGiPurchaseDate), 'yyyy-MM-dd')
+                                            : 'N/A'}
                                     </TableCell>
                                     <TableCell className="space-x-2 whitespace-nowrap">
                                         {/* Use onClick with navigate instead of asChild/Link */}

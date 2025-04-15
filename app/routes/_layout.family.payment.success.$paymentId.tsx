@@ -5,9 +5,21 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { CheckCircle } from "lucide-react"; // Use lucide-react icon for consistency
-import type { Database } from "~/types/supabase";
+import type { Database, Tables } from "~/types/supabase"; // Import Tables
 
-type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row']; // Add PaymentTaxRow type
+// Define types for related tables needed for store purchases
+type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row'];
+type OrderRow = Tables<'orders'>;
+type OrderItemRow = Tables<'order_items'>;
+type ProductVariantRow = Tables<'product_variants'>;
+type ProductRow = Tables<'products'>;
+
+// Define a type for the nested order item details needed
+type OrderItemWithDetails = OrderItemRow & {
+    product_variants: (Pick<ProductVariantRow, 'id' | 'size'> & {
+        products: Pick<ProductRow, 'id' | 'name'> | null;
+    }) | null;
+};
 
 // Define the type for the payment data expected by the loader, including tax breakdown
 export type PaymentSuccessData = {
@@ -20,8 +32,12 @@ export type PaymentSuccessData = {
     // tax_amount removed
     total_amount: number;
     type: Database['public']['Enums']['payment_type_enum'];
-    payment_taxes: Array<Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_amount'>>; // Add payment_taxes array
-    // Add quantity if needed for display
+    payment_taxes: Array<Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_amount'>>;
+    // Add nested order details for store purchases
+    orders: (Pick<OrderRow, 'id'> & {
+        order_items: OrderItemWithDetails[];
+    }) | null; // Fetch the related order and its items
+    // Add quantity if needed for display (for non-store items)
     quantity?: number | null; // Make optional
 };
 
@@ -72,10 +88,21 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
         console.log(`[Payment Success Loader] Fetching payment record using Stripe PI ID: ${paymentIntentId}`);
         const { data: paymentData, error: dbError } = await supabaseServer
             .from('payments')
-            // Select all required fields, remove single tax_amount, add payment_taxes relation
+            // Select all required fields, including nested order details for store purchases
             .select(`
                 id, status, receipt_url, payment_method, payment_date, subtotal_amount, total_amount, type,
-                payment_taxes ( tax_name_snapshot, tax_amount )
+                payment_taxes ( tax_name_snapshot, tax_amount ),
+                orders (
+                    id,
+                    order_items (
+                        *,
+                        product_variants (
+                            id,
+                            size,
+                            products ( id, name )
+                        )
+                    )
+                )
             `)
             .eq('stripe_payment_intent_id', paymentIntentId)
             .maybeSingle();
@@ -92,10 +119,21 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
         console.log(`[Payment Success Loader] Fetching payment record using Supabase Payment ID: ${supabasePaymentId}`);
         const { data: paymentData, error: dbError } = await supabaseServer
             .from('payments')
-            // Select all required fields, remove single tax_amount, add payment_taxes relation
+            // Select all required fields, including nested order details for store purchases
             .select(`
                 id, status, receipt_url, payment_method, payment_date, subtotal_amount, total_amount, type,
-                payment_taxes ( tax_name_snapshot, tax_amount )
+                payment_taxes ( tax_name_snapshot, tax_amount ),
+                orders (
+                    id,
+                    order_items (
+                        *,
+                        product_variants (
+                            id,
+                            size,
+                            products ( id, name )
+                        )
+                    )
+                )
             `)
             .eq('id', supabasePaymentId)
             .maybeSingle();
@@ -268,7 +306,19 @@ export default function PaymentSuccessPage() {
 
                         <div className="text-left space-y-2 mb-6 border-t border-b border-gray-200 dark:border-gray-700 py-4">
                             <p><span className="font-semibold">Payment ID:</span> {payment.id}</p>
-                            <p><span className="font-semibold">Product:</span> {getPaymentProductDescription(payment.type, quantity)}</p>
+                            {/* Display Product Details */}
+                            {payment.type === 'store_purchase' && payment.orders?.order_items ? (
+                                payment.orders.order_items.map(item => (
+                                    <p key={item.id}>
+                                        <span className="font-semibold">Product:</span>{' '}
+                                        {item.product_variants?.products?.name ?? 'Unknown Product'}
+                                        {item.product_variants?.size && ` - Size: ${item.product_variants.size}`}
+                                        {item.quantity > 1 && ` (Qty: ${item.quantity})`}
+                                    </p>
+                                ))
+                            ) : (
+                                <p><span className="font-semibold">Product:</span> {getPaymentProductDescription(payment.type, quantity)}</p>
+                            )}
                             {/* Display amount breakdown */}
                             <p><span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)} CAD</p>
                             {/* Display Tax Breakdown */}

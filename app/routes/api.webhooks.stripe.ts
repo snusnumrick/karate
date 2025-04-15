@@ -1,8 +1,9 @@
-import type {ActionFunctionArgs} from "@remix-run/node";
-import {json} from "@remix-run/node";
+import type { ActionFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import Stripe from "stripe";
-import {updatePaymentStatus} from "~/utils/supabase.server";
-import type {Database} from "~/types/supabase"; // Import Database types
+import { updatePaymentStatus } from "~/utils/supabase.server";
+import type { Database } from "~/types/supabase"; // Removed unused Tables import
+import { createClient } from "@supabase/supabase-js"; // Import Supabase client for direct DB updates
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -48,11 +49,12 @@ export async function action({request}: ActionFunctionArgs) {
         // Extract metadata - CRITICAL
         const metadata = paymentIntent.metadata;
         const supabasePaymentId = metadata?.paymentId; // Our internal ID from metadata
-        const type = metadata?.type as Database['public']['Enums']['payment_type_enum'] | undefined; // Extract 'type'
+        const type = metadata?.type as Database['public']['Enums']['payment_type_enum'] | undefined;
         const familyId = metadata?.familyId;
         const quantityStr = metadata?.quantity;
+        const orderId = metadata?.orderId; // Extract orderId for store purchases
         // Extract all amounts from metadata
-        const subtotalAmountStr = metadata?.subtotal_amount; // Expecting subtotal from metadata
+        const subtotalAmountStr = metadata?.subtotal_amount;
         // Tax and Total are also expected from metadata now
         const taxAmountStr = metadata?.tax_amount;
         const totalAmountStr = metadata?.total_amount;
@@ -68,11 +70,11 @@ export async function action({request}: ActionFunctionArgs) {
         const taxAmountFromMeta = taxAmountStr ? parseInt(taxAmountStr, 10) : null;
         const totalAmountFromMeta = totalAmountStr ? parseInt(totalAmountStr, 10) : null;
 
-        // Validate required metadata (including amounts)
-        if (!supabasePaymentId || !type || !familyId || subtotalAmountFromMeta === null || taxAmountFromMeta === null || totalAmountFromMeta === null) { // Check for 'type' and amounts
-            console.error(`CRITICAL: Missing required metadata (paymentId, type, familyId, amounts) in payment_intent.succeeded event ${paymentIntent.id}. Metadata:`, metadata); // Update error message
+        // Validate required metadata (including amounts and orderId for store)
+        if (!supabasePaymentId || !type || !familyId || subtotalAmountFromMeta === null || taxAmountFromMeta === null || totalAmountFromMeta === null || (type === 'store_purchase' && !orderId)) {
+            console.error(`CRITICAL: Missing required metadata (paymentId, type, familyId, amounts, orderId for store) in payment_intent.succeeded event ${paymentIntent.id}. Metadata:`, metadata);
             // Return 400 - Bad request, missing essential info
-            return json({ error: "Missing critical payment metadata (paymentId, type, familyId, amounts)." }, { status: 400 }); // Updated error message
+            return json({ error: "Missing critical payment metadata (paymentId, type, familyId, amounts, orderId for store)." }, { status: 400 });
         }
 
         // Extract other details
@@ -147,10 +149,64 @@ export async function action({request}: ActionFunctionArgs) {
                 cardLast4 // Pass the extracted last 4 digits
             );
             // console.log(`[Webhook PI Succeeded] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
+
+            // --- Handle Store Purchase Success ---
+            if (type === 'store_purchase' && orderId) {
+                console.log(`[Webhook PI Succeeded] Processing successful store purchase for order ${orderId}`);
+                const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+                // 1. Update Order Status
+                const { error: orderUpdateError } = await supabaseAdmin
+                    .from('orders')
+                    .update({ status: 'paid_pending_pickup', updated_at: new Date().toISOString() })
+                    .eq('id', orderId);
+
+                if (orderUpdateError) {
+                    console.error(`[Webhook PI Succeeded] FAILED to update order ${orderId} status:`, orderUpdateError.message);
+                    // Log error, but don't fail the webhook for this, payment is already processed. Needs monitoring.
+                } else {
+                    console.log(`[Webhook PI Succeeded] Successfully updated order ${orderId} status to paid_pending_pickup.`);
+                }
+
+                // 2. Decrement Stock (Needs careful consideration for atomicity/retries)
+                // Fetch order items to know which variants and quantities to decrement
+                const { data: orderItems, error: itemsError } = await supabaseAdmin
+                    .from('order_items')
+                    .select('product_variant_id, quantity')
+                    .eq('order_id', orderId);
+
+                if (itemsError) {
+                     console.error(`[Webhook PI Succeeded] FAILED to fetch order items for order ${orderId} to decrement stock:`, itemsError.message);
+                     // Log error, needs manual stock adjustment or retry mechanism.
+                } else if (orderItems) {
+                    for (const item of orderItems) {
+                        // Use RPC call for atomic decrement? Or handle potential race conditions here.
+                        // Simple decrement for now:
+                        const { error: stockDecrementError } = await supabaseAdmin.rpc('decrement_variant_stock', {
+                            variant_id: item.product_variant_id,
+                            decrement_quantity: item.quantity
+                        });
+
+                        // Check if the RPC function exists and handle potential errors
+                        if (stockDecrementError) {
+                             if (stockDecrementError.code === '42883') { // Function does not exist
+                                console.error(`[Webhook PI Succeeded] RPC function 'decrement_variant_stock' not found. Please create it. Stock not decremented for variant ${item.product_variant_id}.`);
+                             } else {
+                                console.error(`[Webhook PI Succeeded] FAILED to decrement stock for variant ${item.product_variant_id} (Order ${orderId}):`, stockDecrementError.message);
+                                // Log error, needs manual stock adjustment or retry mechanism.
+                             }
+                        } else {
+                            console.log(`[Webhook PI Succeeded] Decremented stock for variant ${item.product_variant_id} by ${item.quantity} (Order ${orderId}).`);
+                        }
+                    }
+                }
+            }
+            // --- End Handle Store Purchase Success ---
+
         } catch (updateError) {
-            console.error(`[Webhook PI Succeeded] Failed to update payment status/session balance for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
+            console.error(`[Webhook PI Succeeded] Failed during post-payment processing for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
             // Return 500 so Stripe retries the webhook
-            return json({ error: "Database update failed." }, { status: 500 });
+            return json({ error: "Database update or post-processing failed." }, { status: 500 });
         }
 
     } else if (event.type === 'payment_intent.payment_failed') {
@@ -158,12 +214,18 @@ export async function action({request}: ActionFunctionArgs) {
         console.warn(`Processing payment_intent.payment_failed for PI: ${paymentIntent.id}`);
 
         const metadata = paymentIntent.metadata;
-        const supabasePaymentId = metadata?.paymentId; // Our internal ID from metadata
+        const supabasePaymentId = metadata?.paymentId;
+        const orderId = metadata?.orderId; // Get orderId if present
+        const type = metadata?.type as Database['public']['Enums']['payment_type_enum'] | undefined; // Get type
 
         if (!supabasePaymentId) {
              console.error(`CRITICAL: Missing paymentId metadata in payment_intent.payment_failed event ${paymentIntent.id}. Cannot update status.`);
-             // Return 400 - cannot process without ID
              return json({ error: "Missing paymentId metadata." }, { status: 400 });
+        }
+        // Also check for orderId if it's a store purchase type
+        if (type === 'store_purchase' && !orderId) {
+            console.error(`CRITICAL: Missing orderId metadata in payment_intent.payment_failed event for store purchase PI ${paymentIntent.id}. Cannot update order status.`);
+            // Proceed with payment status update, but log the missing orderId
         }
 
          try {
@@ -185,6 +247,7 @@ export async function action({request}: ActionFunctionArgs) {
                  console.warn(`[Webhook PI Failed] Could not retrieve expanded PI ${paymentIntent.id} to get card details for failed payment.`);
             }
 
+            // Update Payment Status
             await updatePaymentStatus(
                 supabasePaymentId,
                 "failed",
@@ -200,10 +263,30 @@ export async function action({request}: ActionFunctionArgs) {
                 failedCardLast4 // Store last4 if available
             );
             // console.log(`[Webhook PI Failed] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
+
+            // --- Handle Store Purchase Failure ---
+            if (type === 'store_purchase' && orderId) {
+                 console.log(`[Webhook PI Failed] Processing failed store purchase for order ${orderId}`);
+                 const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+                 const { error: orderUpdateError } = await supabaseAdmin
+                     .from('orders')
+                     .update({ status: 'cancelled', updated_at: new Date().toISOString() }) // Update status to cancelled
+                     .eq('id', orderId);
+
+                 if (orderUpdateError) {
+                     console.error(`[Webhook PI Failed] FAILED to update order ${orderId} status to cancelled:`, orderUpdateError.message);
+                     // Log error, but don't fail webhook. Needs monitoring.
+                 } else {
+                      console.log(`[Webhook PI Failed] Successfully updated order ${orderId} status to cancelled.`);
+                 }
+                 // No need to adjust stock on failure
+            }
+            // --- End Handle Store Purchase Failure ---
+
         } catch (updateError) {
-            console.error(`[Webhook PI Failed] Failed to update payment status for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
+            console.error(`[Webhook PI Failed] Failed during post-payment processing for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
             // Return 500 so Stripe retries the webhook
-            return json({ error: "Database update failed." }, { status: 500 });
+            return json({ error: "Database update or post-processing failed." }, { status: 500 });
         }
 
     // --- Other Event Types ---

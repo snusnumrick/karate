@@ -50,7 +50,7 @@ export function Layout() {
             script-src 'self' 'unsafe-inline' https://js.stripe.com 'unsafe-eval';
             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
             font-src 'self' https://fonts.gstatic.com;
-            img-src 'self' data:;
+            img-src 'self' data: https://brvtvtkjgqmnebehzuny.supabase.co;
             connect-src 'self' https://api.stripe.com ws:;
             frame-src https://js.stripe.com https://hooks.stripe.com;
             base-uri 'self';

@@ -116,6 +116,13 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
         - Navigate to Authentication -> Providers (under the "Sign In Methods" section). Enable the "Email" provider.
         - Navigate to Authentication -> Settings (under the "Configuration" section). Disable "Confirm email" if you want easier local testing, but **ensure it's enabled for production**.
         - Navigate to the SQL Editor (Database -> SQL Editor) and run the entire contents of the `app/db/supabase-setup.sql` file. This script creates all necessary tables, types, functions, and policies.
+        - **Create Storage Bucket (for Product Images):**
+            1. Go to your Supabase project dashboard.
+            2. Navigate to Storage.
+            3. Click "Create bucket".
+            4. Name the bucket `product-images`.
+            5. **Crucially**, make it a **Public bucket** so the images can be displayed on the website without requiring authentication tokens. If you prefer private, the URL generation and display logic will be more complex. For simplicity, we'll assume a public bucket for now.
+            6. Configure bucket policies if needed (e.g., restrict uploads to specific file types/sizes via policies if desired, though we'll also add server-side checks).
     - Obtain your Supabase Project URL, Anon Key, and Service Role Key (Project Settings -> API) and add them to your `.env` file (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY).
 5.  **Stripe Setup (Optional for Local):**
     - Create a Stripe account at [stripe.com](https://stripe.com).

@@ -3,13 +3,11 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import Stripe from 'stripe';
 // createInitialPaymentRecord is no longer used here
 import { getSupabaseServerClient } from '~/utils/supabase.server';
-import type { Database } from "~/types/supabase";
+import type { Database } from "~/types/supabase"; // Removed unused Tables import
 import { siteConfig } from "~/config/site";
 
-// Tax rate is no longer needed here; Stripe Tax will handle it.
-
 // Define expected form data structure
-type PaymentOption = 'monthly' | 'yearly' | 'individual';
+type PaymentOption = 'monthly' | 'yearly' | 'individual' | 'store'; // Add 'store' option
 type PaymentTypeEnum = Database['public']['Enums']['payment_type_enum'];
 
 // Helper function to get Supabase admin client (avoids repetition)
@@ -53,7 +51,8 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     const studentIdsString = formData.get('studentIds') as string; // Comma-separated, potentially empty
     const paymentOption = formData.get('paymentOption') as PaymentOption;
     const priceIdFromForm = formData.get('priceId') as string | null; // Only for yearly/1:1
-    const quantityFromForm = formData.get('quantity') as string | null; // Only for 1:1
+    const quantityFromForm = formData.get('quantity') as string | null; // For 1:1 or store quantity
+    const orderIdFromForm = formData.get('orderId') as string | null; // For store purchases
     // Get the existing amounts passed from the payment page
     const subtotalAmountString = formData.get('subtotalAmount') as string | null;
     const totalAmountString = formData.get('totalAmount') as string | null;
@@ -66,9 +65,10 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
 
     // --- Basic Validation ---
-    if (!familyId || !familyName || !paymentOption || !subtotalAmountString || !totalAmountString) {
+    // Add orderId check for store payment option
+    if (!familyId || !familyName || !paymentOption || !subtotalAmountString || !totalAmountString || (paymentOption === 'store' && !orderIdFromForm)) {
         // Include response headers in JSON response
-        return json({error: "Missing required information (familyId, familyName, paymentOption, amounts)."}, {status: 400, headers: response.headers});
+        return json({ error: "Missing required information (familyId, familyName, paymentOption, amounts, orderId for store)."}, { status: 400, headers: response.headers });
     }
 
     // Validate received amounts
@@ -85,7 +85,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     // Only require studentIds for monthly/yearly payments
     const studentIds = (paymentOption === 'monthly' || paymentOption === 'yearly')
         ? (studentIdsString ? studentIdsString.split(',').filter(id => id) : [])
-        : []; // Default to empty array for individual sessions
+        : []; // Default to empty array for individual sessions or store purchases
 
     if ((paymentOption === 'monthly' || paymentOption === 'yearly') && studentIds.length === 0) {
         // Include response headers in JSON response
@@ -125,8 +125,8 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     }
     // --- End Get Email ---
 
-    let type: PaymentTypeEnum; // Use 'type' variable name
-    let quantityForMetadata: number | undefined = undefined; // For individual sessions
+    let type: PaymentTypeEnum;
+    let quantityForMetadata: number | undefined = undefined; // For individual sessions or store
 
     try {
         // --- Determine Payment Type and Quantity (if applicable) ---
@@ -146,7 +146,17 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 }
                 quantityForMetadata = quantity;
                 break;
-            } // Close block scope here
+            }
+            case 'store': { // Handle store purchase
+                type = 'store_purchase';
+                // Quantity might be relevant if multiple items were allowed, but currently 1
+                const quantity = quantityFromForm ? parseInt(quantityFromForm, 10) : 1; // Default to 1 if not provided
+                if (isNaN(quantity) || quantity <= 0) {
+                    return json({ error: "Invalid quantity provided for Store Purchase." }, { status: 400, headers: response.headers });
+                }
+                quantityForMetadata = quantity; // Store quantity in metadata if needed
+                break;
+            }
             default:
                 console.error(`[API Create PI] Unhandled paymentOption: ${paymentOption}`);
                 return json({ error: "Invalid payment option." }, { status: 400, headers: response.headers });
@@ -254,10 +264,13 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             tax_amount: totalTaxAmountInCents.toString(), // Use calculated tax for metadata consistency
             total_amount: totalAmountInCents.toString(), // Use total from form
             tax_details: JSON.stringify(taxDetailsForMetadata), // Use recalculated breakdown for metadata
-            // studentIds: studentIds.join(','), // Optional
+            // studentIds: studentIds.join(','), // Optional for group
         };
-        if (type === 'individual_session' && quantityForMetadata) {
+        if ((type === 'individual_session' || type === 'store_purchase') && quantityForMetadata) {
             paymentIntentMetadata.quantity = quantityForMetadata;
+        }
+        if (type === 'store_purchase' && orderIdFromForm) { // Add orderId for store purchases
+             paymentIntentMetadata.orderId = orderIdFromForm;
         }
 
         // Create Payment Intent with the final TOTAL amount received from the form.
@@ -293,9 +306,9 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             .update({
                 stripe_payment_intent_id: paymentIntent.id,
                 subtotal_amount: subtotalAmountInCents,
-                // tax_amount column removed
                 total_amount: totalAmountInCents,
-                updated_at: new Date().toISOString(), // Explicitly update timestamp
+                order_id: type === 'store_purchase' ? orderIdFromForm : undefined, // Add order_id if store purchase
+                updated_at: new Date().toISOString(),
             })
             .eq('id', supabasePaymentId);
 

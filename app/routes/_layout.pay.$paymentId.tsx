@@ -75,6 +75,8 @@ function getPaymentProductDescription(type: Database['public']['Enums']['payment
             return 'Yearly Group Class Fee';
         case 'individual_session':
             return 'Individual Session(s)';
+        case 'store_purchase': // Add case for store purchase
+            return 'Store Item Purchase';
         case 'other':
             return 'Other Payment';
         default:
@@ -107,7 +109,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     const {data: payment, error} = await supabaseServer
         .from('payments')
         .select(`
-            id, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, stripe_payment_intent_id, receipt_url, notes, type,
+            id, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, stripe_payment_intent_id, receipt_url, notes, type, order_id,
             family:family_id (name, email, postal_code),
             payment_students ( student_id ),
             payment_taxes (
@@ -418,7 +420,7 @@ export default function PaymentPage() {
                         colorTextSecondary: '#d1d5db', // Labels etc (gray-300)
                         colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
                         colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
-                        colorBorder: '#4b5563',     // Input border (gray-600)
+                        // colorBorder: '#4b5563',     // Input border (gray-600) - Removed invalid variable
                     }
                     : { // Light Theme Variables (match typical light mode)
                         colorBackground: '#ffffff', // Input background (white)
@@ -426,16 +428,14 @@ export default function PaymentPage() {
                         colorTextSecondary: '#6b7280', // Labels etc (gray-500)
                         colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
                         colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
-                        colorBorder: '#d1d5db',     // Input border (gray-300)
+                        // colorBorder: '#d1d5db',     // Input border (gray-300) - Removed invalid variable
                     }),
             },
             rules: {
                 // --- Focus State (Common) ---
-                 // Ensure focus uses the primary color (green) and removes default Stripe shadow
-                '.Input--focus': {
-                    boxShadow: `0 0 0 1px var(--colorPrimary)`, // Use variable for focus ring
-                    borderColor: `var(--colorPrimary)`,
-                },
+                 // Focus styling is primarily handled by the 'colorPrimary' variable now.
+                // Removed invalid rule: '.Input--focus'
+
                 // Add other rules if variables aren't sufficient for specific elements
                 // e.g., Tab styling if variables don't cover it adequately
                 '.Tab': {
@@ -513,7 +513,7 @@ export default function PaymentPage() {
 
             // Determine paymentOption, priceId, quantity, studentIds based on payment.payment_type
             // This logic is CRUCIAL and depends heavily on how you store payment details
-            let paymentOption: 'monthly' | 'yearly' | 'individual' | null = null;
+            let paymentOption: 'monthly' | 'yearly' | 'individual' | 'store' | null = null; // Added 'store'
             let priceId: string | null = null; // Required for yearly/individual
             let quantity: string | null = null; // Required for individual
             const studentIds: string[] = payment.payment_students?.map(ps => ps.student_id) ?? []; // Get student IDs from loader data
@@ -552,6 +552,10 @@ export default function PaymentPage() {
                         setFetcherError("Configuration error: Cannot determine individual session quantity.");
                         return;
                     }
+                    break;
+                case 'store_purchase': // Add case for store purchase
+                    paymentOption = 'store'; // Use a specific identifier or null if API handles it
+                    // No priceId, quantity, or studentIds needed here as amounts are passed directly
                     break;
                 default:
                     console.error("Unhandled payment type in PaymentPage:", payment.type); // Log payment.type
@@ -592,6 +596,16 @@ export default function PaymentPage() {
                 return;
             }
             if (quantity) formData.append('quantity', quantity);
+
+            // Append orderId specifically for store purchases
+            if (paymentOption === 'store') {
+                if (!payment.order_id) { // Validate that order_id exists on the payment record
+                    console.error(`Store purchase payment ${payment.id} is missing the required order_id.`);
+                    setFetcherError("Configuration error: Cannot process store payment without linked order.");
+                    return;
+                }
+                formData.append('orderId', payment.order_id); // Append orderId
+            }
 
 
             // console.log("[PaymentPage Effect] Submitting to /api/create-payment-intent with formData:", Object.fromEntries(formData));
@@ -754,7 +768,8 @@ export default function PaymentPage() {
                 {() => (
                     // Ensure stripePromise state is loaded and we have options (clientSecret)
                     stripePromise && options && !fetcherError ? (
-                        <Elements stripe={stripePromise} options={options}> {/* Use stripePromise from state */}
+                        // Add key={clientSecret} to force remount when secret changes
+                        <Elements key={clientSecret} stripe={stripePromise} options={options}>
                             <CheckoutForm
                                 payment={payment} // clientSecret removed from CheckoutForm props
                                 defaultEmail={payment.family?.email} // Pass family email

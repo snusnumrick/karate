@@ -1,10 +1,20 @@
-import React, {useState} from 'react';
-import {Form, Link} from "@remix-run/react";
-import {ModeToggle} from "./mode-toggle";
-import {Sheet, SheetContent, SheetTrigger} from "./ui/sheet";
-import {Button} from "./ui/button";
-import {CalendarCheck, CreditCard, FileText, LayoutDashboard, LogOut, Menu, Sun, User, Users, X} from "lucide-react"; // Added Sun and icons
-import {ClientOnly} from './client-only'; // Import ClientOnly
+import React, { useState } from 'react';
+import { Form, Link, useLocation } from "@remix-run/react"; // Import useLocation
+import { ModeToggle } from "./mode-toggle";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { Button } from "./ui/button";
+import {
+    CalendarCheck, CreditCard, FileText, LayoutDashboard, LogOut, Menu, Sun, User, Users, X,
+    ShoppingBag, Package, ListOrdered, Boxes // Added Store related icons & Boxes for Inventory
+} from "lucide-react";
+import { ClientOnly } from './client-only'; // Import ClientOnly
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu"; // Import DropdownMenu components
+import { cn } from "~/lib/utils"; // Import cn utility
 
 // Define navigation items for reuse
 const adminNavItems = [
@@ -14,10 +24,20 @@ const adminNavItems = [
     {to: "/admin/payments", label: "Payments", icon: CreditCard},
     {to: "/admin/waivers", label: "Waivers", icon: FileText},
     {to: "/admin/attendance", label: "Attendance", icon: CalendarCheck},
+    // Store items will be handled by the Dropdown below
 ];
+
+// Define Store navigation items
+const storeNavItems = [
+    { to: "/admin/store/products", label: "Products", icon: Package },
+    { to: "/admin/store/inventory", label: "Inventory", icon: Boxes }, // Uncommented Inventory
+    { to: "/admin/store/orders", label: "Orders", icon: ListOrdered },
+];
+
 
 export default function AdminNavbar() {
     const [isOpen, setIsOpen] = useState(false);
+    // const location = useLocation(); // Get current location - Removed as it's unused here
 
     return (
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
@@ -50,6 +70,8 @@ export default function AdminNavbar() {
                                 {item.label}
                             </AdminNavLink>
                         ))}
+                        {/* Store Dropdown */}
+                        <AdminStoreDropdown />
                     </nav>
 
                     <div className="flex items-center space-x-4">
@@ -105,8 +127,18 @@ export default function AdminNavbar() {
                                                     {item.label}
                                                 </AdminMobileNavLink>
                                             ))}
+                                            {/* Store Mobile Links */}
+                                            <div className="px-4 pt-4 pb-2">
+                                                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Store</p>
+                                            </div>
+                                            {storeNavItems.map((item) => (
+                                                <AdminMobileNavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)}>
+                                                    <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                    {item.label}
+                                                </AdminMobileNavLink>
+                                            ))}
                                             {/* Mobile Logout */}
-                                            <Form action="/logout" method="post" className="mt-4 px-4">
+                                            <Form action="/logout" method="post" className="mt-auto pt-4 px-4"> {/* Use mt-auto to push logout down */}
                                                 <Button
                                                     type="submit"
                                                     variant="outline"
@@ -129,31 +161,80 @@ export default function AdminNavbar() {
 }
 
 // Reusable NavLink component for Admin Desktop
-function AdminNavLink({to, children}: { to: string; children: React.ReactNode }) {
+function AdminNavLink({ to, children }: { to: string; children: React.ReactNode }) {
+    const location = useLocation();
+    const isActive = location.pathname === to || (to !== '/admin' && location.pathname.startsWith(to)); // Basic active check
+
     return (
         <Link
             to={to}
-            className="text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center"
-            // Add active styling if needed using useLocation hook from react-router-dom
+            className={cn(
+                "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center",
+                isActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30" // Active style
+            )}
         >
             {children}
         </Link>
     );
 }
 
+// Store Dropdown Component for Desktop
+function AdminStoreDropdown() {
+    const location = useLocation();
+    const isStoreActive = location.pathname.startsWith('/admin/store');
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                        "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center hover:bg-transparent dark:hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
+                         isStoreActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30" // Active style on trigger
+                    )}
+                >
+                    <ShoppingBag className="h-4 w-4 mr-1 inline-block" />
+                    Store
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                {/* <DropdownMenuLabel>Store Management</DropdownMenuLabel> */}
+                {/* <DropdownMenuSeparator /> */}
+                {storeNavItems.map((item) => (
+                    // Removed asChild as a test for the React.Children.only error
+                    <DropdownMenuItem key={item.to} className="p-0"> {/* Remove padding from item */}
+                        {/* Apply styling directly to Link */}
+                        <Link
+                            to={item.to}
+                            className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                        >
+                            <item.icon className="h-4 w-4 mr-2" />
+                            {item.label}
+                        </Link>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
 // Reusable NavLink component for Admin Mobile
-function AdminMobileNavLink({to, children, onClick}: {
+function AdminMobileNavLink({ to, children, onClick }: {
     to: string;
     children: React.ReactNode;
     onClick: () => void;
 }) {
+    const location = useLocation();
+    const isActive = location.pathname === to || (to !== '/admin' && location.pathname.startsWith(to)); // Basic active check
+
     return (
         <Link
             to={to}
             onClick={onClick}
-            className="px-4 py-3 text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors
-               text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 flex items-center"
-            // Add active styling if needed
+            className={cn(
+                "px-4 py-3 text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 flex items-center",
+                isActive && "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50" // Active style for mobile
+            )}
         >
             {children}
         </Link>

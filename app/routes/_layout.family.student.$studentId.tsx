@@ -526,6 +526,10 @@ export default function StudentDetailPage() {
                             <Button asChild variant="secondary">
                                 <Link to="/family/attendance">View Attendance</Link>
                             </Button>
+                            {/* Add Purchase Gi Button */}
+                            <Button asChild variant="default">
+                                <Link to={`/family/store/purchase/${student.id}`}>Purchase Gi</Link>
+                            </Button>
                         </div>
 
                         {/* Delete Button triggers Dialog */}

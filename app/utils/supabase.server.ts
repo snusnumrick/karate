@@ -87,11 +87,11 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 // Renamed from createPaymentSession - This function ONLY creates the initial DB record.
 export async function createInitialPaymentRecord(
     familyId: string,
-    subtotalAmount: number, // Expect subtotal in cents, calculated by caller
-    studentIds: string[], // Can be empty for non-student specific payments like 1:1? Let's assume 1:1 is still family-linked.
-    type: Database['public']['Enums']['payment_type_enum'] // Use 'type' to match DB column
+    subtotalAmount: number,
+    studentIds: string[],
+    type: Database['public']['Enums']['payment_type_enum'],
+    orderId?: string | null // Optional: Add orderId parameter
 ) {
-    // Fetch the apply_sales_tax setting from the database
     // Use the standard client with service role for DB operations server-side
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -159,12 +159,13 @@ export async function createInitialPaymentRecord(
             family_id: familyId,
             subtotal_amount: subtotalAmount, // Store subtotal
             // tax_amount column removed
-            total_amount: totalAmount,       // Store calculated total (subtotal + sum of taxes)
+            total_amount: totalAmount,
             status: 'pending',
-            type: type, // Set the 'type' column using the 'type' parameter
+            type: type,
+            order_id: orderId || null, // Set order_id if provided
             // payment_date, payment_method, stripe_payment_intent_id, receipt_url updated later
         })
-        .select('id') // Select the ID of the newly created record
+        .select('id')
         .single();
 
     if (insertPaymentError || !paymentRecord) {
@@ -194,9 +195,8 @@ export async function createInitialPaymentRecord(
     }
 
 
-    // 6. Insert records into the payment_students junction table *if* student IDs are provided
-    //    (Relevant for monthly/yearly group payments) - This logic remains the same
-    if (studentIds && studentIds.length > 0) {
+    // 6. Insert records into the payment_students junction table *if* student IDs are provided AND it's not a store purchase
+    if (type !== 'store_purchase' && studentIds && studentIds.length > 0) {
         const studentInserts = studentIds.map(studentId => ({
             payment_id: paymentId,
             student_id: studentId,
@@ -210,11 +210,11 @@ export async function createInitialPaymentRecord(
             console.error('Supabase payment_students insert error:', junctionError.message);
             // Attempt to delete the payment record if linking students fails
             await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Cleanup payment record
-            return {data: null, error: `Failed to link students to payment: ${junctionError.message}`};
+            return { data: null, error: `Failed to link students to payment: ${junctionError.message}` };
         }
-    } else if (type === 'monthly_group' || type === 'yearly_group') { // Check against 'type' parameter
+    } else if ((type === 'monthly_group' || type === 'yearly_group') && (!studentIds || studentIds.length === 0)) {
         // If it's a group payment but no students were selected/provided, this is an error
-        console.error('Group payment type selected but no student IDs provided.');
+        console.error(`Group payment type (${type}) selected but no student IDs provided.`);
         await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Cleanup payment record
         return {data: null, error: 'No students selected for group payment.'};
     }

@@ -11,14 +11,28 @@ import { format } from 'date-fns'; // For formatting dates
 // Define the types for the data needed for the receipt
 type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row']; // Includes tax_description_snapshot now
 type FamilyRow = Database['public']['Tables']['families']['Row'];
-type PaymentRow = Database['public']['Tables']['payments']['Row']; // Includes card_last4 now
+type PaymentRow = Database['public']['Tables']['payments']['Row'];
 type OneOnOneSessionRow = Database['public']['Tables']['one_on_one_sessions']['Row'];
+type OrderRow = Database['public']['Tables']['orders']['Row'];
+type OrderItemRow = Database['public']['Tables']['order_items']['Row'];
+type ProductVariantRow = Database['public']['Tables']['product_variants']['Row'];
+type ProductRow = Database['public']['Tables']['products']['Row'];
+
+// Define a type for the nested order item details needed
+type OrderItemWithDetails = OrderItemRow & {
+    product_variants: (Pick<ProductVariantRow, 'id' | 'size'> & {
+        products: Pick<ProductRow, 'id' | 'name'> | null;
+    }) | null;
+};
 
 type ReceiptPaymentData = PaymentRow & {
     families: Pick<FamilyRow, 'name' | 'email' | 'address' | 'city' | 'province' | 'postal_code'> | null;
-    payment_taxes: Array<Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_description_snapshot' | 'tax_amount' | 'tax_rate_snapshot'>>; // Added tax_description_snapshot
-    one_on_one_sessions: Array<Pick<OneOnOneSessionRow, 'quantity_purchased'>>; // Fetch quantity if applicable
-    // card_last4 is already included via PaymentRow
+    payment_taxes: Array<Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_description_snapshot' | 'tax_amount' | 'tax_rate_snapshot'>>;
+    one_on_one_sessions: Array<Pick<OneOnOneSessionRow, 'quantity_purchased'>>;
+    // Add nested order details for store purchases
+    orders: (Pick<OrderRow, 'id'> & {
+        order_items: OrderItemWithDetails[];
+    }) | null; // Fetch the related order and its items
 };
 
 type LoaderData = {
@@ -39,6 +53,8 @@ function getPaymentProductDescription(type: Database['public']['Enums']['payment
             return 'Yearly Group Class Fee';
         case 'individual_session':
             return quantity ? `Individual Session(s) (Qty: ${quantity})` : 'Individual Session(s)';
+        case 'store_purchase': // Add case for store purchase
+            return 'Store Item Purchase';
         case 'other':
             return 'Other Payment';
         default:
@@ -81,7 +97,18 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
             card_last4,
             families ( name, email, address, city, province, postal_code ),
             payment_taxes ( tax_name_snapshot, tax_description_snapshot, tax_amount, tax_rate_snapshot ),
-            one_on_one_sessions ( quantity_purchased )
+            one_on_one_sessions ( quantity_purchased ),
+            orders (
+                id,
+                order_items (
+                    *,
+                    product_variants (
+                        id,
+                        size,
+                        products ( id, name )
+                    )
+                )
+            )
         `)
         .eq('id', paymentId)
         .maybeSingle(); // Use maybeSingle to handle not found case
@@ -231,14 +258,29 @@ export default function PaymentReceiptPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Item Row */}
-                            <tr className="border-b border-gray-200 dark:border-gray-700 print:border-gray-400">
-                                <td className="py-3 pr-2 text-gray-700 dark:text-gray-300 print:text-black">{getPaymentProductDescription(payment.type, quantity)}</td>
-                                <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">${(payment.subtotal_amount / 100).toFixed(2)}</td>
-                            </tr>
+                            {/* Item Row(s) - Iterate if store purchase, otherwise use helper */}
+                            {payment.type === 'store_purchase' && payment.orders?.order_items ? (
+                                payment.orders.order_items.map(item => (
+                                    <tr key={item.id} className="border-b border-gray-200 dark:border-gray-700 print:border-gray-400">
+                                        <td className="py-3 pr-2 text-gray-700 dark:text-gray-300 print:text-black">
+                                            {item.product_variants?.products?.name ?? 'Unknown Product'}
+                                            {item.product_variants?.size && ` - Size: ${item.product_variants.size}`}
+                                            {item.quantity > 1 && ` (Qty: ${item.quantity})`}
+                                        </td>
+                                        {/* Display price per item * quantity for line total */}
+                                        <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">${((item.price_per_item_cents * item.quantity) / 100).toFixed(2)}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                // Fallback for non-store items or if order data is missing
+                                <tr className="border-b border-gray-200 dark:border-gray-700 print:border-gray-400">
+                                    <td className="py-3 pr-2 text-gray-700 dark:text-gray-300 print:text-black">{getPaymentProductDescription(payment.type, quantity)}</td>
+                                    <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">${(payment.subtotal_amount / 100).toFixed(2)}</td>
+                                </tr>
+                            )}
                             {/* Tax Rows */}
                             {payment.payment_taxes && payment.payment_taxes.map((tax, index) => (
-                                <tr key={index} className="border-b border-gray-200 dark:border-gray-700 print:border-gray-400">
+                                <tr key={`tax-${index}`} className="border-b border-gray-200 dark:border-gray-700 print:border-gray-400">
                                     {/* Indent tax lines slightly - Use description, fallback to name */}
                                     <td className="py-3 pr-2 text-gray-700 dark:text-gray-300 print:text-black pl-4">
                                         {tax.tax_description_snapshot || tax.tax_name_snapshot} ({ (tax.tax_rate_snapshot * 100).toFixed(2) }%)

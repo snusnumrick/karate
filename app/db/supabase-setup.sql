@@ -36,6 +36,22 @@ $$
     END
 $$;
 
+-- Create order_status enum type if it doesn't exist
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status') THEN
+            CREATE TYPE public.order_status AS ENUM (
+                'pending_payment', -- Order created, waiting for payment completion
+                'paid_pending_pickup', -- Payment successful, ready for pickup
+                'completed', -- Order picked up
+                'cancelled' -- Order cancelled (e.g., payment failed, admin action)
+            );
+        END IF;
+    END
+$$;
+
+
 -- Create payment_type enum type if it doesn't exist
 DO
 $$
@@ -44,12 +60,23 @@ $$
             CREATE TYPE public.payment_type_enum AS ENUM (
                 'monthly_group',
                 'yearly_group',
-                'individual_session', -- Use the correct value here
+                'individual_session',
+                -- 'store_purchase', -- Value will be added below if needed
                 'other'
                 );
         END IF;
     END
 $$;
+
+-- Add 'store_purchase' value to the enum if it doesn't already exist
+-- This handles the case where the enum exists but is missing the value
+DO $$
+BEGIN
+    ALTER TYPE public.payment_type_enum ADD VALUE IF NOT EXISTS 'store_purchase';
+EXCEPTION
+    WHEN duplicate_object THEN -- Handle potential race condition if run concurrently
+        RAISE NOTICE 'Value "store_purchase" already exists in enum payment_type_enum.';
+END $$;
 
 
 -- Create tables with IF NOT EXISTS to avoid errors on subsequent runs
@@ -140,6 +167,216 @@ $$
     END
 $$;
 
+
+-- --- Store Related Tables ---
+
+-- Products Table (e.g., Gi, T-Shirt)
+CREATE TABLE IF NOT EXISTS public.products (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    name text NOT NULL UNIQUE,
+    description text NULL,
+    image_url text NULL, -- URL to image in Supabase Storage
+    is_active boolean NOT NULL DEFAULT true, -- To show/hide product
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Enable RLS for products
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for products
+DO $$ BEGIN
+    -- Allow authenticated users to view active products
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow authenticated users to view active products' AND tablename = 'products') THEN
+        CREATE POLICY "Allow authenticated users to view active products" ON public.products
+        FOR SELECT TO authenticated USING (is_active = true);
+    END IF;
+    -- Allow admins to manage products
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage products' AND tablename = 'products') THEN
+        CREATE POLICY "Allow admins to manage products" ON public.products
+        FOR ALL USING (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        ) WITH CHECK (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        );
+    END IF;
+END $$;
+
+-- Add update timestamp trigger for products table
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'products_updated') THEN
+        CREATE TRIGGER products_updated
+            BEFORE UPDATE ON public.products
+            FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+    END IF;
+END $$;
+
+
+-- Product Variants Table (Handles Size, Price, Stock)
+CREATE TABLE IF NOT EXISTS public.product_variants (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    product_id uuid NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    size text NOT NULL, -- e.g., 'YM', 'AS', 'Size 3', '120cm'
+    price_in_cents integer NOT NULL CHECK (price_in_cents >= 0),
+    stock_quantity integer NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    is_active boolean NOT NULL DEFAULT true, -- To show/hide specific variant/size
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT unique_product_size UNIQUE (product_id, size) -- Ensure only one entry per product/size
+);
+
+-- Add indexes
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_product_variants_product_id') THEN
+        CREATE INDEX idx_product_variants_product_id ON public.product_variants(product_id);
+    END IF;
+END $$;
+
+-- Enable RLS for product_variants
+ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for product_variants
+DO $$ BEGIN
+    -- Allow authenticated users to view active variants of active products
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow authenticated users to view active variants' AND tablename = 'product_variants') THEN
+        CREATE POLICY "Allow authenticated users to view active variants" ON public.product_variants
+        FOR SELECT TO authenticated USING (
+            product_variants.is_active = true AND
+            EXISTS (SELECT 1 FROM public.products p WHERE p.id = product_variants.product_id AND p.is_active = true)
+        );
+    END IF;
+    -- Allow admins to manage variants
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage product variants' AND tablename = 'product_variants') THEN
+        CREATE POLICY "Allow admins to manage product variants" ON public.product_variants
+        FOR ALL USING (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        ) WITH CHECK (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        );
+    END IF;
+END $$;
+
+-- Add update timestamp trigger for product_variants table
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'product_variants_updated') THEN
+        CREATE TRIGGER product_variants_updated
+            BEFORE UPDATE ON public.product_variants
+            FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+    END IF;
+END $$;
+
+
+-- Orders Table
+CREATE TABLE IF NOT EXISTS public.orders (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    family_id uuid NOT NULL REFERENCES public.families(id) ON DELETE RESTRICT, -- Don't delete family if orders exist
+    student_id uuid NULL REFERENCES public.students(id) ON DELETE SET NULL, -- Optional: Link to specific student
+    order_date timestamp with time zone DEFAULT now() NOT NULL,
+    total_amount_cents integer NOT NULL CHECK (total_amount_cents >= 0), -- Total including taxes, matches payment total
+    status public.order_status NOT NULL DEFAULT 'pending_payment',
+    pickup_notes text NULL, -- Notes for admin regarding pickup
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- Add indexes
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_family_id') THEN
+        CREATE INDEX idx_orders_family_id ON public.orders(family_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_student_id') THEN
+        CREATE INDEX idx_orders_student_id ON public.orders(student_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_status') THEN
+        CREATE INDEX idx_orders_status ON public.orders(status);
+    END IF;
+END $$;
+
+-- Enable RLS for orders
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for orders
+DO $$ BEGIN
+    -- Allow family members to view their own orders
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view their orders' AND tablename = 'orders') THEN
+        CREATE POLICY "Allow family members to view their orders" ON public.orders
+        FOR SELECT USING (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.family_id = orders.family_id)
+        );
+    END IF;
+    -- Allow admins to manage all orders
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage orders' AND tablename = 'orders') THEN
+        CREATE POLICY "Allow admins to manage orders" ON public.orders
+        FOR ALL USING (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        ) WITH CHECK (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        );
+    END IF;
+END $$;
+
+-- Add update timestamp trigger for orders table
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'orders_updated') THEN
+        CREATE TRIGGER orders_updated
+            BEFORE UPDATE ON public.orders
+            FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+    END IF;
+END $$;
+
+
+-- Order Items Table (Junction between Orders and Product Variants)
+CREATE TABLE IF NOT EXISTS public.order_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    product_variant_id uuid NOT NULL REFERENCES public.product_variants(id) ON DELETE RESTRICT, -- Don't delete variant if ordered
+    quantity integer NOT NULL CHECK (quantity > 0),
+    price_per_item_cents integer NOT NULL CHECK (price_per_item_cents >= 0), -- Price at the time of order
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+    -- No updated_at needed here usually
+);
+
+-- Add indexes
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_order_items_order_id') THEN
+        CREATE INDEX idx_order_items_order_id ON public.order_items(order_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_order_items_product_variant_id') THEN
+        CREATE INDEX idx_order_items_product_variant_id ON public.order_items(product_variant_id);
+    END IF;
+END $$;
+
+-- Enable RLS for order_items
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for order_items
+DO $$ BEGIN
+    -- Allow family members to view items belonging to their orders
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view their order items' AND tablename = 'order_items') THEN
+        CREATE POLICY "Allow family members to view their order items" ON public.order_items
+        FOR SELECT USING (
+            EXISTS (
+                SELECT 1
+                FROM public.orders o
+                JOIN public.profiles p ON o.family_id = p.family_id
+                WHERE order_items.order_id = o.id AND p.id = auth.uid()
+            )
+        );
+    END IF;
+    -- Allow admins to manage all order items
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage order items' AND tablename = 'order_items') THEN
+        CREATE POLICY "Allow admins to manage order items" ON public.order_items
+        FOR ALL USING (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        ) WITH CHECK (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+        );
+    END IF;
+END $$;
+
+-- --- End Store Related Tables ---
+
+
 -- Payments table
 CREATE TABLE IF NOT EXISTS payments
 (
@@ -191,6 +428,10 @@ ALTER TABLE public.payments
     ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 ALTER TABLE public.payments
     ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- Add order_id column idempotently (link to the new orders table)
+ALTER TABLE public.payments
+    ADD COLUMN IF NOT EXISTS order_id uuid NULL REFERENCES public.orders(id) ON DELETE SET NULL; -- Allow null, set null if order deleted
 
 -- Make type column non-nullable (only if it exists and is currently nullable)
 -- This assumes the ADD COLUMN above succeeded or it already existed.
@@ -1136,4 +1377,39 @@ GRANT SELECT ON public.family_one_on_one_balance TO authenticated; -- Or specifi
 
 -- Remove the RENAME statement as the enum is now created with the correct value
 
--- Removed debugging functions get_payment_status_by_pi_id and get_payment_status_by_supabase_id
+-- Store related tables moved earlier in the script to resolve foreign key dependency.
+
+
+-- --- RPC Functions ---
+
+-- Function to atomically decrement product variant stock
+-- SECURITY DEFINER allows it to run with the privileges of the function owner (usually postgres)
+-- This bypasses RLS for the specific update operation, ensuring stock can be decremented by the webhook handler (via service_role client).
+CREATE OR REPLACE FUNCTION public.decrement_variant_stock(variant_id uuid, decrement_quantity integer)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER -- Important: Allows bypassing RLS for this specific operation
+AS $$
+BEGIN
+  UPDATE public.product_variants
+  SET stock_quantity = stock_quantity - decrement_quantity
+  WHERE id = variant_id AND stock_quantity >= decrement_quantity; -- Ensure stock doesn't go negative
+
+  -- Optional: Raise an exception if stock would go negative or variant not found
+  IF NOT FOUND THEN
+    -- Check if the variant exists at all
+    IF NOT EXISTS (SELECT 1 FROM public.product_variants WHERE id = variant_id) THEN
+        RAISE EXCEPTION 'Product variant with ID % not found.', variant_id;
+    ELSE
+        -- Variant exists, but stock was insufficient
+        RAISE EXCEPTION 'Insufficient stock for product variant ID %.', variant_id;
+    END IF;
+  END IF;
+
+END;
+$$;
+
+-- Grant execute permission to the service_role (or authenticated role if needed, but service_role is typical for webhooks)
+GRANT EXECUTE ON FUNCTION public.decrement_variant_stock(uuid, integer) TO service_role;
+
+-- --- End RPC Functions ---

@@ -417,9 +417,12 @@ export default function FamilyPortal() {
                                     </Link>
                                 </p>
                             )}
-                            <div className="pt-2">
+                            <div className="pt-2 flex flex-col items-start space-y-1"> {/* Use flex-col for stacking links */}
                                 <Button variant="link" className="p-0 h-auto text-sm">
-                                    <Link to="/family/payment-history">View Full Payment History</Link>
+                                    <Link to="/family/payment-history">View Payment History</Link>
+                                </Button>
+                                <Button variant="link" className="p-0 h-auto text-sm">
+                                    <Link to="/family/orders">View Order History</Link> {/* Added Order History Link */}
                                 </Button>
                             </div>
                         </div>
