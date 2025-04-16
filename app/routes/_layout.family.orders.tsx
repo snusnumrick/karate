@@ -144,10 +144,10 @@ export default function FamilyOrders() {
                                     <TableCell className="whitespace-nowrap">
                                         {/* Use Badge component for status */}
                                         <Badge variant={
-                                            order.status === 'completed' ? 'success' :
-                                            order.status === 'paid_pending_pickup' ? 'warning' :
+                                            order.status === 'completed' ? 'default' : // Use 'default' for success
+                                            order.status === 'paid_pending_pickup' ? 'secondary' : // Use 'secondary' for pending pickup
                                             order.status === 'cancelled' ? 'destructive' :
-                                            'secondary' // Default/pending
+                                            'secondary' // Default/pending_payment
                                         }>
                                             {order.status.replace(/_/g, ' ').replace('paid pending', 'pending')}
                                         </Badge>
