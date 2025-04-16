@@ -161,7 +161,6 @@ export default function FamilyOrders() {
                                                 <li key={item.id}>
                                                         {item.quantity} x {item.product_variants?.products?.name ?? 'Unknown Product'}
                                                         {item.product_variants?.size && ` (${item.product_variants.size})`}
-                                                        {item.product_variants?.color && ` (${item.product_variants.color})`}
                                                 </li>
                                             ))}
                                         </ul>
