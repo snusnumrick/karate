@@ -1,5 +1,5 @@
 import { json, LoaderFunctionArgs, MetaFunction, redirect } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError, useRouteLoaderData } from "@remix-run/react"; // Added useRouteError
+import { Link, useLoaderData, useRouteError } from "@remix-run/react"; // Added useRouteError
 import { createServerClient } from "@supabase/auth-helpers-remix";
 import { Database, Tables } from "~/types/database.types";
 // Removed Card components, using div with classes instead
