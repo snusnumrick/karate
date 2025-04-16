@@ -9,12 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed duplicate tax display on payment summaries by grouping taxes.
+- Resolved TypeScript errors in Family Orders page (`/family/orders`) by syncing app database types (`app/types/database.types.ts`) with the Supabase schema.
+- Removed usage of non-existent `color` property for product variants in Family Orders page (`/family/orders`).
+- Corrected `Badge` component variant usage for order statuses in Family Orders page (`/family/orders`) to align with available variants.
 
 ### Changed
 - Improved login error message (`/login`) to distinguish between invalid credentials and rate limiting (HTTP 429).
 - Disabled the login button (`/login`) during submission to prevent accidental multiple attempts and potential rate limiting.
 - Streamlined tax calculation logic for better maintainability.
 - Refined button styles and various UI elements across admin and family dashboards for improved consistency and usability.
+- Refactored Family Orders page (`/family/orders`) to use Shadcn `Table` components instead of standard HTML table elements for consistency.
 
 ## [1.2.0] - 2025-04-15
 
