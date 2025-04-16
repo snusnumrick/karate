@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Improved login error message (`/login`) to distinguish between invalid credentials and rate limiting (HTTP 429).
+- Disabled the login button (`/login`) during submission to prevent accidental multiple attempts and potential rate limiting.
+
+## [1.2.0] - 2025-04-15
+
 ### Added
 - Added display of last 'Gi' purchase date on the Admin Students page (`/admin/students`).
 - **Store Feature:**
