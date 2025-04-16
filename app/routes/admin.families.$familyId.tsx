@@ -167,6 +167,7 @@ export default function FamilyDetailPage() {
                     <Card className="bg-white dark:bg-gray-800">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Family Details</CardTitle>
+                            {/* Reverting to outline variant for consistency with Add Student button */}
                             <Button asChild variant="outline" size="sm">
                                 <Link to={`/admin/families/${params.familyId}/edit`}>Edit Details</Link>
                             </Button>
@@ -233,7 +234,8 @@ export default function FamilyDetailPage() {
                                                     {/* Belt display removed - view on student detail page */}
                                                 </div>
                                                 <div className="flex space-x-2">
-                                                    <Button asChild variant="secondary" size="sm">
+                                                    {/* Changed variant to outline to match other non-destructive actions */}
+                                                    <Button asChild variant="outline" size="sm">
                                                         {/* Added green link styling */}
                                                         <Link to={`/admin/students/${student.id}`}
                                                               className="text-green-600 hover:underline dark:text-green-400">

@@ -197,7 +197,7 @@ export default function AddProductPage() {
                         accept={ALLOWED_IMAGE_TYPES.join(',')} // Use defined allowed types
                         aria-invalid={!!actionData?.fieldErrors?.image}
                         aria-describedby="image-error"
-                        className="input-custom-styles file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                        className="my-6 file:mr-4 file:px-2 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
                     />
                     <p className="text-sm text-muted-foreground mt-1">Optional. Max 5MB. Allowed types: JPG, PNG, WEBP, GIF.</p>
                     {actionData?.fieldErrors?.image && (

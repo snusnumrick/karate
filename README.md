@@ -2,10 +2,11 @@
 
 ## Project Overview
 
-Develop a comprehensive and user-friendly karate class management website for 
-Sensei Negin's classes (details managed in `app/config/site.ts`), 
-incorporating efficient family-oriented registration, 
-achievement tracking, attendance monitoring, payment integration, and waiver management.
+Develop a comprehensive and user-friendly karate class management website for
+Sensei Negin's classes (details managed in `app/config/site.ts`),
+incorporating efficient family-oriented registration,
+achievement tracking, attendance monitoring, payment integration, waiver management,
+and an integrated store for purchasing items like uniforms.
 
 ## Features
 
@@ -22,10 +23,13 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - Manage family/guardian information and change password (`/family/account`).
     - View student attendance history (`/family/attendance`).
     - Track required waiver signature status.
+    - Browse and purchase items (e.g., Gi) from the online store (`/family/store/purchase/:studentId`).
+    - View past store order history (`/family/orders`).
 - **Student Management (Family View):**
     - View detailed student information (`/family/student/:studentId`).
     - Edit student details.
     - Add new students (`/family/add-student`).
+    - Purchase store items (e.g., Gi) for the student (`/family/store/purchase/:studentId`).
     - *Note: Student deletion might be restricted to Admins.*
 - **Waiver Management:** Digitally sign required waivers (Liability, Code of Conduct, Photo/Video, Payment/Dress Code).
 - **Payments:**
@@ -64,6 +68,11 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - View payment history including payment type (`/admin/payments`).
     - View pending payments (e.g., from failed online transactions) (`/admin/payments/pending`).
     - *Note: Full payment history/reporting might be a future enhancement.*
+- **Store Management:**
+    - Manage products (add, edit, delete with image uploads) (`/admin/store/products`).
+    - Manage product variants (add, edit, delete) (`/admin/store/products/:productId/variants`).
+    - Manage inventory stock levels (`/admin/store/inventory`).
+    - View and manage customer orders (view details, update status) (`/admin/store/orders`).
 
 ### Automated Notifications
 - **Student Absence:** Email to family when student marked absent.
@@ -248,13 +257,15 @@ achievement tracking, attendance monitoring, payment integration, and waiver man
     - `app/utils/`: Utility functions (database interactions, email sending, helpers).
     - `app/config/`: Site-wide configuration.
     - `app/types/`: TypeScript type definitions (including `database.types.ts`).
-    - `app/routes/api.create-payment-intent.ts`: Backend endpoint for Stripe Payment Intent creation.
-    - `app/routes/api.webhooks.stripe.ts`: Handles incoming Stripe webhook events.
+    - `app/routes/api.create-payment-intent.ts`: Backend endpoint for Stripe Payment Intent creation (handles both regular payments and store purchases).
+    - `app/routes/api.webhooks.stripe.ts`: Handles incoming Stripe webhook events (updates payment status, order status, stock levels).
+    - `app/routes/_layout.family.store...`: Family-facing store routes.
+    - `app/routes/admin.store...`: Admin-facing store management routes.
     - **Note:** While dedicated API routes exist for specific tasks, much of the core backend logic (data fetching, mutations) is handled within the `loader` and `action` functions of the standard Remix routes (`app/routes/`), serving as endpoints for the web UI itself rather than standalone APIs.
     - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
-- **UI:** Built with [Shadcn UI](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn-ui@latest add <component>` to add new components consistently.
-- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script.
+- **UI:** Built with [Shadcn](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn@latest add <component>` to add new components consistently.
+- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`).
 - **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.
 - **Environment Variables:** Managed via `.env` locally and platform environment variables in production (see Deployment). Use `.env.example` as a template.
 - **Email:** Uses Resend for transactional emails. See `app/utils/email.server.ts` and function-specific email logic.

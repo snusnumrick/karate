@@ -391,6 +391,29 @@ export default function PaymentPage() {
     // State to hold the detected theme ('light' or 'dark')
     const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light'); // Default to light initially
 
+    // --- Helper to Group Taxes ---
+    const groupedTaxes = useMemo(() => {
+        if (!payment?.payment_taxes) {
+            return [];
+        }
+
+        const taxMap = new Map<string, number>(); // Map: tax description/name -> total amount
+
+        payment.payment_taxes.forEach(tax => {
+            // Use description first, fallback to snapshot name
+            const key = tax.tax_rates?.description || tax.tax_name_snapshot || 'Unknown Tax';
+            const currentAmount = taxMap.get(key) || 0;
+            // Ensure tax_amount is treated as a number, default to 0 if null/undefined
+            taxMap.set(key, currentAmount + (tax.tax_amount ?? 0));
+        });
+
+        // Convert map back to an array of objects for rendering
+        return Array.from(taxMap.entries()).map(([description, amount]) => ({
+            description,
+            amount,
+        }));
+    }, [payment?.payment_taxes]); // Recalculate if taxes change
+
     // Options for Stripe Elements provider - Memoize to prevent unnecessary re-renders
     // Moved to top level before early returns to satisfy Rules of Hooks
     const options = useMemo<StripeElementsOptions | undefined>(() => {
@@ -730,19 +753,17 @@ export default function PaymentPage() {
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)}
                 </p>
-                {/* Display Tax Breakdown */}
-                {/* Display Tax Breakdown using description */}
-                {payment.payment_taxes && payment.payment_taxes.length > 0 && (
-                    payment.payment_taxes.map((tax, index) => (
+                {/* Display Grouped Tax Breakdown */}
+                {groupedTaxes.length > 0 && (
+                    groupedTaxes.map((tax, index) => (
                         <p key={index} className="text-sm text-gray-700 dark:text-gray-300">
-                            {/* Use tax_rates.description, fallback to tax_name_snapshot */}
                             <span className="font-semibold">
-                                {tax.tax_rates?.description || tax.tax_name_snapshot}:
-                            </span> ${(tax.tax_amount / 100).toFixed(2)}
+                                {tax.description}:
+                            </span> ${(tax.amount / 100).toFixed(2)}
                         </p>
                     ))
                 )}
-                 <p className="text-lg font-bold text-gray-800 dark:text-gray-100 mt-2 border-t pt-2 dark:border-gray-600">
+                <p className="text-lg font-bold text-gray-800 dark:text-gray-100 mt-2 border-t pt-2 dark:border-gray-600">
                     {/* Display the final total amount */}
                     <span className="font-semibold">Total Amount:</span> ${(payment.total_amount / 100).toFixed(2)} CAD
                 </p>

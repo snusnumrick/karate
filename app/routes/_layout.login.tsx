@@ -1,7 +1,8 @@
-import {Link, useActionData, useFetcher} from "@remix-run/react";
-import {ActionFunctionArgs, json, redirect, TypedResponse} from "@remix-run/node";
-import {Button} from "~/components/ui/button";
-import {Input} from "~/components/ui/input";
+import { Link, useActionData, useFetcher, useNavigation } from "@remix-run/react"; // Import useNavigation
+import { ActionFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
+import { AuthApiError } from "@supabase/supabase-js"; // Import AuthApiError
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
@@ -21,20 +22,34 @@ export async function action({request}: ActionFunctionArgs)
     const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
 
+    console.log(`[Login Action] Triggered at ${new Date().toISOString()} for email: ${email || 'N/A'}`); // Add logging here
+
     if (!email || !password) {
+        console.log("[Login Action] Failed: Missing email or password."); // Add logging
         return json({error: "Email and password are required.", email: email}, {status: 400, headers});
     }
 
+    console.log("[Login Action] Attempting supabaseServer.auth.signInWithPassword..."); // Add logging
     const {data: authData, error: authError} = await supabaseServer.auth.signInWithPassword({
         email,
         password,
     });
-    // console.log("Login attempt for:", email, "Result:", authData?.user, "Error:", authError?.message);
+    // console.log("Login attempt for:", email, "Result:", authData?.user, "Error:", authError); // Log the full error
 
     if (authError || !authData.user) {
-        console.error("Login error:", authError?.message);
+        console.error("Login error:", authError?.message, "Status:", (authError as AuthApiError)?.status); // Log status if available
+
+        // Check for Rate Limit Error (HTTP 429)
+        if (authError instanceof AuthApiError && authError.status === 429) {
+             return json({
+                error: "Too many login attempts. Please wait a few minutes and try again.",
+                email: email
+            }, { status: 429, headers });
+        }
+
         // Check for specific "Email not confirmed" error
         // Note: Relying on the exact error message string might be fragile if Supabase changes it.
+        // Consider checking a specific error code if Supabase provides one in the future.
         if (authError?.message === 'Email not confirmed') {
             // Return the specific error and the email address
             return json({
@@ -88,6 +103,8 @@ export async function action({request}: ActionFunctionArgs)
 export default function LoginPage() {
     const actionData = useActionData<typeof action>();
     const fetcher = useFetcher<ResendActionData>(); // Use the imported type
+    const navigation = useNavigation(); // Get navigation state
+    const isSubmitting = navigation.state === 'submitting'; // Check if form is submitting
 
     // Define a type for the resend action data if needed, or use inline type
     // type ResendActionData = { success?: boolean; error?: string };
@@ -193,9 +210,10 @@ export default function LoginPage() {
 
                                 <Button
                                     type="submit"
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800"
+                                    className="w-full bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800 disabled:opacity-50"
+                                    disabled={isSubmitting} // Disable button when submitting
                                 >
-                                    Sign in
+                                    {isSubmitting ? 'Signing in...' : 'Sign in'}
                                 </Button>
                             </div>
                         </form>
