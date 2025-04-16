@@ -121,41 +121,40 @@ export default function FamilyOrders() {
                             </AlertDescription>
                     </Alert>
                 ) : (
-                    // Apply styling similar to payment history table
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Order Date</th>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Order ID</th>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student</th> {/* Added Student Header */}
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Items</th>
-                                {/* <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th> */}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Order Date</TableHead>
+                                <TableHead>Order ID</TableHead>
+                                <TableHead>Student</TableHead> {/* Added Student Header */}
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Total</TableHead>
+                                <TableHead>Items</TableHead>
+                                {/* <TableHead className="text-right">Actions</TableHead> */}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {orders.map((order) => (
-                                <tr key={order.id}>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatDateTime(order.created_at)}</td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono text-xs">{order.id.substring(0, 8)}...</td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"> {/* Added Student Cell */}
+                                <TableRow key={order.id}>
+                                    <TableCell className="whitespace-nowrap">{formatDateTime(order.created_at)}</TableCell>
+                                    <TableCell className="whitespace-nowrap font-mono text-xs">{order.id.substring(0, 8)}...</TableCell>
+                                    <TableCell className="whitespace-nowrap"> {/* Added Student Cell */}
                                         {order.students ? `${order.students.first_name} ${order.students.last_name}` : 'N/A'}
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                        {/* Use span with classes like payment history */}
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                            order.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                            order.status === 'paid_pending_pickup' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                            order.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' // Default/pending
-                                        }`}>
+                                    </TableCell>
+                                    <TableCell className="whitespace-nowrap">
+                                        {/* Use Badge component for status */}
+                                        <Badge variant={
+                                            order.status === 'completed' ? 'success' :
+                                            order.status === 'paid_pending_pickup' ? 'warning' :
+                                            order.status === 'cancelled' ? 'destructive' :
+                                            'secondary' // Default/pending
+                                        }>
                                             {order.status.replace(/_/g, ' ').replace('paid pending', 'pending')}
-                                        </span>
-                                    </td>
+                                        </Badge>
+                                    </TableCell>
                                     {/* Pass raw cents to formatCurrency, assuming it handles the division */}
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 text-right">{formatCurrency(order.total_amount_cents)}</td>
-                                    <td className="px-4 py-4 whitespace-normal text-sm text-gray-500 dark:text-gray-400"> {/* Allow wrapping */}
+                                    <TableCell className="whitespace-nowrap text-right">{formatCurrency(order.total_amount_cents)}</TableCell>
+                                    <TableCell className="whitespace-normal"> {/* Allow wrapping */}
                                         <ul className="list-disc list-inside">
                                             {order.order_items.map(item => (
                                                 <li key={item.id}>
@@ -164,17 +163,17 @@ export default function FamilyOrders() {
                                                 </li>
                                             ))}
                                         </ul>
-                                    </td>
+                                    </TableCell>
                                     {/* Optional: Add actions like view details or reorder */}
-                                    {/* <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                                    {/* <TableCell className="text-right">
                                         <Button variant="outline" size="sm" asChild>
                                             <Link to={`/family/orders/${order.id}`}>View</Link>
                                         </Button>
-                                    </td> */}
-                                </tr>
+                                    </TableCell> */}
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 )}
             </div>
         </div>
