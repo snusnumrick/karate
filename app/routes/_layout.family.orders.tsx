@@ -9,7 +9,6 @@ import { Badge } from "~/components/ui/badge";
 // Removed Button import as it's not used
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import type { loader as layoutLoader } from "~/routes/_layout"; // Import layout loader type
 
 type OrderRow = Tables<'orders'>;
 type OrderItemRow = Tables<'order_items'>;
@@ -98,7 +97,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function FamilyOrders() {
     const { orders } = useLoaderData<typeof loader>();
-    // const layoutData = useRouteLoaderData<typeof layoutLoader>("routes/_layout"); // Session not directly used here
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -117,7 +115,7 @@ export default function FamilyOrders() {
                         <AlertCircle className="h-4 w-4" />
                             <AlertTitle>No Orders Found</AlertTitle>
                             <AlertDescription>
-                                You haven't placed any orders yet. Visit the <Link to="/family/store" className="font-medium text-primary underline underline-offset-4">Store</Link> to make a purchase.
+                                You haven&apos;t placed any orders yet. Visit the <Link to="/family/store" className="font-medium text-primary underline underline-offset-4">Store</Link> to make a purchase.
                             </AlertDescription>
                     </Alert>
                 ) : (
