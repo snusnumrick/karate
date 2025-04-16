@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed duplicate tax display on payment summaries by grouping taxes.
+
 ### Changed
 - Improved login error message (`/login`) to distinguish between invalid credentials and rate limiting (HTTP 429).
 - Disabled the login button (`/login`) during submission to prevent accidental multiple attempts and potential rate limiting.
-- Fixed duplicate tax display on payment summaries by grouping taxes.
 - Streamlined tax calculation logic for better maintainability.
 - Refined button styles and various UI elements across admin and family dashboards for improved consistency and usability.
 
