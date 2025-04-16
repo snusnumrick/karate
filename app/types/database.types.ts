@@ -273,6 +273,99 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          price_per_item_cents: number
+          product_variant_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          price_per_item_cents: number
+          product_variant_id: string
+          quantity: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          price_per_item_cents?: number
+          product_variant_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_variant_id_fkey"
+            columns: ["product_variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          family_id: string
+          id: string
+          order_date: string
+          pickup_notes: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          student_id: string | null
+          total_amount_cents: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          id?: string
+          order_date?: string
+          pickup_notes?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          student_id?: string | null
+          total_amount_cents: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          id?: string
+          order_date?: string
+          pickup_notes?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          student_id?: string | null
+          total_amount_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_students: {
         Row: {
           id: string
@@ -356,10 +449,12 @@ export type Database = {
       }
       payments: {
         Row: {
+          card_last4: string | null
           created_at: string | null
           family_id: string
           id: string
           notes: string | null
+          order_id: string | null
           payment_date: string | null
           payment_method: string | null
           receipt_url: string | null
@@ -370,13 +465,14 @@ export type Database = {
           total_amount: number
           type: Database["public"]["Enums"]["payment_type_enum"]
           updated_at: string | null
-          card_last4?: string | null // Added card_last4
         }
         Insert: {
+          card_last4?: string | null
           created_at?: string | null
           family_id: string
           id?: string
           notes?: string | null
+          order_id?: string | null
           payment_date?: string | null
           payment_method?: string | null
           receipt_url?: string | null
@@ -387,13 +483,14 @@ export type Database = {
           total_amount: number
           type?: Database["public"]["Enums"]["payment_type_enum"]
           updated_at?: string | null
-          card_last4?: string | null // Added card_last4
         }
         Update: {
+          card_last4?: string | null
           created_at?: string | null
           family_id?: string
           id?: string
           notes?: string | null
+          order_id?: string | null
           payment_date?: string | null
           payment_method?: string | null
           receipt_url?: string | null
@@ -404,7 +501,6 @@ export type Database = {
           total_amount?: number
           type?: Database["public"]["Enums"]["payment_type_enum"]
           updated_at?: string | null
-          card_last4?: string | null // Added card_last4
         }
         Relationships: [
           {
@@ -412,6 +508,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -459,6 +562,77 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      product_variants: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          price_in_cents: number
+          product_id: string
+          size: string
+          stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_in_cents: number
+          product_id: string
+          size: string
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_in_cents?: number
+          product_id?: string
+          size?: string
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -669,6 +843,10 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: number
       }
+      decrement_variant_stock: {
+        Args: { variant_id: string; decrement_quantity: number }
+        Returns: undefined
+      }
       get_family_one_on_one_balance: {
         Args: { p_family_id: string }
         Returns: number
@@ -685,12 +863,18 @@ export type Database = {
         | "red"
         | "brown"
         | "black"
+      order_status:
+        | "pending_payment"
+        | "paid_pending_pickup"
+        | "completed"
+        | "cancelled"
       payment_status: "pending" | "succeeded" | "failed"
       payment_type_enum:
         | "monthly_group"
         | "yearly_group"
         | "individual_session"
         | "other"
+        | "store_purchase"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -817,12 +1001,19 @@ export const Constants = {
         "brown",
         "black",
       ],
+      order_status: [
+        "pending_payment",
+        "paid_pending_pickup",
+        "completed",
+        "cancelled",
+      ],
       payment_status: ["pending", "succeeded", "failed"],
       payment_type_enum: [
         "monthly_group",
         "yearly_group",
         "individual_session",
         "other",
+        "store_purchase",
       ],
     },
   },
