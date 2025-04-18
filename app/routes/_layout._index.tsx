@@ -1,6 +1,7 @@
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 import { Link } from "@remix-run/react";
+import { MapPin, Clock, Users, Phone, Mail } from 'lucide-react'; // Import icons
 import { siteConfig } from "~/config/site"; // Import site config
 
 // Helper function to merge meta tags, giving precedence to child tags
@@ -98,24 +99,24 @@ export default function Index() {
                     <div className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-md">
                         <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-4">Class Details</h2>
                         <ul className="space-y-4 text-lg">
-                            <li className="flex items-center">
-                                <span className="mr-2">📍</span>
+                            <li className="flex items-start"> {/* Use items-start for potentially multi-line addresses */}
+                                <MapPin className="mr-2 mt-1 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                 <span>{siteConfig.location.address}</span> {/* Already using siteConfig here, good! */}
                             </li>
                             <li className="flex items-center">
-                                <span className="mr-2">🕕</span>
+                                <Clock className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                 <span>{siteConfig.classes.days} at {siteConfig.classes.time}</span>
                             </li>
                             <li className="flex items-center">
-                                <span className="mr-2">👧👦</span>
+                                <Users className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                 <span>Ages {siteConfig.classes.ageRange}</span>
                             </li>
                             <li className="flex items-center">
-                                <span className="mr-2">📞</span>
+                                <Phone className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                 <span>{siteConfig.contact.phone}</span>
                             </li>
                             <li className="flex items-center">
-                                <span className="mr-2">✉️</span>
+                                <Mail className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                 <span>{siteConfig.contact.email}</span>
                             </li>
                         </ul>
