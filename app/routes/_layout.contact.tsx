@@ -1,4 +1,5 @@
 import { siteConfig } from "~/config/site"; // Import site config
+import { Phone, Mail, MapPin } from 'lucide-react'; // Import icons
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 
@@ -106,25 +107,36 @@ export default function ContactPage() {
                             <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
                             <ul className="space-y-4">
                                 <li className="flex items-start">
-                                    <span className="text-green-600 mr-3">📞</span>
+                                    <Phone className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
                                     <div>
                                         <p className="font-medium">Phone</p>
-                                        <p>(604) 690-7121</p>
+                                        <a href={`tel:${siteConfig.contact.phone.replace(/\D/g, '')}`} className="hover:underline hover:text-green-700 dark:hover:text-green-400">
+                                            {siteConfig.contact.phone}
+                                        </a>
                                     </div>
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="text-green-600 mr-3">✉️</span>
+                                    <Mail className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-sky-500 dark:text-sky-400" aria-hidden="true" />
                                     <div>
                                         <p className="font-medium">Email</p>
-                                        <p>info@greenegin.ca</p>
+                                        <a href={`mailto:${siteConfig.contact.email}`} className="hover:underline hover:text-green-700 dark:hover:text-green-400">
+                                            {siteConfig.contact.email}
+                                        </a>
                                     </div>
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="text-green-600 mr-3">📍</span>
+                                    <MapPin className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400" aria-hidden="true" />
                                     <div>
                                         <p className="font-medium">Location</p>
-                                        {/* Use the address from siteConfig */}
-                                        <p>{siteConfig.location.address}</p>
+                                        {/* Use the address from siteConfig and make it a link */}
+                                        <a
+                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="hover:underline hover:text-green-700 dark:hover:text-green-400"
+                                        >
+                                            {siteConfig.location.address}
+                                        </a>
                                     </div>
                                 </li>
                             </ul>
