@@ -101,7 +101,14 @@ export default function Index() {
                         <ul className="space-y-4 text-lg">
                             <li className="flex items-start"> {/* Use items-start for potentially multi-line addresses */}
                                 <MapPin className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400" aria-hidden="true" />
-                                <span>{siteConfig.location.address}</span> {/* Already using siteConfig here, good! */}
+                                <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline"
+                                >
+                                    {siteConfig.location.address}
+                                </a>
                             </li>
                             <li className="flex items-center">
                                 <Clock className="mr-2 h-5 w-5 flex-shrink-0 text-blue-500 dark:text-blue-400" aria-hidden="true" />

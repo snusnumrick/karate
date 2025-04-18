@@ -110,10 +110,15 @@ export default function Footer() {
                             {/* Contact List: Align items end. Add margin top. Apply text-sm */}
                             <div className="mt-3 space-y-2 text-sm text-green-100 dark:text-gray-300 flex flex-col items-end"> {/* Align items end, added text-sm */}
                                 {/* Address */}
-                                <div className="flex items-start justify-end text-right"> {/* Use items-start for multi-line */}
-                                    <span className="flex-grow">{siteConfig.location.address}</span>
+                                <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-start justify-end text-right hover:text-white transition-colors" /* Use items-start for multi-line */
+                                >
+                                    <span className="flex-grow hover:underline">{siteConfig.location.address}</span>
                                     <MapPin className="ml-2 mt-1 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
-                                </div>
+                                </a>
                                 {/* Phone */}
                                 <a href={`tel:${siteConfig.contact.phone.replace(/\D/g, '')}`} className="flex items-center justify-end hover:text-white transition-colors">
                                     <span>{siteConfig.contact.phone}</span>
