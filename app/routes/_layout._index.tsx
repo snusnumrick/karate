@@ -1,7 +1,7 @@
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 import { Link } from "@remix-run/react";
-import { MapPin, Clock, Users, Phone, Mail } from 'lucide-react'; // Import icons
+import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell } from 'lucide-react'; // Import icons
 import { siteConfig } from "~/config/site"; // Import site config
 
 // Helper function to merge meta tags, giving precedence to child tags
@@ -130,23 +130,23 @@ export default function Index() {
                             <h3 className="text-xl font-bold mb-4">SENSEI NEGIN</h3>
                             <ul className="space-y-3">
                                 <li className="flex items-center">
-                                    <span className="mr-2">🥋</span>
+                                    <Award className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                     <span>5th Dan Black Belt</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <span className="mr-2">🎓</span>
+                                    <GraduationCap className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                     <span>M.S. of Sport Psychology</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <span className="mr-2">👶</span>
+                                    <Baby className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                     <span>Kids Sports Certified Coach</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <span className="mr-2">🏆</span>
+                                    <Trophy className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                     <span>Award Winning Youth Coach</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <span className="mr-2">💪</span>
+                                    <Dumbbell className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                                     <span>Personal Trainer Certified</span>
                                 </li>
                             </ul>
