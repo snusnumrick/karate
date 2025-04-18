@@ -1,7 +1,7 @@
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 import { Link } from "@remix-run/react";
-import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell } from 'lucide-react'; // Import icons
+import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
 
 // Helper function to merge meta tags, giving precedence to child tags
@@ -100,23 +100,23 @@ export default function Index() {
                         <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-4">Class Details</h2>
                         <ul className="space-y-4 text-lg">
                             <li className="flex items-start"> {/* Use items-start for potentially multi-line addresses */}
-                                <MapPin className="mr-2 mt-1 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                <MapPin className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400" aria-hidden="true" />
                                 <span>{siteConfig.location.address}</span> {/* Already using siteConfig here, good! */}
                             </li>
                             <li className="flex items-center">
-                                <Clock className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                <Clock className="mr-2 h-5 w-5 flex-shrink-0 text-blue-500 dark:text-blue-400" aria-hidden="true" />
                                 <span>{siteConfig.classes.days} at {siteConfig.classes.time}</span>
                             </li>
                             <li className="flex items-center">
-                                <Users className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                <Users className="mr-2 h-5 w-5 flex-shrink-0 text-purple-500 dark:text-purple-400" aria-hidden="true" />
                                 <span>Ages {siteConfig.classes.ageRange}</span>
                             </li>
                             <li className="flex items-center">
-                                <Phone className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                <Phone className="mr-2 h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
                                 <span>{siteConfig.contact.phone}</span>
                             </li>
                             <li className="flex items-center">
-                                <Mail className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                <Mail className="mr-2 h-5 w-5 flex-shrink-0 text-sky-500 dark:text-sky-400" aria-hidden="true" />
                                 <span>{siteConfig.contact.email}</span>
                             </li>
                         </ul>
@@ -130,23 +130,23 @@ export default function Index() {
                             <h3 className="text-xl font-bold mb-4">SENSEI NEGIN</h3>
                             <ul className="space-y-3">
                                 <li className="flex items-center">
-                                    <Award className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                    <Award className="mr-2 h-5 w-5 flex-shrink-0 text-yellow-400" aria-hidden="true" />
                                     <span>5th Dan Black Belt</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <GraduationCap className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                    <GraduationCap className="mr-2 h-5 w-5 flex-shrink-0 text-blue-300" aria-hidden="true" />
                                     <span>M.S. of Sport Psychology</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <Baby className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                    <Baby className="mr-2 h-5 w-5 flex-shrink-0 text-pink-300" aria-hidden="true" />
                                     <span>Kids Sports Certified Coach</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <Trophy className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                    <Trophy className="mr-2 h-5 w-5 flex-shrink-0 text-amber-400" aria-hidden="true" />
                                     <span>Award Winning Youth Coach</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <Dumbbell className="mr-2 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                                    <Dumbbell className="mr-2 h-5 w-5 flex-shrink-0 text-gray-400" aria-hidden="true" />
                                     <span>Personal Trainer Certified</span>
                                 </li>
                             </ul>
@@ -163,9 +163,8 @@ export default function Index() {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                         {/* Floor Info */}
-                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md flex flex-col h-full">
-                            {/* Placeholder for a floor/safety icon */}
-                            {/* <div className="text-4xl text-green-600 dark:text-green-400 mb-4">👣</div> */}
+                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md flex flex-col h-full items-center text-center"> {/* Added items-center, text-center */}
+                            <Footprints className="h-10 w-10 text-orange-600 dark:text-orange-400 mb-4" aria-hidden="true" />
                             <h3 className="text-xl font-bold text-green-700 dark:text-green-300 mb-3">Engineered for Safety & Performance</h3>
                             <p className="text-gray-600 dark:text-gray-300 mb-4">
                                 Our studio floors are designed to support various martial arts styles.
@@ -177,9 +176,8 @@ export default function Index() {
                             </p>
                         </div>
                         {/* Ventilation Info */}
-                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md flex flex-col h-full">
-                            {/* Placeholder for a ventilation/air icon */}
-                            {/* <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🌬️</div> */}
+                        <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-md flex flex-col h-full items-center text-center"> {/* Added items-center, text-center */}
+                            <Wind className="h-10 w-10 text-cyan-500 dark:text-cyan-400 mb-4" aria-hidden="true" />
                             <h3 className="text-xl font-bold text-green-700 dark:text-green-300 mb-3">Optimized Air Quality</h3>
                             <p className="text-gray-600 dark:text-gray-300 mb-4">
                                 In a high-performance environment, air quality matters. Our space features CO<sub>2</sub> sensors that regulate the ventilation system, ensuring maximum oxygen flow for peak performance and comfort during training.
@@ -199,23 +197,20 @@ export default function Index() {
                         Benefits of Karate Training
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-                            <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🧠</div>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center"> {/* Updated bg, added text-center */}
+                            <Brain className="h-12 w-12 text-blue-500 dark:text-blue-400 mx-auto mb-4" aria-hidden="true" />
                             <h3 className="text-xl font-bold mb-2">Mental Strength</h3>
-                            <p>Develop focus, discipline, and confidence through consistent practice and
-                                achievement.</p>
+                            <p className="text-gray-600 dark:text-gray-300">Develop focus, discipline, and confidence through consistent practice and achievement.</p> {/* Adjusted text color */}
                         </div>
-                        <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-                            <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🥋</div>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center"> {/* Updated bg, added text-center */}
+                            <ShieldCheck className="h-12 w-12 text-red-500 dark:text-red-400 mx-auto mb-4" aria-hidden="true" />
                             <h3 className="text-xl font-bold mb-2">Self-Defense</h3>
-                            <p>Learn practical defense techniques while understanding the responsibility that comes with
-                                them.</p>
+                            <p className="text-gray-600 dark:text-gray-300">Learn practical defense techniques while understanding the responsibility that comes with them.</p> {/* Adjusted text color */}
                         </div>
-                        <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-                            <div className="text-4xl text-green-600 dark:text-green-400 mb-4">🏆</div>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center"> {/* Updated bg, added text-center */}
+                            <Star className="h-12 w-12 text-yellow-500 dark:text-yellow-400 mx-auto mb-4" aria-hidden="true" />
                             <h3 className="text-xl font-bold mb-2">Personal Growth</h3>
-                            <p>Whether for transformative or competitive purposes, karate nurtures champions in all
-                                aspects of life!</p>
+                            <p className="text-gray-600 dark:text-gray-300">Whether for transformative or competitive purposes, karate nurtures champions in all aspects of life!</p> {/* Adjusted text color */}
                         </div>
                     </div>
                 </div>
