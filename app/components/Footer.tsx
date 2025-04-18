@@ -135,7 +135,7 @@ export default function Footer() {
 
                 <Separator className="bg-green-700 dark:bg-gray-700"/>
 
-                <div className="text-center text-green-200 dark:text-gray-400 text-sm">
+                <div className="text-center text-green-200 dark:text-gray-400 text-sm mt-6">
                     <Button variant="link" className="text-green-200">
                         <Link to="https://www.ponto.studio/">&copy; {new Date().getFullYear()}
                             Ponto Studio. All rights reserved.
