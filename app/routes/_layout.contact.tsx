@@ -149,16 +149,14 @@ export default function ContactPage() {
                                 </a>
                             </h2>
                             <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-md">
-                                <p className="font-medium mb-2">Children&apos;s Classes (Ages 6-12)</p>
+                                <p className="font-medium mb-2">Children&apos;s Classes (Ages {siteConfig.classes.ageRange})</p>
                                 <ul className="space-y-2">
                                     <li className="flex items-center">
                                         <span className="text-green-600 mr-2">•</span>
-                                        <span>Monday: 6:00 PM - 7:00 PM</span>
+                                        {/* Use siteConfig for days and time */}
+                                        <span>{siteConfig.classes.days}: {siteConfig.classes.timeLong}</span>
                                     </li>
-                                    <li className="flex items-center">
-                                        <span className="text-green-600 mr-2">•</span>
-                                        <span>Wednesday: 6:00 PM - 7:00 PM</span>
-                                    </li>
+                                    {/* Remove hardcoded second list item if siteConfig.classes.days covers all days */}
                                 </ul>
                             </div>
                         </div>

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced static emojis in the Footer's "Contact Us" section with theme-aware `lucide-react` icons, styled for visibility on the green background.
 - Made the address text on the homepage and in the footer a hyperlink to Google Maps.
 - Replaced static emojis in the Contact page's "Contact Information" section with theme-aware, colored `lucide-react` icons and made details clickable links.
+- Updated the Contact page's "Class Schedule" section to dynamically display information from `siteConfig`.
 
 ### Fixed
 - Improved visibility of the "Personal Trainer Certified" icon (Dumbbell) in both light (against green background) and dark modes on the homepage by adjusting its text color.
