@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Improved visibility of the "Personal Trainer Certified" icon (Dumbbell) in both light (against green background) and dark modes on the homepage by adjusting its text color.
 - Standardized font size for contact information text in the Footer to 14px (`text-sm`) to match surrounding text.
+- Adjusted vertical spacing in the Footer's "Quick Links" section to visually align better with the "Contact Us" section.
 
 ## [1.2.1] - 2025-04-16
 

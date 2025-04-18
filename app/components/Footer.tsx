@@ -84,17 +84,17 @@ export default function Footer() {
                             <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
                                 Quick Links
                             </Button>
-                            {/* Links List: Align items start. Add margin top. */}
-                            <div className="mt-3 flex flex-col items-start gap-0"> {/* Align items start */}
+                            {/* Links List: Align items start. Add margin top and consistent spacing (space-y-2). */}
+                            <div className="mt-3 space-y-2 flex flex-col items-start"> {/* Align items start, added space-y-2 */}
                                 {quickLinks.map((linkItem) => (
                                     <Button
                                         key={linkItem.path}
                                     asChild
                                     variant="link"
-                                    // Justify button content: start
-                                    className="text-green-100 justify-start hover:text-white" /* Justify start */
+                                    // Justify button content: start. Remove default button padding/height for tighter spacing.
+                                    className="text-green-100 justify-start hover:text-white p-0 h-auto text-sm" /* Justify start, removed padding/height, ensure text-sm */
                                 >
-                                    <Link to={linkItem.path}>
+                                    <Link to={linkItem.path} className="py-0"> {/* Adjust link padding if needed, py-0 ensures minimal vertical space */}
                                         {linkItem.label}
                                     </Link>
                                 </Button>
