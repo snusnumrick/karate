@@ -1,8 +1,9 @@
-import {Link, useRouteLoaderData} from "@remix-run/react";
-import {Button} from "~/components/ui/button";
-import {Separator} from "~/components/ui/separator";
-import type {loader as rootLayoutLoader} from "~/routes/_layout";
-import {siteConfig} from "~/config/site"; // Import loader type
+import { Link, useRouteLoaderData } from "@remix-run/react";
+import { Button } from "~/components/ui/button";
+import { Separator } from "~/components/ui/separator";
+import type { loader as rootLayoutLoader } from "~/routes/_layout";
+import { siteConfig } from "~/config/site"; // Import loader type
+import { MapPin, Phone, Mail, Clock } from 'lucide-react'; // Import icons
 
 export default function Footer() {
     // Get loader data from the parent layout route
@@ -108,22 +109,26 @@ export default function Footer() {
                             </Button>
                             {/* Contact List: Align items end. Add margin top. */}
                             <div className="mt-3 space-y-2 text-green-100 dark:text-gray-300 flex flex-col items-end"> {/* Align items end */}
-                                {[
-                                    {icon: "📍", label: siteConfig.location.address},
-                                {icon: "📞", label: siteConfig.contact.phone},
-                                {icon: "✉️", label: siteConfig.contact.email},
-                                {icon: "🕒", label: `${siteConfig.classes.days}: ${siteConfig.classes.timeLong}`},
-                            ].map((item) => (
-                                <Button
-                                    key={item.label}
-                                    variant="ghost"
-                                    // Justify button content: end
-                                    className="justify-end text-green-100 hover:bg-green-700/50 px-2 py-1 h-auto" /* Justify end */
-                                >
-                                    <span className="mr-2">{item.icon}</span>
-                                    {item.label}
-                                </Button>
-                            ))}
+                                {/* Address */}
+                                <div className="flex items-start justify-end text-right"> {/* Use items-start for multi-line */}
+                                    <span className="flex-grow">{siteConfig.location.address}</span>
+                                    <MapPin className="ml-2 mt-1 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
+                                </div>
+                                {/* Phone */}
+                                <a href={`tel:${siteConfig.contact.phone.replace(/\D/g, '')}`} className="flex items-center justify-end hover:text-white transition-colors">
+                                    <span>{siteConfig.contact.phone}</span>
+                                    <Phone className="ml-2 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
+                                </a>
+                                {/* Email */}
+                                <a href={`mailto:${siteConfig.contact.email}`} className="flex items-center justify-end hover:text-white transition-colors">
+                                    <span>{siteConfig.contact.email}</span>
+                                    <Mail className="ml-2 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
+                                </a>
+                                {/* Class Time */}
+                                <div className="flex items-center justify-end">
+                                    <span>{`${siteConfig.classes.days}: ${siteConfig.classes.timeLong}`}</span>
+                                    <Clock className="ml-2 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
+                                </div>
                             </div> {/* Closes Contact List div */}
                         </div> {/* Closes Contact Info Alignment container */}
                     </div> {/* Closes the 2-column wrapper grid */}
