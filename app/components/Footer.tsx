@@ -107,8 +107,8 @@ export default function Footer() {
                             <Button variant="ghost" className="text-lg font-semibold p-0 text-white">
                                 Contact Us
                             </Button>
-                            {/* Contact List: Align items end. Add margin top. */}
-                            <div className="mt-3 space-y-2 text-green-100 dark:text-gray-300 flex flex-col items-end"> {/* Align items end */}
+                            {/* Contact List: Align items end. Add margin top. Apply text-sm */}
+                            <div className="mt-3 space-y-2 text-sm text-green-100 dark:text-gray-300 flex flex-col items-end"> {/* Align items end, added text-sm */}
                                 {/* Address */}
                                 <div className="flex items-start justify-end text-right"> {/* Use items-start for multi-line */}
                                     <span className="flex-grow">{siteConfig.location.address}</span>
