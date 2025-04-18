@@ -146,7 +146,7 @@ export default function Index() {
                                     <span>Award Winning Youth Coach</span>
                                 </li>
                                 <li className="flex items-center">
-                                    <Dumbbell className="mr-2 h-5 w-5 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                                    <Dumbbell className="mr-2 h-5 w-5 flex-shrink-0 text-gray-500 dark:text-gray-300" aria-hidden="true" />
                                     <span>Personal Trainer Certified</span>
                                 </li>
                             </ul>
