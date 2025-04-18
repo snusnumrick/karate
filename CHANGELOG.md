@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced static emojis with theme-aware, colored `lucide-react` icons on the homepage (`/`) for improved visual appeal and consistency across light/dark modes.
 
 ### Fixed
-- Improved visibility of the "Personal Trainer Certified" icon (Dumbbell) in both light and dark modes on the homepage by adjusting its text color.
+- Improved visibility of the "Personal Trainer Certified" icon (Dumbbell) in both light (against green background) and dark modes on the homepage by adjusting its text color.
 
 ## [1.2.1] - 2025-04-16
 
