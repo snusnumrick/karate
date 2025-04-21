@@ -1,7 +1,9 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useState, useRef} from 'react';
 import {Form} from '@remix-run/react';
-import {supabaseClient} from '~/utils/supabase.client';
+import {getSupabaseBrowserClient} from '~/utils/supabase.client';
 import type {Family, Guardian, Student} from '~/types/models';
+import type {SupabaseClient} from '@supabase/supabase-js';
+import type {Database} from '~/types/database.types';
 import {
     mapFamilyFromSupabase,
     mapFamilyToSupabase,
@@ -37,12 +39,25 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
     });
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    // Store the Supabase client in a ref to avoid creating multiple instances
+    const supabaseRef = useRef<SupabaseClient<Database> | null>(null);
+
+    // Initialize the Supabase client if it doesn't exist
+    if (!supabaseRef.current) {
+        supabaseRef.current = getSupabaseBrowserClient();
+    }
+    // Use the stored client
+    const supabaseClient = supabaseRef.current;
 
     const loadFamily = useCallback(async (id: string) => {
         setLoading(true);
         setError(null);
 
         try {
+            if (!supabaseClient) {
+                console.error('Supabase client is not initialized');
+                throw new Error('Supabase client is not initialized');
+            }
             const {data, error} = await supabaseClient
                 .from('families')
                 .select(`
@@ -80,7 +95,7 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [supabaseClient]);
 
     useEffect(() => {
         let isMounted = true;
@@ -98,6 +113,12 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
     async function saveFamily() {
         setLoading(true);
         setError(null);
+        // Use the stored client from the ref
+        const client = supabaseRef.current;
+        if (!client) {
+            console.error('Supabase client is not initialized');
+            throw new Error('Supabase client is not initialized');
+        }
 
         try {
             // Convert to Supabase format
@@ -105,13 +126,13 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
 
             // Save family record
             const {data: familyData, error: familyError} = familyId
-                ? await supabaseClient
+                ? await client
                     .from('families')
                     .update(dbFamily)
                     .eq('id', familyId)
                     .select()
                     .single()
-                : await supabaseClient
+                : await client
                     .from('families')
                     .insert(dbFamily)
                     .select()
@@ -129,12 +150,12 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                 });
 
                 if (guardian.id) {
-                    return supabaseClient
+                    return client
                         .from('guardians')
                         .update(dbGuardian)
                         .eq('id', guardian.id);
                 } else {
-                    return supabaseClient
+                    return client
                         .from('guardians')
                         .insert(dbGuardian);
                 }
@@ -148,12 +169,12 @@ export default function FamilyManager({familyId, onSave}: FamilyManagerProps) {
                 });
 
                 if (student.id) {
-                    return supabaseClient
+                    return client
                         .from('students')
                         .update(dbStudent)
                         .eq('id', student.id);
                 } else {
-                    return supabaseClient
+                    return client
                         .from('students')
                         .insert(dbStudent);
                 }

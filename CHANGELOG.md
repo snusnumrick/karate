@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Messaging:** Display participant names/details in conversation list and view header.
+
+### Changed
+- *Nothing yet*
+
+### Fixed
+- *Nothing yet*
+
+### Removed
+- *Nothing yet*
+
+## [1.3.0] - 2025-04-21
+
+### Added
+- **In-App Messaging (Phase 1 & 2 - Foundation & Basic UI):**
+    - Added database tables (`conversations`, `conversation_participants`, `messages`) and RLS policies.
+    - Added trigger to update conversation timestamps when new messages are added.
+    - Created basic family-facing routes (`/family/messages`, `/family/messages/:conversationId`) to list conversations and view/send messages.
+    - Implemented basic Supabase Realtime subscription for new messages in the conversation view.
+    - Added basic UI components (`ConversationList`, `MessageView`, `MessageInput`).
+    - Added "Messages" link to main Navbar (for logged-in users) and Admin Navbar.
+    - Implemented admin messaging interface (`/admin/messages`, `/admin/messages/:conversationId`) with enhanced real-time updates (listening for both new messages and conversation updates).
+- **In-App Messaging (New Conversation):**
+    - Added "New Message" button to family message list.
+    - Created `/family/messages/new` route for composing new messages. Families no longer select a specific recipient; messages are sent to a conversation including the sender and all 'admin'/'instructor' users.
+    - Implemented action to create conversation, participants, initial message, and redirect (using updated `create_new_conversation` SQL function).
+- **Database:**
+    - Added `first_name` and `last_name` columns to the `profiles` table to store user names separate from guardian/student records.
+    - Set `messages.sender_id` and `conversation_participants.user_id` foreign keys to reference `profiles(id)` for improved relationship handling.
+- **Messaging UI/UX:**
+    - Implemented real-time message display to include sender details immediately.
+
+### Changed
+- **Navbar:** Added tooltips to the Theme Toggle and Messages icon buttons.
+- **Admin Navbar:** Changed desktop navigation links (excluding Logout) to be icon-only with tooltips to reduce crowding on smaller screens. Mobile navigation remains unchanged (icon + text).
+- Removed redundant "Home" link from desktop and mobile navigation menus (logo already links home).
+- Replaced the desktop "Messages" navigation link with an icon-only button next to the theme toggle, always visible but only active for logged-in users.
+
 ## [1.2.2] - 2025-04-18
 
 ### Changed

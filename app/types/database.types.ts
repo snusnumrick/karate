@@ -638,19 +638,25 @@ export type Database = {
         Row: {
           email: string
           family_id: string | null
+          first_name: string | null // Added
           id: string
+          last_name: string | null // Added
           role: string
         }
         Insert: {
           email: string
           family_id?: string | null
+          first_name?: string | null // Added
           id: string
+          last_name?: string | null // Added
           role?: string
         }
         Update: {
           email?: string
           family_id?: string | null
+          first_name?: string | null // Added
           id?: string
+          last_name?: string | null // Added
           role?: string
         }
         Relationships: [
@@ -820,6 +826,109 @@ export type Database = {
         }
         Relationships: []
       }
+      // --- START MESSAGING TABLES ---
+      // Note: These tables were already added in the provided file content.
+      // This block confirms their presence and structure. No actual change needed if they match.
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      // --- END MESSAGING TABLES ---
     }
     Views: {
       family_one_on_one_balance: {

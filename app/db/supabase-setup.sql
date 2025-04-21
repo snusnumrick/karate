@@ -805,8 +805,15 @@ CREATE TABLE IF NOT EXISTS profiles
     id        uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
     email     text NOT NULL,
     role      text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'instructor')),
-    family_id uuid REFERENCES families (id) ON DELETE SET NULL
+    family_id uuid REFERENCES families (id) ON DELETE SET NULL,
+    -- Add first_name and last_name columns
+    first_name text NULL,
+    last_name text NULL
 );
+
+-- Add columns idempotently if they don't exist
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS first_name text NULL;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_name text NULL;
 
 -- Add family_id column idempotently before attempting to index it
 ALTER TABLE profiles
@@ -981,13 +988,24 @@ END $$;
 DO
 $$
     BEGIN
-        -- Check if policy exists before creating
+        -- Check if policy exists before creating/replacing
+        -- Modify policy to allow viewing own profile OR admin/instructor profiles
+        DROP POLICY IF EXISTS "Profiles are viewable by user or admin role" ON public.profiles; -- Drop potentially existing policy
+        DROP POLICY IF EXISTS "Profiles are viewable by user" ON public.profiles; -- Drop older policy if exists
+
+        -- Check if the target policy already exists before creating it
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'profiles'
-                         AND policyname = 'Profiles are viewable by user') THEN
-            CREATE POLICY "Profiles are viewable by user" ON profiles
-                FOR SELECT USING (auth.uid() = id);
+                         AND policyname = 'Profiles viewable by user, admin, or instructor') THEN
+            CREATE POLICY "Profiles viewable by user, admin, or instructor" ON public.profiles
+                FOR SELECT USING (
+                    auth.uid() = id -- Can view own profile
+                    OR
+                    role = 'admin' -- Can view admin profiles
+                    OR
+                    role = 'instructor' -- Can view instructor profiles (needed for recipient list)
+                );
         END IF;
 
         IF NOT EXISTS (SELECT 1
@@ -1413,3 +1431,329 @@ $$;
 GRANT EXECUTE ON FUNCTION public.decrement_variant_stock(uuid, integer) TO service_role;
 
 -- --- End RPC Functions ---
+
+-- --- Messaging Tables ---
+
+-- Conversations Table
+CREATE TABLE IF NOT EXISTS public.conversations (
+                                                    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+                                                    created_at timestamp with time zone DEFAULT now() NOT NULL,
+                                                    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                                                    last_message_at timestamp with time zone DEFAULT now() NOT NULL, -- For sorting conversations
+                                                    subject text NULL -- Optional subject for the conversation
+);
+
+-- Enable RLS
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+
+-- Add update timestamp trigger
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'conversations_updated') THEN
+        CREATE TRIGGER conversations_updated
+            BEFORE UPDATE ON public.conversations
+            FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+    END IF;
+END $$;
+
+-- Conversation Participants Table (Junction between conversations and users)
+CREATE TABLE IF NOT EXISTS public.conversation_participants (
+                                                                id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+                                                                conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
+                                                                user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE, -- Changed reference to public.profiles
+                                                                joined_at timestamp with time zone DEFAULT now() NOT NULL,
+    -- Add a flag if needed later for unread status per user per conversation
+    -- has_unread boolean DEFAULT false NOT NULL,
+                                                                CONSTRAINT unique_conversation_user UNIQUE (conversation_id, user_id)
+);
+
+-- Add indexes
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_conversation_id') THEN
+        CREATE INDEX idx_conversation_participants_conversation_id ON public.conversation_participants(conversation_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_user_id') THEN
+        CREATE INDEX idx_conversation_participants_user_id ON public.conversation_participants(user_id);
+    END IF;
+END $$;
+
+-- Enable RLS
+ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
+
+
+-- Messages Table
+CREATE TABLE IF NOT EXISTS public.messages (
+                                               id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+                                               conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
+                                               sender_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE, -- Changed reference to public.profiles
+                                               content text NOT NULL CHECK (content <> ''), -- Ensure message content is not empty
+                                               created_at timestamp with time zone DEFAULT now() NOT NULL
+    -- Add attachment_url or similar if implementing attachments later
+);
+
+-- Add indexes
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_conversation_id') THEN
+        CREATE INDEX idx_messages_conversation_id ON public.messages(conversation_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_sender_id') THEN
+        CREATE INDEX idx_messages_sender_id ON public.messages(sender_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_created_at') THEN
+        CREATE INDEX idx_messages_created_at ON public.messages(created_at); -- For sorting messages
+    END IF;
+END $$;
+
+-- Enable RLS
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+-- Trigger to update conversation's last_message_at timestamp
+CREATE OR REPLACE FUNCTION public.update_conversation_last_message_at()
+    RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.conversations
+    SET last_message_at = NEW.created_at,
+        updated_at = NEW.created_at -- Also update conversation updated_at
+    WHERE id = NEW.conversation_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER; -- Use DEFINER if needed to bypass RLS, but check implications
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'messages_update_conversation_ts') THEN
+        CREATE TRIGGER messages_update_conversation_ts
+            AFTER INSERT ON public.messages
+            FOR EACH ROW EXECUTE FUNCTION public.update_conversation_last_message_at();
+    END IF;
+END $$;
+
+
+-- --- Messaging RLS Policies ---
+
+DO $$ BEGIN
+    -- Conversations: Users can see conversations they are participants in. Admins can see all.
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow participants to view conversations' AND tablename = 'conversations') THEN
+        CREATE POLICY "Allow participants to view conversations" ON public.conversations
+            FOR SELECT USING (
+            EXISTS (
+                SELECT 1 FROM public.conversation_participants cp
+                WHERE cp.conversation_id = conversations.id AND cp.user_id = auth.uid()
+            )
+                OR
+            EXISTS ( -- Admins can view all
+                SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'
+            )
+            );
+    END IF;
+
+    -- Conversations: Users can create conversations (policy might need refinement based on who can initiate)
+    -- For now, allow any authenticated user to create a conversation record.
+    -- Participant insertion logic will handle who is actually *in* the conversation.
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow authenticated users to create conversations' AND tablename = 'conversations') THEN
+        CREATE POLICY "Allow authenticated users to create conversations" ON public.conversations
+            FOR INSERT TO authenticated WITH CHECK (true); -- Simplistic for now
+    END IF;
+
+    -- Conversation Participants: Users can see their own participation record. Admins can see all.
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow users to view their own participation' AND tablename = 'conversation_participants') THEN
+        CREATE POLICY "Allow users to view their own participation" ON public.conversation_participants
+            FOR SELECT USING (
+            user_id = auth.uid()
+                OR
+            EXISTS ( -- Admins can view all
+                SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'
+            )
+            );
+    END IF;
+
+    -- Conversation Participants: Users can insert themselves into a conversation (or be added by logic).
+    -- This needs careful consideration. Let's allow users to insert records where user_id = auth.uid().
+    -- Server-side logic (e.g., an RPC function or action) should handle adding *other* users.
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow users to insert themselves as participants' AND tablename = 'conversation_participants') THEN
+        CREATE POLICY "Allow users to insert themselves as participants" ON public.conversation_participants
+            FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+    END IF;
+    -- Consider adding admin insert policy if needed:
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to insert participants' AND tablename = 'conversation_participants') THEN
+        CREATE POLICY "Allow admins to insert participants" ON public.conversation_participants
+            FOR INSERT TO authenticated WITH CHECK (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+            );
+    END IF;
+
+
+    -- Messages: Users can see messages in conversations they are participants in. Admins can see all.
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow participants to view messages' AND tablename = 'messages') THEN
+        CREATE POLICY "Allow participants to view messages" ON public.messages
+            FOR SELECT USING (
+            EXISTS (
+                SELECT 1 FROM public.conversation_participants cp
+                WHERE cp.conversation_id = messages.conversation_id AND cp.user_id = auth.uid()
+            )
+                OR
+            EXISTS ( -- Admins can view all
+                SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'
+            )
+            );
+    END IF;
+
+    -- Messages: Users can insert messages into conversations they are participants in.
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow participants to insert messages' AND tablename = 'messages') THEN
+        CREATE POLICY "Allow participants to insert messages" ON public.messages
+            FOR INSERT TO authenticated WITH CHECK (
+            sender_id = auth.uid() -- Ensure sender is the authenticated user
+                AND
+            EXISTS ( -- Ensure sender is a participant in the conversation
+                SELECT 1 FROM public.conversation_participants cp
+                WHERE cp.conversation_id = messages.conversation_id AND cp.user_id = auth.uid()
+            )
+            );
+    END IF;
+
+    -- Optional: Allow admins to delete messages (or specific roles)
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to delete messages' AND tablename = 'messages') THEN
+        CREATE POLICY "Allow admins to delete messages" ON public.messages
+            FOR DELETE USING (
+            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+            );
+    END IF;
+
+END $$;
+
+-- --- End Messaging RLS Policies ---
+
+-- --- RPC Function for Creating Conversation ---
+
+CREATE OR REPLACE FUNCTION public.create_new_conversation(
+    p_sender_id uuid,
+    -- p_recipient_id uuid, -- Removed recipient ID parameter
+    p_subject text,
+    p_content text
+)
+RETURNS uuid -- Returns the new conversation_id
+LANGUAGE plpgsql
+SECURITY DEFINER -- Executes with the privileges of the function owner (usually postgres)
+AS $$
+DECLARE
+    new_conversation_id uuid;
+    admin_instructor_id uuid;
+BEGIN
+    -- Set search_path at the beginning of the function execution for this transaction
+    SET LOCAL search_path = public, extensions;
+
+    -- 1. Create the conversation
+    INSERT INTO public.conversations (subject)
+    VALUES (p_subject)
+    RETURNING id INTO new_conversation_id;
+
+    -- 2. Add the sender as a participant
+    INSERT INTO public.conversation_participants (conversation_id, user_id)
+    VALUES (new_conversation_id, p_sender_id);
+
+    -- 3. Add all admin and instructor users as participants
+    FOR admin_instructor_id IN
+        SELECT id FROM public.profiles WHERE role IN ('admin', 'instructor')
+    LOOP
+        -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user is both sender and admin/instructor
+        INSERT INTO public.conversation_participants (conversation_id, user_id)
+        VALUES (new_conversation_id, admin_instructor_id)
+        ON CONFLICT (conversation_id, user_id) DO NOTHING;
+    END LOOP;
+
+    -- 4. Add the initial message
+    INSERT INTO public.messages (conversation_id, sender_id, content)
+    VALUES (new_conversation_id, p_sender_id, p_content);
+
+    -- 4. Return the new conversation ID
+    RETURN new_conversation_id;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Log the error details if possible (requires extensions or specific logging setup)
+        RAISE WARNING 'Error in create_new_conversation: SQLSTATE: %, MESSAGE: %', SQLSTATE, SQLERRM;
+        -- Re-raise the original error to ensure the transaction fails
+        RAISE;
+END;
+$$;
+
+-- Grant execute permission to authenticated users (note the changed parameter signature)
+-- This allows logged-in users to call this function.
+-- The SECURITY DEFINER ensures the operations *inside* the function run with higher privileges,
+-- bypassing potential RLS issues during the multi-step insert process.
+GRANT EXECUTE ON FUNCTION public.create_new_conversation(uuid, text, text) TO authenticated;
+
+
+-- --- End RPC Function ---
+
+
+-- --- End Messaging Tables ---
+
+
+-- --- RLS Policy Verification Queries ---
+-- Run these SELECT statements in the Supabase SQL Editor
+-- to verify that the expected RLS policies have been created.
+
+-- \echo '--- Verifying Policies for: families ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'families';
+
+-- \echo '--- Verifying Policies for: guardians ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'guardians';
+
+-- \echo '--- Verifying Policies for: students ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'students';
+
+-- \echo '--- Verifying Policies for: products ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'products';
+
+-- \echo '--- Verifying Policies for: product_variants ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'product_variants';
+
+-- \echo '--- Verifying Policies for: orders ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'orders';
+
+-- \echo '--- Verifying Policies for: order_items ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'order_items';
+
+-- \echo '--- Verifying Policies for: payments ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'payments';
+
+-- \echo '--- Verifying Policies for: payment_students ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'payment_students';
+
+-- \echo '--- Verifying Policies for: belt_awards ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'belt_awards';
+
+-- \echo '--- Verifying Policies for: attendance ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'attendance';
+
+-- \echo '--- Verifying Policies for: waivers ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'waivers';
+
+-- \echo '--- Verifying Policies for: waiver_signatures ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'waiver_signatures';
+
+-- \echo '--- Verifying Policies for: profiles ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'profiles';
+
+-- \echo '--- Verifying Policies for: tax_rates ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tax_rates';
+
+-- \echo '--- Verifying Policies for: payment_taxes ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'payment_taxes';
+
+-- \echo '--- Verifying Policies for: one_on_one_sessions ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'one_on_one_sessions';
+
+-- \echo '--- Verifying Policies for: one_on_one_session_usage ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'one_on_one_session_usage';
+
+-- \echo '--- Verifying Policies for: conversations ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'conversations';
+
+-- \echo '--- Verifying Policies for: conversation_participants ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'conversation_participants';
+
+-- \echo '--- Verifying Policies for: messages ---'
+-- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'messages';
+
+-- --- End RLS Policy Verification Queries ---
+

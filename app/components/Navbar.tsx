@@ -3,7 +3,8 @@ import {Form, Link, useRouteLoaderData} from "@remix-run/react";
 import {ModeToggle} from "./mode-toggle";
 import {Sheet, SheetContent, SheetTrigger} from "./ui/sheet";
 import {Button} from "./ui/button";
-import {LogOut, Menu, Sun, X} from "lucide-react"; // Import LogOut and Sun
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/tooltip"; // Import Tooltip components
+import {LogOut, Menu, MessageSquare, Sun, X} from "lucide-react"; // Import LogOut, Sun, AND MessageSquare
 import type {loader as rootLayoutLoader} from "~/routes/_layout"; // Import loader type
 import {ClientOnly} from './client-only'; // Import ClientOnly
 
@@ -14,9 +15,10 @@ export default function Navbar() {
     const user = data?.session?.user; // Check if user exists in the session
 
     return (
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
+        <TooltipProvider delayDuration={100}>
+            <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between h-16">
                     <div className="flex items-center">
                         <div className="relative h-10 w-10 mr-4">
                             <img
@@ -36,15 +38,17 @@ export default function Navbar() {
                         </Link>
                     </div>
 
-                    {/* Desktop Navigation */}
-                    <nav className="hidden md:flex md:space-x-8 md:items-center">
-                        <NavLink to="/">Home</NavLink>
+                    {/* Desktop Navigation - Hidden below lg */}
+                    <nav className="hidden lg:flex lg:space-x-8 lg:items-center">
+                        {/* Home link removed, logo links to home */}
                         <NavLink to="/classes">Classes</NavLink>
                         <NavLink to="/about">About</NavLink>
                         <NavLink to="/contact">Contact</NavLink>
+                        {/* Messages icon moved next to ModeToggle */}
                     </nav>
 
-                    <div className="flex items-center space-x-4">
+                    {/* Right-side items: Mode toggle, Messages Icon, User actions/Login, Mobile menu trigger */}
+                    <div className="flex items-center space-x-2"> {/* Reduced space slightly */}
                         {/* Wrap ModeToggle in ClientOnly to prevent hydration mismatch */}
                         <ClientOnly
                             fallback={
@@ -54,15 +58,64 @@ export default function Navbar() {
                                 </Button>
                             }
                         >
-                            {() => <ModeToggle/>}
+                            {() => (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        {/* ModeToggle component already renders a Button */}
+                                        <ModeToggle/>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom">
+                                        <p>Toggle theme</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            )}
                         </ClientOnly>
 
-                        {/* Desktop Auth Buttons */}
+                        {/* Messages Icon Button - Always visible, links if logged in */}
+                        <ClientOnly fallback={
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" disabled>
+                                        <MessageSquare className="h-[1.2rem] w-[1.2rem]"/>
+                                        <span className="sr-only">Messages (Loading...)</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                    <p>Messages (Loading...)</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        }>
+                            {() => (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        {user ? (
+                                            <Button variant="outline" size="icon" asChild>
+                                                <Link to="/family/messages">
+                                                    <MessageSquare className="h-[1.2rem] w-[1.2rem]"/>
+                                                    <span className="sr-only">Messages</span>
+                                                </Link>
+                                            </Button>
+                                        ) : (
+                                            <Button variant="outline" size="icon" disabled>
+                                                <MessageSquare className="h-[1.2rem] w-[1.2rem]"/>
+                                                <span className="sr-only">Messages (Login required)</span>
+                                            </Button>
+                                        )}
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom">
+                                        <p>{user ? "Messages" : "Messages (Login required)"}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            )}
+                        </ClientOnly>
+
+                        {/* Desktop Auth Buttons - Hidden below lg */}
                         {/* Wrap user-specific section in ClientOnly */}
-                        <ClientOnly fallback={<div className="hidden md:block h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
+                        <ClientOnly fallback={<div className="hidden lg:block h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
                             {() => user ? (
-                                <div className="hidden md:flex items-center space-x-4">
+                                <div className="hidden lg:flex items-center space-x-4">
                                     <NavLink to="/family">Family Portal</NavLink>
+                                    {/* Removed Messages link from here as it's now in main nav */}
                                     <Form action="/logout" method="post">
                                         <Button
                                             type="submit"
@@ -75,10 +128,10 @@ export default function Navbar() {
                                     </Form>
                                 </div>
                             ) : (
-                                // Render login link only if user is not present on client
+                                // Render login link only if user is not present on client - Hidden below lg
                                 <Link
                                     to="/login"
-                                    className="hidden md:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                                    className="hidden lg:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                                 >
                                     Login {/* Add text back inside Link */}
                                 </Link>
@@ -95,9 +148,9 @@ export default function Navbar() {
                         {/* End Desktop Auth Buttons */}
 
 
-                        {/* Mobile Menu Button */}
+                        {/* Mobile Menu Button - Hidden on lg and up */}
                         <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                            <SheetTrigger asChild className="md:hidden">
+                            <SheetTrigger asChild className="lg:hidden">
                                 <Button
                                     variant="outline"
                                     size="icon"
@@ -112,9 +165,7 @@ export default function Navbar() {
                                 className="w-[300px] sm:w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
                             >
                                 <div className="flex flex-col space-y-4 mt-6">
-                                    <MobileNavLink to="/" onClick={() => setIsOpen(false)}>
-                                        Home
-                                    </MobileNavLink>
+                                    {/* Home link removed, logo links to home */}
                                     <MobileNavLink to="/classes" onClick={() => setIsOpen(false)}>
                                         Classes
                                     </MobileNavLink>
@@ -130,6 +181,10 @@ export default function Navbar() {
                                         <>
                                             <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
                                                 Family Portal
+                                            </MobileNavLink>
+                                            {/* Add Messages link for mobile */}
+                                            <MobileNavLink to="/family/messages" onClick={() => setIsOpen(false)}>
+                                                <MessageSquare className="h-5 w-5 mr-2 inline-block" /> Messages
                                             </MobileNavLink>
                                             <Form action="/logout" method="post" className="px-4 py-3">
                                                 <Button
@@ -151,12 +206,14 @@ export default function Navbar() {
                                 </div>
                             </SheetContent>
                         </Sheet>
-                    </div> {/* Closes Sheet div */}
+                    </div> {/* Closes flex items-center space-x-4 div */}
                 </div> {/* Closes flex justify-between h-16 div */}
             </div> {/* Closes max-w-7xl div */}
-        </header> // Header ends here
+        </header> {/* Header ends here */}
+        </TooltipProvider> // Close TooltipProvider
     ); // Return statement ends here
 }
+
 // Correct the function definition syntax
 function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
     return (

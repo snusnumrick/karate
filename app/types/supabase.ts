@@ -73,6 +73,59 @@ export type Database = {
           },
         ]
       }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       families: {
         Row: {
           address: string
@@ -176,6 +229,38 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -638,19 +723,25 @@ export type Database = {
         Row: {
           email: string
           family_id: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           role: string
         }
         Insert: {
           email: string
           family_id?: string | null
+          first_name?: string | null
           id: string
+          last_name?: string | null
           role?: string
         }
         Update: {
           email?: string
           family_id?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           role?: string
         }
         Relationships: [
@@ -842,6 +933,17 @@ export type Database = {
       count_successful_student_payments: {
         Args: { p_student_id: string }
         Returns: number
+      }
+      create_new_conversation: {
+        Args:
+          | {
+              p_sender_id: string
+              p_recipient_id: string
+              p_subject: string
+              p_content: string
+            }
+          | { p_sender_id: string; p_subject: string; p_content: string }
+        Returns: string
       }
       decrement_variant_stock: {
         Args: { variant_id: string; decrement_quantity: number }

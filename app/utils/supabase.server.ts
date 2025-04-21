@@ -16,7 +16,12 @@ type SupabaseClient = ReturnType<typeof createServerClient<Database>>;
 type SupabaseServerClientReturn = {
     supabaseServer: SupabaseClient,
     supabaseClient: SupabaseClient,
-    response: Response
+    response: Response,
+    ENV: { // Pass environment variables needed by client
+        SUPABASE_URL: string;
+        SUPABASE_ANON_KEY: string;
+        SUPABASE_SERVICE_ROLE_KEY: string;
+    }
 };
 
 
@@ -52,7 +57,13 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
         {request, response}
     );
 
-    return {supabaseServer, supabaseClient, response};
+    const ENV = { // Pass environment variables needed by client
+        SUPABASE_URL: supabaseUrl,
+        SUPABASE_ANON_KEY: supabaseAnonKey,
+        SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
+    }
+
+    return {supabaseServer, supabaseClient, response, ENV};
 }
 
 export async function isUserAdmin(userId: string): Promise<boolean> {
