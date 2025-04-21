@@ -132,6 +132,12 @@ and an integrated store for purchasing items like uniforms.
             4. Name the bucket `product-images`.
             5. **Crucially**, make it a **Public bucket** so the images can be displayed on the website without requiring authentication tokens. If you prefer private, the URL generation and display logic will be more complex. For simplicity, we'll assume a public bucket for now.
             6. Configure bucket policies if needed (e.g., restrict uploads to specific file types/sizes via policies if desired, though we'll also add server-side checks).
+        - **Enable Realtime (for Messaging):**
+            1. Go to your Supabase project dashboard.
+            2. Navigate to Database -> Replication.
+            3. Under "Source", click on the number link next to `supabase_realtime`.
+            4. Find the `conversations` and `messages` tables.
+            5. Toggle the switch ON for both tables to enable realtime updates.
     - Obtain your Supabase Project URL, Anon Key, and Service Role Key (Project Settings -> API) and add them to your `.env` file (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY).
 5.  **Stripe Setup (Optional for Local):**
     - Create a Stripe account at [stripe.com](https://stripe.com).
