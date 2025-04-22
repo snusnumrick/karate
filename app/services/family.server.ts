@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
-import type { Database } from "~/types/supabase";
+import type { Database } from "~/types/database.types";
 
 // Define row types locally or import if shared
 type FamilyRow = Database['public']['Tables']['families']['Row'];

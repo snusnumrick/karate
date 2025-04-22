@@ -7,7 +7,7 @@ import { Input } from "~/components/ui/input";
 // Removed unused Label import
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import type { Database, Tables } from "~/types/supabase"; // Removed TablesUpdate
+import type { Database, Tables } from "~/types/database.types"; // Removed TablesUpdate
 import { Save } from "lucide-react";
 
 type ProductRow = Tables<'products'>;

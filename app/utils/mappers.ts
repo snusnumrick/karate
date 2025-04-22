@@ -1,4 +1,4 @@
-import type {Database} from '~/types/supabase';
+import type {Database} from '~/types/database.types';
 import type {AttendanceRecord, Family, Guardian, Payment, Student, Waiver, WaiverSignature} from '~/types/models';
 import {PaymentStatus} from "~/types/models"; // Import the enum
 

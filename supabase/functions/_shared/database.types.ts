@@ -949,6 +949,24 @@ export type Database = {
         Args: { variant_id: string; decrement_quantity: number }
         Returns: undefined
       }
+      get_admin_conversation_summaries: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          subject: string
+          last_message_at: string
+          participant_display_names: string
+        }[]
+      }
+      get_family_conversation_summaries: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          subject: string
+          last_message_at: string
+          participant_display_names: string
+        }[]
+      }
       get_family_one_on_one_balance: {
         Args: { p_family_id: string }
         Returns: number

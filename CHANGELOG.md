@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Messaging:** Display participant names/details in conversation list and view header.
+- *Nothing yet*
 
 ### Changed
 - *Nothing yet*
@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - *Nothing yet*
+
+## [1.3.1] - 2025-04-21
+
+### Changed
+- **Messaging:** Display participant names (e.g., "Staff, Instructor" or "Family Name") in conversation list and conversation view header instead of just the subject line where applicable.
+- **Performance:** Optimized Admin Messages list (`/admin/messages`) loading by replacing multiple database queries with a single SQL function call (RPC), reducing database round trips.
+- **Performance:** Optimized Family Messages list (`/family/messages`) loading by replacing multiple database queries with a single SQL function call (RPC), reducing database round trips.
 
 ## [1.3.0] - 2025-04-21
 

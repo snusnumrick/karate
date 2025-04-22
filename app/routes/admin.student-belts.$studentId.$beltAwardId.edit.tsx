@@ -1,7 +1,7 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input"; // Keep Input for other fields
 import {Label} from "~/components/ui/label";
@@ -11,7 +11,7 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/
 import {BELT_RANKS} from "~/utils/constants";
 
 // Define types (assuming table renamed to 'belt_awards' and types regenerated)
-// Ensure app/types/supabase.ts has been regenerated after adding the enum in SQL
+// Ensure app/types/database.types.ts has been regenerated after adding the enum in SQL
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
 // Update Row and Update types to use the enum

@@ -6,7 +6,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import type { Database } from "~/types/supabase";
+import type { Database } from "~/types/database.types";
 import { PaymentStatus } from "~/types/models"; // Import the enum
 
 // Define the detailed payment type expected by the loader

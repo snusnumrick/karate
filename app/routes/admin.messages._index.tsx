@@ -1,23 +1,18 @@
-import { useEffect, useState } from "react";
-import { json, type LoaderFunctionArgs, type TypedResponse } from "@remix-run/node";
-import { useLoaderData, useRevalidator } from "@remix-run/react";
-import { createClient, SupabaseClient, PostgrestError } from "@supabase/supabase-js";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { Database, Tables } from "~/types/database.types";
+import {useEffect, useState} from "react";
+import {json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
+import {useLoaderData, useRevalidator} from "@remix-run/react";
+import {createClient, SupabaseClient} from "@supabase/supabase-js";
+import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {Database, Tables} from "~/types/database.types";
 import ConversationList from "~/components/ConversationList"; // Re-use existing component
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import {AlertCircle} from "lucide-react";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 
 // Type for the data fetched in the loader, adapted for ConversationList
-type ConversationSummary = Pick<Database['public']['Tables']['conversations']['Row'], 'id' | 'subject' | 'last_message_at'> & {
-    // Add participant info for display purposes
-    participant_display_name?: string | null;
+type ConversationSummary = Pick<Tables<'conversations'>, 'id' | 'subject' | 'last_message_at'> & {
+    participant_display_names: string | null; // Comma-separated names of family participants
 };
 
-// Helper type for profile data needed
-type ParticipantProfileData = Pick<Tables<'profiles'>, 'id' | 'role' | 'family_id'> & {
-    families: Pick<Tables<'families'>, 'name'> | null;
-};
 
 interface LoaderData {
     conversations: ConversationSummary[];
@@ -25,22 +20,28 @@ interface LoaderData {
     ENV: { // Pass ENV vars for client-side Supabase
         SUPABASE_URL: string;
         SUPABASE_ANON_KEY: string;
-        SUPABASE_SERVICE_ROLE_KEY: string;
+        // DO NOT PASS SERVICE ROLE KEY TO CLIENT
     };
     accessToken: string | null; // Add accessToken
     userId: string | null; // Add userId
 }
 
-export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
+export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+    const {supabaseServer, response: {headers}, ENV} = getSupabaseServerClient(request);
     // Fetch session which includes the access token
-    const { data: { session }, error: sessionError } = await supabaseServer.auth.getSession();
+    const {data: {session}, error: sessionError} = await supabaseServer.auth.getSession();
 
     // Handle potential error fetching session
     if (sessionError) {
         console.error("Error fetching session:", sessionError.message);
         // Return minimal data, indicating an error state
-        return json({ conversations: [], error: "Session fetch error", ENV, accessToken: null, userId: null }, { status: 500, headers });
+        return json({
+            conversations: [],
+            error: "Session fetch error",
+            ENV,
+            accessToken: null,
+            userId: null
+        }, {status: 500, headers});
     }
 
     const user = session?.user;
@@ -48,13 +49,20 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
     const userId = user?.id ?? null; // Get user ID or null
 
     if (!user || !accessToken || !userId) { // Check for user, token, and ID
+        console.error("User not authenticated:", user, accessToken, userId);
         // Return ENV and null token/userId even on error
-        return json({ conversations: [], error: "User not authenticated", ENV, accessToken: null, userId: null }, { status: 401, headers });
+        return json({
+            conversations: [],
+            error: "User not authenticated",
+            ENV,
+            accessToken: null,
+            userId: null
+        }, {status: 401, headers});
     }
     // const userId = user.id; // userId is already defined above
 
     // Check if user is admin or instructor
-    const { data: profile, error: profileError } = await supabaseServer
+    const {data: profile, error: profileError} = await supabaseServer
         .from('profiles')
         .select('role, family_id') // Fetch family_id too
         .eq('id', user.id)
@@ -63,158 +71,49 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
     if (profileError || !profile || !['admin', 'instructor'].includes(profile.role)) {
         console.error("Admin/Instructor access error:", profileError?.message);
         // Return ENV, token, and userId even on error
-        return json({ conversations: [], error: "Access Denied: You do not have permission to view this page.", ENV, accessToken, userId }, { status: 403, headers });
+        return json({
+            conversations: [],
+            error: "Access Denied: You do not have permission to view this page.",
+            ENV,
+            accessToken,
+            userId
+        }, {status: 403, headers});
     }
 
-    // We'll use type guards instead of type assertions to handle potential errors
+    // Call the RPC function to get conversation summaries
+    // Note: The RPC function handles fetching conversations, participants, profiles,
+    // families, and aggregating names in a single database operation.
+    // We use supabaseServer here which has the user's context for RLS if the function
+    // wasn't SECURITY DEFINER, but since it is, it runs with elevated privileges.
+    // However, calling it via supabaseServer is standard practice.
+    // console.log("[AdminMessagesIndex Loader] Calling RPC function 'get_admin_conversation_summaries'");
+    const {data: conversations, error: rpcError} = await supabaseServer.rpc('get_admin_conversation_summaries');
 
-    // Fetch all conversations ordered by last message time
-    // Include participants and their profiles to determine the family name
-    const {data: conversationsData, error: conversationsError}: {
-        data: {
-            id: string;
-            subject: string | null;
-            last_message_at: string | null;
-            conversation_participants: { user_id: string }[]
-        }[] | null;
-        error: PostgrestError | null;
-    } = await supabaseServer
-        .from('conversations')
-        .select(`                                                                                                                                                                                                     
-            id,                                                                                                                                                                                                       
-            subject,                                                                                                                                                                                                  
-            last_message_at,                                                                                                                                                                                          
-            conversation_participants ( user_id )                                                                                                                                                                     
-        `)
-        .order('last_message_at', {ascending: false});
-
-    if (conversationsError) {
-        console.error("Error fetching admin conversations:", conversationsError.message);
-        // Return ENV, token, and userId even on error
-        return json({ conversations: [], error: "Failed to load conversations.", ENV, accessToken, userId }, { status: 500, headers });
+    if (rpcError) {
+        console.error("Error calling get_admin_conversation_summaries RPC:", rpcError);
+        return json({
+            conversations: [],
+            error: "Failed to load conversations via RPC.",
+            ENV,
+            accessToken,
+            userId
+        }, {status: 500, headers});
     }
 
-    // Use the data without type assertion
-    const rawConversations = conversationsData ?? [];
+    // The RPC function returns data in the desired ConversationSummary format.
+    // If no conversations are found, it will return an empty array.
+    console.log(`[AdminMessagesIndex Loader] RPC returned ${conversations?.length ?? 0} conversations.`);
 
-    // --- Fetch Participant Profiles Separately ---
-    // Safely extract user IDs, handling potential errors in the data structure
-    const allParticipantUserIds = [
-        ...new Set(
-            rawConversations.flatMap(conv => {
-                // Check if conversation_participants exists and is an array
-                if (conv &&
-                    typeof conv === 'object' &&
-                    'conversation_participants' in conv &&
-                    Array.isArray(conv.conversation_participants)) {
-                    return conv.conversation_participants.map(p => {
-                        // Check if user_id exists
-                        if (p && typeof p === 'object' && 'user_id' in p) {
-                            return p.user_id;
-                        }
-                        return null;
-                    });
-                }
-                return [];
-            }).filter(id => id !== null) // Filter out nulls
-        )
-    ] as string[];
+    // Ensure conversations is an array, even if null/undefined is returned (though unlikely for RPC)
+    const safeConversations = conversations || [];
 
-    const profilesMap: Map<string, ParticipantProfileData> = new Map();
-
-    if (allParticipantUserIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabaseServer
-            .from('profiles')
-            .select(`                                                                                                                                                                                                 
-                id,                                                                                                                                                                                                   
-                role,                                                                                                                                                                                                 
-                family_id,                                                                                                                                                                                            
-                families ( name )                                                                                                                                                                                     
-            `)
-            .in('id', allParticipantUserIds);
-
-        if (profilesError) {
-            console.error("Error fetching participant profiles:", profilesError.message);
-            // Proceed without profile data, but log the error
-        } else if (profilesData) {
-            profilesData.forEach(profile => {
-                if (profile.id) {
-                    profilesMap.set(profile.id, profile as ParticipantProfileData);
-                }
-            });
-        }
-    }
-
-    // --- Combine Conversation and Profile Data ---
-    const conversations: ConversationSummary[] = rawConversations.map(conv => {
-        // Check if conv is a valid object with the expected properties
-        if (!conv || typeof conv !== 'object') {
-            // Return a placeholder for invalid conversations
-            return {
-                id: 'invalid-id',
-                subject: 'Invalid Conversation',
-                last_message_at: new Date().toISOString(),
-                participant_display_name: null
-            };
-        }
-
-        let participantDisplayName: string | null = null;
-        const id = 'id' in conv && typeof conv.id === 'string' ? conv.id : 'unknown-id';
-        const subject = 'subject' in conv && typeof conv.subject === 'string' ? conv.subject : null;
-        const last_message_at = 'last_message_at' in conv && typeof conv.last_message_at === 'string'
-            ? conv.last_message_at
-            : new Date().toISOString();
-
-        // Safely access conversation_participants
-        if ('conversation_participants' in conv &&
-            Array.isArray(conv.conversation_participants)) {
-
-            // Find the first non-admin/instructor participant using the profilesMap
-            const familyParticipantUserId = conv.conversation_participants.find(p => {
-                if (p && typeof p === 'object' && 'user_id' in p) {
-                    const profile = profilesMap.get(p.user_id);
-                    return profile && !['admin', 'instructor'].includes(profile.role) && profile.families?.name;
-                }
-                return false;
-            })?.user_id;
-
-            if (familyParticipantUserId) {
-                participantDisplayName = profilesMap.get(familyParticipantUserId)?.families?.name ?? null;
-            } else {
-                // Fallback: find the first non-admin/instructor participant's profile ID
-                const otherParticipantUserId = conv.conversation_participants.find(p => {
-                    if (p && typeof p === 'object' && 'user_id' in p) {
-                        const profile = profilesMap.get(p.user_id);
-                        return profile && !['admin', 'instructor'].includes(profile.role);
-                    }
-                    return false;
-                })?.user_id;
-
-                if (otherParticipantUserId) {
-                    participantDisplayName = `User ${otherParticipantUserId.substring(0, 8)}`; // Placeholder
-                }
-            }
-        }
-
-        // Construct a display subject if the original is empty
-        const displaySubject = subject || `Conversation with ${participantDisplayName || 'Unknown Participant'}`;
-
-        return {
-            id,
-            subject: displaySubject, // Use the constructed subject
-            last_message_at,
-            participant_display_name: participantDisplayName // Keep for potential future use
-        };
-    });
-
-
-    return json({ conversations, ENV, accessToken, userId }, { headers }); // Pass token and userId
+    return json({conversations: safeConversations, ENV, accessToken, userId}, {headers}); // Pass token and userId
 }
 
 
 export default function AdminMessagesIndex() {
-    console.log("[AdminMessagesIndex] Component function executing..."); // Keep this initial log
-    const { conversations, error, ENV, accessToken } = useLoaderData<typeof loader>(); // Get ENV, accessToken, and userId back
+    // console.log("[AdminMessagesIndex] Component function executing..."); // Keep this initial log
+    const {conversations, error, ENV, accessToken} = useLoaderData<typeof loader>(); // Get ENV, accessToken, and userId back
     const revalidator = useRevalidator(); // Re-enable revalidator
     const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null); // Re-enable supabase state
 
@@ -224,17 +123,19 @@ export default function AdminMessagesIndex() {
 
     // Effect to create the client once ENV and accessToken are available
     useEffect(() => {
-        console.log("[AdminMessagesIndex] Client creation effect running.");
-        if (ENV?.SUPABASE_URL && ENV?.SUPABASE_SERVICE_ROLE_KEY && accessToken && !supabase) {
-            console.log("[AdminMessagesIndex] Creating client-side Supabase client using User Token...");
-            // Use the user's access token for initialization
-            const client = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_SERVICE_ROLE_KEY, {
+        // console.log("[AdminMessagesIndex] Client creation effect running.");
+        // Use ANON_KEY for client-side initialization
+        if (ENV?.SUPABASE_URL && ENV?.SUPABASE_ANON_KEY && accessToken && !supabase) {
+            // console.log("[AdminMessagesIndex] Creating client-side Supabase client using ANON KEY and User Token...");
+            // Use the ANON key for client-side initialization
+            const client = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
                 global: {
-                    headers: { Authorization: `Bearer ${accessToken}` },
+                    // Pass the user's access token for authenticated requests
+                    headers: {Authorization: `Bearer ${accessToken}`},
                 },
             });
             setSupabase(client);
-            console.log("[AdminMessagesIndex] Supabase client state set with user token.");
+            // console.log("[AdminMessagesIndex] Supabase client state set with user token.");
         } else if (supabase) {
             console.log("[AdminMessagesIndex] Supabase client already exists.");
         } else if (!accessToken) {
@@ -247,7 +148,7 @@ export default function AdminMessagesIndex() {
 
     // Effect for Supabase Realtime Subscription
     useEffect(() => {
-        console.log("[AdminMessagesIndex] Subscription effect running.");
+        // console.log("[AdminMessagesIndex] Subscription effect running.");
         // Now this effect correctly waits until supabase client is created
         if (!supabase) {
             console.log("[AdminMessagesIndex] Supabase client not yet initialized for real-time. Skipping subscription setup.");
@@ -264,7 +165,7 @@ export default function AdminMessagesIndex() {
 
         channel
             // Listen for new messages specifically, as this updates last_message_at
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+            .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, (payload) => {
                 console.log('[AdminMessagesIndex] *** New message INSERT detected! ***:', payload); // Make log prominent
                 console.log('[AdminMessagesIndex] Revalidating conversation list due to new message...');
                 revalidator.revalidate();
@@ -309,7 +210,7 @@ export default function AdminMessagesIndex() {
         return (
             <div className="container mx-auto px-4 py-8">
                 <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4"/>
                     <AlertTitle>Error Loading Messages</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
@@ -332,7 +233,7 @@ export default function AdminMessagesIndex() {
             {conversations.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400">No conversations found.</p>
             ) : (
-                <ConversationList conversations={conversations} basePath="/admin/messages" />
+                <ConversationList conversations={conversations} basePath="/admin/messages"/>
             )}
         </div>
     );

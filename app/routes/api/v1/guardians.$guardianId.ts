@@ -7,7 +7,7 @@ import {
     deleteGuardian
 } from "~/services/guardian.server";
 import { requireApiAuth } from "~/utils/api-auth.server"; // Import auth helper
-import type { TablesUpdate } from "~/types/supabase"; // Import TablesUpdate
+import type { TablesUpdate } from "~/types/database.types"; // Import TablesUpdate
 
 /**
  * API endpoint loader to fetch details for a specific guardian.

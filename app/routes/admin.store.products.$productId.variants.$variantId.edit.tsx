@@ -17,7 +17,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "~/components/ui/alert-dialog"; // Added AlertDialog components
-import type { Database, Tables, TablesUpdate } from "~/types/supabase";
+import type { Database, Tables, TablesUpdate } from "~/types/database.types";
 import { ArrowLeft, Trash2 } from "lucide-react"; // Added Trash2
 // import { formatCurrency } from "~/utils/misc"; // Removed unused formatCurrency import
 import { createClient } from "@supabase/supabase-js"; // Import admin client

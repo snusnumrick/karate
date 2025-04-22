@@ -1,6 +1,6 @@
 import {json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Badge} from "~/components/ui/badge";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";

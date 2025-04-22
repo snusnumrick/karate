@@ -5,7 +5,7 @@ import {AlertCircle} from 'lucide-react'; // Import an icon for the alert
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Import Alert components
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // Import Badge
-import {Database} from "~/types/supabase";
+import {Database} from "~/types/database.types";
 import {format} from 'date-fns'; // For formatting dates
 
 // Define Guardian type

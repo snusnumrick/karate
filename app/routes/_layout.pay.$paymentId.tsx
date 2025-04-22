@@ -10,7 +10,7 @@ import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {siteConfig} from "~/config/site"; // Assuming price IDs might be needed indirectly or for display
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
 
 // Import types for payment table columns

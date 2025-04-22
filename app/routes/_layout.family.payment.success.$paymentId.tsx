@@ -5,7 +5,7 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { CheckCircle } from "lucide-react"; // Use lucide-react icon for consistency
-import type { Database, Tables } from "~/types/supabase"; // Import Tables
+import type { Database, Tables } from "~/types/database.types"; // Import Tables
 
 // Define types for related tables needed for store purchases
 type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row'];

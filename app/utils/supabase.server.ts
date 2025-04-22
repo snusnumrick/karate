@@ -1,6 +1,6 @@
 import {createServerClient} from "@supabase/auth-helpers-remix";
 import {createClient} from "@supabase/supabase-js"; // Import standard client
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 
 import { siteConfig } from "~/config/site"; // Import siteConfig for tax rate
 

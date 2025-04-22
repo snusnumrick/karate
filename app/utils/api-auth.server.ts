@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 // import type { Request } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import type { User } from "@supabase/supabase-js";
-import type { Database } from "~/types/supabase";
+import type { Database } from "~/types/database.types";
 
 // Helper to create a Supabase client specifically for JWT verification
 // Uses the public URL and anon key, as JWT verification happens based on the token itself

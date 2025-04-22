@@ -1,15 +1,14 @@
-import { useState, useEffect, useRef } from "react";
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs, type TypedResponse } from "@remix-run/node";
-import { useLoaderData, useFetcher, Link } from "@remix-run/react";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { Database, Tables } from "~/types/database.types";
+import {useEffect, useRef, useState} from "react";
+import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
+import {Link, useFetcher, useLoaderData} from "@remix-run/react";
+import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {Database, Tables} from "~/types/database.types";
 import MessageView, {MessageWithSender, SenderProfile} from "~/components/MessageView";
 import MessageInput from "~/components/MessageInput";
-import { Button } from "~/components/ui/button";
-import { ArrowLeft, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { type SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@supabase/supabase-js";
+import {Button} from "~/components/ui/button";
+import {AlertCircle, ArrowLeft} from "lucide-react";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {createClient, type SupabaseClient} from "@supabase/supabase-js";
 
 // Add global type declaration for the Supabase singleton client
 declare global {
@@ -18,32 +17,22 @@ declare global {
     }
 }
 
-// --- Type Definitions (Copied & adapted from family route) ---
-
-// Define Profile type for sender details
-// type SenderProfile = Pick<Tables<'profiles'>, 'id' | 'first_name' | 'last_name'> & { email: string | null }; // Allow null email
-
-// Define Message type: Includes original message fields + nested sender profile
-// type MessageWithSender = Tables<'messages'> & {
-//     senderProfile: SenderProfile | null; // Nested profile data
-// };
-
 // Define Conversation details type
 type ConversationDetails = Tables<'conversations'> & {
-    // Add participants if needed for display later
+    participant_display_names: string | null; // Comma-separated names of family participants
 };
 
 interface LoaderData {
-    conversation: ConversationDetails | null;
+    conversation: ConversationDetails | null; // Updated type
     messages: MessageWithSender[];
     error?: string;
     userId: string | null; // Pass current user ID for message alignment
     ENV: { // Pass environment variables needed by client
         SUPABASE_URL: string;
         SUPABASE_ANON_KEY: string;
-        SUPABASE_SERVICE_ROLE_KEY: string;
-
+        // DO NOT PASS SERVICE ROLE KEY TO CLIENT
     };
+    accessToken: string | null; // Pass the access token for client-side auth
 }
 
 export interface ActionData {
@@ -52,20 +41,37 @@ export interface ActionData {
 }
 
 // --- Loader ---
-export async function loader({ request, params }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
-    const { data: { user } } = await supabaseServer.auth.getUser();
+export async function loader({request, params}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+    const {supabaseServer, response: {headers}, ENV} = getSupabaseServerClient(request);
+    // Fetch session to get user and access token
+    const {data: {session}} = await supabaseServer.auth.getSession();
+    const user = session?.user;
+    const accessToken = session?.access_token ?? null; // Get access token
     const conversationId = params.conversationId;
 
-    if (!user) {
-        return json({ conversation: null, messages: [], error: "User not authenticated", userId: null, ENV }, { status: 401, headers });
+    if (!user || !accessToken) { // Check for user and token
+        return json({
+            conversation: null,
+            messages: [],
+            error: "User not authenticated",
+            userId: null,
+            ENV,
+            accessToken: null
+        }, {status: 401, headers});
     }
     if (!conversationId) {
-        return json({ conversation: null, messages: [], error: "Conversation ID missing", userId: user.id, ENV }, { status: 400, headers });
+        return json({
+            conversation: null,
+            messages: [],
+            error: "Conversation ID missing",
+            userId: user.id,
+            ENV,
+            accessToken
+        }, {status: 400, headers});
     }
 
-     // Check if user is admin or instructor
-    const { data: profile, error: profileError } = await supabaseServer
+    // Check if user is admin or instructor
+    const {data: profile, error: profileError} = await supabaseServer
         .from('profiles')
         .select('role')
         .eq('id', user.id)
@@ -73,12 +79,19 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
 
     if (profileError || !profile || !['admin', 'instructor'].includes(profile.role)) {
         console.error("Admin/Instructor access error:", profileError?.message);
-        return json({ conversation: null, messages: [], error: "Access Denied: You do not have permission to view this page.", userId: user.id, ENV }, { status: 403, headers });
+        return json({
+            conversation: null,
+            messages: [],
+            error: "Access Denied: You do not have permission to view this page.",
+            userId: user.id,
+            ENV,
+            accessToken
+        }, {status: 403, headers});
     }
 
     // Verify admin/instructor is a participant (should always be true for family-initiated convos)
     // This also implicitly checks if the conversation exists.
-    const { data: participantCheck, error: participantError } = await supabaseServer
+    const {data: participantCheck, error: participantError} = await supabaseServer
         .from('conversation_participants')
         .select('conversation_id')
         .eq('conversation_id', conversationId)
@@ -88,31 +101,148 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     if (participantError || !participantCheck) {
         console.error("Error checking admin participation or conversation not found:", participantError?.message);
         // It's possible an admin tries to access a conversation they aren't part of (e.g., if created differently later)
-        return json({ conversation: null, messages: [], error: "Access denied or conversation not found.", userId: user.id, ENV }, { status: 403, headers });
+        return json({
+            conversation: null,
+            messages: [],
+            error: "Access denied or conversation not found.",
+            userId: user.id,
+            ENV,
+            accessToken
+        }, {status: 403, headers});
     }
 
-    // Fetch conversation details
-    const { data: conversationData, error: conversationError } = await supabaseServer
+    // Step 1: Fetch conversation details
+    const {data: conversationData, error: conversationError} = await supabaseServer
         .from('conversations')
         .select('*')
         .eq('id', conversationId)
         .single();
 
-    if (conversationError) {
-         console.error("Error fetching conversation:", conversationError?.message);
-        return json({ conversation: null, messages: [], error: "Failed to load conversation details.", userId: user.id, ENV }, { status: 500, headers });
+    if (conversationError || !conversationData) {
+        console.error("Error fetching conversation:", conversationError?.message);
+        return json({
+            conversation: null,
+            messages: [],
+            error: "Failed to load conversation details.",
+            userId: user.id,
+            ENV,
+            accessToken
+        }, {status: conversationError ? 500 : 404, headers});
     }
 
+    // Step 2: Fetch participants for this conversation
+    const {data: participants, error: participantsError} = await supabaseServer
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conversationId);
+
+    if (participantsError) {
+        console.error("Error fetching participants:", participantsError.message);
+        return json({
+            conversation: null,
+            messages: [],
+            error: "Failed to load conversation participants.",
+            userId: user.id,
+            ENV,
+            accessToken
+        }, {status: 500, headers});
+    }
+
+    // Step 3: Get all unique user IDs
+    const userIds = participants.map(p => p.user_id);
+
+    // Create an admin client directly using environment variables on the server
+    // to ensure service_role privileges for fetching profiles and families
+    const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    console.log("[AdminConversationView Loader] Fetching profiles using explicit admin client for IDs:", userIds);
+
+    // Step 4: Fetch profiles for all users using the admin client
+    const {data: profilesData, error: profilesError} = await supabaseAdmin // Use supabaseAdmin
+        .from('profiles')
+        .select('id, first_name, last_name, role, family_id')
+        .in('id', userIds);
+
+    if (profilesError) {
+        console.error("Error fetching profiles:", profilesError.message);
+        return json({
+            conversation: null,
+            messages: [],
+            error: "Failed to load user profiles.",
+            userId: user.id,
+            ENV,
+            accessToken
+        }, {status: 500, headers});
+    }
+
+    // Step 5: Get all unique family IDs
+    const familyIds = [...new Set(
+        profilesData
+            .filter(p => p.family_id !== null)
+            .map(p => p.family_id)
+    )].filter(Boolean) as string[];
+
+    // Step 6: Fetch family names if there are any family IDs
+    const familiesMap = new Map<string, { name: string }>();
+
+    if (familyIds.length > 0) {
+        // Use the explicit admin client to bypass RLS for fetching families
+        console.log("[AdminConversationView Loader] Fetching families using explicit admin client for IDs:", familyIds);
+        const {data: familiesData, error: familiesError} = await supabaseAdmin // Use supabaseAdmin
+            .from('families')
+            .select('id, name')
+            .in('id', familyIds);
+
+        if (familiesError) {
+            console.error("Error fetching families:", familiesError.message);
+            // Continue without family names rather than failing completely
+        } else if (familiesData) {
+            // Create a map of family IDs to family objects
+            familiesData.forEach(family => {
+                familiesMap.set(family.id, {name: family.name});
+            });
+        }
+    }
+
+    // Create a map of profiles with their families
+    const profilesWithFamilies = profilesData.map(profile => ({
+        ...profile,
+        families: profile.family_id ? familiesMap.get(profile.family_id) || null : null
+    }));
+
+    // Process participant names (focus on family names)
+    const familyParticipantNames = profilesWithFamilies
+        .filter(profile => !['admin', 'instructor'].includes(profile.role)) // Filter for non-admin/instructor profiles
+        .map(profile => {
+            if (profile.families?.name) return profile.families.name;
+            if (profile.first_name && profile.last_name) return `${profile.first_name} ${profile.last_name}`;
+            return `User ${profile.id.substring(0, 6)}`; // Fallback
+        })
+        .filter((name, index, self) => name && self.indexOf(name) === index) // Unique names
+        .join(', ');
+
+    const processedConversation: ConversationDetails = {
+        ...conversationData,
+        participant_display_names: familyParticipantNames || 'Unknown Participant',
+    };
+
+
     // --- Fetch Messages (Step 1) ---
-    const { data: rawMessagesData, error: messagesError } = await supabaseServer
+    const {data: rawMessagesData, error: messagesError} = await supabaseServer
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
+        .order('created_at', {ascending: true});
 
     if (messagesError) {
         console.error("Error fetching messages:", messagesError.message);
-        return json({ conversation: conversationData, messages: [], error: "Failed to load messages.", userId: user.id, ENV }, { status: 500, headers });
+        return json({
+            conversation: processedConversation,
+            messages: [],
+            error: "Failed to load messages.",
+            userId: user.id,
+            ENV,
+            accessToken
+        }, {status: 500, headers});
     }
 
     const messagesWithoutProfiles = rawMessagesData ?? [];
@@ -123,7 +253,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
 
     if (senderIds.length > 0) {
         // First attempt: Get profiles from profiles table
-        const { data: profilesData, error: profilesError } = await supabaseServer
+        const {data: profilesData, error: profilesError} = await supabaseServer
             .from('profiles')
             .select('id, email, first_name, last_name')
             .in('id', senderIds);
@@ -133,7 +263,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
         } else if (profilesData) {
             profilesData.forEach(profile => {
                 if (profile.id) {
-                     profilesMap.set(profile.id, profile as SenderProfile);
+                    profilesMap.set(profile.id, profile as SenderProfile);
                 }
             });
         }
@@ -147,7 +277,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
             // We need to fetch these one by one since we can't do an "IN" query on auth.users
             for (const senderId of missingSenderIds) {
                 try {
-                    const { data: userData, error: userError } = await supabaseServer.auth.admin.getUserById(senderId);
+                    const {data: userData, error: userError} = await supabaseServer.auth.admin.getUserById(senderId);
 
                     if (!userError && userData && userData.user) {
                         profilesMap.set(senderId, {
@@ -172,36 +302,40 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     }));
 
 
+    // Remove conversation_participants from the final conversation object sent to client if not needed directly
+    // delete (processedConversation as any).conversation_participants;
+
     return json({
-        conversation: conversationData,
+        conversation: processedConversation, // Pass processed conversation
         messages: messages,
         userId: user.id,
-        ENV
-    }, { headers });
+        ENV,
+        accessToken // Pass token to client
+    }, {headers});
 }
 
 // --- Action ---
-export async function action({ request, params }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
-    const { supabaseServer, response: { headers } } = getSupabaseServerClient(request);
-    const { data: { user } } = await supabaseServer.auth.getUser();
+export async function action({request, params}: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
+    const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
+    const {data: {user}} = await supabaseServer.auth.getUser();
     const conversationId = params.conversationId;
     const formData = await request.formData();
     const content = formData.get("content") as string;
 
     if (!user) {
-        return json({ error: "User not authenticated" }, { status: 401, headers });
+        return json({error: "User not authenticated"}, {status: 401, headers});
     }
     if (!conversationId) {
-        return json({ error: "Conversation ID missing" }, { status: 400, headers });
+        return json({error: "Conversation ID missing"}, {status: 400, headers});
     }
     if (!content || content.trim().length === 0) {
-        return json({ error: "Message content cannot be empty" }, { status: 400, headers });
+        return json({error: "Message content cannot be empty"}, {status: 400, headers});
     }
 
-     // Verify user is admin/instructor AND a participant before allowing send
+    // Verify user is admin/instructor AND a participant before allowing send
 
     // Step 1: Check if user is a participant in the conversation
-    const { data: participantCheck, error: participantError } = await supabaseServer
+    const {data: participantCheck, error: participantError} = await supabaseServer
         .from('conversation_participants')
         .select('user_id')
         .eq('conversation_id', conversationId)
@@ -210,11 +344,14 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     if (participantError || !participantCheck) {
         console.error("Admin Send Message Action: Error checking participant or user not participant:", participantError?.message);
-        return json({ error: "You do not have permission to send messages in this conversation." }, { status: 403, headers });
+        return json({error: "You do not have permission to send messages in this conversation."}, {
+            status: 403,
+            headers
+        });
     }
 
     // Step 2: Check if user has admin or instructor role
-    const { data: profileCheck, error: profileError } = await supabaseServer
+    const {data: profileCheck, error: profileError} = await supabaseServer
         .from('profiles')
         .select('role')
         .eq('id', user.id)
@@ -222,11 +359,14 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     if (profileError || !profileCheck || !['admin', 'instructor'].includes(profileCheck.role)) {
         console.error("Admin Send Message Action: Error checking role or user not admin/instructor:", profileError?.message);
-        return json({ error: "You do not have permission to send messages in this conversation." }, { status: 403, headers });
+        return json({error: "You do not have permission to send messages in this conversation."}, {
+            status: 403,
+            headers
+        });
     }
 
     // Insert the new message
-    const { error: insertError } = await supabaseServer
+    const {error: insertError} = await supabaseServer
         .from('messages')
         .insert({
             conversation_id: conversationId,
@@ -236,20 +376,20 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     if (insertError) {
         console.error("Error sending admin message:", insertError.message);
-        return json({ error: "Failed to send message." }, { status: 500, headers });
+        return json({error: "Failed to send message."}, {status: 500, headers});
     }
 
-    return json({ success: true }, { headers });
+    return json({success: true}, {headers});
 }
 
 // --- Component ---
 export default function AdminConversationView() {
-    const { conversation, messages: initialMessages, userId, error, ENV } = useLoaderData<typeof loader>();
+    const {conversation, messages: initialMessages, userId, error, ENV, accessToken} = useLoaderData<typeof loader>(); // Get accessToken
     const fetcher = useFetcher<ActionData>();
     const [messages, setMessages] = useState<MessageWithSender[]>(initialMessages);
     const hasSubscribedRef = useRef(false); // Ref to track subscription status
     // Use a more specific ref to track channel subscription by conversation ID
-    const channelSubscriptionRef = useRef<{[key: string]: boolean}>({});
+    const channelSubscriptionRef = useRef<{ [key: string]: boolean }>({});
     // Create a stable client ID to avoid multiple instances
     // const clientId = useRef(`admin-messages-${Math.random().toString(36).substring(2, 9)}`);
 
@@ -259,14 +399,17 @@ export default function AdminConversationView() {
     // Initialize the Supabase client only once - use a static client for the entire app
     useEffect(() => {
         // Use a module-level singleton pattern to ensure only one client exists
+        // Initialize with ANON KEY. Authentication relies on the accessToken passed globally.
         if (!window.__SUPABASE_SINGLETON_CLIENT) {
-            if (ENV.SUPABASE_URL && ENV.SUPABASE_SERVICE_ROLE_KEY) {
+            if (ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY) { // Use ANON KEY
+                console.log("[Admin] Creating global Supabase singleton client with ANON KEY.");
                 window.__SUPABASE_SINGLETON_CLIENT = createClient<Database>(
                     ENV.SUPABASE_URL,
-                    ENV.SUPABASE_SERVICE_ROLE_KEY,
+                    ENV.SUPABASE_ANON_KEY, // Use ANON KEY
                     {
+                        // Configure auth persistence as needed, but client is initialized anon
                         auth: {
-                            persistSession: false,
+                            persistSession: true, // Or false, depending on app needs
                             autoRefreshToken: false
                         },
                         realtime: {
@@ -276,15 +419,30 @@ export default function AdminConversationView() {
                         },
                         global: {
                             headers: {
+                                // Pass the access token for authenticated requests
+                                'Authorization': `Bearer ${accessToken}`,
                                 'X-Client-Info': 'admin-messaging-client'
                             }
                         }
                     }
                 );
-                console.log(`[Admin] Created global Supabase singleton client`);
+                console.log(`[Admin] Created global Supabase singleton client with ANON KEY.`);
+            } else {
+                console.error("[Admin] Missing SUPABASE_URL or SUPABASE_ANON_KEY for client initialization.");
             }
-        } else {
-            console.log(`[Admin] Using existing global Supabase singleton client`);
+        } else if (window.__SUPABASE_SINGLETON_CLIENT) { // Check if the client exists
+            console.log(`[Admin] Using existing global Supabase singleton client. Updating Authorization header.`);
+            // Ensure the existing client has the latest token and handle potential missing 'global' or 'headers'
+            if (!window.__SUPABASE_SINGLETON_CLIENT.global) {
+                // If 'global' is missing, initialize it (though this shouldn't typically happen)
+                window.__SUPABASE_SINGLETON_CLIENT.global = {headers: {}};
+                console.warn("[Admin] Singleton client was missing 'global' property. Initialized.");
+            }
+            // Safely update headers, providing default empty object if headers are initially missing
+            window.__SUPABASE_SINGLETON_CLIENT.global.headers = {
+                ...(window.__SUPABASE_SINGLETON_CLIENT.global.headers || {}), // Use existing headers or empty object
+                'Authorization': `Bearer ${accessToken}`,
+            };
         }
 
         // Assign the singleton to our ref
@@ -294,7 +452,8 @@ export default function AdminConversationView() {
             // We don't destroy the singleton client on unmount
             console.log("[Admin] Component unmounting, Supabase client reference will be cleaned up");
         };
-    }, [ENV.SUPABASE_URL, ENV.SUPABASE_SERVICE_ROLE_KEY]);
+        // Re-run if ENV vars or accessToken change
+    }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, accessToken]);
 
     // Variable to track cleanup state - use ref for stability across renders
     const isCleaningUpRef = useRef(false);
@@ -341,8 +500,8 @@ export default function AdminConversationView() {
                 // Create the channel with reconnection options
                 channel = supabase.channel(channelName, {
                     config: {
-                        broadcast: { self: true },
-                        presence: { key: userId || 'anonymous' },
+                        broadcast: {self: true},
+                        presence: {key: userId || 'anonymous'},
                     }
                 });
                 console.log(`[Admin] Created channel: ${channelName} with reconnection options`);
@@ -366,93 +525,33 @@ export default function AdminConversationView() {
 
                         console.log('[Admin] New message received via subscription:', payload.new);
                         const rawNewMessage = payload.new as Tables<'messages'>;
-                        let fetchedProfile: SenderProfile | null = null;
 
-                        // Fetch sender profile using client-side Supabase instance
-                        if (rawNewMessage.sender_id && supabase) {
-                            try {
-                                const { data: profileData, error: profileError } = await supabase
-                                    .from('profiles')
-                                    .select('id, email, first_name, last_name')
-                                    .eq('id', rawNewMessage.sender_id)
-                                    .maybeSingle();
-
-                                if (!profileError && profileData) {
-                                    fetchedProfile = profileData as SenderProfile;
-                                    console.log("[Admin] Successfully fetched profile for new message:", fetchedProfile);
-                                } else {
-                                    console.error("[Admin] Profile fetch error or no data:", profileError);
-
-                                    // Fallback: Try to fetch with a different query if the first one failed
-                                    try {
-                                        const { data: fallbackData, error: fallbackError } = await supabase
-                                            .from('profiles')
-                                            .select('*')
-                                            .eq('id', rawNewMessage.sender_id)
-                                            .maybeSingle();
-
-                                        if (!fallbackError && fallbackData) {
-                                            fetchedProfile = {
-                                                id: fallbackData.id as string,
-                                                email: fallbackData.email as string,
-                                                first_name: fallbackData.first_name as string,
-                                                last_name: fallbackData.last_name as string
-                                            };
-                                            console.log("[Admin] Successfully fetched profile with fallback query:", fetchedProfile);
-                                        } else {
-                                            console.error("[Admin] Fallback profile fetch also failed:", fallbackError);
-
-                                            // Last resort: Try to fetch from auth.users if available
-                                            try {
-                                                const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
-                                                    rawNewMessage.sender_id as string
-                                                );
-
-                                                if (!userError && userData && userData.user) {
-                                                    fetchedProfile = {
-                                                        id: userData.user.id,
-                                                        email: userData.user.email || '',
-                                                        first_name: null,
-                                                        last_name: null
-                                                    };
-                                                    console.log("[Admin] Successfully fetched user data as last resort:", fetchedProfile);
-                                                } else {
-                                                    console.error("[Admin] All profile fetch attempts failed");
-                                                }
-                                            } catch (userException) {
-                                                console.error("[Admin] Exception during user fetch:", userException);
-                                            }
-                                        }
-                                    } catch (fallbackException) {
-                                        console.error("[Admin] Exception during fallback profile fetch:", fallbackException);
-                                    }
-                                }
-                            } catch (error) {
-                                console.error("[Admin] Profile fetch exception:", error);
-                            }
-                        }
-
-                        // We used to skip state updates during cleanup, but this caused messages to be lost
-                        // Now we'll log a warning but still process the message
-                        if (isCleaningUpRef.current || !isMounted) {
-                            console.log(`Warning: Processing message during ${isCleaningUpRef.current ? 'cleanup' : 'unmounted state'}, but will still update state`);
-                        }
-
-                        // Create the new message with profile data (or fallback)
+                        // SECURITY/SIMPLICITY: Avoid client-side profile fetching with potentially incorrect auth context.
+                        // Just add the message with a basic sender profile. The UI can show sender ID or a placeholder.
+                        // Revalidation or fetching profiles server-side is more robust.
                         const newMessage: MessageWithSender = {
                             ...rawNewMessage,
-                            senderProfile: fetchedProfile || {
+                            senderProfile: { // Create a basic profile placeholder
                                 id: rawNewMessage.sender_id || 'unknown',
-                                email: '',
+                                email: '', // Don't assume email is available
                                 first_name: null,
                                 last_name: null
                             }
                         };
 
-                        console.log("[Admin] Adding new message to state:", newMessage);
-                        // Always update the state with new messages, even if cleanup has started
-                        // This ensures messages are not lost during component transitions
-                        setMessages(currentMessages => [...currentMessages, newMessage]);
+                        console.log("[Admin] Adding new message to state (basic profile):", newMessage);
+                        // Update state only if the component is still mounted and not cleaning up
+                        if (isMounted && !isCleaningUpRef.current) {
+                            setMessages(currentMessages => {
+                                // Avoid adding duplicates if the message somehow arrives multiple times
+                                if (currentMessages.some(msg => msg.id === newMessage.id)) {
+                                    return currentMessages;
+                                }
+                                return [...currentMessages, newMessage];
+                            });
+                        } else {
+                            console.log(`[Admin] Skipping state update for new message because component is ${!isMounted ? 'unmounted' : 'cleaning up'}.`);
+                        }
                     }
                 );
 
@@ -545,8 +644,8 @@ export default function AdminConversationView() {
             // Execute cleanup immediately
             cleanup();
         };
-    // Dependencies: Only re-run if conversation ID or ENV vars change.
-    }, [userId, conversation?.id, ENV.SUPABASE_URL, ENV.SUPABASE_SERVICE_ROLE_KEY]);
+        // Dependencies: Re-run if conversation ID, client instance, or token changes.
+    }, [userId, conversation?.id, supabaseRef, accessToken]); // Use supabaseRef and accessToken
 
     // Update messages state if loader data changes
     useEffect(() => {
@@ -555,13 +654,13 @@ export default function AdminConversationView() {
 
 
     if (error) {
-         return (
-             <div className="container mx-auto px-4 py-8">
-                 <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
+        return (
+            <div className="container mx-auto px-4 py-8">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4"/>
                     <AlertTitle>Error Loading Conversation</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
-                     <Button variant="link" asChild className="mt-2">
+                    <Button variant="link" asChild className="mt-2">
                         <Link to="/admin/messages">Back to Messages</Link>
                     </Button>
                 </Alert>
@@ -570,13 +669,13 @@ export default function AdminConversationView() {
     }
 
     if (!conversation) {
-         return (
-             <div className="container mx-auto px-4 py-8">
-                 <Alert variant="default">
-                    <AlertCircle className="h-4 w-4" />
+        return (
+            <div className="container mx-auto px-4 py-8">
+                <Alert variant="default">
+                    <AlertCircle className="h-4 w-4"/>
                     <AlertTitle>Not Found</AlertTitle>
                     <AlertDescription>Conversation not found.</AlertDescription>
-                     <Button variant="link" asChild className="mt-2">
+                    <Button variant="link" asChild className="mt-2">
                         <Link to="/admin/messages">Back to Messages</Link>
                     </Button>
                 </Alert>
@@ -586,21 +685,30 @@ export default function AdminConversationView() {
 
     return (
         // Use similar height calculation as family view, adjust if admin layout differs
-        <div className="container mx-auto px-4 py-8 h-[calc(100vh-var(--admin-header-height,64px)-var(--admin-footer-height,64px)-2rem)] flex flex-col">
+        <div
+            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--admin-header-height,64px)-var(--admin-footer-height,64px)-2rem)] flex flex-col">
             <div className="flex items-center mb-4">
                 <Button variant="ghost" size="icon" asChild className="mr-2">
                     <Link to="/admin/messages" aria-label="Back to messages">
-                        <ArrowLeft className="h-5 w-5" />
+                        <ArrowLeft className="h-5 w-5"/>
                     </Link>
                 </Button>
-                <h1 className="text-xl font-semibold">{conversation.subject || 'Conversation'}</h1>
+                {/* Display Subject and Participant Names */}
+                <div className="flex-1 min-w-0 ml-2">
+                    <h1 className="text-lg font-semibold truncate">{conversation.subject || 'Conversation'}</h1>
+                    {conversation.participant_display_names && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                            With: {conversation.participant_display_names}
+                        </p>
+                    )}
+                </div>
             </div>
 
             {/* Message Display Area */}
-            <MessageView messages={messages} currentUserId={userId} />
+            <MessageView messages={messages} currentUserId={userId}/>
 
             {/* Message Input Area */}
-            <MessageInput fetcher={fetcher} />
+            <MessageInput fetcher={fetcher}/>
             {fetcher.data?.error && (
                 <p className="text-red-500 text-sm mt-2">{fetcher.data.error}</p>
             )}

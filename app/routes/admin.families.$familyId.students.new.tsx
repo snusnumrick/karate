@@ -1,7 +1,7 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
 import {createClient} from "@supabase/supabase-js";
-import {Database} from "~/types/supabase";
+import {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";

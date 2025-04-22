@@ -4,7 +4,7 @@ import {Link, useLoaderData, useRevalidator} from "@remix-run/react"; // Import 
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {format} from 'date-fns'; // Import format function
 import {useEffect} from "react";
-import {Database} from "~/types/supabase";
+import {Database} from "~/types/database.types";
 import {PostgrestError} from "@supabase/supabase-js";
 
 export async function loader({request}: LoaderFunctionArgs) {

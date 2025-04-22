@@ -1430,6 +1430,198 @@ $$;
 -- Grant execute permission to the service_role (or authenticated role if needed, but service_role is typical for webhooks)
 GRANT EXECUTE ON FUNCTION public.decrement_variant_stock(uuid, integer) TO service_role;
 
+
+-- Function to get conversation summaries for admin/instructor view
+CREATE OR REPLACE FUNCTION get_admin_conversation_summaries()
+RETURNS TABLE (
+    id UUID,
+    subject TEXT,
+    last_message_at TIMESTAMPTZ,
+    participant_display_names TEXT
+)
+LANGUAGE sql
+SECURITY DEFINER -- Important for accessing profiles/families potentially restricted by RLS
+AS $$
+WITH ConversationParticipants AS (
+    -- Select distinct participants for each conversation
+    SELECT DISTINCT
+        cp.conversation_id,
+        cp.user_id
+    FROM conversation_participants cp
+),
+ParticipantDetails AS (
+    -- Get profile and family details for each participant
+    SELECT
+        cp.conversation_id,
+        p.id AS user_id,
+        p.first_name,
+        p.last_name,
+        p.role,
+        p.email,
+        f.name AS family_name
+    FROM ConversationParticipants cp
+    JOIN profiles p ON cp.user_id = p.id
+    LEFT JOIN families f ON p.family_id = f.id
+),
+AggregatedNames AS (
+    -- Aggregate names, prioritizing family names for non-admins/instructors
+    SELECT
+        conversation_id,
+        -- Use COALESCE to pick the first non-null name representation
+        COALESCE(
+            -- Family name if user is not admin/instructor and family name exists
+            CASE
+                WHEN pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL THEN pd.family_name
+                ELSE NULL
+            END,
+            -- Full name if first and last name exist
+            CASE
+                WHEN pd.first_name IS NOT NULL AND pd.last_name IS NOT NULL THEN pd.first_name || ' ' || pd.last_name
+                ELSE NULL
+            END,
+            -- First name if only first name exists
+            pd.first_name,
+            -- Last name if only last name exists
+            pd.last_name,
+            -- Email prefix as fallback
+            split_part(pd.email, '@', 1),
+            -- User ID prefix as last resort
+            'User ' || substr(pd.user_id::text, 1, 6)
+        ) AS display_name,
+        -- Flag to identify family names for distinct aggregation later
+        (pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL) as is_family_name
+    FROM ParticipantDetails pd
+),
+FamilyParticipantNames AS (
+    -- Aggregate unique family names per conversation
+    SELECT
+        conversation_id,
+        string_agg(DISTINCT display_name, ', ') AS names
+    FROM AggregatedNames
+    WHERE is_family_name = TRUE
+    GROUP BY conversation_id
+),
+OtherParticipantNames AS (
+     -- Aggregate unique non-family names (admin/instructor or users without family name) per conversation
+    SELECT
+        conversation_id,
+        string_agg(DISTINCT display_name, ', ') AS names
+    FROM AggregatedNames
+    WHERE is_family_name = FALSE
+    GROUP BY conversation_id
+)
+-- Final selection joining conversations with aggregated names
+SELECT
+    c.id,
+    -- Use original subject or construct one if null
+    COALESCE(c.subject, 'Conversation with ' || COALESCE(fpn.names, opn.names, 'participants')),
+    c.last_message_at,
+    -- Prioritize displaying family names, fallback to other names
+    COALESCE(fpn.names, opn.names, 'Conversation ' || substr(c.id::text, 1, 6) || '...') AS participant_display_names
+FROM conversations c
+LEFT JOIN FamilyParticipantNames fpn ON c.id = fpn.conversation_id
+LEFT JOIN OtherParticipantNames opn ON c.id = opn.conversation_id
+ORDER BY c.last_message_at DESC;
+$$;
+
+-- Grant execute permission (adjust role if necessary, e.g., authenticated)
+GRANT EXECUTE ON FUNCTION get_admin_conversation_summaries() TO service_role;
+GRANT EXECUTE ON FUNCTION get_admin_conversation_summaries() TO authenticated; -- Grant to authenticated as well for direct calls from loader
+
+
+-- Function to get conversation summaries for a specific family user
+-- Takes user_id as input and respects RLS (SECURITY INVOKER)
+CREATE OR REPLACE FUNCTION get_family_conversation_summaries(p_user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    subject TEXT,
+    last_message_at TIMESTAMPTZ,
+    participant_display_names TEXT
+)
+LANGUAGE sql
+SECURITY INVOKER -- Run as the calling user, respecting their RLS
+AS $$
+WITH UserConversations AS (
+    -- Find conversations the specific user is part of
+    SELECT conversation_id
+    FROM public.conversation_participants cp
+    WHERE cp.user_id = p_user_id
+),
+ConversationParticipants AS (
+    -- Get all participants for those conversations, excluding the calling user
+    SELECT
+        cp.conversation_id,
+        cp.user_id
+    FROM public.conversation_participants cp
+    JOIN UserConversations uc ON cp.conversation_id = uc.conversation_id
+    WHERE cp.user_id <> p_user_id -- Exclude the calling user themselves
+),
+ParticipantDetails AS (
+    -- Get profile details for the *other* participants
+    SELECT
+        cp.conversation_id,
+        p.id AS user_id,
+        p.first_name,
+        p.last_name,
+        p.role,
+        p.email -- Include email as fallback
+    FROM ConversationParticipants cp
+    JOIN public.profiles p ON cp.user_id = p.id
+    -- No need to join families here, family users see admin/instructor names
+),
+AggregatedNames AS (
+    -- Aggregate names for display
+    SELECT
+        conversation_id,
+        -- Use COALESCE to pick the first non-null name representation
+        COALESCE(
+            -- Full name if first and last name exist
+            CASE
+                WHEN pd.first_name IS NOT NULL AND pd.last_name IS NOT NULL THEN pd.first_name || ' ' || pd.last_name
+                ELSE NULL
+            END,
+            -- First name if only first name exists
+            pd.first_name,
+            -- Last name if only last name exists
+            pd.last_name,
+            -- Role if admin/instructor and name missing
+            CASE
+                WHEN pd.role IN ('admin', 'instructor') THEN initcap(pd.role) -- Capitalize role
+                ELSE NULL
+            END,
+            -- Email prefix as fallback
+            split_part(pd.email, '@', 1),
+            -- User ID prefix as last resort
+            'User ' || substr(pd.user_id::text, 1, 6)
+        ) AS display_name
+    FROM ParticipantDetails pd
+),
+FinalParticipantNames AS (
+    -- Aggregate unique display names per conversation
+    SELECT
+        conversation_id,
+        string_agg(DISTINCT display_name, ', ') AS names
+    FROM AggregatedNames
+    GROUP BY conversation_id
+)
+-- Final selection joining conversations with aggregated names
+SELECT
+    c.id,
+    -- Use original subject or construct one if null
+    COALESCE(c.subject, 'Conversation with ' || COALESCE(fpn.names, 'Staff')),
+    c.last_message_at,
+    -- Display aggregated names, fallback to 'Staff' or conversation ID
+    COALESCE(fpn.names, 'Staff', 'Conversation ' || substr(c.id::text, 1, 6) || '...') AS participant_display_names
+FROM public.conversations c
+JOIN UserConversations uc ON c.id = uc.conversation_id -- Ensure we only get conversations the user is in
+LEFT JOIN FinalParticipantNames fpn ON c.id = fpn.conversation_id
+ORDER BY c.last_message_at DESC;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION get_family_conversation_summaries(UUID) TO authenticated;
+
+
 -- --- End RPC Functions ---
 
 -- --- Messaging Tables ---

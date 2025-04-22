@@ -1,7 +1,7 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useRouteError,} from "@remix-run/react";
 import {createClient, type SupabaseClient} from '@supabase/supabase-js'; // Import SupabaseClient
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {sendEmail} from '~/utils/email.server'; // Import email utility
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";

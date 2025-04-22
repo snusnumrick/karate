@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
-import type { Database, Tables, TablesInsert, TablesUpdate } from "~/types/supabase";
+import type { Database, Tables, TablesInsert, TablesUpdate } from "~/types/database.types";
 import { json } from "@remix-run/node"; // For throwing Response objects
 
 // Define row types locally

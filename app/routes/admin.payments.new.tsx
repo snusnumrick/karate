@@ -3,7 +3,7 @@ import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, type T
 import {Form, Link, useActionData, useLoaderData, useNavigation, useRouteError} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
 import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {Database} from "~/types/supabase";
+import {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";

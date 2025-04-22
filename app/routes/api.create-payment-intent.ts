@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import Stripe from 'stripe';
 // createInitialPaymentRecord is no longer used here
 import { getSupabaseServerClient } from '~/utils/supabase.server';
-import type { Database } from "~/types/supabase"; // Removed unused Tables import
+import type { Database } from "~/types/database.types"; // Removed unused Tables import
 import { siteConfig } from "~/config/site";
 
 // Define expected form data structure

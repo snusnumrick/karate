@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
-import type { Database, Tables, TablesInsert } from "~/types/supabase";
+import type { Database, Tables, TablesInsert } from "~/types/database.types";
 import { formatCurrency } from "~/utils/misc"; // Assuming you have a currency formatter
 import { siteConfig } from "~/config/site"; // For tax calculation consistency
 import { ArrowLeft, Info } from 'lucide-react'; // Added Info icon

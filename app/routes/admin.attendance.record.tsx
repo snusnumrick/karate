@@ -10,7 +10,7 @@ import {
     useSearchParams,
 } from "@remix-run/react";
 import {createClient, type SupabaseClient} from '@supabase/supabase-js'; // Import SupabaseClient type
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {checkStudentEligibility, type EligibilityStatus} from "~/utils/supabase.server"; // Import eligibility check
 import {sendEmail} from '~/utils/email.server'; // Import the email utility
 import {Badge} from "~/components/ui/badge"; // Import Badge

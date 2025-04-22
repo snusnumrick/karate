@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { Tables } from "~/types/database.types"; // Import Database for SupabaseClient type hint
-import { format } from 'date-fns';
-import { cn } from '~/lib/utils'; // For conditional classes
+import {useEffect, useRef} from 'react';
+import {Tables} from "~/types/database.types"; // Import Database for SupabaseClient type hint
+import {format} from 'date-fns';
+import {cn} from '~/lib/utils'; // For conditional classes
 
 // Add global type declaration for the profile logging tracker
 declare global {
@@ -24,16 +24,17 @@ interface MessageViewProps {
     currentUserId: string | null;
 }
 
-export default function MessageView({ messages, currentUserId }: MessageViewProps) {
+export default function MessageView({messages, currentUserId}: MessageViewProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null); // Ref for scrolling
 
     // Scroll to bottom when messages change
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
     }, [messages]);
 
     return (
-        <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900 rounded-md mb-4 border border-gray-200 dark:border-gray-700">
+        <div
+            className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900 rounded-md mb-4 border border-gray-200 dark:border-gray-700">
             {messages.map((message) => {
                 // Check the original sender_id UUID against the current user ID
                 const isCurrentUser = message.sender_id === currentUserId;
@@ -88,7 +89,7 @@ export default function MessageView({ messages, currentUserId }: MessageViewProp
                 );
             })}
             {/* Empty div to mark the end of messages for scrolling */}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef}/>
         </div>
     );
 }

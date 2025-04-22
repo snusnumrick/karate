@@ -5,7 +5,7 @@ import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from
 // Import createClient
 import {createClient} from "@supabase/supabase-js";
 // Remove unused PostgrestFilterBuilder import
-import {Database, TablesUpdate} from "~/types/supabase"; // Import TablesUpdate
+import {Database, TablesUpdate} from "~/types/database.types"; // Import TablesUpdate
 import {Button} from "~/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {Input} from "~/components/ui/input";

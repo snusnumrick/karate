@@ -20,7 +20,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "~/components/ui/alert-dialog"; // Added AlertDialog components
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {Badge} from "~/components/ui/badge"; // Import Badge
 import {format} from 'date-fns'; // Import date-fns
 import {beltColorMap} from "~/utils/constants";

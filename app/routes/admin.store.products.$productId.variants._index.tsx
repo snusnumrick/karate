@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
 import { format } from 'date-fns';
-import type { Tables } from "~/types/supabase";
+import type { Tables } from "~/types/database.types";
 import { PlusCircle, Edit, ArrowLeft } from "lucide-react";
 import { formatCurrency } from "~/utils/misc"; // Changed to relative path
 

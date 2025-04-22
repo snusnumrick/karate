@@ -3,7 +3,7 @@ import { json } from "@remix-run/node";
 import { createClient } from "@supabase/supabase-js"; // Import createClient
 import { getFamilyDetails } from "~/services/family.server";
 import { requireApiAuth } from "~/utils/api-auth.server"; // Import auth helper
-import type { Database } from "~/types/supabase"; // Import Database type
+import type { Database } from "~/types/database.types"; // Import Database type
 
 // Helper to create admin client (copied from family.server.ts - consider moving to shared utils)
 function createSupabaseAdminClient(): ReturnType<typeof createClient<Database>> {

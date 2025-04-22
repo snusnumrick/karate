@@ -1,7 +1,7 @@
 import {json} from "@remix-run/node";
 import {Link, useLoaderData, useNavigate, useRouteError} from "@remix-run/react"; // Import useNavigate
 import {createClient} from '@supabase/supabase-js';
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {checkStudentEligibility, type EligibilityStatus} from "~/utils/supabase.server";
 import {format} from 'date-fns';
 import {Button} from "~/components/ui/button";

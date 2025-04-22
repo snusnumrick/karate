@@ -1,7 +1,7 @@
 import {json, type LoaderFunctionArgs} from "@remix-run/node";
 import {Form, Link, useLoaderData, useRouteError} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";

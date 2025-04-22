@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
 import { format } from 'date-fns';
-import type { Tables } from "~/types/supabase"; // Removed unused Database import
+import type { Tables } from "~/types/database.types"; // Removed unused Database import
 import { PlusCircle, Edit } from "lucide-react"; // Import icons
 
 type ProductRow = Tables<'products'>;

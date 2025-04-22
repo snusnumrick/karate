@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Printer } from "lucide-react";
-import type { Database } from "~/types/supabase";
+import type { Database } from "~/types/database.types";
 import { siteConfig } from "~/config/site"; // Import site config for business details
 import { format } from 'date-fns'; // For formatting dates
 

@@ -10,7 +10,7 @@ import {Checkbox} from "~/components/ui/checkbox";
 import {format} from 'date-fns';
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group"; // Import RadioGroup
 import {Label} from "~/components/ui/label";
-import {Database} from "~/types/supabase";
+import {Database} from "~/types/database.types";
 
 // Payment Calculation (Existing logic needs adjustment)
 //

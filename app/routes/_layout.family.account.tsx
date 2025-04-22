@@ -3,7 +3,7 @@ import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-ru
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
-import {Database} from "~/types/supabase"; // Import Database type
+import {Database} from "~/types/database.types"; // Import Database type
 import {z} from "zod"; // For validation
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";

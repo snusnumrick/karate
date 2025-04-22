@@ -6,7 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import type { Tables, TablesInsert } from "~/types/supabase"; // Removed unused Database
+import type { Tables, TablesInsert } from "~/types/database.types"; // Removed unused Database
 import { ArrowLeft } from "lucide-react";
 // import { formatCurrency } from "~/utils/misc"; // Removed unused formatCurrency import
 

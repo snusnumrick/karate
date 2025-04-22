@@ -2,7 +2,7 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import Stripe from "stripe";
 import { updatePaymentStatus } from "~/utils/supabase.server";
-import type { Database } from "~/types/supabase"; // Removed unused Tables import
+import type { Database } from "~/types/database.types"; // Removed unused Tables import
 import { createClient } from "@supabase/supabase-js"; // Import Supabase client for direct DB updates
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;

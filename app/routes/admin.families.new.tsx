@@ -1,7 +1,7 @@
 import {type ActionFunctionArgs, json, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useNavigation} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {useState} from "react";
 import {isValid, parse} from 'date-fns'; // Import date-fns functions

@@ -1,7 +1,7 @@
 import {json, TypedResponse} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
-import type {Database} from "~/types/supabase";
+import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Badge} from "~/components/ui/badge";

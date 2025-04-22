@@ -6,7 +6,7 @@ import {
     createGuardian
 } from "~/services/guardian.server";
 import { requireApiAuth } from "~/utils/api-auth.server"; // Import auth helper
-import type { TablesInsert } from "~/types/supabase"; // Import TablesInsert
+import type { TablesInsert } from "~/types/database.types"; // Import TablesInsert
 
 /**
  * API endpoint loader to fetch all guardians for a specific family.

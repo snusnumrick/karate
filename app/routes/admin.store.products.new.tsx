@@ -7,7 +7,7 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import type { Database, TablesInsert } from "~/types/supabase";
+import type { Database, TablesInsert } from "~/types/database.types";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@supabase/supabase-js"; // Import Supabase client for storage
 
