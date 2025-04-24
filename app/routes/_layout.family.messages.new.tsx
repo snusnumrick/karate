@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react"; // <-- Import useRef and useEffect
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type TypedResponse } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
@@ -7,6 +8,7 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { cn } from "~/lib/utils"; // Import cn utility
 
 // Define types for loader and action data
 
@@ -108,6 +110,12 @@ export default function NewMessageRoute() {
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === 'submitting';
+    const subjectInputRef = useRef<HTMLInputElement>(null); // <-- Create ref
+
+    // Focus subject input on mount
+    useEffect(() => {
+        subjectInputRef.current?.focus();
+    }, []); // <-- Empty dependency array ensures this runs only once on mount
 
     if (loaderError) {
         return (
@@ -127,14 +135,14 @@ export default function NewMessageRoute() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="container mx-auto px-4 py-8 max-w-2xl bg-amber-50 dark:bg-gray-800"> {/* Add background */}
              <div className="flex items-center mb-6">
                  <Button variant="ghost" size="icon" asChild className="mr-2">
                     <Link to="/family/messages" aria-label="Back to messages">
                         <ArrowLeft className="h-5 w-5" />
                     </Link>
                 </Button>
-                <h1 className="text-2xl font-semibold">New Message</h1>
+                <h1 className="text-2xl font-semibold text-foreground">New Message</h1> {/* Add text color */}
             </div>
 
             {actionData?.error && (
@@ -153,9 +161,10 @@ export default function NewMessageRoute() {
                     <Label htmlFor="subject">Subject (Optional):</Label>
                     <Input
                         type="text"
+                        ref={subjectInputRef} // <-- Attach ref
                         id="subject"
                         name="subject"
-                        className="mt-1"
+                        className={cn("input-custom-styles", "mt-1")} // Apply custom styles
                         disabled={isSubmitting}
                     />
                      {actionData?.fieldErrors?.subject && (
@@ -171,7 +180,7 @@ export default function NewMessageRoute() {
                         name="content"
                         required
                         rows={6}
-                        className="mt-1"
+                        className={cn("input-custom-styles", "mt-1")} // Apply custom styles
                         disabled={isSubmitting}
                     />
                      {actionData?.fieldErrors?.content && (

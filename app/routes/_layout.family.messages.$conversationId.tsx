@@ -38,8 +38,9 @@ interface LoaderData {
     ENV: { // Pass environment variables needed by client
         SUPABASE_URL: string;
         SUPABASE_ANON_KEY: string;
-        SUPABASE_SERVICE_ROLE_KEY: string;
     };
+    accessToken: string | null,
+    refreshToken: string | null
 }
 
 export interface ActionData {
@@ -50,26 +51,29 @@ export interface ActionData {
 // Loader: Fetch conversation details and messages
 export async function loader({request, params}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const {supabaseServer, response: {headers}, ENV} = getSupabaseServerClient(request);
-    const {data: {user}} = await supabaseServer.auth.getUser();
+    const {data: {session}} = await supabaseServer.auth.getSession();
+    const user = session?.user;
+    const accessToken = session?.access_token ?? null;
+    const refreshToken = session?.refresh_token ?? null;
     const conversationId = params.conversationId;
 
+    const loaderData : LoaderData = {
+        conversation: null,
+        messages: [],
+        userId: null,
+        ENV,
+        accessToken,
+        refreshToken};
+
     if (!user) {
-        return json({
-            conversation: null,
-            messages: [],
-            error: "User not authenticated",
-            userId: null,
-            ENV
-        }, {status: 401, headers});
+        loaderData.error = "User not authenticated";
+        return json(loaderData, {status: 401, headers});
     }
+    loaderData.userId = user.id;
+
     if (!conversationId) {
-        return json({
-            conversation: null,
-            messages: [],
-            error: "Conversation ID missing",
-            userId: user.id,
-            ENV
-        }, {status: 400, headers});
+        loaderData.error = "Conversation ID missing";
+        return json(loaderData, {status: 400, headers});
     }
 
     // Verify user is a participant in this conversation
@@ -79,17 +83,28 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         .eq('conversation_id', conversationId)
         .eq('user_id', user.id)
         .maybeSingle();
-
     if (participantError || !participantCheck) {
         console.error("Error checking participant or user not participant:", participantError?.message);
-        return json({
-            conversation: null,
-            messages: [],
-            error: "Access denied or conversation not found.",
-            userId: user.id,
-            ENV
-        }, {status: 403, headers});
+        loaderData.error = "You do not have permission to view this conversation.";
+        return json(loaderData, {status: 403, headers});
     }
+
+    // --- Mark conversation as read BEFORE fetching messages ---
+    // Call the RPC function to update last_read_at for this user/conversation
+    // We use supabaseServer which has the user's context, and the function is SECURITY INVOKER
+    const {error: markReadError} = await supabaseServer.rpc('mark_conversation_as_read', {
+        p_conversation_id: conversationId,
+        p_user_id: user.id,
+    });
+
+    if (markReadError) {
+        // Log the error but don't fail the whole loader, just means unread count might not update immediately
+        console.error(`Error marking conversation ${conversationId} as read for user ${user.id}:`, markReadError.message);
+    } else {
+        console.log(`Successfully marked conversation ${conversationId} as read for user ${user.id}`);
+    }
+    // --- End mark as read ---
+
 
     // Fetch conversation details
     const {data: conversationData, error: conversationError} = await supabaseServer
@@ -100,13 +115,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     if (conversationError || !conversationData) {
         console.error("Error fetching conversation:", conversationError?.message);
-        return json({
-            conversation: null,
-            messages: [],
-            error: "Failed to load conversation details.",
-            userId: user.id,
-            ENV
-        }, {status: conversationError ? 500 : 404, headers});
+        loaderData.error = "Failed to load conversation details.";
+        return json(loaderData, {status: conversationError ? 500 : 404, headers});
     }
 
     // Fetch participants for this conversation
@@ -114,16 +124,12 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         .from('conversation_participants')
         .select('user_id')
         .eq('conversation_id', conversationId);
+    console.log("[Fetch participants] for conversation:", conversationId,"Participants data:", participants);
 
     if (participantsError) {
         console.error("Error fetching participants:", participantsError.message);
-        return json({
-            conversation: null,
-            messages: [],
-            error: "Failed to load conversation participants.",
-            userId: user.id,
-            ENV
-        }, {status: 500, headers});
+        loaderData.error = "Failed to load conversation participants.";
+        return json(loaderData, {status: 500, headers});
     }
 
     // Get all unique user IDs (excluding current user)
@@ -139,16 +145,12 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     if (profilesError) {
         console.error("Error fetching profiles:", profilesError.message);
-        return json({
-            conversation: null,
-            messages: [],
-            error: "Failed to load user profiles.",
-            userId: user.id,
-            ENV
-        }, {status: 500, headers});
+        loaderData.error = "Failed to load user profiles.";
+        return json(loaderData, {status: 500, headers});
     }
 
     // Process participant names
+    console.log("[Process participant names] Profiles data:", profilesData);
     const otherParticipantNames = profilesData
         .map(profile => {
             if (profile.first_name && profile.last_name) {
@@ -162,11 +164,14 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         })
         .filter(name => name)
         .join(', ');
+    console.log("[Process participant names] Other participant names:", otherParticipantNames);
 
     const processedConversation: ConversationDetails = {
         ...conversationData,
         participant_display_names: otherParticipantNames || 'Staff',
     };
+    console.log("[Process participant names] Processed conversation:", processedConversation);
+    loaderData.conversation = processedConversation;
 
     // --- Fetch Messages (Step 1) ---
     const {data: rawMessagesData, error: messagesError} = await supabaseServer
@@ -177,21 +182,18 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     if (messagesError) {
         console.error("Error fetching messages:", messagesError.message);
-        return json({
-            conversation: processedConversation,
-            messages: [],
-            error: "Failed to load messages.",
-            userId: user.id,
-            ENV
-        }, {status: 500, headers});
+        loaderData.error = "Failed to load messages.";
+        return json(loaderData, {status: 500, headers});
     }
 
     const messagesWithoutProfiles = rawMessagesData ?? [];
 
     // --- Fetch Sender Profiles (Step 2) ---
-    const senderIds = [...new Set(messagesWithoutProfiles.map(msg => msg.sender_id).filter(id => id !== null))] as string[];
-    const profilesMap: Map<string, SenderProfile> = new Map();
+    const senderIds = [...new Set(
+        messagesWithoutProfiles.map(msg => msg.sender_id).filter(id => id !== null)
+    )] as string[];
 
+    const profilesMap: Map<string, SenderProfile> = new Map();
     if (senderIds.length > 0) {
         const {data: profilesData, error: profilesError} = await supabaseServer
             .from('profiles')
@@ -211,7 +213,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     }
 
     // --- Combine Messages and Profiles (Step 3) ---
-    const messages: MessageWithSender[] = messagesWithoutProfiles.map(msg => ({
+    loaderData.messages = messagesWithoutProfiles.map(msg => ({
         ...msg,
         senderProfile: msg.sender_id ? profilesMap.get(msg.sender_id) ?? null : null
     }));
@@ -220,12 +222,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     // Remove conversation_participants from the final conversation object sent to client if not needed directly
     // delete (processedConversation as any).conversation_participants;
 
-    return json({
-        conversation: processedConversation, // Pass processed conversation
-        messages: messages, // Pass the combined messages array
-        userId: user.id,
-        ENV // Pass necessary env vars to client
-    }, {headers});
+    return json(loaderData, {headers});
 }
 
 // Action: Send a new message
@@ -282,9 +279,18 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
 
 export default function ConversationView() {
-    const {conversation, messages: initialMessages, userId, error, ENV} = useLoaderData<typeof loader>();
+    const {
+        conversation,
+        messages: initialMessages,
+        userId,
+        error,
+        ENV,
+        accessToken,
+        refreshToken
+    } = useLoaderData<typeof loader>();
     const fetcher = useFetcher<ActionData>();
     const [messages, setMessages] = useState<MessageWithSender[]>(initialMessages);
+    const messageInputRef = useRef<HTMLTextAreaElement>(null); // Ref for the message input
     const hasSubscribedRef = useRef(false); // Ref to track subscription status
 
     // Use a more specific ref to track channel subscription by conversation ID
@@ -300,27 +306,27 @@ export default function ConversationView() {
     useEffect(() => {
         // Use a module-level singleton pattern to ensure only one client exists
         if (!window.__SUPABASE_SINGLETON_CLIENT) {
-            if (ENV.SUPABASE_URL && ENV.SUPABASE_SERVICE_ROLE_KEY) {
-                window.__SUPABASE_SINGLETON_CLIENT = createClient<Database>(
-                    ENV.SUPABASE_URL,
-                    ENV.SUPABASE_SERVICE_ROLE_KEY,
-                    {
-                        auth: {
-                            persistSession: false,
-                            autoRefreshToken: false
-                        },
-                        realtime: {
-                            params: {
-                                eventsPerSecond: 10
-                            }
-                        },
-                        global: {
-                            headers: {
-                                'X-Client-Info': 'family-messaging-client'
-                            }
+            if (ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY) {
+                const client = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
+                    auth: {persistSession: false, autoRefreshToken: false},
+                    realtime: {
+                        params: {
+                            eventsPerSecond: 10
+                        }
+                    },
+                    global: {
+                        headers: {
+                            'X-Client-Info': 'family-messaging-client'
                         }
                     }
-                );
+                });
+
+                // Set the session after client creation
+                client.auth.setSession({
+                    access_token: accessToken ?? '',
+                    refresh_token: refreshToken ?? '',
+                });
+                window.__SUPABASE_SINGLETON_CLIENT = client;
                 console.log(`[Family] Created global Supabase singleton client`);
             }
         } else {
@@ -334,7 +340,7 @@ export default function ConversationView() {
             // We don't destroy the singleton client on unmount
             console.log("[Family] Component unmounting, Supabase client reference will be cleaned up");
         };
-    }, [ENV.SUPABASE_URL, ENV.SUPABASE_SERVICE_ROLE_KEY]);
+    }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, accessToken, refreshToken]);
 
     // Variable to track cleanup state - use ref for stability across renders
     const isCleaningUpRef = useRef(false);
@@ -346,12 +352,12 @@ export default function ConversationView() {
 
         const supabase = supabaseRef.current;
         let channel: ReturnType<SupabaseClient<Database>['channel']> | null = null;
-        let isMounted = true; // Flag to track if component is mounted
+        // let isMounted = true; // REMOVED isMounted flag
 
         // Define channelName at the top level for use throughout the effect and cleanup
         let channelName: string | null = null;
         if (conversation?.id) {
-            channelName = `family-messages:${conversation.id}`;
+            channelName = `conversation-messages:${conversation.id}`; // Standardized channel name
         }
 
         // We're now using the singleton client from the previous useEffect
@@ -476,8 +482,8 @@ export default function ConversationView() {
 
                         // We used to skip state updates during cleanup, but this caused messages to be lost
                         // Now we'll log a warning but still process the message
-                        if (isCleaningUpRef.current || !isMounted) {
-                            console.log(`Warning: Processing message during ${isCleaningUpRef.current ? 'cleanup' : 'unmounted state'}, but will still update state`);
+                        if (isCleaningUpRef.current) { // REMOVED !isMounted check
+                            console.log(`Warning: Processing message during cleanup, but will still update state`);
                         }
 
                         // Create the new message with profile data (or fallback)
@@ -530,30 +536,9 @@ export default function ConversationView() {
             }
         };
 
-        // First remove any existing channel with this name
-        const cleanupExistingChannel = async () => {
-            console.log(`[Family] starting cleanupExistingChannel`);
-            try {
-                // Create a temporary channel reference just for removal
-                const tempChannel = supabase.channel(channelName);
-                await supabase.removeChannel(tempChannel);
-                console.log(`[Family] Pre-emptively removed any existing channel: ${channelName}`);
-
-                // If cleanup started while we were waiting, don't proceed to setup
-                if (!isCleaningUpRef.current) {
-                    await setupChannel();
-                } else {
-                    console.log(`[Family] Cleanup started during pre-emptive removal, aborting channel creation for ${channelName}`);
-                }
-            } catch (error) {
-                console.error(`[Family] Error during pre-emptive removal of channel ${channelName}:`, error);
-                channelSubscriptionRef.current[channelName] = false;
-            }
-        };
-
-        // Start the cleanup and setup process
-        console.log(`[Family] Starting cleanup and setup for channel: ${channelName}`);
-        cleanupExistingChannel();
+        // Start the setup process directly
+        console.log(`[Family] Starting setup for channel: ${channelName}`);
+        setupChannel(); // Call setupChannel directly
 
         // Capture the ref's current value for the cleanup function
         const currentChannelSubscriptionRef = channelSubscriptionRef.current;
@@ -561,7 +546,7 @@ export default function ConversationView() {
         // Cleanup function
         return () => {
             isCleaningUpRef.current = true;
-            isMounted = false;
+            // isMounted = false; // REMOVED isMounted flag
             console.log(`[Family] Cleaning up channel: ${channelName}`);
 
             const cleanup = async () => {
@@ -588,8 +573,8 @@ export default function ConversationView() {
             // Execute cleanup immediately
             cleanup();
         };
-        // Dependencies: Only re-run if conversation ID, userId, or ENV vars change.
-    }, [messages, conversation?.id, userId, ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
+        // Dependencies: Re-run only if the user or conversation changes.
+    }, [messages, userId, conversation?.id]); // Ensure dependencies are minimal and match admin view
 
     // Update messages state if loader data changes (e.g., after navigation)
     // Also populate the profiles map with profiles from initial messages
@@ -607,6 +592,16 @@ export default function ConversationView() {
         console.log(`[Family] Cached ${newProfilesMap.size} profiles from initial messages`);
     }, [initialMessages]);
 
+    // Effect to focus the message input on mount
+    useEffect(() => {
+        // Use setTimeout to ensure focus occurs after rendering and potential layout shifts
+        const timerId = setTimeout(() => {
+            messageInputRef.current?.focus();
+        }, 100); // Small delay can help ensure the element is ready
+
+        return () => clearTimeout(timerId); // Cleanup timeout on unmount
+    }, []); // Empty dependency array ensures this runs only once on mount
+
 
     if (error) {
         return <div className="text-red-500 p-4">Error: {error}</div>;
@@ -618,7 +613,7 @@ export default function ConversationView() {
 
     return (
         <div
-            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--header-height)-var(--footer-height)-2rem)] flex flex-col"> {/* Adjust height calculation */}
+            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--header-height)-var(--footer-height)-2rem)] flex flex-col bg-amber-50 dark:bg-gray-800"> {/* Add background, Adjust height calculation */}
             <div className="flex items-center mb-4">
                 <Button variant="ghost" size="icon" asChild className="mr-2">
                     <Link to="/family/messages" aria-label="Back to messages">
@@ -627,9 +622,9 @@ export default function ConversationView() {
                 </Button>
                 {/* Display Subject and Participant Names */}
                 <div className="flex-1 min-w-0 ml-2">
-                    <h1 className="text-lg font-semibold truncate">{conversation.subject || 'Conversation'}</h1>
+                    <h1 className="text-lg font-semibold truncate text-foreground">{conversation.subject || 'Conversation'}</h1> {/* Ensure foreground color */}
                     {conversation.participant_display_names && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        <p className="text-sm text-muted-foreground truncate"> {/* Use muted foreground */}
                             With: {conversation.participant_display_names}
                         </p>
                     )}
@@ -640,7 +635,8 @@ export default function ConversationView() {
             <MessageView messages={messages} currentUserId={userId}/>
 
             {/* Message Input Area */}
-            <MessageInput fetcher={fetcher}/>
+            {/* Pass the ref to MessageInput, remove autoFocus prop */}
+            <MessageInput fetcher={fetcher} ref={messageInputRef} />
             {fetcher.data?.error && (
                 <p className="text-red-500 text-sm mt-2">{fetcher.data.error}</p>
             )}

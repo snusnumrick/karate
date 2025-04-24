@@ -78,18 +78,21 @@ export type Database = {
           conversation_id: string
           id: string
           joined_at: string
+          last_read_at: string
           user_id: string
         }
         Insert: {
           conversation_id: string
           id?: string
           joined_at?: string
+          last_read_at?: string
           user_id: string
         }
         Update: {
           conversation_id?: string
           id?: string
           joined_at?: string
+          last_read_at?: string
           user_id?: string
         }
         Relationships: [
@@ -956,6 +959,7 @@ export type Database = {
           subject: string
           last_message_at: string
           participant_display_names: string
+          is_unread_by_admin: boolean
         }[]
       }
       get_family_conversation_summaries: {
@@ -965,11 +969,16 @@ export type Database = {
           subject: string
           last_message_at: string
           participant_display_names: string
+          unread_count: number
         }[]
       }
       get_family_one_on_one_balance: {
         Args: { p_family_id: string }
         Returns: number
+      }
+      mark_conversation_as_read: {
+        Args: { p_conversation_id: string; p_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {

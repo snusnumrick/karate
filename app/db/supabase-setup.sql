@@ -1432,118 +1432,114 @@ GRANT EXECUTE ON FUNCTION public.decrement_variant_stock(uuid, integer) TO servi
 
 
 -- Function to get conversation summaries for admin/instructor view
+-- Drop the function first if it exists, to allow changing the return type
+DROP FUNCTION IF EXISTS get_admin_conversation_summaries();
 CREATE OR REPLACE FUNCTION get_admin_conversation_summaries()
-RETURNS TABLE (
-    id UUID,
-    subject TEXT,
-    last_message_at TIMESTAMPTZ,
-    participant_display_names TEXT
-)
-LANGUAGE sql
-SECURITY DEFINER -- Important for accessing profiles/families potentially restricted by RLS
+    RETURNS TABLE (
+                      id UUID,
+                      subject TEXT,
+                      last_message_at TIMESTAMPTZ,
+                      participant_display_names TEXT,
+                      is_unread_by_admin BOOLEAN
+                  )
+    LANGUAGE sql
+    SECURITY DEFINER
 AS $$
-WITH ConversationParticipants AS (
-    -- Select distinct participants for each conversation
-    SELECT DISTINCT
-        cp.conversation_id,
-        cp.user_id
-    FROM conversation_participants cp
+WITH RelevantConversations AS (
+    SELECT c.id, c.subject, c.last_message_at
+    FROM conversations c
 ),
-ParticipantDetails AS (
-    -- Get profile and family details for each participant
-    SELECT
-        cp.conversation_id,
-        p.id AS user_id,
-        p.first_name,
-        p.last_name,
-        p.role,
-        p.email,
-        f.name AS family_name
-    FROM ConversationParticipants cp
-    JOIN profiles p ON cp.user_id = p.id
-    LEFT JOIN families f ON p.family_id = f.id
-),
-AggregatedNames AS (
-    -- Aggregate names, prioritizing family names for non-admins/instructors
-    SELECT
-        conversation_id,
-        -- Use COALESCE to pick the first non-null name representation
-        COALESCE(
-            -- Family name if user is not admin/instructor and family name exists
-            CASE
-                WHEN pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL THEN pd.family_name
-                ELSE NULL
-            END,
-            -- Full name if first and last name exist
-            CASE
-                WHEN pd.first_name IS NOT NULL AND pd.last_name IS NOT NULL THEN pd.first_name || ' ' || pd.last_name
-                ELSE NULL
-            END,
-            -- First name if only first name exists
-            pd.first_name,
-            -- Last name if only last name exists
-            pd.last_name,
-            -- Email prefix as fallback
-            split_part(pd.email, '@', 1),
-            -- User ID prefix as last resort
-            'User ' || substr(pd.user_id::text, 1, 6)
-        ) AS display_name,
-        -- Flag to identify family names for distinct aggregation later
-        (pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL) as is_family_name
-    FROM ParticipantDetails pd
-),
-FamilyParticipantNames AS (
-    -- Aggregate unique family names per conversation
-    SELECT
-        conversation_id,
-        string_agg(DISTINCT display_name, ', ') AS names
-    FROM AggregatedNames
-    WHERE is_family_name = TRUE
-    GROUP BY conversation_id
-),
-OtherParticipantNames AS (
-     -- Aggregate unique non-family names (admin/instructor or users without family name) per conversation
-    SELECT
-        conversation_id,
-        string_agg(DISTINCT display_name, ', ') AS names
-    FROM AggregatedNames
-    WHERE is_family_name = FALSE
-    GROUP BY conversation_id
-)
--- Final selection joining conversations with aggregated names
+     ConversationParticipants AS (
+         SELECT DISTINCT
+             rc.id as conversation_id,
+             cp.user_id
+         FROM conversation_participants cp
+                  JOIN RelevantConversations rc ON cp.conversation_id = rc.id
+     ),
+     ParticipantDetails AS (
+         SELECT
+             cp.conversation_id,
+             p.id AS user_id,
+             p.first_name,
+             p.last_name,
+             p.role,
+             p.email,
+             f.name AS family_name
+         FROM ConversationParticipants cp
+                  JOIN profiles p ON cp.user_id = p.id
+                  LEFT JOIN families f ON p.family_id = f.id
+     ),
+     AggregatedNames AS (
+         SELECT
+             conversation_id,
+             COALESCE(
+                     CASE WHEN pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL THEN pd.family_name ELSE NULL END,
+                     CASE WHEN pd.first_name IS NOT NULL AND pd.last_name IS NOT NULL THEN pd.first_name || ' ' || pd.last_name ELSE NULL END,
+                     pd.first_name,
+                     pd.last_name,
+                     split_part(pd.email, '@', 1),
+                     'User ' || substr(pd.user_id::text, 1, 6)
+             ) AS display_name,
+             (pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL) as is_family_name
+         FROM ParticipantDetails pd
+     ),
+     FamilyParticipantNames AS (
+         SELECT conversation_id, string_agg(DISTINCT display_name, ', ') AS names
+         FROM AggregatedNames WHERE is_family_name = TRUE GROUP BY conversation_id
+     ),
+     OtherParticipantNames AS (
+         SELECT conversation_id, string_agg(DISTINCT display_name, ', ') AS names
+         FROM AggregatedNames WHERE is_family_name = FALSE GROUP BY conversation_id
+     ),
+     UnreadStatus AS (
+         SELECT
+             rc.id as conversation_id,
+             -- Directly use the result of EXISTS, which is BOOLEAN
+             EXISTS (
+                 SELECT 1
+                 FROM public.conversation_participants cp
+                          JOIN public.profiles p ON cp.user_id = p.id
+                 WHERE cp.conversation_id = rc.id
+                   AND p.role IN ('admin', 'instructor')
+                   AND cp.last_read_at < rc.last_message_at
+             ) as status_flag -- This is now a boolean
+         FROM RelevantConversations rc
+     )
 SELECT
-    c.id,
-    -- Use original subject or construct one if null
-    COALESCE(c.subject, 'Conversation with ' || COALESCE(fpn.names, opn.names, 'participants')),
-    c.last_message_at,
-    -- Prioritize displaying family names, fallback to other names
-    COALESCE(fpn.names, opn.names, 'Conversation ' || substr(c.id::text, 1, 6) || '...') AS participant_display_names
-FROM conversations c
-LEFT JOIN FamilyParticipantNames fpn ON c.id = fpn.conversation_id
-LEFT JOIN OtherParticipantNames opn ON c.id = opn.conversation_id
-ORDER BY c.last_message_at DESC;
+    rc.id,
+    COALESCE(rc.subject, 'Conversation with ' || COALESCE(fpn.names, opn.names, 'participants')),
+    rc.last_message_at,
+    COALESCE(fpn.names, opn.names, 'Conversation ' || substr(rc.id::text, 1, 6) || '...') AS participant_display_names,
+    us.status_flag AS is_unread_by_admin -- Use the renamed output column name here
+FROM RelevantConversations rc
+         LEFT JOIN FamilyParticipantNames fpn ON rc.id = fpn.conversation_id
+         LEFT JOIN OtherParticipantNames opn ON rc.id = opn.conversation_id
+         LEFT JOIN UnreadStatus us ON rc.id = us.conversation_id -- Join the renamed CTE
+ORDER BY rc.last_message_at DESC;
 $$;
 
--- Grant execute permission (adjust role if necessary, e.g., authenticated)
+-- Grant execute permission
 GRANT EXECUTE ON FUNCTION get_admin_conversation_summaries() TO service_role;
-GRANT EXECUTE ON FUNCTION get_admin_conversation_summaries() TO authenticated; -- Grant to authenticated as well for direct calls from loader
-
+GRANT EXECUTE ON FUNCTION get_admin_conversation_summaries() TO authenticated;
 
 -- Function to get conversation summaries for a specific family user
 -- Takes user_id as input and respects RLS (SECURITY INVOKER)
+-- Drop the function first if it exists, to allow changing the return type
+DROP FUNCTION IF EXISTS get_family_conversation_summaries(UUID);
 CREATE OR REPLACE FUNCTION get_family_conversation_summaries(p_user_id UUID)
 RETURNS TABLE (
     id UUID,
     subject TEXT,
     last_message_at TIMESTAMPTZ,
-    participant_display_names TEXT
+    participant_display_names TEXT,
+    unread_count BIGINT -- Changed from INT to BIGINT for count(*)
 )
 LANGUAGE sql
 SECURITY INVOKER -- Run as the calling user, respecting their RLS
 AS $$
 WITH UserConversations AS (
     -- Find conversations the specific user is part of
-    SELECT conversation_id
+    SELECT cp.conversation_id, cp.last_read_at
     FROM public.conversation_participants cp
     WHERE cp.user_id = p_user_id
 ),
@@ -1603,18 +1599,31 @@ FinalParticipantNames AS (
         string_agg(DISTINCT display_name, ', ') AS names
     FROM AggregatedNames
     GROUP BY conversation_id
+),
+UnreadCounts AS (
+    -- Calculate unread messages for each conversation for the calling user
+    SELECT
+        uc.conversation_id,
+        COUNT(m.id) AS count
+    FROM UserConversations uc
+    LEFT JOIN public.messages m ON uc.conversation_id = m.conversation_id
+        -- Count messages created after the user's last read time for this conversation
+        AND m.created_at > uc.last_read_at
+        -- Exclude messages sent by the user themselves from the unread count
+        AND m.sender_id <> p_user_id
+    GROUP BY uc.conversation_id
 )
--- Final selection joining conversations with aggregated names
+-- Final selection joining conversations with aggregated names and unread counts
 SELECT
     c.id,
-    -- Use original subject or construct one if null
     COALESCE(c.subject, 'Conversation with ' || COALESCE(fpn.names, 'Staff')),
     c.last_message_at,
-    -- Display aggregated names, fallback to 'Staff' or conversation ID
-    COALESCE(fpn.names, 'Staff', 'Conversation ' || substr(c.id::text, 1, 6) || '...') AS participant_display_names
+    COALESCE(fpn.names, 'Staff', 'Conversation ' || substr(c.id::text, 1, 6) || '...') AS participant_display_names,
+    COALESCE(unc.count, 0) AS unread_count -- Use COALESCE to ensure 0 if no unread messages
 FROM public.conversations c
-JOIN UserConversations uc ON c.id = uc.conversation_id -- Ensure we only get conversations the user is in
+JOIN UserConversations uc ON c.id = uc.conversation_id
 LEFT JOIN FinalParticipantNames fpn ON c.id = fpn.conversation_id
+LEFT JOIN UnreadCounts unc ON c.id = unc.conversation_id
 ORDER BY c.last_message_at DESC;
 $$;
 
@@ -1655,8 +1664,12 @@ CREATE TABLE IF NOT EXISTS public.conversation_participants (
                                                                 joined_at timestamp with time zone DEFAULT now() NOT NULL,
     -- Add a flag if needed later for unread status per user per conversation
     -- has_unread boolean DEFAULT false NOT NULL,
+    last_read_at timestamptz DEFAULT now() NOT NULL, -- Track when user last read this conversation
                                                                 CONSTRAINT unique_conversation_user UNIQUE (conversation_id, user_id)
 );
+
+-- Add last_read_at column idempotently if table already exists
+ALTER TABLE public.conversation_participants ADD COLUMN IF NOT EXISTS last_read_at timestamptz DEFAULT now() NOT NULL;
 
 -- Add indexes
 DO $$ BEGIN
@@ -1809,6 +1822,14 @@ DO $$ BEGIN
             );
     END IF;
 
+    -- Conversation Participants: Allow users to update their own last_read_at timestamp.
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow users to update their own last_read_at' AND tablename = 'conversation_participants') THEN
+        CREATE POLICY "Allow users to update their own last_read_at" ON public.conversation_participants
+            FOR UPDATE TO authenticated
+            USING (user_id = auth.uid()) -- Can only update your own record
+            WITH CHECK (user_id = auth.uid() AND conversation_id = conversation_id); -- Ensure user_id isn't changed, allow updating last_read_at
+    END IF;
+
 END $$;
 
 -- --- End Messaging RLS Policies ---
@@ -1872,6 +1893,26 @@ $$;
 -- The SECURITY DEFINER ensures the operations *inside* the function run with higher privileges,
 -- bypassing potential RLS issues during the multi-step insert process.
 GRANT EXECUTE ON FUNCTION public.create_new_conversation(uuid, text, text) TO authenticated;
+
+-- Function to mark a conversation as read by a user
+CREATE OR REPLACE FUNCTION public.mark_conversation_as_read(
+    p_conversation_id uuid,
+    p_user_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER -- Run as the calling user, respecting their RLS
+AS $$
+BEGIN
+    UPDATE public.conversation_participants
+    SET last_read_at = now()
+    WHERE conversation_id = p_conversation_id
+      AND user_id = p_user_id;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION public.mark_conversation_as_read(uuid, uuid) TO authenticated;
 
 
 -- --- End RPC Function ---

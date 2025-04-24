@@ -1,11 +1,15 @@
 import { Link } from "@remix-run/react";
 import { formatDistanceToNow } from 'date-fns';
-import { Database } from "~/types/database.types"; // Assuming types are here
-import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
+import { ClientOnly } from "~/components/client-only";
+import { Badge } from "~/components/ui/badge"; // Import Badge
 
-// Define the expected props shape based on the updated loaders
-type ConversationSummary = Pick<Database['public']['Tables']['conversations']['Row'], 'id' | 'subject' | 'last_message_at'> & {
-    participant_display_names: string | null; // Names of other participants
+// Define the expected props shape based on the RPC function return type
+type ConversationSummary = {
+    id: string;
+    subject: string | null;
+    last_message_at: string;
+    participant_display_names: string | null;
+    unread_count: number; // Added field
 };
 
 interface ConversationListProps {
@@ -14,6 +18,7 @@ interface ConversationListProps {
 }
 
 export default function ConversationList({ conversations, basePath }: ConversationListProps) {
+    console.log(`[ConversationList] Rendering ${conversations.length} conversations.`);
     return (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -33,14 +38,22 @@ export default function ConversationList({ conversations, basePath }: Conversati
                                         {convo.participant_display_names || `Conversation ${convo.id.substring(0, 6)}...`}
                                     </p>
                                 </div>
-                                {/* Wrap the relative time in ClientOnly to prevent hydration mismatch */}
-                                <ClientOnly fallback={<p className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">&nbsp;</p>}>
-                                    {() => (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0 text-right"> {/* Align time right */}
-                                            {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: true })}
-                                        </p>
+                                <div className="ml-2 flex-shrink-0 flex flex-col items-end space-y-1"> {/* Container for time and badge */}
+                                    {/* Wrap the relative time in ClientOnly to prevent hydration mismatch */}
+                                    <ClientOnly fallback={<p className="text-xs text-gray-500 dark:text-gray-400">&nbsp;</p>}>
+                                        {() => (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: true })}
+                                            </p>
+                                        )}
+                                    </ClientOnly>
+                                    {/* Unread Count Badge */}
+                                    {convo.unread_count > 0 && (
+                                        <Badge variant="destructive" className="px-2 py-0.5 text-xs">
+                                            {convo.unread_count}
+                                        </Badge>
                                     )}
-                                </ClientOnly>
+                                </div> {/* Close the flex container for time/badge */}
                             </div>
                             {/* Optional: Add last message preview here if fetched */}
                             {/* <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 truncate">

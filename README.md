@@ -583,4 +583,10 @@ Potential areas for future enhancement or review include:
 - **Accessibility (A11y):** Perform comprehensive accessibility checks (keyboard navigation, color contrast, ARIA attributes).
 - **Payment Reporting:** Enhance admin reporting for payments.
 - **Error Monitoring:** Implement more robust error logging/monitoring.
-- **In-App Messaging:** Implemented direct messaging. Families can initiate conversations (`/family/messages/new`) which become visible to all admins/instructors. Admins/instructors can view the conversation list (`/admin/messages`) and view/reply within individual conversations (`/admin/messages/:conversationId`). Real-time updates are active on both family and admin views, including immediate sender details for individual messages and participant names in the conversation list/header.
+- **In-App Messaging Enhancements:**
+    - Implement file attachments for messages.
+    - Add unread message indicators to conversation lists.
+    - Implement read receipts for messages.
+    - Add in-app notifications for new messages.
+    - Implement search functionality for conversations/messages.
+    - Allow admins/instructors to initiate conversations with families.

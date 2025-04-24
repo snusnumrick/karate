@@ -20,7 +20,7 @@ type SupabaseServerClientReturn = {
     ENV: { // Pass environment variables needed by client
         SUPABASE_URL: string;
         SUPABASE_ANON_KEY: string;
-        SUPABASE_SERVICE_ROLE_KEY: string;
+        // DO NOT PASS SERVICE ROLE KEY TO CLIENT - Security risk
     }
 };
 
@@ -60,7 +60,7 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
     const ENV = { // Pass environment variables needed by client
         SUPABASE_URL: supabaseUrl,
         SUPABASE_ANON_KEY: supabaseAnonKey,
-        SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
+        // DO NOT PASS SERVICE ROLE KEY TO CLIENT - Security risk
     }
 
     return {supabaseServer, supabaseClient, response, ENV};

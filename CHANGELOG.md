@@ -19,6 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - *Nothing yet*
 
+## [1.3.2] - 2025-04-24
+
+### Added
+- **Messaging:** Created separate `AdminConversationList` component for the admin message view (`/admin/messages`).
+- **Messaging:** Implemented logic to mark conversations as read when viewed (`/family/messages/:conversationId`, `/admin/messages/:conversationId`).
+
+### Changed
+- **Messaging:** Modified admin message list (`/admin/messages`) to use a visual highlight (background/border) for conversations with unread messages instead of a numeric badge, reflecting that it shows *status* (any admin unread) rather than a *count*.
+- **Messaging:** Updated `get_admin_conversation_summaries` SQL function to return a boolean flag (`is_unread_by_admin`) indicating if any admin/instructor participant has unread messages, instead of returning 0 or 1.
+- **Messaging:** Automatically focus the "Subject" field on the New Message page (`/family/messages/new`) for improved usability.
+- **Messaging:** Automatically focus the message input field when entering a conversation view (`/family/messages/:id`, `/admin/messages/:id`) using an accessible, programmatic approach.
+
+### Fixed
+- **Messaging:** Improved reliability and accessibility of auto-focus on message input in conversation views (`/family/messages/:id`, `/admin/messages/:id`) by using `useEffect` and `ref` instead of the `autoFocus` prop.
+
 ## [1.3.1] - 2025-04-21
 
 ### Changed

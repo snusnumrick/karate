@@ -1,35 +1,31 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react"; // Import useRef
 import {json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
 import {useLoaderData, useRevalidator} from "@remix-run/react";
-import {createClient, SupabaseClient} from "@supabase/supabase-js";
+import {createClient, SupabaseClient, RealtimeChannel} from "@supabase/supabase-js"; // Import RealtimeChannel
 import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {Database, Tables} from "~/types/database.types";
-import ConversationList from "~/components/ConversationList"; // Re-use existing component
+import {Database} from "~/types/database.types";
 import {AlertCircle} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-
-// Type for the data fetched in the loader, adapted for ConversationList
-type ConversationSummary = Pick<Tables<'conversations'>, 'id' | 'subject' | 'last_message_at'> & {
-    participant_display_names: string | null; // Comma-separated names of family participants
-};
-
+import AdminConversationList, {AdminConversationSummary} from "~/components/AdminConversationList";
 
 interface LoaderData {
-    conversations: ConversationSummary[];
+    conversations: AdminConversationSummary[];
     error?: string;
     ENV: { // Pass ENV vars for client-side Supabase
         SUPABASE_URL: string;
         SUPABASE_ANON_KEY: string;
         // DO NOT PASS SERVICE ROLE KEY TO CLIENT
     };
-    accessToken: string | null; // Add accessToken
-    userId: string | null; // Add userId
+    accessToken: string | null;
+    refreshToken: string | null;
+    userId: string | null;
 }
 
 export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const {supabaseServer, response: {headers}, ENV} = getSupabaseServerClient(request);
     // Fetch session which includes the access token
     const {data: {session}, error: sessionError} = await supabaseServer.auth.getSession();
+    // console.log("[AdminMessagesIndex Loader] Session data:", session);
 
     // Handle potential error fetching session
     if (sessionError) {
@@ -40,12 +36,14 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             error: "Session fetch error",
             ENV,
             accessToken: null,
+            refreshToken: null,
             userId: null
         }, {status: 500, headers});
     }
 
     const user = session?.user;
     const accessToken = session?.access_token ?? null; // Get access token or null
+    const refreshToken = session?.refresh_token ?? null;
     const userId = user?.id ?? null; // Get user ID or null
 
     if (!user || !accessToken || !userId) { // Check for user, token, and ID
@@ -56,6 +54,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             error: "User not authenticated",
             ENV,
             accessToken: null,
+            refreshToken: null,
             userId: null
         }, {status: 401, headers});
     }
@@ -76,6 +75,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             error: "Access Denied: You do not have permission to view this page.",
             ENV,
             accessToken,
+            refreshToken,
             userId
         }, {status: 403, headers});
     }
@@ -86,7 +86,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     // We use supabaseServer here which has the user's context for RLS if the function
     // wasn't SECURITY DEFINER, but since it is, it runs with elevated privileges.
     // However, calling it via supabaseServer is standard practice.
-    // console.log("[AdminMessagesIndex Loader] Calling RPC function 'get_admin_conversation_summaries'");
+    console.log("[AdminMessagesIndex Loader] Calling RPC function 'get_admin_conversation_summaries'");
     const {data: conversations, error: rpcError} = await supabaseServer.rpc('get_admin_conversation_summaries');
 
     if (rpcError) {
@@ -96,6 +96,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             error: "Failed to load conversations via RPC.",
             ENV,
             accessToken,
+            refreshToken,
             userId
         }, {status: 500, headers});
     }
@@ -107,103 +108,144 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     // Ensure conversations is an array, even if null/undefined is returned (though unlikely for RPC)
     const safeConversations = conversations || [];
 
-    return json({conversations: safeConversations, ENV, accessToken, userId}, {headers}); // Pass token and userId
+    return json({conversations: safeConversations, ENV, accessToken, refreshToken, userId}, {headers});
 }
 
 
 export default function AdminMessagesIndex() {
-    // console.log("[AdminMessagesIndex] Component function executing..."); // Keep this initial log
-    const {conversations, error, ENV, accessToken} = useLoaderData<typeof loader>(); // Get ENV, accessToken, and userId back
-    const revalidator = useRevalidator(); // Re-enable revalidator
-    const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null); // Re-enable supabase state
+    const {conversations, error, ENV, accessToken, refreshToken} = useLoaderData<typeof loader>();
+    const revalidator = useRevalidator();
+    const supabaseRef = useRef<SupabaseClient<Database> | null>(null); // Use ref for singleton client
+    const channelRef = useRef<RealtimeChannel | null>(null); // Ref for the channel
+    const isCleaningUpRef = useRef(false); // Ref to prevent race conditions during cleanup
+    const [clientInitialized, setClientInitialized] = useState(false); // State to track initialization
 
-    // Temporarily remove all useEffect hooks to isolate rendering issues
-    // useEffect(() => { ... }); // Render log removed
-    // useEffect(() => { ... }); // Conversation data log removed
-
-    // Effect to create the client once ENV and accessToken are available
+    // Effect for Supabase Client Initialization
     useEffect(() => {
-        // console.log("[AdminMessagesIndex] Client creation effect running.");
-        // Use ANON_KEY for client-side initialization
-        if (ENV?.SUPABASE_URL && ENV?.SUPABASE_ANON_KEY && accessToken && !supabase) {
-            // console.log("[AdminMessagesIndex] Creating client-side Supabase client using ANON KEY and User Token...");
-            // Use the ANON key for client-side initialization
-            const client = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
-                global: {
-                    // Pass the user's access token for authenticated requests
-                    headers: {Authorization: `Bearer ${accessToken}`},
-                },
+        console.log("[AdminMessagesIndex] Client initialization effect running.");
+        if (!supabaseRef.current && ENV?.SUPABASE_URL && ENV?.SUPABASE_ANON_KEY) {
+            console.log("[AdminMessagesIndex] Initializing Supabase client...");
+            supabaseRef.current = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
+                // Use ANON key for initial client creation
+                auth: {
+                    persistSession: true, // Allow client to manage session persistence
+                    autoRefreshToken: true, // Allow client to manage token refresh
+                    // detectSessionInUrl: false, // Optional: Might be useful if session restoration from URL is causing issues
+                }
             });
-            setSupabase(client);
-            // console.log("[AdminMessagesIndex] Supabase client state set with user token.");
-        } else if (supabase) {
-            console.log("[AdminMessagesIndex] Supabase client already exists.");
-        } else if (!accessToken) {
-            console.warn("[AdminMessagesIndex] Access token not available, cannot create authenticated client-side client.");
+            console.log("[AdminMessagesIndex] Supabase client instance created.");
+            setClientInitialized(true); // Signal that the client object exists
+        } else if (supabaseRef.current) {
+            console.log("[AdminMessagesIndex] Supabase client already initialized.");
+            if (!clientInitialized) setClientInitialized(true); // Ensure state is correct if ref exists but state was false
         } else {
-            console.warn("[AdminMessagesIndex] Supabase ENV variables not found, cannot create client-side client.");
+            console.warn("[AdminMessagesIndex] Supabase ENV variables not found, cannot create client.");
         }
-        // Re-run if ENV or accessToken changes (accessToken should be stable from loader unless session expires/renews) or supabase state changes
-    }, [ENV, accessToken, supabase]); // Add supabase to dependency array
+    }, [clientInitialized, ENV]); // Only depends on ENV
+
+    // Effect to set/update the session on the initialized client
+    useEffect(() => {
+        console.log("[AdminMessagesIndex] Session update effect running.");
+        if (supabaseRef.current && accessToken && refreshToken) {
+            console.log("[AdminMessagesIndex] Setting session on Supabase client...");
+            supabaseRef.current.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+            }).then(({error: sessionError}) => {
+                if (sessionError) {
+                    console.error("[AdminMessagesIndex] Error setting session:", sessionError.message);
+                } else {
+                    console.log("[AdminMessagesIndex] Session set successfully.");
+                }
+            });
+        } else if (!accessToken || !refreshToken) {
+            console.warn("[AdminMessagesIndex] Access token or refresh token missing, cannot set session.");
+        } else {
+            console.log("[AdminMessagesIndex] Supabase client ref not ready for session setting.");
+        }
+    }, [accessToken, refreshToken, clientInitialized]); // Depend on tokens and initialization state
 
     // Effect for Supabase Realtime Subscription
     useEffect(() => {
-        // console.log("[AdminMessagesIndex] Subscription effect running.");
-        // Now this effect correctly waits until supabase client is created
-        if (!supabase) {
-            console.log("[AdminMessagesIndex] Supabase client not yet initialized for real-time. Skipping subscription setup.");
-            return; // Exit if supabase client is not ready
+        // Ensure cleanup ref is reset when dependencies change
+        isCleaningUpRef.current = false;
+        console.log("[AdminMessagesIndex] Subscription effect running.");
+
+        if (!clientInitialized || !supabaseRef.current) {
+            console.log("[AdminMessagesIndex] Supabase client not ready for real-time. Skipping subscription setup.");
+            return; // Exit if client is not initialized
+        }
+
+        // Prevent setup if already subscribed or during cleanup
+        if (channelRef.current && channelRef.current.state === 'joined') {
+             console.log("[AdminMessagesIndex] Already subscribed to channel. Skipping setup.");
+             return;
         }
 
         console.log("[AdminMessagesIndex] Setting up Supabase real-time subscription...");
+        const supabase = supabaseRef.current; // Get client from ref
         const channelName = 'admin-messages-list-channel';
         console.log(`[AdminMessagesIndex] Attempting to create/get channel: ${channelName}`);
 
-        // Get the channel instance. Client is already authenticated.
+        // Remove any existing channel before creating a new one (belt-and-suspenders)
+        if (channelRef.current) {
+            console.warn(`[AdminMessagesIndex] Removing potentially stale channel ${channelName} before creating new one.`);
+            supabase.removeChannel(channelRef.current);
+            channelRef.current = null;
+        }
+
         const channel = supabase.channel(channelName);
-        console.log(`[AdminMessagesIndex] Initial channel state before subscribe: ${channel.state}`); // Log state before subscribe
+        channelRef.current = channel; // Store the channel instance
+        console.log(`[AdminMessagesIndex] Initial channel state before subscribe: ${channel.state}`);
 
         channel
-            // Listen for new messages specifically, as this updates last_message_at
             .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, (payload) => {
-                console.log('[AdminMessagesIndex] *** New message INSERT detected! ***:', payload); // Make log prominent
-                console.log('[AdminMessagesIndex] Revalidating conversation list due to new message...');
-                revalidator.revalidate();
+                console.log('[AdminMessagesIndex] *** New message INSERT detected! ***:', payload);
+                if (!isCleaningUpRef.current) { // Check cleanup flag
+                    console.log('[AdminMessagesIndex] Revalidating conversation list due to new message...');
+                    revalidator.revalidate();
+                } else {
+                    console.log('[AdminMessagesIndex] Cleanup in progress, skipping revalidation.');
+                }
             })
-            // Optional: Listen for conversation updates if needed (e.g., subject change)
-            // .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations' }, (payload) => {
-            //     console.log('[AdminMessagesIndex] *** Conversation UPDATE detected! ***:', payload);
-            //     console.log('[AdminMessagesIndex] Revalidating conversation list due to conversation update...');
-            //     revalidator.revalidate();
-            // })
-            // .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload) => { // Temporarily disable conversations listener
-            //     console.log('[AdminMessagesIndex] Conversations table change detected:', payload);
-            //     console.log('[AdminMessagesIndex] Revalidating data due to conversation change...');
-            //     revalidator.revalidate();
-            // })
             .subscribe((status, err) => {
-                // Log ALL status changes, not just the initial ones
                 console.log(`[AdminMessagesIndex] Channel ${channelName} subscription status update: ${status}`);
                 if (status === 'SUBSCRIBED') {
                     console.log(`[AdminMessagesIndex] Successfully subscribed to channel: ${channelName}`);
                 }
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { // Log errors and closure
-                    console.error(`[AdminMessagesIndex] Channel ${channelName} issue: Status=${status}`, err || '');
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                    // Log the actual error object for more details on CHANNEL_ERROR
+                    console.error(`[AdminMessagesIndex] Channel ${channelName} issue: Status=${status}`, err || '(No error object provided)');
+                    // Optional: Attempt to resubscribe on certain errors? Be cautious of loops.
                 }
             });
 
-        console.log(`[AdminMessagesIndex] Channel ${channelName} .subscribe() called. Current state: ${channel.state}`); // Log state after calling subscribe
+        console.log(`[AdminMessagesIndex] Channel ${channelName} .subscribe() called. Current state: ${channel.state}`);
 
         // Return cleanup function
         return () => {
-            // Add channel state log before removal
-            console.log(`[AdminMessagesIndex] Cleaning up Supabase real-time subscription for channel: ${channelName}. Current state before removal: ${channel.state}`);
-            // Only remove the specific channel for this component
-            supabase.removeChannel(channel)
-                .then(status => console.log(`[AdminMessagesIndex] Removed channel ${channelName} status: ${status}`))
-                .catch(error => console.error(`[AdminMessagesIndex] Error removing channel ${channelName}:`, error));
+            isCleaningUpRef.current = true; // Set cleanup flag
+            console.log(`[AdminMessagesIndex] Cleaning up Supabase real-time subscription for channel: ${channelName}.`);
+            const currentChannel = channelRef.current; // Capture ref value
+            if (currentChannel) {
+                console.log(`[AdminMessagesIndex] Current state before removal: ${currentChannel.state}`);
+                supabase.removeChannel(currentChannel)
+                    .then(status => console.log(`[AdminMessagesIndex] Removed channel ${channelName} status: ${status}`))
+                    .catch(error => console.error(`[AdminMessagesIndex] Error removing channel ${channelName}:`, error))
+                    .finally(() => {
+                        // Only nullify if it's the same channel we intended to remove
+                        if (channelRef.current === currentChannel) {
+                            channelRef.current = null;
+                        }
+                        // Reset cleanup flag after operation attempt
+                        // isCleaningUpRef.current = false; // Resetting here might be too soon if effect re-runs immediately
+                    });
+            } else {
+                 console.log(`[AdminMessagesIndex] No channel found in ref during cleanup.`);
+            }
         };
-    }, [supabase, revalidator]); // Re-run effect if supabase client or revalidator changes
+        // Depend on client initialization state and revalidator
+    }, [clientInitialized, revalidator]);
 
 
     if (error) {
@@ -219,9 +261,9 @@ export default function AdminMessagesIndex() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 bg-amber-50 dark:bg-gray-800"> {/* Add background */}
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-semibold">Admin Messages</h1>
+                <h1 className="text-2xl font-semibold text-foreground">Admin Messages</h1> {/* Add text color */}
                 {/* Optional: Add button for admins to start new conversations later */}
                 {/* <Button asChild variant="outline">
                     <Link to="/admin/messages/new">
@@ -233,7 +275,7 @@ export default function AdminMessagesIndex() {
             {conversations.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400">No conversations found.</p>
             ) : (
-                <ConversationList conversations={conversations} basePath="/admin/messages"/>
+                <AdminConversationList conversations={conversations} basePath="/admin/messages"/>
             )}
         </div>
     );

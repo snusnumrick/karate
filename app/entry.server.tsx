@@ -55,6 +55,32 @@ function handleBotRequest(
 
                     responseHeaders.set("Content-Type", "text/html");
 
+                    // Construct Content Security Policy header
+                    const supabaseHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : '';
+                    const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : '';
+                    const connectSrc = `'self' https://api.stripe.com ${supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : ''}`;
+                    const imgSrc = `'self' data: ${supabaseOrigin}`; // Add Supabase origin for images
+                    const scriptSrc = `'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`; // Add 'unsafe-eval' and stripe js
+                    const styleSrc = `'self' 'unsafe-inline' https://fonts.googleapis.com`;
+                    const fontSrc = `'self' https://fonts.gstatic.com`;
+                    const frameSrc = `https://js.stripe.com https://hooks.stripe.com`;
+                    const baseUri = `'self'`;
+                    const formAction = `'self'`;
+
+                    const csp = `
+                        default-src 'self';
+                        script-src ${scriptSrc};
+                        style-src ${styleSrc};
+                        font-src ${fontSrc};
+                        img-src ${imgSrc};
+                        connect-src ${connectSrc};
+                        frame-src ${frameSrc};
+                        base-uri ${baseUri};
+                        form-action ${formAction};
+                    `.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+                    responseHeaders.set("Content-Security-Policy", csp);
+
                     resolve(
                         new Response(stream, {
                             headers: responseHeaders,
@@ -104,6 +130,32 @@ function handleBrowserRequest(
                     const stream = createReadableStreamFromReadable(body);
 
                     responseHeaders.set("Content-Type", "text/html");
+
+                    // Construct Content Security Policy header (ensure this logic matches the one in handleBotRequest)
+                    const supabaseHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : '';
+                    const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : '';
+                    const connectSrc = `'self' https://api.stripe.com ${supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : ''}`;
+                    const imgSrc = `'self' data: ${supabaseOrigin}`; // Add Supabase origin for images
+                    const scriptSrc = `'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`; // Add 'unsafe-eval' and stripe js
+                    const styleSrc = `'self' 'unsafe-inline' https://fonts.googleapis.com`;
+                    const fontSrc = `'self' https://fonts.gstatic.com`;
+                    const frameSrc = `https://js.stripe.com https://hooks.stripe.com`;
+                    const baseUri = `'self'`;
+                    const formAction = `'self'`;
+
+                    const csp = `
+                        default-src 'self';
+                        script-src ${scriptSrc};
+                        style-src ${styleSrc};
+                        font-src ${fontSrc};
+                        img-src ${imgSrc};
+                        connect-src ${connectSrc};
+                        frame-src ${frameSrc};
+                        base-uri ${baseUri};
+                        form-action ${formAction};
+                    `.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+                    responseHeaders.set("Content-Security-Policy", csp);
 
                     resolve(
                         new Response(stream, {

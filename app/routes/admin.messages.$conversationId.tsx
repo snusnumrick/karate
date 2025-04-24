@@ -33,6 +33,7 @@ interface LoaderData {
         // DO NOT PASS SERVICE ROLE KEY TO CLIENT
     };
     accessToken: string | null; // Pass the access token for client-side auth
+    refreshToken: string | null;
 }
 
 export interface ActionData {
@@ -46,7 +47,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     // Fetch session to get user and access token
     const {data: {session}} = await supabaseServer.auth.getSession();
     const user = session?.user;
-    const accessToken = session?.access_token ?? null; // Get access token
+    const accessToken = session?.access_token ?? null;
+    const refreshToken = session?.refresh_token ?? null;
     const conversationId = params.conversationId;
 
     if (!user || !accessToken) { // Check for user and token
@@ -56,7 +58,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             error: "User not authenticated",
             userId: null,
             ENV,
-            accessToken: null
+            accessToken: null,
+            refreshToken: null
         }, {status: 401, headers});
     }
     if (!conversationId) {
@@ -66,7 +69,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             error: "Conversation ID missing",
             userId: user.id,
             ENV,
-            accessToken
+            accessToken,
+            refreshToken
         }, {status: 400, headers});
     }
 
@@ -85,7 +89,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             error: "Access Denied: You do not have permission to view this page.",
             userId: user.id,
             ENV,
-            accessToken
+            accessToken,
+            refreshToken
         }, {status: 403, headers});
     }
 
@@ -107,9 +112,27 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             error: "Access denied or conversation not found.",
             userId: user.id,
             ENV,
-            accessToken
+            accessToken,
+            refreshToken
         }, {status: 403, headers});
     }
+
+    // --- Mark conversation as read BEFORE fetching messages ---
+    // Call the RPC function to update last_read_at for this user/conversation
+    // We use supabaseServer which has the user's context, and the function is SECURITY INVOKER
+    const { error: markReadError } = await supabaseServer.rpc('mark_conversation_as_read', {
+        p_conversation_id: conversationId,
+        p_user_id: user.id, // The current admin/instructor user
+    });
+
+    if (markReadError) {
+        // Log the error but don't fail the whole loader
+        console.error(`Error marking conversation ${conversationId} as read for admin ${user.id}:`, markReadError.message);
+    } else {
+        console.log(`Successfully marked conversation ${conversationId} as read for admin ${user.id}`);
+    }
+    // --- End mark as read ---
+
 
     // Step 1: Fetch conversation details
     const {data: conversationData, error: conversationError} = await supabaseServer
@@ -126,7 +149,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             error: "Failed to load conversation details.",
             userId: user.id,
             ENV,
-            accessToken
+            accessToken,
+            refreshToken
         }, {status: conversationError ? 500 : 404, headers});
     }
 
@@ -144,7 +168,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             error: "Failed to load conversation participants.",
             userId: user.id,
             ENV,
-            accessToken
+            accessToken,
+            refreshToken
         }, {status: 500, headers});
     }
 
@@ -170,7 +195,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             error: "Failed to load user profiles.",
             userId: user.id,
             ENV,
-            accessToken
+            accessToken,
+            refreshToken
         }, {status: 500, headers});
     }
 
@@ -241,7 +267,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             error: "Failed to load messages.",
             userId: user.id,
             ENV,
-            accessToken
+            accessToken,
+            refreshToken
         }, {status: 500, headers});
     }
 
@@ -310,7 +337,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         messages: messages,
         userId: user.id,
         ENV,
-        accessToken // Pass token to client
+        accessToken, // Pass token to client
+        refreshToken
     }, {headers});
 }
 
@@ -384,9 +412,10 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
 // --- Component ---
 export default function AdminConversationView() {
-    const {conversation, messages: initialMessages, userId, error, ENV, accessToken} = useLoaderData<typeof loader>(); // Get accessToken
+    const {conversation, messages: initialMessages, userId, error, ENV, accessToken, refreshToken} = useLoaderData<typeof loader>();
     const fetcher = useFetcher<ActionData>();
     const [messages, setMessages] = useState<MessageWithSender[]>(initialMessages);
+    const messageInputRef = useRef<HTMLTextAreaElement>(null); // Ref for the message input
     const hasSubscribedRef = useRef(false); // Ref to track subscription status
     // Use a more specific ref to track channel subscription by conversation ID
     const channelSubscriptionRef = useRef<{ [key: string]: boolean }>({});
@@ -399,50 +428,38 @@ export default function AdminConversationView() {
     // Initialize the Supabase client only once - use a static client for the entire app
     useEffect(() => {
         // Use a module-level singleton pattern to ensure only one client exists
-        // Initialize with ANON KEY. Authentication relies on the accessToken passed globally.
+        // Initialize with ANON KEY.
         if (!window.__SUPABASE_SINGLETON_CLIENT) {
             if (ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY) { // Use ANON KEY
-                console.log("[Admin] Creating global Supabase singleton client with ANON KEY.");
-                window.__SUPABASE_SINGLETON_CLIENT = createClient<Database>(
-                    ENV.SUPABASE_URL,
-                    ENV.SUPABASE_ANON_KEY, // Use ANON KEY
-                    {
-                        // Configure auth persistence as needed, but client is initialized anon
-                        auth: {
-                            persistSession: true, // Or false, depending on app needs
-                            autoRefreshToken: false
-                        },
-                        realtime: {
-                            params: {
-                                eventsPerSecond: 10
-                            }
-                        },
-                        global: {
-                            headers: {
-                                // Pass the access token for authenticated requests
-                                'Authorization': `Bearer ${accessToken}`,
-                                'X-Client-Info': 'admin-messaging-client'
-                            }
+                console.log("[Admin] Creating global Supabase singleton client with ANON KEY and autoRefreshToken."); // Updated log
+                const client = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
+                    // Enable autoRefreshToken for client-side instance
+                    auth: {persistSession: true, autoRefreshToken: true},
+                    realtime: {
+                        params: {
+                            eventsPerSecond: 10 // Keep throttling reasonable
                         }
-                    }
-                );
-                console.log(`[Admin] Created global Supabase singleton client with ANON KEY.`);
+                    } // <-- Added missing closing brace here
+                });
+
+                // Set the session after client creation // RE-ADDED setSession
+                client.auth.setSession({
+                    access_token: accessToken ?? '',
+                    refresh_token: refreshToken ?? '',
+                });
+
+                window.__SUPABASE_SINGLETON_CLIENT = client;
+                console.log(`[Admin] Created global Supabase singleton client with ANON KEY and set initial session.`); // Updated log
             } else {
                 console.error("[Admin] Missing SUPABASE_URL or SUPABASE_ANON_KEY for client initialization.");
             }
         } else if (window.__SUPABASE_SINGLETON_CLIENT) { // Check if the client exists
-            console.log(`[Admin] Using existing global Supabase singleton client. Updating Authorization header.`);
-            // Ensure the existing client has the latest token and handle potential missing 'global' or 'headers'
-            if (!window.__SUPABASE_SINGLETON_CLIENT.global) {
-                // If 'global' is missing, initialize it (though this shouldn't typically happen)
-                window.__SUPABASE_SINGLETON_CLIENT.global = {headers: {}};
-                console.warn("[Admin] Singleton client was missing 'global' property. Initialized.");
-            }
-            // Safely update headers, providing default empty object if headers are initially missing
-            window.__SUPABASE_SINGLETON_CLIENT.global.headers = {
-                ...(window.__SUPABASE_SINGLETON_CLIENT.global.headers || {}), // Use existing headers or empty object
-                'Authorization': `Bearer ${accessToken}`,
-            };
+            console.log(`[Admin] Using existing global Supabase singleton client. Updating session.`); // Updated log
+            // RE-ADDED setSession update
+            window.__SUPABASE_SINGLETON_CLIENT.auth.setSession({
+                access_token: accessToken ?? '',
+                refresh_token: refreshToken ?? '',
+            });
         }
 
         // Assign the singleton to our ref
@@ -453,7 +470,7 @@ export default function AdminConversationView() {
             console.log("[Admin] Component unmounting, Supabase client reference will be cleaned up");
         };
         // Re-run if ENV vars or accessToken change
-    }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, accessToken]);
+    }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, accessToken, refreshToken]);
 
     // Variable to track cleanup state - use ref for stability across renders
     const isCleaningUpRef = useRef(false);
@@ -465,9 +482,8 @@ export default function AdminConversationView() {
 
         const supabase = supabaseRef.current;
         let channel: ReturnType<SupabaseClient<Database>['channel']> | null = null;
-        let isMounted = true;
-        const channelName = conversation?.id ? `admin-messages:${conversation.id}` : null;
-        console.log(`[Admin] useEffect run. Conversation ID: ${conversation?.id}, Supabase Client: ${supabase ? 'obtained' : 'null'}. channelName: ${channelName}`);
+        const channelName = conversation?.id ? `conversation-messages:${conversation.id}` : null; // Standardized channel name
+        console.log(`[Admin Subscription Effect] Run. ConvID: ${conversation?.id}, Client: ${supabase ? 'OK' : 'NULL'}, ChannelName: ${channelName}`);
 
         // Early return if any required data is missing
         if (!conversation?.id || !supabase || !channelName) {
@@ -507,6 +523,7 @@ export default function AdminConversationView() {
                 console.log(`[Admin] Created channel: ${channelName} with reconnection options`);
 
                 // Set up event listener
+                console.log(`[Admin] Attaching 'postgres_changes' listener to channel: ${channelName}`); // Added log
                 channel.on(
                     'postgres_changes',
                     {
@@ -516,66 +533,87 @@ export default function AdminConversationView() {
                         filter: `conversation_id=eq.${conversation.id}`
                     },
                     async (payload) => {
-                        console.log('payload', payload);
-                        // We used to skip processing if cleanup is in progress, but this caused messages to be lost
-                        // Now we'll log a warning but still process the message
-                        if (isCleaningUpRef.current) {
-                            console.log('Warning: Received message during cleanup, but will still process it');
-                        }
+                        console.log('[Admin Subscription Callback] Received payload:', payload);
 
-                        console.log('[Admin] New message received via subscription:', payload.new);
+                        if (isCleaningUpRef.current) {
+                            console.warn('[Admin Subscription Callback] Warning: Received message during cleanup, processing anyway.');
+                        }
+                        // REMOVED isMounted check - let React handle updates to unmounted components if necessary
+
+                        console.log('[Admin Subscription Callback] Processing new message:', payload.new);
                         const rawNewMessage = payload.new as Tables<'messages'>;
 
-                        // SECURITY/SIMPLICITY: Avoid client-side profile fetching with potentially incorrect auth context.
-                        // Just add the message with a basic sender profile. The UI can show sender ID or a placeholder.
-                        // Revalidation or fetching profiles server-side is more robust.
+                        // Create the new message object with a basic sender profile placeholder.
+                        // The full profile will be loaded on subsequent page loads/revalidations.
                         const newMessage: MessageWithSender = {
                             ...rawNewMessage,
-                            senderProfile: { // Create a basic profile placeholder
-                                id: rawNewMessage.sender_id || 'unknown',
+                            senderProfile: {
+                                id: rawNewMessage.sender_id || 'unknown', // Use sender ID if available
                                 email: '', // Don't assume email is available
-                                first_name: null,
-                                last_name: null
+                                first_name: null, // Placeholder
+                                last_name: null // Placeholder
                             }
                         };
 
-                        console.log("[Admin] Adding new message to state (basic profile):", newMessage);
-                        // Update state only if the component is still mounted and not cleaning up
-                        if (isMounted && !isCleaningUpRef.current) {
-                            setMessages(currentMessages => {
-                                // Avoid adding duplicates if the message somehow arrives multiple times
-                                if (currentMessages.some(msg => msg.id === newMessage.id)) {
-                                    return currentMessages;
-                                }
-                                return [...currentMessages, newMessage];
-                            });
-                        } else {
-                            console.log(`[Admin] Skipping state update for new message because component is ${!isMounted ? 'unmounted' : 'cleaning up'}.`);
-                        }
+                        console.log("[Admin Subscription Callback] Adding new message to state:", newMessage);
+
+                        setMessages(currentMessages => {
+                            // Avoid adding duplicates
+                            if (currentMessages.some(msg => msg.id === newMessage.id)) {
+                                console.log(`[Admin Subscription Callback] Message ID ${newMessage.id} already exists in state, skipping add.`);
+                                return currentMessages;
+                            }
+                            console.log(`[Admin Subscription Callback] Appending message ID ${newMessage.id} to state.`);
+                            return [...currentMessages, newMessage];
+                        });
                     }
                 );
 
                 // Subscribe to the channel
-                console.log(`[Admin] Subscribing to channel: ${channelName}`);
+                console.log(`[Admin Subscription Effect] Attempting to subscribe to channel: ${channelName}`);
                 channel.subscribe((status, err) => {
-                    console.log(`[Admin] Channel status: ${status}, error: ${err}`);
-                    // We used to skip processing if cleanup is in progress, but this could cause issues
-                    // Now we'll log a warning but still process the status update
+                    // Log all status changes, including potential errors
+                    // console.log(`[Admin Subscription Status Callback] Channel: ${channelName}, Status: ${status}`, err || ''); // Redundant log
+
                     if (isCleaningUpRef.current) {
-                        console.log('Warning: Received channel status update during cleanup, but will still process it');
+                        console.warn(`[Admin Subscription Status Callback] Warning: Received status '${status}' during cleanup.`); // Renamed log
+                        // Potentially stop processing further if status indicates closure/error during cleanup
+                        if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                           console.log(`[Admin Subscription Status Callback] Acknowledged final status '${status}' during cleanup.`); // Renamed log
+                           return;
+                        }
                     }
 
-                    console.log(`[Admin Channel: ${channelName}] Status: ${status}`, err || '');
-
-                    if (status === 'SUBSCRIBED') {
-                        console.log(`[Admin] Successfully subscribed to messages channel: ${channelName}`);
-                        hasSubscribedRef.current = true;
-                    }
-
-                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                        console.error(`[Admin Channel: ${channelName}] Issue: ${status}`, err);
-                        hasSubscribedRef.current = false;
-                        channelSubscriptionRef.current[channelName] = false;
+                    // Renamed logs for clarity
+                    switch (status) {
+                        case 'SUBSCRIBED':
+                            console.log(`[Admin Subscription Status Callback] Successfully SUBSCRIBED to channel: ${channelName}`);
+                            hasSubscribedRef.current = true;
+                            // Ensure tracking ref is correct
+                            channelSubscriptionRef.current[channelName] = true;
+                            break;
+                        case 'CHANNEL_ERROR':
+                            // Log the actual error object for more details
+                            console.error(`[Admin Subscription Status Callback] CHANNEL_ERROR on channel ${channelName}:`, err);
+                            hasSubscribedRef.current = false;
+                            channelSubscriptionRef.current[channelName] = false;
+                            // Consider adding retry logic or user notification here
+                            break;
+                        case 'TIMED_OUT':
+                            console.warn(`[Admin Subscription Status Callback] TIMED_OUT on channel ${channelName}. Retrying may happen automatically.`);
+                            hasSubscribedRef.current = false;
+                            channelSubscriptionRef.current[channelName] = false;
+                            break;
+                        case 'CLOSED':
+                            console.log(`[Admin Subscription Status Callback] Channel ${channelName} CLOSED.`);
+                            hasSubscribedRef.current = false;
+                            // Only clear the tracking ref if not during intentional cleanup
+                            if (!isCleaningUpRef.current && channelName) {
+                                channelSubscriptionRef.current[channelName] = false;
+                            }
+                            break;
+                        default:
+                            console.log(`[Admin Subscription Status Callback] Unhandled status: ${status}`);
                     }
                 });
 
@@ -586,30 +624,44 @@ export default function AdminConversationView() {
             }
         };
 
-        // First remove any existing channel with this name
-        const cleanupExistingChannel = async () => {
-            console.log(`[Admin] starting cleanupExistingChannel`);
-            try {
-                // Create a temporary channel reference just for removal
-                const tempChannel = supabase.channel(channelName);
-                await supabase.removeChannel(tempChannel);
-                console.log(`[Admin] Pre-emptively removed any existing channel: ${channelName}`);
+        // Start the setup process: First try to remove existing, then setup.
+        console.log(`[Admin] Starting setup process for channel: ${channelName}`);
 
-                // If cleanup started while we were waiting, don't proceed to setup
-                if (!isCleaningUpRef.current) {
-                    await setupChannel();
-                } else {
-                    console.log(`[Admin] Cleanup started during pre-emptive removal, aborting channel creation for ${channelName}`);
-                }
-            } catch (error) {
-                console.error(`[Admin] Error during pre-emptive removal of channel ${channelName}:`, error);
-                channelSubscriptionRef.current[channelName] = false;
+        const setupProcess = async () => {
+            // 1. Log Auth State (Async)
+            await logAuthState();
+
+            // 2. Setup Channel (if not cleaning up)
+            if (!isCleaningUpRef.current) {
+                await setupChannel(); // Call the main setup function
+            } else {
+                console.log(`[Admin] Cleanup started during setupProcess, aborting setupChannel call for ${channelName}`);
             }
         };
 
-        // Start the cleanup and setup process
-        console.log(`[Admin] Starting cleanup and setup for channel: ${channelName}`);
-        cleanupExistingChannel();
+
+        // Asynchronously log client auth state for debugging purposes.
+        // This helps verify the client-side Supabase instance's authentication
+        // state immediately before attempting to establish the real-time channel.
+        const logAuthState = async () => {
+            if (supabase) {
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const sessionUser = session?.user;
+                    console.log(`[Admin] Client auth state before setupChannel: User ID = ${sessionUser?.id ?? 'N/A'}`);
+                } catch (error) {
+                    console.error("[Admin] Error getting session for auth state log:", error);
+                }
+            } else {
+                console.log("[Admin] Cannot log auth state: Supabase client not available yet.");
+            }
+            // Logging finished (or failed)
+        };
+
+        // Execute the async setup process.
+        // We define an async function within useEffect and call it immediately,
+        // as the useEffect hook itself cannot be async.
+        setupProcess();
 
         // Capture the ref's current value for the cleanup function
         const currentChannelSubscriptionRef = channelSubscriptionRef.current;
@@ -617,14 +669,13 @@ export default function AdminConversationView() {
         // Cleanup function
         return () => {
             isCleaningUpRef.current = true;
-            isMounted = false;
             console.log(`[Admin] Cleaning up channel: ${channelName}`);
 
             const cleanup = async () => {
                 if (channel && supabase) {
                     try {
                         // First unsubscribe from the channel
-                        channel.unsubscribe();
+                        await channel.unsubscribe();
                         console.log(`[Admin] Unsubscribed from messages channel: ${channelName}`);
 
                         // Then remove the channel
@@ -641,16 +692,27 @@ export default function AdminConversationView() {
                 }
             };
 
-            // Execute cleanup immediately
+            // Execute cleanup immediately when the effect dependencies change or component unmounts
             cleanup();
         };
-        // Dependencies: Re-run if conversation ID, client instance, or token changes.
-    }, [userId, conversation?.id, supabaseRef, accessToken]); // Use supabaseRef and accessToken
+        // Dependencies: Re-run only if the user or conversation changes.
+        // The Supabase client should handle internal token refreshes for the subscription.
+    }, [userId, conversation?.id]); // Ensure dependencies are minimal
 
     // Update messages state if loader data changes
     useEffect(() => {
         setMessages(initialMessages);
     }, [initialMessages]);
+
+    // Effect to focus the message input on mount
+    useEffect(() => {
+        // Use setTimeout to ensure focus occurs after rendering and potential layout shifts
+        const timerId = setTimeout(() => {
+            messageInputRef.current?.focus();
+        }, 100); // Small delay can help ensure the element is ready
+
+        return () => clearTimeout(timerId); // Cleanup timeout on unmount
+    }, []); // Empty dependency array ensures this runs only once on mount
 
 
     if (error) {
@@ -686,7 +748,7 @@ export default function AdminConversationView() {
     return (
         // Use similar height calculation as family view, adjust if admin layout differs
         <div
-            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--admin-header-height,64px)-var(--admin-footer-height,64px)-2rem)] flex flex-col">
+            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--admin-header-height,64px)-var(--admin-footer-height,64px)-2rem)] flex flex-col bg-amber-50 dark:bg-gray-800"> {/* Add background */}
             <div className="flex items-center mb-4">
                 <Button variant="ghost" size="icon" asChild className="mr-2">
                     <Link to="/admin/messages" aria-label="Back to messages">
@@ -695,9 +757,9 @@ export default function AdminConversationView() {
                 </Button>
                 {/* Display Subject and Participant Names */}
                 <div className="flex-1 min-w-0 ml-2">
-                    <h1 className="text-lg font-semibold truncate">{conversation.subject || 'Conversation'}</h1>
+                    <h1 className="text-lg font-semibold truncate text-foreground">{conversation.subject || 'Conversation'}</h1> {/* Ensure foreground color */}
                     {conversation.participant_display_names && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        <p className="text-sm text-muted-foreground truncate"> {/* Use muted foreground */}
                             With: {conversation.participant_display_names}
                         </p>
                     )}
@@ -708,7 +770,8 @@ export default function AdminConversationView() {
             <MessageView messages={messages} currentUserId={userId}/>
 
             {/* Message Input Area */}
-            <MessageInput fetcher={fetcher}/>
+            {/* Pass the ref to MessageInput, remove autoFocus prop */}
+            <MessageInput fetcher={fetcher} ref={messageInputRef} />
             {fetcher.data?.error && (
                 <p className="text-red-500 text-sm mt-2">{fetcher.data.error}</p>
             )}
