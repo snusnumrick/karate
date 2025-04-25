@@ -73,6 +73,10 @@ and an integrated store for purchasing items like uniforms.
     - Manage product variants (add, edit, delete) (`/admin/store/products/:productId/variants`).
     - Manage inventory stock levels (`/admin/store/inventory`).
     - View and manage customer orders (view details, update status) (`/admin/store/orders`).
+- **Messaging Management:**
+    - View conversations initiated by families (`/admin/messages`).
+    - Reply to family messages (`/admin/messages/:conversationId`).
+    - Initiate new conversations with specific families (`/admin/messages/new`).
 
 ### Automated Notifications
 - **Student Absence:** Email to family when student marked absent.
@@ -589,4 +593,3 @@ Potential areas for future enhancement or review include:
     - Implement read receipts for messages.
     - Add in-app notifications for new messages.
     - Implement search functionality for conversations/messages.
-    - Allow admins/instructors to initiate conversations with families.

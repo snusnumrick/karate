@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - *Nothing yet*
 
+## [1.3.3] - 2025-04-25
+
+### Added
+- **Messaging:** Added ability for Admins/Instructors to initiate new conversations with specific families via the Admin Messages interface (`/admin/messages/new`).
+
 ## [1.3.2] - 2025-04-24
 
 ### Added

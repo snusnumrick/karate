@@ -937,6 +937,15 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: number
       }
+      create_admin_initiated_conversation: {
+        Args: {
+          p_sender_id: string
+          p_target_family_id: string
+          p_subject: string
+          p_message_body: string
+        }
+        Returns: string
+      }
       create_new_conversation: {
         Args:
           | {

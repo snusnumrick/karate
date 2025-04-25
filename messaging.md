@@ -17,7 +17,8 @@ Implementing an in-app messaging system between instructors and families would s
 - **Messaging Dashboard** - A comprehensive interface with:
     - List of conversations initiated by families (`/admin/messages`).
     - Ability to view and reply to family messages (`/admin/messages/:conversationId`).
-    - *Future:* Ability to initiate messages to families, message templates, status tracking.
+    - Ability to initiate new conversations with specific families (`/admin/messages/new`).
+    - *Future:* Message templates, status tracking.
 
 ### Shared Features:
 - Real-time chat interface with text formatting options (Needs participant names in header)
@@ -178,7 +179,7 @@ This messaging system would create a more connected karate school community, all
     - Notification delivery
 
 - **User Acceptance Testing:**
-    - Instructor messaging workflows
+    - Instructor messaging workflows (including initiating conversations)
     - Family messaging scenarios
     - Group communication testing
 

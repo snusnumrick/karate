@@ -1,12 +1,13 @@
 import {useEffect, useRef, useState} from "react"; // Import useRef
 import {json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
-import {useLoaderData, useRevalidator} from "@remix-run/react";
+import {useLoaderData, useRevalidator, Link} from "@remix-run/react";
 import {createClient, SupabaseClient, RealtimeChannel} from "@supabase/supabase-js"; // Import RealtimeChannel
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types";
-import {AlertCircle} from "lucide-react";
+import {AlertCircle, MessageSquarePlus} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import AdminConversationList, {AdminConversationSummary} from "~/components/AdminConversationList";
+import { Button } from "~/components/ui/button"; // Import Button
 
 interface LoaderData {
     conversations: AdminConversationSummary[];
@@ -264,12 +265,12 @@ export default function AdminMessagesIndex() {
         <div className="container mx-auto px-4 py-8 bg-amber-50 dark:bg-gray-800"> {/* Add background */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-semibold text-foreground">Admin Messages</h1> {/* Add text color */}
-                {/* Optional: Add button for admins to start new conversations later */}
-                {/* <Button asChild variant="outline">
+                {/* Add button for admins to start new conversations - Use default variant */}
+                <Button asChild>
                     <Link to="/admin/messages/new">
                         <MessageSquarePlus className="mr-2 h-4 w-4" /> New Message
                     </Link>
-                </Button> */}
+                </Button>
             </div>
 
             {conversations.length === 0 ? (

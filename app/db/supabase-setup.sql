@@ -1608,7 +1608,8 @@ UnreadCounts AS (
     FROM UserConversations uc
     LEFT JOIN public.messages m ON uc.conversation_id = m.conversation_id
         -- Count messages created after the user's last read time for this conversation
-        AND m.created_at > uc.last_read_at
+        -- Treat NULL last_read_at as infinitely old, so all messages are considered newer
+        AND m.created_at > COALESCE(uc.last_read_at, '-infinity'::timestamptz)
         -- Exclude messages sent by the user themselves from the unread count
         AND m.sender_id <> p_user_id
     GROUP BY uc.conversation_id
@@ -1913,6 +1914,61 @@ $$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION public.mark_conversation_as_read(uuid, uuid) TO authenticated;
+
+-- Function for Admin/Instructor to initiate a conversation with a specific family
+CREATE OR REPLACE FUNCTION public.create_admin_initiated_conversation(
+    p_sender_id uuid, -- The admin/instructor initiating
+    p_target_family_id uuid, -- The family being messaged
+    p_subject text,
+    p_message_body text
+)
+RETURNS uuid -- Returns the new conversation_id
+LANGUAGE plpgsql
+SECURITY DEFINER -- Executes with elevated privileges to add participants across families
+AS $$
+DECLARE
+    new_conversation_id uuid;
+    family_member_id uuid;
+BEGIN
+    -- Set search_path for safety within SECURITY DEFINER
+    SET LOCAL search_path = public, extensions;
+
+    -- 1. Create the conversation
+    INSERT INTO public.conversations (subject)
+    VALUES (p_subject)
+    RETURNING id INTO new_conversation_id;
+
+    -- 2. Add the sender (admin/instructor) as a participant
+    INSERT INTO public.conversation_participants (conversation_id, user_id)
+    VALUES (new_conversation_id, p_sender_id);
+
+    -- 3. Find all users associated with the target family and add them as participants
+    FOR family_member_id IN
+        SELECT id FROM public.profiles WHERE family_id = p_target_family_id
+    LOOP
+        -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user somehow exists twice or overlaps
+        -- Explicitly set last_read_at to -infinity for new family participants
+        INSERT INTO public.conversation_participants (conversation_id, user_id, last_read_at)
+        VALUES (new_conversation_id, family_member_id, '-infinity'::timestamptz)
+        ON CONFLICT (conversation_id, user_id) DO NOTHING;
+    END LOOP;
+
+    -- 4. Add the initial message from the sender
+    INSERT INTO public.messages (conversation_id, sender_id, content)
+    VALUES (new_conversation_id, p_sender_id, p_message_body);
+
+    -- 5. Return the new conversation ID
+    RETURN new_conversation_id;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Error in create_admin_initiated_conversation: SQLSTATE: %, MESSAGE: %', SQLSTATE, SQLERRM;
+        RAISE;
+END;
+$$;
+
+-- Grant execute permission to authenticated users (Remix action already checks for admin/instructor role)
+GRANT EXECUTE ON FUNCTION public.create_admin_initiated_conversation(uuid, uuid, text, text) TO authenticated;
 
 
 -- --- End RPC Function ---

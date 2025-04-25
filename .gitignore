@@ -13,4 +13,5 @@ coverage/
 .idea/
 dist/
 .temp/
+.serena/
 
