@@ -194,7 +194,10 @@ for communication between families and administrators.
     - `VITE_SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com` - **Required** for generating correct absolute receipt URLs and for frontend config)
 5.  **Tax Configuration:** Ensure the `tax_rates` table in your production Supabase database contains the correct tax rates (e.g., GST, PST_BC) and that they are marked `is_active = true`. Verify `applicableTaxNames` in `app/config/site.ts` matches the desired active taxes for your site. Stripe Tax configuration in the dashboard is **not** used for calculation.
 6.  **Deploy:** Trigger a deployment in Vercel.
-7.  **Stripe Webhook:**
+7.  **Vercel Configuration:**
+    - After deployment, go to **Project Settings** > **Functions** > **Function Max Duration**
+    - Increase the Function Max Duration to **60 seconds** to prevent timeout issues with the `/admin/db-chat` feature
+8.  **Stripe Webhook:**
     - Once deployed, get your production URL.
     - In your Stripe Dashboard, go to Developers -> Webhooks.
     - Add an endpoint:
