@@ -1,13 +1,14 @@
 import React, {useState} from 'react';
 import {Form, Link, useLocation} from "@remix-run/react"; // Import useLocation
 import {ModeToggle} from "./mode-toggle";
-import {Sheet, SheetContent, SheetTrigger} from "./ui/sheet";
-import {Button} from "./ui/button";
+import {Sheet, SheetContent, SheetTitle, SheetTrigger} from "./ui/sheet";
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/tooltip"; // Import Tooltip components
 // Note: MessageSquare was already added in the provided file content, no change needed here.
 import {
     Boxes,
     CalendarCheck,
+    ChevronDown,
+    ChevronRight,
     CreditCard,
     Database,
     FileText,
@@ -25,7 +26,8 @@ import {
 } from "lucide-react";
 import {ClientOnly} from './client-only'; // Import ClientOnly
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,} from "~/components/ui/dropdown-menu"; // Import DropdownMenu components
-import {cn} from "~/lib/utils"; // Import cn utility
+import {cn} from "~/lib/utils";
+import {Button} from "~/components/ui/button"; // Import cn utility
 
 // Define navigation items for reuse
 const adminNavItems = [
@@ -50,6 +52,7 @@ const storeNavItems = [
 
 export default function AdminNavbar() {
     const [isOpen, setIsOpen] = useState(false);
+    const [isStoreMobileOpen, setIsStoreMobileOpen] = useState(false);
     // const location = useLocation(); // Get current location - Removed as it's unused here
 
     return (
@@ -135,42 +138,65 @@ export default function AdminNavbar() {
 
                                         <SheetContent
                                             side="right"
-                                            className="w-[300px] sm:w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
+                                            className="w-[300px] sm:w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-0 flex flex-col max-h-screen"
                                         >
-                                            <div className="flex flex-col space-y-2 mt-6">
-                                                {adminNavItems.map((item) => (
-                                                    <AdminMobileNavLink key={item.to} to={item.to}
-                                                                        onClick={() => setIsOpen(false)}>
-                                                        <item.icon className="h-5 w-5 mr-2 inline-block"/>
-                                                        {item.label}
-                                                    </AdminMobileNavLink>
-                                                ))}
-                                                {/* Store Mobile Links - Separator already exists in provided file content */}
-                                                <div
-                                                    className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
-                                                {/* Separator */}
-                                                <div className="px-4 pb-2">
-                                                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Store</p>
+                                            <div className="flex-1 overflow-y-auto py-4">
+                                                <SheetTitle className="px-4 mb-2">Admin Navigation</SheetTitle>
+                                                <div className="flex flex-col space-y-2 px-4">
+                                                    {adminNavItems.map((item) => (
+                                                        <AdminMobileNavLink key={item.to} to={item.to}
+                                                                            onClick={() => setIsOpen(false)}>
+                                                            <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                            {item.label}
+                                                        </AdminMobileNavLink>
+                                                    ))}
+                                                    {/* Store Mobile Links - Separator already exists in provided file content */}
+                                                    <div
+                                                        className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
+                                                    {/* Store Mobile Menu - Collapsible */}
+                                                    <div className="px-4 py-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setIsStoreMobileOpen(!isStoreMobileOpen);
+                                                            }}
+                                                            className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
+                                                        >
+                                                            <ShoppingBag className="h-5 w-5 mr-2"/>
+                                                            <span className="font-medium">Store</span>
+                                                            <span className="ml-auto">
+                                                            {isStoreMobileOpen ?
+                                                                <ChevronDown className="h-4 w-4"/> :
+                                                                <ChevronRight className="h-4 w-4"/>
+                                                            }
+                                                        </span>
+                                                        </button>
+                                                    </div>
+                                                    {isStoreMobileOpen && (
+                                                        <div className="pl-6 space-y-1 mb-2">
+                                                            {storeNavItems.map((item) => (
+                                                                <AdminMobileNavLink key={item.to} to={item.to}
+                                                                                    onClick={() => setIsOpen(false)}>
+                                                                    <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                                    {item.label}
+                                                                </AdminMobileNavLink>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Mobile Logout */}
+                                                    <Form action="/logout" method="post"
+                                                          className="mt-auto pt-4 px-4"> {/* Use mt-auto to push logout down */}
+                                                        <Button
+                                                            type="submit"
+                                                            variant="outline"
+                                                            className="w-full text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300"
+                                                            onClick={() => setIsOpen(false)}
+                                                        >
+                                                            <LogOut className="h-4 w-4 mr-1"/> Logout
+                                                        </Button>
+                                                    </Form>
                                                 </div>
-                                                {storeNavItems.map((item) => (
-                                                    <AdminMobileNavLink key={item.to} to={item.to}
-                                                                        onClick={() => setIsOpen(false)}>
-                                                        <item.icon className="h-5 w-5 mr-2 inline-block"/>
-                                                        {item.label}
-                                                    </AdminMobileNavLink>
-                                                ))}
-                                                {/* Mobile Logout */}
-                                                <Form action="/logout" method="post"
-                                                      className="mt-auto pt-4 px-4"> {/* Use mt-auto to push logout down */}
-                                                    <Button
-                                                        type="submit"
-                                                        variant="outline"
-                                                        className="w-full text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300"
-                                                        onClick={() => setIsOpen(false)}
-                                                    >
-                                                        <LogOut className="h-4 w-4 mr-1"/> Logout
-                                                    </Button>
-                                                </Form>
                                             </div>
                                         </SheetContent>
                                     </Sheet>
@@ -247,7 +273,8 @@ function AdminStoreDropdown() {
                     <p>Store</p>
                 </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="start" className="mt-1"> {/* Add small margin-top */}
+            <DropdownMenuContent align="start"
+                                 className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto"> {/* Added height constraint and scrolling */}
                 {/* <DropdownMenuLabel>Store Management</DropdownMenuLabel> */}
                 {/* <DropdownMenuSeparator /> */}
                 {storeNavItems.map((item) => (

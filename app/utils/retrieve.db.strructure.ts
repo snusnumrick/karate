@@ -25,7 +25,7 @@ function postgresArrayToStringArray(postgresArray: unknown): string[] {
 
 
 
-type DatabaseSchema = {
+export type DatabaseSchema = {
     tables: Record<string, {
         columns: {
             column_name: string;

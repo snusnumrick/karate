@@ -46,7 +46,7 @@ $$
                 'paid_pending_pickup', -- Payment successful, ready for pickup
                 'completed', -- Order picked up
                 'cancelled' -- Order cancelled (e.g., payment failed, admin action)
-            );
+                );
         END IF;
     END
 $$;
@@ -70,13 +70,15 @@ $$;
 
 -- Add 'store_purchase' value to the enum if it doesn't already exist
 -- This handles the case where the enum exists but is missing the value
-DO $$
-BEGIN
-    ALTER TYPE public.payment_type_enum ADD VALUE IF NOT EXISTS 'store_purchase';
-EXCEPTION
-    WHEN duplicate_object THEN -- Handle potential race condition if run concurrently
-        RAISE NOTICE 'Value "store_purchase" already exists in enum payment_type_enum.';
-END $$;
+DO
+$$
+    BEGIN
+        ALTER TYPE public.payment_type_enum ADD VALUE IF NOT EXISTS 'store_purchase';
+    EXCEPTION
+        WHEN duplicate_object THEN -- Handle potential race condition if run concurrently
+            RAISE NOTICE 'Value "store_purchase" already exists in enum payment_type_enum.';
+    END
+$$;
 
 
 -- Create tables with IF NOT EXISTS to avoid errors on subsequent runs
@@ -171,208 +173,271 @@ $$;
 -- --- Store Related Tables ---
 
 -- Products Table (e.g., Gi, T-Shirt)
-CREATE TABLE IF NOT EXISTS public.products (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    name text NOT NULL UNIQUE,
-    description text NULL,
-    image_url text NULL, -- URL to image in Supabase Storage
-    is_active boolean NOT NULL DEFAULT true, -- To show/hide product
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS public.products
+(
+    id          uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    name        text                                               NOT NULL UNIQUE,
+    description text                                               NULL,
+    image_url   text                                               NULL,                  -- URL to image in Supabase Storage
+    is_active   boolean                                            NOT NULL DEFAULT true, -- To show/hide product
+    created_at  timestamp with time zone DEFAULT now()             NOT NULL,
+    updated_at  timestamp with time zone DEFAULT now()             NOT NULL
 );
 
 -- Enable RLS for products
-ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products
+    ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for products
-DO $$ BEGIN
-    -- Allow authenticated users to view active products
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow authenticated users to view active products' AND tablename = 'products') THEN
-        CREATE POLICY "Allow authenticated users to view active products" ON public.products
-        FOR SELECT TO authenticated USING (is_active = true);
-    END IF;
-    -- Allow admins to manage products
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage products' AND tablename = 'products') THEN
-        CREATE POLICY "Allow admins to manage products" ON public.products
-        FOR ALL USING (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        ) WITH CHECK (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        );
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        -- Allow authenticated users to view active products
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow authenticated users to view active products'
+                         AND tablename = 'products') THEN
+            CREATE POLICY "Allow authenticated users to view active products" ON public.products
+                FOR SELECT TO authenticated USING (is_active = true);
+        END IF;
+        -- Allow admins to manage products
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage products' AND tablename = 'products') THEN
+            CREATE POLICY "Allow admins to manage products" ON public.products
+                FOR ALL USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
 
 -- Add update timestamp trigger for products table
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'products_updated') THEN
-        CREATE TRIGGER products_updated
-            BEFORE UPDATE ON public.products
-            FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'products_updated') THEN
+            CREATE TRIGGER products_updated
+                BEFORE UPDATE
+                ON public.products
+                FOR EACH ROW
+            EXECUTE FUNCTION public.update_modified_column();
+        END IF;
+    END
+$$;
 
 
 -- Product Variants Table (Handles Size, Price, Stock)
-CREATE TABLE IF NOT EXISTS public.product_variants (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    product_id uuid NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
-    size text NOT NULL, -- e.g., 'YM', 'AS', 'Size 3', '120cm'
-    price_in_cents integer NOT NULL CHECK (price_in_cents >= 0),
-    stock_quantity integer NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
-    is_active boolean NOT NULL DEFAULT true, -- To show/hide specific variant/size
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT unique_product_size UNIQUE (product_id, size) -- Ensure only one entry per product/size
+CREATE TABLE IF NOT EXISTS public.product_variants
+(
+    id             uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    product_id     uuid                                               NOT NULL REFERENCES public.products (id) ON DELETE CASCADE,
+    size           text                                               NOT NULL,              -- e.g., 'YM', 'AS', 'Size 3', '120cm'
+    price_in_cents integer                                            NOT NULL CHECK (price_in_cents >= 0),
+    stock_quantity integer                                            NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    is_active      boolean                                            NOT NULL DEFAULT true, -- To show/hide specific variant/size
+    created_at     timestamp with time zone DEFAULT now()             NOT NULL,
+    updated_at     timestamp with time zone DEFAULT now()             NOT NULL,
+    CONSTRAINT unique_product_size UNIQUE (product_id, size)                                 -- Ensure only one entry per product/size
 );
 
 -- Add indexes
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_product_variants_product_id') THEN
-        CREATE INDEX idx_product_variants_product_id ON public.product_variants(product_id);
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_product_variants_product_id') THEN
+            CREATE INDEX idx_product_variants_product_id ON public.product_variants (product_id);
+        END IF;
+    END
+$$;
 
 -- Enable RLS for product_variants
-ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_variants
+    ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for product_variants
-DO $$ BEGIN
-    -- Allow authenticated users to view active variants of active products
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow authenticated users to view active variants' AND tablename = 'product_variants') THEN
-        CREATE POLICY "Allow authenticated users to view active variants" ON public.product_variants
-        FOR SELECT TO authenticated USING (
-            product_variants.is_active = true AND
-            EXISTS (SELECT 1 FROM public.products p WHERE p.id = product_variants.product_id AND p.is_active = true)
-        );
-    END IF;
-    -- Allow admins to manage variants
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage product variants' AND tablename = 'product_variants') THEN
-        CREATE POLICY "Allow admins to manage product variants" ON public.product_variants
-        FOR ALL USING (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        ) WITH CHECK (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        );
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        -- Allow authenticated users to view active variants of active products
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow authenticated users to view active variants'
+                         AND tablename = 'product_variants') THEN
+            CREATE POLICY "Allow authenticated users to view active variants" ON public.product_variants
+                FOR SELECT TO authenticated USING (
+                product_variants.is_active = true AND
+                EXISTS (SELECT 1 FROM public.products p WHERE p.id = product_variants.product_id AND p.is_active = true)
+                );
+        END IF;
+        -- Allow admins to manage variants
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage product variants'
+                         AND tablename = 'product_variants') THEN
+            CREATE POLICY "Allow admins to manage product variants" ON public.product_variants
+                FOR ALL USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
 
 -- Add update timestamp trigger for product_variants table
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'product_variants_updated') THEN
-        CREATE TRIGGER product_variants_updated
-            BEFORE UPDATE ON public.product_variants
-            FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'product_variants_updated') THEN
+            CREATE TRIGGER product_variants_updated
+                BEFORE UPDATE
+                ON public.product_variants
+                FOR EACH ROW
+            EXECUTE FUNCTION public.update_modified_column();
+        END IF;
+    END
+$$;
 
 
 -- Orders Table
-CREATE TABLE IF NOT EXISTS public.orders (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    family_id uuid NOT NULL REFERENCES public.families(id) ON DELETE RESTRICT, -- Don't delete family if orders exist
-    student_id uuid NULL REFERENCES public.students(id) ON DELETE SET NULL, -- Optional: Link to specific student
-    order_date timestamp with time zone DEFAULT now() NOT NULL,
-    total_amount_cents integer NOT NULL CHECK (total_amount_cents >= 0), -- Total including taxes, matches payment total
-    status public.order_status NOT NULL DEFAULT 'pending_payment',
-    pickup_notes text NULL, -- Notes for admin regarding pickup
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS public.orders
+(
+    id                 uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    family_id          uuid                                               NOT NULL REFERENCES public.families (id) ON DELETE RESTRICT, -- Don't delete family if orders exist
+    student_id         uuid                                               NULL REFERENCES public.students (id) ON DELETE SET NULL,     -- Optional: Link to specific student
+    order_date         timestamp with time zone DEFAULT now()             NOT NULL,
+    total_amount_cents integer                                            NOT NULL CHECK (total_amount_cents >= 0),                    -- Total including taxes, matches payment total
+    status             public.order_status                                NOT NULL DEFAULT 'pending_payment',
+    pickup_notes       text                                               NULL,                                                        -- Notes for admin regarding pickup
+    created_at         timestamp with time zone DEFAULT now()             NOT NULL,
+    updated_at         timestamp with time zone DEFAULT now()             NOT NULL
 );
 
 -- Add indexes
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_family_id') THEN
-        CREATE INDEX idx_orders_family_id ON public.orders(family_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_student_id') THEN
-        CREATE INDEX idx_orders_student_id ON public.orders(student_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_status') THEN
-        CREATE INDEX idx_orders_status ON public.orders(status);
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_family_id') THEN
+            CREATE INDEX idx_orders_family_id ON public.orders (family_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_student_id') THEN
+            CREATE INDEX idx_orders_student_id ON public.orders (student_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_status') THEN
+            CREATE INDEX idx_orders_status ON public.orders (status);
+        END IF;
+    END
+$$;
 
 -- Enable RLS for orders
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders
+    ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for orders
-DO $$ BEGIN
-    -- Allow family members to view their own orders
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view their orders' AND tablename = 'orders') THEN
-        CREATE POLICY "Allow family members to view their orders" ON public.orders
-        FOR SELECT USING (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.family_id = orders.family_id)
-        );
-    END IF;
-    -- Allow admins to manage all orders
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage orders' AND tablename = 'orders') THEN
-        CREATE POLICY "Allow admins to manage orders" ON public.orders
-        FOR ALL USING (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        ) WITH CHECK (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        );
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        -- Allow family members to view their own orders
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow family members to view their orders' AND tablename = 'orders') THEN
+            CREATE POLICY "Allow family members to view their orders" ON public.orders
+                FOR SELECT USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.family_id = orders.family_id)
+                );
+        END IF;
+        -- Allow admins to manage all orders
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage orders' AND tablename = 'orders') THEN
+            CREATE POLICY "Allow admins to manage orders" ON public.orders
+                FOR ALL USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
 
 -- Add update timestamp trigger for orders table
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'orders_updated') THEN
-        CREATE TRIGGER orders_updated
-            BEFORE UPDATE ON public.orders
-            FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'orders_updated') THEN
+            CREATE TRIGGER orders_updated
+                BEFORE UPDATE
+                ON public.orders
+                FOR EACH ROW
+            EXECUTE FUNCTION public.update_modified_column();
+        END IF;
+    END
+$$;
 
 
 -- Order Items Table (Junction between Orders and Product Variants)
-CREATE TABLE IF NOT EXISTS public.order_items (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-    product_variant_id uuid NOT NULL REFERENCES public.product_variants(id) ON DELETE RESTRICT, -- Don't delete variant if ordered
-    quantity integer NOT NULL CHECK (quantity > 0),
-    price_per_item_cents integer NOT NULL CHECK (price_per_item_cents >= 0), -- Price at the time of order
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS public.order_items
+(
+    id                   uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    order_id             uuid                                               NOT NULL REFERENCES public.orders (id) ON DELETE CASCADE,
+    product_variant_id   uuid                                               NOT NULL REFERENCES public.product_variants (id) ON DELETE RESTRICT, -- Don't delete variant if ordered
+    quantity             integer                                            NOT NULL CHECK (quantity > 0),
+    price_per_item_cents integer                                            NOT NULL CHECK (price_per_item_cents >= 0),                          -- Price at the time of order
+    created_at           timestamp with time zone DEFAULT now()             NOT NULL
     -- No updated_at needed here usually
 );
 
 -- Add indexes
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_order_items_order_id') THEN
-        CREATE INDEX idx_order_items_order_id ON public.order_items(order_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_order_items_product_variant_id') THEN
-        CREATE INDEX idx_order_items_product_variant_id ON public.order_items(product_variant_id);
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_order_items_order_id') THEN
+            CREATE INDEX idx_order_items_order_id ON public.order_items (order_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_order_items_product_variant_id') THEN
+            CREATE INDEX idx_order_items_product_variant_id ON public.order_items (product_variant_id);
+        END IF;
+    END
+$$;
 
 -- Enable RLS for order_items
-ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_items
+    ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for order_items
-DO $$ BEGIN
-    -- Allow family members to view items belonging to their orders
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view their order items' AND tablename = 'order_items') THEN
-        CREATE POLICY "Allow family members to view their order items" ON public.order_items
-        FOR SELECT USING (
-            EXISTS (
-                SELECT 1
-                FROM public.orders o
-                JOIN public.profiles p ON o.family_id = p.family_id
-                WHERE order_items.order_id = o.id AND p.id = auth.uid()
-            )
-        );
-    END IF;
-    -- Allow admins to manage all order items
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage order items' AND tablename = 'order_items') THEN
-        CREATE POLICY "Allow admins to manage order items" ON public.order_items
-        FOR ALL USING (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        ) WITH CHECK (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        );
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        -- Allow family members to view items belonging to their orders
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow family members to view their order items'
+                         AND tablename = 'order_items') THEN
+            CREATE POLICY "Allow family members to view their order items" ON public.order_items
+                FOR SELECT USING (
+                EXISTS (SELECT 1
+                        FROM public.orders o
+                                 JOIN public.profiles p ON o.family_id = p.family_id
+                        WHERE order_items.order_id = o.id
+                          AND p.id = auth.uid())
+                );
+        END IF;
+        -- Allow admins to manage all order items
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage order items' AND tablename = 'order_items') THEN
+            CREATE POLICY "Allow admins to manage order items" ON public.order_items
+                FOR ALL USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
 
 -- --- End Store Related Tables ---
 
@@ -380,40 +445,52 @@ END $$;
 -- Payments table
 CREATE TABLE IF NOT EXISTS payments
 (
-    id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    family_id                uuid REFERENCES families (id) ON DELETE CASCADE NOT NULL,
+    id                uuid PRIMARY KEY                                         DEFAULT gen_random_uuid(),
+    family_id         uuid REFERENCES families (id) ON DELETE CASCADE NOT NULL,
     -- Replace 'amount' with subtotal, tax, and total (store in cents as integers)
-    subtotal_amount          integer NOT NULL CHECK (subtotal_amount >= 0),
+    subtotal_amount   integer                                         NOT NULL CHECK (subtotal_amount >= 0),
     -- tax_amount removed, will be stored in payment_taxes junction table
-    total_amount             integer NOT NULL CHECK (total_amount >= 0), -- Now subtotal + sum of payment_taxes
-    payment_date             date NULL, -- Set on successful completion
-    payment_method           text NULL, -- Method might be determined by Stripe/provider
-    status                   payment_status NOT NULL DEFAULT 'pending',
-    stripe_session_id        text NULL, -- Added for Stripe integration
-    receipt_url              text NULL, -- Added for Stripe integration
-    card_last4               text NULL  -- Added for card last 4 digits display,
+    total_amount      integer                                         NOT NULL CHECK (total_amount >= 0), -- Now subtotal + sum of payment_taxes
+    payment_date      date                                            NULL,                               -- Set on successful completion
+    payment_method    text                                            NULL,                               -- Method might be determined by Stripe/provider
+    status            payment_status                                  NOT NULL DEFAULT 'pending',
+    stripe_session_id text                                            NULL,                               -- Added for Stripe integration
+    receipt_url       text                                            NULL,                               -- Added for Stripe integration
+    card_last4        text                                            NULL                                -- Added for card last 4 digits display,
 );
 
 -- Add columns idempotently if table already exists
 -- Add subtotal and total columns (integers for cents) if they don't exist
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS subtotal_amount integer NULL CHECK (subtotal_amount >= 0);
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS total_amount integer NULL CHECK (total_amount >= 0);
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS subtotal_amount integer NULL CHECK (subtotal_amount >= 0);
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS total_amount integer NULL CHECK (total_amount >= 0);
 
 -- Drop the old single tax_amount column if it exists
-ALTER TABLE payments DROP COLUMN IF EXISTS tax_amount;
+ALTER TABLE payments
+    DROP COLUMN IF EXISTS tax_amount;
 
 -- Drop the old numeric amount column if it exists (kept from previous state)
-ALTER TABLE payments DROP COLUMN IF EXISTS amount;
+ALTER TABLE payments
+    DROP COLUMN IF EXISTS amount;
 
 -- Add other columns idempotently
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_session_id text NULL; -- Keep for potential legacy data or other flows
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_payment_intent_id text NULL; -- Add Payment Intent ID
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_url text NULL;
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS card_last4 text NULL; -- Add card_last4 column
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS stripe_session_id text NULL; -- Keep for potential legacy data or other flows
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS stripe_payment_intent_id text NULL; -- Add Payment Intent ID
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS receipt_url text NULL;
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS card_last4 text NULL;
+-- Add card_last4 column
 
 -- Modify existing columns to be nullable if needed (optional, depends on if script was run before)
-ALTER TABLE payments ALTER COLUMN payment_date DROP NOT NULL; -- Make payment_date nullable
-ALTER TABLE payments ALTER COLUMN payment_method DROP NOT NULL; -- Make payment_method nullable
+ALTER TABLE payments
+    ALTER COLUMN payment_date DROP NOT NULL; -- Make payment_date nullable
+ALTER TABLE payments
+    ALTER COLUMN payment_method DROP NOT NULL;
+-- Make payment_method nullable
 
 -- Add payment type column idempotently
 ALTER TABLE public.payments
@@ -431,23 +508,26 @@ ALTER TABLE public.payments
 
 -- Add order_id column idempotently (link to the new orders table)
 ALTER TABLE public.payments
-    ADD COLUMN IF NOT EXISTS order_id uuid NULL REFERENCES public.orders(id) ON DELETE SET NULL; -- Allow null, set null if order deleted
+    ADD COLUMN IF NOT EXISTS order_id uuid NULL REFERENCES public.orders (id) ON DELETE SET NULL;
+-- Allow null, set null if order deleted
 
 -- Make type column non-nullable (only if it exists and is currently nullable)
 -- This assumes the ADD COLUMN above succeeded or it already existed.
 -- We check if it's nullable before trying to set NOT NULL.
-DO $$
+DO
+$$
     BEGIN
-        IF EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'payments'
-              AND column_name = 'type'
-              AND is_nullable = 'YES'
-        ) THEN
-            ALTER TABLE public.payments ALTER COLUMN type SET NOT NULL;
+        IF EXISTS (SELECT 1
+                   FROM information_schema.columns
+                   WHERE table_schema = 'public'
+                     AND table_name = 'payments'
+                     AND column_name = 'type'
+                     AND is_nullable = 'YES') THEN
+            ALTER TABLE public.payments
+                ALTER COLUMN type SET NOT NULL;
         END IF;
-    END $$;
+    END
+$$;
 
 
 DO
@@ -802,22 +882,24 @@ $$;
 -- Profiles table
 CREATE TABLE IF NOT EXISTS profiles
 (
-    id        uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
-    email     text NOT NULL,
-    role      text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'instructor')),
-    family_id uuid REFERENCES families (id) ON DELETE SET NULL,
+    id         uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+    email      text NOT NULL,
+    role       text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'instructor')),
+    family_id  uuid REFERENCES families (id) ON DELETE SET NULL,
     -- Add first_name and last_name columns
     first_name text NULL,
-    last_name text NULL
+    last_name  text NULL
 );
 
 -- Add columns idempotently if they don't exist
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS first_name text NULL;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_name text NULL;
+ALTER TABLE profiles
+    ADD COLUMN IF NOT EXISTS first_name text NULL;
+ALTER TABLE profiles
+    ADD COLUMN IF NOT EXISTS last_name text NULL;
 
 -- Add family_id column idempotently before attempting to index it
 ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS family_id uuid REFERENCES families(id) ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS family_id uuid REFERENCES families (id) ON DELETE SET NULL;
 
 DO
 $$
@@ -887,100 +969,121 @@ ALTER TABLE profiles
 -- New Tax Tables --
 
 -- Tax Rates Table
-CREATE TABLE IF NOT EXISTS public.tax_rates (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    name text NOT NULL UNIQUE, -- e.g., 'GST', 'PST_BC'
-    rate numeric(5, 4) NOT NULL CHECK (rate >= 0 AND rate < 1), -- e.g., 0.05 for 5%
-    description text NULL,
-    region text NULL, -- e.g., 'BC', 'CA' (for federal) - Can be used for filtering applicability
-    is_active boolean NOT NULL DEFAULT true, -- To enable/disable taxes
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS public.tax_rates
+(
+    id          uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    name        text                                               NOT NULL UNIQUE,                         -- e.g., 'GST', 'PST_BC'
+    rate        numeric(5, 4)                                      NOT NULL CHECK (rate >= 0 AND rate < 1), -- e.g., 0.05 for 5%
+    description text                                               NULL,
+    region      text                                               NULL,                                    -- e.g., 'BC', 'CA' (for federal) - Can be used for filtering applicability
+    is_active   boolean                                            NOT NULL DEFAULT true,                   -- To enable/disable taxes
+    created_at  timestamp with time zone DEFAULT now()             NOT NULL,
+    updated_at  timestamp with time zone DEFAULT now()             NOT NULL
 );
 
 -- Enable RLS for tax_rates (Admins manage, Authenticated users can view active ones)
-ALTER TABLE public.tax_rates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tax_rates
+    ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow authenticated users to view active tax rates' AND tablename = 'tax_rates') THEN
-        CREATE POLICY "Allow authenticated users to view active tax rates" ON public.tax_rates
-        FOR SELECT TO authenticated USING (is_active = true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage tax rates' AND tablename = 'tax_rates') THEN
-        CREATE POLICY "Allow admins to manage tax rates" ON public.tax_rates
-        FOR ALL USING (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        ) WITH CHECK (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        );
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow authenticated users to view active tax rates'
+                         AND tablename = 'tax_rates') THEN
+            CREATE POLICY "Allow authenticated users to view active tax rates" ON public.tax_rates
+                FOR SELECT TO authenticated USING (is_active = true);
+        END IF;
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage tax rates' AND tablename = 'tax_rates') THEN
+            CREATE POLICY "Allow admins to manage tax rates" ON public.tax_rates
+                FOR ALL USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
 
 -- Insert initial tax rates (BC Example) - Make idempotent
 INSERT INTO public.tax_rates (name, rate, description, region, is_active)
-VALUES
-    ('GST', 0.05, 'Goods and Services Tax', 'CA', true),
-    ('PST_BC', 0.07, 'Provincial Sales Tax (British Columbia)', 'BC', true)
-ON CONFLICT (name) DO UPDATE SET
-    rate = EXCLUDED.rate,
-    description = EXCLUDED.description,
-    region = EXCLUDED.region,
-    is_active = EXCLUDED.is_active,
-    updated_at = now();
+VALUES ('GST', 0.05, 'Goods and Services Tax', 'CA', true),
+       ('PST_BC', 0.07, 'Provincial Sales Tax (British Columbia)', 'BC', true)
+ON CONFLICT (name) DO UPDATE SET rate        = EXCLUDED.rate,
+                                 description = EXCLUDED.description,
+                                 region      = EXCLUDED.region,
+                                 is_active   = EXCLUDED.is_active,
+                                 updated_at  = now();
 
 
 -- Payment Taxes Junction Table
-CREATE TABLE IF NOT EXISTS public.payment_taxes (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    payment_id uuid NOT NULL REFERENCES public.payments(id) ON DELETE CASCADE,
-    tax_rate_id uuid NOT NULL REFERENCES public.tax_rates(id) ON DELETE RESTRICT, -- Don't delete tax rate if used
-    tax_amount integer NOT NULL CHECK (tax_amount >= 0), -- Tax amount in cents for this specific tax on this payment
-    tax_rate_snapshot numeric(5, 4) NOT NULL, -- Store the rate applied at the time of payment
-    tax_name_snapshot text NOT NULL, -- Store the name at the time of payment
-    tax_description_snapshot text NULL, -- Store the description at the time of payment
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS public.payment_taxes
+(
+    id                       uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    payment_id               uuid                                               NOT NULL REFERENCES public.payments (id) ON DELETE CASCADE,
+    tax_rate_id              uuid                                               NOT NULL REFERENCES public.tax_rates (id) ON DELETE RESTRICT, -- Don't delete tax rate if used
+    tax_amount               integer                                            NOT NULL CHECK (tax_amount >= 0),                             -- Tax amount in cents for this specific tax on this payment
+    tax_rate_snapshot        numeric(5, 4)                                      NOT NULL,                                                     -- Store the rate applied at the time of payment
+    tax_name_snapshot        text                                               NOT NULL,                                                     -- Store the name at the time of payment
+    tax_description_snapshot text                                               NULL,                                                         -- Store the description at the time of payment
+    created_at               timestamp with time zone DEFAULT now()             NOT NULL
 );
 
 -- Add tax_description_snapshot column idempotently
-ALTER TABLE public.payment_taxes ADD COLUMN IF NOT EXISTS tax_description_snapshot text NULL;
+ALTER TABLE public.payment_taxes
+    ADD COLUMN IF NOT EXISTS tax_description_snapshot text NULL;
 
 -- Add indexes
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_payment_id') THEN
-        CREATE INDEX idx_payment_taxes_payment_id ON public.payment_taxes(payment_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_tax_rate_id') THEN
-        CREATE INDEX idx_payment_taxes_tax_rate_id ON public.payment_taxes(tax_rate_id);
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_payment_id') THEN
+            CREATE INDEX idx_payment_taxes_payment_id ON public.payment_taxes (payment_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_tax_rate_id') THEN
+            CREATE INDEX idx_payment_taxes_tax_rate_id ON public.payment_taxes (tax_rate_id);
+        END IF;
+    END
+$$;
 
 -- Enable RLS for payment_taxes
-ALTER TABLE public.payment_taxes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_taxes
+    ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-    -- Allow family members to view taxes linked to their payments
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view their payment taxes' AND tablename = 'payment_taxes') THEN
-        CREATE POLICY "Allow family members to view their payment taxes" ON public.payment_taxes
-        FOR SELECT USING (
-            EXISTS (
-                SELECT 1
-                FROM public.payments pay
-                JOIN public.profiles p ON pay.family_id = p.family_id
-                WHERE payment_taxes.payment_id = pay.id AND p.id = auth.uid()
-            )
-        );
-    END IF;
+DO
+$$
+    BEGIN
+        -- Allow family members to view taxes linked to their payments
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow family members to view their payment taxes'
+                         AND tablename = 'payment_taxes') THEN
+            CREATE POLICY "Allow family members to view their payment taxes" ON public.payment_taxes
+                FOR SELECT USING (
+                EXISTS (SELECT 1
+                        FROM public.payments pay
+                                 JOIN public.profiles p ON pay.family_id = p.family_id
+                        WHERE payment_taxes.payment_id = pay.id
+                          AND p.id = auth.uid())
+                );
+        END IF;
 
-    -- Allow admins to manage all payment taxes
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage payment taxes' AND tablename = 'payment_taxes') THEN
-        CREATE POLICY "Allow admins to manage payment taxes" ON public.payment_taxes
-        FOR ALL USING (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        ) WITH CHECK (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-        );
-    END IF;
-END $$;
+        -- Allow admins to manage all payment taxes
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage payment taxes' AND tablename = 'payment_taxes') THEN
+            CREATE POLICY "Allow admins to manage payment taxes" ON public.payment_taxes
+                FOR ALL USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
 
 -- End New Tax Tables --
 
@@ -991,7 +1094,8 @@ $$
         -- Check if policy exists before creating/replacing
         -- Modify policy to allow viewing own profile OR admin/instructor profiles
         DROP POLICY IF EXISTS "Profiles are viewable by user or admin role" ON public.profiles; -- Drop potentially existing policy
-        DROP POLICY IF EXISTS "Profiles are viewable by user" ON public.profiles; -- Drop older policy if exists
+        DROP POLICY IF EXISTS "Profiles are viewable by user" ON public.profiles;
+        -- Drop older policy if exists
 
         -- Check if the target policy already exists before creating it
         IF NOT EXISTS (SELECT 1
@@ -1000,11 +1104,11 @@ $$
                          AND policyname = 'Profiles viewable by user, admin, or instructor') THEN
             CREATE POLICY "Profiles viewable by user, admin, or instructor" ON public.profiles
                 FOR SELECT USING (
-                    auth.uid() = id -- Can view own profile
+                auth.uid() = id -- Can view own profile
                     OR
-                    role = 'admin' -- Can view admin profiles
+                role = 'admin' -- Can view admin profiles
                     OR
-                    role = 'instructor' -- Can view instructor profiles (needed for recipient list)
+                role = 'instructor' -- Can view instructor profiles (needed for recipient list)
                 );
         END IF;
 
@@ -1055,10 +1159,10 @@ $$
             CREATE POLICY "Family members can insert students into their family" ON students
                 FOR INSERT
                 WITH CHECK (
-                    EXISTS (SELECT 1
-                            FROM profiles
-                            WHERE profiles.id = auth.uid()
-                              AND profiles.family_id = students.family_id)
+                EXISTS (SELECT 1
+                        FROM profiles
+                        WHERE profiles.id = auth.uid()
+                          AND profiles.family_id = students.family_id)
                 );
         END IF;
 
@@ -1203,7 +1307,8 @@ CREATE OR REPLACE FUNCTION public.count_successful_student_payments(p_student_id
     RETURNS INT
     LANGUAGE plpgsql
     SECURITY DEFINER -- Important for accessing payments table across users if needed by admin/server logic
-AS $$
+AS
+$$
 DECLARE
     payment_count INT;
 BEGIN
@@ -1234,65 +1339,79 @@ SELECT * FROM pg_policies;
 
 
 -- 1. Create the table to track purchased 1:1 sessions (idempotently)
-CREATE TABLE IF NOT EXISTS public.one_on_one_sessions ( -- Add IF NOT EXISTS
-                                            id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-                                            payment_id uuid NOT NULL REFERENCES public.payments(id) ON DELETE CASCADE,
-                                            family_id uuid NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
-                                            purchase_date timestamp with time zone DEFAULT now() NOT NULL,
-                                            quantity_purchased integer NOT NULL CHECK (quantity_purchased > 0),
-                                            quantity_remaining integer NOT NULL CHECK (quantity_remaining >= 0),
-                                            created_at timestamp with time zone DEFAULT now() NOT NULL,
-                                            updated_at timestamp with time zone DEFAULT now() NOT NULL,
-                                            CONSTRAINT check_remaining_not_greater_than_purchased CHECK (quantity_remaining <= quantity_purchased)
+CREATE TABLE IF NOT EXISTS public.one_on_one_sessions
+( -- Add IF NOT EXISTS
+    id                 uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    payment_id         uuid                                               NOT NULL REFERENCES public.payments (id) ON DELETE CASCADE,
+    family_id          uuid                                               NOT NULL REFERENCES public.families (id) ON DELETE CASCADE,
+    purchase_date      timestamp with time zone DEFAULT now()             NOT NULL,
+    quantity_purchased integer                                            NOT NULL CHECK (quantity_purchased > 0),
+    quantity_remaining integer                                            NOT NULL CHECK (quantity_remaining >= 0),
+    created_at         timestamp with time zone DEFAULT now()             NOT NULL,
+    updated_at         timestamp with time zone DEFAULT now()             NOT NULL,
+    CONSTRAINT check_remaining_not_greater_than_purchased CHECK (quantity_remaining <= quantity_purchased)
 );
 
 -- Add indexes for common queries (idempotently)
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_family_id') THEN
-        CREATE INDEX idx_one_on_one_sessions_family_id ON public.one_on_one_sessions(family_id);
-    END IF;
-END $$;
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_payment_id') THEN
-        CREATE INDEX idx_one_on_one_sessions_payment_id ON public.one_on_one_sessions(payment_id);
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_family_id') THEN
+            CREATE INDEX idx_one_on_one_sessions_family_id ON public.one_on_one_sessions (family_id);
+        END IF;
+    END
+$$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_payment_id') THEN
+            CREATE INDEX idx_one_on_one_sessions_payment_id ON public.one_on_one_sessions (payment_id);
+        END IF;
+    END
+$$;
 
 -- Enable Row Level Security (Important!)
-ALTER TABLE public.one_on_one_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.one_on_one_sessions
+    ENABLE ROW LEVEL SECURITY;
 
 -- Grant access to authenticated users
-DO $$ BEGIN
-    -- Allow families to view their own session balances
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view their own sessions' AND tablename = 'one_on_one_sessions') THEN
-        CREATE POLICY "Allow family members to view their own sessions" ON public.one_on_one_sessions
-        FOR SELECT USING (
-            EXISTS (
-                SELECT 1
-                FROM public.profiles p
-                WHERE p.id = auth.uid() AND p.family_id = one_on_one_sessions.family_id
-            )
-        );
-    END IF;
+DO
+$$
+    BEGIN
+        -- Allow families to view their own session balances
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow family members to view their own sessions'
+                         AND tablename = 'one_on_one_sessions') THEN
+            CREATE POLICY "Allow family members to view their own sessions" ON public.one_on_one_sessions
+                FOR SELECT USING (
+                EXISTS (SELECT 1
+                        FROM public.profiles p
+                        WHERE p.id = auth.uid()
+                          AND p.family_id = one_on_one_sessions.family_id)
+                );
+        END IF;
 
-    -- Allow admins to manage all sessions (SELECT, INSERT, UPDATE, DELETE)
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage all sessions' AND tablename = 'one_on_one_sessions') THEN
-        CREATE POLICY "Allow admins to manage all sessions" ON public.one_on_one_sessions
-        FOR ALL USING (
-            EXISTS (
-                SELECT 1
-                FROM public.profiles p
-                WHERE p.id = auth.uid() AND p.role = 'admin'
-            )
-        ) WITH CHECK (
-            EXISTS (
-                SELECT 1
-                FROM public.profiles p
-                WHERE p.id = auth.uid() AND p.role = 'admin'
-            )
-        );
-    END IF;
-END $$;
+        -- Allow admins to manage all sessions (SELECT, INSERT, UPDATE, DELETE)
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage all sessions'
+                         AND tablename = 'one_on_one_sessions') THEN
+            CREATE POLICY "Allow admins to manage all sessions" ON public.one_on_one_sessions
+                FOR ALL USING (
+                EXISTS (SELECT 1
+                        FROM public.profiles p
+                        WHERE p.id = auth.uid()
+                          AND p.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1
+                        FROM public.profiles p
+                        WHERE p.id = auth.uid()
+                          AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
 
 -- Grant access to service_role (for backend operations) - Note: service_role bypasses RLS by default.
 -- Policies for service_role are typically not needed,
@@ -1300,70 +1419,88 @@ END $$;
 
 
 -- 2. Create the table to track usage of 1:1 sessions (idempotently)
-CREATE TABLE IF NOT EXISTS public.one_on_one_session_usage ( -- Add IF NOT EXISTS
-                                                 id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-                                                 session_purchase_id uuid NOT NULL REFERENCES public.one_on_one_sessions(id) ON DELETE RESTRICT, -- Prevent deleting purchase if usage exists
-                                                 student_id uuid NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
-                                                 usage_date timestamp with time zone DEFAULT now() NOT NULL,
-                                                 recorded_by uuid NULL REFERENCES auth.users(id) ON DELETE SET NULL, -- Link to admin user who recorded it
-                                                 notes text NULL,
-                                                 created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS public.one_on_one_session_usage
+(                                                                                                                                                  -- Add IF NOT EXISTS
+    id                  uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    session_purchase_id uuid                                               NOT NULL REFERENCES public.one_on_one_sessions (id) ON DELETE RESTRICT, -- Prevent deleting purchase if usage exists
+    student_id          uuid                                               NOT NULL REFERENCES public.students (id) ON DELETE CASCADE,
+    usage_date          timestamp with time zone DEFAULT now()             NOT NULL,
+    recorded_by         uuid                                               NULL REFERENCES auth.users (id) ON DELETE SET NULL,                     -- Link to admin user who recorded it
+    notes               text                                               NULL,
+    created_at          timestamp with time zone DEFAULT now()             NOT NULL
 );
 
 -- Add indexes (idempotently)
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_session_purchase_id') THEN
-        CREATE INDEX idx_one_on_one_session_usage_session_purchase_id ON public.one_on_one_session_usage(session_purchase_id);
-    END IF;
-END $$;
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_student_id') THEN
-        CREATE INDEX idx_one_on_one_session_usage_student_id ON public.one_on_one_session_usage(student_id);
-    END IF;
-END $$;
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_recorded_by') THEN
-        CREATE INDEX idx_one_on_one_session_usage_recorded_by ON public.one_on_one_session_usage(recorded_by);
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_indexes
+                       WHERE indexname = 'idx_one_on_one_session_usage_session_purchase_id') THEN
+            CREATE INDEX idx_one_on_one_session_usage_session_purchase_id ON public.one_on_one_session_usage (session_purchase_id);
+        END IF;
+    END
+$$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_student_id') THEN
+            CREATE INDEX idx_one_on_one_session_usage_student_id ON public.one_on_one_session_usage (student_id);
+        END IF;
+    END
+$$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_recorded_by') THEN
+            CREATE INDEX idx_one_on_one_session_usage_recorded_by ON public.one_on_one_session_usage (recorded_by);
+        END IF;
+    END
+$$;
 
 -- Enable Row Level Security
-ALTER TABLE public.one_on_one_session_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.one_on_one_session_usage
+    ENABLE ROW LEVEL SECURITY;
 
 -- Grant access policies as needed
-DO $$ BEGIN
-    -- Allow families to see usage linked to their sessions
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow family members to view usage of their sessions' AND tablename = 'one_on_one_session_usage') THEN
-        CREATE POLICY "Allow family members to view usage of their sessions" ON public.one_on_one_session_usage
-        FOR SELECT USING (
-            EXISTS (
-                SELECT 1
-                FROM public.one_on_one_sessions s
-                JOIN public.profiles p ON s.family_id = p.family_id
-                WHERE one_on_one_session_usage.session_purchase_id = s.id
-                  AND p.id = auth.uid()
-            )
-        );
-    END IF;
+DO
+$$
+    BEGIN
+        -- Allow families to see usage linked to their sessions
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow family members to view usage of their sessions'
+                         AND tablename = 'one_on_one_session_usage') THEN
+            CREATE POLICY "Allow family members to view usage of their sessions" ON public.one_on_one_session_usage
+                FOR SELECT USING (
+                EXISTS (SELECT 1
+                        FROM public.one_on_one_sessions s
+                                 JOIN public.profiles p ON s.family_id = p.family_id
+                        WHERE one_on_one_session_usage.session_purchase_id = s.id
+                          AND p.id = auth.uid())
+                );
+        END IF;
 
-    -- Allow admins to manage all session usage (SELECT, INSERT, UPDATE, DELETE)
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage session usage' AND tablename = 'one_on_one_session_usage') THEN
-        CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_session_usage
-        FOR ALL USING (
-            EXISTS (
-                SELECT 1
-                FROM public.profiles p
-                WHERE p.id = auth.uid() AND p.role = 'admin'
-            )
-        ) WITH CHECK (
-            EXISTS (
-                SELECT 1
-                FROM public.profiles p
-                WHERE p.id = auth.uid() AND p.role = 'admin'
-            )
-        );
-    END IF;
-END $$;
+        -- Allow admins to manage all session usage (SELECT, INSERT, UPDATE, DELETE)
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage session usage'
+                         AND tablename = 'one_on_one_session_usage') THEN
+            CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_session_usage
+                FOR ALL USING (
+                EXISTS (SELECT 1
+                        FROM public.profiles p
+                        WHERE p.id = auth.uid()
+                          AND p.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1
+                        FROM public.profiles p
+                        WHERE p.id = auth.uid()
+                          AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
 
 
 -- Optional: Create a function or view to easily get the remaining balance per family
@@ -1371,7 +1508,8 @@ CREATE OR REPLACE FUNCTION public.get_family_one_on_one_balance(p_family_id uuid
     RETURNS integer
     LANGUAGE sql
     STABLE -- Indicates the function doesn't modify the database
-AS $$
+AS
+$$
 SELECT COALESCE(SUM(quantity_remaining), 0)
 FROM public.one_on_one_sessions
 WHERE family_id = p_family_id;
@@ -1381,16 +1519,14 @@ $$;
 
 -- Or create a view (might be simpler for Remix loaders)
 CREATE OR REPLACE VIEW public.family_one_on_one_balance AS
-SELECT
-    family_id,
-    COALESCE(SUM(quantity_remaining), 0) AS total_remaining_sessions
-FROM
-    public.one_on_one_sessions
-GROUP BY
-    family_id;
+SELECT family_id,
+       COALESCE(SUM(quantity_remaining), 0) AS total_remaining_sessions
+FROM public.one_on_one_sessions
+GROUP BY family_id;
 
 -- Grant select access on the view
-GRANT SELECT ON public.family_one_on_one_balance TO authenticated; -- Or specific roles
+GRANT SELECT ON public.family_one_on_one_balance TO authenticated;
+-- Or specific roles
 -- RLS for views often relies on the underlying table policies or can be defined on the view itself if needed.
 
 -- Remove the RENAME statement as the enum is now created with the correct value
@@ -1404,25 +1540,28 @@ GRANT SELECT ON public.family_one_on_one_balance TO authenticated; -- Or specifi
 -- SECURITY DEFINER allows it to run with the privileges of the function owner (usually postgres)
 -- This bypasses RLS for the specific update operation, ensuring stock can be decremented by the webhook handler (via service_role client).
 CREATE OR REPLACE FUNCTION public.decrement_variant_stock(variant_id uuid, decrement_quantity integer)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER -- Important: Allows bypassing RLS for this specific operation
-AS $$
+    RETURNS void
+    LANGUAGE plpgsql
+    SECURITY DEFINER -- Important: Allows bypassing RLS for this specific operation
+AS
+$$
 BEGIN
-  UPDATE public.product_variants
-  SET stock_quantity = stock_quantity - decrement_quantity
-  WHERE id = variant_id AND stock_quantity >= decrement_quantity; -- Ensure stock doesn't go negative
+    UPDATE public.product_variants
+    SET stock_quantity = stock_quantity - decrement_quantity
+    WHERE id = variant_id
+      AND stock_quantity >= decrement_quantity;
+    -- Ensure stock doesn't go negative
 
-  -- Optional: Raise an exception if stock would go negative or variant not found
-  IF NOT FOUND THEN
-    -- Check if the variant exists at all
-    IF NOT EXISTS (SELECT 1 FROM public.product_variants WHERE id = variant_id) THEN
-        RAISE EXCEPTION 'Product variant with ID % not found.', variant_id;
-    ELSE
-        -- Variant exists, but stock was insufficient
-        RAISE EXCEPTION 'Insufficient stock for product variant ID %.', variant_id;
+    -- Optional: Raise an exception if stock would go negative or variant not found
+    IF NOT FOUND THEN
+        -- Check if the variant exists at all
+        IF NOT EXISTS (SELECT 1 FROM public.product_variants WHERE id = variant_id) THEN
+            RAISE EXCEPTION 'Product variant with ID % not found.', variant_id;
+        ELSE
+            -- Variant exists, but stock was insufficient
+            RAISE EXCEPTION 'Insufficient stock for product variant ID %.', variant_id;
+        END IF;
     END IF;
-  END IF;
 
 END;
 $$;
@@ -1435,82 +1574,74 @@ GRANT EXECUTE ON FUNCTION public.decrement_variant_stock(uuid, integer) TO servi
 -- Drop the function first if it exists, to allow changing the return type
 DROP FUNCTION IF EXISTS get_admin_conversation_summaries();
 CREATE OR REPLACE FUNCTION get_admin_conversation_summaries()
-    RETURNS TABLE (
-                      id UUID,
-                      subject TEXT,
-                      last_message_at TIMESTAMPTZ,
-                      participant_display_names TEXT,
-                      is_unread_by_admin BOOLEAN
-                  )
+    RETURNS TABLE
+            (
+                id                        UUID,
+                subject                   TEXT,
+                last_message_at           TIMESTAMPTZ,
+                participant_display_names TEXT,
+                is_unread_by_admin        BOOLEAN
+            )
     LANGUAGE sql
     SECURITY DEFINER
-AS $$
-WITH RelevantConversations AS (
-    SELECT c.id, c.subject, c.last_message_at
-    FROM conversations c
-),
-     ConversationParticipants AS (
-         SELECT DISTINCT
-             rc.id as conversation_id,
-             cp.user_id
-         FROM conversation_participants cp
-                  JOIN RelevantConversations rc ON cp.conversation_id = rc.id
-     ),
-     ParticipantDetails AS (
-         SELECT
-             cp.conversation_id,
-             p.id AS user_id,
-             p.first_name,
-             p.last_name,
-             p.role,
-             p.email,
-             f.name AS family_name
-         FROM ConversationParticipants cp
-                  JOIN profiles p ON cp.user_id = p.id
-                  LEFT JOIN families f ON p.family_id = f.id
-     ),
-     AggregatedNames AS (
-         SELECT
-             conversation_id,
-             COALESCE(
-                     CASE WHEN pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL THEN pd.family_name ELSE NULL END,
-                     CASE WHEN pd.first_name IS NOT NULL AND pd.last_name IS NOT NULL THEN pd.first_name || ' ' || pd.last_name ELSE NULL END,
-                     pd.first_name,
-                     pd.last_name,
-                     split_part(pd.email, '@', 1),
-                     'User ' || substr(pd.user_id::text, 1, 6)
-             ) AS display_name,
-             (pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL) as is_family_name
-         FROM ParticipantDetails pd
-     ),
-     FamilyParticipantNames AS (
-         SELECT conversation_id, string_agg(DISTINCT display_name, ', ') AS names
-         FROM AggregatedNames WHERE is_family_name = TRUE GROUP BY conversation_id
-     ),
-     OtherParticipantNames AS (
-         SELECT conversation_id, string_agg(DISTINCT display_name, ', ') AS names
-         FROM AggregatedNames WHERE is_family_name = FALSE GROUP BY conversation_id
-     ),
-     UnreadStatus AS (
-         SELECT
-             rc.id as conversation_id,
-             -- Directly use the result of EXISTS, which is BOOLEAN
-             EXISTS (
-                 SELECT 1
-                 FROM public.conversation_participants cp
-                          JOIN public.profiles p ON cp.user_id = p.id
-                 WHERE cp.conversation_id = rc.id
-                   AND p.role IN ('admin', 'instructor')
-                   AND cp.last_read_at < rc.last_message_at
-             ) as status_flag -- This is now a boolean
-         FROM RelevantConversations rc
-     )
-SELECT
-    rc.id,
-    COALESCE(rc.subject, 'Conversation with ' || COALESCE(fpn.names, opn.names, 'participants')),
-    rc.last_message_at,
-    COALESCE(fpn.names, opn.names, 'Conversation ' || substr(rc.id::text, 1, 6) || '...') AS participant_display_names,
-    us.status_flag AS is_unread_by_admin -- Use the renamed output column name here
+AS
+$$
+WITH RelevantConversations AS (SELECT c.id, c.subject, c.last_message_at
+                               FROM conversations c),
+     ConversationParticipants AS (SELECT DISTINCT rc.id as conversation_id,
+                                                  cp.user_id
+                                  FROM conversation_participants cp
+                                           JOIN RelevantConversations rc ON cp.conversation_id = rc.id),
+     ParticipantDetails AS (SELECT cp.conversation_id,
+                                   p.id   AS user_id,
+                                   p.first_name,
+                                   p.last_name,
+                                   p.role,
+                                   p.email,
+                                   f.name AS family_name
+                            FROM ConversationParticipants cp
+                                     JOIN profiles p ON cp.user_id = p.id
+                                     LEFT JOIN families f ON p.family_id = f.id),
+     AggregatedNames AS (SELECT conversation_id,
+                                COALESCE(
+                                        CASE
+                                            WHEN pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL
+                                                THEN pd.family_name
+                                            ELSE NULL END,
+                                        CASE
+                                            WHEN pd.first_name IS NOT NULL AND pd.last_name IS NOT NULL
+                                                THEN pd.first_name || ' ' || pd.last_name
+                                            ELSE NULL END,
+                                        pd.first_name,
+                                        pd.last_name,
+                                        split_part(pd.email, '@', 1),
+                                        'User ' || substr(pd.user_id::text, 1, 6)
+                                )                                                                       AS display_name,
+                                (pd.role NOT IN ('admin', 'instructor') AND pd.family_name IS NOT NULL) as is_family_name
+                         FROM ParticipantDetails pd),
+     FamilyParticipantNames AS (SELECT conversation_id, string_agg(DISTINCT display_name, ', ') AS names
+                                FROM AggregatedNames
+                                WHERE is_family_name = TRUE
+                                GROUP BY conversation_id),
+     OtherParticipantNames AS (SELECT conversation_id, string_agg(DISTINCT display_name, ', ') AS names
+                               FROM AggregatedNames
+                               WHERE is_family_name = FALSE
+                               GROUP BY conversation_id),
+     UnreadStatus AS (SELECT rc.id                                               as conversation_id,
+                             -- Directly use the result of EXISTS, which is BOOLEAN
+                             EXISTS (SELECT 1
+                                     FROM public.conversation_participants cp
+                                              JOIN public.profiles p ON cp.user_id = p.id
+                                     WHERE cp.conversation_id = rc.id
+                                       AND p.role IN ('admin', 'instructor')
+                                       AND cp.last_read_at < rc.last_message_at) as status_flag -- This is now a boolean
+                      FROM RelevantConversations rc)
+SELECT rc.id,
+       COALESCE(rc.subject, 'Conversation with ' || COALESCE(fpn.names, opn.names, 'participants')),
+       rc.last_message_at,
+       COALESCE(fpn.names, opn.names,
+                'Conversation ' || substr(rc.id::text, 1, 6) || '...') AS participant_display_names,
+       us.status_flag                                                  AS is_unread_by_admin -- Use the renamed output column name here
 FROM RelevantConversations rc
          LEFT JOIN FamilyParticipantNames fpn ON rc.id = fpn.conversation_id
          LEFT JOIN OtherParticipantNames opn ON rc.id = opn.conversation_id
@@ -1527,104 +1658,97 @@ GRANT EXECUTE ON FUNCTION get_admin_conversation_summaries() TO authenticated;
 -- Drop the function first if it exists, to allow changing the return type
 DROP FUNCTION IF EXISTS get_family_conversation_summaries(UUID);
 CREATE OR REPLACE FUNCTION get_family_conversation_summaries(p_user_id UUID)
-RETURNS TABLE (
-    id UUID,
-    subject TEXT,
-    last_message_at TIMESTAMPTZ,
-    participant_display_names TEXT,
-    unread_count BIGINT -- Changed from INT to BIGINT for count(*)
-)
-LANGUAGE sql
-SECURITY INVOKER -- Run as the calling user, respecting their RLS
-AS $$
+    RETURNS TABLE
+            (
+                id                        UUID,
+                subject                   TEXT,
+                last_message_at           TIMESTAMPTZ,
+                participant_display_names TEXT,
+                unread_count              BIGINT -- Changed from INT to BIGINT for count(*)
+            )
+    LANGUAGE sql
+    SECURITY INVOKER -- Run as the calling user, respecting their RLS
+AS
+$$
 WITH UserConversations AS (
     -- Find conversations the specific user is part of
     SELECT cp.conversation_id, cp.last_read_at
     FROM public.conversation_participants cp
-    WHERE cp.user_id = p_user_id
-),
-ConversationParticipants AS (
-    -- Get all participants for those conversations, excluding the calling user
-    SELECT
-        cp.conversation_id,
-        cp.user_id
-    FROM public.conversation_participants cp
-    JOIN UserConversations uc ON cp.conversation_id = uc.conversation_id
-    WHERE cp.user_id <> p_user_id -- Exclude the calling user themselves
-),
-ParticipantDetails AS (
-    -- Get profile details for the *other* participants
-    SELECT
-        cp.conversation_id,
-        p.id AS user_id,
-        p.first_name,
-        p.last_name,
-        p.role,
-        p.email -- Include email as fallback
-    FROM ConversationParticipants cp
-    JOIN public.profiles p ON cp.user_id = p.id
-    -- No need to join families here, family users see admin/instructor names
-),
-AggregatedNames AS (
-    -- Aggregate names for display
-    SELECT
-        conversation_id,
-        -- Use COALESCE to pick the first non-null name representation
-        COALESCE(
-            -- Full name if first and last name exist
-            CASE
-                WHEN pd.first_name IS NOT NULL AND pd.last_name IS NOT NULL THEN pd.first_name || ' ' || pd.last_name
-                ELSE NULL
-            END,
-            -- First name if only first name exists
-            pd.first_name,
-            -- Last name if only last name exists
-            pd.last_name,
-            -- Role if admin/instructor and name missing
-            CASE
-                WHEN pd.role IN ('admin', 'instructor') THEN initcap(pd.role) -- Capitalize role
-                ELSE NULL
-            END,
-            -- Email prefix as fallback
-            split_part(pd.email, '@', 1),
-            -- User ID prefix as last resort
-            'User ' || substr(pd.user_id::text, 1, 6)
-        ) AS display_name
-    FROM ParticipantDetails pd
-),
-FinalParticipantNames AS (
-    -- Aggregate unique display names per conversation
-    SELECT
-        conversation_id,
-        string_agg(DISTINCT display_name, ', ') AS names
-    FROM AggregatedNames
-    GROUP BY conversation_id
-),
-UnreadCounts AS (
-    -- Calculate unread messages for each conversation for the calling user
-    SELECT
-        uc.conversation_id,
-        COUNT(m.id) AS count
-    FROM UserConversations uc
-    LEFT JOIN public.messages m ON uc.conversation_id = m.conversation_id
-        -- Count messages created after the user's last read time for this conversation
-        -- Treat NULL last_read_at as infinitely old, so all messages are considered newer
-        AND m.created_at > COALESCE(uc.last_read_at, '-infinity'::timestamptz)
-        -- Exclude messages sent by the user themselves from the unread count
-        AND m.sender_id <> p_user_id
-    GROUP BY uc.conversation_id
-)
+    WHERE cp.user_id = p_user_id),
+     ConversationParticipants AS (
+         -- Get all participants for those conversations, excluding the calling user
+         SELECT cp.conversation_id,
+                cp.user_id
+         FROM public.conversation_participants cp
+                  JOIN UserConversations uc ON cp.conversation_id = uc.conversation_id
+         WHERE cp.user_id <> p_user_id -- Exclude the calling user themselves
+     ),
+     ParticipantDetails AS (
+         -- Get profile details for the *other* participants
+         SELECT cp.conversation_id,
+                p.id AS user_id,
+                p.first_name,
+                p.last_name,
+                p.role,
+                p.email -- Include email as fallback
+         FROM ConversationParticipants cp
+                  JOIN public.profiles p ON cp.user_id = p.id
+         -- No need to join families here, family users see admin/instructor names
+     ),
+     AggregatedNames AS (
+         -- Aggregate names for display
+         SELECT conversation_id,
+                -- Use COALESCE to pick the first non-null name representation
+                COALESCE(
+                    -- Full name if first and last name exist
+                        CASE
+                            WHEN pd.first_name IS NOT NULL AND pd.last_name IS NOT NULL
+                                THEN pd.first_name || ' ' || pd.last_name
+                            ELSE NULL
+                            END,
+                    -- First name if only first name exists
+                        pd.first_name,
+                    -- Last name if only last name exists
+                        pd.last_name,
+                    -- Role if admin/instructor and name missing
+                        CASE
+                            WHEN pd.role IN ('admin', 'instructor') THEN initcap(pd.role) -- Capitalize role
+                            ELSE NULL
+                            END,
+                    -- Email prefix as fallback
+                        split_part(pd.email, '@', 1),
+                    -- User ID prefix as last resort
+                        'User ' || substr(pd.user_id::text, 1, 6)
+                ) AS display_name
+         FROM ParticipantDetails pd),
+     FinalParticipantNames AS (
+         -- Aggregate unique display names per conversation
+         SELECT conversation_id,
+                string_agg(DISTINCT display_name, ', ') AS names
+         FROM AggregatedNames
+         GROUP BY conversation_id),
+     UnreadCounts AS (
+         -- Calculate unread messages for each conversation for the calling user
+         SELECT uc.conversation_id,
+                COUNT(m.id) AS count
+         FROM UserConversations uc
+                  LEFT JOIN public.messages m ON uc.conversation_id = m.conversation_id
+             -- Count messages created after the user's last read time for this conversation
+             -- Treat NULL last_read_at as infinitely old, so all messages are considered newer
+             AND m.created_at > COALESCE(uc.last_read_at, '-infinity'::timestamptz)
+             -- Exclude messages sent by the user themselves from the unread count
+             AND m.sender_id <> p_user_id
+         GROUP BY uc.conversation_id)
 -- Final selection joining conversations with aggregated names and unread counts
-SELECT
-    c.id,
-    COALESCE(c.subject, 'Conversation with ' || COALESCE(fpn.names, 'Staff')),
-    c.last_message_at,
-    COALESCE(fpn.names, 'Staff', 'Conversation ' || substr(c.id::text, 1, 6) || '...') AS participant_display_names,
-    COALESCE(unc.count, 0) AS unread_count -- Use COALESCE to ensure 0 if no unread messages
+SELECT c.id,
+       COALESCE(c.subject, 'Conversation with ' || COALESCE(fpn.names, 'Staff')),
+       c.last_message_at,
+       COALESCE(fpn.names, 'Staff', 'Conversation ' || substr(c.id::text, 1, 6) || '...') AS participant_display_names,
+       COALESCE(unc.count, 0)                                                             AS unread_count -- Use COALESCE to ensure 0 if no unread messages
 FROM public.conversations c
-JOIN UserConversations uc ON c.id = uc.conversation_id
-LEFT JOIN FinalParticipantNames fpn ON c.id = fpn.conversation_id
-LEFT JOIN UnreadCounts unc ON c.id = unc.conversation_id
+         JOIN UserConversations uc ON c.id = uc.conversation_id
+         LEFT JOIN FinalParticipantNames fpn ON c.id = fpn.conversation_id
+         LEFT JOIN UnreadCounts unc ON c.id = unc.conversation_id
 ORDER BY c.last_message_at DESC;
 $$;
 
@@ -1637,201 +1761,250 @@ GRANT EXECUTE ON FUNCTION get_family_conversation_summaries(UUID) TO authenticat
 -- --- Messaging Tables ---
 
 -- Conversations Table
-CREATE TABLE IF NOT EXISTS public.conversations (
-                                                    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-                                                    created_at timestamp with time zone DEFAULT now() NOT NULL,
-                                                    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-                                                    last_message_at timestamp with time zone DEFAULT now() NOT NULL, -- For sorting conversations
-                                                    subject text NULL -- Optional subject for the conversation
+CREATE TABLE IF NOT EXISTS public.conversations
+(
+    id              uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    created_at      timestamp with time zone DEFAULT now()             NOT NULL,
+    updated_at      timestamp with time zone DEFAULT now()             NOT NULL,
+    last_message_at timestamp with time zone DEFAULT now()             NOT NULL, -- For sorting conversations
+    subject         text                                               NULL      -- Optional subject for the conversation
 );
 
 -- Enable RLS
-ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations
+    ENABLE ROW LEVEL SECURITY;
 
 -- Add update timestamp trigger
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'conversations_updated') THEN
-        CREATE TRIGGER conversations_updated
-            BEFORE UPDATE ON public.conversations
-            FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'conversations_updated') THEN
+            CREATE TRIGGER conversations_updated
+                BEFORE UPDATE
+                ON public.conversations
+                FOR EACH ROW
+            EXECUTE FUNCTION public.update_modified_column();
+        END IF;
+    END
+$$;
 
 -- Conversation Participants Table (Junction between conversations and users)
-CREATE TABLE IF NOT EXISTS public.conversation_participants (
-                                                                id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-                                                                conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
-                                                                user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE, -- Changed reference to public.profiles
-                                                                joined_at timestamp with time zone DEFAULT now() NOT NULL,
+CREATE TABLE IF NOT EXISTS public.conversation_participants
+(
+    id              uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    conversation_id uuid                                               NOT NULL REFERENCES public.conversations (id) ON DELETE CASCADE,
+    user_id         uuid                                               NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE, -- Changed reference to public.profiles
+    joined_at       timestamp with time zone DEFAULT now()             NOT NULL,
     -- Add a flag if needed later for unread status per user per conversation
     -- has_unread boolean DEFAULT false NOT NULL,
-    last_read_at timestamptz DEFAULT now() NOT NULL, -- Track when user last read this conversation
-                                                                CONSTRAINT unique_conversation_user UNIQUE (conversation_id, user_id)
+    last_read_at    timestamptz              DEFAULT now()             NOT NULL,                                                   -- Track when user last read this conversation
+    CONSTRAINT unique_conversation_user UNIQUE (conversation_id, user_id)
 );
 
 -- Add last_read_at column idempotently if table already exists
-ALTER TABLE public.conversation_participants ADD COLUMN IF NOT EXISTS last_read_at timestamptz DEFAULT now() NOT NULL;
+ALTER TABLE public.conversation_participants
+    ADD COLUMN IF NOT EXISTS last_read_at timestamptz DEFAULT now() NOT NULL;
 
 -- Add indexes
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_conversation_id') THEN
-        CREATE INDEX idx_conversation_participants_conversation_id ON public.conversation_participants(conversation_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_user_id') THEN
-        CREATE INDEX idx_conversation_participants_user_id ON public.conversation_participants(user_id);
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_conversation_id') THEN
+            CREATE INDEX idx_conversation_participants_conversation_id ON public.conversation_participants (conversation_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_user_id') THEN
+            CREATE INDEX idx_conversation_participants_user_id ON public.conversation_participants (user_id);
+        END IF;
+    END
+$$;
 
 -- Enable RLS
-ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversation_participants
+    ENABLE ROW LEVEL SECURITY;
 
 
 -- Messages Table
-CREATE TABLE IF NOT EXISTS public.messages (
-                                               id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-                                               conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
-                                               sender_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE, -- Changed reference to public.profiles
-                                               content text NOT NULL CHECK (content <> ''), -- Ensure message content is not empty
-                                               created_at timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS public.messages
+(
+    id              uuid                     DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    conversation_id uuid                                               NOT NULL REFERENCES public.conversations (id) ON DELETE CASCADE,
+    sender_id       uuid                                               NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE, -- Changed reference to public.profiles
+    content         text                                               NOT NULL CHECK (content <> ''),                             -- Ensure message content is not empty
+    created_at      timestamp with time zone DEFAULT now()             NOT NULL
     -- Add attachment_url or similar if implementing attachments later
 );
 
 -- Add indexes
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_conversation_id') THEN
-        CREATE INDEX idx_messages_conversation_id ON public.messages(conversation_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_sender_id') THEN
-        CREATE INDEX idx_messages_sender_id ON public.messages(sender_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_created_at') THEN
-        CREATE INDEX idx_messages_created_at ON public.messages(created_at); -- For sorting messages
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_conversation_id') THEN
+            CREATE INDEX idx_messages_conversation_id ON public.messages (conversation_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_sender_id') THEN
+            CREATE INDEX idx_messages_sender_id ON public.messages (sender_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_created_at') THEN
+            CREATE INDEX idx_messages_created_at ON public.messages (created_at); -- For sorting messages
+        END IF;
+    END
+$$;
 
 -- Enable RLS
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages
+    ENABLE ROW LEVEL SECURITY;
 
 -- Trigger to update conversation's last_message_at timestamp
 CREATE OR REPLACE FUNCTION public.update_conversation_last_message_at()
-    RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS
+$$
 BEGIN
     UPDATE public.conversations
     SET last_message_at = NEW.created_at,
-        updated_at = NEW.created_at -- Also update conversation updated_at
+        updated_at      = NEW.created_at -- Also update conversation updated_at
     WHERE id = NEW.conversation_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER; -- Use DEFINER if needed to bypass RLS, but check implications
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'messages_update_conversation_ts') THEN
-        CREATE TRIGGER messages_update_conversation_ts
-            AFTER INSERT ON public.messages
-            FOR EACH ROW EXECUTE FUNCTION public.update_conversation_last_message_at();
-    END IF;
-END $$;
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'messages_update_conversation_ts') THEN
+            CREATE TRIGGER messages_update_conversation_ts
+                AFTER INSERT
+                ON public.messages
+                FOR EACH ROW
+            EXECUTE FUNCTION public.update_conversation_last_message_at();
+        END IF;
+    END
+$$;
 
 
 -- --- Messaging RLS Policies ---
 
-DO $$ BEGIN
-    -- Conversations: Users can see conversations they are participants in. Admins can see all.
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow participants to view conversations' AND tablename = 'conversations') THEN
-        CREATE POLICY "Allow participants to view conversations" ON public.conversations
-            FOR SELECT USING (
-            EXISTS (
-                SELECT 1 FROM public.conversation_participants cp
-                WHERE cp.conversation_id = conversations.id AND cp.user_id = auth.uid()
-            )
-                OR
-            EXISTS ( -- Admins can view all
-                SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'
-            )
-            );
-    END IF;
+DO
+$$
+    BEGIN
+        -- Conversations: Users can see conversations they are participants in. Admins can see all.
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow participants to view conversations'
+                         AND tablename = 'conversations') THEN
+            CREATE POLICY "Allow participants to view conversations" ON public.conversations
+                FOR SELECT USING (
+                EXISTS (SELECT 1
+                        FROM public.conversation_participants cp
+                        WHERE cp.conversation_id = conversations.id
+                          AND cp.user_id = auth.uid())
+                    OR
+                EXISTS ( -- Admins can view all
+                    SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
 
-    -- Conversations: Users can create conversations (policy might need refinement based on who can initiate)
-    -- For now, allow any authenticated user to create a conversation record.
-    -- Participant insertion logic will handle who is actually *in* the conversation.
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow authenticated users to create conversations' AND tablename = 'conversations') THEN
-        CREATE POLICY "Allow authenticated users to create conversations" ON public.conversations
-            FOR INSERT TO authenticated WITH CHECK (true); -- Simplistic for now
-    END IF;
+        -- Conversations: Users can create conversations (policy might need refinement based on who can initiate)
+        -- For now, allow any authenticated user to create a conversation record.
+        -- Participant insertion logic will handle who is actually *in* the conversation.
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow authenticated users to create conversations'
+                         AND tablename = 'conversations') THEN
+            CREATE POLICY "Allow authenticated users to create conversations" ON public.conversations
+                FOR INSERT TO authenticated WITH CHECK (true); -- Simplistic for now
+        END IF;
 
-    -- Conversation Participants: Users can see their own participation record. Admins can see all.
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow users to view their own participation' AND tablename = 'conversation_participants') THEN
-        CREATE POLICY "Allow users to view their own participation" ON public.conversation_participants
-            FOR SELECT USING (
-            user_id = auth.uid()
-                OR
-            EXISTS ( -- Admins can view all
-                SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'
-            )
-            );
-    END IF;
+        -- Conversation Participants: Users can see their own participation record. Admins can see all.
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow users to view their own participation'
+                         AND tablename = 'conversation_participants') THEN
+            CREATE POLICY "Allow users to view their own participation" ON public.conversation_participants
+                FOR SELECT USING (
+                user_id = auth.uid()
+                    OR
+                EXISTS ( -- Admins can view all
+                    SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
 
-    -- Conversation Participants: Users can insert themselves into a conversation (or be added by logic).
-    -- This needs careful consideration. Let's allow users to insert records where user_id = auth.uid().
-    -- Server-side logic (e.g., an RPC function or action) should handle adding *other* users.
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow users to insert themselves as participants' AND tablename = 'conversation_participants') THEN
-        CREATE POLICY "Allow users to insert themselves as participants" ON public.conversation_participants
-            FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-    END IF;
-    -- Consider adding admin insert policy if needed:
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to insert participants' AND tablename = 'conversation_participants') THEN
-        CREATE POLICY "Allow admins to insert participants" ON public.conversation_participants
-            FOR INSERT TO authenticated WITH CHECK (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-            );
-    END IF;
+        -- Conversation Participants: Users can insert themselves into a conversation (or be added by logic).
+        -- This needs careful consideration. Let's allow users to insert records where user_id = auth.uid().
+        -- Server-side logic (e.g., an RPC function or action) should handle adding *other* users.
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow users to insert themselves as participants'
+                         AND tablename = 'conversation_participants') THEN
+            CREATE POLICY "Allow users to insert themselves as participants" ON public.conversation_participants
+                FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+        END IF;
+        -- Consider adding admin insert policy if needed:
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to insert participants'
+                         AND tablename = 'conversation_participants') THEN
+            CREATE POLICY "Allow admins to insert participants" ON public.conversation_participants
+                FOR INSERT TO authenticated WITH CHECK (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
 
 
-    -- Messages: Users can see messages in conversations they are participants in. Admins can see all.
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow participants to view messages' AND tablename = 'messages') THEN
-        CREATE POLICY "Allow participants to view messages" ON public.messages
-            FOR SELECT USING (
-            EXISTS (
-                SELECT 1 FROM public.conversation_participants cp
-                WHERE cp.conversation_id = messages.conversation_id AND cp.user_id = auth.uid()
-            )
-                OR
-            EXISTS ( -- Admins can view all
-                SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'
-            )
-            );
-    END IF;
+        -- Messages: Users can see messages in conversations they are participants in. Admins can see all.
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow participants to view messages' AND tablename = 'messages') THEN
+            CREATE POLICY "Allow participants to view messages" ON public.messages
+                FOR SELECT USING (
+                EXISTS (SELECT 1
+                        FROM public.conversation_participants cp
+                        WHERE cp.conversation_id = messages.conversation_id
+                          AND cp.user_id = auth.uid())
+                    OR
+                EXISTS ( -- Admins can view all
+                    SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
 
-    -- Messages: Users can insert messages into conversations they are participants in.
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow participants to insert messages' AND tablename = 'messages') THEN
-        CREATE POLICY "Allow participants to insert messages" ON public.messages
-            FOR INSERT TO authenticated WITH CHECK (
-            sender_id = auth.uid() -- Ensure sender is the authenticated user
-                AND
-            EXISTS ( -- Ensure sender is a participant in the conversation
-                SELECT 1 FROM public.conversation_participants cp
-                WHERE cp.conversation_id = messages.conversation_id AND cp.user_id = auth.uid()
-            )
-            );
-    END IF;
+        -- Messages: Users can insert messages into conversations they are participants in.
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow participants to insert messages' AND tablename = 'messages') THEN
+            CREATE POLICY "Allow participants to insert messages" ON public.messages
+                FOR INSERT TO authenticated WITH CHECK (
+                sender_id = auth.uid() -- Ensure sender is the authenticated user
+                    AND
+                EXISTS ( -- Ensure sender is a participant in the conversation
+                    SELECT 1
+                    FROM public.conversation_participants cp
+                    WHERE cp.conversation_id = messages.conversation_id
+                      AND cp.user_id = auth.uid())
+                );
+        END IF;
 
-    -- Optional: Allow admins to delete messages (or specific roles)
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to delete messages' AND tablename = 'messages') THEN
-        CREATE POLICY "Allow admins to delete messages" ON public.messages
-            FOR DELETE USING (
-            EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-            );
-    END IF;
+        -- Optional: Allow admins to delete messages (or specific roles)
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to delete messages' AND tablename = 'messages') THEN
+            CREATE POLICY "Allow admins to delete messages" ON public.messages
+                FOR DELETE USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
 
-    -- Conversation Participants: Allow users to update their own last_read_at timestamp.
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow users to update their own last_read_at' AND tablename = 'conversation_participants') THEN
-        CREATE POLICY "Allow users to update their own last_read_at" ON public.conversation_participants
-            FOR UPDATE TO authenticated
-            USING (user_id = auth.uid()) -- Can only update your own record
-            WITH CHECK (user_id = auth.uid() AND conversation_id = conversation_id); -- Ensure user_id isn't changed, allow updating last_read_at
-    END IF;
+        -- Conversation Participants: Allow users to update their own last_read_at timestamp.
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow users to update their own last_read_at'
+                         AND tablename = 'conversation_participants') THEN
+            CREATE POLICY "Allow users to update their own last_read_at" ON public.conversation_participants
+                FOR UPDATE TO authenticated
+                USING (user_id = auth.uid()) -- Can only update your own record
+                WITH CHECK (user_id = auth.uid() AND conversation_id = conversation_id); -- Ensure user_id isn't changed, allow updating last_read_at
+        END IF;
 
-END $$;
+    END
+$$;
 
 -- --- End Messaging RLS Policies ---
 
@@ -1843,10 +2016,11 @@ CREATE OR REPLACE FUNCTION public.create_new_conversation(
     p_subject text,
     p_content text
 )
-RETURNS uuid -- Returns the new conversation_id
-LANGUAGE plpgsql
-SECURITY DEFINER -- Executes with the privileges of the function owner (usually postgres)
-AS $$
+    RETURNS uuid -- Returns the new conversation_id
+    LANGUAGE plpgsql
+    SECURITY DEFINER -- Executes with the privileges of the function owner (usually postgres)
+AS
+$$
 DECLARE
     new_conversation_id uuid;
     admin_instructor_id uuid;
@@ -1866,12 +2040,12 @@ BEGIN
     -- 3. Add all admin and instructor users as participants
     FOR admin_instructor_id IN
         SELECT id FROM public.profiles WHERE role IN ('admin', 'instructor')
-    LOOP
-        -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user is both sender and admin/instructor
-        INSERT INTO public.conversation_participants (conversation_id, user_id)
-        VALUES (new_conversation_id, admin_instructor_id)
-        ON CONFLICT (conversation_id, user_id) DO NOTHING;
-    END LOOP;
+        LOOP
+            -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user is both sender and admin/instructor
+            INSERT INTO public.conversation_participants (conversation_id, user_id)
+            VALUES (new_conversation_id, admin_instructor_id)
+            ON CONFLICT (conversation_id, user_id) DO NOTHING;
+        END LOOP;
 
     -- 4. Add the initial message
     INSERT INTO public.messages (conversation_id, sender_id, content)
@@ -1900,10 +2074,11 @@ CREATE OR REPLACE FUNCTION public.mark_conversation_as_read(
     p_conversation_id uuid,
     p_user_id uuid
 )
-RETURNS void
-LANGUAGE plpgsql
-SECURITY INVOKER -- Run as the calling user, respecting their RLS
-AS $$
+    RETURNS void
+    LANGUAGE plpgsql
+    SECURITY INVOKER -- Run as the calling user, respecting their RLS
+AS
+$$
 BEGIN
     UPDATE public.conversation_participants
     SET last_read_at = now()
@@ -1922,7 +2097,8 @@ $$;
 GRANT EXECUTE ON FUNCTION public.mark_conversation_as_read(uuid, uuid) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.update_sender_last_read_at()
-    RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS
+$$
 BEGIN
     UPDATE public.conversation_participants
     SET last_read_at = NEW.created_at
@@ -1933,8 +2109,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE TRIGGER messages_update_sender_read_ts
-    AFTER INSERT ON public.messages
-    FOR EACH ROW EXECUTE FUNCTION public.update_sender_last_read_at();
+    AFTER INSERT
+    ON public.messages
+    FOR EACH ROW
+EXECUTE FUNCTION public.update_sender_last_read_at();
 
 -- Function for Admin/Instructor to initiate a conversation with a specific family
 CREATE OR REPLACE FUNCTION public.create_admin_initiated_conversation(
@@ -1943,13 +2121,14 @@ CREATE OR REPLACE FUNCTION public.create_admin_initiated_conversation(
     p_subject text,
     p_message_body text
 )
-RETURNS uuid -- Returns the new conversation_id
-LANGUAGE plpgsql
-SECURITY DEFINER -- Executes with elevated privileges to add participants across families
-AS $$
+    RETURNS uuid -- Returns the new conversation_id
+    LANGUAGE plpgsql
+    SECURITY DEFINER -- Executes with elevated privileges to add participants across families
+AS
+$$
 DECLARE
     new_conversation_id uuid;
-    family_member_id uuid;
+    family_member_id    uuid;
 BEGIN
     -- Set search_path for safety within SECURITY DEFINER
     SET LOCAL search_path = public, extensions;
@@ -1966,13 +2145,13 @@ BEGIN
     -- 3. Find all users associated with the target family and add them as participants
     FOR family_member_id IN
         SELECT id FROM public.profiles WHERE family_id = p_target_family_id
-    LOOP
+        LOOP
         -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user somehow exists twice or overlaps
         -- Explicitly set last_read_at to -infinity for new family participants
-        INSERT INTO public.conversation_participants (conversation_id, user_id, last_read_at)
-        VALUES (new_conversation_id, family_member_id, '-infinity'::timestamptz)
-        ON CONFLICT (conversation_id, user_id) DO NOTHING;
-    END LOOP;
+            INSERT INTO public.conversation_participants (conversation_id, user_id, last_read_at)
+            VALUES (new_conversation_id, family_member_id, '-infinity'::timestamptz)
+            ON CONFLICT (conversation_id, user_id) DO NOTHING;
+        END LOOP;
 
     -- 4. Add the initial message from the sender
     INSERT INTO public.messages (conversation_id, sender_id, content)
@@ -2003,24 +2182,22 @@ CREATE OR REPLACE FUNCTION execute_admin_query(query_text TEXT)
     RETURNS JSONB
     LANGUAGE plpgsql
     SECURITY DEFINER -- Function runs with the permissions of the creator
-AS $$
+AS
+$$
 DECLARE
-    result JSONB;
+    result        JSONB;
     trimmed_query TEXT;
 BEGIN
-    -- Trim leading/trailing whitespace and convert to lowercase
-    -- Trim leading/trailing whitespace
-    -- Trim leading/trailing whitespace
-    trimmed_query := TRIM(query_text);
 
     -- Check if the query starts with 'select' (case-insensitive) followed by whitespace or end of string
     -- using a case-insensitive regular expression match (~*)
-    IF trimmed_query !~* '^\s*select(\s|$)' THEN
+    IF TRIM(query_text) !~* '^\s*select(\s|$)' THEN
         RAISE EXCEPTION 'Only SELECT statements are allowed for security reasons. Query must start with SELECT.';
     END IF;
 
     -- Set a statement timeout to prevent long-running queries
-    EXECUTE 'SET LOCAL statement_timeout = 5000'; -- 5 seconds in milliseconds
+    EXECUTE 'SET LOCAL statement_timeout = 5000';
+    -- 5 seconds in milliseconds
 
     -- Execute the query and convert the result to JSON
     EXECUTE 'SELECT jsonb_agg(row_to_json(t)) FROM (' || query_text || ') t' INTO result;
@@ -2050,6 +2227,53 @@ COMMENT ON FUNCTION execute_admin_query(TEXT) IS
     2. Queries have a 5-second timeout
     3. Function runs with SECURITY DEFINER to ensure proper permissions';
 
+CREATE OR REPLACE FUNCTION execute_explain_query(query_text TEXT)
+    RETURNS JSONB
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+AS
+$$
+DECLARE
+    result     JSONB;
+    safe_query TEXT;
+BEGIN
+    -- Remove any trailing semicolons to avoid multi-statement attacks
+    safe_query := regexp_replace(trim(query_text), ';+$', '');
+
+    -- Set a statement timeout to prevent long-running queries
+    -- Basic check: Ensure it starts with SELECT (case-insensitive)
+    -- This adds a layer of safety within the function itself.
+    IF safe_query !~* '^\s*select(\s|$)' THEN
+        RAISE EXCEPTION 'Validation Error: Only SELECT statements can be explained.';
+    END IF;
+
+    -- Set a statement timeout
+    EXECUTE 'SET LOCAL statement_timeout = 3000'; -- 3 seconds
+
+    -- Execute EXPLAIN. This will throw an error if syntax is invalid.
+    -- We don't need to capture the output for simple validation.
+    EXECUTE 'EXPLAIN ' || safe_query;
+
+    -- If EXPLAIN succeeded without error, return success
+    RETURN jsonb_build_object('success', true);
+
+EXCEPTION
+    WHEN others THEN
+        -- If EXPLAIN failed (invalid syntax, etc.), return the error
+        RETURN jsonb_build_object('error', SQLERRM);
+END;
+$$;
+
+-- Set security policies
+    ALTER FUNCTION execute_explain_query(TEXT) OWNER TO postgres;
+REVOKE ALL ON FUNCTION execute_explain_query(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION execute_explain_query(TEXT) TO postgres;
+GRANT EXECUTE ON FUNCTION execute_explain_query(TEXT) TO service_role;
+
+COMMENT ON FUNCTION execute_explain_query(TEXT) IS
+    'Executes an EXPLAIN SQL query and returns the results as JSONB.
+    Used for validating SQL syntax without actually executing potentially harmful queries.
+    Returns errors in a standardized format for client handling.';
 -- --- End RPC Function ---
 
 

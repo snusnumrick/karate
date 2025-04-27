@@ -11,11 +11,17 @@ import {Badge} from "~/components/ui/badge";
 // Separator removed as it's unused
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {createClient} from "@supabase/supabase-js";
-import {GoogleGenerativeAI, HarmBlockThreshold, HarmCategory} from "@google/generative-ai";
+import {
+    FinishReason,
+    GenerativeModel,
+    GoogleGenerativeAI,
+    HarmBlockThreshold,
+    HarmCategory
+} from "@google/generative-ai";
 import {Database, Json} from "~/types/database.types";
 import {ClientOnly} from "~/components/client-only";
 import {cn} from "~/lib/utils";
-import retrieveDatabaseStructure, {formatSchemaAsMarkdown} from "~/utils/retrieve.db.strructure"; // Import cn utility
+import retrieveDatabaseStructure, {DatabaseSchema, formatSchemaAsMarkdown} from "~/utils/retrieve.db.strructure"; // Import cn utility
 
 // --- Cache for Database Schema Description ---
 let cachedSchemaDescription: string | null = null;
@@ -67,8 +73,15 @@ async function getAndCacheSchemaDescription(): Promise<string> {
     console.log("Fetching fresh schema description from database...");
 
     try {
-        const schema = await retrieveDatabaseStructure();
-        let schemaString = await formatSchemaAsMarkdown(schema);
+        const schema: DatabaseSchema = await retrieveDatabaseStructure();
+
+        // Filter out functions from the schema to shorten the description
+        const shortenedSchema: DatabaseSchema = {
+            ...schema,
+            functions: [], // Remove functions by setting it to an empty array
+        };
+
+        let schemaString = await formatSchemaAsMarkdown(shortenedSchema);
         // console.log("Formatted schema description:", schemaString);
 
         // --- Append Essential Static Notes ---
@@ -102,6 +115,7 @@ async function getAndCacheSchemaDescription(): Promise<string> {
         // Or consider throwing the error: throw error;
     }
 }
+
 // --- End Schema Fetch Function ---
 
 
@@ -128,19 +142,112 @@ export async function action({request}: ActionFunctionArgs): Promise<Response> {
         // 1. Get the (potentially cached) schema description
         const schemaDescription = await getAndCacheSchemaDescription();
         if (schemaDescription.startsWith("Error:")) {
-             // Handle schema fetch failure - maybe return an error immediately
-             return json({ success: false, error: schemaDescription, originalQuery: originalQuery } satisfies ActionResponse);
+            // Handle schema fetch failure - maybe return an error immediately
+            return json({
+                success: false,
+                error: schemaDescription,
+                originalQuery: originalQuery
+            } satisfies ActionResponse);
         }
 
 
-        // 2. Process the natural language query to SQL, passing the schema
-        const sqlQuery = await processNaturalLanguageQuery(originalQuery, schemaDescription);
+        // 2. Process the natural language query to SQL, with retries on validation failure
+        let sqlQuery: string | null = null;
+        let validationError: string | null = null;
+        const maxRetries = 1; // Allow one retry after initial failure
 
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            console.log(`Attempt ${attempt + 1} to generate and validate SQL for: "${originalQuery}"`);
+
+            // Generate SQL. Pass previous error if this is a retry.
+            sqlQuery = await processNaturalLanguageQuery(
+                originalQuery,
+                schemaDescription,
+                attempt > 0 ? sqlQuery : null, // Pass previous SQL on retry
+                attempt > 0 ? validationError : null // Pass validation error on retry
+            );
+
+            if (!sqlQuery) {
+                // LLM explicitly returned UNSUPPORTED or failed generation
+                console.warn(`LLM failed to generate SQL on attempt ${attempt + 1}.`);
+                // If it's the last attempt, return the generic error. Otherwise, loop might continue if previous attempt had SQL.
+                if (attempt === maxRetries) {
+                    return json({
+                        success: false,
+                        error: "Sorry, I couldn't translate your request into a valid database query after attempts. Please try rephrasing.",
+                        originalQuery: originalQuery,
+                    } satisfies ActionResponse);
+                }
+                // Reset validation error for the next attempt if SQL generation failed outright
+                validationError = "LLM failed to generate SQL.";
+                continue; // Try again if retries left
+            }
+
+            // Validate the generated SQL syntax directly using EXPLAIN
+            // Basic check to prevent EXPLAIN on non-SELECT statements as an extra precaution
+            const trimmedQuery = sqlQuery.trim().toUpperCase();
+            if (!trimmedQuery.startsWith('SELECT')) {
+                console.warn(`Validation skipped: Query does not start with SELECT (Attempt ${attempt + 1}): ${sqlQuery}`);
+                validationError = 'Validation failed: Only SELECT statements can be validated.';
+                sqlQuery = null; // Invalidate SQL
+            } else {
+                console.log(`Validating SQL with execute_explain_query (Attempt ${attempt + 1}): ${sqlQuery}`);
+                // Call the RPC function with the ORIGINAL SQL query
+                const {data: explainResult, error: rpcError} = await supabaseAdmin.rpc(
+                    'execute_explain_query',
+                    {query_text: sqlQuery} // Pass the original SQL query
+                );
+
+                // Handle RPC call errors first
+                if (rpcError) {
+                    console.warn(`RPC call to execute_explain_query failed (Attempt ${attempt + 1}): ${rpcError.message}`);
+                    validationError = `Validation Error: Could not check query syntax (${rpcError.code || 'RPC Error'}).`;
+                    sqlQuery = null; // Invalidate SQL
+                }
+                    // Check the result from the function itself
+                // Type assertion needed as 'data' is initially 'any' or unknown from rpc call
+                else if (explainResult && (explainResult as { error?: string }).error) {
+                    const explainErrorMsg = (explainResult as { error: string }).error;
+                    console.warn(`SQL validation failed via execute_explain_query (Attempt ${attempt + 1}): ${explainErrorMsg}`);
+                    validationError = `SQL Syntax Error: ${explainErrorMsg}`;
+                    sqlQuery = null; // Invalidate SQL
+                } else if (!explainResult || !(explainResult as { success?: boolean }).success) {
+                    // Handle unexpected non-error, non-success response from function
+                    console.warn(`Unexpected response from execute_explain_query (Attempt ${attempt + 1}):`, explainResult);
+                    validationError = 'Validation Error: Unexpected response while checking syntax.';
+                    sqlQuery = null; // Invalidate SQL
+                } else {
+                    // Validation succeeded
+                    validationError = null;
+                }
+            }
+
+            // Check if validation failed in this attempt
+            if (validationError) {
+                if (attempt === maxRetries) {
+                    console.error(`SQL validation failed after ${maxRetries + 1} attempts.`);
+                    return json({
+                        success: false,
+                        error: `Generated SQL failed validation after ${maxRetries + 1} attempts. Error: ${validationError}. Please try rephrasing your question.`,
+                        sql: sqlQuery ?? undefined, // Include the last failed SQL for debugging if available
+                        originalQuery: originalQuery,
+                    } satisfies ActionResponse);
+                }
+                // Continue to the next retry attempt
+            } else {
+                console.log(`SQL validation successful (Attempt ${attempt + 1}).`);
+                validationError = null; // Clear error on success
+                break; // SQL is valid, exit the loop
+            }
+        }
+
+        // If sqlQuery is still null after the loop, it means all attempts failed.
         if (!sqlQuery) {
-            // This now catches both UNSUPPORTED and non-SELECT generations from the LLM
+            console.error("Failed to generate valid SQL after all retry attempts.");
             return json({
                 success: false,
-                error: "Sorry, I couldn't translate your request into a valid database query. Please try rephrasing it or ask a different question.",
+                // Use the last validation error if available
+                error: validationError ? `Failed to generate valid SQL. Last error: ${validationError}` : "Failed to generate valid SQL after multiple attempts. Please rephrase.",
                 originalQuery: originalQuery,
             } satisfies ActionResponse);
         }
@@ -167,8 +274,6 @@ export async function action({request}: ActionFunctionArgs): Promise<Response> {
                 // Include a generic hint of the DB error without exposing too much detail
                 userErrorMessage = `The database query failed. Please check your question or try again later. (Hint: ${error.code || 'DB Error'})`;
             }
-            // Throw the user-friendly error to be caught by the outer catch block
-            // Throw the user-friendly error to be caught by the outer catch block
             // Throw the user-friendly error to be caught by the outer catch block
             throw new Error(userErrorMessage);
         }
@@ -204,7 +309,12 @@ export async function action({request}: ActionFunctionArgs): Promise<Response> {
 }
 
 // Process the natural language query into SQL using Gemini API
-async function processNaturalLanguageQuery(query: string, schemaDescription: string): Promise<string | null> {
+async function processNaturalLanguageQuery(
+    query: string,
+    schemaDescription: string,
+    previousSql: string | null = null, // Optional: The previously failed SQL
+    errorMessage: string | null = null // Optional: The error message from validation
+): Promise<string | null> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         console.error("GEMINI_API_KEY environment variable not set.");
@@ -212,35 +322,70 @@ async function processNaturalLanguageQuery(query: string, schemaDescription: str
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Switch to a potentially more capable model
-    const model = genAI.getGenerativeModel({model: "gemini-2.5-pro-exp-03-25"});
 
-    // Use the dynamically generated schema description passed as a parameter
-    const prompt = `
-    ${schemaDescription}
+    // --- System Instruction ---
+    // Contains the schema, role definition, output format, safety rules, and general SQL guidelines.
+    const systemInstruction = `
+You are an expert PostgreSQL query generator. Based on the database schema provided below, your task is to convert natural language questions into safe, read-only SQL SELECT statements.
 
-    Based on the schema provided above, convert the following natural language query into a single, read-only PostgreSQL SELECT statement.
-    - ONLY generate the SQL query. Do not include any explanations, markdown formatting (like \`\`\`sql), or introductory text.
-    - Ensure the query is safe and does not modify data (no INSERT, UPDATE, DELETE, DROP, etc.).
-    - If the query is ambiguous or cannot be answered with a SELECT statement based on the schema, return only the text: UNSUPPORTED
-    - Pay attention to dates and time periods mentioned (e.g., "last month", "Q1", "this year"). Use the current date provided for relative calculations.
-    - **PostgreSQL Date Calculations:** For relative dates, use \`CURRENT_DATE\` and \`INTERVAL\`. Examples:
-        - "last month": \`created_at >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month') AND created_at < date_trunc('month', CURRENT_DATE)\`
-        - "yesterday": \`created_at >= CURRENT_DATE - INTERVAL '1 day' AND created_at < CURRENT_DATE\`
-        - "this year": \`created_at >= date_trunc('year', CURRENT_DATE) AND created_at < date_trunc('year', CURRENT_DATE + INTERVAL '1 year')\`
-        - "Q1": \`EXTRACT(QUARTER FROM created_at) = 1\` (adjust year as needed, e.g., \`AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)\`)
-    - **Enum Handling:**
-        - **Comparison:** When comparing an enum column (like \`belt_awards.type\`) with a text value, cast the enum to text: \`enum_column::text = 'text_value'\`.
-        - **Listing All Values:** To get all possible values of an enum type (e.g., to count occurrences for each rank including zeros), use \`unnest(enum_range(NULL::your_enum_type))\`. Example for belt ranks: \`SELECT rank_value FROM unnest(enum_range(NULL::belt_rank_enum)) AS rank_value\`. You can then LEFT JOIN other tables to this.
-    - **Case-Insensitive Text Comparison:** For comparing text fields like names (e.g., \`families.name\`, \`students.first_name\`) where casing might vary, use the \`LOWER()\` function on both the column and the value: \`LOWER(column_name) = LOWER('value')\`. Use \`ILIKE\` for pattern matching instead of \`LIKE\`.
-    - **Exact Name Matching:** When a specific name (like a family name 'Smith' or student name 'John Doe') is mentioned in the query, use that *exact* name in the SQL comparison value (applying \`LOWER()\` if needed for case-insensitivity). Do *not* add suffixes like "Family" or assume variations unless explicitly stated in the query. Example: If the query says "messages from Smith", use \`LOWER(f.name) = LOWER('Smith')\`, not \`LOWER('Smith Family')\`.
-    - Assume amounts in 'payments', 'payment_taxes', 'orders', 'order_items' are stored in cents and should often be summed or averaged. Format currency output appropriately if possible within SQL (e.g., SUM(total_amount) / 100.0).
-    - **Important:** When using aggregate functions like SUM, COUNT, AVG, ensure they return 0 instead of NULL if no rows match the criteria. Use COALESCE for this (e.g., COALESCE(SUM(column), 0)).
+Database Schema:
+${schemaDescription}
 
-    Natural Language Query: "${query}"
+General Instructions & Constraints:
+- **Output Format:** ONLY generate the raw SQL query. Do not include explanations, markdown formatting (like \`\`\`sql), or introductory text like "SQL Query:".
+- **Safety:** Ensure the query is safe and does not modify data (no INSERT, UPDATE, DELETE, DROP, etc.). Strictly SELECT statements.
+- **Unsupported Queries:** If the query is ambiguous, cannot be answered with a SELECT statement based on the schema, or requires data modification, return only the text: UNSUPPORTED
+- **Date Handling:** Pay attention to dates and time periods mentioned (e.g., "last month", "Q1", "this year"). Use the current date provided in the schema notes for relative calculations.
+    - **PostgreSQL Date Calculations:** Use \`CURRENT_DATE\` and the \`INTERVAL\` keyword with the duration in single quotes (e.g., \`INTERVAL '1 month'\`, \`INTERVAL '1 year'\`). Examples using a generic \`some_date_column\`:
+        - "last month": \`some_date_column >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month') AND some_date_column < date_trunc('month', CURRENT_DATE)\`
+        - "this month": \`some_date_column >= date_trunc('month', CURRENT_DATE) AND some_date_column < date_trunc('month', CURRENT_DATE + INTERVAL '1 month')\`
+        - "yesterday": \`some_date_column >= date_trunc('day', CURRENT_DATE - INTERVAL '1 day') AND some_date_column < date_trunc('day', CURRENT_DATE)\`
+        - "this year": \`some_date_column >= date_trunc('year', CURRENT_DATE) AND some_date_column < date_trunc('year', CURRENT_DATE + INTERVAL '1 year')\`
+        - "Q1": \`EXTRACT(QUARTER FROM some_date_column) = 1\` (adjust year as needed, e.g., \`AND EXTRACT(YEAR FROM some_date_column) = EXTRACT(YEAR FROM CURRENT_DATE)\`)
+- **Enum Handling:**
+    - **Comparison:** When comparing an enum column (like \`belt_awards.type\`) with a text value, cast the enum to text: \`enum_column::text = 'text_value'\`.
+    - **Listing All Values:** To get all possible values of an enum type (e.g., to count occurrences for each rank including zeros), use \`unnest(enum_range(NULL::your_enum_type))\`. Example for belt ranks: \`SELECT rank_value FROM unnest(enum_range(NULL::belt_rank_enum)) AS rank_value\`. You can then LEFT JOIN other tables to this.
+- **Case-Insensitive Text Comparison:** For comparing text fields like names (e.g., \`families.name\`, \`students.first_name\`) where casing might vary, use the \`LOWER()\` function on both the column and the value: \`LOWER(column_name) = LOWER('value')\`. Use \`ILIKE\` for pattern matching instead of \`LIKE\`.
+- **Exact Name Matching:** When a specific name (like a family name 'Smith' or student name 'John Doe') is mentioned in the query, use that *exact* name in the SQL comparison value (applying \`LOWER()\` if needed for case-insensitivity). Do *not* add suffixes like "Family" or assume variations unless explicitly stated in the query. Example: If the query says "messages from Smith", use \`LOWER(f.name) = LOWER('Smith')\`, not \`LOWER('Smith Family')\`.
+- **Amounts in Cents:** Assume amounts in 'payments', 'payment_taxes', 'orders', 'order_items' are stored in cents and should often be summed or averaged. Format currency output appropriately if possible within SQL (e.g., SUM(total_amount) / 100.0).
+- **Handling Nulls in Aggregates:** When using aggregate functions like SUM, COUNT, AVG, ensure they return 0 instead of NULL if no rows match the criteria. Use COALESCE for this (e.g., COALESCE(SUM(column), 0)).
+`;
 
-    SQL Query:
-  `;
+    // Switch to a potentially more capable model and pass system instruction during initialization
+    const model: GenerativeModel = genAI.getGenerativeModel({
+        model: "gemini-2.5-pro-exp-03-25",
+        systemInstruction: systemInstruction // Pass system instruction here
+    });
+    const backupModel: GenerativeModel = genAI.getGenerativeModel({
+        model: "gemini-1.5-pro",
+        systemInstruction: systemInstruction // Pass system instruction here
+    });
+
+
+    // --- User Prompt Content ---
+    // Contains the specific task for this call (initial query or correction request).
+    let userPromptContent = "";
+    if (previousSql && errorMessage) {
+        // This is a retry attempt
+        userPromptContent = `The previous attempt to generate SQL for the query below resulted in an error.
+Original Query: "${query}"
+Previous SQL Attempt:
+\`\`\`sql
+${previousSql}
+\`\`\`
+Error Message: "${errorMessage}"
+
+Please analyze the error message and the previous SQL attempt. Generate a corrected, read-only PostgreSQL SELECT statement based *only* on the schema and the original query, fixing the identified error. Follow all instructions from the system prompt.
+`;
+    } else {
+        // This is the first attempt
+        userPromptContent = `Convert the following natural language query into a single, read-only PostgreSQL SELECT statement. Follow all instructions from the system prompt.
+Natural Language Query: "${query}"
+`;
+    }
+    // Add the final instruction for the model to output the query
+    userPromptContent += "\nSQL Query:";
+
 
     try {
         const generationConfig = {
@@ -262,26 +407,41 @@ async function processNaturalLanguageQuery(query: string, schemaDescription: str
         ];
 
         let result;
+        // console.log('System Instruction:', systemInstruction);
+        console.log('System Instruction Length:', systemInstruction.length);
+        console.log('User Prompt Content:', userPromptContent);
         try {
+            // Generate content using only the user prompt, as system instruction is now part of the model config
             result = await model.generateContent({
-                contents: [{role: "user", parts: [{text: prompt}]}],
+                contents: [{ role: "user", parts: [{ text: userPromptContent }] }],
                 generationConfig,
                 safetySettings,
             });
         } catch (error: unknown) {
+            // Handle potential 429 errors by trying a backup model
             if (error instanceof Error && 'status' in error && (error as { status?: number }).status === 429) {
                 console.warn("Primary model failed with 429 status. Retrying with backup model...");
-                const backupModel = genAI.getGenerativeModel({model: "gemini-1.5-pro"});
                 result = await backupModel.generateContent({
-                    contents: [{role: "user", parts: [{text: prompt}]}],
+                    contents: [{ role: "user", parts: [{ text: userPromptContent }] }],
                     generationConfig,
                     safetySettings,
                 });
             } else {
+                console.error("Error calling Gemini API:", error);
                 throw error;
             }
         }
-        const response = result.response;
+        let response = result.response;
+        if (response?.candidates?.length === 1 && response.candidates[0].finishReason ===FinishReason.MAX_TOKENS) {
+            console.warn(`LLM responded with MAX_TOKENS: "${response.usageMetadata?.totalTokenCount}". Retrying with backup model...`);
+            const result = await backupModel.generateContent({
+                contents: [{ role: "user", parts: [{ text: userPromptContent }] }],
+                generationConfig,
+                safetySettings,
+            });
+            response = result.response;
+        }
+        // console.log('response:', response);
         let sql = response.text()?.trim(); // Use let as we might modify it
 
         if (!sql || sql.toUpperCase() === 'UNSUPPORTED') {
@@ -290,10 +450,20 @@ async function processNaturalLanguageQuery(query: string, schemaDescription: str
         }
 
         // Remove potential markdown fences (```sql ... ``` or ``` ... ```)
-        sql = sql.replace(/^```sql\s*/i, '').replace(/```\s*$/, '').trim();
+        const noMarkdownSql = sql.replace(/^```sql\s*/i, '').replace(/```\s*$/, '').trim();
+        if (noMarkdownSql != sql) {
+            // console.log(`removed potential markdown fences: "${sql}" => "${noMarkdownSql}"`);
+            console.log(`removed potential markdown fences`);
+            sql = noMarkdownSql;
+        }
 
         // Remove SQL comments (-- to end of line)
-        sql = sql.replace(/--.*$/gm, '').trim();
+        const noCommentsSql = sql.replace(/--.*$/gm, '').trim();
+        if (noCommentsSql != sql) {
+            // console.log(`removed SQL comments: "${sql}" => "${noCommentsSql}"`);
+            console.log(`removed SQL comments`);
+            sql = noCommentsSql;
+        }
 
         // Basic check to ensure it's likely a SELECT query AFTER removing fences and comments
         const trimmedSql = sql.toUpperCase(); // No need for extra trim() here
@@ -305,6 +475,10 @@ async function processNaturalLanguageQuery(query: string, schemaDescription: str
 
         // Remove trailing semicolon if present AFTER removing comments
         const finalSql = sql.replace(/;\s*$/, '');
+        if (finalSql != sql) {
+            // console.log(`removed trailing semicolon: "${sql}" => "${finalSql}"`);
+            console.log(`removed trailing semicolon`);
+        }
 
         console.log(`Generated SQL for query "${query}":\n${finalSql}`); // Log generated SQL for debugging
         return finalSql;
@@ -340,11 +514,32 @@ async function generateResultSummary(originalQuery: string, results: Json | null
 
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Use the faster flash model for summarization
-    const model = genAI.getGenerativeModel({model: "gemini-2.0-flash"});
 
-    // Use the dynamically generated schema description passed as a parameter
-    const prompt = `
+    // --- System Instruction for Summarizer ---
+    const systemInstructionForSummary = `
+You are an expert summarizer. Your task is to generate a concise and direct natural language summary based on an original question and the JSON results of a database query executed to answer that question.
+
+Instructions:
+- Focus *only* on answering the original question based *strictly* on the provided data.
+- **Interpreting Empty Results:** If the results indicate no data was found (e.g., an empty array \`[]\` or results showing zero counts/sums), state that the query found no matching records, rather than implying a schema limitation. Examples: "No students were found matching the criteria.", "Zero sales tax was collected in that period.", "No families registered last month."
+- If the results were explicitly truncated (indicated by "... (results truncated)"), briefly mention that the provided data might be incomplete.
+- Do *not* add generic disclaimers like "according to the available data" or "based on the schema" unless the data truncation note is present or the query itself failed.
+- Do *not* repeat the raw data values unless necessary for the answer (e.g., "The total revenue was $X.").
+- Keep the summary brief and factual, typically 1-2 sentences.
+- Output *only* the plain text summary, with no markdown formatting, headers, or introductory phrases.
+`;
+
+    // Use the faster flash model for summarization, configured with the system instruction
+    const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+        systemInstruction: systemInstructionForSummary
+    });
+
+    // --- User Prompt Content for Summarizer ---
+    // Contains only the specific context for this summarization task.
+    // Note: Including the schema here might still be helpful for context, even if redundant with the SQL generator.
+    const userPromptForSummary = `
+    Database Schema Context (for reference):
     ${schemaDescription}
 
     Original Question: "${originalQuery}"
@@ -361,10 +556,9 @@ async function generateResultSummary(originalQuery: string, results: Json | null
     - Do *not* add generic disclaimers like "according to the available data" or "based on the schema" unless the data truncation note is present or the query itself failed.
     - Do *not* repeat the raw data values unless necessary for the answer (e.g., "The total revenue was $X.").
     - Keep the summary brief and factual, typically 1-2 sentences.
-    - Output *only* the plain text summary, with no markdown formatting, headers, or introductory phrases.
-
     Summary:
   `;
+
 
     try {
         const generationConfig = {
@@ -385,8 +579,9 @@ async function generateResultSummary(originalQuery: string, results: Json | null
         ];
 
 
+        // Generate content using only the user prompt content
         const result = await model.generateContent({
-            contents: [{role: "user", parts: [{text: prompt}]}],
+            contents: [{ role: "user", parts: [{ text: userPromptForSummary }] }],
             generationConfig,
             safetySettings,
         });
@@ -564,12 +759,12 @@ export default function AdminDbChat() {
             // Mark this query as processed, ensuring null if undefined
             processedQueryRef.current = actionData.originalQuery ?? null;
 
-                // Clear the input field only after a successful response is processed
-                if (actionData.success) {
-                    setQuestion("");
-                    // Refocus the textarea after clearing it
-                    textareaRef.current?.focus();
-                }
+            // Clear the input field only after a successful response is processed
+            if (actionData.success) {
+                setQuestion("");
+                // Refocus the textarea after clearing it
+                textareaRef.current?.focus();
+            }
             // } // End of removed isResponseAlreadyAdded check
         }
         // Depend on actionData and navigation.state.
@@ -593,76 +788,77 @@ export default function AdminDbChat() {
             {/* Use flex for main layout instead of grid for better height control */}
             <div className="flex flex-1 gap-6 min-h-0">
                 {/* Left sidebar - make it a flex column to control vertical alignment */}
-                <div className="hidden md:flex md:flex-col w-1/3 flex-shrink-0"> {/* Changed w-1/4 to w-1/3, added flex flex-col */}
+                <div
+                    className="hidden md:flex md:flex-col w-1/3 flex-shrink-0"> {/* Changed w-1/4 to w-1/3, added flex flex-col */}
                     {/* Example Questions Card */}
                     <Card className="flex-shrink-0"> {/* Prevent this card from growing */}
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                    <Sparkles className="h-5 w-5 mr-2"/>
-                                    Example Questions
+                                <Sparkles className="h-5 w-5 mr-2"/>
+                                Example Questions
+                            </CardTitle>
+                            <CardDescription>
+                                Click on any of these examples to try them out.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pb-0">
+                            <ul className="space-y-1"> {/* Reduced spacing slightly */}
+                                {exampleQuestions.map((q, i) => (
+                                    <li key={i}>
+                                        {/* Use Button onClick to set state and trigger main form submission */}
+                                        {/* Adjusted button classes for wrapping and padding */}
+                                        <Button
+                                            variant="ghost"
+                                            className="justify-start h-auto py-1 px-2 w-full text-left text-sm whitespace-normal" // Allow wrapping, reduce padding
+                                            onClick={() => {
+                                                setQuestion(q); // Update the input field state visually
+                                                addQueryToHistory(q); // Add to history optimistically
+                                                // Use useSubmit to send data directly, bypassing form serialization timing issues
+                                                submit(
+                                                    {query: q}, // Explicitly send the question
+                                                    {method: "post", action: "/admin/db-chat"}
+                                                );
+                                            }}
+                                            disabled={isSubmitting} // Disable while submitting
+                                        >
+                                            {q}
+                                        </Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    </Card>
+
+                    <div className="mt-6">
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center">
+                                    <PanelLeft className="h-4 w-4 mr-2"/>
+                                    Features
                                 </CardTitle>
-                                <CardDescription>
-                                    Click on any of these examples to try them out.
-                                </CardDescription>
                             </CardHeader>
-                            <CardContent className="pb-0">
-                                <ul className="space-y-1"> {/* Reduced spacing slightly */}
-                                    {exampleQuestions.map((q, i) => (
-                                        <li key={i}>
-                                            {/* Use Button onClick to set state and trigger main form submission */}
-                                            {/* Adjusted button classes for wrapping and padding */}
-                                            <Button
-                                                variant="ghost"
-                                                className="justify-start h-auto py-1 px-2 w-full text-left text-sm whitespace-normal" // Allow wrapping, reduce padding
-                                                onClick={() => {
-                                                    setQuestion(q); // Update the input field state visually
-                                                    addQueryToHistory(q); // Add to history optimistically
-                                                    // Use useSubmit to send data directly, bypassing form serialization timing issues
-                                                    submit(
-                                                        { query: q }, // Explicitly send the question
-                                                        { method: "post", action: "/admin/db-chat" }
-                                                    );
-                                                }}
-                                                disabled={isSubmitting} // Disable while submitting
-                                            >
-                                                {q}
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
+                            <CardContent>
+                                {/* Use flex-wrap and gap for better badge layout */}
+                                <div className="flex flex-wrap gap-1">
+                                    <div className="w-full">
+                                        <Badge variant="outline" className="mb-2 text-base">Sales Tax Analysis</Badge>
+                                    </div>
+                                    <div className="w-full">
+                                        <Badge variant="outline" className="mb-2 text-base">Revenue Reports</Badge>
+                                    </div>
+                                    <div className="w-full">
+                                        <Badge variant="outline" className="mb-2 text-base">Student Statistics</Badge>
+                                    </div>
+                                    <div className="w-full">
+                                        <Badge variant="outline" className="mb-2 text-base">Product Performance</Badge>
+                                    </div>
+                                    <div className="w-full">
+                                        <Badge variant="outline" className="mb-2 text-base">Enrollment Tracking</Badge>
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
-
-                        <div className="mt-6">
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm flex items-center">
-                                        <PanelLeft className="h-4 w-4 mr-2"/>
-                                        Features
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    {/* Use flex-wrap and gap for better badge layout */}
-                                    <div className="flex flex-wrap gap-1">
-                                        <div className="w-full">
-                                            <Badge variant="outline" className="mb-2 text-base">Sales Tax Analysis</Badge>
-                                        </div>
-                                        <div className="w-full">
-                                            <Badge variant="outline" className="mb-2 text-base">Revenue Reports</Badge>
-                                        </div>
-                                        <div className="w-full">
-                                            <Badge variant="outline" className="mb-2 text-base">Student Statistics</Badge>
-                                        </div>
-                                        <div className="w-full">
-                                            <Badge variant="outline" className="mb-2 text-base">Product Performance</Badge>
-                                        </div>
-                                        <div className="w-full">
-                                            <Badge variant="outline" className="mb-2 text-base">Enrollment Tracking</Badge>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                    </div>
                 </div>
 
                 {/* Chat area - Use flex-grow to take remaining space */}
@@ -715,10 +911,13 @@ export default function AdminDbChat() {
                                                             // Render Thinking Indicator
                                                             <div className="flex justify-start mb-4">
                                                                 {/* Use muted background, similar to response, but simpler content */}
-                                                                <div className="bg-muted dark:bg-gray-700 rounded-lg py-3 px-4 max-w-[90%] w-auto inline-flex items-center">
-                                                                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                                                <div
+                                                                    className="bg-muted dark:bg-gray-700 rounded-lg py-3 px-4 max-w-[90%] w-auto inline-flex items-center">
+                                                                    <div
+                                                                        className="flex items-center space-x-2 text-sm text-muted-foreground">
                                                                         {/* Simple spinner */}
-                                                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                                                                        <div
+                                                                            className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                                                                         {/* Informative text */}
                                                                         <span>Thinking... (this might take a moment the first time)</span>
                                                                     </div>

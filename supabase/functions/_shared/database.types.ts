@@ -965,6 +965,10 @@ export type Database = {
         Args: { query_text: string }
         Returns: Json
       }
+      execute_explain_query: {
+        Args: { query_text: string }
+        Returns: Json
+      }
       get_admin_conversation_summaries: {
         Args: Record<PropertyKey, never>
         Returns: {
