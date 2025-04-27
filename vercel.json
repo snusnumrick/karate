@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/admin/db-chat": {
+    "api/admin/db-chat*": {
       "maxDuration": 60
     }
   }
