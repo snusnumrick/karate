@@ -1,19 +1,14 @@
-import {useEffect, useRef} from "react"; // Import useEffect and useState
+import {useEffect, useRef, useState} from "react"; // Import useEffect, useRef, useState
 import {json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
 import {Link, useLoaderData, useRevalidator} from "@remix-run/react"; // Import useRevalidator
-import {createClient, SupabaseClient} from "@supabase/supabase-js"; // Import createClient and SupabaseClient
+import {createClient, SupabaseClient, RealtimeChannel} from "@supabase/supabase-js"; // Import createClient, SupabaseClient, RealtimeChannel
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types"; // Import Database
 import ConversationList from "~/components/ConversationList";
 import {Button} from "~/components/ui/button"; // Import Button
 import {PlusCircle} from "lucide-react"; // Import an icon
 
-// Add TypeScript declaration for the global window.__SUPABASE_SINGLETON_CLIENT property
-declare global {
-    interface Window {
-        __SUPABASE_SINGLETON_CLIENT?: SupabaseClient<Database>;
-    }
-}
+// Remove global singleton declaration
 
 // Define the shape of conversation data we expect from the RPC function
 type ConversationSummary = {
@@ -107,125 +102,134 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 export default function MessagesIndex() {
     const {conversations, error, ENV, accessToken, refreshToken} = useLoaderData<typeof loader>();
     const revalidator = useRevalidator();
-    // Remove useState for supabase client
-    // const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
-    const supabaseRef = useRef<SupabaseClient<Database> | null>(null); // Use ref for singleton client
-    const channelRef = useRef<ReturnType<SupabaseClient<Database>['channel']> | null>(null); // Ref for the channel
+    const supabaseRef = useRef<SupabaseClient<Database> | null>(null); // Use ref for local client instance
+    const channelRef = useRef<RealtimeChannel | null>(null); // Ref for the channel
     const isCleaningUpRef = useRef(false); // Ref to prevent race conditions during cleanup
+    const [clientInitialized, setClientInitialized] = useState(false); // State to track initialization
 
-    // Effect for Supabase Client Initialization and Realtime Subscription
+    // Effect for Supabase Client Initialization
     useEffect(() => {
-        isCleaningUpRef.current = false; // Reset cleanup flag on effect run
-
-        // Initialize singleton client if needed
-        if (!window.__SUPABASE_SINGLETON_CLIENT) {
-            if (ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY) {
-                console.log("[FamilyMessagesIndex] Creating global Supabase singleton client with ANON KEY.");
-                const client = createClient<Database>(
-                    ENV.SUPABASE_URL,
-                    ENV.SUPABASE_ANON_KEY,
-                    {
-                        auth: { persistSession: true, autoRefreshToken: false }, // Adjust as needed
-                        realtime: { params: { eventsPerSecond: 10 } }
-                    }
-                );
-                window.__SUPABASE_SINGLETON_CLIENT = client;
-            } else {
-                console.error("[FamilyMessagesIndex] Missing SUPABASE_URL or SUPABASE_ANON_KEY for client initialization.");
-                return; // Cannot proceed without client
-            }
+        console.log("[FamilyMessagesIndex] Client initialization effect running.");
+        // Initialize local client instance if needed
+        if (!supabaseRef.current && ENV?.SUPABASE_URL && ENV?.SUPABASE_ANON_KEY) {
+            console.log("[FamilyMessagesIndex] Initializing Supabase client...");
+            supabaseRef.current = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
+                auth: {
+                    persistSession: true, // Allow client to manage session persistence
+                    autoRefreshToken: true, // Allow client to manage token refresh
+                },
+                realtime: { params: { eventsPerSecond: 10 } } // Keep existing realtime config
+            });
+            console.log("[FamilyMessagesIndex] Supabase client instance created.");
+            setClientInitialized(true); // Signal that the client object exists
+        } else if (supabaseRef.current) {
+            console.log("[FamilyMessagesIndex] Supabase client already initialized.");
+            if (!clientInitialized) setClientInitialized(true); // Ensure state is correct if ref exists but state was false
         } else {
-            console.log("[FamilyMessagesIndex] Using existing global Supabase singleton client.");
+            console.warn("[FamilyMessagesIndex] Supabase ENV variables not found, cannot create client.");
         }
+    }, [clientInitialized, ENV]); // Only depends on ENV
 
-        // Assign singleton to ref
-        supabaseRef.current = window.__SUPABASE_SINGLETON_CLIENT;
-
-        // Update Authorization header if accessToken is available
-        if (accessToken && supabaseRef.current) {
-            console.log("[FamilyMessagesIndex] Setting Authorization header with current token.");
-            // Set headers directly on the client
-            // Use auth.setSession instead of setAuth
+    // Effect to set/update the session on the initialized client
+    useEffect(() => {
+        console.log("[FamilyMessagesIndex] Session update effect running.");
+        if (supabaseRef.current && accessToken && refreshToken) {
+            console.log("[FamilyMessagesIndex] Setting session on Supabase client...");
             supabaseRef.current.auth.setSession({
                 access_token: accessToken,
-                refresh_token: refreshToken || '',
+                refresh_token: refreshToken,
+            }).then(({error: sessionError}) => {
+                if (sessionError) {
+                    console.error("[FamilyMessagesIndex] Error setting session:", sessionError.message);
+                } else {
+                    console.log("[FamilyMessagesIndex] Session set successfully.");
+                }
             });
-        } else if (!accessToken) {
-            console.warn("[FamilyMessagesIndex] Access token not available for setting header.");
+        } else if (!accessToken || !refreshToken) {
+            console.warn("[FamilyMessagesIndex] Access token or refresh token missing, cannot set session.");
+        } else {
+            console.log("[FamilyMessagesIndex] Supabase client ref not ready for session setting.");
+        }
+    }, [accessToken, refreshToken, clientInitialized]); // Depend on tokens and initialization state
+
+    // Effect for Supabase Realtime Subscription
+    useEffect(() => {
+        // Ensure cleanup ref is reset when dependencies change
+        isCleaningUpRef.current = false;
+        console.log("[FamilyMessagesIndex] Subscription effect running.");
+
+        if (!clientInitialized || !supabaseRef.current) {
+            console.log("[FamilyMessagesIndex] Supabase client not ready for real-time. Skipping subscription setup.");
+            return; // Exit if client is not initialized
         }
 
-        // --- Realtime Subscription Setup ---
-        const supabase = supabaseRef.current; // Use the client from the ref
-        if (!supabase) {
-            console.log("[FamilyMessagesIndex] Supabase client not available for real-time setup.");
-            return; // Exit if client is somehow still null
+        // Prevent setup if already subscribed or during cleanup
+        if (channelRef.current && channelRef.current.state === 'joined') {
+             console.log("[FamilyMessagesIndex] Already subscribed to channel. Skipping setup.");
+             return;
         }
 
-        const channelName = 'family-messages-list-channel'; // Keep channel name consistent
-        console.log(`[FamilyMessagesIndex] Attempting to set up channel: ${channelName}`);
+        console.log("[FamilyMessagesIndex] Setting up Supabase real-time subscription...");
+        const supabase = supabaseRef.current; // Get client from ref
+        const channelName = 'family-messages-list-channel';
+        console.log(`[FamilyMessagesIndex] Attempting to create/get channel: ${channelName}`);
 
-        // Clean up previous channel instance if it exists in the ref
+        // Remove any existing channel before creating a new one
         if (channelRef.current) {
-            console.log(`[FamilyMessagesIndex] Removing existing channel reference before creating new one: ${channelName}`);
-            supabase.removeChannel(channelRef.current)
-                .catch(err => console.error(`[FamilyMessagesIndex] Error removing previous channel ${channelName}:`, err));
+            console.warn(`[FamilyMessagesIndex] Removing potentially stale channel ${channelName} before creating new one.`);
+            supabase.removeChannel(channelRef.current);
             channelRef.current = null;
         }
 
-        // supabase.auth.getSession().then(r => {console.log(r);});
-
-        // Create new channel instance
         const channel = supabase.channel(channelName);
-        channelRef.current = channel; // Store the new channel instance in the ref
-
-        console.log(`[FamilyMessagesIndex] Created new channel instance: ${channelName}`);
+        channelRef.current = channel; // Store the channel instance
+        console.log(`[FamilyMessagesIndex] Initial channel state before subscribe: ${channel.state}`);
 
         channel
             .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, (payload) => {
-                if (isCleaningUpRef.current) {
-                    console.log('[FamilyMessagesIndex] Received message during cleanup, skipping revalidation.');
-                    return;
-                }
                 console.log('[FamilyMessagesIndex] *** New message INSERT detected! ***:', payload);
-                console.log('[FamilyMessagesIndex] Revalidating conversation list due to new message...');
-                revalidator.revalidate();
+                if (!isCleaningUpRef.current) { // Check cleanup flag
+                    console.log('[FamilyMessagesIndex] Revalidating conversation list due to new message...');
+                    revalidator.revalidate();
+                } else {
+                    console.log('[FamilyMessagesIndex] Cleanup in progress, skipping revalidation.');
+                }
             })
             .subscribe((status, err) => {
-                if (isCleaningUpRef.current) {
-                    console.log(`[FamilyMessagesIndex] Received status update '${status}' during cleanup, ignoring.`);
-                    return;
-                }
                 console.log(`[FamilyMessagesIndex] Channel ${channelName} subscription status update: ${status}`);
                 if (status === 'SUBSCRIBED') {
                     console.log(`[FamilyMessagesIndex] Successfully subscribed to channel: ${channelName}`);
                 }
                 if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                    console.error(`[FamilyMessagesIndex] Channel ${channelName} issue: Status=${status}`, err || '');
-                    // Attempt to remove the problematic channel ref on error/closure
-                    if (channelRef.current === channel) { // Ensure we're removing the correct channel instance
-                        supabase.removeChannel(channel)
-                            .catch(removeErr => console.error(`[FamilyMessagesIndex] Error removing channel ${channelName} after error/closure:`, removeErr));
-                        channelRef.current = null;
-                    }
+                    console.error(`[FamilyMessagesIndex] Channel ${channelName} issue: Status=${status}`, err || '(No error object provided)');
+                    // Optional: Attempt to resubscribe on certain errors? Be cautious of loops.
                 }
             });
+
+        console.log(`[FamilyMessagesIndex] Channel ${channelName} .subscribe() called. Current state: ${channel.state}`);
 
         // Return cleanup function
         return () => {
             isCleaningUpRef.current = true; // Set cleanup flag
             console.log(`[FamilyMessagesIndex] Cleaning up Supabase real-time subscription for channel: ${channelName}.`);
-            const currentChannel = channelRef.current; // Capture channel from ref
-            if (currentChannel && supabase) {
+            const currentChannel = channelRef.current; // Capture ref value
+            if (currentChannel && supabase) { // Ensure supabase client still exists
+                console.log(`[FamilyMessagesIndex] Current state before removal: ${currentChannel.state}`);
                 supabase.removeChannel(currentChannel)
                     .then(status => console.log(`[FamilyMessagesIndex] Removed channel ${channelName} status: ${status}`))
-                    .catch(error => console.error(`[FamilyMessagesIndex] Error removing channel ${channelName}:`, error));
-                channelRef.current = null; // Clear the ref
+                    .catch(error => console.error(`[FamilyMessagesIndex] Error removing channel ${channelName}:`, error))
+                    .finally(() => {
+                        // Only nullify if it's the same channel we intended to remove
+                        if (channelRef.current === currentChannel) {
+                            channelRef.current = null;
+                        }
+                    });
             } else {
-                console.log(`[FamilyMessagesIndex] Cleanup: No channel found in ref for ${channelName} or supabase client missing.`);
+                 console.log(`[FamilyMessagesIndex] Cleanup: No channel found in ref for ${channelName} or supabase client missing.`);
             }
         };
-        // Dependencies: Re-run if ENV vars or accessToken change.
-    }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, accessToken, refreshToken, revalidator]);
+        // Depend only on client initialization state and revalidator
+    }, [clientInitialized, revalidator]);
 
 
     if (error) {

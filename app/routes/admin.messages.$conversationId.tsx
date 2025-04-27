@@ -566,6 +566,27 @@ export default function AdminConversationView() {
                             console.log(`[Admin Subscription Callback] Appending message ID ${newMessage.id} to state.`);
                             return [...currentMessages, newMessage];
                         });
+
+                        // --- Mark conversation as read immediately since admin is viewing it ---
+                        if (supabase && userId && conversation?.id && !isCleaningUpRef.current) {
+                            console.log(`[Admin] New message received while viewing. Marking conversation ${conversation.id} as read for user ${userId}.`);
+                            supabase.rpc('mark_conversation_as_read', {
+                                p_conversation_id: conversation.id,
+                                p_user_id: userId,
+                            }).then(({ error: markReadError }) => {
+                                if (markReadError) {
+                                    console.error(`[Admin] Error marking conversation ${conversation.id} as read via RPC after realtime message:`, markReadError.message);
+                                } else {
+                                    console.log(`[Admin] Successfully marked conversation ${conversation.id} as read via RPC after realtime message.`);
+                                    // Optionally, trigger a revalidation of the parent list if needed,
+                                    // though simply preventing the unread state might be sufficient.
+                                    // revalidator.revalidate(); // Consider if this is necessary
+                                }
+                            });
+                        } else {
+                            console.log("[Admin] Skipping immediate mark-as-read (missing supabase, userId, conversationId, or cleaning up).");
+                        }
+                        // --- End immediate mark as read ---
                     }
                 );
 

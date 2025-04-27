@@ -61,25 +61,9 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     }
     // const userId = user.id; // userId is already defined above
 
-    // Check if user is admin or instructor
-    const {data: profile, error: profileError} = await supabaseServer
-        .from('profiles')
-        .select('role, family_id') // Fetch family_id too
-        .eq('id', user.id)
-        .single();
-
-    if (profileError || !profile || !['admin', 'instructor'].includes(profile.role)) {
-        console.error("Admin/Instructor access error:", profileError?.message);
-        // Return ENV, token, and userId even on error
-        return json({
-            conversations: [],
-            error: "Access Denied: You do not have permission to view this page.",
-            ENV,
-            accessToken,
-            refreshToken,
-            userId
-        }, {status: 403, headers});
-    }
+    // NOTE: Admin/Instructor role check is handled by the parent layout loader (_admin.tsx).
+    // We only need the session details (accessToken, refreshToken, userId) and ENV
+    // to pass to the client for Supabase initialization.
 
     // Call the RPC function to get conversation summaries
     // Note: The RPC function handles fetching conversations, participants, profiles,

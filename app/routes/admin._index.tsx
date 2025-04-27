@@ -1,25 +1,23 @@
-import {json, type LoaderFunctionArgs} from "@remix-run/node";
-import {Link, useLoaderData, useRouteError} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {createClient} from '@supabase/supabase-js'; // Import createClient
-import {PaymentStatus} from "~/types/models"; // Import the enum
+import { json, type LoaderFunctionArgs } from "@remix-run/node"; // Keep json, LoaderFunctionArgs
+import { Link, useLoaderData } from "@remix-run/react"; // Remove useRouteError
+// Remove getSupabaseServerClient import as it's no longer needed here
+import { createClient } from '@supabase/supabase-js'; // Import createClient
+import { PaymentStatus } from "~/types/models"; // Import the enum
 
-// Loader now only fetches data, assumes auth handled by parent layout (admin.tsx)
-export async function loader({request}: LoaderFunctionArgs) {
-    console.log("Entering /admin/index loader (data fetch only)..."); // Updated log
-    // Get headers from the user-context client helper
-    const {response} = getSupabaseServerClient(request);
-    const headers = response.headers;
+// Loader now only fetches data, assumes auth handled by parent layout (_admin.tsx)
+// Give the unused argument object a name prefixed with underscore and disable the lint rule for this line
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function loader(_: LoaderFunctionArgs) {
+    console.log("Entering /admin/index loader (data fetch only)...");
 
-    // Create a service role client for admin-level data fetching
+    // Create a service role client directly for admin-level data fetching
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error("Admin index loader: Missing Supabase URL or Service Role Key env variables.");
-        // Preserve headers in error response
-        const headersObj = Object.fromEntries(headers);
-        throw new Response("Server configuration error.", {status: 500, headers: headersObj});
+        // Throw simple response, headers are handled by parent/Remix
+        throw new Response("Server configuration error.", { status: 500 });
     }
 
     // Use service role client for admin data access
@@ -38,9 +36,8 @@ export async function loader({request}: LoaderFunctionArgs) {
 
         if (requiredWaiversError) {
             console.error("Error fetching required waivers:", requiredWaiversError.message);
-            // Preserve headers in error response
-            const headersObj = Object.fromEntries(headers);
-            throw new Response("Failed to load required waiver data.", {status: 500, headers: headersObj});
+            // Throw simple response
+            throw new Response("Failed to load required waiver data.", { status: 500 });
         }
         const requiredWaiverIds = requiredWaivers?.map(w => w.id) || [];
 
@@ -111,9 +108,7 @@ export async function loader({request}: LoaderFunctionArgs) {
 
         console.log("Admin index loader - Data fetched.");
 
-        // Convert headers to plain object for Response
-        const headersObj = Object.fromEntries(headers);
-
+        // Return data without explicitly setting headers
         return json({
             familyCount: familyCount ?? 0,
             studentCount: studentCount ?? 0,
@@ -121,7 +116,7 @@ export async function loader({request}: LoaderFunctionArgs) {
             attendanceToday: attendanceToday ?? 0,
             pendingPaymentsCount: pendingPaymentsCount ?? 0,
             missingWaiversCount: missingWaiversCount < 0 ? 0 : missingWaiversCount, // Ensure non-negative
-        }, {headers: headersObj});
+        }); // Remove headers object
 
     } catch (error) {
         if (error instanceof Error) {
@@ -130,14 +125,10 @@ export async function loader({request}: LoaderFunctionArgs) {
             console.error("Error in /admin/index loader data fetch:", error);
         }
         // Let the error boundary in the layout handle this
-        // Preserve headers in error response
-        console.error("Data fetch error - throwing 500 with headers");
-        throw new Response("Failed to load dashboard data.", {
-            status: 500,
-            headers: Object.fromEntries(headers)
-        });
+        // Throw simple response
+        console.error("Data fetch error - throwing 500");
+        throw new Response("Failed to load dashboard data.", { status: 500 });
     }
-    // --- End of data fetching ---
 }
 
 
@@ -271,20 +262,6 @@ export default function AdminDashboard() {
     );
 }
 
-// Add a specific ErrorBoundary for this route
-export function ErrorBoundary() {
-    const error = useRouteError() as Error; // Basic error type
-    console.error("Error caught in AdminDashboard ErrorBoundary:", error); // Log the specific error
-
-    return (
-        <div className="p-4 bg-pink-100 border border-pink-400 text-pink-700 rounded">
-            <h2 className="text-xl font-bold mb-2">Error Loading Admin Dashboard Content</h2>
-            <p>{error?.message || "An unknown error occurred within the dashboard component."}</p>
-            {process.env.NODE_ENV === "development" && (
-                <pre className="mt-4 p-2 bg-pink-50 text-pink-900 rounded-md max-w-full overflow-auto text-xs">
-          {error?.stack || JSON.stringify(error, null, 2)}
-        </pre>
-            )}
-        </div>
-    );
-}
+// Removed the specific ErrorBoundary from this route.
+// Errors will now bubble up to the layout's ErrorBoundary (_admin.tsx),
+// ensuring the AdminNavbar and AdminFooter remain visible.

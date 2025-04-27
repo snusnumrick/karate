@@ -9,6 +9,7 @@ import {
     Boxes,
     CalendarCheck,
     CreditCard,
+    Database,
     FileText,
     LayoutDashboard,
     ListOrdered,
@@ -34,8 +35,8 @@ const adminNavItems = [
     {to: "/admin/payments", label: "Payments", icon: CreditCard},
     {to: "/admin/waivers", label: "Waivers", icon: FileText},
     {to: "/admin/attendance", label: "Attendance", icon: CalendarCheck},
-    // Note: Messages link was already added in the provided file content, no change needed here.
     {to: "/admin/messages", label: "Messages", icon: MessageSquare},
+    {to: "/admin/db-chat", label: "DB Chat", icon: Database},
     // Store items will be handled by the Dropdown below
 ];
 

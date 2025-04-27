@@ -30,5 +30,5 @@
     // Vite takes care of building everything, not tsc.
     "noEmit": true
   },
-  "exclude": ["node_modules", "supabase/functions"] // Exclude Deno functions from tsc
+  "exclude": ["node_modules", "supabase/functions", "db-tools"] // Exclude Deno functions from tsc
 }

@@ -1909,11 +1909,32 @@ BEGIN
     SET last_read_at = now()
     WHERE conversation_id = p_conversation_id
       AND user_id = p_user_id;
+
+    -- Check if the update affected any rows
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User % is not a participant in conversation %',
+            p_user_id, p_conversation_id;
+    END IF;
 END;
 $$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION public.mark_conversation_as_read(uuid, uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.update_sender_last_read_at()
+    RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.conversation_participants
+    SET last_read_at = NEW.created_at
+    WHERE conversation_id = NEW.conversation_id
+      AND user_id = NEW.sender_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER messages_update_sender_read_ts
+    AFTER INSERT ON public.messages
+    FOR EACH ROW EXECUTE FUNCTION public.update_sender_last_read_at();
 
 -- Function for Admin/Instructor to initiate a conversation with a specific family
 CREATE OR REPLACE FUNCTION public.create_admin_initiated_conversation(
@@ -1970,6 +1991,64 @@ $$;
 -- Grant execute permission to authenticated users (Remix action already checks for admin/instructor role)
 GRANT EXECUTE ON FUNCTION public.create_admin_initiated_conversation(uuid, uuid, text, text) TO authenticated;
 
+-- Create function to execute admin queries safely
+-- This function allows admin users to execute SQL queries through the DB chat interface
+-- It has the following safety features:
+-- 1. Only SELECT statements are allowed (no data modification)
+-- 2. Timeout limit to prevent long-running queries
+-- 3. Limited to admin permissions
+
+-- Create the function
+CREATE OR REPLACE FUNCTION execute_admin_query(query_text TEXT)
+    RETURNS JSONB
+    LANGUAGE plpgsql
+    SECURITY DEFINER -- Function runs with the permissions of the creator
+AS $$
+DECLARE
+    result JSONB;
+    trimmed_query TEXT;
+BEGIN
+    -- Trim leading/trailing whitespace and convert to lowercase
+    -- Trim leading/trailing whitespace
+    -- Trim leading/trailing whitespace
+    trimmed_query := TRIM(query_text);
+
+    -- Check if the query starts with 'select' (case-insensitive) followed by whitespace or end of string
+    -- using a case-insensitive regular expression match (~*)
+    IF trimmed_query !~* '^\s*select(\s|$)' THEN
+        RAISE EXCEPTION 'Only SELECT statements are allowed for security reasons. Query must start with SELECT.';
+    END IF;
+
+    -- Set a statement timeout to prevent long-running queries
+    EXECUTE 'SET LOCAL statement_timeout = 5000'; -- 5 seconds in milliseconds
+
+    -- Execute the query and convert the result to JSON
+    EXECUTE 'SELECT jsonb_agg(row_to_json(t)) FROM (' || query_text || ') t' INTO result;
+
+    -- Return an empty array instead of null if no results
+    IF result IS NULL THEN
+        result := '[]'::JSONB;
+    END IF;
+
+    RETURN result;
+EXCEPTION
+    WHEN others THEN
+        -- Return the error as JSON
+        RETURN jsonb_build_object('error', SQLERRM);
+END;
+$$;
+
+-- Set security policies
+    ALTER FUNCTION execute_admin_query(TEXT) OWNER TO postgres;
+REVOKE ALL ON FUNCTION execute_admin_query(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION execute_admin_query(TEXT) TO postgres;
+GRANT EXECUTE ON FUNCTION execute_admin_query(TEXT) TO service_role;
+
+COMMENT ON FUNCTION execute_admin_query(TEXT) IS
+    'Executes a SQL query and returns the results as JSONB. For security reasons:
+    1. Only SELECT statements are allowed
+    2. Queries have a 5-second timeout
+    3. Function runs with SECURITY DEFINER to ensure proper permissions';
 
 -- --- End RPC Function ---
 

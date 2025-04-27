@@ -961,6 +961,10 @@ export type Database = {
         Args: { variant_id: string; decrement_quantity: number }
         Returns: undefined
       }
+      execute_admin_query: {
+        Args: { query_text: string }
+        Returns: Json
+      }
       get_admin_conversation_summaries: {
         Args: Record<PropertyKey, never>
         Returns: {
