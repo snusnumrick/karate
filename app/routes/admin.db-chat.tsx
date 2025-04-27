@@ -23,6 +23,10 @@ let cachedSchemaTimestamp: number | null = null;
 const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour in milliseconds
 // --- End Cache ---
 
+// This function can run for a maximum of 60 seconds
+export const config = {
+    maxDuration: 60,
+};
 
 // Example questions for the UI
 const exampleQuestions = [
