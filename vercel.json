@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/routes/admin.db-chat.tsx": {
+      "maxDuration": 60
+    }
+  }
+}
