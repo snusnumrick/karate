@@ -18,3 +18,5 @@ db-tools/
 *.backup
 
 .vercel
+playwright-report/
+test-results/

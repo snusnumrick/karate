@@ -165,6 +165,14 @@ export default function AboutPage() {
                                 strength,
                                 discipline, respect, and confidence that will serve them throughout their lives.&rdquo;
                             </p>
+                            {/* Inline Q&A */}
+                            <div className="mt-6 mb-6 p-4 bg-green-50 dark:bg-green-800 rounded-md">
+                                <p className="text-gray-700 dark:text-green-100">
+                                    <span className="font-semibold">Q: What is the main focus of the classes?</span>
+                                    <br />
+                                    A: Classes introduce karate as a sophisticated martial art, emphasizing defense techniques, mental strength, discipline, and personal growth. We aim to nurture champions in all aspects of life!
+                                </p>
+                            </div>
                             {/* Haiku removed from here */}
                             <div className="mt-8">
                                 <h3 className="text-xl font-semibold mb-4">Join us! OSS!</h3>

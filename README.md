@@ -605,8 +605,31 @@ Potential areas for future enhancement or review include:
 - **Image Alt Text:** Conduct a site-wide review to ensure all meaningful images have descriptive `alt` attributes for SEO and accessibility.
 - **Performance (Core Web Vitals):** Analyze and optimize page load speed and responsiveness using tools like Google PageSpeed Insights.
 - **Accessibility (A11y):** Perform comprehensive accessibility checks (keyboard navigation, color contrast, ARIA attributes).
+- **SEO & AI Discovery Strategy:**
+    - Continue enhancing embedded JSON-LD structured data (Schema.org) on all relevant public pages. This is the primary method for communicating structured information to search engines and AI-powered discovery tools.
+    - Focus on creating high-quality, crawlable HTML content.
+    - Ensure `sitemap.xml` is comprehensive and `robots.txt` is correctly configured.
+    - *Note: Dedicated public JSON APIs for general AI search discovery are not planned, as embedded JSON-LD in HTML is the preferred and standard approach.*
 - **Payment Reporting:** Enhance admin reporting for payments.
 - **Error Monitoring:** Implement more robust error logging/monitoring.
+- **Reviews / Testimonials:**
+    - Implement a system for displaying customer reviews/testimonials (e.g., as a carousel or static quotes on relevant pages).
+    - Add `AggregateRating` and individual `Review` schema markup to enhance search engine visibility (rich snippets).
+    - **Benefits:**
+        - Provide social proof and increase user trust.
+        - Potentially improve click-through rates from search results.
+        - Add fresh, user-generated content to the site.
+    - **Note:** This should be implemented once a sufficient number of genuine reviews are available.
+- **Blog / News Section:**
+    - Develop a public-facing blog or news section to share insights, articles (e.g., "Benefits of Martial Arts," "Karate Belt System Explained"), and updates.
+    - Implement an admin interface for creating, editing, and managing blog posts.
+    - **Benefits:**
+        - Provide fresh, relevant content for SEO.
+        - Target a wider range of keywords.
+        - Establish topical authority.
+        - Create internal linking opportunities.
+        - Generate shareable content.
+        - Proactively answer user questions.
 - **In-App Messaging Enhancements (Potential Future Work):**
     - Implement file attachments for messages.
     - Add in-app notifications (e.g., toast messages) for new messages.

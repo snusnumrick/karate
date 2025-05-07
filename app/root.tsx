@@ -5,6 +5,63 @@ import {siteConfig} from "~/config/site"; // Import site config
 
 import "./tailwind.css";
 
+// Helper function to parse class times for schema.org
+const parseClassTimesForSchema = (daysString: string, timeString: string) => {
+    const days = daysString.split(' & ').map(day => day.replace(/s$/, '')); // "Tuesdays" -> "Tuesday"
+
+    // Regex to find times like "6:15 PM" or "10:00 AM"
+    const timeMatches = timeString.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/gi);
+
+    if (!timeMatches || timeMatches.length < 2) {
+        console.warn(`Could not parse time string for schema: "${timeString}". Expected format like "X:XX AM/PM to Y:YY AM/PM".`);
+        return { dayOfWeek: days, opens: "", closes: "" };
+    }
+
+    const startTime12h = timeMatches[0];
+    const endTime12h = timeMatches[1];
+
+    const convertTo24Hour = (time12h: string): string => {
+        const parts = time12h.toUpperCase().split(' '); // e.g., ["6:15", "PM"]
+        if (parts.length !== 2) {
+            console.warn(`Could not parse 12-hour time part: "${time12h}"`);
+            return "";
+        }
+        
+        const timePart = parts[0]; // "6:15"
+        const modifier = parts[1]; // "PM"
+
+        const [hoursStr, minutesStr] = timePart.split(':');
+        let hours = parseInt(hoursStr, 10);
+        
+        if (isNaN(hours) || isNaN(parseInt(minutesStr, 10))) {
+            console.warn(`Could not parse hours/minutes from time part: "${timePart}"`);
+            return "";
+        }
+
+        if (modifier === 'PM' && hours < 12) {
+            hours += 12;
+        }
+        if (modifier === 'AM' && hours === 12) { // 12 AM (midnight) is 00 hours
+            hours = 0;
+        }
+        return `${String(hours).padStart(2, '0')}:${minutesStr}`;
+    };
+
+    const opens = convertTo24Hour(startTime12h);
+    const closes = convertTo24Hour(endTime12h);
+
+    if (!opens || !closes) {
+        // If time conversion failed, return days but empty times to avoid breaking schema
+        return { dayOfWeek: days, opens: "", closes: "" };
+    }
+
+    return {
+        dayOfWeek: days,
+        opens: opens,
+        closes: closes,
+    };
+};
+
 export const links: LinksFunction = () => [
     {rel: "preconnect", href: "https://fonts.googleapis.com"},
     {
@@ -38,6 +95,8 @@ export const meta: MetaFunction = () => {
 // This Layout component now serves as the root structure and renders the Outlet directly.
 export function Layout() {
     // Suppress hydration warnings at the root level to handle browser extension interference
+    const classTimes = parseClassTimesForSchema(siteConfig.classes.days, siteConfig.classes.timeLong);
+
     return (
         <html lang="en" className="h-full" suppressHydrationWarning>
         <head>
@@ -61,19 +120,75 @@ export function Layout() {
                         "contactType": "Customer Service", // Or "Sales", "Technical Support", etc.
                         "email": siteConfig.contact.email
                     },
-                    "address": {
-                        "@type": "PostalAddress",
-                        "streetAddress": siteConfig.location.address,
-                        "addressLocality": siteConfig.location.locality, // Use siteConfig
-                        "addressRegion": siteConfig.location.region, // Use siteConfig
-                        "postalCode": siteConfig.location.postalCode, // Use siteConfig
-                        "addressCountry": siteConfig.location.country // Use siteConfig
+                    "location": {
+                        "@type": "SportsActivityLocation",
+                        "name": siteConfig.location.description || siteConfig.name,
+                        "description": `Karate classes for children aged ${siteConfig.classes.ageRange}. Days: ${siteConfig.classes.days}. Time: ${siteConfig.classes.timeLong}. Located at ${siteConfig.location.address}.`,
+                        "url": `${siteConfig.url}/contact`,
+                        "telephone": siteConfig.contact.phone,
+                        "address": {
+                            "@type": "PostalAddress",
+                            "streetAddress": siteConfig.location.address,
+                            "addressLocality": siteConfig.location.locality,
+                            "addressRegion": siteConfig.location.region,
+                            "postalCode": siteConfig.location.postalCode,
+                            "addressCountry": siteConfig.location.country
+                        },
+                        "openingHoursSpecification": [
+                            {
+                                "@type": "OpeningHoursSpecification",
+                                "dayOfWeek": classTimes.dayOfWeek,
+                                "opens": classTimes.opens,
+                                "closes": classTimes.closes
+                            }
+                        ]
                     },
                     "sameAs": [ // Add social media links
                         siteConfig.socials.instagram,
                         siteConfig.socials.facebook // Add Facebook link
                     ],
                     "description": siteConfig.description
+                })
+            }} />
+            {/* Add FAQPage Schema */}
+            <script type="application/ld+json" dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "FAQPage",
+                    "mainEntity": [
+                        {
+                            "@type": "Question",
+                            "name": "What ages are the karate classes for?",
+                            "acceptedAnswer": {
+                                "@type": "Answer",
+                                "text": `Our karate classes are designed for children aged ${siteConfig.classes.ageRange}.`
+                            }
+                        },
+                        {
+                            "@type": "Question",
+                            "name": "Where are the classes held?",
+                            "acceptedAnswer": {
+                                "@type": "Answer",
+                                "text": `Classes are held at ${siteConfig.location.address}, ${siteConfig.location.locality}, ${siteConfig.location.region}.`
+                            }
+                        },
+                        {
+                            "@type": "Question",
+                            "name": "What are the class times?",
+                            "acceptedAnswer": {
+                                "@type": "Answer",
+                                "text": `Classes are on ${siteConfig.classes.days} from ${siteConfig.classes.timeLong}.`
+                            }
+                        },
+                        {
+                            "@type": "Question",
+                            "name": "How can I contact Sensei Negin?",
+                            "acceptedAnswer": {
+                                "@type": "Answer",
+                                "text": `You can contact Sensei Negin by phone at ${siteConfig.contact.phone} or by email at ${siteConfig.contact.email}.`
+                            }
+                        }
+                    ]
                 })
             }} />
         </head>

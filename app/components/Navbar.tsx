@@ -23,12 +23,12 @@ export default function Navbar() {
                             <div className="relative h-10 w-10 mr-4">
                                 <img
                                     src="/logo-light.svg"
-                                    alt="Karate Greenegin Logo"
+                                    alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC"
                                     className="h-full w-full dark:hidden"
                                 />
                                 <img
                                     src="/logo-dark.svg"
-                                    alt="Karate Greenegin Logo"
+                                    alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC, Dark Mode"
                                     className="h-full w-full hidden dark:block"
                                 />
                             </div>

@@ -6,12 +6,12 @@ export default function SplatRoute() {
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center px-4">
         <img
             src="/logo-light.svg" // Or your preferred logo
-            alt="Karate Greenegin Logo"
+            alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC"
             className="h-20 w-20 mb-8 dark:hidden"
         />
         <img
             src="/logo-dark.svg" // Or your preferred logo
-            alt="Karate Greenegin Logo"
+            alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC, Dark Mode"
             className="h-20 w-20 mb-8 hidden dark:block"
         />
       <h1 className="text-4xl font-bold text-destructive mb-4">404 - Page Not Found</h1>

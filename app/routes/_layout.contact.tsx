@@ -162,6 +162,34 @@ export default function ContactPage() {
                         </div>
                     </div>
 
+                    {/* Quick Answers Section */}
+                    <div className="my-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Quick Answers</h2>
+                        <div className="space-y-4">
+                            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+                                <p className="text-gray-700 dark:text-gray-200">
+                                    <span className="font-semibold">Q: What’s the class schedule?</span>
+                                    <br />
+                                    A: Classes are on {siteConfig.classes.days}, {siteConfig.classes.timeLong}.
+                                </p>
+                            </div>
+                            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+                                <p className="text-gray-700 dark:text-gray-200">
+                                    <span className="font-semibold">Q: Where are the classes held?</span>
+                                    <br />
+                                    A: Classes are held at {siteConfig.location.address}, {siteConfig.location.locality}, {siteConfig.location.region}.
+                                </p>
+                            </div>
+                             <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+                                <p className="text-gray-700 dark:text-gray-200">
+                                    <span className="font-semibold">Q: What ages are the classes for?</span>
+                                    <br />
+                                    A: Our karate classes are designed for children aged {siteConfig.classes.ageRange}.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
                         <h2 className="text-xl font-semibold mb-4">Send a Message</h2>
                         <form className="space-y-4">

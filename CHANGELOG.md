@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **SEO & Content:**
+    - Added `FAQPage` JSON-LD schema to the site's root for improved search engine understanding.
+    - Enhanced `Organization` JSON-LD schema in the site's root to include `SportsActivityLocation` details, dynamically populating class times and location information.
+    - Added a helper function (`parseClassTimesForSchema`) to `app/root.tsx` to structure class schedule data for schema markup.
+    - Incorporated inline Q&A-style content blocks on the "About" (`app/routes/_layout.about.tsx`) and "Contact" (`app/routes/_layout.contact.tsx`) pages for quick user information.
+    - Improved image `alt` text for logos in the main Navbar (`app/components/Navbar.tsx`) and on the 404 page (`app/routes/$.tsx`) to be more descriptive and SEO-friendly.
+- **Documentation:**
+    - Updated `README.md` to include future development plans for a blog/news section with an admin interface.
+    - Updated `README.md` to include future development plans for implementing reviews/testimonials display and associated schema markup.
+    - Documented SEO strategy in `README.md`, emphasizing embedded JSON-LD over separate public JSON APIs for AI search discovery.
 
 ### Changed
 
