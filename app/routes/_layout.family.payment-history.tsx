@@ -1,6 +1,7 @@
 import {json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Link, useLoaderData} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {format, parse} from "date-fns";
 
 
 export async function loader({request}: LoaderFunctionArgs) {
@@ -90,7 +91,7 @@ export default function PaymentHistoryPage() {
                         {payments.map((payment) => (
                             <tr key={payment.id}>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                    {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
+                                    {payment.payment_date ? format(parse(payment.payment_date, 'yyyy-MM-dd', new Date()), 'P') : 'N/A'}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                                     {/* Use total_amount */}
