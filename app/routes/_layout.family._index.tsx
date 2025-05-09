@@ -6,7 +6,7 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Im
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // Import Badge
 import {Database} from "~/types/database.types";
-import {format} from 'date-fns'; // For formatting dates
+import {format, parse, parseISO} from 'date-fns'; // For formatting dates
 
 // Define Guardian type
 type GuardianRow = Database["public"]["Tables"]["guardians"]["Row"];
@@ -275,7 +275,7 @@ export default function FamilyPortal() {
                                         {student.eligibility.reason.startsWith('Paid') ? 'Active' : student.eligibility.reason}
                                         {/* Show last payment date for Paid or Expired */}
                                         {(student.eligibility.reason.startsWith('Paid') || student.eligibility.reason === 'Expired') && student.eligibility.lastPaymentDate &&
-                                            ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
+                                            ` (Last: ${format(parseISO(student.eligibility.lastPaymentDate), 'MMM d')})`
                                         }
                                     </Badge>
                                 </li>
@@ -385,7 +385,7 @@ export default function FamilyPortal() {
                         <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
                             <p className="text-sm text-gray-700 dark:text-gray-300">
                                 <span
-                                    className="font-semibold">Date:</span> {family.payments[0].payment_date ? new Date(family.payments[0].payment_date).toLocaleDateString() : 'N/A'}
+                                    className="font-semibold">Date:</span> {family.payments[0].payment_date ? format(parse(family.payments[0].payment_date, 'yyyy-MM-dd', new Date()), 'P') : 'N/A'}
                             </p>
                             <p className="text-sm text-gray-700 dark:text-gray-300">
                                 {/* Use total_amount for display */}

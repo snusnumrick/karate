@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Date Display:** Corrected `lastPaymentDate` (student eligibility) and `payment_date` (recent payment) display on the family portal page (`/family`) to use `date-fns` for robust parsing and formatting, ensuring accurate date representation across timezones. (Commit `3c0b1e5`)
 - **Date Display:** Corrected `awarded_date` for belt awards on the student detail page (`/family/student/:studentId`) and `signed_at` date on the waivers index page (`/waivers`) to use `date-fns` for parsing and formatting, ensuring accurate date representation across timezones. (Commit `e66ab55`)
 - **Date Display:** Corrected `payment_date` display on the family receipt page (`/family/receipt/:paymentId`) to accurately reflect the stored date, using `date-fns` for parsing and formatting to avoid timezone issues. (Commit `40b07f8`)
 - **Student Display:** Corrected student birth date display on the student detail page (`/family/student/:studentId`) to accurately reflect the stored date, resolving potential timezone-related off-by-one day errors by using `date-fns` for parsing and formatting. (Commit `958bbfb`)
