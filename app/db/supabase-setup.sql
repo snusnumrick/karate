@@ -2368,15 +2368,15 @@ CREATE OR REPLACE FUNCTION public.complete_new_user_registration(
     p_postal_code character varying(10),
     p_primary_phone character varying(20),
     p_user_email text, -- email of the user, for family record
-    p_referral_source text,
-    p_referral_name text,
-    p_emergency_contact text,
-    p_health_info text,
+    p_referral_source text DEFAULT NULL,
+    p_referral_name text DEFAULT NULL,
+    p_emergency_contact text DEFAULT NULL,
+    p_health_info text DEFAULT NULL,
     p_contact1_first_name text,
     p_contact1_last_name text,
     p_contact1_type text,
     p_contact1_home_phone character varying(20),
-    p_contact1_work_phone character varying(20),
+    p_contact1_work_phone character varying(20) DEFAULT NULL,
     p_contact1_cell_phone character varying(20)
     -- p_contact1_email is user_email
 )
