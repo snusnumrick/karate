@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Date Display:** Updated Family Conversation List (`app/components/ConversationList.tsx`) to use `parseISO` from `date-fns` for parsing `last_message_at` timestamp, ensuring consistent and robust date handling. (Commit `d46c825`)
 - **Date Display:** Updated Admin Conversation List (`app/components/AdminConversationList.tsx`) to use `parseISO` from `date-fns` for parsing `last_message_at` timestamp, ensuring consistent and robust date handling. (Commit `89706b9`)
 - **Date Display:** Corrected `payment_date` display on the family payment history page (`/family/payment-history`) to use `date-fns` for robust parsing and formatting, ensuring accurate date representation across timezones. (Commit `0d0f011`)
 - **Date Display:** Corrected `lastPaymentDate` (student eligibility) and `payment_date` (recent payment) display on the family portal page (`/family`) to use `date-fns` for robust parsing and formatting, ensuring accurate date representation across timezones. (Commit `58acc6d`)
