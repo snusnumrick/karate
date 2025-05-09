@@ -131,7 +131,7 @@ export async function action({request}: ActionFunctionArgs) {
         // Ensure error is an instance of Error for consistent message property
         const errorMessage = error instanceof Error ? error.message : String(error);
         return json({
-            error: error instanceof Error ? error.message : 'Registration failed',
+            error: errorMessage, // Use the processed error message
             formData: Object.fromEntries(formData)
         }, {status: 500});
     }
