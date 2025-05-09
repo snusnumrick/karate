@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Date Display:** Updated Family Payment page (`app/routes/_layout.family.payment.tsx`) to use `parseISO` from `date-fns` for `lastPaymentDate` in student eligibility display, ensuring consistent and robust date handling. (Commit `109348e`)
 - **Date Display:** Updated Family Attendance page (`app/routes/_layout.family.attendance.tsx`) to use `parse` from `date-fns` for `class_date`, ensuring consistent and robust date handling. (Commit `0b18219`)
 - **Date Display:** Updated Message View component (`app/components/MessageView.tsx`) to use `parseISO` from `date-fns` for parsing `created_at` timestamp, ensuring consistent and robust date handling. (Commit `38b8de7`)
 - **Date Display:** Updated Family Conversation List (`app/components/ConversationList.tsx`) to use `parseISO` from `date-fns` for parsing `last_message_at` timestamp, ensuring consistent and robust date handling. (Commit `d46c825`)

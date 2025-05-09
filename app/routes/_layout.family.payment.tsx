@@ -7,7 +7,7 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ExclamationTriangleIcon, InfoCircledIcon} from "@radix-ui/react-icons";
 import {siteConfig} from "~/config/site";
 import {Checkbox} from "~/components/ui/checkbox";
-import {format} from 'date-fns';
+import {format, parseISO} from 'date-fns';
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group"; // Import RadioGroup
 import {Label} from "~/components/ui/label";
 import {Database} from "~/types/database.types";
@@ -562,13 +562,13 @@ export default function FamilyPaymentPage() {
                                     <p className="text-sm text-gray-600 dark:text-gray-400">
                                         { (detail.eligibility.reason === 'Paid - Monthly' ||detail.eligibility.reason === 'Paid - Yearly')
                                             && detail.eligibility.lastPaymentDate &&
-                                            `Active (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
+                                            `Active (Last Paid: ${format(parseISO(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
                                         }
                                         {detail.eligibility.reason === 'Trial' &&
                                             `On Free Trial`
                                         }
                                         {detail.eligibility.reason === 'Expired' && detail.eligibility.lastPaymentDate &&
-                                            `Expired (Last Paid: ${format(new Date(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
+                                            `Expired (Last Paid: ${format(parseISO(detail.eligibility.lastPaymentDate), 'MMM d, yyyy')})`
                                         }
                                         {detail.eligibility.reason === 'Expired' && !detail.eligibility.lastPaymentDate &&
                                             `Expired (No payment history)`
