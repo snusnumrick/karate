@@ -1125,6 +1125,16 @@ $$
                 );
         END IF;
 
+        -- Policy to allow authenticated users to insert new families
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'families'
+                         AND policyname = 'Authenticated users can insert families') THEN
+            CREATE POLICY "Authenticated users can insert families" ON public.families
+                FOR INSERT TO authenticated
+                WITH CHECK (auth.role() = 'authenticated');
+        END IF;
+
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'guardians'

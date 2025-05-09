@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Auth:** Resolved RLS error during new user registration by adding an appropriate `INSERT` policy for the `families` table, allowing newly authenticated users to create their family record.
 
 ## [1.4.1] - 2025-04-27
 
