@@ -943,16 +943,16 @@ export type Database = {
           p_postal_code: string
           p_primary_phone: string
           p_user_email: string
-          p_referral_source: string
-          p_referral_name: string
-          p_emergency_contact: string
-          p_health_info: string
-          p_contact1_first_name: string
-          p_contact1_last_name: string
-          p_contact1_type: string
-          p_contact1_home_phone: string
-          p_contact1_work_phone: string
-          p_contact1_cell_phone: string
+          p_referral_source?: string
+          p_referral_name?: string
+          p_emergency_contact?: string
+          p_health_info?: string
+          p_contact1_first_name?: string
+          p_contact1_last_name?: string
+          p_contact1_type?: string
+          p_contact1_home_phone?: string
+          p_contact1_work_phone?: string
+          p_contact1_cell_phone?: string
         }
         Returns: string
       }
