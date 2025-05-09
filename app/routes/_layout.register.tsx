@@ -98,15 +98,15 @@ export async function action({request}: ActionFunctionArgs) {
             p_postal_code: formData.get('postalCode') as string,
             p_primary_phone: formData.get('primaryPhone') as string,
             p_user_email: contact1Email,
-            p_referral_source: formData.get('referralSource') as string || null,
-            p_referral_name: formData.get('referralName') as string || null,
-            p_emergency_contact: formData.get('emergencyContact') as string || null,
-            p_health_info: formData.get('healthNumber') as string || null,
+            p_referral_source: formData.get('referralSource') as string || '',
+            p_referral_name: formData.get('referralName') as string || '',
+            p_emergency_contact: formData.get('emergencyContact') as string || '',
+            p_health_info: formData.get('healthNumber') as string || '',
             p_contact1_first_name: formData.get('contact1FirstName') as string,
             p_contact1_last_name: formData.get('contact1LastName') as string,
             p_contact1_type: formData.get('contact1Type') as string,
             p_contact1_home_phone: formData.get('contact1HomePhone') as string,
-            p_contact1_work_phone: formData.get('contact1WorkPhone') as string || null,
+            p_contact1_work_phone: formData.get('contact1WorkPhone') as string || '',
             p_contact1_cell_phone: formData.get('contact1CellPhone') as string
         };
 
