@@ -88,65 +88,38 @@ export async function action({request}: ActionFunctionArgs) {
 
         if (authError || !user) throw authError || new Error('User creation failed');
 
-        // Create family record
-        const {data: familyData, error: familyError} = await supabaseServer.from('families')
-            .insert({
-                address: formData.get('address') as string,
-                city: formData.get('city') as string,
-                province: formData.get('province') as string,
-                postal_code: formData.get('postalCode') as string,
-                primary_phone: formData.get('primaryPhone') as string,
-                email: contact1Email,
-                name: formData.get('familyName') as string,
-                referral_source: formData.get('referralSource') as string || null,
-                referral_name: formData.get('referralName') as string || null,
-                emergency_contact: formData.get('emergencyContact') as string || null,
-                health_info: formData.get('healthNumber') as string || null
-            })
-            .select('id')
-            .single();
+        // Call RPC function to create family, update profile, and create guardian
+        const rpcParams = {
+            p_user_id: user.id,
+            p_family_name: formData.get('familyName') as string,
+            p_address: formData.get('address') as string,
+            p_city: formData.get('city') as string,
+            p_province: formData.get('province') as string,
+            p_postal_code: formData.get('postalCode') as string,
+            p_primary_phone: formData.get('primaryPhone') as string,
+            p_user_email: contact1Email,
+            p_referral_source: formData.get('referralSource') as string || null,
+            p_referral_name: formData.get('referralName') as string || null,
+            p_emergency_contact: formData.get('emergencyContact') as string || null,
+            p_health_info: formData.get('healthNumber') as string || null,
+            p_contact1_first_name: formData.get('contact1FirstName') as string,
+            p_contact1_last_name: formData.get('contact1LastName') as string,
+            p_contact1_type: formData.get('contact1Type') as string,
+            p_contact1_home_phone: formData.get('contact1HomePhone') as string,
+            p_contact1_work_phone: formData.get('contact1WorkPhone') as string || null,
+            p_contact1_cell_phone: formData.get('contact1CellPhone') as string
+        };
 
-        if (familyError) throw familyError;
-        console.log('Family created:', familyData);
-        const familyId = familyData.id;
+        const { data: rpcData, error: rpcError } = await supabaseServer.rpc(
+            'complete_new_user_registration',
+            rpcParams
+        );
 
-        // Create user profile
-        const {data: profileData, error: profileError} = await supabaseServer.from('profiles').insert({
-            id: user.id,
-            email: contact1Email,
-            role: 'user',
-            family_id: familyId
-        });
-
-        if (profileError) throw profileError;
-        console.log('Profile created:', profileData);
-
-        // Process Contact #1
-        const contact1FirstName = formData.get('contact1FirstName') as string;
-        const contact1LastName = formData.get('contact1LastName') as string;
-        // console.log(`Attempting to insert Guardian 1: Name=${contact1FirstName} ${contact1LastName}, Email=${contact1Email}`); // Added logging
-        const {data: contact1Data, error: contact1Error} = await supabaseServer.from('guardians').insert({
-            family_id: familyId,
-            first_name: contact1FirstName as string,
-            last_name: contact1LastName as string,
-            relationship: formData.get('contact1Type') as string,
-            home_phone: formData.get('contact1HomePhone') as string,
-            work_phone: formData.get('contact1WorkPhone') as string | null,
-            cell_phone: formData.get('contact1CellPhone') as string,
-            email: contact1Email as string
-            // Removed optional employer fields
-            // employer: formData.get('contact1Employer') as string | null,
-            // employer_phone: formData.get('contact1EmployerPhone') as string | null,
-            // employer_notes: formData.get('contact1EmployerNotes') as string | null
-        });
-
-        if (contact1Error) {
-            console.error('Error inserting Guardian 1:', contact1Error);
-            throw contact1Error;
+        if (rpcError) {
+            console.error('Error calling complete_new_user_registration RPC:', rpcError);
+            throw rpcError;
         }
-        console.log('Contact #1 (Registering User) created:', contact1Data);
-
-        // Removed Guardian #2 processing logic
+        console.log('RPC complete_new_user_registration successful, family_id:', rpcData);
 
         // Waiver signatures will be handled in a separate dedicated flow.
         // Students will be added via the family portal after registration.
@@ -155,6 +128,8 @@ export async function action({request}: ActionFunctionArgs) {
 
     } catch (error) {
         console.error('Registration error:', error);
+        // Ensure error is an instance of Error for consistent message property
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return json({
             error: error instanceof Error ? error.message : 'Registration failed',
             formData: Object.fromEntries(formData)
