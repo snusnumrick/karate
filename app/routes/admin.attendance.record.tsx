@@ -18,7 +18,7 @@ import {Label} from "~/components/ui/label";
 import {Input} from "~/components/ui/input"; // Import Input
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group";
-import {format, isValid, parse} from 'date-fns';
+import {format, isValid, parse, parseISO} from 'date-fns';
 import React from "react"; // Import isValid and parse
 import {Textarea} from "~/components/ui/textarea";
 import {Button} from "~/components/ui/button";
@@ -360,7 +360,7 @@ export default function RecordAttendancePage() {
                                             {/* last payment date */}
                                             {student.eligibility.lastPaymentDate &&
                                                 (student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly' || student.eligibility.reason === 'Expired') &&
-                                                ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'MMM d')})`
+                                                ` (Last: ${format(parseISO(student.eligibility.lastPaymentDate), 'MMM d')})`
                                             }
                                         </Badge>
                                     </div>
