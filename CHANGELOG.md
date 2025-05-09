@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
-- **Auth:** Resolved RLS error during new user registration by refactoring family, profile, and guardian creation into a `SECURITY DEFINER` PostgreSQL function (`complete_new_user_registration`). This ensures database operations have sufficient privileges while being invoked by the newly authenticated user, addressing issues where the client session might not be immediately recognized as `authenticated` for direct table inserts.
+- **Auth:** Resolved RLS error during new user registration by refactoring family, profile, and guardian creation into a `SECURITY DEFINER` PostgreSQL function (`complete_new_user_registration`). This ensures database operations have sufficient privileges while being invoked by the newly authenticated user, addressing issues where the client session might not be immediately recognized as `authenticated` for direct table inserts. (Note: Requires regenerating Supabase TypeScript types after applying the SQL changes.)
 - **Auth:** Corrected an issue in the registration process where an attempt was made to `INSERT` a new profile record instead of `UPDATE`ing the existing one created by the `on_auth_user_created` trigger. This logic is now handled within the `complete_new_user_registration` RPC.
 
 ## [1.4.1] - 2025-04-27
