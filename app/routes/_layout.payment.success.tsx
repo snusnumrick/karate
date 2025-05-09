@@ -2,7 +2,7 @@ import type {LoaderFunctionArgs} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {Link, useLoaderData, useRevalidator} from "@remix-run/react"; // Import useRevalidator
 import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {format} from 'date-fns'; // Import format function
+import {format, parse} from 'date-fns'; // Import format and parse functions
 import {useEffect} from "react";
 import {Database} from "~/types/database.types";
 import {PostgrestError} from "@supabase/supabase-js";
@@ -67,7 +67,7 @@ export async function loader({request}: LoaderFunctionArgs) {
         return json({error: "Payment details not yet available. Please wait a moment and check your payment history, or contact support if this persists."}, {status: 404});
     }
     // Format the date in the loader for consistency
-    const formattedDate = payment.payment_date ? format(new Date(payment.payment_date), 'PPP') : null; // Use 'PPP' for readable format like 'MMM d, yyyy'
+    const formattedDate = payment.payment_date ? format(parse(payment.payment_date, 'yyyy-MM-dd', new Date()), 'PPP') : null; // Use 'PPP' for readable format like 'MMM d, yyyy'
     const isPending = payment.status === 'pending'; // Check if status is still pending
 
     return json({
