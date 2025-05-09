@@ -1,5 +1,5 @@
 import { Link } from "@remix-run/react";
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import type { Database } from "~/types/database.types"; // Adjust path if necessary
 import { ClientOnly } from "~/components/client-only"; // Adjust path if necessary
 import { cn } from "~/lib/utils"; // Import cn utility
@@ -62,7 +62,7 @@ export default function AdminConversationList({ conversations, basePath }: Admin
                                     <ClientOnly fallback={<p className="text-xs text-gray-500 dark:text-gray-400">&nbsp;</p>}>
                                         {() => (
                                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: true })}
+                                                {formatDistanceToNow(parseISO(convo.last_message_at), { addSuffix: true })}
                                             </p>
                                         )}
                                     </ClientOnly>
