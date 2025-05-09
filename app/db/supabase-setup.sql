@@ -1125,6 +1125,16 @@ $$
                 );
         END IF;
 
+        -- Policy to allow authenticated users to insert new families
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'families'
+                         AND policyname = 'Authenticated users can insert families') THEN
+            CREATE POLICY "Authenticated users can insert families" ON public.families
+                FOR INSERT TO authenticated
+                WITH CHECK (auth.role() = 'authenticated');
+        END IF;
+
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'guardians'
@@ -2347,6 +2357,75 @@ $$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION get_family_conversation_summaries(UUID) TO authenticated;
+
+-- Function to complete new user registration: creates family, updates profile, creates guardian
+CREATE OR REPLACE FUNCTION public.complete_new_user_registration(
+    p_user_id uuid,
+    p_family_name text,
+    p_address text,
+    p_city text,
+    p_province text,
+    p_postal_code character varying(10),
+    p_primary_phone character varying(20),
+    p_user_email text, -- email of the user, for family record
+    p_referral_source text DEFAULT NULL,
+    p_referral_name text DEFAULT NULL,
+    p_emergency_contact text DEFAULT NULL,
+    p_health_info text DEFAULT NULL,
+    p_contact1_first_name text,
+    p_contact1_last_name text,
+    p_contact1_type text,
+    p_contact1_home_phone character varying(20),
+    p_contact1_work_phone character varying(20) DEFAULT NULL,
+    p_contact1_cell_phone character varying(20)
+    -- p_contact1_email is user_email
+)
+    RETURNS uuid -- Returns the new family_id
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+AS
+$$
+DECLARE
+    new_family_id uuid;
+BEGIN
+    -- Ensure operations run with expected schema context
+    SET LOCAL search_path = public, extensions;
+
+    -- 1. Create the family record
+    INSERT INTO public.families (
+        name, address, city, province, postal_code, primary_phone, email,
+        referral_source, referral_name, emergency_contact, health_info
+    ) VALUES (
+        p_family_name, p_address, p_city, p_province, p_postal_code, p_primary_phone, p_user_email,
+        p_referral_source, p_referral_name, p_emergency_contact, p_health_info
+    ) RETURNING id INTO new_family_id;
+
+    -- 2. Update the user's profile with the new family_id and their first/last name
+    -- The profile record is created by the on_auth_user_created trigger.
+    UPDATE public.profiles
+    SET family_id = new_family_id,
+        first_name = p_contact1_first_name,
+        last_name = p_contact1_last_name
+        -- role is already defaulted to 'user' in the table definition and by the trigger's insert.
+    WHERE id = p_user_id;
+
+    -- 3. Create the primary guardian record
+    INSERT INTO public.guardians (
+        family_id, first_name, last_name, relationship, home_phone, work_phone, cell_phone, email
+    ) VALUES (
+        new_family_id, p_contact1_first_name, p_contact1_last_name, p_contact1_type,
+        p_contact1_home_phone, p_contact1_work_phone, p_contact1_cell_phone, p_user_email
+    );
+
+    RETURN new_family_id;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION public.complete_new_user_registration(
+    uuid, text, text, text, text, character varying(10), character varying(20), text,
+    text, text, text, text, text, text, text, character varying(20), character varying(20), character varying(20)
+) TO authenticated;
 
 
 -- --- End RPC Functions ---

@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Auth:** Resolved RLS error during new user registration by refactoring family, profile, and guardian creation into a `SECURITY DEFINER` PostgreSQL function (`complete_new_user_registration`). This ensures database operations have sufficient privileges while being invoked by the newly authenticated user, addressing issues where the client session might not be immediately recognized as `authenticated` for direct table inserts.
+- **Auth:** Corrected an issue in the registration process where an attempt was made to `INSERT` a new profile record instead of `UPDATE`ing the existing one created by the `on_auth_user_created` trigger. This logic is now handled within the `complete_new_user_registration` RPC.
+- **Auth:** Updated `complete_new_user_registration` SQL function parameters (e.g., `p_referral_source`, `p_health_info`) to include `DEFAULT NULL`. This helps the Supabase type generator correctly infer these parameters as nullable (e.g., `string | null`) in TypeScript, resolving type errors when calling the RPC from `app/routes/_layout.register.tsx`. (Note: Requires regenerating Supabase TypeScript types after applying these SQL changes.)
 
 ## [1.4.1] - 2025-04-27
 
