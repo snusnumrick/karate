@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Printer } from "lucide-react";
 import type { Database } from "~/types/database.types";
 import { siteConfig } from "~/config/site"; // Import site config for business details
-import { format } from 'date-fns'; // For formatting dates
+import { format, parse } from 'date-fns'; // For formatting dates
 
 // Define the types for the data needed for the receipt
 type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row']; // Includes tax_description_snapshot now
@@ -203,7 +203,7 @@ export default function PaymentReceiptPage() {
     }
 
     const quantity = payment.one_on_one_sessions?.[0]?.quantity_purchased ?? null;
-    const paymentDate = payment.payment_date ? format(new Date(payment.payment_date), 'PPP') : 'N/A'; // Format date like 'Jan 1, 2024'
+    const paymentDate = payment.payment_date ? format(parse(payment.payment_date, 'yyyy-MM-dd', new Date()), 'PPP') : 'N/A'; // Format date like 'Jan 1, 2024'
 
     // Function to trigger browser print dialog
     const handlePrint = () => {
