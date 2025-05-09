@@ -2372,12 +2372,12 @@ CREATE OR REPLACE FUNCTION public.complete_new_user_registration(
     p_referral_name text DEFAULT NULL,
     p_emergency_contact text DEFAULT NULL,
     p_health_info text DEFAULT NULL,
-    p_contact1_first_name text,
-    p_contact1_last_name text,
-    p_contact1_type text,
-    p_contact1_home_phone character varying(20),
+    p_contact1_first_name text DEFAULT NULL,
+    p_contact1_last_name text DEFAULT NULL,
+    p_contact1_type text DEFAULT NULL,
+    p_contact1_home_phone character varying(20) DEFAULT NULL,
     p_contact1_work_phone character varying(20) DEFAULT NULL,
-    p_contact1_cell_phone character varying(20)
+    p_contact1_cell_phone character varying(20) DEFAULT NULL
     -- p_contact1_email is user_email
 )
     RETURNS uuid -- Returns the new family_id
