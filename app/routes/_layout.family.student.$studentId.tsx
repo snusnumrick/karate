@@ -506,7 +506,7 @@ export default function StudentDetailPage() {
                                         {/* Awarded Date */}
                                         <Badge variant="secondary"
                                                className="text-xs w-full text-center justify-center">
-                                            Awarded: {format(new Date(beltAward.awarded_date), 'MMM d, yyyy')}
+                                            Awarded: {format(parse(beltAward.awarded_date, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}
                                         </Badge>
                                     </div>
                                 ))}
