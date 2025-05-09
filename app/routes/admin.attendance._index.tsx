@@ -8,7 +8,7 @@ import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
-import {format} from 'date-fns'; // For formatting date
+import {format, parse} from 'date-fns'; // For formatting date
 
 // Define types for loader data
 type AttendanceRow = Database['public']['Tables']['attendance']['Row'];
@@ -125,11 +125,11 @@ export default function AttendanceHistoryPage() { // Renamed component
     // Determine the title based on filters
     let title = "Attendance History";
     if (filterParams.startDate && filterParams.endDate) {
-        title = `Attendance from ${format(new Date(filterParams.startDate + 'T00:00:00'), 'MMM d, yyyy')} to ${format(new Date(filterParams.endDate + 'T00:00:00'), 'MMM d, yyyy')}`;
+        title = `Attendance from ${format(parse(filterParams.startDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')} to ${format(parse(filterParams.endDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}`;
     } else if (filterParams.startDate) {
-        title = `Attendance since ${format(new Date(filterParams.startDate + 'T00:00:00'), 'MMM d, yyyy')}`;
+        title = `Attendance since ${format(parse(filterParams.startDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}`;
     } else if (filterParams.endDate) {
-        title = `Attendance until ${format(new Date(filterParams.endDate + 'T00:00:00'), 'MMM d, yyyy')}`;
+        title = `Attendance until ${format(parse(filterParams.endDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}`;
     }
     if (filterParams.studentId) {
         const student = allStudents.find(s => s.id === filterParams.studentId);
@@ -213,7 +213,7 @@ export default function AttendanceHistoryPage() { // Renamed component
                         <TableBody>
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{format(new Date(record.class_date + 'T00:00:00'), 'MMM d, yyyy')}</TableCell> {/* Format date */}
+                                    <TableCell>{format(parse(record.class_date, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}</TableCell> {/* Format date */}
                                     <TableCell className="font-medium">
                                         {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
                                     </TableCell>

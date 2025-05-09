@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Date Display:** Updated Admin Attendance History page (`app/routes/admin.attendance._index.tsx`) to use `parse` from `date-fns` for `class_date` and filter date parameters, ensuring consistent and robust date handling. (Commit `04ee18b`)
 - **Date Display:** Updated Payment Success page (`app/routes/_layout.payment.success.tsx`) to use `parse` from `date-fns` for `payment_date`, ensuring consistent and robust date handling. (Commit `9c34619`)
 - **Date Display:** Updated Family Payment page (`app/routes/_layout.family.payment.tsx`) to use `parseISO` from `date-fns` for `lastPaymentDate` in student eligibility display, ensuring consistent and robust date handling. (Commit `109348e`)
 - **Date Display:** Updated Family Attendance page (`app/routes/_layout.family.attendance.tsx`) to use `parse` from `date-fns` for `class_date`, ensuring consistent and robust date handling. (Commit `0b18219`)
