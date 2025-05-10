@@ -1,7 +1,7 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node"; // Add ActionFunctionArgs
 import { Link, useLoaderData, useRouteError, useParams, useFetcher } from "@remix-run/react"; // Add useFetcher
 import { createClient } from '@supabase/supabase-js';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -232,7 +232,7 @@ export default function AdminPaymentDetailPage() {
                             <p><span className="font-semibold">Family:</span> {payment.family ? (
                                 <Link to={`/admin/families/${payment.family.id}`} className="text-blue-600 hover:underline">{payment.family.name}</Link>
                             ) : 'N/A'}</p>
-                            <p><span className="font-semibold">Payment Date:</span> {payment.payment_date ? format(new Date(payment.payment_date), 'yyyy-MM-dd') : 'N/A'}</p>
+                            <p><span className="font-semibold">Payment Date:</span> {payment.payment_date ? format(parseISO(payment.payment_date), 'yyyy-MM-dd') : 'N/A'}</p>
                             <p><span className="font-semibold">Payment Method:</span> {payment.payment_method ? payment.payment_method.replace('_', ' ').toUpperCase() : 'N/A'}</p>
                             {/* Changed <p> to <div> to allow <Badge> (which renders a div) inside */}
                             <div><span className="font-semibold">Status:</span> <Badge variant={getStatusBadgeVariant(payment.status as PaymentStatus)} className="capitalize ml-2">{payment.status}</Badge></div>
