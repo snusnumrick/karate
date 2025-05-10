@@ -18,7 +18,7 @@ import {
 } from "~/components/ui/alert-dialog"; // Import Shadcn UI AlertDialog components
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Badge} from "~/components/ui/badge";
-import {format} from 'date-fns';
+import {format, parse} from 'date-fns';
 import {Edit, Trash2} from 'lucide-react'; // Icons for actions
 
 // Define types (assuming table renamed to 'belt_awards')
@@ -197,7 +197,7 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                                     <TableCell>{beltAward.description}</TableCell>
                                     <TableCell>
                                         <Badge variant="secondary" className="text-xs">
-                                            {format(new Date(beltAward.awarded_date), 'MMM d, yyyy')}
+                                            {format(parse(beltAward.awarded_date, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="space-x-2 whitespace-nowrap">
