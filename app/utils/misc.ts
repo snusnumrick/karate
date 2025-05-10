@@ -42,87 +42,64 @@ export function formatCurrency(
 
 /**
  * Formats a date string or Date object.
- * If a formatString is provided, it uses date-fns/format. Otherwise, it uses Intl.DateTimeFormat.
- * Example (default): 'Jan 1, 2024'
- * Example (with formatString 'P'): '01/01/2024'
+ * - If `options.formatString` is provided, it uses `date-fns/format`.
+ * - Otherwise, it uses `Intl.DateTimeFormat`. The style (date-only or date-time)
+ *   is determined by `options.type` (defaults to 'date').
+ *
  * @param date The date string or Date object.
- * @param localeOverride Optional. The locale for Intl.DateTimeFormat (e.g., 'en-US'). Defaults to siteConfig.locale. Also influences date-fns locale selection if mapped.
- * @param formatString Optional. A date-fns format string (e.g., 'yyyy-MM-dd', 'P').
+ * @param options Optional configuration for formatting.
+ * @param options.locale Optional. Locale for formatting (e.g., 'en-US'). Defaults to `siteConfig.locale`.
+ *                       Influences both `Intl.DateTimeFormat` and `date-fns/format` (if mapped).
+ * @param options.formatString Optional. A `date-fns` format string (e.g., 'yyyy-MM-dd', 'P', 'Pp').
+ *                             If provided, this takes precedence over `options.type` for styling.
+ * @param options.type Optional. Determines default formatting style if `formatString` is not used.
+ *                     'date' (default): Formats as date only (e.g., 'Jan 1, 2024').
+ *                     'datetime': Formats as date and time (e.g., 'Jan 1, 2024, 1:30 PM').
  * @returns The formatted date string, or 'N/A' or 'Invalid Date'.
  */
 export function formatDate(
     date: string | Date | null | undefined,
-    localeOverride?: string,
-    formatString?: string
+    options?: {
+        locale?: string;
+        formatString?: string;
+        type?: 'date' | 'datetime';
+    }
 ): string {
     if (!date) {
         return 'N/A';
     }
-    const currentLocale = localeOverride || siteConfig.locale;
+
+    const currentLocale = options?.locale || siteConfig.locale;
+    const formatType = options?.type || 'date'; // Default to 'date'
+
     try {
         const dateObj = typeof date === 'string' ? parseISO(date) : date;
         if (isNaN(dateObj.getTime())) {
             throw new Error('Invalid date value');
         }
 
-        if (formatString) {
-            // Map currentLocale to a date-fns locale object.
+        if (options?.formatString) {
+            // Map currentLocale to a date-fns locale object for date-fns/format.
             // This is a simplified mapping; a more robust one might be needed for more locales.
             const dfnsLocale = currentLocale === 'en-CA' ? enCA : undefined;
-            return fnsFormat(dateObj, formatString, { locale: dfnsLocale });
+            return fnsFormat(dateObj, options.formatString, { locale: dfnsLocale });
         } else {
-            return new Intl.DateTimeFormat(currentLocale, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-            }).format(dateObj);
+            let intlOptions: Intl.DateTimeFormatOptions;
+            if (formatType === 'datetime') {
+                intlOptions = {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: 'numeric', minute: '2-digit', hour12: true,
+                };
+            } else { // 'date'
+                intlOptions = {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                };
+            }
+            return new Intl.DateTimeFormat(currentLocale, intlOptions).format(dateObj);
         }
     } catch (error) {
-        console.error('Error formatting date:', error);
-        return 'Invalid Date';
-    }
-}
-
-/**
- * Formats a date string or Date object into a date and time format.
- * If a formatString is provided, it uses date-fns/format. Otherwise, it uses Intl.DateTimeFormat.
- * Example (default): 'Jan 1, 2024, 1:30 PM'
- * Example (with formatString 'Pp'): '01/01/2024, 1:30 PM'
- * @param date The date string or Date object.
- * @param localeOverride Optional. The locale for Intl.DateTimeFormat (e.g., 'en-US'). Defaults to siteConfig.locale. Also influences date-fns locale selection if mapped.
- * @param formatString Optional. A date-fns format string (e.g., 'yyyy-MM-dd HH:mm', 'Pp').
- * @returns The formatted date-time string, or 'N/A' or 'Invalid Date'.
- */
-export function formatDateTime(
-    date: string | Date | null | undefined,
-    localeOverride?: string,
-    formatString?: string
-): string {
-     if (!date) {
-        return 'N/A';
-    }
-    const currentLocale = localeOverride || siteConfig.locale;
-    try {
-        const dateObj = typeof date === 'string' ? parseISO(date) : date;
-         if (isNaN(dateObj.getTime())) {
-            throw new Error('Invalid date value');
-        }
-
-        if (formatString) {
-            const dfnsLocale = currentLocale === 'en-CA' ? enCA : undefined;
-            return fnsFormat(dateObj, formatString, { locale: dfnsLocale });
-        } else {
-            return new Intl.DateTimeFormat(currentLocale, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true, // Use AM/PM
-            }).format(dateObj);
-        }
-    } catch (error) {
-        console.error('Error formatting date-time:', error);
+        // Log specific error type for better debugging if needed
+        console.error(`Error formatting date (type: ${formatType}, locale: ${currentLocale}):`, error);
         return 'Invalid Date';
     }
 }
