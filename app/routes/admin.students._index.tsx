@@ -3,7 +3,7 @@ import {Link, useLoaderData, useNavigate, useRouteError} from "@remix-run/react"
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
 import {checkStudentEligibility, type EligibilityStatus} from "~/utils/supabase.server";
-import {format} from 'date-fns';
+import {format, parseISO} from 'date-fns';
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge";
 import {beltColorMap} from "~/utils/constants"; // Import belt color map
@@ -231,13 +231,13 @@ export default function StudentsAdminPage() {
                                             {/* Optionally show last payment date for Paid/Expired */}
                                             {student.eligibility.lastPaymentDate && (student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly' || student.eligibility.reason
                                                     === 'Expired') &&
-                                                ` (Last: ${format(new Date(student.eligibility.lastPaymentDate), 'yyyy-MM-dd')})` // Keep date format for admin view
+                                                ` (Last: ${format(parseISO(student.eligibility.lastPaymentDate), 'yyyy-MM-dd')})` // Keep date format for admin view
                                             }
                                         </Badge>
                                     </TableCell>
                                     <TableCell> {/* New cell for Gi purchase date */}
                                         {student.lastGiPurchaseDate
-                                            ? format(new Date(student.lastGiPurchaseDate), 'yyyy-MM-dd')
+                                            ? format(parseISO(student.lastGiPurchaseDate), 'yyyy-MM-dd')
                                             : 'N/A'}
                                     </TableCell>
                                     <TableCell className="space-x-2 whitespace-nowrap">

@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Date Display:** Updated Admin Students List page (`app/routes/admin.students._index.tsx`) to use `parseISO` from `date-fns` for `lastPaymentDate` and `lastGiPurchaseDate`, ensuring consistent and robust date handling. (Commit `1052191`)
 - **Date Display:** Updated Admin Student Detail page (`app/routes/admin.students.$studentId.tsx`) to use `parse` from `date-fns` for `birth_date` and `purchase_date` (in session selection), ensuring consistent and robust date handling. (Commit `692b94d`)
 - **Date Display:** Updated Admin Student Belts List page (`app/routes/admin.student-belts.$studentId._index.tsx`) to use `parse` from `date-fns` for `awarded_date`, ensuring consistent and robust date handling. (Commit `ae98d6a`)
 - **Date Display:** Updated Admin Products List page (`app/routes/admin.store.products._index.tsx`) to use `parseISO` from `date-fns` for `created_at` and `updated_at` timestamps, ensuring consistent and robust date handling. (Commit `06f8f2f`)
