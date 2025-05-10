@@ -7,7 +7,7 @@ import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Card, CardContent, CardHeader, CardTitle} from "~/components/ui/card";
-import {endOfMonth, format, isValid, startOfMonth, subMonths} from 'date-fns';
+import {endOfMonth, format, isValid, parse, startOfMonth, subMonths} from 'date-fns';
 
 // Define types
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
@@ -54,8 +54,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
     let endDate = searchParams.get("endDate") || defaultRange.endDate;
 
     // Validate dates, fallback to default if invalid
-    if (!isValid(new Date(startDate + 'T00:00:00'))) startDate = defaultRange.startDate;
-    if (!isValid(new Date(endDate + 'T00:00:00'))) endDate = defaultRange.endDate;
+    if (!isValid(parse(startDate, 'yyyy-MM-dd', new Date()))) startDate = defaultRange.startDate;
+    if (!isValid(parse(endDate, 'yyyy-MM-dd', new Date()))) endDate = defaultRange.endDate;
 
     console.log(`Fetching attendance report for range: ${startDate} to ${endDate}`);
 
@@ -154,8 +154,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
 export default function AttendanceReportPage() {
     const {reportData, filterParams} = useLoaderData<LoaderData>();
 
-    const formattedStartDate = format(new Date(filterParams.startDate + 'T00:00:00'), 'MMM d, yyyy');
-    const formattedEndDate = format(new Date(filterParams.endDate + 'T00:00:00'), 'MMM d, yyyy');
+    const formattedStartDate = format(parse(filterParams.startDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy');
+    const formattedEndDate = format(parse(filterParams.endDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy');
 
     return (
         // Updated container class for consistency
