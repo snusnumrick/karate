@@ -24,7 +24,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { beltColorMap } from "~/utils/constants";
 import {
     getStudentDetails,
@@ -409,7 +409,7 @@ export default function AdminStudentDetailPage() {
                                       className="text-blue-600 hover:underline">{student.families.name}</Link> : 'N/A'}
                             </p>
                             <p><strong>Gender:</strong> {student.gender}</p>
-                            <p><strong>Birth Date:</strong> {format(new Date(student.birth_date), 'PPP')}
+                            <p><strong>Birth Date:</strong> {format(parse(student.birth_date, 'yyyy-MM-dd', new Date()), 'PPP')}
                             </p> {/* Use PPP for readable date */}
                             <div className="flex items-center">
                                 <strong className="mr-2">Current Belt:</strong> {/* Updated Label */}
@@ -486,7 +486,7 @@ export default function AdminStudentDetailPage() {
                                         <SelectContent>
                                             {student.availableIndividualSessions.map(session => ( // Use renamed field
                                                 <SelectItem key={session.id} value={session.id}>
-                                                    Purchased: {format(new Date(session.purchase_date), 'yyyy-MM-dd')} - Remaining: {session.quantity_remaining}
+                                                    Purchased: {format(parse(session.purchase_date, 'yyyy-MM-dd', new Date()), 'yyyy-MM-dd')} - Remaining: {session.quantity_remaining}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
