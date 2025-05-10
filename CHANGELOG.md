@@ -22,12 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Date Display:** Updated date utility functions (`formatDate`, `formatDateTime` in `app/utils/misc.ts`) to use `parseISO` from `date-fns` for string inputs, improving parsing robustness and consistency. (Commit `3b1d1f4`)
 - **Date Display:** Updated Admin Students List page (`app/routes/admin.students._index.tsx`) to use `parseISO` from `date-fns` for `lastPaymentDate` and `lastGiPurchaseDate`, ensuring consistent and robust date handling. (Commit `1052191`)
 - **Date Display:** Updated Admin Student Detail page (`app/routes/admin.students.$studentId.tsx`) to use `parse` from `date-fns` for `birth_date` and `purchase_date` (in session selection), ensuring consistent and robust date handling. (Commit `692b94d`)
 - **Date Display:** Updated Admin Student Belts List page (`app/routes/admin.student-belts.$studentId._index.tsx`) to use `parse` from `date-fns` for `awarded_date`, ensuring consistent and robust date handling. (Commit `ae98d6a`)
 - **Date Display:** Updated Admin Products List page (`app/routes/admin.store.products._index.tsx`) to use `parseISO` from `date-fns` for `created_at` and `updated_at` timestamps, ensuring consistent and robust date handling. (Commit `06f8f2f`)
 - **Date Display:** Updated Admin Product Variants List page (`app/routes/admin.store.products.$productId.variants._index.tsx`) to use `parseISO` from `date-fns` for `created_at` and `updated_at` timestamps, ensuring consistent and robust date handling. (Commit `c5a340e`)
-- **Date Display:** Updated Admin Pending Payments page (`app/routes/admin.payments.pending.tsx`) to use `parseISO` from `date-fns` for `created_at` timestamp, ensuring consistent and robust date handling.
+- **Date Display:** Updated Admin Pending Payments page (`app/routes/admin.payments.pending.tsx`) to use `parseISO` from `date-fns` for `created_at` timestamp, ensuring consistent and robust date handling. (Commit `c5a340e`)
 - **Date Display:** Updated Admin Payments List page (`app/routes/admin.payments._index.tsx`) to use `parseISO` from `date-fns` for `payment_date`, ensuring consistent and robust date handling. (Commit `0f7408c`)
 - **Date Display:** Updated Admin Payment Detail page (`app/routes/admin.payments.$paymentId.tsx`) to use `parseISO` from `date-fns` for `payment_date`, ensuring consistent and robust date handling. (Commit `f3bc800`)
 - **Date Display:** Updated Admin Family Detail page (`app/routes/admin.families.$familyId.tsx`) to use `parseISO` for `created_at`/`updated_at` and `parse` for `birth_date`, ensuring consistent and robust date handling. (Commit `e417222`)
