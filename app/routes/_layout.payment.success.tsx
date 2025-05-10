@@ -2,7 +2,7 @@ import type {LoaderFunctionArgs} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {Link, useLoaderData, useRevalidator} from "@remix-run/react"; // Import useRevalidator
 import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {formatDate} from "~/utils/misc"; // Import formatDate utility
+import {formatDate} from "~/utils/misc";
 import {useEffect} from "react";
 import {Database} from "~/types/database.types";
 import {PostgrestError} from "@supabase/supabase-js";

@@ -7,7 +7,7 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ExclamationTriangleIcon, InfoCircledIcon} from "@radix-ui/react-icons";
 import {siteConfig} from "~/config/site";
 import {Checkbox} from "~/components/ui/checkbox";
-import {formatDate} from "~/utils/misc"; // Import formatDate utility
+import {formatDate} from "~/utils/misc";
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group"; // Import RadioGroup
 import {Label} from "~/components/ui/label";
 import {Database} from "~/types/database.types";

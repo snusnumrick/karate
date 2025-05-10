@@ -18,7 +18,7 @@ import {
 // Removed unused Database import
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { formatDate } from "~/utils/misc"; // Import formatDate utility
+import { formatDate } from "~/utils/misc";
 import React from "react";
 import { getFamilyDetails, type FamilyDetails } from "~/services/family.server"; // Import service function and type
 import { deleteStudent } from "~/services/student.server"; // Import deleteStudent service function (removed .ts)
