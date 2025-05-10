@@ -5,7 +5,7 @@ import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Badge} from "~/components/ui/badge";
-import {format} from 'date-fns';
+import {format, parseISO} from 'date-fns';
 import {PaymentStatus} from "~/types/models"; // Import the enum
 
 // Define types
@@ -110,7 +110,7 @@ export default function PendingPaymentsPage() {
                                     </TableCell>
                                     <TableCell>
                                         {/* Display created_at date as the primary date for pending */}
-                                        {payment.created_at ? format(new Date(payment.created_at), 'yyyy-MM-dd HH:mm') : 'N/A'}
+                                        {payment.created_at ? format(parseISO(payment.created_at), 'yyyy-MM-dd HH:mm') : 'N/A'}
                                     </TableCell>
                                      {/* Use total_amount */}
                                     <TableCell className="text-right">${(payment.total_amount / 100).toFixed(2)}</TableCell>
