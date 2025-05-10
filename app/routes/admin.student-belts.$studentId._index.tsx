@@ -17,9 +17,9 @@ import {
     AlertDialogTrigger,
 } from "~/components/ui/alert-dialog"; // Import Shadcn UI AlertDialog components
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
-import {Badge} from "~/components/ui/badge";
-import {format, parse} from 'date-fns';
-import {Edit, Trash2} from 'lucide-react'; // Icons for actions
+import {Badge}from "~/components/ui/badge";
+import {formatDate}from "~/utils/misc"; // Import formatDate utility
+import {Edit, Trash2}from 'lucide-react'; // Icons for actions
 
 // Define types (assuming table renamed to 'belt_awards')
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
@@ -197,7 +197,7 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                                     <TableCell>{beltAward.description}</TableCell>
                                     <TableCell>
                                         <Badge variant="secondary" className="text-xs">
-                                            {format(parse(beltAward.awarded_date, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}
+                                            {formatDate(beltAward.awarded_date, { formatString: 'MMM d, yyyy' })}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="space-x-2 whitespace-nowrap">

@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Refactor:** Confirmed and cleaned up usage of the consolidated `formatDate` utility in Family Payment page (`app/routes/_layout.family.payment.tsx`), Payment Success page (`app/routes/_layout.payment.success.tsx`), and Admin Family Detail page (`app/routes/admin.families.$familyId.tsx`). (Commit `e8096e7`)
 - **Refactor:** Updated Admin Students List page (`app/routes/admin.students._index.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `af5e223`)
 - **Refactor:** Updated Admin Student Detail page (`app/routes/admin.students.$studentId.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `5384834`)
+- **Refactor:** Updated Admin Payments pages (`admin.payments._index.tsx`, `admin.payments.pending.tsx`), Admin Store Products pages (`admin.store.products._index.tsx`, `admin.store.products.$productId.variants._index.tsx`), and Admin Student Belts page (`admin.student-belts.$studentId._index.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `58d1235`)
 - **Configuration:** Centralized the default locale string (`en-CA`) into `app/config/site.ts` and updated utility functions in `app/utils/misc.ts` to use it, improving maintainability. (Commit `b63bda4`)
 
 ### Fixed

@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
-import { format, parseISO } from 'date-fns';
+import { formatDate } from "~/utils/misc"; // Import formatDate utility
 import type { Tables } from "~/types/database.types"; // Removed unused Database import
 import { PlusCircle, Edit } from "lucide-react"; // Import icons
 
@@ -73,10 +73,10 @@ export default function AdminProductListPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-center text-sm text-gray-500 dark:text-gray-400">
-                                        {format(parseISO(product.created_at), 'PPp')}
+                                        {formatDate(product.created_at, { formatString: 'PPp' })}
                                     </TableCell>
                                      <TableCell className="text-center text-sm text-gray-500 dark:text-gray-400">
-                                        {format(parseISO(product.updated_at), 'PPp')}
+                                        {formatDate(product.updated_at, { formatString: 'PPp' })}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button asChild variant="outline" size="sm">

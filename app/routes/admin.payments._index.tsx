@@ -6,7 +6,7 @@ import {Database} from "~/types/database.types"; // Assuming your generated type
 import {Button} from "~/components/ui/button";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Badge} from "~/components/ui/badge"; // For status display
-import {format, parseISO} from 'date-fns'; // For date formatting
+import {formatDate} from "~/utils/misc"; // For date formatting
 import {PaymentStatus} from "~/types/models"; // Import the enum
 
 // Define the shape of data returned by the loader, including the family name
@@ -105,7 +105,7 @@ export default function AdminPaymentsPage() {
                         <TableBody>
                             {payments.map((payment) => (
                                 <TableRow key={payment.id}>
-                                    <TableCell>{payment.payment_date ? format(parseISO(payment.payment_date), 'yyyy-MM-dd') : 'N/A'}</TableCell>
+                                    <TableCell>{formatDate(payment.payment_date, { formatString: 'yyyy-MM-dd' })}</TableCell>
                                     <TableCell>
                                         <Link to={`/admin/families/${payment.family_id}`}
                                               className="text-green-600 hover:underline dark:text-green-400">
