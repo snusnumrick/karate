@@ -22,6 +22,7 @@ import {Database, Json} from "~/types/database.types";
 import {ClientOnly} from "~/components/client-only";
 import {cn} from "~/lib/utils";
 import retrieveDatabaseStructure, {DatabaseSchema, formatSchemaAsMarkdown} from "~/utils/retrieve.db.strructure"; // Import cn utility
+import { formatCurrency as formatCurrencyUtil } from "~/utils/misc"; // Import the utility function
 
 // --- Cache for Database Schema Description ---
 let cachedSchemaDescription: string | null = null;
@@ -54,10 +55,7 @@ type ActionResponse = {
     originalQuery?: string; // The user's natural language query
 };
 
-// Helper function to format currency values
-function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-CA', {style: 'currency', currency: 'CAD'}).format(amount / 100);
-}
+// Local formatCurrency removed, will use formatCurrencyUtil from misc.ts
 
 
 // --- Function to get (and cache) database schema description ---
@@ -671,7 +669,7 @@ function renderQueryResults(summary: string | undefined | null, data: Json | nul
                                             <td key={colIndex} className="py-3 px-2 align-top">
                                                 {/* Attempt to format currency if column name suggests it and value is number */}
                                                 {typeof value === 'number' && (key.includes('amount') || key.includes('revenue') || key.includes('tax'))
-                                                    ? formatCurrency(value)
+                                                    ? formatCurrencyUtil(value)
                                                     : value === null ?
                                                         <span className="text-muted-foreground italic">null</span>
                                                         : String(value)}
