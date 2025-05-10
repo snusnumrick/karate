@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
+
+### Fixed
+
+## [1.4.3] - 2025-05-10
+
+### Added
+- *(No specific "Added" items were noted for this version.)*
+
+### Changed
 - **Navbar:** The "Messages" icon in the main navigation bar is now only visible to authenticated users.
 - **Utils:** Refactored date/time formatting in `app/utils/misc.ts` by consolidating `formatDate` and `formatDateTime` into a single `formatDate` function. This function now accepts an `options` parameter to specify `locale`, `formatString` (for `date-fns`), or `type` ('date' or 'datetime' for default `Intl` formatting), further reducing duplication and improving utility. (Commit `d85a707`)
 - **Refactor:** Updated Family Student Detail page (`app/routes/_layout.family.student.$studentId.tsx`) to use the consolidated `formatDate` utility from `app/utils/misc.ts` for date formatting. (Commit `83545a6`)
