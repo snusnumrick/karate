@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Refactor:** Updated Family Receipt page (`app/routes/_layout.family.receipt.$paymentId.tsx`), Waivers Index page (`app/routes/_layout.waivers._index.tsx`), and Family Portal page (`app/routes/_layout.family._index.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `bb0a43c`)
 - **Refactor:** Updated Family Payment History page (`app/routes/_layout.family.payment-history.tsx`), Message View component (`app/components/MessageView.tsx`), and Family Attendance page (`app/routes/_layout.family.attendance.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `57b1a3d`)
 - **Refactor:** Updated Admin Attendance pages (`admin.attendance._index.tsx`, `admin.attendance.report.tsx`, `admin.attendance.record.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `fcd11bb`)
+- **Refactor:** Updated Admin Students List page (`app/routes/admin.students._index.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `fd38381`)
+- **Refactor:** Updated Family Payment page (`app/routes/_layout.family.payment.tsx`), Payment Success page (`app/routes/_layout.payment.success.tsx`), and Admin Family Detail page (`app/routes/admin.families.$familyId.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `d171991`)
 - **Configuration:** Centralized the default locale string (`en-CA`) into `app/config/site.ts` and updated utility functions in `app/utils/misc.ts` to use it, improving maintainability. (Commit `b63bda4`)
 
 ### Fixed
