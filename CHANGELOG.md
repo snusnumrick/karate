@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Refactor:** Updated Admin Student Detail page (`app/routes/admin.students.$studentId.tsx`) to use the consolidated `formatDate` utility for consistent date formatting. (Commit `5384834`)
 - **Refactor:** Updated Admin Payments pages (lists and pending), Admin Store Products pages, and Admin Student Belts page to use the consolidated `formatDate` utility for consistent date formatting. (Commit `429d289`)
 - **Refactor:** Corrected Admin Payment Detail page (`app/routes/admin.payments.$paymentId.tsx`) to fully use the `formatDate` utility and remove unused `date-fns` imports. (Commit `6b59916`)
+- **Refactor:** Corrected Admin DB Chat page (`app/routes/admin.db-chat.tsx`) to use the centralized `formatCurrency` utility from `app/utils/misc.ts`, removing the local helper function. (Commit `ef66e0a`)
 - **Configuration:** Centralized the default locale string (`en-CA`) into `app/config/site.ts` and updated utility functions in `app/utils/misc.ts` to use it, improving maintainability. (Commit `b63bda4`)
 
 ### Fixed
