@@ -18,7 +18,8 @@ import {Label} from "~/components/ui/label";
 import {Input} from "~/components/ui/input"; // Import Input
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group";
-import {format, isValid, parse, parseISO} from 'date-fns';
+import {format, isValid, parse} from 'date-fns'; // format is used by getTodayDateString, parse for validation
+import {formatDate} from "~/utils/misc"; // Import formatDate utility
 import React from "react"; // Import isValid and parse
 import {Textarea} from "~/components/ui/textarea";
 import {Button} from "~/components/ui/button";
@@ -211,7 +212,7 @@ async function sendAbsenceNotifications(
     console.log(`Found ${absentStudents.length} absent students. Preparing notifications...`);
 
     // Format the date nicely for the email
-    const formattedDate = format(parse(attendanceDate, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy');
+    const formattedDateForEmail = formatDate(attendanceDate, { formatString: 'MMMM d, yyyy' });
 
     for (const record of absentStudents) {
         try {
@@ -238,7 +239,7 @@ async function sendAbsenceNotifications(
             const subject = `Absence Notification for ${studentName}`;
             const htmlBody = `
         <p>Hello,</p>
-        <p>This email is to inform you that <strong>${studentName}</strong> was marked absent for the karate class on <strong>${formattedDate}</strong>.</p>
+        <p>This email is to inform you that <strong>${studentName}</strong> was marked absent for the karate class on <strong>${formattedDateForEmail}</strong>.</p>
         ${record.notes ? `<p><strong>Instructor Notes:</strong> ${record.notes}</p>` : ''}
         <p>If you believe this is an error, please contact us.</p>
         <p>Thank you,<br/>Sensei Negin's Karate Class</p>
@@ -273,7 +274,7 @@ export default function RecordAttendancePage() {
 
     const isSubmitting = navigation.state === "submitting";
     // Format the selected date for display
-    const formattedDate = format(parse(selectedDate, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy');
+    const formattedDateForDisplay = formatDate(selectedDate, { formatString: 'MMMM d, yyyy' });
 
     const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const newDate = event.target.value;
@@ -304,7 +305,7 @@ export default function RecordAttendancePage() {
             </Link>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Record Attendance
-                    for {formattedDate}</h1>
+                    for {formattedDateForDisplay}</h1>
                 <div>
                     <Label htmlFor="attendance-date-picker" className="mr-2 text-sm font-medium">Select Date:</Label>
                     <Input
@@ -360,7 +361,7 @@ export default function RecordAttendancePage() {
                                             {/* last payment date */}
                                             {student.eligibility.lastPaymentDate &&
                                                 (student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly' || student.eligibility.reason === 'Expired') &&
-                                                ` (Last: ${format(parseISO(student.eligibility.lastPaymentDate), 'MMM d')})`
+                                                ` (Last: ${formatDate(student.eligibility.lastPaymentDate, { formatString: 'MMM d' })})`
                                             }
                                         </Badge>
                                     </div>

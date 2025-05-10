@@ -7,7 +7,8 @@ import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Card, CardContent, CardHeader, CardTitle} from "~/components/ui/card";
-import {endOfMonth, format, isValid, parse, startOfMonth, subMonths} from 'date-fns';
+import {endOfMonth, format, isValid, parse, startOfMonth, subMonths} from 'date-fns'; // format is used by getDefaultDateRange
+import {formatDate} from "~/utils/misc";
 
 // Define types
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
@@ -154,8 +155,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
 export default function AttendanceReportPage() {
     const {reportData, filterParams} = useLoaderData<LoaderData>();
 
-    const formattedStartDate = format(parse(filterParams.startDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy');
-    const formattedEndDate = format(parse(filterParams.endDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy');
+    const formattedStartDate = formatDate(filterParams.startDate, { formatString: 'MMM d, yyyy' });
+    const formattedEndDate = formatDate(filterParams.endDate, { formatString: 'MMM d, yyyy' });
 
     return (
         // Updated container class for consistency
