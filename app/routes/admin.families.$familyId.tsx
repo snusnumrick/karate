@@ -18,7 +18,7 @@ import {
 // Removed unused Database import
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { format } from 'date-fns';
+import { format, parse, parseISO } from 'date-fns';
 import React from "react";
 import { getFamilyDetails, type FamilyDetails } from "~/services/family.server"; // Import service function and type
 import { deleteStudent } from "~/services/student.server"; // Import deleteStudent service function (removed .ts)
@@ -186,10 +186,10 @@ export default function FamilyDetailPage() {
                             <p><strong>Referral Source:</strong> {family.referral_source ?? 'N/A'}</p>
                             <p><strong>Referral Name:</strong> {family.referral_name ?? 'N/A'}</p>
                             <p><strong>Created
-                                At:</strong> {family.created_at ? format(new Date(family.created_at), 'PPP p') : 'N/A'}
+                                At:</strong> {family.created_at ? format(parseISO(family.created_at), 'PPP p') : 'N/A'}
                             </p>
                             <p><strong>Updated
-                                At:</strong> {family.updated_at ? format(new Date(family.updated_at), 'PPP p') : 'N/A'}
+                                At:</strong> {family.updated_at ? format(parseISO(family.updated_at), 'PPP p') : 'N/A'}
                             </p>
                         </CardContent>
                     </Card>
@@ -229,7 +229,7 @@ export default function FamilyDetailPage() {
                                                 <div>
                                                     <p className="font-semibold">{student.first_name} {student.last_name}</p>
                                                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                        DOB: {student.birth_date ? format(new Date(student.birth_date), 'PPP') : 'N/A'}
+                                                        DOB: {student.birth_date ? format(parse(student.birth_date, 'yyyy-MM-dd', new Date()), 'PPP') : 'N/A'}
                                                     </p>
                                                     {/* Belt display removed - view on student detail page */}
                                                 </div>
