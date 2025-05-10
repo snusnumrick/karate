@@ -1,7 +1,7 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node"; // Add ActionFunctionArgs
 import { Link, useLoaderData, useRouteError, useParams, useFetcher } from "@remix-run/react"; // Add useFetcher
 import { createClient } from '@supabase/supabase-js';
-import { format, parseISO } from 'date-fns';
+import { formatDate } from "~/utils/misc"; // Import formatDate utility
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
