@@ -8,16 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **SEO & Content:**
-    - Added `FAQPage` JSON-LD schema to the site's root for improved search engine understanding.
-    - Enhanced `Organization` JSON-LD schema in the site's root to include `SportsActivityLocation` details, dynamically populating class times and location information.
-    - Added a helper function (`parseClassTimesForSchema`) to `app/root.tsx` to structure class schedule data for schema markup.
-    - Incorporated inline Q&A-style content blocks on the "About" (`app/routes/_layout.about.tsx`) and "Contact" (`app/routes/_layout.contact.tsx`) pages for quick user information.
-    - Improved image `alt` text for logos in the main Navbar (`app/components/Navbar.tsx`) and on the 404 page (`app/routes/$.tsx`) to be more descriptive and SEO-friendly.
-- **Documentation:**
-    - Updated `README.md` to include future development plans for a blog/news section with an admin interface.
-    - Updated `README.md` to include future development plans for implementing reviews/testimonials display and associated schema markup.
-    - Documented SEO strategy in `README.md`, emphasizing embedded JSON-LD over separate public JSON APIs for AI search discovery.
 
 ### Changed
 - **Navbar:** The "Messages" icon in the main navigation bar is now only visible to authenticated users.
@@ -64,6 +54,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auth:** Corrected an issue in the registration process where an attempt was made to `INSERT` a new profile record instead of `UPDATE`ing the existing one created by the `on_auth_user_created` trigger. This logic is now handled within the `complete_new_user_registration` RPC.
 - **Auth:** Updated `complete_new_user_registration` SQL function parameters (e.g., `p_referral_source`, `p_health_info`) to include `DEFAULT NULL`. This helps the Supabase type generator correctly infer these parameters as nullable (e.g., `string | null`) in TypeScript, resolving type errors when calling the RPC from `app/routes/_layout.register.tsx`.
 - **Auth:** Corrected SQL definition for `complete_new_user_registration` function to ensure all parameters following one with a `DEFAULT` value also have `DEFAULT` values, resolving PostgreSQL error `42P13`. (Note: Requires regenerating Supabase TypeScript types after applying these SQL changes.)
+
+## [1.4.2] - 2025-05-10
+
+### Added
+- **SEO & Content:**
+    - Added `FAQPage` JSON-LD schema to the site's root for improved search engine understanding.
+    - Enhanced `Organization` JSON-LD schema in the site's root to include `SportsActivityLocation` details, dynamically populating class times and location information.
+    - Added a helper function (`parseClassTimesForSchema`) to `app/root.tsx` to structure class schedule data for schema markup.
+    - Incorporated inline Q&A-style content blocks on the "About" (`app/routes/_layout.about.tsx`) and "Contact" (`app/routes/_layout.contact.tsx`) pages for quick user information.
+    - Improved image `alt` text for logos in the main Navbar (`app/components/Navbar.tsx`) and on the 404 page (`app/routes/$.tsx`) to be more descriptive and SEO-friendly.
+- **Documentation:**
+    - Updated `README.md` to include future development plans for a blog/news section with an admin interface.
+    - Updated `README.md` to include future development plans for implementing reviews/testimonials display and associated schema markup.
+    - Documented SEO strategy in `README.md`, emphasizing embedded JSON-LD over separate public JSON APIs for AI search discovery.
+
+### Changed
+- *(No specific "Changed" items were noted for this version.)*
+
+### Fixed
+- *(No specific "Fixed" items were noted for this version.)*
 
 ## [1.4.1] - 2025-04-27
 
