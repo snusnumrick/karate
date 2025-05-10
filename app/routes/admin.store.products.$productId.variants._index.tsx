@@ -4,10 +4,9 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
-import { formatDate } from "~/utils/misc"; // Import formatDate utility
+import { formatCurrency, formatDate } from "~/utils/misc"; // Import formatDate utility
 import type { Tables } from "~/types/database.types";
 import { PlusCircle, Edit, ArrowLeft } from "lucide-react";
-import { formatCurrency } from "~/utils/misc"; // Changed to relative path
 
 type ProductRow = Tables<'products'>;
 type ProductVariantRow = Tables<'product_variants'>;

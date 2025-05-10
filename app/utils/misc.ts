@@ -3,11 +3,6 @@ import { enCA } from 'date-fns/locale'; // Import specific date-fns locale
 import { siteConfig } from '~/config/site'; // Import siteConfig
 
 /**
- * Formats a date string or Date object into a user-friendly format.
- * Example: 'Jan 1, 2024'
- * @param date The date string or Date object.
-
-/**
  * Formats a number (representing cents) into a currency string (e.g., $12.34).
  * @param amountInCents The amount in cents.
  * @param currencyCode The ISO currency code (default: 'CAD').
