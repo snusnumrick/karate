@@ -4,7 +4,7 @@ import type {Database} from "~/types/database.types";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Badge} from "~/components/ui/badge";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
-import {format, parse} from 'date-fns';
+import {formatDate} from "~/utils/misc"; // Import formatDate utility
 
 // Define types
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
@@ -142,7 +142,7 @@ export default function FamilyAttendancePage() {
                         <TableBody>
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{format(parse(record.class_date, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}</TableCell>
+                                    <TableCell>{formatDate(record.class_date, { formatString: 'MMM d, yyyy' })}</TableCell>
                                     <TableCell className="font-medium">
                                         {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
                                     </TableCell>

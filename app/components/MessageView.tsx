@@ -1,6 +1,6 @@
 import {useEffect, useRef} from 'react';
 import {Tables} from "~/types/database.types"; // Import Database for SupabaseClient type hint
-import {format, parseISO} from 'date-fns';
+import {formatDate} from "~/utils/misc"; // Import formatDate utility
 import {cn} from '~/lib/utils'; // For conditional classes
 
 // Add global type declaration for the profile logging tracker
@@ -83,7 +83,7 @@ export default function MessageView({messages, currentUserId}: MessageViewProps)
                             <p className="text-sm">{message.content}</p>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-1">
-                            {isCurrentUser ? "You" : senderDisplay} - {format(parseISO(message.created_at), 'p, MMM d')}
+                            {isCurrentUser ? "You" : senderDisplay} - {formatDate(message.created_at, { formatString: 'p, MMM d' })}
                         </p>
                     </div>
                 );
