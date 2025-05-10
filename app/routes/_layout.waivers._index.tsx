@@ -1,7 +1,7 @@
 import {json, type LoaderFunctionArgs} from "@remix-run/node";
 import {Link, useLoaderData} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
-import { format, parseISO } from 'date-fns'; // Import format and parseISO
+import { formatDate } from "~/utils/misc"; // Import formatDate utility
 
 export async function loader({request}: LoaderFunctionArgs) {
     const {supabaseServer} = getSupabaseServerClient(request);
@@ -65,7 +65,7 @@ export default function WaiversIndex() {
                     waivers.map(waiver => {
                         const isSigned = signedWaiverMap.has(waiver.id);
                         const signedDateString = signedWaiverMap.get(waiver.id);
-                        const signedDate = isSigned && signedDateString ? format(parseISO(signedDateString), 'P') : null;
+                        const signedDate = isSigned && signedDateString ? formatDate(signedDateString, { formatString: 'P' }) : null;
 
                         return (
                             <div key={waiver.id} className="border rounded-lg p-4">
