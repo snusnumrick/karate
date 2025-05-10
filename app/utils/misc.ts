@@ -1,8 +1,9 @@
+import { parseISO } from 'date-fns'; // Import parseISO
+
 /**
  * Formats a date string or Date object into a user-friendly format.
  * Example: 'Jan 1, 2024'
  * @param date The date string or Date object.
-import { parseISO } from 'date-fns'; // Import parseISO
 
 /**
  * Formats a number (representing cents) into a currency string (e.g., $12.34).
