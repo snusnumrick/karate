@@ -22,7 +22,7 @@ import {
 } from "~/components/ui/alert-dialog"; // Added AlertDialog components
 import type {Database} from "~/types/database.types";
 import {Badge} from "~/components/ui/badge"; // Import Badge
-import {format, parse} from 'date-fns'; // Import date-fns
+import {formatDate} from '~/utils/misc'; // Import the new formatDate utility
 import {beltColorMap} from "~/utils/constants";
 
 // Define types based on updated Supabase schema
@@ -449,7 +449,7 @@ export default function StudentDetailPage() {
                             <p><strong>First Name:</strong> {student.first_name}</p>
                             <p><strong>Last Name:</strong> {student.last_name}</p>
                             <p><strong>Gender:</strong> {student.gender}</p>
-                            <p><strong>Birth Date:</strong> {format(parse(student.birth_date, 'yyyy-MM-dd', new Date()), 'P')}</p>
+                            <p><strong>Birth Date:</strong> {formatDate(student.birth_date, { formatString: 'P' })}</p>
                             {/* Wrap belt display in <p> for consistent styling */}
                             <p className="flex items-center">
                                 <strong className="mr-2">Current Belt:</strong> {/* Updated Label */}
@@ -506,7 +506,7 @@ export default function StudentDetailPage() {
                                         {/* Awarded Date */}
                                         <Badge variant="secondary"
                                                className="text-xs w-full text-center justify-center">
-                                            Awarded: {format(parse(beltAward.awarded_date, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy')}
+                                            Awarded: {formatDate(beltAward.awarded_date, { formatString: 'MMM d, yyyy' })}
                                         </Badge>
                                     </div>
                                 ))}
