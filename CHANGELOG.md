@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Date Display:** Updated Admin Payments List page (`app/routes/admin.payments._index.tsx`) to use `parseISO` from `date-fns` for `payment_date`, ensuring consistent and robust date handling. (Commit `0f7408c`)
 - **Date Display:** Updated Admin Payment Detail page (`app/routes/admin.payments.$paymentId.tsx`) to use `parseISO` from `date-fns` for `payment_date`, ensuring consistent and robust date handling. (Commit `f3bc800`)
 - **Date Display:** Updated Admin Family Detail page (`app/routes/admin.families.$familyId.tsx`) to use `parseISO` for `created_at`/`updated_at` and `parse` for `birth_date`, ensuring consistent and robust date handling. (Commit `e417222`)
 - **Date Display:** Updated Admin Attendance Report page (`app/routes/admin.attendance.report.tsx`) to use `parse` from `date-fns` for date string validation and formatting, ensuring consistent and robust date handling. (Commit `39699ab`)
