@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { formatDateTime, formatCurrency } from "~/utils/misc";
+import { formatDate, formatCurrency } from "~/utils/misc";
 import { Constants, type Database, type Tables, type Enums } from "~/types/database.types"; // Added Database type back
 import { ArrowLeft, CheckCircle, XCircle, Clock, PackageCheck, ShoppingCart } from "lucide-react";
 
@@ -363,7 +363,7 @@ export default function AdminOrderDetailPage() {
                         <CardContent className="space-y-2 text-sm">
                              <p><strong>Payment Status:</strong> <span className={`capitalize font-medium ${paymentStatus === 'succeeded' ? 'text-green-600' : paymentStatus === 'failed' ? 'text-red-600' : 'text-yellow-600'}`}>{paymentStatus || 'N/A'}</span></p>
                              <p><strong>Method:</strong> {paymentMethod || 'N/A'} {cardLast4 ? `(**** ${cardLast4})` : ''}</p>
-                             <p><strong>Order Date:</strong> {formatDateTime(order.order_date)}</p>
+                             <p><strong>Order Date:</strong> {formatDate(order.order_date, { type: 'datetime' })}</p>
                              {order.payments?.receipt_url && (
                                  <p>
                                      <strong>Receipt:</strong>

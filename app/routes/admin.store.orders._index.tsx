@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"; // For filtering
-import { formatDateTime, formatCurrency } from "~/utils/misc";
+import { formatDate, formatCurrency } from "~/utils/misc";
 import { Constants, type Tables, type Enums, type Database } from "~/types/database.types"; // Import Database type
 import { Eye } from "lucide-react"; // Import icon
 
@@ -141,7 +141,7 @@ export default function AdminOrderListPage() {
                             {orders.map((order) => (
                                 <TableRow key={order.id}>
                                     <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                                        {formatDateTime(order.order_date)}
+                                        {formatDate(order.order_date, { type: 'datetime' })}
                                     </TableCell>
                                     <TableCell className="font-medium">
                                         {order.families?.name || 'N/A'}

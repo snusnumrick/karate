@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Utils:** Refactored date/time formatting in `app/utils/misc.ts` by consolidating `formatDate` and `formatDateTime` into a single `formatDate` function. This function now accepts an `options` parameter to specify `locale`, `formatString` (for `date-fns`), or `type` ('date' or 'datetime' for default `Intl` formatting), further reducing duplication and improving utility. (Commit `d85a707`)
 - **Refactor:** Updated Family Student Detail page (`app/routes/_layout.family.student.$studentId.tsx`) to use the consolidated `formatDate` utility from `app/utils/misc.ts` for date formatting. (Commit `83545a6`)
+- **Refactor:** Updated Family Orders page (`app/routes/_layout.family.orders.tsx`), Admin Orders List page (`app/routes/admin.store.orders._index.tsx`), and Admin Order Detail page (`app/routes/admin.store.orders.$orderId.tsx`) to use the consolidated `formatDate` utility with `{ type: 'datetime' }` for consistent date-time formatting. (Commit `bc095ce`)
 - **Configuration:** Centralized the default locale string (`en-CA`) into `app/config/site.ts` and updated utility functions in `app/utils/misc.ts` to use it, improving maintainability. (Commit `b63bda4`)
 
 ### Fixed

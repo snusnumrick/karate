@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/auth-helpers-remix";
 import { Database, Tables } from "~/types/database.types";
 // Removed Card components, using div with classes instead
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { formatCurrency, formatDateTime } from "~/utils/misc";
+import { formatCurrency, formatDate } from "~/utils/misc";
 import { Badge } from "~/components/ui/badge";
 // Removed Button import as it's not used
 import { AlertCircle } from "lucide-react";
@@ -134,7 +134,7 @@ export default function FamilyOrders() {
                         <TableBody>
                             {orders.map((order) => (
                                 <TableRow key={order.id}>
-                                    <TableCell className="whitespace-nowrap">{formatDateTime(order.created_at)}</TableCell>
+                                    <TableCell className="whitespace-nowrap">{formatDate(order.created_at, { type: 'datetime' })}</TableCell>
                                     <TableCell className="whitespace-nowrap font-mono text-xs">{order.id.substring(0, 8)}...</TableCell>
                                     <TableCell className="whitespace-nowrap"> {/* Added Student Cell */}
                                         {order.students ? `${order.students.first_name} ${order.students.last_name}` : 'N/A'}
