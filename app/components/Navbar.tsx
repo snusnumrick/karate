@@ -71,10 +71,11 @@ export default function Navbar() {
                                 )}
                             </ClientOnly>
 
-                            {/* Messages Icon Button - Always visible, links if logged in */}
-                            <ClientOnly fallback={
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
+                            {/* Messages Icon Button - Only visible if logged in */}
+                            {user && (
+                                <ClientOnly fallback={
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
                                         <Button variant="outline" size="icon" disabled>
                                             <MessageSquare className="h-[1.2rem] w-[1.2rem]"/>
                                             <span className="sr-only">Messages (Loading...)</span>
@@ -107,7 +108,8 @@ export default function Navbar() {
                                         </TooltipContent>
                                     </Tooltip>
                                 )}
-                            </ClientOnly>
+                                </ClientOnly>
+                            )}
 
                             {/* Desktop Auth Buttons - Hidden below lg */}
                             {/* Wrap user-specific section in ClientOnly */}
