@@ -1,4 +1,5 @@
 import { parseISO } from 'date-fns'; // Import parseISO
+import { siteConfig } from '~/config/site'; // Import siteConfig
 
 /**
  * Formats a date string or Date object into a user-friendly format.
@@ -15,7 +16,7 @@ import { parseISO } from 'date-fns'; // Import parseISO
 export function formatCurrency(
     amountInCents: number | null | undefined,
     currencyCode: string = 'CAD',
-    locale: string = 'en-CA'
+    locale: string = siteConfig.locale // Use locale from siteConfig
 ): string {
     if (amountInCents === null || amountInCents === undefined || isNaN(amountInCents)) {
         // console.warn('formatCurrency received invalid input:', amountInCents);
@@ -47,7 +48,7 @@ export function formatCurrency(
  */
 export function formatDate(
     date: string | Date | null | undefined,
-    locale: string = 'en-CA'
+    locale: string = siteConfig.locale // Use locale from siteConfig
 ): string {
     if (!date) {
         return 'N/A';
@@ -77,7 +78,7 @@ export function formatDate(
  */
 export function formatDateTime(
     date: string | Date | null | undefined,
-    locale: string = 'en-CA'
+    locale: string = siteConfig.locale // Use locale from siteConfig
 ): string {
      if (!date) {
         return 'N/A';

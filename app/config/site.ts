@@ -6,6 +6,7 @@ export const siteConfig = {
     name: "Greenegin Karate", // Added site name
     description: "Kids Karate Classes in Colwood, BC. Learn discipline, respect, and self-defense with Sensei Negin. Ages 6-12. Free trial available!", // Added default description
     url: siteUrl, // Use the environment variable
+    locale: 'en-CA', // Default locale for the site
     location: {
         address: "650 Allandale Rd Suite A101",
         locality: "Victoria",

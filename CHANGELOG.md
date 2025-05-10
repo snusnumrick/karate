@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Documented SEO strategy in `README.md`, emphasizing embedded JSON-LD over separate public JSON APIs for AI search discovery.
 
 ### Changed
+- **Configuration:** Centralized the default locale string (`en-CA`) into `app/config/site.ts` and updated utility functions in `app/utils/misc.ts` to use it, improving maintainability. (Commit `b63bda4`)
 
 ### Fixed
 - **Date Display:** Updated date utility functions (`formatDate`, `formatDateTime` in `app/utils/misc.ts`) to use `parseISO` from `date-fns` for string inputs, improving parsing robustness and consistency. (Commit `3b1d1f4`)
