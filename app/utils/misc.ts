@@ -74,7 +74,7 @@ export function formatCurrency(
  * Formats a date string or Date object into a user-friendly format.
  * Example: 'Jan 1, 2024'
  * @param date The date string or Date object.
- * @param locale The locale for formatting (default: 'en-CA').
+ * @param   The locale for formatting (default: 'en-CA').
  * @returns The formatted date string, or 'Invalid Date' if input is invalid.
  */
 export function formatDate(
