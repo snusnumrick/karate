@@ -402,7 +402,7 @@ export async function updatePaymentStatus(
             // Construct the ABSOLUTE URL to our custom receipt page
             const siteBaseUrl = getSiteUrl(); // Get base URL (e.g., https://yourdomain.com)
             updateData.receipt_url = `${siteBaseUrl}/family/receipt/${supabasePaymentId}`;
-            // console.log(`[updatePaymentStatus] Generated receipt URL for ${supabasePaymentId}: ${updateData.receipt_url}`);
+            console.log(`[updatePaymentStatus] Generated receipt URL for ${supabasePaymentId}: ${updateData.receipt_url} from site url: ${siteBaseUrl}`);
         } catch (e) {
              console.error(`[updatePaymentStatus] Failed to generate receipt URL for ${supabasePaymentId} due to missing VITE_SITE_URL. Payment status updated, but receipt URL is null.`, e);
              updateData.receipt_url = null; // Ensure it's null if generation fails
