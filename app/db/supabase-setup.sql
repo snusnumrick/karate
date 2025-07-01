@@ -1260,6 +1260,14 @@ $$
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'waiver_signatures'
+                         AND policyname = 'Users can create their waiver signatures') THEN
+            CREATE POLICY "Users can create their waiver signatures" ON waiver_signatures
+                FOR INSERT WITH CHECK (auth.uid() = user_id);
+        END IF;
+
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'waiver_signatures'
                          AND policyname = 'Admins can manage waiver signatures') THEN
             CREATE POLICY "Admins can manage waiver signatures" ON waiver_signatures
                 FOR ALL TO authenticated
