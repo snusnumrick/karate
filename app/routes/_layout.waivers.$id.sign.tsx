@@ -114,6 +114,7 @@ export async function action({request, params}: ActionFunctionArgs) {
         });
 
     if (error) {
+        console.error('Error saving signature:', error);
         return json({success: false, error: 'Failed to save signature'});
     }
 
