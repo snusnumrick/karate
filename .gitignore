@@ -20,3 +20,4 @@ db-tools/
 .vercel
 playwright-report/
 test-results/
+build/
