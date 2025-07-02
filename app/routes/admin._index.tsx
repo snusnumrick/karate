@@ -47,7 +47,7 @@ export async function loader(_: LoaderFunctionArgs) {
             {count: studentCount, error: studentsError},
             {data: completedPayments, error: paymentsError}, // Fetch amounts to sum
             {count: attendanceToday, error: attendanceError},
-            {count: pendingPaymentsCount, error: pendingPaymentsError},
+            {data: pendingPaymentsFamilies, error: pendingPaymentsError},
             // Fetch users who haven't signed *all* required waivers
             // This is a bit complex, might need a dedicated function/view later
             // Simplified approach: Count users missing *at least one* required waiver
@@ -61,7 +61,7 @@ export async function loader(_: LoaderFunctionArgs) {
                 .eq('class_date', new Date().toISOString().split('T')[0]) // Today's date
                 .eq('present', true), // Use admin client
             supabaseAdmin.from('payments')
-                .select('family_id', {count: 'exact', head: true}) // Count distinct families
+                .select('family_id')
                 .eq('status', PaymentStatus.Pending), // Use enum
             // Fetch distinct user_ids who have signed *at least one* required waiver
             supabaseAdmin.from('waiver_signatures')
@@ -76,7 +76,7 @@ export async function loader(_: LoaderFunctionArgs) {
             {name: "students count", error: studentsError},
             {name: "completed payments", error: paymentsError},
             {name: "attendance count", error: attendanceError},
-            {name: "pending payments count", error: pendingPaymentsError},
+            {name: "pending payments data", error: pendingPaymentsError},
             {name: "user signatures count", error: usersSignaturesError}
         ];
         errors.forEach(({name, error}) => {
@@ -89,6 +89,10 @@ export async function loader(_: LoaderFunctionArgs) {
         // --- Data Processing ---
         // Use total_amount from the fetched payments
         const totalPaymentAmount = completedPayments?.reduce((sum, payment) => sum + (payment.total_amount || 0), 0) || 0;
+
+        // Count distinct families with pending payments
+        const uniqueFamilyIds = new Set(pendingPaymentsFamilies?.map(p => p.family_id) || []);
+        const pendingPaymentsCount = uniqueFamilyIds.size;
 
         // Placeholder for missing waivers count - needs refinement
         // Fetch total active users vs signed users (using admin client)
