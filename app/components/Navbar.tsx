@@ -1,16 +1,18 @@
 import React, {useState} from 'react';
-import { Form, Link } from "@remix-run/react";
-import { ModeToggle } from "./mode-toggle";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "./ui/sheet";
-import { Button } from "./ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
-import { LogOut, Menu, MessageSquare, Sun, X } from "lucide-react";
-import { ClientOnly } from './client-only';
-import type { Session } from '@supabase/supabase-js';
+import {Form, Link, useRouteLoaderData} from "@remix-run/react";
+import {ModeToggle} from "./mode-toggle";
+import {Sheet, SheetContent, SheetTitle, SheetTrigger} from "./ui/sheet";
+import {Button} from "./ui/button";
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/tooltip"; // Import Tooltip components
+import {LogOut, Menu, MessageSquare, Sun, X} from "lucide-react"; // Import LogOut, Sun, AND MessageSquare
+import type {loader as rootLayoutLoader} from "~/routes/_layout"; // Import loader type
+import {ClientOnly} from './client-only'; // Import ClientOnly
 
-export default function Navbar({ session }: { session: Session | null }) {
+export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
-    const user = session?.user;
+    // Get loader data from the parent layout route
+    const data = useRouteLoaderData<typeof rootLayoutLoader>("routes/_layout");
+    const user = data?.session?.user; // Check if user exists in the session
 
     return (
         <TooltipProvider delayDuration={100}>

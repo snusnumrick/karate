@@ -1,13 +1,14 @@
-import { Link } from "@remix-run/react";
+import { Link, useRouteLoaderData } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
-import { siteConfig } from "~/config/site";
-import { MapPin, Phone, Mail, Clock } from 'lucide-react';
-import type { Session } from '@supabase/supabase-js';
-import { ClientOnly } from './client-only';
+import type { loader as rootLayoutLoader } from "~/routes/_layout";
+import { siteConfig } from "~/config/site"; // Import loader type
+import { MapPin, Phone, Mail, Clock } from 'lucide-react'; // Import icons
 
-export default function Footer({ session }: { session: Session | null }) {
-    const user = session?.user;
+export default function Footer() {
+    // Get loader data from the parent layout route
+    const data = useRouteLoaderData<typeof rootLayoutLoader>("routes/_layout");
+    const user = data?.session?.user; // Check if user exists in the session
 
     // Define base links
     const baseLinks = [
@@ -85,21 +86,19 @@ export default function Footer({ session }: { session: Session | null }) {
                             </Button>
                             {/* Links List: Align items start. Add margin top and consistent spacing (space-y-2). */}
                             <div className="mt-3 space-y-2 flex flex-col items-start"> {/* Align items start, added space-y-2 */}
-                                <ClientOnly fallback={<div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
-                                    {() => quickLinks.map((linkItem) => (
-                                        <Button
-                                            key={linkItem.path}
-                                            asChild
-                                            variant="link"
-                                            // Justify button content: start. Remove default button padding/height for tighter spacing.
-                                            className="text-green-100 justify-start hover:text-white p-0 h-auto text-sm" /* Justify start, removed padding/height, ensure text-sm */
-                                        >
-                                            <Link to={linkItem.path} className="py-0"> {/* Adjust link padding if needed, py-0 ensures minimal vertical space */}
-                                                {linkItem.label}
-                                            </Link>
-                                        </Button>
-                                    ))}
-                                </ClientOnly>
+                                {quickLinks.map((linkItem) => (
+                                    <Button
+                                        key={linkItem.path}
+                                    asChild
+                                    variant="link"
+                                    // Justify button content: start. Remove default button padding/height for tighter spacing.
+                                    className="text-green-100 justify-start hover:text-white p-0 h-auto text-sm" /* Justify start, removed padding/height, ensure text-sm */
+                                >
+                                    <Link to={linkItem.path} className="py-0"> {/* Adjust link padding if needed, py-0 ensures minimal vertical space */}
+                                        {linkItem.label}
+                                    </Link>
+                                </Button>
+                            ))}
                             </div> {/* Closes Links List div */}
                         </div> {/* Closes Quick Links Alignment container */}
 
