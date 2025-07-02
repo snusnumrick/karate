@@ -22,9 +22,9 @@ export const siteConfig = {
     },
     classes: {
         days: "Tue & Fri",
-        time: "6:15 - 7:15 p.m",
-        timeLong: "6:15 PM - 7:15 PM", // For more formal display
-        ageRange: "6-12 y/o",
+        time: "5:45 - 7:15 p.m",
+        timeLong: "5:55 PM - 7:15 PM", // For more formal display
+        ageRange: "4-12 y/o",
     },
     socials: {
         instagram: "https://www.instagram.com/greenegin.karate/",
