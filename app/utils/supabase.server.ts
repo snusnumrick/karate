@@ -260,7 +260,7 @@ export async function checkStudentEligibility(
     studentId: string,
     supabaseAdmin: ReturnType<typeof createClient<Database>>
 ): Promise<EligibilityStatus> {
-    // 1. Fetch successful payments linked to this student, ordered by date descending.
+    // 1. Fetch successful payments linked to this student.
     //    We will filter by type *after* fetching to simplify the initial query.
     const {data: paymentLinks, error: linkError} = await supabaseAdmin
         .from('payment_students')
@@ -269,8 +269,14 @@ export async function checkStudentEligibility(
             payments!inner ( id, payment_date, status, type )                                                                                                                                                            
         `) // Use !inner join syntax to ensure payment exists, select type
         .eq('student_id', studentId)
-        .eq('payments.status', 'succeeded') // Keep filter for successful payments
-        .order('payment_date', {foreignTable: 'payments', ascending: false}); // Get most recent first
+        .eq('payments.status', 'succeeded'); // Keep filter for successful payments, remove problematic ordering
+    // Sort the raw payment links by date first to ensure proper ordering
+    const sortedPaymentLinks = paymentLinks?.sort((a, b) => {
+        const dateA = a.payments?.payment_date ? new Date(a.payments.payment_date).getTime() : 0;
+        const dateB = b.payments?.payment_date ? new Date(b.payments.payment_date).getTime() : 0;
+        return dateB - dateA; // Descending order (most recent first)
+    });
+    console.log(`[checkStudentEligibility] Fetching successful payments for student ${studentId}: ${sortedPaymentLinks?.map(link => link.payments?.payment_date).filter(Boolean)}`);
 
     if (linkError) {
         console.error(`Error fetching successful payment links for student ${studentId}:`, linkError.message);
@@ -279,7 +285,7 @@ export async function checkStudentEligibility(
     }
 
     // Filter out null payments and filter for the correct *type* here in the code
-    const successfulGroupPayments = paymentLinks
+    const successfulGroupPayments = sortedPaymentLinks
         ?.map(link => link.payments)
         .filter(payment =>
             payment !== null &&
@@ -292,6 +298,7 @@ export async function checkStudentEligibility(
         status: string,
         type: Database['public']['Enums']['payment_type_enum'] // This 'type' is correct (from DB)
     }> ?? [];
+    console.log(`[checkStudentEligibility] Found ${successfulGroupPayments.length} successful group payments for student ${studentId}: ${successfulGroupPayments.map(payment => payment.payment_date)}.`);
 
 
     // 2. Check for Free Trial (zero successful group payments)

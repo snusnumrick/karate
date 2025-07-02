@@ -44,6 +44,7 @@ export async function checkStudentEligibility(
 
   // Filter out null payments and filter for the correct *type* here in the code
   const successfulGroupPayments = paymentLinks
+    .sort((a, b) => new Date(b!.payment_date).getTime() - new Date(a!.payment_date).getTime()) // Sort by date descending after filtering
     ?.map((link) => link.payments)
     .filter((payment) =>
       payment !== null &&
