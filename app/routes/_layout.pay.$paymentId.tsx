@@ -100,13 +100,20 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         return json({error: "Payment gateway configuration error.", stripePublishableKey: ""}, {status: 500});
     }
 
-    const {supabaseServer, response} = getSupabaseServerClient(request);
-    // console.log('paymentId loader supabaseServer: ', supabaseServer);
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+        return json({error: "Server configuration error", stripePublishableKey: ""}, {status: 500});
+    }
+
+    const {response} = getSupabaseServerClient(request);
+    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     // Fetch payment, family name, and associated student IDs in one go
     // Restore full select statement
     // Fetch payment, including new amount columns and related taxes
-    const {data: payment, error} = await supabaseServer
+    const {data: payment, error} = await supabaseAdmin
         .from('payments')
         .select(`
             id, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, stripe_payment_intent_id, receipt_url, notes, type, order_id,
@@ -119,7 +126,9 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             )
         `)
         .eq('id', paymentId)
-        .maybeSingle(); // Use maybeSingle to handle not found gracefully
+        .maybeSingle(); // Use maybeSingle to handle not found
+    
+    // console.log(`[Loader] Fetching payment details for ID ${paymentId}... - ${payment}, ${error}`);
 
     if (error) {
         // Log the specific database error message
@@ -727,7 +736,7 @@ export default function PaymentPage() {
 
     // Options object creation moved to top level
 
-    console.log('PaymentPage, memoized options: ', options); // Keep log before return
+    // console.log('PaymentPage, memoized options: ', options); // Keep log before return
     return (
         <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">Complete Your Payment</h1>

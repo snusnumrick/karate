@@ -1,6 +1,6 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Outlet, useLoaderData, useLocation, useRevalidator } from "@remix-run/react"; // Import useLoaderData, useRevalidator
-import { useEffect, useState } from "react"; // Import useEffect, useState
+import * as React from "react";
 import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix"; // Import client helper
 import Navbar from "~/components/Navbar";
 import Footer from "~/components/Footer";
@@ -25,10 +25,10 @@ export default function Layout() {
     const isReceiptPage = location.pathname.startsWith('/family/receipt/');
 
     // State to hold the client-side Supabase instance
-    const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+    const [supabase, setSupabase] = React.useState<SupabaseClient<Database> | null>(null);
 
     // Effect to initialize the client-side Supabase client
-    useEffect(() => {
+    React.useEffect(() => {
         // Use createBrowserClient from @supabase/auth-helpers-remix
         const client = createBrowserClient<Database>(
             ENV.SUPABASE_URL!,
@@ -39,7 +39,7 @@ export default function Layout() {
 
 
     // Effect to listen for authentication state changes
-    useEffect(() => {
+    React.useEffect(() => {
         // Ensure supabase client is initialized
         if (!supabase) return;
 
@@ -68,18 +68,20 @@ export default function Layout() {
     }, [serverSession, supabase, revalidator]);
 
 
+    const user = serverSession?.user;
+
     return (
         <div className="flex flex-col min-h-screen text-gray-900 dark:text-white">
             {/* Conditionally add print:hidden class to the Navbar */}
             <div className={isReceiptPage ? 'print:hidden' : ''}>
-                <Navbar/>
+                <Navbar user={user}/>
             </div>
             <main className="flex-grow pt-16 pb-16">
                 <Outlet/>
             </main>
             {/* Conditionally add print:hidden class to the Footer */}
             <div className={isReceiptPage ? 'print:hidden' : ''}>
-                <Footer/>
+                <Footer user={user}/>
             </div>
         </div>
     );

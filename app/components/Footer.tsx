@@ -1,14 +1,11 @@
-import { Link, useRouteLoaderData } from "@remix-run/react";
+import { Link } from "@remix-run/react";
+import type { Session } from "@supabase/auth-helpers-remix";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
-import type { loader as rootLayoutLoader } from "~/routes/_layout";
 import { siteConfig } from "~/config/site"; // Import loader type
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'; // Import icons
 
-export default function Footer() {
-    // Get loader data from the parent layout route
-    const data = useRouteLoaderData<typeof rootLayoutLoader>("routes/_layout");
-    const user = data?.session?.user; // Check if user exists in the session
+export default function Footer({ user }: { user?: Session['user'] | null }) {
 
     // Define base links
     const baseLinks = [

@@ -348,6 +348,9 @@ export default function FamilyPaymentPage() {
     const [paymentOption, setPaymentOption] = useState<PaymentOption>(initialOption); // State for payment option
     const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1); // State for 1:1 session quantity
 
+    // Determine if any student is eligible for a group payment to enable/disable options
+    const hasEligibleStudentsForGroupPayment = studentPaymentDetails?.some(d => d.needsPayment) ?? false;
+
     // const isSubmitting = fetcher.state !== 'idle'; // Unused: fetcher.state is used directly in button disabled prop
 
     // --- Dynamic Calculation (Subtotal, Tax, Total) ---
@@ -490,13 +493,14 @@ export default function FamilyPaymentPage() {
                             onValueChange={(value) => setPaymentOption(value as PaymentOption)} className="space-y-2">
                     {/* Option 1: Monthly Group Fees */}
                     <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="monthly" id="opt-monthly"/>
-                        <Label htmlFor="opt-monthly" className="text-sm">Pay Monthly Group Class Fees</Label>
+                        <RadioGroupItem value="monthly" id="opt-monthly" disabled={!hasEligibleStudentsForGroupPayment}/>
+                        <Label htmlFor="opt-monthly"
+                               className={`text-sm ${!hasEligibleStudentsForGroupPayment ? 'cursor-not-allowed text-gray-400 dark:text-gray-500' : ''}`}>Pay Monthly Group Class Fees</Label>
                     </div>
                     {/* Option 2: Yearly Group Fees */}
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="yearly" id="opt-yearly"/>
-                        <Label htmlFor="opt-yearly" className="text-sm">Pay Yearly Group Class Fees
+                        <RadioGroupItem value="yearly" id="opt-yearly" disabled={!hasEligibleStudentsForGroupPayment}/>
+                        <Label htmlFor="opt-yearly" className={`text-sm ${!hasEligibleStudentsForGroupPayment ? 'cursor-not-allowed text-gray-400 dark:text-gray-500' : ''}`}>Pay Yearly Group Class Fees
                             ({siteConfig.pricing.currency}{siteConfig.pricing.yearly}/student)</Label>
                     </div>
                     {/* Option 3: Individual Session */}

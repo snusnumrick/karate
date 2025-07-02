@@ -52,9 +52,9 @@ export function ErrorBoundary() {
         <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             <h1 className="text-xl font-bold">Admin Section Error</h1>
             <p>{error?.message || "An unknown error occurred."}</p>
-            {process.env.NODE_ENV === "development" && (
+            {error?.stack && (
                 <pre className="mt-2 p-2 bg-red-50 text-red-900 text-xs overflow-auto">
-          {error?.stack}
+          {error.stack}
         </pre>
             )}
         </div>

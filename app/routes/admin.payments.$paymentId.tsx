@@ -78,35 +78,48 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
     }
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    const { data: payment, error } = await supabaseAdmin
-        .from('payments')
-        .select(`
-            *,
-            family:family_id ( id, name ),
-            payment_students (
-                students ( id, first_name, last_name )
-            ),
-            payment_taxes (
-                tax_name_snapshot,
-                tax_amount,
-                tax_rates ( description )
-            )
-        `)
-        .eq('id', paymentId)
-        .single(); // Expect exactly one record
+    const MAX_RETRIES = 4;
+    const RETRY_DELAY_MS = 250;
 
-    if (error) {
-        console.error(`[Admin Payment Detail Loader] Error fetching payment ${paymentId}:`, error.message);
-        throw new Response(`Database Error: ${error.message}`, { status: 500 });
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const { data: payment, error } = await supabaseAdmin
+            .from('payments')
+            .select(`
+                *,
+                family:family_id ( id, name ),
+                payment_students!left (
+                    students ( id, first_name, last_name )
+                ),
+                payment_taxes!left (
+                    tax_name_snapshot,
+                    tax_amount,
+                    tax_rates ( description )
+                )
+            `)
+            .eq('id', paymentId)
+            .single(); // Expect exactly one record
+
+        if (error) {
+            console.error(`[Admin Payment Detail Loader] Error on attempt ${attempt} fetching payment ${paymentId}:`, error.message);
+            // Don't retry on database errors, fail fast.
+            throw new Response(`Database Error: ${error.message}`, { status: 500 });
+        }
+
+        if (payment) {
+            console.log(`[Admin Payment Detail Loader] Successfully fetched payment ${paymentId} on attempt ${attempt}.`);
+            return json({ payment: payment as PaymentDetail });
+        }
+
+        // If payment is not found, wait and retry
+        if (attempt < MAX_RETRIES) {
+            console.log(`[Admin Payment Detail Loader] Payment ${paymentId} not found on attempt ${attempt}. Retrying in ${RETRY_DELAY_MS}ms...`);
+            await new Promise(res => setTimeout(res, RETRY_DELAY_MS));
+        }
     }
 
-    if (!payment) {
-        console.log(`[Admin Payment Detail Loader] Payment ${paymentId} not found.`);
-        throw new Response("Payment not found", { status: 404 });
-    }
-
-    console.log(`[Admin Payment Detail Loader] Successfully fetched payment ${paymentId}.`);
-    return json({ payment: payment as PaymentDetail });
+    // If loop completes without finding a payment
+    console.log(`[Admin Payment Detail Loader] Payment ${paymentId} not found after ${MAX_RETRIES} attempts.`);
+    throw new Response("Payment not found", { status: 404 });
 }
 
 // --- Action Function ---

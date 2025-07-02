@@ -1,11 +1,11 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, type TypedResponse,} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useRouteError} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
+import {Checkbox} from "~/components/ui/checkbox";
 import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import {Textarea} from "~/components/ui/textarea"; // Import Textarea
@@ -14,10 +14,12 @@ import {format} from 'date-fns'; // For default date
 import { siteConfig } from '~/config/site'; // Import siteConfig
 
 type FamilyInfo = Pick<Database['public']['Tables']['families']['Row'], 'id' | 'name'>;
+type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name' | 'family_id'>;
 type TaxRateInfo = Pick<Database['public']['Tables']['tax_rates']['Row'], 'name' | 'rate' | 'description'>; // Add type for tax rates
 
 type LoaderData = {
     families: FamilyInfo[];
+    students: StudentInfo[];
     taxRates: TaxRateInfo[]; // Add tax rates to loader data
 };
 
@@ -26,6 +28,7 @@ type ActionData = {
     error?: string;
     fieldErrors?: {
         familyId?: string;
+        studentIds?: string;
         subtotalAmount?: string; // Changed from amount
         paymentDate?: string;
         paymentMethod?: string;
@@ -53,10 +56,11 @@ export async function loader({request}: LoaderFunctionArgs) {
         throw new Response("Server configuration error.", {status: 500, headers: Object.fromEntries(headers)});
     }
 
+    const { createClient } = await import('@supabase/supabase-js');
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     try {
-        console.log("Admin new payment loader: Fetching families...");
+        // console.log("Admin new payment loader: Fetching families...");
         const {data: families, error} = await supabaseAdmin
             .from('families')
             .select('id, name')
@@ -64,13 +68,25 @@ export async function loader({request}: LoaderFunctionArgs) {
 
         if (error) {
             console.error("Error fetching families:", error.message);
-            console.error("Error fetching families:", error.message);
             throw new Response("Failed to load family data.", {status: 500, headers: Object.fromEntries(headers)});
         }
-        console.log(`Admin new payment loader: Fetched ${families?.length ?? 0} families.`);
+        // console.log(`Admin new payment loader: Fetched ${families?.length ?? 0} families.`);
+
+        // Fetch students
+        // console.log("Admin new payment loader: Fetching students...");
+        const { data: students, error: studentsError } = await supabaseAdmin
+            .from('students')
+            .select('id, first_name, last_name, family_id')
+            .order('first_name', { ascending: true });
+
+        if (studentsError) {
+            console.error("Error fetching students:", studentsError.message);
+            throw new Response("Failed to load student data.", { status: 500, headers: Object.fromEntries(headers) });
+        }
+        // console.log(`Admin new payment loader: Fetched ${students?.length ?? 0} students.`);
 
         // Fetch active tax rates
-        console.log("Admin new payment loader: Fetching active tax rates...");
+        // console.log("Admin new payment loader: Fetching active tax rates...");
         const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
         const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
             .from('tax_rates')
@@ -83,11 +99,12 @@ export async function loader({request}: LoaderFunctionArgs) {
             // Proceed without tax rates, but log the error. The component should handle missing rates.
             // throw new Response("Failed to load tax rate data.", { status: 500, headers: Object.fromEntries(headers) });
         }
-        console.log(`Admin new payment loader: Fetched ${taxRatesData?.length ?? 0} active tax rates.`);
+        // console.log(`Admin new payment loader: Fetched ${taxRatesData?.length ?? 0} active tax rates.`);
 
 
         return json<LoaderData>({
             families: families || [],
+            students: students || [],
             taxRates: taxRatesData || [] // Return fetched tax rates (or empty array)
         }, {headers: Object.fromEntries(headers)});
 
@@ -105,16 +122,17 @@ export async function loader({request}: LoaderFunctionArgs) {
 }
 
 export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
-    console.log("Entering /admin/payments/new action...");
+    // console.log("Entering /admin/payments/new action...");
     const {response} = getSupabaseServerClient(request); // Get headers
     const headers = response.headers;
     const formData = await request.formData();
 
     const familyId = formData.get("familyId") as string;
+    const studentIdsString = formData.get("studentIds") as string;
     const subtotalAmountStr = formData.get("subtotalAmount") as string; // Changed from amount
-    const paymentDate = formData.get("paymentDate") as string || getTodayDateString();
+    let paymentDate = formData.get("paymentDate") as string | null;
     const paymentMethod = formData.get("paymentMethod") as string;
-    const status = 'succeeded'; // Hardcode status to succeeded for manual admin entry
+    const status = paymentMethod === 'stripe' ? 'pending' : 'succeeded';
     const notes = formData.get("notes") as string | null;
     const type = formData.get("type") as string || 'monthly_group'; // Use 'type' variable
     const quantityStr = formData.get("quantity") as string; // Get quantity for one_on_one session
@@ -122,6 +140,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     // --- Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
     if (!familyId) fieldErrors.familyId = "Family is required.";
+    const studentIds = studentIdsString ? studentIdsString.split(',').filter(id => id.trim() !== '') : [];
+    if ((type === 'monthly_group' || type === 'yearly_group') && studentIds.length === 0) {
+        fieldErrors.studentIds = "Please select at least one student for group payments.";
+    }
     // Validate subtotal amount
     let subtotalAmount = 0;
     if (!subtotalAmountStr || isNaN(parseFloat(subtotalAmountStr)) || parseFloat(subtotalAmountStr) < 0) { // Allow 0 subtotal? Check requirements. Let's assume >= 0
@@ -129,7 +151,16 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     } else {
         subtotalAmount = parseFloat(subtotalAmountStr); // Keep as float for now
     }
-    if (!paymentDate) fieldErrors.paymentDate = "Payment date is required.";
+
+    if (paymentMethod !== 'stripe') {
+        if (!paymentDate) {
+            // Default the date if it's a non-Stripe payment and date is missing.
+            paymentDate = getTodayDateString();
+        }
+    } else {
+        paymentDate = null; // Stripe payments are pending, date will be set on success
+    }
+
     if (!paymentMethod) fieldErrors.paymentMethod = "Payment method is required.";
     // Status validation removed as it's hardcoded
     // Use the actual enum values for type validation
@@ -168,6 +199,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         });
     }
 
+    const { createClient } = await import('@supabase/supabase-js');
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
     try {
@@ -210,7 +242,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         const totalAmountInCents = subtotalAmountInCents + totalTaxAmountInCents;
         // --- End Multi-Tax Calculation ---
 
-        console.log("Admin new payment action: Inserting payment record...");
+        // console.log("Admin new payment action: Inserting payment record...");
         // Insert main payment record
         const { data: paymentData, error: insertPaymentError } = await supabaseAdmin
             .from('payments')
@@ -237,7 +269,28 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         }
 
         const paymentId = paymentData.id;
-        console.log(`Payment ${paymentId} recorded successfully. Subtotal: ${subtotalAmountInCents}, Total Tax: ${totalTaxAmountInCents}, Total: ${totalAmountInCents}`);
+        console.log(`Payment ${paymentId} recorded. Status: ${status}. Subtotal: ${subtotalAmountInCents}, Total Tax: ${totalTaxAmountInCents}, Total: ${totalAmountInCents}`);
+
+        // Insert student links if applicable
+        if ((type === 'monthly_group' || type === 'yearly_group') && studentIds.length > 0) {
+            const paymentStudentsToInsert = studentIds.map(studentId => ({
+                payment_id: paymentId,
+                student_id: studentId,
+            }));
+            const { error: insertStudentsError } = await supabaseAdmin
+                .from('payment_students')
+                .insert(paymentStudentsToInsert);
+
+            if (insertStudentsError) {
+                console.error(`Error inserting payment_students for payment ${paymentId}:`, insertStudentsError.message);
+                // For now, return error indicating partial failure.
+                return json<ActionData>({error: `Payment recorded, but failed to link students: ${insertStudentsError.message}`}, {
+                    status: 500,
+                    headers: Object.fromEntries(headers)
+                });
+            }
+            console.log(`Inserted ${paymentStudentsToInsert.length} student links for payment ${paymentId}.`);
+        }
 
         // Insert tax breakdown
         if (paymentTaxesToInsert.length > 0) {
@@ -263,7 +316,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
         // If it's an individual session payment, record the session purchase (logic remains the same)
         if (type === 'individual_session' && quantity !== null) {
-            console.log(`Recording Individual Session purchase for payment ${paymentId}, quantity: ${quantity}`);
+            // console.log(`Recording Individual Session purchase for payment ${paymentId}, quantity: ${quantity}`);
             const { error: sessionInsertError } = await supabaseAdmin
                 .from('one_on_one_sessions') // Table name remains the same
                 .insert({
@@ -286,7 +339,13 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             console.log(`Individual Session purchase recorded for payment ${paymentId}.`);
         }
 
-        // Redirect to the payments index page on success
+        // If it's a Stripe payment, redirect to the payment page to handle it.
+        if (paymentMethod === 'stripe') {
+            console.log(`Stripe payment initiated. Redirecting to payment page for payment ${paymentId}.`);
+            return redirect(`/pay/${paymentId}`, { headers: Object.fromEntries(headers) });
+        }
+
+        // Redirect to the payments index page on success for other methods
         headers.set('Location', '/admin/payments?success=true');
         return redirect("/admin/payments?success=true", {headers: Object.fromEntries(headers)});
 
@@ -306,7 +365,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
 export default function AdminNewPaymentPage() {
     // Combined declaration for loader data
-    const {families, taxRates} = useLoaderData<typeof loader>(); // Get families and taxRates
+    const {families, students, taxRates} = useLoaderData<typeof loader>(); // Get families and taxRates
     // Single declaration for action data
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
@@ -314,10 +373,40 @@ export default function AdminNewPaymentPage() {
 
     // State for controlled Select components
     const [selectedFamily, setSelectedFamily] = useState<string | undefined>(undefined);
+    const [familyStudents, setFamilyStudents] = useState<StudentInfo[]>([]);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
     const [selectedMethod, setSelectedMethod] = useState<string | undefined>(undefined);
     // selectedStatus state removed
     const [selectedType, setSelectedType] = useState<string>('monthly_group'); // Use selectedType state
     const [subtotalStr, setSubtotalStr] = useState<string>(''); // State for subtotal input string
+
+    useEffect(() => {
+        if (selectedFamily) {
+            const currentFamilyStudents = students.filter(s => s.family_id === selectedFamily);
+            setFamilyStudents(currentFamilyStudents);
+            setSelectedStudentIds(new Set()); // Reset student selection when family changes
+
+            // If a group payment type is selected but the new family has no students, reset the type.
+            if (currentFamilyStudents.length === 0 && (selectedType === 'monthly_group' || selectedType === 'yearly_group')) {
+                setSelectedType('other'); // Default to 'other'
+            }
+        } else {
+            setFamilyStudents([]);
+            setSelectedStudentIds(new Set());
+        }
+    }, [selectedFamily, students, selectedType]);
+
+    const handleCheckboxChange = (studentId: string, checked: boolean) => {
+        setSelectedStudentIds(prev => {
+            const next = new Set(prev);
+            if (checked) {
+                next.add(studentId);
+            } else {
+                next.delete(studentId);
+            }
+            return next;
+        });
+    };
 
     // Client-side calculation for display
     const calculateDisplayAmounts = () => {
@@ -414,8 +503,10 @@ export default function AdminNewPaymentPage() {
                                     <SelectValue placeholder="Select payment type"/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="monthly_group">Monthly Group Class</SelectItem>
-                                    <SelectItem value="yearly_group">Yearly Group Class</SelectItem>
+                                    <SelectItem value="monthly_group"
+                                                disabled={!!(selectedFamily && familyStudents.length === 0)}>Monthly Group Class</SelectItem>
+                                    <SelectItem value="yearly_group"
+                                                disabled={!!(selectedFamily && familyStudents.length === 0)}>Yearly Group Class</SelectItem>
                                     <SelectItem value="individual_session">Individual Session</SelectItem>
                                     <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
@@ -424,6 +515,34 @@ export default function AdminNewPaymentPage() {
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.type}</p>
                             )}
                         </div>
+
+                        {/* Conditionally show student selection */}
+                        {(selectedType === 'monthly_group' || selectedType === 'yearly_group') && selectedFamily && (
+                            <div className="border p-4 rounded-md mt-4 bg-gray-50/50 dark:bg-gray-700/50 dark:border-gray-600">
+                                <Label className="font-semibold">Students</Label>
+                                {familyStudents.length > 0 ? (
+                                    <div className="mt-2 space-y-2">
+                                        {familyStudents.map(student => (
+                                            <div key={student.id} className="flex items-center space-x-3">
+                                                <Checkbox
+                                                    id={`student-${student.id}`}
+                                                    checked={selectedStudentIds.has(student.id)}
+                                                    onCheckedChange={(checked) => handleCheckboxChange(student.id, !!checked)}
+                                                />
+                                                <Label htmlFor={`student-${student.id}`} className="font-normal cursor-pointer">
+                                                    {student.first_name} {student.last_name}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500 mt-2">No students found for this family.</p>
+                                )}
+                                {actionData?.fieldErrors?.studentIds && (
+                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.studentIds}</p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Conditionally show Quantity for Individual sessions */}
                         {selectedType === 'individual_session' && ( // Check selectedType state
@@ -485,21 +604,23 @@ export default function AdminNewPaymentPage() {
                             </div>
                         )}
 
-                        {/* Payment Date */}
-                        <div>
-                            <Label htmlFor="paymentDate">Payment Date</Label>
-                            <Input
-                                id="paymentDate"
-                                name="paymentDate"
-                                type="date"
-                                defaultValue={getTodayDateString()}
-                                required
-                                className="mt-1"
-                            />
-                            {actionData?.fieldErrors?.paymentDate && (
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.paymentDate}</p>
-                            )}
-                        </div>
+                        {/* Payment Date (hidden for Stripe) */}
+                        {selectedMethod !== 'stripe' && (
+                            <div>
+                                <Label htmlFor="paymentDate">Payment Date</Label>
+                                <Input
+                                    id="paymentDate"
+                                    name="paymentDate"
+                                    type="date"
+                                    defaultValue={getTodayDateString()}
+                                    required={selectedMethod !== 'stripe'}
+                                    className="mt-1"
+                                />
+                                {actionData?.fieldErrors?.paymentDate && (
+                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.paymentDate}</p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Payment Method */}
                         <div>
@@ -528,6 +649,16 @@ export default function AdminNewPaymentPage() {
 
                         {/* Status field removed */}
 
+                        {/* Stripe Info Message */}
+                        {selectedMethod === 'stripe' && (
+                            <Alert variant="default" className="bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
+                                <AlertTitle className="text-blue-800 dark:text-blue-200">Stripe Payment</AlertTitle>
+                                <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
+                                    After submitting, you will be redirected to a secure Stripe payment page to complete the transaction. The payment will be marked as &apos;pending&apos; until completed.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
                         {/* Notes */}
                         <div>
                             <Label htmlFor="notes">Notes (Optional)</Label>
@@ -541,6 +672,8 @@ export default function AdminNewPaymentPage() {
                         </div>
 
                     </div>
+
+                    <input type="hidden" name="studentIds" value={Array.from(selectedStudentIds).join(',')} />
 
                     <div className="mt-8 flex justify-end">
                         <Button type="submit" disabled={isSubmitting}>
@@ -563,15 +696,15 @@ export function ErrorBoundary() {
             className="p-4 bg-red-100 border border-red-400 text-red-700 rounded dark:bg-red-900/30 dark:border-red-600 dark:text-red-300">
             <h2 className="text-xl font-bold mb-2">Error Creating New Payment</h2>
             <p>{error?.message || "An unknown error occurred."}</p>
-            {process.env.NODE_ENV === "development" && (
+            {error && (
                 <pre
                     className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs dark:bg-red-900/50 dark:text-red-100">
-          {error?.stack || JSON.stringify(error, null, 2)}
+          {error.stack || JSON.stringify(error, null, 2)}
         </pre>
             )}
-            <Link to="/admin/payments" className="text-blue-600 hover:underline mt-4 inline-block">
+            <a href="/admin/payments" className="text-blue-600 hover:underline mt-4 inline-block">
                 Return to Payments List
-            </Link>
+            </a>
         </div>
     );
 }
