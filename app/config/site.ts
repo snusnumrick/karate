@@ -3,8 +3,8 @@
 const siteUrl = import.meta.env.VITE_SITE_URL || 'http://localhost:5173'; // Fallback for local dev if not set
 
 export const siteConfig = {
-    name: "Greenegin Karate", // Added site name
-    description: "Kids Karate Classes in Colwood, BC. Learn discipline, respect, and self-defense with Sensei Negin. Ages 6-12. Free trial available!", // Added default description
+    name: "GREENEGIN KARATE", // Added site name
+    description: "Kids Karate Classes in Langford, BC. Learn discipline, respect, and self-defense with Sensei Negin. Ages 4-12. Free trial available!", // Added default description
     url: siteUrl, // Use the environment variable
     locale: 'en-CA', // Default locale for the site
     location: {
