@@ -82,7 +82,7 @@ export default function Index() {
                                     className="absolute left-0 md:left-10 top-0 h-full w-full bg-green-700 transform skew-x-0 md:-skew-x-12 origin-top-right z-0"></div>
                                 <div className="absolute h-full w-full flex items-center justify-center z-10">
                                     <img
-                                        src="/images/karate.png"
+                                        src="/images/karate-pose.svg"
                                         alt="Karate pose silhouette"
                                         className="w-full h-full object-contain"
                                     />
