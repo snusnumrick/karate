@@ -304,7 +304,9 @@ export default function SignWaiver() {
             <h1 className="text-3xl font-bold mb-6">Sign: {waiver.title}</h1>
 
             <div className="mb-8 p-6 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
-                <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{__html: waiver.content}}/>
+                <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
+                    {waiver.content}
+                </div>
             </div>
 
             <Form method="post" onSubmit={handleSubmit}>
