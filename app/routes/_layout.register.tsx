@@ -42,7 +42,7 @@ export async function action({request}: ActionFunctionArgs) {
 
     const requiredFields = {
         referralSource, familyName, address, city, province, postalCode, primaryPhone,
-        contact1FirstName, contact1LastName, contact1Type, contact1HomePhone, contact1CellPhone,
+        contact1FirstName, contact1LastName, contact1Type, contact1CellPhone,
         contact1Email, contact1EmailConfirm, portalPassword, portalPasswordConfirm
     };
 
