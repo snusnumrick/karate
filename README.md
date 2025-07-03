@@ -41,10 +41,11 @@ for communication between families and administrators.
 - **Payments:**
     - Secure, embedded payment form using Stripe Elements (`/pay/:paymentId`).
     - Multiple payment options initiated from Family Portal (`/family/payment`): Monthly Group, Yearly Group, Individual Sessions (purchased in quantities).
-    - View payment history, including payment type (`/family/payment-history`).
+    - **Discount Code Support:** Apply discount codes during payment with real-time validation and calculation.
+    - View payment history, including payment type and applied discounts (`/family/payment-history`).
     - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly). Prices shown are before tax.
     - Applicable sales taxes (e.g., GST, PST) are calculated based on active rates defined in the `tax_rates` database table and the `applicableTaxNames` setting in `app/config/site.ts`. The breakdown (including tax name, description, rate, and amount) is stored in the `payment_taxes` table, and the total amount (subtotal + all taxes) is stored in the `payments` table and sent to Stripe.
-    - Custom, print-friendly payment receipts including tax breakdown (displaying tax description) are generated and accessible via the Family Portal (`/family/receipt/:paymentId`) instead of using Stripe's default receipts. The URL is stored in the `payments.receipt_url` field. Requires `VITE_SITE_URL` environment variable to be set correctly.
+    - Custom, print-friendly payment receipts including tax breakdown (displaying tax description) and discount details are generated and accessible via the Family Portal (`/family/receipt/:paymentId`) instead of using Stripe's default receipts. The URL is stored in the `payments.receipt_url` field. Requires `VITE_SITE_URL` environment variable to be set correctly.
     - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
 
 ### Administrative Panel (`/admin`)
@@ -87,6 +88,14 @@ for communication between families and administrators.
     - Reply to family messages within a conversation (`/admin/messages/:conversationId`).
     - Initiate new conversations with specific families (`/admin/messages/new`).
     - Receive real-time updates for new messages and conversation changes.
+- **Discount Code Management:**
+    - Create and manage discount codes with flexible rules (`/admin/discount-codes`).
+    - Support for fixed amount and percentage discounts.
+    - Configure applicability (training, store, or both) and scope (per-student or per-family).
+    - Set usage restrictions (one-time or ongoing) and validity periods.
+    - Track discount code usage and view statistics (`/admin/discount-codes`).
+    - Create new discount codes with comprehensive options (`/admin/discount-codes/new`).
+    - Automatic discount code generation for programmatic use cases.
 
 ### Automated Notifications
 - **Student Absence:** Email to family when student marked absent.
@@ -291,11 +300,17 @@ for communication between families and administrators.
     - `app/routes/_layout.family.messages...`: Family-facing messaging routes.
     - `app/routes/_admin.messages...`: Admin-facing messaging routes (nested under admin layout).
     - `app/components/ConversationList.tsx`, `app/components/AdminConversationList.tsx`, `app/components/MessageView.tsx`, `app/components/MessageInput.tsx`: Core UI components for messaging.
+    - `app/routes/admin.discount-codes...`: Admin-facing discount code management routes.
+    - `app/routes/api.discount-codes.validate.tsx`, `app/routes/api.available-discounts.$familyId.tsx`: API endpoints for discount code validation and retrieval.
+    - `app/services/discount.server.ts`: Server-side discount code logic (validation, application, usage tracking).
+    - `app/components/DiscountCodeSelector.tsx`: User-facing component for discount code input and validation.
+    - `app/types/discount.ts`, `app/types/supabase-extensions.d.ts`: TypeScript definitions for discount system and extended Supabase types.
     - **Note:** While dedicated API routes exist for specific tasks, much of the core backend logic (data fetching, mutations) is handled within the `loader` and `action` functions of the standard Remix routes (`app/routes/`), serving as endpoints for the web UI itself rather than standalone APIs.
     - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
 - **UI:** Built with [Shadcn](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn@latest add <component>` to add new components consistently.
-- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`).
+- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`).
+    - **Discount System:** Comprehensive discount code system with tables for `discount_codes` (code definitions, rules, validity) and `discount_code_usage` (usage tracking, audit trail). Supports fixed amount and percentage discounts with flexible applicability rules (training, store, both) and scope (per-student, per-family). Includes usage restrictions (one-time, ongoing) and automatic discount generation capabilities.
 - **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.
 - **Environment Variables:** Managed via `.env` locally and platform environment variables in production (see Deployment). Use `.env.example` as a template.
 - **Email:** Uses Resend for transactional emails. See `app/utils/email.server.ts` and function-specific email logic.
@@ -579,6 +594,71 @@ A versioned API is available for external consumption (e.g., by an AI server or 
         *   `401 Unauthorized`
         *   `403 Forbidden`: `{"error": "Forbidden: You do not have permission to delete this guardian."}`
         *   `404 Not Found`: `{"error": "Guardian not found"}`
+        *   `500 Internal Server Error`
+
+*   **`POST /api/discount-codes/validate`**
+    *   **Description:** Validates a discount code and calculates the discount amount for a specific family and context.
+    *   **Authorization:** Requires standard user authentication.
+    *   **Request Body (JSON):**
+        ```json
+        {
+          "code": "SAVE20",
+          "familyId": "uuid-for-family",
+          "studentId": "uuid-for-student", // Optional, for student-specific discounts
+          "applicableTo": "training", // "training", "store", or "both"
+          "amount": 5000 // Amount in cents to apply discount to
+        }
+        ```
+    *   **Example Success Response (200 OK):**
+        ```json
+        {
+          "valid": true,
+          "discountAmount": 1000, // Amount in cents
+          "discountCode": {
+            "id": "uuid-for-discount-code",
+            "code": "SAVE20",
+            "name": "20% Off Training",
+            "discount_type": "percentage",
+            "discount_value": 20
+          }
+        }
+        ```
+    *   **Example Error Responses:**
+        *   `400 Bad Request`: `{"error": "Invalid or expired discount code"}`
+        *   `401 Unauthorized`
+        *   `500 Internal Server Error`
+
+*   **`GET /api/available-discounts/{familyId}`**
+    *   **Description:** Retrieves available discount codes for a specific family, filtered by applicability and usage restrictions.
+    *   **Authorization:** Requires standard user authentication. User must be an admin or belong to the specified family.
+    *   **Query Parameters:**
+        *   `applicableTo` (optional): Filter by applicability ("training", "store", "both")
+        *   `studentId` (optional): Include student-specific discounts
+    *   **Example Request:**
+        ```bash
+        curl -X GET "https://<your-domain>/api/available-discounts/YOUR_FAMILY_ID?applicableTo=training" \
+             -H "Authorization: Bearer <YOUR_SUPABASE_JWT>"
+        ```
+    *   **Example Success Response (200 OK):**
+        ```json
+        [
+          {
+            "id": "uuid-for-discount-code-1",
+            "code": "WELCOME10",
+            "name": "Welcome Discount",
+            "description": "10% off first month",
+            "discount_type": "percentage",
+            "discount_value": 10,
+            "applicable_to": "training",
+            "scope": "per_family",
+            "usage_type": "one_time",
+            "valid_until": "2024-12-31T23:59:59.000Z"
+          }
+        ]
+        ```
+    *   **Example Error Responses:**
+        *   `401 Unauthorized`
+        *   `403 Forbidden`: `{"error": "Forbidden: You do not have permission to view discounts for this family."}`
         *   `500 Internal Server Error`
 
 

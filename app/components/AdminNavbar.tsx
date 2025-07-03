@@ -20,6 +20,7 @@ import {
     Package,
     ShoppingBag,
     Sun,
+    Tag,
     User,
     Users,
     X
@@ -38,6 +39,7 @@ const adminNavItems = [
     {to: "/admin/waivers", label: "Waivers", icon: FileText},
     {to: "/admin/attendance", label: "Attendance", icon: CalendarCheck},
     {to: "/admin/messages", label: "Messages", icon: MessageSquare},
+    {to: "/admin/discount-codes", label: "Discount Codes", icon: Tag},
     {to: "/admin/db-chat", label: "DB Chat", icon: Database},
     // Store items will be handled by the Dropdown below
 ];

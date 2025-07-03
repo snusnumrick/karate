@@ -11,6 +11,8 @@ import {formatDate} from "~/utils/misc";
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group"; // Import RadioGroup
 import {Label} from "~/components/ui/label";
 import {Database} from "~/types/database.types";
+import { DiscountCodeSelector } from "~/components/DiscountCodeSelector";
+import type { DiscountValidationResult } from "~/types/discount";
 
 // Payment Calculation (Existing logic needs adjustment)
 //
@@ -225,6 +227,8 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     const paymentOption = formData.get('paymentOption') as PaymentOption;
     const studentIdsString = formData.get('studentIds') as string; // Comma-separated, potentially empty
     const oneOnOneQuantityStr = formData.get('oneOnOneQuantity') as string; // Quantity for individual
+    const discountCodeId = formData.get('discountCodeId') as string | null; // Discount code ID
+    const discountAmountStr = formData.get('discountAmount') as string | null; // Discount amount
 
     // --- Validation ---
     const fieldErrors: ActionResponse['fieldErrors'] = {};
@@ -291,9 +295,15 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         // Rename totalAmountInCents to subtotalAmountInCents for clarity
         const subtotalAmountInCents = totalAmountInCents;
 
+        // Parse discount amount
+        const discountAmount = discountAmountStr ? parseInt(discountAmountStr, 10) : 0;
+        
+        // Apply discount to subtotal
+        const finalSubtotalInCents = Math.max(0, subtotalAmountInCents - discountAmount);
+
         // Explicitly cast type for comparison if needed, though the type should be correct
-        if (subtotalAmountInCents <= 0 && (type as string) !== 'other') { // Allow $0 for 'other' type if needed, otherwise check subtotal
-            console.error("[Action] Calculated subtotal is zero or negative. Returning error.");
+        if (finalSubtotalInCents <= 0 && (type as string) !== 'other') { // Allow $0 for 'other' type if needed, otherwise check final subtotal
+            console.error("[Action] Calculated final subtotal is zero or negative. Returning error.");
             return json({ error: "Calculated payment subtotal must be positive." }, { status: 400, headers: response.headers });
         }
 
@@ -301,9 +311,12 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         // console.log("[Action] Calling createInitialPaymentRecord with subtotal...");
         const { data: paymentRecord, error: createError } = await createInitialPaymentRecord(
             familyId,
-            subtotalAmountInCents, // Pass the calculated subtotal
+            finalSubtotalInCents, // Pass the final subtotal after discount
             studentIds, // Pass selected student IDs (empty for individual)
-            type // Pass 'type' variable
+            type, // Pass 'type' variable
+            null, // orderId
+            discountCodeId, // Pass discount code ID
+            discountAmount // Pass discount amount
         );
         // console.log(`[Action] createInitialPaymentRecord result: data=${JSON.stringify(paymentRecord)}, error=${createError}`);
 
@@ -347,6 +360,7 @@ export default function FamilyPaymentPage() {
     const initialOption = searchParams.get('option') === 'individual' ? 'individual' : 'monthly';
     const [paymentOption, setPaymentOption] = useState<PaymentOption>(initialOption); // State for payment option
     const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1); // State for 1:1 session quantity
+    const [appliedDiscount, setAppliedDiscount] = useState<DiscountValidationResult | null>(null); // State for applied discount
 
     // Determine if any student is eligible for a group payment to enable/disable options
     const hasEligibleStudentsForGroupPayment = studentPaymentDetails?.some(d => d.needsPayment) ?? false;
@@ -370,16 +384,20 @@ export default function FamilyPaymentPage() {
             subtotal = siteConfig.pricing.oneOnOneSession * oneOnOneQuantity * 100; // Calculate subtotal
         }
 
-        // Tax is calculated by Stripe, only return subtotal for display here
-        const total = subtotal; // For display purposes, total initially equals subtotal
+        // Apply discount if available
+        const discountAmount = appliedDiscount?.discount_amount || 0;
+        const discountedSubtotal = Math.max(0, subtotal - discountAmount);
 
-        return { subtotal, total }; // Removed tax from return
+        // Tax is calculated by Stripe, only return subtotal for display here
+        const total = discountedSubtotal; // For display purposes, total initially equals discounted subtotal
+
+        return { subtotal, discountAmount, total }; // Include discount information
     };
 
-    const { subtotal: currentSubtotalInCents, total: currentTotalInCents } = calculateAmounts(); // Removed tax destructuring
+    const { subtotal: currentSubtotalInCents, discountAmount: currentDiscountAmountInCents, total: currentTotalInCents } = calculateAmounts();
     const currentSubtotalDisplay = `${siteConfig.pricing.currency}${(currentSubtotalInCents / 100).toFixed(2)}`;
-    // currentTaxDisplay removed
-    const currentTotalDisplay = `${siteConfig.pricing.currency}${(currentTotalInCents / 100).toFixed(2)} + Tax`; // Indicate tax will be added
+    const currentDiscountDisplay = appliedDiscount ? `${siteConfig.pricing.currency}${(currentDiscountAmountInCents / 100).toFixed(2)}` : null;
+    const currentTotalDisplay = `${siteConfig.pricing.currency}${(currentTotalInCents / 100).toFixed(2)}`; // Indicate tax will be added
     // --- End Dynamic Calculation ---
 
 
@@ -396,7 +414,25 @@ export default function FamilyPaymentPage() {
             }
             return next;
         });
+        // Reset discount when selection changes
+        setAppliedDiscount(null);
     };
+
+    const handleDiscountApplied = (discount: DiscountValidationResult | null) => {
+        setAppliedDiscount(discount);
+    };
+
+    // Reset discount when payment option changes
+    useEffect(() => {
+        setAppliedDiscount(null);
+    }, [paymentOption]);
+
+    // Reset discount when one-on-one quantity changes
+    useEffect(() => {
+        if (paymentOption === 'individual') {
+            setAppliedDiscount(null);
+        }
+    }, [oneOnOneQuantity, paymentOption]);
 
     // Remove handlePaymentSubmit function - logic moved to action
 
@@ -605,6 +641,18 @@ export default function FamilyPaymentPage() {
             )} {/* End conditional student selection div */}
 
 
+            {/* Discount Code Selector */}
+            {currentSubtotalInCents > 0 && (
+                <DiscountCodeSelector
+                    familyId={familyId}
+                    studentId={selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : undefined}
+                    subtotalAmount={currentSubtotalInCents}
+                    applicableTo={paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group'}
+                    onDiscountApplied={handleDiscountApplied}
+                    disabled={fetcher.state !== 'idle'}
+                />
+            )}
+
             {/* Combined Total & Pricing Info Section */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
                 {/* Calculated Amounts */}
@@ -613,11 +661,17 @@ export default function FamilyPaymentPage() {
                         <span>Subtotal:</span>
                         <span>{currentSubtotalDisplay}</span>
                     </div>
+                    {appliedDiscount && currentDiscountDisplay && (
+                        <div className="flex justify-between items-center text-md text-green-600 dark:text-green-400">
+                            <span>Discount ({appliedDiscount.code}):</span>
+                            <span>-{currentDiscountDisplay}</span>
+                        </div>
+                    )}
                     {/* Tax line removed - will be calculated by Stripe */}
                     <div className="flex justify-between items-center font-bold text-lg mt-2">
                         <span>Total Due:</span>
-                        {/* Display subtotal + Tax indicator */}
-                        <span>{currentSubtotalDisplay} + Tax</span>
+                        {/* Display discounted total + Tax indicator */}
+                        <span>{currentTotalDisplay} + Tax</span>
                     </div>
                 </div>
 
@@ -651,6 +705,13 @@ export default function FamilyPaymentPage() {
                 {paymentOption === 'individual' && (
                     <input type="hidden" name="oneOnOneQuantity" value={oneOnOneQuantity}/>
                 )}
+                {/* Pass discount information if applied */}
+                {appliedDiscount && (
+                    <>
+                        <input type="hidden" name="discountCodeId" value={appliedDiscount.discount_code_id}/>
+                        <input type="hidden" name="discountAmount" value={appliedDiscount.discount_amount}/>
+                    </>
+                )}
 
                 {/* Button is now outside the form but linked by the 'form' attribute */}
             </fetcher.Form> {/* fetcher.Form ends here */}
@@ -664,7 +725,7 @@ export default function FamilyPaymentPage() {
                     // Disable based on fetcher state and validation logic
                     disabled={
                         fetcher.state !== 'idle' || // Disable if fetcher is not idle
-                        currentSubtotalInCents <= 0 || // Check subtotal instead of total
+                        currentTotalInCents <= 0 || // Check final total (after discount) instead of subtotal
                         ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
                         (paymentOption === 'individual' && oneOnOneQuantity <= 0)
                     }
