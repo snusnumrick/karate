@@ -3,6 +3,7 @@ import {createClient} from "@supabase/supabase-js"; // Import standard client
 import type {Database} from "~/types/database.types";
 
 import { siteConfig } from "~/config/site"; // Import siteConfig for tax rate
+import { DiscountService } from "~/services/discount.server";
 
 // Initialize Stripe
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -101,7 +102,9 @@ export async function createInitialPaymentRecord(
     subtotalAmount: number,
     studentIds: string[],
     type: Database['public']['Enums']['payment_type_enum'],
-    orderId?: string | null // Optional: Add orderId parameter
+    orderId?: string | null, // Optional: Add orderId parameter
+    discountCodeId?: string | null, // Optional: Discount code ID
+    discountAmount?: number | null // Optional: Discount amount in cents
 ) {
     // Use the standard client with service role for DB operations server-side
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -111,6 +114,9 @@ export async function createInitialPaymentRecord(
         throw new Error('Missing Supabase environment variables required for payment record creation.');
     }
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+
+    // Apply discount to subtotal if provided
+    const finalSubtotalAmount = discountAmount ? subtotalAmount - discountAmount : subtotalAmount;
 
     // --- Multi-Tax Calculation ---
     // 1. Fetch active tax rates applicable to this site/region
@@ -130,7 +136,7 @@ export async function createInitialPaymentRecord(
         // Proceed without tax if none are configured/active
     }
 
-    // 2. Calculate individual taxes and total tax
+    // 2. Calculate individual taxes and total tax on the discounted amount
     let totalTaxAmount = 0;
     const paymentTaxesToInsert: Array<{
         tax_rate_id: string;
@@ -147,7 +153,7 @@ export async function createInitialPaymentRecord(
                 console.error(`Invalid tax rate found for ${taxRate.name}: ${taxRate.rate}`);
                 continue; // Skip this tax rate
             }
-            const taxAmountForThisRate = Math.round(subtotalAmount * rate);
+            const taxAmountForThisRate = Math.round(finalSubtotalAmount * rate);
             totalTaxAmount += taxAmountForThisRate;
             paymentTaxesToInsert.push({
                 tax_rate_id: taxRate.id,
@@ -159,7 +165,7 @@ export async function createInitialPaymentRecord(
     }
 
     // 3. Calculate final total amount
-    const totalAmount = subtotalAmount + totalTaxAmount;
+    const totalAmount = finalSubtotalAmount + totalTaxAmount;
     // --- End Multi-Tax Calculation ---
 
 
@@ -168,12 +174,14 @@ export async function createInitialPaymentRecord(
         .from('payments')
         .insert({
             family_id: familyId,
-            subtotal_amount: subtotalAmount, // Store subtotal
+            subtotal_amount: finalSubtotalAmount, // Store the discounted subtotal
             // tax_amount column removed
             total_amount: totalAmount,
             status: 'pending',
             type: type,
             order_id: orderId || null, // Set order_id if provided
+            discount_code_id: discountCodeId || null, // Store discount code ID
+            discount_amount: discountAmount || null, // Store discount amount
             // payment_date, payment_method, stripe_payment_intent_id, receipt_url updated later
         })
         .select('id')
@@ -228,6 +236,22 @@ export async function createInitialPaymentRecord(
         console.error(`Group payment type (${type}) selected but no student IDs provided.`);
         await supabaseAdmin.from('payments').delete().eq('id', paymentId); // Cleanup payment record
         return {data: null, error: 'No students selected for group payment.'};
+    }
+
+    // If a discount was applied, record the usage
+    if (discountCodeId && discountAmount) {
+        const discountResult = await DiscountService.applyDiscountCode(
+            discountCodeId,
+            paymentId,
+            familyId,
+            discountAmount,
+            studentIds?.[0] // Use first student ID if available
+        );
+        
+        if (!discountResult.success) {
+            console.error('Failed to record discount usage:', discountResult.error);
+            // Don't fail the payment creation, just log the error
+        }
     }
 
     // Return the newly created payment record ID and null error

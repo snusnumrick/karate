@@ -41,6 +41,16 @@ export async function loader(_: LoaderFunctionArgs) {
         }
         const requiredWaiverIds = requiredWaivers?.map(w => w.id) || [];
 
+        // Fetch discount codes stats
+        const {count: activeDiscountCodes, error: discountCodesError} = await supabaseAdmin
+            .from('discount_codes')
+            .select('id', {count: 'exact', head: true})
+            .eq('is_active', true);
+
+        if (discountCodesError) {
+            console.error("Error fetching discount codes count:", discountCodesError.message);
+        }
+
         // Now fetch dashboard stats in parallel
         const [
             {count: familyCount, error: familiesError},
@@ -51,7 +61,8 @@ export async function loader(_: LoaderFunctionArgs) {
             // Fetch users who haven't signed *all* required waivers
             // This is a bit complex, might need a dedicated function/view later
             // Simplified approach: Count users missing *at least one* required waiver
-            {data: usersWithAnySignature, error: usersSignaturesError} // Fetch users who signed *any* required waiver
+            {data: usersWithAnySignature, error: usersSignaturesError}, // Fetch users who signed *any* required waiver
+            {data: discountUsageData, error: discountUsageError} // Fetch discount usage stats
         ] = await Promise.all([
             supabaseAdmin.from('families').select('id', {count: 'exact', head: true}), // Use admin client
             supabaseAdmin.from('students').select('id', {count: 'exact', head: true}), // Use admin client
@@ -66,7 +77,11 @@ export async function loader(_: LoaderFunctionArgs) {
             // Fetch distinct user_ids who have signed *at least one* required waiver
             supabaseAdmin.from('waiver_signatures')
                 .select('user_id', {count: 'exact', head: true}) // Count distinct users
-                .in('waiver_id', requiredWaiverIds) // Use admin client
+                .in('waiver_id', requiredWaiverIds), // Use admin client
+            // Fetch discount usage stats for this month
+            supabaseAdmin.from('discount_code_usage')
+                .select('discount_amount')
+                .gte('used_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
         ]);
 
         // --- Error Handling ---
@@ -77,7 +92,8 @@ export async function loader(_: LoaderFunctionArgs) {
             {name: "completed payments", error: paymentsError},
             {name: "attendance count", error: attendanceError},
             {name: "pending payments data", error: pendingPaymentsError},
-            {name: "user signatures count", error: usersSignaturesError}
+            {name: "user signatures count", error: usersSignaturesError},
+            {name: "discount usage data", error: discountUsageError}
         ];
         errors.forEach(({name, error}) => {
             if (error) console.error(`Error fetching ${name}:`, error.message);
@@ -93,6 +109,10 @@ export async function loader(_: LoaderFunctionArgs) {
         // Count distinct families with pending payments
         const uniqueFamilyIds = new Set(pendingPaymentsFamilies?.map(p => p.family_id) || []);
         const pendingPaymentsCount = uniqueFamilyIds.size;
+
+        // Calculate discount usage stats
+        const totalDiscountAmount = discountUsageData?.reduce((sum, usage) => sum + (usage.discount_amount || 0), 0) || 0;
+        const discountUsageCount = discountUsageData?.length || 0;
 
         // Placeholder for missing waivers count - needs refinement
         // Fetch total active users vs signed users (using admin client)
@@ -120,6 +140,9 @@ export async function loader(_: LoaderFunctionArgs) {
             attendanceToday: attendanceToday ?? 0,
             pendingPaymentsCount: pendingPaymentsCount ?? 0,
             missingWaiversCount: missingWaiversCount < 0 ? 0 : missingWaiversCount, // Ensure non-negative
+            activeDiscountCodes: activeDiscountCodes ?? 0,
+            totalDiscountAmount: totalDiscountAmount,
+            discountUsageCount: discountUsageCount,
         }); // Remove headers object
 
     } catch (error) {
@@ -150,7 +173,7 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold mb-8 text-gray-800 dark:text-gray-100">Admin Dashboard</h1>
 
             {/* Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
                 {/* Total Families Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
                     <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Families</h2>
@@ -191,6 +214,19 @@ export default function AdminDashboard() {
                         Manage attendance →
                     </Link>
                 </div>
+
+                {/* Active Discount Codes Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Active Discount Codes</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.activeDiscountCodes}</p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        ${(data.totalDiscountAmount / 100).toFixed(2)} saved this month
+                    </div>
+                    <Link to="/admin/discount-codes"
+                          className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
+                        Manage discount codes →
+                    </Link>
+                </div>
             </div>
 
             {/* Quick Actions & System Status */}
@@ -223,6 +259,12 @@ export default function AdminDashboard() {
                             className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                         >
                             Manage Students
+                        </Link>
+                        <Link
+                            to="/admin/discount-codes/new"
+                            className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                        >
+                            Create Discount Code
                         </Link>
                     </div>
                 </div>

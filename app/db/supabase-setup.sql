@@ -1135,6 +1135,39 @@ $$
                 WITH CHECK (auth.role() = 'authenticated');
         END IF;
 
+        -- Policy to allow admins to view all families
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'families'
+                         AND policyname = 'Admins can view all families') THEN
+            CREATE POLICY "Admins can view all families" ON families
+                FOR SELECT USING (
+                EXISTS (SELECT 1
+                        FROM profiles
+                        WHERE profiles.id = auth.uid()
+                          AND profiles.role = 'admin')
+                );
+        END IF;
+
+        -- Policy to allow admins to manage all families
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'families'
+                         AND policyname = 'Admins can manage all families') THEN
+            CREATE POLICY "Admins can manage all families" ON families
+                FOR ALL USING (
+                EXISTS (SELECT 1
+                        FROM profiles
+                        WHERE profiles.id = auth.uid()
+                          AND profiles.role = 'admin')
+                ) WITH CHECK (
+                EXISTS (SELECT 1
+                        FROM profiles
+                        WHERE profiles.id = auth.uid()
+                          AND profiles.role = 'admin')
+                );
+        END IF;
+
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'guardians'
@@ -2437,4 +2470,368 @@ GRANT EXECUTE ON FUNCTION public.complete_new_user_registration(
 
 
 -- --- End RPC Functions ---
+
+-- --- Discount Codes System ---
+
+-- Discount Codes Table
+CREATE TABLE IF NOT EXISTS public.discount_codes (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    code text NOT NULL UNIQUE,
+    name text NOT NULL,
+    description text,
+    
+    -- Discount Type
+    discount_type text NOT NULL CHECK (discount_type IN ('fixed_amount', 'percentage')),
+    discount_value numeric(10,2) NOT NULL CHECK (discount_value > 0),
+    
+    -- Usage Restrictions
+    usage_type text NOT NULL CHECK (usage_type IN ('one_time', 'ongoing')),
+    max_uses integer NULL, -- NULL = unlimited
+    current_uses integer NOT NULL DEFAULT 0,
+    
+    -- Applicability
+    applicable_to payment_type_enum[] NOT NULL,
+    scope text NOT NULL CHECK (scope IN ('per_student', 'per_family')),
+    
+    -- Validity
+    is_active boolean NOT NULL DEFAULT true,
+    valid_from timestamptz NOT NULL DEFAULT now(),
+    valid_until timestamptz NULL,
+    
+    -- Creation tracking
+    created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_automatically boolean NOT NULL DEFAULT false,
+    
+    -- Timestamps
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Add missing columns to discount_codes table if they don't exist
+ALTER TABLE public.discount_codes ADD COLUMN IF NOT EXISTS family_id uuid NULL REFERENCES public.families(id) ON DELETE CASCADE;
+ALTER TABLE public.discount_codes ADD COLUMN IF NOT EXISTS student_id uuid NULL REFERENCES public.students(id) ON DELETE CASCADE;
+
+-- Add constraints if they don't exist
+DO
+$$
+    BEGIN
+        -- Add association check constraint if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'discount_codes_association_check') THEN
+            ALTER TABLE public.discount_codes ADD CONSTRAINT discount_codes_association_check CHECK (
+                (family_id IS NOT NULL AND student_id IS NULL) OR
+                (family_id IS NULL AND student_id IS NOT NULL)
+            );
+        END IF;
+        
+        -- Add scope association check constraint if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'discount_codes_scope_association_check') THEN
+            ALTER TABLE public.discount_codes ADD CONSTRAINT discount_codes_scope_association_check CHECK (
+                (scope = 'per_family' AND family_id IS NOT NULL) OR
+                (scope = 'per_student' AND student_id IS NOT NULL)
+            );
+        END IF;
+    END
+$$;
+
+-- Add indexes for discount_codes
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_code') THEN
+            CREATE INDEX idx_discount_codes_code ON public.discount_codes (code);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_active') THEN
+            CREATE INDEX idx_discount_codes_active ON public.discount_codes (is_active, valid_from, valid_until);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_created_by') THEN
+            CREATE INDEX idx_discount_codes_created_by ON public.discount_codes (created_by);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_family_id') THEN
+            CREATE INDEX idx_discount_codes_family_id ON public.discount_codes (family_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_student_id') THEN
+            CREATE INDEX idx_discount_codes_student_id ON public.discount_codes (student_id);
+        END IF;
+    END
+$$;
+
+-- Enable RLS for discount_codes
+ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for discount_codes
+DO
+$$
+    BEGIN
+        -- Allow authenticated users to view active discount codes
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow authenticated users to view active discount codes'
+                         AND tablename = 'discount_codes') THEN
+            CREATE POLICY "Allow authenticated users to view active discount codes" ON public.discount_codes
+                FOR SELECT TO authenticated USING (is_active = true AND valid_from <= now() AND (valid_until IS NULL OR valid_until >= now()));
+        END IF;
+        
+        -- Allow admins to manage all discount codes
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage discount codes'
+                         AND tablename = 'discount_codes') THEN
+            CREATE POLICY "Allow admins to manage discount codes" ON public.discount_codes
+                FOR ALL USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
+
+-- Discount Code Usage Table
+CREATE TABLE IF NOT EXISTS public.discount_code_usage (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    discount_code_id uuid NOT NULL REFERENCES public.discount_codes(id) ON DELETE CASCADE,
+    payment_id uuid NOT NULL REFERENCES public.payments(id) ON DELETE CASCADE,
+    family_id uuid NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
+    student_id uuid NULL REFERENCES public.students(id) ON DELETE CASCADE, -- NULL for family-wide discounts
+    
+    -- Applied discount details (snapshot)
+    discount_amount integer NOT NULL CHECK (discount_amount >= 0), -- in cents
+    original_amount integer NOT NULL CHECK (original_amount >= 0), -- in cents
+    final_amount integer NOT NULL CHECK (final_amount >= 0), -- in cents
+    
+    used_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Add indexes for discount_code_usage
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_discount_code_id') THEN
+            CREATE INDEX idx_discount_code_usage_discount_code_id ON public.discount_code_usage (discount_code_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_payment_id') THEN
+            CREATE INDEX idx_discount_code_usage_payment_id ON public.discount_code_usage (payment_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_family_id') THEN
+            CREATE INDEX idx_discount_code_usage_family_id ON public.discount_code_usage (family_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_student_id') THEN
+            CREATE INDEX idx_discount_code_usage_student_id ON public.discount_code_usage (student_id);
+        END IF;
+    END
+$$;
+
+-- Enable RLS for discount_code_usage
+ALTER TABLE public.discount_code_usage ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for discount_code_usage
+DO
+$$
+    BEGIN
+        -- Allow users to view their own family's discount usage
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow users to view own family discount usage'
+                         AND tablename = 'discount_code_usage') THEN
+            CREATE POLICY "Allow users to view own family discount usage" ON public.discount_code_usage
+                FOR SELECT TO authenticated USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.family_id = family_id)
+                );
+        END IF;
+        
+        -- Allow admins to view all discount usage
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to view all discount usage'
+                         AND tablename = 'discount_code_usage') THEN
+            CREATE POLICY "Allow admins to view all discount usage" ON public.discount_code_usage
+                FOR SELECT TO authenticated USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+        
+        -- Allow system to insert discount usage records
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow system to insert discount usage'
+                         AND tablename = 'discount_code_usage') THEN
+            CREATE POLICY "Allow system to insert discount usage" ON public.discount_code_usage
+                FOR INSERT TO authenticated WITH CHECK (true); -- Will be controlled by application logic
+        END IF;
+    END
+$$;
+
+-- Add discount fields to payments table
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS discount_code_id uuid NULL REFERENCES public.discount_codes(id) ON DELETE SET NULL;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS discount_amount integer NULL CHECK (discount_amount >= 0); -- in cents
+
+-- Add index for payments discount_code_id
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payments_discount_code_id') THEN
+            CREATE INDEX idx_payments_discount_code_id ON public.payments (discount_code_id);
+        END IF;
+    END
+$$;
+
+-- Add trigger to update discount_codes.updated_at
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_trigger
+                       WHERE tgname = 'discount_codes_updated') THEN
+            CREATE TRIGGER discount_codes_updated
+                BEFORE UPDATE
+                ON public.discount_codes
+                FOR EACH ROW
+            EXECUTE FUNCTION update_modified_column();
+        END IF;
+    END
+$$;
+
+-- Function to validate and apply discount code
+CREATE OR REPLACE FUNCTION public.validate_discount_code(
+    p_code text,
+    p_family_id uuid,
+    p_student_id uuid DEFAULT NULL,
+    p_subtotal_amount integer DEFAULT NULL, -- in cents
+    p_applicable_to payment_type_enum DEFAULT 'monthly_group'
+)
+RETURNS TABLE(
+    is_valid boolean,
+    discount_code_id uuid,
+    discount_amount integer, -- in cents
+    error_message text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_discount_code public.discount_codes%ROWTYPE;
+    v_calculated_discount integer;
+    v_usage_count integer;
+BEGIN
+    -- Initialize return values
+    is_valid := false;
+    discount_code_id := NULL;
+    discount_amount := 0;
+    error_message := NULL;
+    
+    -- Find the discount code
+    SELECT * INTO v_discount_code
+    FROM public.discount_codes
+    WHERE code = p_code AND is_active = true;
+    
+    -- Check if code exists
+    IF NOT FOUND THEN
+        error_message := 'Invalid discount code';
+        RETURN NEXT;
+        RETURN;
+    END IF;
+    
+    -- Check validity dates
+    IF v_discount_code.valid_from > now() THEN
+        error_message := 'Discount code is not yet valid';
+        RETURN NEXT;
+        RETURN;
+    END IF;
+    
+    IF v_discount_code.valid_until IS NOT NULL AND v_discount_code.valid_until < now() THEN
+        error_message := 'Discount code has expired';
+        RETURN NEXT;
+        RETURN;
+    END IF;
+    
+    -- Check applicability
+    IF NOT (p_applicable_to = ANY(v_discount_code.applicable_to)) THEN
+        error_message := 'Discount code is not applicable to this type of purchase';
+        RETURN NEXT;
+        RETURN;
+    END IF;
+    
+    -- Check usage limits
+    IF v_discount_code.max_uses IS NOT NULL THEN
+        SELECT current_uses INTO v_usage_count
+        FROM public.discount_codes
+        WHERE id = v_discount_code.id;
+        
+        IF v_usage_count >= v_discount_code.max_uses THEN
+            error_message := 'Discount code has reached its usage limit';
+            RETURN NEXT;
+            RETURN;
+        END IF;
+    END IF;
+    
+    -- Check for previous usage if one-time code
+    IF v_discount_code.usage_type = 'one_time' THEN
+        IF v_discount_code.scope = 'per_family' THEN
+            -- Check if family has used this code before
+            IF EXISTS (
+                SELECT 1 FROM public.discount_code_usage
+                WHERE discount_code_id = v_discount_code.id AND family_id = p_family_id
+            ) THEN
+                error_message := 'This discount code has already been used by your family';
+                RETURN NEXT;
+                RETURN;
+            END IF;
+        ELSIF v_discount_code.scope = 'per_student' AND p_student_id IS NOT NULL THEN
+            -- Check if student has used this code before
+            IF EXISTS (
+                SELECT 1 FROM public.discount_code_usage
+                WHERE discount_code_id = v_discount_code.id AND student_id = p_student_id
+            ) THEN
+                error_message := 'This discount code has already been used for this student';
+                RETURN NEXT;
+                RETURN;
+            END IF;
+        END IF;
+    END IF;
+    
+    -- Calculate discount amount
+    IF p_subtotal_amount IS NOT NULL THEN
+        IF v_discount_code.discount_type = 'fixed_amount' THEN
+            -- Convert discount_value from dollars to cents
+            v_calculated_discount := (v_discount_code.discount_value * 100)::integer;
+            -- Ensure discount doesn't exceed subtotal
+            v_calculated_discount := LEAST(v_calculated_discount, p_subtotal_amount);
+        ELSIF v_discount_code.discount_type = 'percentage' THEN
+            -- Calculate percentage of subtotal
+            v_calculated_discount := (p_subtotal_amount * v_discount_code.discount_value / 100)::integer;
+        END IF;
+    END IF;
+    
+    -- Return success
+    is_valid := true;
+    discount_code_id := v_discount_code.id;
+    discount_amount := COALESCE(v_calculated_discount, 0);
+    
+    RETURN NEXT;
+END;
+$$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION public.validate_discount_code(text, uuid, uuid, integer, payment_type_enum) TO authenticated;
+
+-- Function to increment discount code usage
+CREATE OR REPLACE FUNCTION public.increment_discount_code_usage(
+    p_discount_code_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    UPDATE public.discount_codes
+    SET current_uses = current_uses + 1,
+        updated_at = now()
+    WHERE id = p_discount_code_id;
+END;
+$$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION public.increment_discount_code_usage(uuid) TO authenticated;
+
+-- --- End Discount Codes System ---
 
