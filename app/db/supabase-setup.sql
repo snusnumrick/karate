@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS guardians
     first_name     text                                            NOT NULL,
     last_name      text                                            NOT NULL,
     relationship   text                                            NOT NULL,
-    home_phone     varchar(20)                                     NOT NULL,
+    home_phone     varchar(20)                                     
     work_phone     varchar(20),
     cell_phone     varchar(20)                                     NOT NULL,
     email          text                                            NOT NULL,
