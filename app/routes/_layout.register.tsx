@@ -458,7 +458,7 @@ export default function RegisterPage() {
 
                                     <div>
                                         <Label htmlFor="contact1CellPhone" className="block text-sm font-medium mb-1">
-                                            Cell #<span className="text-red-500">*</span>
+                                            Cell Phone<span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             type="tel"
