@@ -44,7 +44,8 @@ export function DiscountCodeSelector({
     params.set('applicableTo', applicableTo);
     
     discountsFetcher.load(`/api/available-discounts/${familyId}?${params.toString()}`);
-  }, [familyId, studentId, applicableTo, discountsFetcher]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyId, studentId, applicableTo]); // Intentionally excluding discountsFetcher to prevent infinite loop
 
   // Handle discounts fetcher response
   useEffect(() => {

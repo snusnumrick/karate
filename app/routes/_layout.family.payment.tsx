@@ -56,6 +56,7 @@ export interface LoaderData {
     // No longer need the separate 'students' array, details are in studentPaymentDetails
     studentPaymentDetails?: StudentPaymentDetail[];
     // stripePublishableKey is no longer needed here
+    hasAvailableDiscounts: boolean; // Whether there are any available discount codes
     error?: string;
 }
 
@@ -117,7 +118,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             familyId,
             familyName,
             // No students found, return empty details
-            error: "No students found in this family."
+            error: "No students found in this family.",
+            hasAvailableDiscounts: false
         }, {headers});
     }
     const students = studentsData; // Keep full student list
@@ -199,6 +201,18 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         });
     }
 
+    // --- Check for Available Discounts ---
+    // Check if there are any active discount codes available for this family
+    const { data: availableDiscountsData, error: discountsError } = await supabaseServer
+        .from('discount_codes')
+        .select('id')
+        .eq('is_active', true)
+        .or(`family_id.eq.${familyId},family_id.is.null`) // Family-specific or global discounts
+        .or('valid_until.is.null,valid_until.gte.' + new Date().toISOString()) // Not expired (null means never expires)
+        .limit(1); // We only need to know if any exist
+
+    const hasAvailableDiscounts = !discountsError && availableDiscountsData && availableDiscountsData.length > 0;
+
     // --- Prepare and Return Data ---
     // Stripe key is no longer needed in the loader for this page
 
@@ -207,6 +221,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         familyId,
         familyName,
         studentPaymentDetails, // This now contains all student info needed
+        hasAvailableDiscounts, // Whether there are available discount codes
         // stripePublishableKey removed
     }, {headers});
 }
@@ -345,6 +360,7 @@ export default function FamilyPaymentPage() {
     const {
         familyId,
         studentPaymentDetails,
+        hasAvailableDiscounts,
         // stripePublishableKey removed
         error: loaderError
     } = useLoaderData<typeof loader>();
@@ -642,7 +658,7 @@ export default function FamilyPaymentPage() {
 
 
             {/* Discount Code Selector */}
-            {currentSubtotalInCents > 0 && (
+            {currentSubtotalInCents > 0 && hasAvailableDiscounts && (
                 <DiscountCodeSelector
                     familyId={familyId}
                     studentId={selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : undefined}

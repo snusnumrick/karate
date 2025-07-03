@@ -84,11 +84,19 @@ export interface CreateDiscountCodeData {
 }
 
 export interface UpdateDiscountCodeData {
+  code?: string;
   name?: string;
   description?: string;
+  discount_type?: DiscountType;
   discount_value?: number;
+  usage_type?: UsageType;
   max_uses?: number;
+  applicable_to?: ApplicableTo;
+  scope?: DiscountScope;
+  family_id?: string;
+  student_id?: string;
   is_active?: boolean;
+  valid_from?: string;
   valid_until?: string;
 }
 
@@ -97,7 +105,7 @@ export interface ApplyDiscountRequest {
   family_id: string;
   student_id?: string;
   subtotal_amount: number; // in cents
-  applicable_to: ApplicableTo;
+  applicable_to: PaymentTypeEnum; // Single value for database function
 }
 
 export interface DiscountCodeWithUsage extends DiscountCode {

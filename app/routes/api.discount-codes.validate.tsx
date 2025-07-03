@@ -58,7 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Validate applicable_to
     const validPaymentTypes = ['monthly_group', 'yearly_group', 'individual_session', 'store_purchase', 'other'];
-    if (!Array.isArray(applicable_to) || !applicable_to.every(type => validPaymentTypes.includes(type))) {
+    if (!validPaymentTypes.includes(applicable_to)) {
       return json(
         { error: 'Invalid applicable_to value' },
         { status: 400, headers: response.headers }
