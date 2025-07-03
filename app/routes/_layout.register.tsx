@@ -33,7 +33,7 @@ export async function action({request}: ActionFunctionArgs) {
     const contact1FirstName = formData.get('contact1FirstName') as string;
     const contact1LastName = formData.get('contact1LastName') as string;
     const contact1Type = formData.get('contact1Type') as string;
-    //const contact1HomePhone = formData.get('contact1HomePhone') as string;
+    const contact1HomePhone = formData.get('contact1HomePhone') as string;
     const contact1CellPhone = formData.get('contact1CellPhone') as string;
     const contact1EmailConfirm = formData.get('contact1EmailConfirm') as string;
 
@@ -437,7 +437,6 @@ export default function RegisterPage() {
                                 <h3 className="text-lg font-medium text-foreground mt-6 mb-3">HOW CAN WE CONTACT
                                     YOU?</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    {/* Removed Home Phone Input 
                                     <div>
                                         <Label htmlFor="contact1HomePhone" className="block text-sm font-medium mb-1">
                                             Home Phone<span className="text-red-500">*</span>
@@ -446,7 +445,7 @@ export default function RegisterPage() {
                                             type="tel"
                                             id="contact1HomePhone"
                                             name="contact1HomePhone"
-                                            required
+                                            //required
                                             // Removed defaultValue={primaryPhone}
                                             className={`input-custom-styles ${errors?.contact1HomePhone ? 'border-red-500' : ''}`}
                                         />
@@ -454,7 +453,7 @@ export default function RegisterPage() {
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1HomePhone}</p>
                                         )}
                                     </div>
-                                    */}
+                                  
                                     {/* Removed Work Phone Input */}
 
                                     <div>
