@@ -850,7 +850,6 @@ ON CONFLICT (title) DO UPDATE SET content = EXCLUDED.content;
 
 
 -- Waiver Signatures table with enhanced structure
-DROP TABLE IF EXISTS waiver_signatures CASCADE;
 CREATE TABLE IF NOT EXISTS waiver_signatures
 (
     id                uuid PRIMARY KEY                                           DEFAULT gen_random_uuid(),

@@ -7,14 +7,16 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/
 // Define types
 type ProfileRow = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'email' | 'family_id'>;
 type WaiverRow = Pick<Database['public']['Tables']['waivers']['Row'], 'id' | 'title'>;
+type FamilyRow = Pick<Database['public']['Tables']['families']['Row'], 'id' | 'name'>;
 
-type UserMissingWaivers = ProfileRow & {
+type FamilyMissingWaivers = {
+    family: FamilyRow;
     missingWaivers: WaiverRow[];
-    familyName?: string | null; // Add family name
+    usersInFamily: ProfileRow[];
 };
 
 type LoaderData = {
-    usersMissingWaivers: UserMissingWaivers[];
+    familiesMissingWaivers: FamilyMissingWaivers[];
 };
 
 export async function loader(): Promise<TypedResponse<LoaderData>> {
@@ -37,8 +39,8 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
             .eq('required', true);
         if (waiversError) throw new Error(`Failed to fetch required waivers: ${waiversError.message}`);
         if (!requiredWaivers || requiredWaivers.length === 0) {
-            // No required waivers, so no one is missing any
-            return json({usersMissingWaivers: []});
+            // No required waivers, so no families are missing any
+            return json({familiesMissingWaivers: []});
         }
         const requiredWaiverMap = new Map(requiredWaivers.map(w => [w.id, w]));
 
@@ -49,7 +51,7 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
             .eq('role', 'user'); // Assuming 'user' role represents family members
         if (profilesError) throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
         if (!profiles) {
-            return json({usersMissingWaivers: []}); // No users to check
+            return json({familiesMissingWaivers: []}); // No families to check
         }
 
         // 3. Fetch all waiver signatures for the required waivers
@@ -59,7 +61,7 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
             .in('waiver_id', Array.from(requiredWaiverMap.keys()));
         if (signaturesError) throw new Error(`Failed to fetch signatures: ${signaturesError.message}`);
 
-        // 4. Process data to find users missing waivers
+        // 4. Process data to find families missing waivers
         const signaturesByUser = new Map<string, Set<string>>(); // Map<user_id, Set<waiver_id>>
         (signatures ?? []).forEach(sig => {
             if (!signaturesByUser.has(sig.user_id)) {
@@ -68,27 +70,49 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
             signaturesByUser.get(sig.user_id)!.add(sig.waiver_id);
         });
 
-        const usersMissingWaivers: UserMissingWaivers[] = [];
+        // Group profiles by family
+        const familiesMap = new Map<string, { family: FamilyRow; users: ProfileRow[] }>();
         for (const profile of profiles) {
-            const signedWaivers = signaturesByUser.get(profile.id) ?? new Set();
-            const missing: WaiverRow[] = [];
-            for (const requiredWaiver of requiredWaivers) {
-                if (!signedWaivers.has(requiredWaiver.id)) {
-                    missing.push(requiredWaiver);
+            if (!profile.family_id) continue; // Skip users without family
+            
+            if (!familiesMap.has(profile.family_id)) {
+                familiesMap.set(profile.family_id, {
+                    family: {
+                        id: profile.family_id,
+                        name: profile.families?.name || 'Unknown Family'
+                    },
+                    users: []
+                });
+            }
+            familiesMap.get(profile.family_id)!.users.push(profile);
+        }
+
+        const familiesMissingWaivers: FamilyMissingWaivers[] = [];
+        for (const [, familyData] of familiesMap) {
+            // Check if any user in the family is missing any required waiver
+            const familyMissingWaivers = new Set<string>();
+            
+            for (const user of familyData.users) {
+                const signedWaivers = signaturesByUser.get(user.id) ?? new Set();
+                for (const requiredWaiver of requiredWaivers) {
+                    if (!signedWaivers.has(requiredWaiver.id)) {
+                        familyMissingWaivers.add(requiredWaiver.id);
+                    }
                 }
             }
 
-            if (missing.length > 0) {
-                usersMissingWaivers.push({
-                    ...profile,
-                    familyName: profile.families?.name, // Extract family name
-                    missingWaivers: missing,
+            if (familyMissingWaivers.size > 0) {
+                const missingWaivers = requiredWaivers.filter(w => familyMissingWaivers.has(w.id));
+                familiesMissingWaivers.push({
+                    family: familyData.family,
+                    missingWaivers,
+                    usersInFamily: familyData.users,
                 });
             }
         }
 
-        console.log(`Found ${usersMissingWaivers.length} users missing required waivers.`);
-        return json({usersMissingWaivers});
+        console.log(`Found ${familiesMissingWaivers.length} families missing required waivers.`);
+        return json({familiesMissingWaivers});
 
     } catch (error) {
         const message = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -99,36 +123,49 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
 
 
 export default function MissingWaiversPage() {
-    const {usersMissingWaivers} = useLoaderData<LoaderData>();
+    const {familiesMissingWaivers} = useLoaderData<LoaderData>();
 
     return (
         <div className="container mx-auto px-4 py-8">
             <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">
                 &larr; Back to Admin Dashboard
             </Link>
-            <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Users Missing Required Waivers</h1>
+            <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Families Missing Required Waivers</h1>
 
-            {usersMissingWaivers.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400">All users have signed the required waivers.</p>
+            {familiesMissingWaivers.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400">All families have signed the required waivers.</p>
             ) : (
                 <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>User Email</TableHead>
                                 <TableHead>Family Name</TableHead>
+                                <TableHead>Family Members</TableHead>
                                 <TableHead>Missing Waivers</TableHead>
                                 {/* Add Actions column if needed (e.g., Send Reminder) */}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {usersMissingWaivers.map((user) => (
-                                <TableRow key={user.id}>
-                                    <TableCell className="font-medium">{user.email}</TableCell>
-                                    <TableCell>{user.familyName ?? 'N/A'}</TableCell>
+                            {familiesMissingWaivers.map((familyData) => (
+                                <TableRow key={familyData.family.id}>
+                                    <TableCell className="font-medium">
+                                        <Link 
+                                            to={`/admin/families/${familyData.family.id}`}
+                                            className="text-green-600 hover:underline dark:text-green-400"
+                                        >
+                                            {familyData.family.name}
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell>
+                                        <ul className="text-sm">
+                                            {familyData.usersInFamily.map(user => (
+                                                <li key={user.id}>{user.email}</li>
+                                            ))}
+                                        </ul>
+                                    </TableCell>
                                     <TableCell>
                                         <ul className="list-disc pl-5 text-sm">
-                                            {user.missingWaivers.map(waiver => (
+                                            {familyData.missingWaivers.map(waiver => (
                                                 <li key={waiver.id}>{waiver.title}</li>
                                             ))}
                                         </ul>

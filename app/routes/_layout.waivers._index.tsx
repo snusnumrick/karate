@@ -19,10 +19,10 @@ export async function loader({request}: LoaderFunctionArgs) {
         .select('*')
         .order('required', {ascending: false});
 
-    // Get waivers signed by the user
+    // Get waivers signed by the user with signature data
     const {data: userSignedWaivers} = await supabaseServer
         .from('waiver_signatures')
-        .select('waiver_id, signed_at')
+        .select('waiver_id, signed_at, signature_data')
         .eq('user_id', user.id);
 
     // Basic error logging if waivers fetch fails
@@ -41,10 +41,13 @@ export async function loader({request}: LoaderFunctionArgs) {
 export default function WaiversIndex() {
     const {waivers, userSignedWaivers, isAuthenticated} = useLoaderData<typeof loader>();
 
-    // Create a map of waiver_id to signed status for quick lookup
+    // Create a map of waiver_id to signature info for quick lookup
     const signedWaiverMap = new Map();
     userSignedWaivers.forEach(signature => {
-        signedWaiverMap.set(signature.waiver_id, signature.signed_at);
+        signedWaiverMap.set(signature.waiver_id, {
+            signed_at: signature.signed_at,
+            signature_data: signature.signature_data
+        });
     });
 
     return (
@@ -64,15 +67,15 @@ export default function WaiversIndex() {
                 ) : (
                     waivers.map(waiver => {
                         const isSigned = signedWaiverMap.has(waiver.id);
-                        const signedDateString = signedWaiverMap.get(waiver.id);
-                        const signedDate = isSigned && signedDateString ? formatDate(signedDateString, { formatString: 'P' }) : null;
+                        const signatureInfo = signedWaiverMap.get(waiver.id);
+                        const signedDate = isSigned && signatureInfo?.signed_at ? formatDate(signatureInfo.signed_at, { formatString: 'P' }) : null;
 
                         return (
-                            <div key={waiver.id} className="border rounded-lg p-4">
+                            <div key={waiver.id} className="border rounded-lg p-4 relative">
                                 {/* Stack vertically by default, row on sm screens and up */}
                                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start sm:space-x-4">
-                                    {/* Add bottom margin only on small screens */}
-                                    <div className="mb-4 sm:mb-0">
+                                    {/* Add bottom margin only on small screens and right padding for signature */}
+                                    <div className={`mb-4 sm:mb-0 ${isSigned && signatureInfo?.signature_data ? 'pr-32 pb-8' : ''}`}>
                                         <h2 className="text-xl font-semibold">{waiver.title}</h2>
                                         <p className="text-gray-600 dark:text-gray-300">{waiver.description}</p>
 
@@ -115,6 +118,19 @@ export default function WaiversIndex() {
                                         )}
                                     </div>
                                 </div>
+                                {/* Signature Image positioned in bottom right */}
+                                {isSigned && signatureInfo?.signature_data && (
+                                    <div className="absolute bottom-4 right-4">
+                                        <div className="border border-gray-200 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700 w-54 h-16">
+                                            <img 
+                                                src={signatureInfo.signature_data} 
+                                                alt={`Signature for ${waiver.title}`}
+                                                className="w-full h-full object-contain dark:invert"
+                                                style={{ imageRendering: 'crisp-edges' }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         );
                     })

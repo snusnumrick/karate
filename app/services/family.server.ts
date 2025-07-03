@@ -18,6 +18,16 @@ export type FamilyDetails = FamilyRow & {
     // guardians: GuardianRow[]; // Removed
     students: StudentRow[];
     oneOnOneBalance: number;
+    waiverSignatures: Array<{
+        id: string;
+        waiver_id: string;
+        user_id: string;
+        signed_at: string;
+        signature_data: string;
+        agreement_version: string;
+        waiver_title: string;
+        signer_name: string;
+    }>;
 };
 
 /**
@@ -83,11 +93,78 @@ export async function getFamilyDetails(
 
     console.log(`[Service/getFamilyDetails] Family ${familyId} 1:1 balance: ${oneOnOneBalance}`);
 
+    // Fetch waiver signatures for all family members
+    let waiverSignatures: FamilyDetails['waiverSignatures'] = [];
+    
+    // First, get all user IDs for this family
+    const { data: familyProfiles, error: profilesError } = await client
+        .from('profiles')
+        .select('id')
+        .eq('family_id', familyId);
+    
+    if (profilesError) {
+        console.error(`[Service/getFamilyDetails] Error fetching family profiles for family ${familyId}:`, profilesError.message);
+    } else if (familyProfiles && familyProfiles.length > 0) {
+        const familyUserIds = familyProfiles.map(profile => profile.id);
+        
+        // Now fetch waiver signatures for these users
+        const { data: signaturesData, error: signaturesError } = await client
+            .from('waiver_signatures')
+            .select(`
+                id,
+                waiver_id,
+                user_id,
+                signed_at,
+                signature_data,
+                agreement_version,
+                waivers!inner(title)
+            `)
+            .in('user_id', familyUserIds);
+
+        if (signaturesError) {
+            console.error(`[Service/getFamilyDetails] Error fetching waiver signatures for family ${familyId}:`, signaturesError.message);
+            // Don't fail the load, just show empty signatures
+        } else if (signaturesData && signaturesData.length > 0) {
+             // Get user profiles for all signatures to get signer names
+             const userIds = signaturesData.map(sig => sig.user_id);
+             const { data: profilesData } = await client
+                 .from('profiles')
+                 .select('id, first_name, last_name')
+                 .in('id', userIds);
+             
+             // Create a map of user_id to profile for easy lookup
+             const profileMap = new Map();
+             if (profilesData) {
+                 profilesData.forEach(profile => {
+                     profileMap.set(profile.id, profile);
+                 });
+             }
+             
+             waiverSignatures = signaturesData.map(sig => {
+                 const profile = profileMap.get(sig.user_id);
+                 const waiver = sig.waivers as { title: string } | null;
+                 return {
+                     id: sig.id,
+                     waiver_id: sig.waiver_id,
+                     user_id: sig.user_id,
+                     signed_at: sig.signed_at,
+                     signature_data: sig.signature_data,
+                     agreement_version: sig.agreement_version,
+                     waiver_title: waiver?.title || 'Unknown Waiver',
+                     signer_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'Unknown User'
+                 };
+             });
+         }
+     }
+
+    console.log(`[Service/getFamilyDetails] Family ${familyId} waiver signatures: ${waiverSignatures.length}`);
+
     // Construct the final FamilyDetails object
     const finalFamilyDetails: FamilyDetails = {
         ...familyBaseData, // Spread the validated family data
         students: studentsData, // Assign the validated students array
         oneOnOneBalance: oneOnOneBalance,
+        waiverSignatures: waiverSignatures,
     };
 
     return finalFamilyDetails;
