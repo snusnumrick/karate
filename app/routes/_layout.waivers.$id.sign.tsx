@@ -143,6 +143,13 @@ export default function SignWaiver() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
+        // Set stroke color based on theme
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        ctx.strokeStyle = isDarkMode ? '#ffffff' : '#000000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
         ctx.beginPath();
 
         // Get position based on event type
@@ -176,6 +183,10 @@ export default function SignWaiver() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
+        // Ensure stroke color is maintained
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        ctx.strokeStyle = isDarkMode ? '#ffffff' : '#000000';
+
         // Get position based on event type
         let clientX, clientY;
 
@@ -208,7 +219,53 @@ export default function SignWaiver() {
         // Save the signature data
         const canvas = canvasRef.current;
         if (canvas) {
-            setSignatureData(canvas.toDataURL());
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                // Create a new canvas for saving with proper colors
+                const saveCanvas = document.createElement('canvas');
+                saveCanvas.width = canvas.width;
+                saveCanvas.height = canvas.height;
+                const saveCtx = saveCanvas.getContext('2d');
+                
+                if (saveCtx) {
+                    // Keep transparent background - don't fill with white
+                    
+                    // Check if we're in dark mode
+                    const isDarkMode = document.documentElement.classList.contains('dark');
+                    
+                    if (isDarkMode) {
+                        // In dark mode, we drew with white, but need to save as black
+                        // First draw the original canvas
+                        saveCtx.drawImage(canvas, 0, 0);
+                        
+                        // Get image data and convert white strokes to black
+                        const imageData = saveCtx.getImageData(0, 0, saveCanvas.width, saveCanvas.height);
+                        const data = imageData.data;
+                        
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            const a = data[i + 3];
+                            
+                            // If pixel is white or light (signature stroke), make it black
+                            if (r > 200 && g > 200 && b > 200 && a > 0) {
+                                data[i] = 0;     // R
+                                data[i + 1] = 0; // G
+                                data[i + 2] = 0; // B
+                                // Keep alpha as-is for transparency
+                            }
+                        }
+                        
+                        saveCtx.putImageData(imageData, 0, 0);
+                    } else {
+                        // In light mode, just copy the canvas as-is (already black ink)
+                        saveCtx.drawImage(canvas, 0, 0);
+                    }
+                    
+                    setSignatureData(saveCanvas.toDataURL());
+                }
+            }
         }
     }
 

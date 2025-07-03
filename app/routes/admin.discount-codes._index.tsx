@@ -1,11 +1,22 @@
-import { json, type LoaderFunctionArgs } from '@remix-run/node';
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from '@remix-run/node';
 import { useLoaderData, Link, Form } from '@remix-run/react';
+import { useState } from 'react';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { DiscountService } from '~/services/discount.server';
 import type { DiscountCodeWithUsage } from '~/types/discount';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
 import { Card, CardContent } from '~/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '~/components/ui/alert-dialog';
 import { Plus } from 'lucide-react';
 import { formatCurrency, formatDate } from '~/utils/misc';
 
@@ -37,11 +48,118 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 }
 
+export async function action({ request }: ActionFunctionArgs) {
+  const { supabaseServer } = getSupabaseServerClient(request);
+  
+  // Check if user is admin
+  const { data: { user } } = await supabaseServer.auth.getUser();
+  if (!user) {
+    throw new Response('Unauthorized', { status: 401 });
+  }
+
+  // Check admin status
+  const { data: profile } = await supabaseServer
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    throw new Response('Forbidden', { status: 403 });
+  }
+
+  const formData = await request.formData();
+  const intent = formData.get('intent') as string;
+  const id = formData.get('id') as string;
+
+  if (!id) {
+    throw new Response('Missing discount code ID', { status: 400 });
+  }
+
+  try {
+    switch (intent) {
+      case 'deactivate':
+        await DiscountService.deactivateDiscountCode(id);
+        break;
+      case 'activate':
+        await DiscountService.activateDiscountCode(id);
+        break;
+      case 'delete': {
+        // For delete, we'll use the supabase client directly since there's no delete method in DiscountService
+        const { error } = await supabaseServer
+          .from('discount_codes')
+          .delete()
+          .eq('id', id);
+        
+        if (error) {
+          throw new Error(`Failed to delete discount code: ${error.message}`);
+        }
+        break;
+      }
+      default:
+        throw new Response('Invalid intent', { status: 400 });
+    }
+
+    return redirect('/admin/discount-codes');
+  } catch (error) {
+    console.error('Error processing discount code action:', error);
+    throw new Response('Failed to process action', { status: 500 });
+  }
+}
+
 
 
 export default function AdminDiscountCodes() {
   const { discountCodes } = useLoaderData<typeof loader>() as {
     discountCodes: DiscountCodeWithUsage[];
+  };
+
+  const [dialogState, setDialogState] = useState<{
+    isOpen: boolean;
+    action: 'deactivate' | 'activate' | 'delete' | null;
+    codeId: string | null;
+    codeName: string | null;
+  }>({ isOpen: false, action: null, codeId: null, codeName: null });
+
+  const openDialog = (action: 'deactivate' | 'activate' | 'delete', codeId: string, codeName: string) => {
+    setDialogState({ isOpen: true, action, codeId, codeName });
+  };
+
+  const closeDialog = () => {
+    setDialogState({ isOpen: false, action: null, codeId: null, codeName: null });
+  };
+
+  const getDialogContent = () => {
+    switch (dialogState.action) {
+      case 'deactivate':
+        return {
+          title: 'Deactivate Discount Code',
+          description: `Are you sure you want to deactivate the discount code "${dialogState.codeName}"? It will no longer be available for use.`,
+          actionText: 'Deactivate',
+          actionVariant: 'default' as const
+        };
+      case 'activate':
+        return {
+          title: 'Activate Discount Code',
+          description: `Are you sure you want to activate the discount code "${dialogState.codeName}"? It will become available for use.`,
+          actionText: 'Activate',
+          actionVariant: 'default' as const
+        };
+      case 'delete':
+        return {
+          title: 'Delete Discount Code',
+          description: `Are you sure you want to permanently delete the discount code "${dialogState.codeName}"? This action cannot be undone.`,
+          actionText: 'Delete',
+          actionVariant: 'destructive' as const
+        };
+      default:
+        return {
+          title: '',
+          description: '',
+          actionText: '',
+          actionVariant: 'default' as const
+        };
+    }
   };
 
 
@@ -161,40 +279,32 @@ export default function AdminDiscountCodes() {
                               </Link>
                             </Button>
                             {code.is_active ? (
-                              <Form method="post" className="inline">
-                                <input type="hidden" name="intent" value="deactivate" />
-                                <input type="hidden" name="id" value={code.id} />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-yellow-600 hover:text-yellow-700"
+                                onClick={() => openDialog('deactivate', code.id, code.name)}
+                              >
+                                Deactivate
+                              </Button>
+                            ) : (
+                              <>
                                 <Button
-                                  type="submit"
                                   variant="outline"
                                   size="sm"
-                                  className="text-yellow-600 hover:text-yellow-700"
-                                  onClick={(e) => {
-                                    if (!confirm('Are you sure you want to deactivate this discount code?')) {
-                                      e.preventDefault();
-                                    }
-                                  }}
+                                  className="text-green-600 hover:text-green-700"
+                                  onClick={() => openDialog('activate', code.id, code.name)}
                                 >
-                                  Deactivate
+                                  Activate
                                 </Button>
-                              </Form>
-                            ) : (
-                              <Form method="post" className="inline">
-                                <input type="hidden" name="intent" value="delete" />
-                                <input type="hidden" name="id" value={code.id} />
                                 <Button
-                                  type="submit"
                                   variant="destructive"
                                   size="sm"
-                                  onClick={(e) => {
-                                    if (!confirm('Are you sure you want to permanently delete this discount code?')) {
-                                      e.preventDefault();
-                                    }
-                                  }}
+                                  onClick={() => openDialog('delete', code.id, code.name)}
                                 >
                                   Delete
                                 </Button>
-                              </Form>
+                              </>
                             )}
                           </div>
                         </td>
@@ -213,6 +323,32 @@ export default function AdminDiscountCodes() {
           </CardContent>
         </Card>
       </section>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={dialogState.isOpen} onOpenChange={closeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{getDialogContent().title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {getDialogContent().description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={closeDialog}>Cancel</AlertDialogCancel>
+            <Form method="post" className="inline">
+              <input type="hidden" name="intent" value={dialogState.action || ''} />
+              <input type="hidden" name="id" value={dialogState.codeId || ''} />
+              <AlertDialogAction
+                type="submit"
+                onClick={closeDialog}
+                className={getDialogContent().actionVariant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              >
+                {getDialogContent().actionText}
+              </AlertDialogAction>
+            </Form>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

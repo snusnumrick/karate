@@ -61,7 +61,7 @@ export async function loader(_: LoaderFunctionArgs) {
             // Fetch users who haven't signed *all* required waivers
             // This is a bit complex, might need a dedicated function/view later
             // Simplified approach: Count users missing *at least one* required waiver
-            {data: usersWithAnySignature, error: usersSignaturesError}, // Fetch users who signed *any* required waiver
+            {error: usersSignaturesError}, // Fetch users who signed *any* required waiver
             {data: discountUsageData, error: discountUsageError} // Fetch discount usage stats
         ] = await Promise.all([
             supabaseAdmin.from('families').select('id', {count: 'exact', head: true}), // Use admin client
@@ -114,21 +114,71 @@ export async function loader(_: LoaderFunctionArgs) {
         const totalDiscountAmount = discountUsageData?.reduce((sum, usage) => sum + (usage.discount_amount || 0), 0) || 0;
         const discountUsageCount = discountUsageData?.length || 0;
 
-        // Placeholder for missing waivers count - needs refinement
-        // Fetch total active users vs signed users (using admin client)
-        const {count: totalUserCount, error: totalUserError} = await supabaseAdmin
+        // Count families missing waivers instead of individual users
+        // Use the already declared requiredWaiverIds from above
+        
+        // Get all profiles grouped by family
+        const { data: familyProfiles, error: familyProfilesError } = await supabaseAdmin
             .from('profiles')
-            .select('id', {count: 'exact', head: true})
-            .eq('role', 'user'); // Assuming 'user' role means active family member
-
-        if (totalUserError) console.error("Error fetching total user count:", totalUserError.message);
-
-        // This is still an approximation. A user might have signed one required waiver but not another.
-        // A proper count needs to check if *each* user has signed *all* required waivers.
-        // Let's use a placeholder value for now until a more complex query/function is built.
-        // Use the count directly from the query for usersWithAnySignature
-        const signedUserCount = usersWithAnySignature?.length ?? 0;
-        const missingWaiversCount = totalUserCount ? totalUserCount - signedUserCount : 0; // Highly approximate
+            .select('id, family_id')
+            .eq('role', 'user')
+            .not('family_id', 'is', null); // Only include profiles with a family
+            
+        if (familyProfilesError) {
+            console.error("Error fetching family profiles:", familyProfilesError.message);
+        }
+        
+        // Group profiles by family
+        const familyMap = new Map<string, string[]>(); // Map<family_id, user_ids[]>
+        if (familyProfiles) {
+            familyProfiles.forEach(profile => {
+                if (!profile.family_id) return;
+                
+                if (!familyMap.has(profile.family_id)) {
+                    familyMap.set(profile.family_id, []);
+                }
+                familyMap.get(profile.family_id)!.push(profile.id);
+            });
+        }
+        
+        // Get all waiver signatures for required waivers
+        const { data: allSignatures, error: allSignaturesError } = await supabaseAdmin
+            .from('waiver_signatures')
+            .select('user_id, waiver_id')
+            .in('waiver_id', requiredWaiverIds);
+            
+        if (allSignaturesError) {
+            console.error("Error fetching all signatures:", allSignaturesError.message);
+        }
+        
+        // Create a map of user_id -> Set of signed waiver_ids
+        const userSignaturesMap = new Map<string, Set<string>>();
+        if (allSignatures) {
+            allSignatures.forEach(sig => {
+                if (!userSignaturesMap.has(sig.user_id)) {
+                    userSignaturesMap.set(sig.user_id, new Set());
+                }
+                userSignaturesMap.get(sig.user_id)!.add(sig.waiver_id);
+            });
+        }
+        
+        // Count families missing any required waivers
+        let familiesMissingWaivers = 0;
+        
+        familyMap.forEach((userIds) => {
+            // Check if any user in the family is missing any required waiver
+            const isFamilyMissingWaivers = userIds.some(userId => {
+                const signedWaivers = userSignaturesMap.get(userId) || new Set();
+                // If this user hasn't signed all required waivers, the family is missing waivers
+                return requiredWaiverIds.some(waiverId => !signedWaivers.has(waiverId));
+            });
+            
+            if (isFamilyMissingWaivers) {
+                familiesMissingWaivers++;
+            }
+        });
+        
+        const missingWaiversCount = familiesMissingWaivers;
 
         console.log("Admin index loader - Data fetched.");
 
@@ -283,7 +333,7 @@ export default function AdminDashboard() {
                         <div>
                             <h3 className="font-medium text-gray-700 dark:text-gray-300">Missing Waivers</h3>
                             <p className="text-gray-600 dark:text-gray-400">
-                                {data.missingWaiversCount} users missing required waivers {/* Using fetched data */}
+                                {data.missingWaiversCount} families missing required waivers {/* Now counting families */}
                             </p>
                             <Link to="/admin/waivers/missing"
                                   className="text-green-600 dark:text-green-400 text-sm hover:underline">

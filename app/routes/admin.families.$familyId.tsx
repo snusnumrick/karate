@@ -208,6 +208,63 @@ export default function FamilyDetailPage() {
                         </CardContent>
                     </Card>
 
+                    {/* Waiver Signatures Card */}
+                    <Card className="bg-white dark:bg-gray-800">
+                        <CardHeader>
+                            <CardTitle>Waiver Signatures</CardTitle>
+                            <CardDescription>
+                                Signed waivers for all family members
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {family.waiverSignatures && family.waiverSignatures.length > 0 ? (
+                                <div className="space-y-4">
+                                    {family.waiverSignatures.map((signature) => (
+                                        <div key={signature.id} className="border p-4 rounded-md shadow-sm">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <p className="font-semibold text-lg">{signature.waiver_title}</p>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        Signed by: <span className="font-medium">{signature.signer_name}</span>
+                                                    </p>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        Date: {formatDate(signature.signed_at, { formatString: 'PPP p' })}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                                        Agreement Version: {signature.agreement_version}
+                                                    </p>
+                                                    {/* Signature Image */}
+                                                    {signature.signature_data && (
+                                                        <div className="mt-3">
+                                                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Signature:</p>
+                                                            <div className="border border-gray-200 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700 max-w-md">
+                                                                <img 
+                                                                    src={signature.signature_data} 
+                                                                    alt={`Signature by ${signature.signer_name}`}
+                                                                    className="max-w-full h-auto max-h-24 object-contain dark:invert"
+                                                                    style={{ imageRendering: 'crisp-edges' }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="ml-4">
+                                                    <Button asChild variant="outline" size="sm">
+                                                        <Link to={`/admin/waivers/${signature.waiver_id}`} className="text-green-600 hover:underline dark:text-green-400">
+                                                            View Waiver
+                                                        </Link>
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 dark:text-gray-400">No waiver signatures found for this family.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     {/* Guardian Card and Separators Removed */}
 
                     {/* Added explicit background */}

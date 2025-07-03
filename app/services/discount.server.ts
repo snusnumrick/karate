@@ -206,6 +206,20 @@ export class DiscountService {
   }
 
   /**
+   * Activate a discount code
+   */
+  static async activateDiscountCode(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('discount_codes')
+      .update({ is_active: true })
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Failed to activate discount code: ${error.message}`);
+    }
+  }
+
+  /**
    * Delete a discount code (hard delete)
    */
   static async deleteDiscountCode(id: string): Promise<void> {
