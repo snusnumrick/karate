@@ -42,7 +42,7 @@ export async function action({request}: ActionFunctionArgs) {
 
     const requiredFields = {
         referralSource, familyName, address, city, province, postalCode, primaryPhone,
-        contact1FirstName, contact1LastName, contact1Type, contact1HomePhone, contact1CellPhone,
+        contact1FirstName, contact1LastName, contact1Type, contact1CellPhone,
         contact1Email, contact1EmailConfirm, portalPassword, portalPasswordConfirm
     };
 
@@ -110,7 +110,7 @@ export async function action({request}: ActionFunctionArgs) {
             p_contact1_first_name: formData.get('contact1FirstName') as string,
             p_contact1_last_name: formData.get('contact1LastName') as string,
             p_contact1_type: formData.get('contact1Type') as string,
-            p_contact1_home_phone: formData.get('contact1HomePhone') as string,
+            p_contact1_home_phone: formData.get('contact1HomePhone') as string || '',
             p_contact1_work_phone: formData.get('contact1WorkPhone') as string || '',
             p_contact1_cell_phone: formData.get('contact1CellPhone') as string
         };
@@ -439,13 +439,13 @@ export default function RegisterPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <Label htmlFor="contact1HomePhone" className="block text-sm font-medium mb-1">
-                                            Home Phone<span className="text-red-500">*</span>
+                                            Home Phone
                                         </Label>
                                         <Input
                                             type="tel"
                                             id="contact1HomePhone"
                                             name="contact1HomePhone"
-                                            required
+                                            //required
                                             // Removed defaultValue={primaryPhone}
                                             className={`input-custom-styles ${errors?.contact1HomePhone ? 'border-red-500' : ''}`}
                                         />
@@ -453,12 +453,12 @@ export default function RegisterPage() {
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1HomePhone}</p>
                                         )}
                                     </div>
-
+                                  
                                     {/* Removed Work Phone Input */}
 
                                     <div>
                                         <Label htmlFor="contact1CellPhone" className="block text-sm font-medium mb-1">
-                                            Cell #<span className="text-red-500">*</span>
+                                            Cell Phone<span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             type="tel"

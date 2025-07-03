@@ -3,8 +3,8 @@
 const siteUrl = import.meta.env.VITE_SITE_URL || 'http://localhost:5173'; // Fallback for local dev if not set
 
 export const siteConfig = {
-    name: "Greenegin Karate", // Added site name
-    description: "Kids Karate Classes in Colwood, BC. Learn discipline, respect, and self-defense with Sensei Negin. Ages 6-12. Free trial available!", // Added default description
+    name: "GREENEGIN KARATE", // Added site name
+    description: "Kids Karate Classes in Langford, BC. Learn discipline, respect, and self-defense with Sensei Negin. Free trial available!", // Added default description
     url: siteUrl, // Use the environment variable
     locale: 'en-CA', // Default locale for the site
     location: {
@@ -18,13 +18,13 @@ export const siteConfig = {
     },
     contact: {
         phone: "(604) 690-7121",
-        email: "info@greenegin.ca",
+        email: "info@karate.greenegin.ca",
     },
     classes: {
         days: "Tue & Fri",
-        time: "6:15 - 7:15 p.m",
-        timeLong: "6:15 PM - 7:15 PM", // For more formal display
-        ageRange: "6-12 y/o",
+        time: "5:45 - 7:15 p.m",
+        timeLong: "5:45 PM - 7:15 PM", // For more formal display
+        ageRange: "4-12",
     },
     socials: {
         instagram: "https://www.instagram.com/greenegin.karate/",
