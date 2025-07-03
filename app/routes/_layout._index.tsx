@@ -163,7 +163,7 @@ export default function Index() {
             </div>
 
             {/* Our Studio Section */}
-            <div className="bg-white dark:bg-gray-800  pb-16"> {/* Reduced padding from py-16 */}
+            <div className="bg-white dark:bg-gray-800 py-16"> {/* Increased padding from pb-16 */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h2 className="text-3xl font-bold text-center text-green-600 dark:text-green-400 mb-12">
                         Our Training Environment

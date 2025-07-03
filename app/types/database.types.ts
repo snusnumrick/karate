@@ -341,7 +341,7 @@ export type Database = {
           employer_phone: string | null
           family_id: string
           first_name: string
-          home_phone: string
+          home_phone: string | null
           id: string
           last_name: string
           relationship: string

@@ -59,7 +59,7 @@ export function mapGuardianFromSupabase(row: Database['public']['Tables']['guard
         firstName: row.first_name || '', // Split name if needed
         lastName: row.last_name || '',
         relationship: row.relationship,
-        homePhone: row.home_phone,
+        homePhone: row.home_phone || undefined,
         workPhone: row.work_phone || undefined,
         cellPhone: row.cell_phone,
         email: row.email,
