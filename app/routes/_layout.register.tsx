@@ -439,7 +439,7 @@ export default function RegisterPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <Label htmlFor="contact1HomePhone" className="block text-sm font-medium mb-1">
-                                            Home Phone //<span className="text-red-500">*</span>
+                                            Home Phone
                                         </Label>
                                         <Input
                                             type="tel"
