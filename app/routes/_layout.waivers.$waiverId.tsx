@@ -74,7 +74,6 @@ export default function WaiverDetailsPage() {
             <div
                 className="prose dark:prose-invert max-w-none border rounded-lg p-6 bg-gray-50 dark:bg-gray-800 whitespace-pre-wrap">
                 {waiver.content}
-                {waiver.content}
             </div>
 
             <div className="mt-8 flex justify-end">
