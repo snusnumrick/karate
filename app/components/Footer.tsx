@@ -38,8 +38,7 @@ export default function Footer({ user }: { user?: Session['user'] | null }) {
                         </Button>
                         <p className="text-green-100 dark:text-gray-300 text-sm">
                             Discover the art of the &ldquo;empty hand&rdquo;
-                            with Sensei Negin&apos;s karate classes for children ages <span>{`${siteConfig.classes.days}: ${siteConfig.classes.timeLong}`}</span>
-                            
+                            with Sensei Negin&apos;s karate classes for children ages <span>{`${siteConfig.classes.ageRange}: ${siteConfig.classes.timeLong}`}</span>
                             //4-12.
                         </p>
                         {/* Justify icons: center mobile, start md+ */}
