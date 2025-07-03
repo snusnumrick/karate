@@ -84,6 +84,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
+  const { supabaseServer } = getSupabaseServerClient(request);
+  
+  // Get the current user to set as created_by
+  const { data: { user } } = await supabaseServer.auth.getUser();
+  if (!user) {
+    throw new Response('Unauthorized', { status: 401 });
+  }
+
   const formData = await request.formData();
 
   // Extract form data
@@ -140,7 +148,7 @@ export async function action({ request }: ActionFunctionArgs) {
       student_id: scope === 'per_student' ? studentId : undefined,
       valid_from: validFrom || undefined,
       valid_until: validUntil || undefined
-    });
+    }, user.id); // Pass user ID as created_by
 
     return redirect('/admin/discount-codes');
   } catch (error) {
@@ -162,6 +170,22 @@ export default function AdminNewDiscountCodePage() {
   const [selectedFamily, setSelectedFamily] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [familyStudents, setFamilyStudents] = useState<StudentInfo[]>([]);
+  const [usageType, setUsageType] = useState('');
+  const [maxUses, setMaxUses] = useState('');
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  
+  // Set default valid from date to current date and time
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+  
+  const [validFrom, setValidFrom] = useState(getCurrentDateTime());
 
   // Update family students when family selection changes
   useEffect(() => {
@@ -175,13 +199,46 @@ export default function AdminNewDiscountCodePage() {
     }
   }, [selectedFamily, students]);
 
-  const generateCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = 'DISC';
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+  // Update max uses when usage type changes
+  useEffect(() => {
+    if (usageType === 'one_time') {
+      setMaxUses('1');
     }
-    setCode(result);
+  }, [usageType]);
+
+  const generateCode = async () => {
+    setIsGeneratingCode(true);
+    try {
+      const response = await fetch('/api/generate-unique-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCode(data.code);
+      } else {
+        // Fallback to client-side generation if API fails
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = 'DISC';
+        for (let i = 0; i < 6; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        setCode(result);
+      }
+    } catch (error) {
+      // Fallback to client-side generation if API fails
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = 'DISC';
+      for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      setCode(result);
+    } finally {
+      setIsGeneratingCode(false);
+    }
   };
 
   return (
@@ -218,8 +275,8 @@ export default function AdminNewDiscountCodePage() {
                   placeholder="Enter discount code"
                   required
                 />
-                <Button type="button" onClick={generateCode} variant="outline">
-                  Generate
+                <Button type="button" onClick={generateCode} variant="outline" disabled={isGeneratingCode}>
+                  {isGeneratingCode ? 'Generating...' : 'Generate'}
                 </Button>
               </div>
               {actionData?.fieldErrors?.code && (
@@ -288,7 +345,7 @@ export default function AdminNewDiscountCodePage() {
 
             <div>
               <Label htmlFor="usageType">Usage Type <span className="text-red-500">*</span></Label>
-              <Select name="usageType" required>
+              <Select name="usageType" value={usageType} onValueChange={setUsageType} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select usage type" />
                 </SelectTrigger>
@@ -308,8 +365,15 @@ export default function AdminNewDiscountCodePage() {
                 id="maxUses"
                 name="maxUses"
                 type="number"
+                value={maxUses}
+                onChange={(e) => setMaxUses(e.target.value)}
                 placeholder="Enter max uses (optional)"
+                disabled={usageType === 'one_time'}
+                className={usageType === 'one_time' ? 'bg-gray-100 cursor-not-allowed' : ''}
               />
+              {usageType === 'one_time' && (
+                <p className="text-sm text-muted-foreground mt-1">Max uses is automatically set to 1 for one-time usage codes.</p>
+              )}
             </div>
           </div>
         </section>
@@ -453,6 +517,8 @@ export default function AdminNewDiscountCodePage() {
                 id="validFrom"
                 name="validFrom"
                 type="datetime-local"
+                value={validFrom}
+                onChange={(e) => setValidFrom(e.target.value)}
                 required
               />
               {actionData?.fieldErrors?.validFrom && (

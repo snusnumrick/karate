@@ -196,6 +196,7 @@ export default function AdminDiscountCodes() {
                     <th className="text-left p-4 font-semibold text-foreground">Name</th>
                     <th className="text-left p-4 font-semibold text-foreground">Discount</th>
                     <th className="text-left p-4 font-semibold text-foreground">Associated With</th>
+                    <th className="text-left p-4 font-semibold text-foreground">Created By</th>
                     <th className="text-left p-4 font-semibold text-foreground">Usage</th>
                     <th className="text-left p-4 font-semibold text-foreground">Status</th>
                     <th className="text-left p-4 font-semibold text-foreground">Valid Until</th>
@@ -211,9 +212,6 @@ export default function AdminDiscountCodes() {
                       <tr key={code.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                         <td className="p-4">
                           <div className="text-sm font-mono font-medium">{code.code}</div>
-                          {code.created_automatically && (
-                            <div className="text-xs text-blue-600 dark:text-blue-400">Auto-generated</div>
-                          )}
                         </td>
                         <td className="p-4">
                           <div className="text-sm font-medium">{code.name}</div>
@@ -247,6 +245,30 @@ export default function AdminDiscountCodes() {
                               </div>
                             ) : (
                               <div className="text-xs text-muted-foreground">No association</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="text-sm">
+                            {code.created_automatically ? (
+                              <div className="text-xs text-blue-600 dark:text-blue-400">Auto-generated</div>
+                            ) : code.creator ? (
+                              <div>
+                                <div className="font-medium">
+                                  {(() => {
+                                    const firstName = code.creator.first_name || '';
+                                    const lastName = code.creator.last_name || '';
+                                    const fullName = `${firstName} ${lastName}`.trim();
+                                    return fullName || code.creator.email;
+                                  })()}
+                                </div>
+                                {code.creator.first_name && code.creator.last_name && (
+                                  <div className="text-xs text-muted-foreground">{code.creator.email}</div>
+                                )}
+                                <div className="text-xs text-muted-foreground">Manual</div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground">Unknown</div>
                             )}
                           </div>
                         </td>

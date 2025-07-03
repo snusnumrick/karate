@@ -2691,6 +2691,7 @@ $$
 $$;
 
 -- Function to validate and apply discount code
+-- Fixed column ambiguity issue by using different variable names
 CREATE OR REPLACE FUNCTION public.validate_discount_code(
     p_code text,
     p_family_id uuid,
@@ -2711,10 +2712,11 @@ DECLARE
     v_discount_code public.discount_codes%ROWTYPE;
     v_calculated_discount integer;
     v_usage_count integer;
+    v_result_discount_code_id uuid; -- Use different variable name to avoid ambiguity
 BEGIN
     -- Initialize return values
     is_valid := false;
-    discount_code_id := NULL;
+    v_result_discount_code_id := NULL;
     discount_amount := 0;
     error_message := NULL;
     
@@ -2726,27 +2728,27 @@ BEGIN
     -- Check if code exists
     IF NOT FOUND THEN
         error_message := 'Invalid discount code';
-        RETURN NEXT;
+        RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
         RETURN;
     END IF;
     
     -- Check validity dates
     IF v_discount_code.valid_from > now() THEN
         error_message := 'Discount code is not yet valid';
-        RETURN NEXT;
+        RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
         RETURN;
     END IF;
     
     IF v_discount_code.valid_until IS NOT NULL AND v_discount_code.valid_until < now() THEN
         error_message := 'Discount code has expired';
-        RETURN NEXT;
+        RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
         RETURN;
     END IF;
     
     -- Check applicability
     IF NOT (p_applicable_to = ANY(v_discount_code.applicable_to)) THEN
         error_message := 'Discount code is not applicable to this type of purchase';
-        RETURN NEXT;
+        RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
         RETURN;
     END IF;
     
@@ -2758,7 +2760,7 @@ BEGIN
         
         IF v_usage_count >= v_discount_code.max_uses THEN
             error_message := 'Discount code has reached its usage limit';
-            RETURN NEXT;
+            RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
             RETURN;
         END IF;
     END IF;
@@ -2769,20 +2771,20 @@ BEGIN
             -- Check if family has used this code before
             IF EXISTS (
                 SELECT 1 FROM public.discount_code_usage
-                WHERE discount_code_id = v_discount_code.id AND family_id = p_family_id
+                WHERE discount_code_usage.discount_code_id = v_discount_code.id AND family_id = p_family_id
             ) THEN
                 error_message := 'This discount code has already been used by your family';
-                RETURN NEXT;
+                RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
                 RETURN;
             END IF;
         ELSIF v_discount_code.scope = 'per_student' AND p_student_id IS NOT NULL THEN
             -- Check if student has used this code before
             IF EXISTS (
                 SELECT 1 FROM public.discount_code_usage
-                WHERE discount_code_id = v_discount_code.id AND student_id = p_student_id
+                WHERE discount_code_usage.discount_code_id = v_discount_code.id AND student_id = p_student_id
             ) THEN
                 error_message := 'This discount code has already been used for this student';
-                RETURN NEXT;
+                RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
                 RETURN;
             END IF;
         END IF;
@@ -2803,10 +2805,10 @@ BEGIN
     
     -- Return success
     is_valid := true;
-    discount_code_id := v_discount_code.id;
+    v_result_discount_code_id := v_discount_code.id;
     discount_amount := COALESCE(v_calculated_discount, 0);
     
-    RETURN NEXT;
+    RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
 END;
 $$;
 

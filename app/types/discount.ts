@@ -120,4 +120,11 @@ export interface DiscountCodeWithUsage extends DiscountCode {
     first_name: string;
     last_name: string;
   } | null;
+  creator?: {
+    id: string;
+    email: string;
+    first_name: string | null;
+    last_name: string | null;
+    full_name: string | null;
+  } | null;
 }

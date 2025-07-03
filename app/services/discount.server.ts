@@ -58,36 +58,72 @@ export class DiscountService {
       return [];
     }
 
-    // Get usage data for all codes
-    const { data: usageData, error: usageError } = await supabase
-      .from('discount_code_usage')
-      .select(`
-        id,
-        discount_code_id,
-        payment_id,
-        family_id,
-        student_id,
-        discount_amount,
-        original_amount,
-        final_amount,
-        used_at
-      `)
-      .in('discount_code_id', codes.map((code: DiscountCode) => code.id))
-      .order('used_at', { ascending: false });
+    // Get creator information for codes that have created_by
+    const creatorIds = codes
+      .filter((code: DiscountCode) => code.created_by)
+      .map((code: DiscountCode) => code.created_by);
 
-    if (usageError) {
-      throw new Error(`Failed to fetch discount usage: ${usageError.message}`);
+    let creators: Array<{ id: string; email: string; first_name: string | null; last_name: string | null }> = [];
+    if (creatorIds.length > 0) {
+      const { data: creatorData, error: creatorError } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .in('id', creatorIds);
+
+      if (creatorError) {
+        throw new Error(`Failed to fetch creator profiles: ${creatorError.message}`);
+      }
+      creators = creatorData || [];
     }
 
-    // Combine the data
-    return codes.map((code: DiscountCode) => {
-      const codeUsage = (usageData || []).filter((usage: DiscountCodeUsage) => usage.discount_code_id === code.id);
-      return {
-        ...code,
-        usage_count: codeUsage.length,
-        recent_usage: codeUsage.slice(0, 5)
-      };
-    });
+    // Map creators to codes
+     const codesWithCreators = codes.map((code: DiscountCode) => {
+       const creator = creators.find(c => c.id === code.created_by);
+       const result = {
+         ...code,
+         creator: creator ? {
+            ...creator,
+            full_name: (() => {
+              const firstName = creator.first_name || '';
+              const lastName = creator.last_name || '';
+              const fullName = `${firstName} ${lastName}`.trim();
+              return fullName || creator.email;
+            })()
+          } : null
+       };
+       return result;
+     });
+ 
+     // Get usage data for all codes
+     const { data: usageData, error: usageError } = await supabase
+       .from('discount_code_usage')
+       .select(`
+         id,
+         discount_code_id,
+         payment_id,
+         family_id,
+         student_id,
+         discount_amount,
+         original_amount,
+         final_amount,
+         used_at
+       `)
+       .in('discount_code_id', codesWithCreators.map((code: DiscountCodeWithUsage) => code.id))
+       .order('used_at', { ascending: false });
+
+     if (usageError) {
+       throw new Error(`Failed to fetch discount usage: ${usageError.message}`);
+     }
+
+     // Combine the data
+     return codesWithCreators.map((code: DiscountCodeWithUsage) => {
+       const codeUsage = (usageData || []).filter((usage: DiscountCodeUsage) => usage.discount_code_id === code.id);
+       return {
+         ...code,
+         usage_count: codeUsage.length,
+         recent_usage: codeUsage.slice(0, 5)
+       };
+     });
   }
 
   /**

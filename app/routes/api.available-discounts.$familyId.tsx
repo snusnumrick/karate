@@ -128,7 +128,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       });
     }
 
-    return json({ discounts: applicableDiscounts }, { headers: response.headers });
+    // Sort by decreasing value (most rewarding at top)
+    const sortedDiscounts = applicableDiscounts.sort((a, b) => {
+      // For percentage discounts, compare the percentage values
+      // For fixed amount discounts, compare the dollar amounts
+      const aValue = a.discount_type === 'percentage' ? a.discount_value : a.discount_value;
+      const bValue = b.discount_type === 'percentage' ? b.discount_value : b.discount_value;
+      return bValue - aValue;
+    });
+
+    return json({ discounts: sortedDiscounts }, { headers: response.headers });
 
   } catch (error) {
     console.error('Error fetching available discounts:', error);

@@ -1,17 +1,19 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
-import { Link, useFetcher, useLoaderData, useNavigate, useRouteError, useSearchParams } from "@remix-run/react"; // Import useSearchParams
-import { useState, useEffect, useRef } from "react"; // Add useRef
-import { checkStudentEligibility, createInitialPaymentRecord, type EligibilityStatus, getSupabaseServerClient } from "~/utils/supabase.server";import { Button } from "~/components/ui/button";
+import { Link, useFetcher, useLoaderData, useNavigate, useRouteError, useSearchParams } from "@remix-run/react";
+import { useState, useEffect, useRef } from "react";
+import { checkStudentEligibility, createInitialPaymentRecord, type EligibilityStatus, getSupabaseServerClient } from "~/utils/supabase.server";
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {ExclamationTriangleIcon, InfoCircledIcon} from "@radix-ui/react-icons";
+import {CheckCircledIcon, ExclamationTriangleIcon, InfoCircledIcon, ReloadIcon} from "@radix-ui/react-icons";
 import {siteConfig} from "~/config/site";
 import {Checkbox} from "~/components/ui/checkbox";
 import {formatDate} from "~/utils/misc";
-import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group"; // Import RadioGroup
+import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group";
 import {Label} from "~/components/ui/label";
 import {Database} from "~/types/database.types";
-import { DiscountCodeSelector } from "~/components/DiscountCodeSelector";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
+import type { AvailableDiscountCode, AvailableDiscountsResponse } from '~/routes/api.available-discounts.$familyId';
 import type { DiscountValidationResult } from "~/types/discount";
 
 // Payment Calculation (Existing logic needs adjustment)
@@ -377,6 +379,13 @@ export default function FamilyPaymentPage() {
     const [paymentOption, setPaymentOption] = useState<PaymentOption>(initialOption); // State for payment option
     const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1); // State for 1:1 session quantity
     const [appliedDiscount, setAppliedDiscount] = useState<DiscountValidationResult | null>(null); // State for applied discount
+    const [applyDiscount, setApplyDiscount] = useState(false);
+    const [selectedDiscountId, setSelectedDiscountId] = useState<string>('');
+    const [availableDiscounts, setAvailableDiscounts] = useState<AvailableDiscountCode[]>([]);
+    const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
+    
+    const discountsFetcher = useFetcher<AvailableDiscountsResponse>();
+    const validateDiscountFetcher = useFetcher<DiscountValidationResult>();
 
     // Determine if any student is eligible for a group payment to enable/disable options
     const hasEligibleStudentsForGroupPayment = studentPaymentDetails?.some(d => d.needsPayment) ?? false;
@@ -410,10 +419,26 @@ export default function FamilyPaymentPage() {
         return { subtotal, discountAmount, total }; // Include discount information
     };
 
+    // Helper function to format currency amounts
+    const formatCurrency = (amountInCents: number): string => {
+        const amount = amountInCents / 100;
+        const formatted = amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2);
+        return `$${formatted}`;
+    };
+
+    // Helper function to calculate percentage savings for display
+    const calculatePercentageSavings = (discount: AvailableDiscountCode, subtotalInCents: number): string => {
+        if (discount.discount_type === 'percentage') {
+            const savingsAmount = (subtotalInCents * discount.discount_value) / 100;
+            return formatCurrency(savingsAmount);
+        }
+        return formatCurrency(discount.discount_value * 100); // Fixed amount
+    };
+
     const { subtotal: currentSubtotalInCents, discountAmount: currentDiscountAmountInCents, total: currentTotalInCents } = calculateAmounts();
-    const currentSubtotalDisplay = `${siteConfig.pricing.currency}${(currentSubtotalInCents / 100).toFixed(2)}`;
-    const currentDiscountDisplay = appliedDiscount ? `${siteConfig.pricing.currency}${(currentDiscountAmountInCents / 100).toFixed(2)}` : null;
-    const currentTotalDisplay = `${siteConfig.pricing.currency}${(currentTotalInCents / 100).toFixed(2)}`; // Indicate tax will be added
+    const currentSubtotalDisplay = formatCurrency(currentSubtotalInCents);
+    const currentDiscountDisplay = appliedDiscount ? formatCurrency(currentDiscountAmountInCents) : null;
+    const currentTotalDisplay = formatCurrency(currentTotalInCents);
     // --- End Dynamic Calculation ---
 
 
@@ -434,9 +459,7 @@ export default function FamilyPaymentPage() {
         setAppliedDiscount(null);
     };
 
-    const handleDiscountApplied = (discount: DiscountValidationResult | null) => {
-        setAppliedDiscount(discount);
-    };
+
 
     // Reset discount when payment option changes
     useEffect(() => {
@@ -449,6 +472,78 @@ export default function FamilyPaymentPage() {
             setAppliedDiscount(null);
         }
     }, [oneOnOneQuantity, paymentOption]);
+
+    // Fetch available discounts when checkbox is checked
+    useEffect(() => {
+        if (applyDiscount && hasAvailableDiscounts && currentSubtotalInCents > 0) {
+            setIsLoadingDiscounts(true);
+            const params = new URLSearchParams();
+            if (selectedStudentIds.size === 1) {
+                params.set('studentId', Array.from(selectedStudentIds)[0]);
+            }
+            const applicableTo = paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group';
+            params.set('applicableTo', applicableTo);
+            
+            discountsFetcher.load(`/api/available-discounts/${familyId}?${params.toString()}`);
+        } else if (!applyDiscount) {
+            setAvailableDiscounts([]);
+            setSelectedDiscountId('');
+            setAppliedDiscount(null);
+        }
+    }, [applyDiscount, hasAvailableDiscounts, currentSubtotalInCents, familyId, selectedStudentIds, paymentOption, discountsFetcher]);
+
+    // Handle discounts fetcher response
+    useEffect(() => {
+        if (discountsFetcher.data && discountsFetcher.state === 'idle') {
+            const discounts = discountsFetcher.data.discounts || [];
+            // Sort by decreasing value (most rewarding at top)
+            const sortedDiscounts = discounts.sort((a, b) => {
+                const aValue = a.discount_type === 'percentage' ? a.discount_value : a.discount_value;
+                const bValue = b.discount_type === 'percentage' ? b.discount_value : b.discount_value;
+                return bValue - aValue;
+            });
+            setAvailableDiscounts(sortedDiscounts);
+            // Auto-select the best discount (first in sorted list)
+            if (sortedDiscounts.length > 0) {
+                setSelectedDiscountId(sortedDiscounts[0].id);
+            }
+            setIsLoadingDiscounts(false);
+        }
+    }, [discountsFetcher.data, discountsFetcher.state, discountsFetcher]);
+
+    // Validate discount when selected
+    useEffect(() => {
+        if (selectedDiscountId && applyDiscount) {
+            const selectedDiscount = availableDiscounts.find(d => d.id === selectedDiscountId);
+            if (selectedDiscount) {
+                validateDiscountFetcher.submit(
+                    {
+                        code: selectedDiscount.code,
+                        family_id: familyId,
+                        student_id: selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : '',
+                        subtotal_amount: currentSubtotalInCents,
+                        applicable_to: paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group'
+                    },
+                    {
+                        method: 'POST',
+                        action: '/api/discount-codes/validate',
+                        encType: 'application/json'
+                    }
+                );
+            }
+        }
+    }, [selectedDiscountId, applyDiscount, availableDiscounts, familyId, selectedStudentIds, currentSubtotalInCents, paymentOption, validateDiscountFetcher]);
+
+    // Handle discount validation response
+    useEffect(() => {
+        if (validateDiscountFetcher.data && validateDiscountFetcher.state === 'idle') {
+            if (validateDiscountFetcher.data.is_valid) {
+                setAppliedDiscount(validateDiscountFetcher.data);
+            } else {
+                setAppliedDiscount(null);
+            }
+        }
+    }, [validateDiscountFetcher.data, validateDiscountFetcher.state, validateDiscountFetcher]);
 
     // Remove handlePaymentSubmit function - logic moved to action
 
@@ -634,13 +729,13 @@ export default function FamilyPaymentPage() {
                                     {detail.needsPayment && paymentOption === 'monthly' && (
                                         <p className="text-sm font-semibold text-green-700 dark:text-green-400 mt-1">
                                             Next Monthly
-                                            Payment: {siteConfig.pricing.currency}{detail.nextPaymentAmount.toFixed(2)} ({detail.nextPaymentTierLabel})
+                                            Payment: {formatCurrency(detail.nextPaymentAmount * 100)} ({detail.nextPaymentTierLabel})
                                         </p>
                                     )}
                                     {detail.needsPayment && paymentOption === 'yearly' && (
                                         <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mt-1">
                                             Yearly
-                                            Payment: {siteConfig.pricing.currency}{siteConfig.pricing.yearly.toFixed(2)}
+                                            Payment: {formatCurrency(siteConfig.pricing.yearly * 100)}
                                         </p>
                                     )}
                                     {/* Show message if payment not needed */}
@@ -657,16 +752,101 @@ export default function FamilyPaymentPage() {
             )} {/* End conditional student selection div */}
 
 
-            {/* Discount Code Selector */}
+            {/* Discount Code Section */}
             {currentSubtotalInCents > 0 && hasAvailableDiscounts && (
-                <DiscountCodeSelector
-                    familyId={familyId}
-                    studentId={selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : undefined}
-                    subtotalAmount={currentSubtotalInCents}
-                    applicableTo={paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group'}
-                    onDiscountApplied={handleDiscountApplied}
-                    disabled={fetcher.state !== 'idle'}
-                />
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                        <Checkbox
+                            id="apply-discount"
+                            checked={applyDiscount}
+                            onCheckedChange={(checked) => setApplyDiscount(checked === true)}
+                            disabled={fetcher.state !== 'idle'}
+                        />
+                        <Label htmlFor="apply-discount" className="text-lg font-semibold">
+                            Apply Discount Code
+                        </Label>
+                    </div>
+
+                    {applyDiscount && (
+                        <div className="space-y-4">
+                            {isLoadingDiscounts ? (
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <ReloadIcon className="h-4 w-4 animate-spin" />
+                                    Loading available discounts...
+                                </div>
+                            ) : availableDiscounts.length > 0 ? (
+                                <div>
+                                    <Label htmlFor="discount-select" className="text-sm font-medium mb-2 block">
+                                        Select Discount Code
+                                    </Label>
+                                    <Select
+                                        value={selectedDiscountId}
+                                        onValueChange={setSelectedDiscountId}
+                                        disabled={fetcher.state !== 'idle' || validateDiscountFetcher.state === 'submitting'}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Choose a discount code" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableDiscounts.map((discount) => {
+                                                const savingsDisplay = calculatePercentageSavings(discount, currentSubtotalInCents);
+                                                const displayText = discount.discount_type === 'percentage' 
+                                                    ? `${discount.code} - ${discount.discount_value}% off (Save ${savingsDisplay})`
+                                                    : `${discount.code} - ${savingsDisplay} off`;
+                                                return (
+                                                    <SelectItem key={discount.id} value={discount.id}>
+                                                        {displayText}
+                                                    </SelectItem>
+                                                );
+                                            })}
+                                        </SelectContent>
+                                    </Select>
+                                    
+                                    {validateDiscountFetcher.state === 'submitting' && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+                                            <ReloadIcon className="h-4 w-4 animate-spin" />
+                                            Validating discount...
+                                        </div>
+                                    )}
+                                    
+                                    {appliedDiscount && (
+                                        <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 mt-4">
+                                            <CheckCircledIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                            <AlertDescription className="text-green-800 dark:text-green-200">
+                                                <strong>Discount Applied: {appliedDiscount.code}</strong>
+                                                <div className="text-sm mt-1">
+                                                    Discount: {formatCurrency(appliedDiscount.discount_amount)}
+                                                </div>
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    {validateDiscountFetcher.data && !validateDiscountFetcher.data.is_valid && validateDiscountFetcher.state === 'idle' && (
+                                        <Alert variant="destructive" className="mt-4">
+                                            <ExclamationTriangleIcon className="h-4 w-4" />
+                                            <AlertDescription>
+                                                {validateDiscountFetcher.data.error_message || 'Invalid discount code'}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    No discount codes are currently available for this payment.
+                                </p>
+                            )}
+                            
+                            {discountsFetcher.data?.error && (
+                                <Alert variant="destructive">
+                                    <ExclamationTriangleIcon className="h-4 w-4" />
+                                    <AlertDescription>
+                                        {discountsFetcher.data.error}
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Combined Total & Pricing Info Section */}
@@ -701,10 +881,10 @@ export default function FamilyPaymentPage() {
                         className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
                         Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
                         Monthly fees are
-                        tiered: {siteConfig.pricing.currency}{siteConfig.pricing.firstMonth} (1st), {siteConfig.pricing.currency}{siteConfig.pricing.secondMonth} (2nd),
-                        then {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/mo per student.
-                        Yearly fee: {siteConfig.pricing.currency}{siteConfig.pricing.yearly}/year per student.
-                        1:1 Sessions: {siteConfig.pricing.currency}{siteConfig.pricing.oneOnOneSession}/session.
+                        tiered: {formatCurrency(siteConfig.pricing.firstMonth * 100)} (1st), {formatCurrency(siteConfig.pricing.secondMonth * 100)} (2nd),
+                        then {formatCurrency(siteConfig.pricing.monthly * 100)}/mo per student.
+                        Yearly fee: {formatCurrency(siteConfig.pricing.yearly * 100)}/year per student.
+                        1:1 Sessions: {formatCurrency(siteConfig.pricing.oneOnOneSession * 100)}/session.
                         Prices shown are before tax. Applicable taxes (e.g., GST, PST) will be added to the final amount.
                     </AlertDescription>
                 </Alert>
