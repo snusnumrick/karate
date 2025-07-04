@@ -52,6 +52,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const url = new URL(request.url);
     const studentId = url.searchParams.get('studentId');
     const applicableTo = url.searchParams.get('applicableTo') as PaymentTypeEnum || 'monthly_group';
+    const subtotalAmount = parseInt(url.searchParams.get('subtotalAmount') || '0'); // in cents
 
     // Get all active discount codes
     const allDiscountCodes = await DiscountService.getActiveDiscountCodes();
@@ -141,13 +142,18 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       });
     }
 
-    // Sort by decreasing value (most rewarding at top)
+    // Sort by decreasing actual discount amount (most rewarding at top)
     const sortedDiscounts = applicableDiscounts.sort((a, b) => {
-      // For percentage discounts, compare the percentage values
-      // For fixed amount discounts, compare the dollar amounts
-      const aValue = a.discount_type === 'percentage' ? a.discount_value : a.discount_value;
-      const bValue = b.discount_type === 'percentage' ? b.discount_value : b.discount_value;
-      return bValue - aValue;
+      // Calculate actual discount amount in cents for proper comparison
+      const aDiscountAmount = a.discount_type === 'percentage' 
+        ? Math.round((subtotalAmount * a.discount_value) / 100)
+        : Math.round(a.discount_value * 100); // Convert dollars to cents
+      
+      const bDiscountAmount = b.discount_type === 'percentage'
+        ? Math.round((subtotalAmount * b.discount_value) / 100)
+        : Math.round(b.discount_value * 100); // Convert dollars to cents
+      
+      return bDiscountAmount - aDiscountAmount;
     });
 
     console.log(`Found ${sortedDiscounts.length} applicable discounts.`);
