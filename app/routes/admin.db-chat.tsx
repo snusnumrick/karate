@@ -668,9 +668,25 @@ function renderQueryResults(summary: string | undefined | null, data: Json | nul
                                         const value = row[key]; // Access value using the key
                                         return (
                                             <td key={colIndex} className="py-3 px-2 align-top">
-                                                {/* Attempt to format currency if column name suggests it and value is number */}
+                                                {/* Format currency if column name suggests it and value is number */}
                                                 {typeof value === 'number' && (key.includes('amount') || key.includes('revenue') || key.includes('tax'))
-                                                    ? formatCurrencyUtil(value)
+                                                    ? (() => {
+                                                        // Check if value is likely already in dollars (has decimal places or is < 100)
+                                                        // SQL queries following our instructions divide by 100.0, so values < 100 are likely dollars
+                                                        const isAlreadyInDollars = value % 1 !== 0 || value < 100;
+                                                        if (isAlreadyInDollars) {
+                                                            // Value is already in dollars, format directly
+                                                            return new Intl.NumberFormat('en-CA', {
+                                                                style: 'currency',
+                                                                currency: 'CAD',
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2,
+                                                            }).format(value);
+                                                        } else {
+                                                            // Value is in cents, use formatCurrencyUtil
+                                                            return formatCurrencyUtil(value);
+                                                        }
+                                                    })()
                                                     : value === null ?
                                                         <span className="text-muted-foreground italic">null</span>
                                                         : String(value)}
