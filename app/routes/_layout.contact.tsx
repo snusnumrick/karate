@@ -93,7 +93,7 @@ export default function ContactPage() {
                 {/* Added text-center div and updated header styles to match About page */}
                 <div className="text-center mb-10"> {/* Added margin-bottom */}
                     <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
-                        Contact Team GREENEGIN
+                        Contact Team Greenegin
                     </h1>
                     <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
                         Get in touch for class info, registration, or questions
