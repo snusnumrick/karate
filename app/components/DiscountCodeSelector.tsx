@@ -40,10 +40,11 @@ export function DiscountCodeSelector({
     const params = new URLSearchParams();
     if (studentId) params.set('studentId', studentId);
     params.set('applicableTo', applicableTo);
+    params.set('subtotalAmount', subtotalAmount.toString());
     
     discountsFetcher.load(`/api/available-discounts/${familyId}?${params.toString()}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [familyId, studentId, applicableTo]); // Intentionally excluding discountsFetcher to prevent infinite loop
+  }, [familyId, studentId, applicableTo, subtotalAmount]); // Intentionally excluding discountsFetcher to prevent infinite loop
 
   // Handle discounts fetcher response
   useEffect(() => {

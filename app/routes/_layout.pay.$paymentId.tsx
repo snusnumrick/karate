@@ -538,7 +538,8 @@ export default function PaymentPage() {
             formData.append('familyId', payment.family_id);
             formData.append('familyName', payment.family?.name ?? 'Unknown Family'); // Need family name
             formData.append('supabasePaymentId', payment.id); // Pass Supabase ID for linking/update
-            // Pass existing amounts (in cents) to the API to prevent recalculation mismatches
+            
+            // The database now stores the discounted subtotal, so use it directly
             formData.append('subtotalAmount', payment.subtotal_amount.toString());
             formData.append('totalAmount', payment.total_amount.toString());
 
@@ -662,6 +663,7 @@ export default function PaymentPage() {
                 // Verify amounts match as a sanity check (compare subtotal, tax, and total)
                 if (payment) {
                     let mismatch = false;
+                    // The database now stores the discounted subtotal, so compare directly
                     if (paymentIntentFetcher.data.subtotalAmount !== payment.subtotal_amount) {
                         console.error(`Subtotal Amount mismatch! DB record: ${payment.subtotal_amount}, Intent created: ${paymentIntentFetcher.data.subtotalAmount}`);
                         mismatch = true;
@@ -758,9 +760,14 @@ export default function PaymentPage() {
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span className="font-semibold">Family:</span> {payment.family?.name ?? 'N/A'}
                 </p>
-                {/* Display Subtotal, Tax, and Total */}
+                {/* Display Subtotal (already discounted) */}
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)}
+                    {payment.discount_amount && payment.discount_amount > 0 && (
+                        <span className="text-green-600 dark:text-green-400 ml-2">
+                            (discount applied)
+                        </span>
+                    )}
                 </p>
                 {/* Display Grouped Tax Breakdown */}
                 {groupedTaxes.length > 0 && (

@@ -115,8 +115,8 @@ export async function createInitialPaymentRecord(
     }
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
-    // Apply discount to subtotal if provided
-    const finalSubtotalAmount = discountAmount ? subtotalAmount - discountAmount : subtotalAmount;
+    // Note: subtotalAmount is already the discounted amount from the family payment page
+    // No need to apply discount again here
 
     // --- Multi-Tax Calculation ---
     // 1. Fetch active tax rates applicable to this site/region
@@ -136,7 +136,7 @@ export async function createInitialPaymentRecord(
         // Proceed without tax if none are configured/active
     }
 
-    // 2. Calculate individual taxes and total tax on the discounted amount
+    // 2. Calculate individual taxes and total tax on the discounted subtotal
     let totalTaxAmount = 0;
     const paymentTaxesToInsert: Array<{
         tax_rate_id: string;
@@ -153,7 +153,8 @@ export async function createInitialPaymentRecord(
                 console.error(`Invalid tax rate found for ${taxRate.name}: ${taxRate.rate}`);
                 continue; // Skip this tax rate
             }
-            const taxAmountForThisRate = Math.round(finalSubtotalAmount * rate);
+            // Calculate tax on the discounted subtotal
+            const taxAmountForThisRate = Math.round(subtotalAmount * rate);
             totalTaxAmount += taxAmountForThisRate;
             paymentTaxesToInsert.push({
                 tax_rate_id: taxRate.id,
@@ -164,8 +165,8 @@ export async function createInitialPaymentRecord(
         }
     }
 
-    // 3. Calculate final total amount
-    const totalAmount = finalSubtotalAmount + totalTaxAmount;
+    // 3. Calculate final total amount (discounted subtotal + taxes)
+    const totalAmount = subtotalAmount + totalTaxAmount;
     // --- End Multi-Tax Calculation ---
 
 
@@ -174,7 +175,7 @@ export async function createInitialPaymentRecord(
         .from('payments')
         .insert({
             family_id: familyId,
-            subtotal_amount: finalSubtotalAmount, // Store the discounted subtotal
+            subtotal_amount: subtotalAmount, // Store the original subtotal (before discount)
             // tax_amount column removed
             total_amount: totalAmount,
             status: 'pending',
