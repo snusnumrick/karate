@@ -23,6 +23,7 @@ import {ClientOnly} from "~/components/client-only";
 import {cn} from "~/lib/utils";
 import retrieveDatabaseStructure, {DatabaseSchema, formatSchemaAsMarkdown} from "~/utils/retrieve.db.strructure"; // Import cn utility
 import { formatCurrency as formatCurrencyUtil } from "~/utils/misc"; // Import the utility function
+import { siteConfig } from "~/config/site";
 
 // --- Cache for Database Schema Description ---
 let cachedSchemaDescription: string | null = null;
@@ -351,11 +352,11 @@ General Instructions & Constraints:
 
     // Switch to a potentially more capable model and pass system instruction during initialization
     const model: GenerativeModel = genAI.getGenerativeModel({
-        model: "gemini-2.5-pro-exp-03-25",
+        model: siteConfig.ai.models.primary,
         systemInstruction: systemInstruction // Pass system instruction here
     });
     const backupModel: GenerativeModel = genAI.getGenerativeModel({
-        model: "gemini-1.5-pro",
+        model: siteConfig.ai.models.backup,
         systemInstruction: systemInstruction // Pass system instruction here
     });
 
@@ -529,7 +530,7 @@ Instructions:
 
     // Use the faster flash model for summarization, configured with the system instruction
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash",
+        model: siteConfig.ai.models.summary,
         systemInstruction: systemInstructionForSummary
     });
 
