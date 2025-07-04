@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs } from "@vercel/remix";
 import { Outlet, useLoaderData, useLocation, useRevalidator } from "@remix-run/react"; // Import useLoaderData, useRevalidator
 import * as React from "react";
 import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix"; // Import client helper

@@ -1,5 +1,5 @@
 import { Link, useActionData, useFetcher, useNavigation } from "@remix-run/react"; // Import useNavigation
-import { ActionFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
+import { ActionFunctionArgs, json, redirect, TypedResponse } from "@vercel/remix";
 import { AuthApiError } from "@supabase/supabase-js"; // Import AuthApiError
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";

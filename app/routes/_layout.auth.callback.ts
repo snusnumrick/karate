@@ -1,4 +1,4 @@
-import {type LoaderFunctionArgs, redirect} from "@remix-run/node";
+import {type LoaderFunctionArgs, redirect} from "@vercel/remix";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 
 // This route handles the server-side exchange of the verification code

@@ -1,5 +1,5 @@
 import {Outlet, useRouteError} from "@remix-run/react";
-import {json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
+import {json, type LoaderFunctionArgs, redirect} from "@vercel/remix";
 import {getSupabaseServerClient, isUserAdmin} from "~/utils/supabase.server";
 import AdminNavbar from "~/components/AdminNavbar";
 import AdminFooter from "~/components/AdminFooter";

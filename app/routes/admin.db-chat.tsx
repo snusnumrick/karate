@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react'; // Import useEffect and useRef
-import {ActionFunctionArgs, json} from "@remix-run/node";
+import {ActionFunctionArgs, json} from "@vercel/remix";
 // Import useSubmit
 import {Form, useActionData, useNavigation, useSubmit} from "@remix-run/react";
 import {Button} from "~/components/ui/button";
