@@ -379,7 +379,7 @@ export default function FamilyPaymentPage() {
     const [paymentOption, setPaymentOption] = useState<PaymentOption>(initialOption); // State for payment option
     const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1); // State for 1:1 session quantity
     const [appliedDiscount, setAppliedDiscount] = useState<DiscountValidationResult | null>(null); // State for applied discount
-    const [applyDiscount, setApplyDiscount] = useState(false);
+    const [applyDiscount, setApplyDiscount] = useState(true);
     const [selectedDiscountId, setSelectedDiscountId] = useState<string>('');
     const [availableDiscounts, setAvailableDiscounts] = useState<AvailableDiscountCode[]>([]);
     const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
