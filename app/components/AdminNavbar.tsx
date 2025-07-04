@@ -39,9 +39,15 @@ const adminNavItems = [
     {to: "/admin/waivers", label: "Waivers", icon: FileText},
     {to: "/admin/attendance", label: "Attendance", icon: CalendarCheck},
     {to: "/admin/messages", label: "Messages", icon: MessageSquare},
-    {to: "/admin/discount-codes", label: "Discount Codes", icon: Tag},
     {to: "/admin/db-chat", label: "DB Chat", icon: Database},
+    // Discount items will be handled by the Dropdown below
     // Store items will be handled by the Dropdown below
+];
+
+// Define Discount navigation items
+const discountNavItems = [
+    {to: "/admin/discount-codes", label: "Discount Codes", icon: Tag},
+    {to: "/admin/discount-templates", label: "Discount Templates", icon: FileText},
 ];
 
 // Define Store navigation items
@@ -55,6 +61,7 @@ const storeNavItems = [
 export default function AdminNavbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [isStoreMobileOpen, setIsStoreMobileOpen] = useState(false);
+    const [isDiscountMobileOpen, setIsDiscountMobileOpen] = useState(false);
     // const location = useLocation(); // Get current location - Removed as it's unused here
 
     return (
@@ -92,6 +99,8 @@ export default function AdminNavbar() {
                                     {/* Slightly larger icon, no margin */}
                                 </AdminNavLink>
                             ))}
+                            {/* Discount Dropdown */}
+                            <AdminDiscountDropdown/>
                             {/* Store Dropdown */}
                             <AdminStoreDropdown/>
                         </nav>
@@ -152,6 +161,38 @@ export default function AdminNavbar() {
                                                             {item.label}
                                                         </AdminMobileNavLink>
                                                     ))}
+                                                    
+                                                    {/* Discount Mobile Links */}
+                                                    <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
+                                                    <div className="px-4 py-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setIsDiscountMobileOpen(!isDiscountMobileOpen);
+                                                            }}
+                                                            className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
+                                                        >
+                                                            <Tag className="h-5 w-5 mr-2"/>
+                                                            <span className="font-medium">Discounts</span>
+                                                            <span className="ml-auto">
+                                                                {isDiscountMobileOpen ?
+                                                                    <ChevronDown className="h-4 w-4"/> :
+                                                                    <ChevronRight className="h-4 w-4"/>
+                                                                }
+                                                            </span>
+                                                        </button>
+                                                    </div>
+                                                    {isDiscountMobileOpen && (
+                                                        <div className="pl-6 space-y-1 mb-2">
+                                                            {discountNavItems.map((item) => (
+                                                                <AdminMobileNavLink key={item.to} to={item.to}
+                                                                                    onClick={() => setIsOpen(false)}>
+                                                                    <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                                    {item.label}
+                                                                </AdminMobileNavLink>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     {/* Store Mobile Links - Separator already exists in provided file content */}
                                                     <div
                                                         className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
@@ -243,6 +284,50 @@ function AdminNavLink({to, label, children}: AdminNavLinkProps) {
                 <p>{label}</p>
             </TooltipContent>
         </Tooltip>
+    );
+}
+
+// Discount Dropdown Component for Desktop (Icon Trigger + Tooltip)
+function AdminDiscountDropdown() {
+    const location = useLocation();
+    const isDiscountActive = location.pathname.startsWith('/admin/discount');
+
+    return (
+        <DropdownMenu>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                                "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
+                                isDiscountActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
+                            )}
+                            aria-label="Discount Management"
+                        >
+                            <Tag className="h-5 w-5"/>
+                        </Button>
+                    </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                    <p>Discounts</p>
+                </TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
+                {discountNavItems.map((item) => (
+                    <DropdownMenuItem key={item.to} className="p-0">
+                        <Link
+                            to={item.to}
+                            className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                        >
+                            <item.icon className="h-4 w-4 mr-2"/>
+                            {item.label}
+                        </Link>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 

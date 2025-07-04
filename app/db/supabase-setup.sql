@@ -2674,6 +2674,86 @@ $$
     END
 $$;
 
+-- Discount Templates Table
+CREATE TABLE IF NOT EXISTS public.discount_templates (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name text NOT NULL,
+    description text,
+    
+    -- Discount Type
+    discount_type text NOT NULL CHECK (discount_type IN ('fixed_amount', 'percentage')),
+    discount_value numeric(10,2) NOT NULL CHECK (discount_value > 0),
+    
+    -- Usage Restrictions
+    usage_type text NOT NULL CHECK (usage_type IN ('one_time', 'ongoing')),
+    max_uses integer NULL, -- NULL = unlimited
+    
+    -- Applicability
+    applicable_to payment_type_enum[] NOT NULL,
+    scope text NOT NULL CHECK (scope IN ('per_student', 'per_family')),
+    
+    -- Template status
+    is_active boolean NOT NULL DEFAULT true,
+    
+    -- Creation tracking
+    created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+    
+    -- Timestamps
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Add indexes for discount_templates
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_templates_active') THEN
+            CREATE INDEX idx_discount_templates_active ON public.discount_templates (is_active);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_templates_created_by') THEN
+            CREATE INDEX idx_discount_templates_created_by ON public.discount_templates (created_by);
+        END IF;
+    END
+$$;
+
+-- Enable RLS for discount_templates
+ALTER TABLE public.discount_templates ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for discount_templates
+DO
+$$
+    BEGIN
+        -- Allow admins to manage all discount templates
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage discount templates'
+                         AND tablename = 'discount_templates') THEN
+            CREATE POLICY "Allow admins to manage discount templates" ON public.discount_templates
+                FOR ALL USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
+
+-- Add trigger to update discount_templates.updated_at
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM information_schema.triggers
+                       WHERE trigger_name = 'discount_templates_updated') THEN
+            CREATE TRIGGER discount_templates_updated
+                BEFORE UPDATE
+                ON public.discount_templates
+                FOR EACH ROW
+            EXECUTE FUNCTION update_modified_column();
+        END IF;
+    END
+$$;
+
 -- Add trigger to update discount_codes.updated_at
 DO
 $$

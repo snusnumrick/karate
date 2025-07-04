@@ -96,6 +96,7 @@ for communication between families and administrators.
     - Track discount code usage and view statistics (`/admin/discount-codes`).
     - Create new discount codes with comprehensive options (`/admin/discount-codes/new`).
     - Automatic discount code generation for programmatic use cases.
+    - **Discount Templates:** Create and manage reusable templates (`/admin/discount-templates`) to streamline discount code creation with pre-configured settings for consistent pricing structures.
 
 ### Automated Notifications
 - **Student Absence:** Email to family when student marked absent.
@@ -142,7 +143,21 @@ for communication between families and administrators.
 3.  **Environment Variables:**
     - Copy `.env.example` to `.env`.
     - Fill in the required values for Supabase, Stripe (optional for local testing, required for payments), Resend (for email sending), and Google Gemini API (`GEMINI_API_KEY` - required for Admin DB Chat).
-    - **Direct Database Connection Variables:** The Admin DB Chat feature (`/admin/db-chat`) relies on the `app/utils/retrieve.db.strructure.ts` script to fetch the current database schema. This script requires direct database connection variables: `DB_USER`, `DB_HOST`, `DB_NAME`, and `DB_PASSWORD`. These are typically the same credentials used by your Supabase project but need to be explicitly set in the `.env` file. You can find these in your Supabase project settings (Database -> Connection info). Ensure these are set if you plan to use the Admin DB Chat feature.
+    - **Supabase Variables:** Get these from your Supabase project dashboard (Project Settings -> API):
+        - `SUPABASE_URL`: Your project URL (e.g., `https://yourprojectref.supabase.co`)
+        - `SUPABASE_ANON_KEY`: Your project's anon/public key
+        - `SUPABASE_SERVICE_ROLE_KEY`: Your project's service role key (keep this secret)
+    - **Direct Database Connection Variables:** The Admin DB Chat feature (`/admin/db-chat`) requires direct PostgreSQL connection to fetch the database schema. Get these from your Supabase project dashboard:
+        1. Click the **"Connect"** button at the top of your Supabase dashboard
+        2. In the connection dialog, look for the **Session pooler** connection string (it will look like: `postgres://postgres.yourproject:[PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres`)
+        3. From this connection string, extract the following values:
+            - `DB_USER`: The username part before the colon (e.g., `postgres.brvtvtkjgqmnebehzuny`)
+            - `DB_HOST`: The host part after the @ symbol (e.g., `aws-0-us-west-1.pooler.supabase.com`)
+            - `DB_NAME`: The database name at the end (usually `postgres`)
+            - `DB_PASSWORD`: Your database password (found in Project Settings → Database → Database password)
+            - `DB_URL`: The complete connection string in JDBC format: `jdbc:postgresql://[DB_HOST]:5432/[DB_NAME]`
+            - `DB_URL`: The complete connection string in JDBC format: `jdbc:postgresql://[DB_HOST]:5432/[DB_NAME]`
+    - **Note:** If you don't plan to use the Admin DB Chat feature, you can skip the DB_ variables.
 4.  **Supabase Setup:**
     - Create a Supabase project at [supabase.com](https://supabase.com).
     - In your Supabase project dashboard:
