@@ -33,7 +33,6 @@ export async function action({request}: ActionFunctionArgs) {
     const contact1FirstName = formData.get('contact1FirstName') as string;
     const contact1LastName = formData.get('contact1LastName') as string;
     const contact1Type = formData.get('contact1Type') as string;
-    const contact1HomePhone = formData.get('contact1HomePhone') as string;
     const contact1CellPhone = formData.get('contact1CellPhone') as string;
     const contact1EmailConfirm = formData.get('contact1EmailConfirm') as string;
 

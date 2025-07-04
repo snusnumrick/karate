@@ -129,72 +129,137 @@ export type Database = {
         }
         Relationships: []
       }
-      discount_codes: {
+      discount_code_usage: {
         Row: {
+          discount_amount: number
+          discount_code_id: string
+          family_id: string
+          final_amount: number
           id: string
-          code: string
-          name: string
-          description: string | null
-          discount_type: "fixed_amount" | "percentage"
-          discount_value: number
-          usage_type: "one_time" | "ongoing"
-          max_uses: number | null
-          current_uses: number
-          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
-          scope: "per_student" | "per_family"
-          family_id: string | null
+          original_amount: number
+          payment_id: string
           student_id: string | null
-          is_active: boolean
-          valid_from: string
-          valid_until: string | null
-          created_by: string | null
-          created_automatically: boolean
-          created_at: string
-          updated_at: string
+          used_at: string
         }
         Insert: {
+          discount_amount: number
+          discount_code_id: string
+          family_id: string
+          final_amount: number
           id?: string
-          code: string
-          name: string
-          description?: string | null
-          discount_type: "fixed_amount" | "percentage"
-          discount_value: number
-          usage_type: "one_time" | "ongoing"
-          max_uses?: number | null
-          current_uses?: number
-          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
-          scope: "per_student" | "per_family"
-          family_id?: string | null
+          original_amount: number
+          payment_id: string
           student_id?: string | null
-          is_active?: boolean
-          valid_from?: string
-          valid_until?: string | null
-          created_by?: string | null
-          created_automatically?: boolean
-          created_at?: string
-          updated_at?: string
+          used_at?: string
         }
         Update: {
+          discount_amount?: number
+          discount_code_id?: string
+          family_id?: string
+          final_amount?: number
           id?: string
-          code?: string
-          name?: string
-          description?: string | null
-          discount_type?: "fixed_amount" | "percentage"
-          discount_value?: number
-          usage_type?: "one_time" | "ongoing"
-          max_uses?: number | null
-          current_uses?: number
-          applicable_to?: Database["public"]["Enums"]["payment_type_enum"][]
-          scope?: "per_student" | "per_family"
-          family_id?: string | null
+          original_amount?: number
+          payment_id?: string
           student_id?: string | null
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_code_usage_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_usage_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_usage_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_usage_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_codes: {
+        Row: {
+          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
+          code: string
+          created_at: string
+          created_automatically: boolean
+          created_by: string | null
+          current_uses: number
+          description: string | null
+          discount_type: string
+          discount_value: number
+          family_id: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          name: string
+          scope: string
+          student_id: string | null
+          updated_at: string
+          usage_type: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
+          code: string
+          created_at?: string
+          created_automatically?: boolean
+          created_by?: string | null
+          current_uses?: number
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          family_id?: string | null
+          id?: string
           is_active?: boolean
+          max_uses?: number | null
+          name: string
+          scope: string
+          student_id?: string | null
+          updated_at?: string
+          usage_type: string
           valid_from?: string
           valid_until?: string | null
-          created_by?: string | null
-          created_automatically?: boolean
+        }
+        Update: {
+          applicable_to?: Database["public"]["Enums"]["payment_type_enum"][]
+          code?: string
           created_at?: string
+          created_automatically?: boolean
+          created_by?: string | null
+          current_uses?: number
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          family_id?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name?: string
+          scope?: string
+          student_id?: string | null
           updated_at?: string
+          usage_type?: string
+          valid_from?: string
+          valid_until?: string | null
         }
         Relationships: [
           {
@@ -213,70 +278,53 @@ export type Database = {
           },
         ]
       }
-      discount_code_usage: {
+      discount_templates: {
         Row: {
+          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discount_type: string
+          discount_value: number
           id: string
-          discount_code_id: string
-          payment_id: string
-          family_id: string
-          student_id: string | null
-          discount_amount: number
-          original_amount: number
-          final_amount: number
-          used_at: string
+          is_active: boolean
+          max_uses: number | null
+          name: string
+          scope: string
+          updated_at: string
+          usage_type: string
         }
         Insert: {
+          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type: string
+          discount_value: number
           id?: string
-          discount_code_id: string
-          payment_id: string
-          family_id: string
-          student_id?: string | null
-          discount_amount: number
-          original_amount: number
-          final_amount: number
-          used_at?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name: string
+          scope: string
+          updated_at?: string
+          usage_type: string
         }
         Update: {
+          applicable_to?: Database["public"]["Enums"]["payment_type_enum"][]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
           id?: string
-          discount_code_id?: string
-          payment_id?: string
-          family_id?: string
-          student_id?: string | null
-          discount_amount?: number
-          original_amount?: number
-          final_amount?: number
-          used_at?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name?: string
+          scope?: string
+          updated_at?: string
+          usage_type?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "discount_code_usage_discount_code_id_fkey"
-            columns: ["discount_code_id"]
-            isOneToOne: false
-            referencedRelation: "discount_codes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "discount_code_usage_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "discount_code_usage_family_id_fkey"
-            columns: ["family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "discount_code_usage_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       families: {
         Row: {
@@ -355,7 +403,7 @@ export type Database = {
           employer_phone?: string | null
           family_id: string
           first_name: string
-          home_phone: string
+          home_phone?: string | null
           id?: string
           last_name: string
           relationship: string
@@ -369,7 +417,7 @@ export type Database = {
           employer_phone?: string | null
           family_id?: string
           first_name?: string
-          home_phone?: string
+          home_phone?: string | null
           id?: string
           last_name?: string
           relationship?: string
@@ -688,6 +736,8 @@ export type Database = {
         Row: {
           card_last4: string | null
           created_at: string | null
+          discount_amount: number | null
+          discount_code_id: string | null
           family_id: string
           id: string
           notes: string | null
@@ -706,6 +756,8 @@ export type Database = {
         Insert: {
           card_last4?: string | null
           created_at?: string | null
+          discount_amount?: number | null
+          discount_code_id?: string | null
           family_id: string
           id?: string
           notes?: string | null
@@ -724,6 +776,8 @@ export type Database = {
         Update: {
           card_last4?: string | null
           created_at?: string | null
+          discount_amount?: number | null
+          discount_code_id?: string | null
           family_id?: string
           id?: string
           notes?: string | null
@@ -740,6 +794,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_family_id_fkey"
             columns: ["family_id"]
@@ -1165,9 +1226,28 @@ export type Database = {
         Args: { p_family_id: string }
         Returns: number
       }
+      increment_discount_code_usage: {
+        Args: { p_discount_code_id: string }
+        Returns: undefined
+      }
       mark_conversation_as_read: {
         Args: { p_conversation_id: string; p_user_id: string }
         Returns: undefined
+      }
+      validate_discount_code: {
+        Args: {
+          p_code: string
+          p_family_id: string
+          p_student_id?: string
+          p_subtotal_amount?: number
+          p_applicable_to?: Database["public"]["Enums"]["payment_type_enum"]
+        }
+        Returns: {
+          is_valid: boolean
+          discount_code_id: string
+          discount_amount: number
+          error_message: string
+        }[]
       }
     }
     Enums: {

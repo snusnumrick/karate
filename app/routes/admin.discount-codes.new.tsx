@@ -7,11 +7,14 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Badge } from "~/components/ui/badge";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { createClient } from '@supabase/supabase-js';
 import { DiscountService } from "~/services/discount.server";
-import type { PaymentTypeEnum } from "~/types/discount";
+import { getDiscountTemplateById } from "~/services/discount-template.server";
+import type { PaymentTypeEnum, DiscountTemplate } from "~/types/discount";
 import type { Database } from "~/types/database.types";
+import { FileText, X } from "lucide-react";
 
 type FamilyInfo = {
   id: string;
@@ -63,6 +66,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
   
+  // Check for template parameter
+  const url = new URL(request.url);
+  const templateId = url.searchParams.get('template');
+  let template: DiscountTemplate | null = null;
+  
+  if (templateId) {
+    try {
+      template = await getDiscountTemplateById(templateId);
+    } catch (error) {
+      console.error('Error fetching template:', error);
+      // Continue without template if there's an error
+    }
+  }
+  
   // Fetch families and students for selection using service role
   const [familiesResult, studentsResult] = await Promise.all([
     supabaseAdmin.from('families').select('id, name, email').order('name'),
@@ -79,7 +96,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return json({
     families: familiesResult.data as FamilyInfo[],
-    students: studentsResult.data as StudentInfo[]
+    students: studentsResult.data as StudentInfo[],
+    template
   });
 }
 
@@ -160,19 +178,26 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function AdminNewDiscountCodePage() {
-  const { families, students } = useLoaderData<typeof loader>();
+  const { families, students, template } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
+  // // const [searchParams, setSearchParams] = useSearchParams();
   const isSubmitting = navigation.state === 'submitting';
 
   const [code, setCode] = useState('');
-  const [selectedScope, setSelectedScope] = useState('');
+  const [name, setName] = useState(template?.name || '');
+  const [description, setDescription] = useState(template?.description || '');
+  const [discountType, setDiscountType] = useState(template?.discount_type || '');
+  const [discountValue, setDiscountValue] = useState(template?.discount_value?.toString() || '');
+  const [selectedScope, setSelectedScope] = useState(template?.scope || '');
   const [selectedFamily, setSelectedFamily] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [familyStudents, setFamilyStudents] = useState<StudentInfo[]>([]);
-  const [usageType, setUsageType] = useState('');
-  const [maxUses, setMaxUses] = useState('');
+  const [usageType, setUsageType] = useState(template?.usage_type || '');
+  const [maxUses, setMaxUses] = useState(template?.max_uses?.toString() || '');
+  const [applicableTo, setApplicableTo] = useState<string[]>(template?.applicable_to || []);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [usingTemplate, setUsingTemplate] = useState(!!template);
   
   // Set default valid from date to current date and time
   const getCurrentDateTime = () => {
@@ -186,6 +211,7 @@ export default function AdminNewDiscountCodePage() {
   };
   
   const [validFrom, setValidFrom] = useState(getCurrentDateTime());
+  const [validUntil, setValidUntil] = useState('');
 
   // Update family students when family selection changes
   useEffect(() => {
@@ -241,6 +267,28 @@ export default function AdminNewDiscountCodePage() {
     }
   };
 
+  const clearTemplate = () => {
+    setUsingTemplate(false);
+    setName('');
+    setDescription('');
+    setDiscountType('');
+    setDiscountValue('');
+    setUsageType('');
+    setMaxUses('');
+    setSelectedScope('');
+    setApplicableTo([]);
+    // Navigate to the same page without template parameter
+    window.history.replaceState({}, '', '/admin/discount-codes/new');
+  };
+
+  const handleApplicableToChange = (value: string, checked: boolean) => {
+    if (checked) {
+      setApplicableTo(prev => [...prev, value]);
+    } else {
+      setApplicableTo(prev => prev.filter(item => item !== value));
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <Link to="/admin/discount-codes" className="text-blue-600 hover:underline mb-4 inline-block">
@@ -250,6 +298,49 @@ export default function AdminNewDiscountCodePage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">Create New Discount Code</h1>
         <p className="text-muted-foreground">Create a new discount code for families and students.</p>
+        
+        {!usingTemplate && (
+          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <span className="font-medium text-amber-900 dark:text-amber-100">Want to use a template?</span>
+            </div>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+              Save time by starting with a pre-configured discount template. Templates include all the common settings like discount type, value, and applicable payment types.
+            </p>
+            <Button asChild variant="outline" size="sm" className="border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/20">
+              <Link to="/admin/discount-templates">
+                <FileText className="h-4 w-4 mr-2" />
+                Browse Templates
+              </Link>
+            </Button>
+          </div>
+        )}
+        
+        {usingTemplate && template && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600" />
+                <span className="font-medium text-blue-900">Using Template: {template.name}</span>
+                <Badge variant="secondary">Template</Badge>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearTemplate}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear Template
+              </Button>
+            </div>
+            {template.description && (
+              <p className="text-sm text-blue-700 mt-2">{template.description}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {actionData?.error && (
@@ -289,6 +380,8 @@ export default function AdminNewDiscountCodePage() {
               <Input
                 id="name"
                 name="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 placeholder="Enter discount name"
                 required
               />
@@ -302,6 +395,8 @@ export default function AdminNewDiscountCodePage() {
               <Textarea
                 id="description"
                 name="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter description"
               />
             </div>
@@ -314,7 +409,7 @@ export default function AdminNewDiscountCodePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="discountType">Discount Type <span className="text-red-500">*</span></Label>
-              <Select name="discountType" required>
+              <Select name="discountType" value={discountType} onValueChange={setDiscountType} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select discount type" />
                 </SelectTrigger>
@@ -335,6 +430,8 @@ export default function AdminNewDiscountCodePage() {
                 name="value"
                 type="number"
                 step="0.01"
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
                 placeholder="Enter discount value"
                 required
               />
@@ -365,15 +462,11 @@ export default function AdminNewDiscountCodePage() {
                 id="maxUses"
                 name="maxUses"
                 type="number"
+                min="1"
                 value={maxUses}
                 onChange={(e) => setMaxUses(e.target.value)}
-                placeholder="Enter max uses (optional)"
-                disabled={usageType === 'one_time'}
-                className={usageType === 'one_time' ? 'bg-gray-100 cursor-not-allowed' : ''}
+                placeholder="Enter max uses (leave empty for unlimited)"
               />
-              {usageType === 'one_time' && (
-                <p className="text-sm text-muted-foreground mt-1">Max uses is automatically set to 1 for one-time usage codes.</p>
-              )}
             </div>
           </div>
         </section>
@@ -391,6 +484,8 @@ export default function AdminNewDiscountCodePage() {
                     id="monthly_group"
                     name="applicableTo"
                     value="monthly_group"
+                    checked={applicableTo.includes('monthly_group')}
+                    onChange={(e) => handleApplicableToChange('monthly_group', e.target.checked)}
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="monthly_group" className="text-sm font-normal">Monthly Group Training</Label>
@@ -401,6 +496,8 @@ export default function AdminNewDiscountCodePage() {
                     id="yearly_group"
                     name="applicableTo"
                     value="yearly_group"
+                    checked={applicableTo.includes('yearly_group')}
+                    onChange={(e) => handleApplicableToChange('yearly_group', e.target.checked)}
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="yearly_group" className="text-sm font-normal">Yearly Group Training</Label>
@@ -411,6 +508,8 @@ export default function AdminNewDiscountCodePage() {
                     id="individual_session"
                     name="applicableTo"
                     value="individual_session"
+                    checked={applicableTo.includes('individual_session')}
+                    onChange={(e) => handleApplicableToChange('individual_session', e.target.checked)}
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="individual_session" className="text-sm font-normal">Individual Session</Label>
@@ -421,6 +520,8 @@ export default function AdminNewDiscountCodePage() {
                     id="store_purchase"
                     name="applicableTo"
                     value="store_purchase"
+                    checked={applicableTo.includes('store_purchase')}
+                    onChange={(e) => handleApplicableToChange('store_purchase', e.target.checked)}
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="store_purchase" className="text-sm font-normal">Store Purchase</Label>
@@ -431,6 +532,8 @@ export default function AdminNewDiscountCodePage() {
                     id="other"
                     name="applicableTo"
                     value="other"
+                    checked={applicableTo.includes('other')}
+                    onChange={(e) => handleApplicableToChange('other', e.target.checked)}
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="other" className="text-sm font-normal">Other</Label>
@@ -532,6 +635,8 @@ export default function AdminNewDiscountCodePage() {
                 id="validUntil"
                 name="validUntil"
                 type="datetime-local"
+                value={validUntil}
+                onChange={(e) => setValidUntil(e.target.value)}
               />
             </div>
           </div>

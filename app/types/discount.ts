@@ -128,3 +128,61 @@ export interface DiscountCodeWithUsage extends DiscountCode {
     full_name: string | null;
   } | null;
 }
+
+// Discount Template Types
+export interface DiscountTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  
+  // Template fields (same as discount code but without specific associations)
+  discount_type: DiscountType;
+  discount_value: number;
+  usage_type: UsageType;
+  max_uses?: number;
+  applicable_to: ApplicableTo;
+  scope: DiscountScope;
+  
+  // Template-specific fields
+  is_active: boolean;
+  
+  // Creation tracking
+  created_by?: string;
+  
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDiscountTemplateData {
+  name: string;
+  description?: string;
+  discount_type: DiscountType;
+  discount_value: number;
+  usage_type: UsageType;
+  max_uses?: number;
+  applicable_to: ApplicableTo;
+  scope: DiscountScope;
+}
+
+export interface UpdateDiscountTemplateData {
+  name?: string;
+  description?: string;
+  discount_type?: DiscountType;
+  discount_value?: number;
+  usage_type?: UsageType;
+  max_uses?: number;
+  applicable_to?: ApplicableTo;
+  scope?: DiscountScope;
+  is_active?: boolean;
+}
+
+export interface CreateDiscountFromTemplateData {
+  template_id: string;
+  code?: string; // If not provided, will be auto-generated
+  name?: string; // If not provided, will use template name
+  family_id?: string;
+  student_id?: string;
+  valid_from?: string;
+  valid_until?: string;
+}
