@@ -1,4 +1,4 @@
-import { redirect } from "@remix-run/node";
+import { redirect } from "@vercel/remix";
 import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
 
 export async function requireAdminUser(request: Request) {
