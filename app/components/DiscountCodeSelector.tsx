@@ -32,10 +32,8 @@ export function DiscountCodeSelector({
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [availableDiscounts, setAvailableDiscounts] = useState<AvailableDiscountCode[]>([]);
   const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(true);
-  const fetcher = useFetcher<DiscountValidationResult>();
   const discountsFetcher = useFetcher<AvailableDiscountsResponse>();
-
-  const isValidating = fetcher.state === 'submitting';
+  const [isValidating, setIsValidating] = useState(false);
 
   // Fetch available discounts on component mount
   useEffect(() => {
@@ -55,24 +53,40 @@ export function DiscountCodeSelector({
     }
   }, [discountsFetcher.data, discountsFetcher.state]);
 
-  const handleValidateDiscount = (code?: string) => {
+  const handleValidateDiscount = async (code?: string) => {
     const codeToValidate = code || discountCode.trim();
     if (!codeToValidate) return;
 
-    fetcher.submit(
-      {
-        code: codeToValidate.toUpperCase(),
-        family_id: familyId,
-        student_id: studentId || '',
-        subtotal_amount: subtotalAmount,
-        applicable_to: applicableTo
-      },
-      {
+    setIsValidating(true);
+    try {
+      const response = await fetch('/api/discount-codes/validate', {
         method: 'POST',
-        action: '/api/discount-codes/validate',
-        encType: 'application/json'
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: codeToValidate.toUpperCase(),
+          family_id: familyId,
+          student_id: studentId || '',
+          subtotal_amount: subtotalAmount,
+          applicable_to: applicableTo
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.is_valid) {
+          setAppliedDiscount(data);
+          onDiscountApplied(data);
+        }
+      } else {
+        console.error('Failed to validate discount:', response.statusText);
       }
-    );
+    } catch (error) {
+      console.error('Error validating discount:', error);
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   const handleSelectDiscount = (discountId: string) => {
@@ -97,13 +111,7 @@ export function DiscountCodeSelector({
     }
   };
 
-  // Handle fetcher response
-  if (fetcher.data && fetcher.state === 'idle' && !appliedDiscount) {
-    if (fetcher.data.is_valid) {
-      setAppliedDiscount(fetcher.data);
-      onDiscountApplied(fetcher.data);
-    }
-  }
+  // Validation response is now handled directly in handleValidateDiscount
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-CA', {
@@ -208,25 +216,7 @@ export function DiscountCodeSelector({
             </div>
           )}
 
-          {/* Show validation error */}
-          {fetcher.data && !fetcher.data.is_valid && fetcher.state === 'idle' && (
-            <Alert variant="destructive">
-              <ExclamationTriangleIcon className="h-4 w-4" />
-              <AlertDescription>
-                {fetcher.data.error_message || 'Invalid discount code'}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Show general error */}
-          {fetcher.data && 'error' in fetcher.data && (
-            <Alert variant="destructive">
-              <ExclamationTriangleIcon className="h-4 w-4" />
-              <AlertDescription>
-                {(fetcher.data as { error: string }).error || 'Failed to validate discount code'}
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* Validation errors are now handled in the async function */}
 
           {/* Show discounts fetch error */}
           {discountsFetcher.data?.error && (

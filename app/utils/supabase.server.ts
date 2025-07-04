@@ -300,7 +300,7 @@ export async function checkStudentEligibility(
         const dateB = b.payments?.payment_date ? new Date(b.payments.payment_date).getTime() : 0;
         return dateB - dateA; // Descending order (most recent first)
     });
-    console.log(`[checkStudentEligibility] Fetching successful payments for student ${studentId}: ${sortedPaymentLinks?.map(link => link.payments?.payment_date).filter(Boolean)}`);
+    // console.log(`[checkStudentEligibility] Fetching successful payments for student ${studentId}: ${sortedPaymentLinks?.map(link => link.payments?.payment_date).filter(Boolean)}`);
 
     if (linkError) {
         console.error(`Error fetching successful payment links for student ${studentId}:`, linkError.message);
@@ -322,7 +322,7 @@ export async function checkStudentEligibility(
         status: string,
         type: Database['public']['Enums']['payment_type_enum'] // This 'type' is correct (from DB)
     }> ?? [];
-    console.log(`[checkStudentEligibility] Found ${successfulGroupPayments.length} successful group payments for student ${studentId}: ${successfulGroupPayments.map(payment => payment.payment_date)}.`);
+    // console.log(`[checkStudentEligibility] Found ${successfulGroupPayments.length} successful group payments for student ${studentId}: ${successfulGroupPayments.map(payment => payment.payment_date)}.`);
 
 
     // 2. Check for Free Trial (zero successful group payments)

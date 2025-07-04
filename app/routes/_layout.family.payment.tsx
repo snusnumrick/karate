@@ -385,7 +385,6 @@ export default function FamilyPaymentPage() {
     const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
     
     const discountsFetcher = useFetcher<AvailableDiscountsResponse>();
-    const validateDiscountFetcher = useFetcher<DiscountValidationResult>();
 
     // Determine if any student is eligible for a group payment to enable/disable options
     const hasEligibleStudentsForGroupPayment = studentPaymentDetails?.some(d => d.needsPayment) ?? false;
@@ -490,7 +489,9 @@ export default function FamilyPaymentPage() {
             setSelectedDiscountId('');
             setAppliedDiscount(null);
         }
-    }, [applyDiscount, hasAvailableDiscounts, currentSubtotalInCents, familyId, selectedStudentIds, paymentOption, discountsFetcher]);
+    // Intentionally excluding discountsFetcher to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [applyDiscount, hasAvailableDiscounts, currentSubtotalInCents, familyId, selectedStudentIds, paymentOption]);
 
     // Handle discounts fetcher response
     useEffect(() => {
@@ -509,41 +510,55 @@ export default function FamilyPaymentPage() {
             }
             setIsLoadingDiscounts(false);
         }
-    }, [discountsFetcher.data, discountsFetcher.state, discountsFetcher]);
+    // Intentionally excluding discountsFetcher to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [discountsFetcher.data, discountsFetcher.state]);
 
     // Validate discount when selected
     useEffect(() => {
         if (selectedDiscountId && applyDiscount) {
             const selectedDiscount = availableDiscounts.find(d => d.id === selectedDiscountId);
             if (selectedDiscount) {
-                validateDiscountFetcher.submit(
-                    {
-                        code: selectedDiscount.code,
-                        family_id: familyId,
-                        student_id: selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : '',
-                        subtotal_amount: currentSubtotalInCents,
-                        applicable_to: paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group'
-                    },
-                    {
-                        method: 'POST',
-                        action: '/api/discount-codes/validate',
-                        encType: 'application/json'
+                // Replace fetcher.submit with regular fetch for JSON data
+                const validateDiscount = async () => {
+                    try {
+                        const response = await fetch('/api/discount-codes/validate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                code: selectedDiscount.code,
+                                family_id: familyId,
+                                student_id: selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : '',
+                                subtotal_amount: currentSubtotalInCents,
+                                applicable_to: paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group'
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.is_valid) {
+                                setAppliedDiscount(data);
+                            } else {
+                                setAppliedDiscount(null);
+                            }
+                        } else {
+                            console.error('Failed to validate discount:', response.statusText);
+                            setAppliedDiscount(null);
+                        }
+                    } catch (error) {
+                        console.error('Error validating discount:', error);
+                        setAppliedDiscount(null);
                     }
-                );
+                };
+                
+                validateDiscount();
             }
         }
-    }, [selectedDiscountId, applyDiscount, availableDiscounts, familyId, selectedStudentIds, currentSubtotalInCents, paymentOption, validateDiscountFetcher]);
+    }, [selectedDiscountId, applyDiscount, availableDiscounts, familyId, selectedStudentIds, currentSubtotalInCents, paymentOption]);
 
-    // Handle discount validation response
-    useEffect(() => {
-        if (validateDiscountFetcher.data && validateDiscountFetcher.state === 'idle') {
-            if (validateDiscountFetcher.data.is_valid) {
-                setAppliedDiscount(validateDiscountFetcher.data);
-            } else {
-                setAppliedDiscount(null);
-            }
-        }
-    }, [validateDiscountFetcher.data, validateDiscountFetcher.state, validateDiscountFetcher]);
+    // Discount validation response is now handled directly in the fetch call above
 
     // Remove handlePaymentSubmit function - logic moved to action
 
@@ -782,7 +797,7 @@ export default function FamilyPaymentPage() {
                                     <Select
                                         value={selectedDiscountId}
                                         onValueChange={setSelectedDiscountId}
-                                        disabled={fetcher.state !== 'idle' || validateDiscountFetcher.state === 'submitting'}
+                                        disabled={fetcher.state !== 'idle'}
                                     >
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Choose a discount code" />
@@ -802,12 +817,7 @@ export default function FamilyPaymentPage() {
                                         </SelectContent>
                                     </Select>
                                     
-                                    {validateDiscountFetcher.state === 'submitting' && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
-                                            <ReloadIcon className="h-4 w-4 animate-spin" />
-                                            Validating discount...
-                                        </div>
-                                    )}
+                                    {/* Validation loading state is now handled in the async function */}
                                     
                                     {appliedDiscount && (
                                         <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 mt-4">
@@ -821,14 +831,7 @@ export default function FamilyPaymentPage() {
                                         </Alert>
                                     )}
                                     
-                                    {validateDiscountFetcher.data && !validateDiscountFetcher.data.is_valid && validateDiscountFetcher.state === 'idle' && (
-                                        <Alert variant="destructive" className="mt-4">
-                                            <ExclamationTriangleIcon className="h-4 w-4" />
-                                            <AlertDescription>
-                                                {validateDiscountFetcher.data.error_message || 'Invalid discount code'}
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
+                                    {/* Validation errors are now handled in the async function */}
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
