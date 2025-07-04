@@ -81,6 +81,14 @@ export const siteConfig = {
         { value: "NU", label: "Nunavut" },
         { value: "YT", label: "Yukon" },
     ],
+    // AI Models configuration
+    ai: {
+        models: {
+            primary: "gemini-2.5-pro",
+            backup: "gemini-1.5-pro",
+            summary: "gemini-2.0-flash"
+        }
+    },
     // Add other site-wide config as needed
 };
 
