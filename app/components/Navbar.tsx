@@ -188,9 +188,16 @@ export default function Navbar({ user, isAdmin }: { user?: Session['user'] | nul
                                             {/* Mobile Auth Links */}
                                             {user ? (
                                                 <>
-                                                    <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
-                                                        Family Portal
-                                                    </MobileNavLink>
+                                                    {isAdmin ? (
+                                                        <MobileNavLink to="/admin" onClick={() => setIsOpen(false)}>
+                                                            Admin Portal
+                                                        </MobileNavLink>
+                                                        ) : (
+                                                        <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
+                                                            Family Portal
+                                                        </MobileNavLink>
+                                                    )}
+                                                    
                                                     {/* Add Messages link for mobile */}
                                                     <MobileNavLink to="/family/messages"
                                                                    onClick={() => setIsOpen(false)}>
