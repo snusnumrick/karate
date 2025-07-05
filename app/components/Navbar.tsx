@@ -121,7 +121,7 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                                             ) : (
                                             <NavLink to="/family">Family Portal</NavLink>
                                         )}
-                                        //<NavLink to="/family">Family Portal</NavLink>
+                                        {/*<NavLink to="/family">Family Portal</NavLink>*/}
                                         {/* Removed Messages link from here as it's now in main nav */}
                                         <Form action="/logout" method="post">
                                             <Button
