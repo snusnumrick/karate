@@ -8,7 +8,8 @@ import {LogOut, Menu, MessageSquare, Sun, X} from "lucide-react"; // Import LogO
 import type { Session } from "@supabase/auth-helpers-remix";
 import {ClientOnly} from './client-only'; // Import ClientOnly
 
-export default function Navbar({ user }: { user?: Session['user'] | null }) {
+//OLD---export default function Navbar({ user }: { user?: Session['user'] | null }) {
+export default function Navbar({ user, isAdmin }: { user?: Session['user'] | null, isAdmin?: boolean }) {
     const [isOpen, setIsOpen] = React.useState(false);
 
     return (
@@ -110,11 +111,17 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
 
                             {/* Desktop Auth Buttons - Hidden below lg */}
                             {/* Wrap user-specific section in ClientOnly */}
-                            <ClientOnly fallback={<div
+                            
+                           <ClientOnly fallback={<div
                                 className="hidden lg:block h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
                                 {() => user ? (
                                     <div className="hidden lg:flex items-center space-x-4">
-                                        <NavLink to="/family">Family Portal</NavLink>
+                                        {isAdmin ? (
+                                            <NavLink to="/admin">Admin Portal</NavLink>
+                                            ) : (
+                                            <NavLink to="/family">Family Portal</NavLink>
+                                        )}
+                            
                                         {/* Removed Messages link from here as it's now in main nav */}
                                         <Form action="/logout" method="post">
                                             <Button
@@ -181,9 +188,16 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                                             {/* Mobile Auth Links */}
                                             {user ? (
                                                 <>
-                                                    <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
-                                                        Family Portal
-                                                    </MobileNavLink>
+                                                    {isAdmin ? (
+                                                        <MobileNavLink to="/admin" onClick={() => setIsOpen(false)}>
+                                                            Admin Portal
+                                                        </MobileNavLink>
+                                                        ) : (
+                                                        <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
+                                                            Family Portal
+                                                        </MobileNavLink>
+                                                    )}
+                                                    
                                                     {/* Add Messages link for mobile */}
                                                     <MobileNavLink to="/family/messages"
                                                                    onClick={() => setIsOpen(false)}>

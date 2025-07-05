@@ -6,20 +6,26 @@ import Navbar from "~/components/Navbar";
 import Footer from "~/components/Footer";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import type { Database } from "~/types/database.types"; // Import Database type
+import { isUserAdmin } from "~/utils/supabase.server";
 
-// Loader to get the session state AND environment variables for the client
 export async function loader({ request }: LoaderFunctionArgs) {
-    // IMPORTANT: This ENV object should only contain variables safe for the client
     const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
     const { data: { session } } = await supabaseServer.auth.getSession();
+    
+    // Check if user is admin
+    let isAdmin = false;
+    if (session?.user) {
+        isAdmin = await isUserAdmin(session.user.id);
+    }
 
-    // Return session, ENV, and headers (important for setting/clearing cookies)
-    return json({ session, ENV }, { headers });
+    // Return session, ENV, isAdmin, and headers
+    return json({ session, ENV, isAdmin }, { headers });
 }
 
 
 export default function Layout() {
-    const { session: serverSession, ENV } = useLoaderData<typeof loader>();
+    //const { session: serverSession, ENV } = useLoaderData<typeof loader>();
+    const { session: serverSession, ENV, isAdmin } = useLoaderData<typeof loader>();
     const revalidator = useRevalidator();
     const location = useLocation();
     const isReceiptPage = location.pathname.startsWith('/family/receipt/');
@@ -74,8 +80,9 @@ export default function Layout() {
         <div className="flex flex-col min-h-screen text-gray-900 dark:text-white">
             {/* Conditionally add print:hidden class to the Navbar */}
             <div className={isReceiptPage ? 'print:hidden' : ''}>
-                <Navbar user={user}/>
+                <Navbar user={user} isAdmin={isAdmin}/>
             </div>
+                
             <main className="flex-grow pt-16 pb-16">
                 <Outlet/>
             </main>
