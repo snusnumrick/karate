@@ -79,8 +79,6 @@ export default function Layout() {
     return (
         <div className="flex flex-col min-h-screen text-gray-900 dark:text-white">
             {/* Conditionally add print:hidden class to the Navbar */}
-            
-            <div className="flex flex-col min-h-screen text-gray-900 dark:text-white">
             <div className={isReceiptPage ? 'print:hidden' : ''}>
                 <Navbar user={user} isAdmin={isAdmin}/>
             </div>
