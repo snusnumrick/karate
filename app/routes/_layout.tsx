@@ -8,17 +8,6 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import type { Database } from "~/types/database.types"; // Import Database type
 import { isUserAdmin } from "~/utils/supabase.server";
 
-{/*// OLD-----Loader to get the session state AND environment variables for the client
-export async function loader({ request }: LoaderFunctionArgs) {
-    // IMPORTANT: This ENV object should only contain variables safe for the client
-    const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
-    const { data: { session } } = await supabaseServer.auth.getSession();
-
-    // Return session, ENV, and headers (important for setting/clearing cookies)
-    return json({ session, ENV }, { headers });
-}
-*/}
-
 export async function loader({ request }: LoaderFunctionArgs) {
     const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
     const { data: { session } } = await supabaseServer.auth.getSession();
@@ -90,12 +79,6 @@ export default function Layout() {
     return (
         <div className="flex flex-col min-h-screen text-gray-900 dark:text-white">
             {/* Conditionally add print:hidden class to the Navbar */}
-            
-            {/*OLD---
-            <div className={isReceiptPage ? 'print:hidden' : ''}>
-                <Navbar user={user}/>
-            </div>
-            */}
             
             <div className="flex flex-col min-h-screen text-gray-900 dark:text-white">
             <div className={isReceiptPage ? 'print:hidden' : ''}>
