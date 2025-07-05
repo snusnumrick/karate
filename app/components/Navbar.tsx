@@ -11,7 +11,10 @@ import {ClientOnly} from './client-only'; // Import ClientOnly
 export default function Navbar({ user }: { user?: Session['user'] | null }) {
     const [isOpen, setIsOpen] = React.useState(false);
     const isAdmin = user?.user_metadata?.role === 'admin' || user?.app_metadata?.role === 'admin';
-    console.log("Is this user admin?: ", isAdmin);
+    //console.log("Is this user admin?: ", isAdmin);
+    console.log('User object:', user);
+    console.log('User metadata:', user?.user_metadata);
+    console.log('App metadata:', user?.app_metadata);
 
     return (
         <TooltipProvider delayDuration={100}>
