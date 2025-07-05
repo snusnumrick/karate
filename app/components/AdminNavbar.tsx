@@ -85,9 +85,9 @@ export default function AdminNavbar() {
                                     className="h-full w-full hidden dark:block"
                                 />
                             </div>
-                            <Link to="/admin" className="flex-shrink-0 flex items-center">
+                            <Link to="/" className="flex-shrink-0 flex items-center">
                                 <span
-                                    className="text-green-600 dark:text-green-400 font-bold text-xl">ADMIN PANEL</span>
+                                    className="text-green-600 dark:text-green-400 font-bold text-xl">GREENEGIN KARATE</span>
                             </Link>
                         </div>
 
