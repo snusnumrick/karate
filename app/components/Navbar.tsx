@@ -116,7 +116,12 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                                 className="hidden lg:block h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
                                 {() => user ? (
                                     <div className="hidden lg:flex items-center space-x-4">
-                                        <NavLink to="/family">Family Portal</NavLink>
+                                        {isAdmin ? (
+                                            <NavLink to="/admin">Admin Portal</NavLink>
+                                            ) : (
+                                            <NavLink to="/family">Family Portal</NavLink>
+                                        )}
+                                        //<NavLink to="/family">Family Portal</NavLink>
                                         {/* Removed Messages link from here as it's now in main nav */}
                                         <Form action="/logout" method="post">
                                             <Button
