@@ -6,6 +6,7 @@ import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, 
 import { siteConfig } from "~/config/site"; // Import site config
 import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
 
+{/*
 // Loader to check if user is admin and redirect to admin dashboard
 export async function loader({ request }: LoaderFunctionArgs) {
     const { supabaseServer } = getSupabaseServerClient(request);
@@ -23,6 +24,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // For non-admin users or non-logged-in users, continue to show the home page
     return null;
 }
+*/}
 
 // Helper function to merge meta tags, giving precedence to child tags
 // (Same helper function as in about.tsx/contact.tsx - could be extracted to a util file)
