@@ -1,8 +1,28 @@
 // Import types needed for merging parent meta
-import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
+import type { MetaFunction, MetaArgs, MetaDescriptor, LoaderFunctionArgs } from "@remix-run/node";
 import { Link } from "@remix-run/react";
+import { redirect } from "@vercel/remix";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
+import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
+
+// Loader to check if user is admin and redirect to admin dashboard
+export async function loader({ request }: LoaderFunctionArgs) {
+    const { supabaseServer } = getSupabaseServerClient(request);
+    const { data: { user } } = await supabaseServer.auth.getUser();
+    
+    // If user is logged in, check if they're an admin
+    if (user) {
+        const isAdmin = await isUserAdmin(user.id);
+        if (isAdmin) {
+            // Redirect admin users to the admin dashboard
+            return redirect('/admin');
+        }
+    }
+    
+    // For non-admin users or non-logged-in users, continue to show the home page
+    return null;
+}
 
 // Helper function to merge meta tags, giving precedence to child tags
 // (Same helper function as in about.tsx/contact.tsx - could be extracted to a util file)
