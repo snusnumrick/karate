@@ -8,9 +8,9 @@ import {LogOut, Menu, MessageSquare, Sun, X} from "lucide-react"; // Import LogO
 import type { Session } from "@supabase/auth-helpers-remix";
 import {ClientOnly} from './client-only'; // Import ClientOnly
 
-export default function Navbar({ user }: { user?: Session['user'] | null }) {
+//OLD---export default function Navbar({ user }: { user?: Session['user'] | null }) {
+export default function Navbar({ user, isAdmin }: { user?: Session['user'] | null, isAdmin?: boolean }) {
     const [isOpen, setIsOpen] = React.useState(false);
-    //const isAdmin = user?.user_metadata?.role === 'admin' || user?.app_metadata?.role === 'admin';
 
     return (
         <TooltipProvider delayDuration={100}>
@@ -111,16 +111,17 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
 
                             {/* Desktop Auth Buttons - Hidden below lg */}
                             {/* Wrap user-specific section in ClientOnly */}
-                            <ClientOnly fallback={<div
+                            
+                           <ClientOnly fallback={<div
                                 className="hidden lg:block h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
                                 {() => user ? (
                                     <div className="hidden lg:flex items-center space-x-4">
-                                        {/*{isAdmin ? (
+                                        {isAdmin ? (
                                             <NavLink to="/admin">Admin Portal</NavLink>
                                             ) : (
                                             <NavLink to="/family">Family Portal</NavLink>
-                                        )}*/}
-                                        <NavLink to="/family">Family Portal</NavLink>
+                                        )}
+                            
                                         {/* Removed Messages link from here as it's now in main nav */}
                                         <Form action="/logout" method="post">
                                             <Button
