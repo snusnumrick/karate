@@ -100,7 +100,7 @@ export default function ClassesPage() {
                             Regular testing opportunities allow students to demonstrate their abilities and advance to
                             the next level.
                         </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4 mb-8">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-9 gap-4 mb-8">
                             <div className="bg-white dark:bg-gray-600 p-3 text-center border rounded-md">
                                 <div className="h-4 bg-white border border-gray-200 rounded mb-2"></div>
                                 <span className="text-sm">White</span>
@@ -128,6 +128,10 @@ export default function ClassesPage() {
                             <div className="bg-white dark:bg-gray-600 p-3 text-center border rounded-md">
                                 <div className="h-4 bg-red-600 rounded mb-2"></div>
                                 <span className="text-sm">Red</span>
+                            </div>
+                            <div className="bg-white dark:bg-gray-600 p-3 text-center border rounded-md">
+                                <div className="h-4 bg-yellow-800 rounded mb-2"></div>
+                                <span className="text-sm">Brown</span>
                             </div>
                             <div className="bg-white dark:bg-gray-600 p-3 text-center border rounded-md">
                                 <div className="h-4 bg-black rounded mb-2"></div>
