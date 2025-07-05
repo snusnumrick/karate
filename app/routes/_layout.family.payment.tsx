@@ -2,6 +2,8 @@ import { json, type ActionFunctionArgs, type LoaderFunctionArgs, redirect, Typed
 import { Link, useFetcher, useLoaderData, useNavigate, useRouteError, useSearchParams } from "@remix-run/react";
 import { useState, useEffect, useRef } from "react";
 import { checkStudentEligibility, createInitialPaymentRecord, type EligibilityStatus, getSupabaseServerClient } from "~/utils/supabase.server";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "~/types/database.types";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
@@ -11,7 +13,7 @@ import {Checkbox} from "~/components/ui/checkbox";
 import {formatDate} from "~/utils/misc";
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group";
 import {Label} from "~/components/ui/label";
-import {Database} from "~/types/database.types";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import type { AvailableDiscountCode, AvailableDiscountsResponse } from '~/routes/api.available-discounts.$familyId';
 import type { DiscountValidationResult } from "~/types/discount";
@@ -233,6 +235,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 type ActionResponse = {
     error?: string;
     fieldErrors?: { [key: string]: string };
+    zeroPayment?: boolean;
 };
 
 // Update return type: Action returns JSON data (success/error)
@@ -318,10 +321,56 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         // Apply discount to subtotal
         const finalSubtotalInCents = Math.max(0, subtotalAmountInCents - discountAmount);
 
-        // Explicitly cast type for comparison if needed, though the type should be correct
-        if (finalSubtotalInCents <= 0 && (type as string) !== 'other') { // Allow $0 for 'other' type if needed, otherwise check final subtotal
-            console.error("[Action] Calculated final subtotal is zero or negative. Returning error.");
-            return json({ error: "Calculated payment subtotal must be positive." }, { status: 400, headers: response.headers });
+        // Handle zero payment case - create a succeeded payment record directly
+        if (finalSubtotalInCents <= 0) {
+            console.log("[Action] Zero payment detected. Creating succeeded payment record directly.");
+            
+            // Create the initial payment record with zero amount
+            const { data: paymentRecord, error: createError } = await createInitialPaymentRecord(
+                familyId,
+                finalSubtotalInCents, // This will be 0
+                studentIds,
+                type,
+                null, // orderId
+                discountCodeId,
+                discountAmount
+            );
+
+            if (createError || !paymentRecord?.id) {
+                console.error("[Action] Error creating zero payment record:", createError);
+                return json({ error: `Failed to initialize payment: ${createError || 'Payment ID missing'}` }, { status: 500, headers: response.headers });
+            }
+
+            // Update the payment status to succeeded since no actual payment is needed
+            console.log(`[Action] Attempting to update payment ${paymentRecord.id} to succeeded status`);
+            
+            // Use the same client pattern as createInitialPaymentRecord for consistency
+            const supabaseUrl = process.env.SUPABASE_URL;
+            const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+            if (!supabaseUrl || !supabaseServiceKey) {
+                console.error("[Action] Missing Supabase environment variables for payment update");
+                return json({ error: "Failed to complete zero payment: Missing configuration" }, { status: 500, headers: response.headers });
+            }
+            const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+            
+            const { data: updateData, error: updateError } = await supabaseAdmin
+                .from('payments')
+                .update({
+                    status: 'succeeded',
+                    payment_date: new Date().toISOString().split('T')[0], // Convert to YYYY-MM-DD format for date field
+                    payment_method: 'discount_100_percent'
+                })
+                .eq('id', paymentRecord.id)
+                .select('id, status, payment_method, payment_date');
+
+            if (updateError) {
+                console.error("[Action] Error updating zero payment to succeeded:", updateError);
+                return json({ error: `Failed to complete zero payment: ${updateError.message}` }, { status: 500, headers: response.headers });
+            }
+
+            console.log(`[Action] Zero payment update result:`, updateData);
+            console.log(`[Action] Zero payment completed successfully (ID: ${paymentRecord.id}).`);
+            return json({ success: true, paymentId: paymentRecord.id, zeroPayment: true }, { headers: response.headers });
         }
 
         // Create the initial payment record
@@ -383,6 +432,7 @@ export default function FamilyPaymentPage() {
     const [selectedDiscountId, setSelectedDiscountId] = useState<string>('');
     const [availableDiscounts, setAvailableDiscounts] = useState<AvailableDiscountCode[]>([]);
     const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
+    const [showPaymentForm, setShowPaymentForm] = useState(true);
     
     const discountsFetcher = useFetcher<AvailableDiscountsResponse>();
 
@@ -441,7 +491,7 @@ export default function FamilyPaymentPage() {
     // --- End Dynamic Calculation ---
 
 
-    // Remove Stripe loading and redirection useEffect hooks
+    // Navigation is handled by the effect below at line 620
 
     // --- Event Handlers ---
     const handleCheckboxChange = (studentId: string, checked: boolean | 'indeterminate') => {
@@ -564,26 +614,40 @@ export default function FamilyPaymentPage() {
 
     // --- End Event Handlers ---
 
+    // --- Effect for Form Visibility Control ---
+    useEffect(() => {
+
+        if (fetcher.state === 'submitting') {
+            setShowPaymentForm(false);
+        } else if (fetcher.state === 'idle') {
+            if (fetcher.data?.error) {
+                // Show form again if there's an error
+                setShowPaymentForm(true);
+            } else if (!fetcher.data?.success) {
+                // Show form if idle and no success (initial state)
+                setShowPaymentForm(true);
+            }
+            // If success but still on this page after a delay, show form again
+            else if (fetcher.data?.success) {
+                setTimeout(() => {
+                    setShowPaymentForm(true);
+                }, 2000); // Wait 2 seconds for navigation
+            }
+        }
+    }, [fetcher.state, fetcher.data?.error, fetcher.data?.success, showPaymentForm]);
+
     // --- Effect for Client-Side Navigation (using fetcher data) ---
     useEffect(() => {
-        // console.log("[Effect] Running navigation effect. fetcher.data:", fetcher.data); // Log effect run and fetcher data
         // Check for both success flag and paymentId before navigating
         if (fetcher.data?.success && fetcher.data?.paymentId) {
-            // console.log(`[Effect] Condition met: Fetcher successful. Navigating to /pay/${fetcher.data.paymentId}`);
-            navigate(`/pay/${fetcher.data.paymentId}`);
-        } else if (fetcher.data) {
-            // Log if fetcher.data exists but doesn't meet the success condition
-            console.log("[Effect] Condition NOT met: fetcher.data present but success/paymentId missing.", fetcher.data);
-            if (fetcher.data.error) {
-                 console.error("[Effect] Fetcher returned error:", fetcher.data.error);
+            // For zero payments, go directly to family portal; otherwise go to payment page
+            if (fetcher.data?.zeroPayment) {
+                navigate(`/family`);
+            } else {
+                navigate(`/pay/${fetcher.data.paymentId}`);
             }
-        } else {
-             // Only log if state is idle, otherwise it might just be loading
-             if (fetcher.state === 'idle') {
-                console.log("[Effect] Condition NOT met: fetcher.data is null/undefined and state is idle.");
-             }
         }
-    }, [fetcher.data, fetcher.state, navigate]); // Add fetcher.state to dependencies
+    }, [fetcher.data, fetcher.state, navigate]);
     // --- End Effect ---
 
 
@@ -647,8 +711,11 @@ export default function FamilyPaymentPage() {
                 </Alert>
             )}
 
-            {/* Restore Payment Option Selection */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+            {/* Payment Form - conditionally rendered */}
+            {showPaymentForm ? (
+                <>
+                    {/* Restore Payment Option Selection */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
                 <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">Choose Payment Option</h2>
                 {/* Use value prop for controlled component, remove defaultValue */}
                 <RadioGroup value={paymentOption}
@@ -869,8 +936,8 @@ export default function FamilyPaymentPage() {
                     {/* Tax line removed - will be calculated by Stripe */}
                     <div className="flex justify-between items-center font-bold text-lg mt-2">
                         <span>Total Due:</span>
-                        {/* Display discounted total + Tax indicator */}
-                        <span>{currentTotalDisplay} + Tax</span>
+                        {/* Display discounted total + Tax indicator, or just total for zero payments */}
+                        <span>{currentTotalInCents <= 0 ? currentTotalDisplay : `${currentTotalDisplay} + Tax`}</span>
                     </div>
                 </div>
 
@@ -921,24 +988,38 @@ export default function FamilyPaymentPage() {
                     type="submit" // Change type to submit
                     form="payment-setup-form" // Associate with the form's new ID
                     className="w-full"
-                    // Disable based on fetcher state and validation logic
+                    // Disable based on fetcher state and validation logic (removed zero payment check)
                     disabled={
                         fetcher.state !== 'idle' || // Disable if fetcher is not idle
-                        currentTotalInCents <= 0 || // Check final total (after discount) instead of subtotal
                         ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
                         (paymentOption === 'individual' && oneOnOneQuantity <= 0)
                     }
                 >
-                    {/* Display calculated total on button */}
-                    {fetcher.state !== 'idle' ? "Setting up payment..." : `Proceed to Pay ${currentTotalDisplay}`}
+                    {/* Display calculated total on button or "Proceed" for zero payments */}
+                    {fetcher.state !== 'idle' 
+                        ? "Setting up payment..." 
+                        : currentTotalInCents <= 0 
+                            ? "Proceed" 
+                            : `Proceed to Pay ${currentTotalDisplay}`
+                    }
                 </Button>
             </div>
 
-            <div className="mt-4 text-center">
-                <Link to="/family" className="text-sm text-blue-600 hover:underline dark:text-blue-400"> {/* Link to family portal */}
-                    Cancel and return to Family Portal
-                </Link>
-            </div>
+                    <div className="mt-4 text-center">
+                        <Link to="/family" className="text-sm text-blue-600 hover:underline dark:text-blue-400"> {/* Link to family portal */}
+                            Cancel and return to Family Portal
+                        </Link>
+                    </div>
+                </>
+            ) : (
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow text-center">
+                    <div className="flex items-center justify-center mb-4">
+                        <ReloadIcon className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h2 className="text-xl font-semibold mb-2">Processing Payment...</h2>
+                    <p className="text-gray-600 dark:text-gray-400">Please wait while we set up your payment.</p>
+                </div>
+            )}
         </div>
     );
 }

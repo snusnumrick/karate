@@ -183,28 +183,6 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
             } else if (sessionData) {
                 quantity = sessionData.quantity_purchased;
                 console.log(`[Payment Success Loader] Fetched quantity ${quantity} for individual session payment ${payment.id}`);
-            }
-        }
-
-        // Fetch quantity for individual sessions if applicable (and payment was found)
-        if (payment && payment.type === 'individual_session') {
-            const { data: sessionData, error: sessionError } = await supabaseServer
-                .from('one_on_one_sessions')
-                .select('quantity_purchased')
-                .eq('payment_id', payment.id) // Link via the Supabase payment ID
-                .maybeSingle();
-
-            if (sessionError) {
-                // Log the DETAILED error message to the server console for debugging
-                console.error(`[Payment Success Loader] DETAILED Error fetching session quantity for payment ${payment.id}: Code=${sessionError.code}, Message=${sessionError.message}, Details=${sessionError.details}, Hint=${sessionError.hint}`);
-                // Return a generic error instead of just logging
-                // Use a generic message for the user, keep details in server logs
-                error = "Error retrieving payment details. Please check your payment history later or contact support."; // Changed message slightly for clarity
-                // Return immediately with the error
-                return json({ error }, { status: 500, headers: response.headers });
-            } else if (sessionData) {
-                quantity = sessionData.quantity_purchased;
-                console.log(`[Payment Success Loader] Fetched quantity ${quantity} for individual session payment ${payment.id}`);
             } else {
                 // Log if no session record found for an individual session payment
                  console.warn(`[Payment Success Loader] No one_on_one_sessions record found for individual session payment ID ${payment.id}. Quantity will be null.`);
