@@ -35,6 +35,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
+  console.log(intent);
 
   try {
     switch (intent) {

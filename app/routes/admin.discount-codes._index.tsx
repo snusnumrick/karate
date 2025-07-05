@@ -1,6 +1,6 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from '@remix-run/node';
 import { useLoaderData, Link, Form } from '@remix-run/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { DiscountService } from '~/services/discount.server';
 import type { DiscountCodeWithUsage } from '~/types/discount';
@@ -72,7 +72,15 @@ export async function action({ request }: ActionFunctionArgs) {
   const intent = formData.get('intent') as string;
   const id = formData.get('id') as string;
 
+  // Debug logging
+  // console.log('Form data received:', {
+  //   intent,
+  //   id,
+  //   allFormData: Object.fromEntries(formData.entries())
+  // });
+
   if (!id) {
+    console.log('Missing discount code ID - form data:', Object.fromEntries(formData.entries()));
     throw new Response('Missing discount code ID', { status: 400 });
   }
 
@@ -128,6 +136,13 @@ export default function AdminDiscountCodes() {
   const closeDialog = () => {
     setDialogState({ isOpen: false, action: null, codeId: null, codeName: null });
   };
+
+  // Close dialog after successful form submission (page reload)
+  useEffect(() => {
+    if (dialogState.isOpen) {
+      closeDialog();
+    }
+  }, [dialogState.isOpen, discountCodes]); // Reset dialog when data changes (after redirect)
 
   const getDialogContent = () => {
     switch (dialogState.action) {
@@ -200,7 +215,7 @@ export default function AdminDiscountCodes() {
                     <th className="text-left p-4 font-semibold text-foreground">Usage</th>
                     <th className="text-left p-4 font-semibold text-foreground">Status</th>
                     <th className="text-left p-4 font-semibold text-foreground">Valid Until</th>
-                    <th className="text-left p-4 font-semibold text-foreground">Actions</th>
+                    <th className="text-left p-4 font-semibold text-foreground min-w-[200px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,7 +305,7 @@ export default function AdminDiscountCodes() {
                           {code.valid_until ? formatDate(code.valid_until) : 'No expiry'}
                         </td>
                         <td className="p-4">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <Button
                               variant="outline"
                               size="sm"
@@ -304,7 +319,7 @@ export default function AdminDiscountCodes() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-yellow-600 hover:text-yellow-700"
+                                className="text-yellow-600 hover:text-yellow-700 whitespace-nowrap"
                                 onClick={() => openDialog('deactivate', code.id, code.name)}
                               >
                                 Deactivate
@@ -314,7 +329,7 @@ export default function AdminDiscountCodes() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-green-600 hover:text-green-700"
+                                  className="text-green-600 hover:text-green-700 whitespace-nowrap"
                                   onClick={() => openDialog('activate', code.id, code.name)}
                                 >
                                   Activate
@@ -322,6 +337,7 @@ export default function AdminDiscountCodes() {
                                 <Button
                                   variant="destructive"
                                   size="sm"
+                                  className="whitespace-nowrap"
                                   onClick={() => openDialog('delete', code.id, code.name)}
                                 >
                                   Delete
@@ -347,7 +363,7 @@ export default function AdminDiscountCodes() {
       </section>
 
       {/* Confirmation Dialog */}
-      <AlertDialog open={dialogState.isOpen} onOpenChange={closeDialog}>
+      <AlertDialog open={dialogState.isOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{getDialogContent().title}</AlertDialogTitle>
@@ -357,12 +373,19 @@ export default function AdminDiscountCodes() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={closeDialog}>Cancel</AlertDialogCancel>
-            <Form method="post" className="inline">
+            <Form 
+              method="post" 
+              className="inline"
+              onSubmit={() => {
+                // console.log('Form submitting with dialog state:', dialogState);
+                // console.log('Intent value:', dialogState.action);
+                // console.log('ID value:', dialogState.codeId);
+              }}
+            >
               <input type="hidden" name="intent" value={dialogState.action || ''} />
               <input type="hidden" name="id" value={dialogState.codeId || ''} />
               <AlertDialogAction
                 type="submit"
-                onClick={closeDialog}
                 className={getDialogContent().actionVariant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
               >
                 {getDialogContent().actionText}
