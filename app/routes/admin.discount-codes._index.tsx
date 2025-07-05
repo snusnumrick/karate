@@ -1,6 +1,6 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from '@remix-run/node';
-import { useLoaderData, Link, Form } from '@remix-run/react';
-import { useState, useEffect } from 'react';
+import { useLoaderData, Link, useFetcher } from '@remix-run/react';
+import { useState } from 'react';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { DiscountService } from '~/services/discount.server';
 import type { DiscountCodeWithUsage } from '~/types/discount';
@@ -22,7 +22,7 @@ import { formatCurrency, formatDate } from '~/utils/misc';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { supabaseServer } = getSupabaseServerClient(request);
-  
+
   // Check if user is admin
   const { data: { user } } = await supabaseServer.auth.getUser();
   if (!user) {
@@ -31,10 +31,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   // Check admin status
   const { data: profile } = await supabaseServer
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
   if (profile?.role !== 'admin') {
     throw new Response('Forbidden', { status: 403 });
@@ -50,7 +50,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   const { supabaseServer } = getSupabaseServerClient(request);
-  
+
   // Check if user is admin
   const { data: { user } } = await supabaseServer.auth.getUser();
   if (!user) {
@@ -59,10 +59,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // Check admin status
   const { data: profile } = await supabaseServer
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
   if (profile?.role !== 'admin') {
     throw new Response('Forbidden', { status: 403 });
@@ -92,18 +92,9 @@ export async function action({ request }: ActionFunctionArgs) {
       case 'activate':
         await DiscountService.activateDiscountCode(id);
         break;
-      case 'delete': {
-        // For delete, we'll use the supabase client directly since there's no delete method in DiscountService
-        const { error } = await supabaseServer
-          .from('discount_codes')
-          .delete()
-          .eq('id', id);
-        
-        if (error) {
-          throw new Error(`Failed to delete discount code: ${error.message}`);
-        }
+      case 'delete':
+        await DiscountService.deleteDiscountCode(id);
         break;
-      }
       default:
         throw new Response('Invalid intent', { status: 400 });
     }
@@ -137,12 +128,92 @@ export default function AdminDiscountCodes() {
     setDialogState({ isOpen: false, action: null, codeId: null, codeName: null });
   };
 
-  // Close dialog after successful form submission (page reload)
-  useEffect(() => {
-    if (dialogState.isOpen) {
-      closeDialog();
-    }
-  }, [dialogState.isOpen, discountCodes]); // Reset dialog when data changes (after redirect)
+  // Action button components using fetcher.Form
+  function DeactivateButton({ codeId, codeName }: { codeId: string, codeName: string }) {
+    const fetcher = useFetcher();
+    const isDeactivating = fetcher.state !== 'idle';
+
+    const handleDeactivate = (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!window.confirm(`Are you sure you want to deactivate "${codeName}"?`)) {
+        event.preventDefault();
+      }
+    };
+
+    return (
+        <fetcher.Form method="post">
+          <input type="hidden" name="intent" value="deactivate" />
+          <input type="hidden" name="id" value={codeId} />
+          <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              className="text-yellow-600 hover:text-yellow-700 whitespace-nowrap"
+              onClick={handleDeactivate}
+              disabled={isDeactivating}
+          >
+            {isDeactivating ? 'Deactivating...' : 'Deactivate'}
+          </Button>
+        </fetcher.Form>
+    );
+  }
+
+  function ActivateButton({ codeId, codeName }: { codeId: string, codeName: string }) {
+    const fetcher = useFetcher();
+    const isActivating = fetcher.state !== 'idle';
+
+    const handleActivate = (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!window.confirm(`Are you sure you want to activate "${codeName}"?`)) {
+        event.preventDefault();
+      }
+    };
+
+    return (
+        <fetcher.Form method="post">
+          <input type="hidden" name="intent" value="activate" />
+          <input type="hidden" name="id" value={codeId} />
+          <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              className="text-green-600 hover:text-green-700 whitespace-nowrap"
+              onClick={handleActivate}
+              disabled={isActivating}
+          >
+            {isActivating ? 'Activating...' : 'Activate'}
+          </Button>
+        </fetcher.Form>
+    );
+  }
+
+  function DeleteButton({ codeId, codeName }: { codeId: string, codeName: string }) {
+    const fetcher = useFetcher();
+    const isDeleting = fetcher.state !== 'idle';
+
+    const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!window.confirm(`Are you sure you want to delete "${codeName}"? This cannot be undone.`)) {
+        event.preventDefault();
+      }
+    };
+
+    return (
+        <fetcher.Form method="post">
+          <input type="hidden" name="intent" value="delete" />
+          <input type="hidden" name="id" value={codeId} />
+          <Button
+              type="submit"
+              variant="destructive"
+              size="sm"
+              className="whitespace-nowrap"
+              onClick={handleDelete}
+              disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </fetcher.Form>
+    );
+  }
+
+
 
   const getDialogContent = () => {
     switch (dialogState.action) {
@@ -180,32 +251,32 @@ export default function AdminDiscountCodes() {
 
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Discount Codes</h1>
-        <p className="text-muted-foreground">Manage discount codes for families and students.</p>
-      </div>
-      
-      <div className="flex justify-between items-center mb-6">
-        <div></div>
-        <Button asChild>
-           <Link to="/admin/discount-codes/new">
-             <Plus className="mr-2 h-4 w-4" />
-             Create New Code
-           </Link>
-         </Button>
-      </div>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Discount Codes</h1>
+          <p className="text-muted-foreground">Manage discount codes for families and students.</p>
+        </div>
 
-      {/* Discount Codes Section */}
-      <section>
-        <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Existing Discount Codes</h2>
-        <p className="text-sm text-muted-foreground mb-4">Manage and view all discount codes for your organization.</p>
-        
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
+        <div className="flex justify-between items-center mb-6">
+          <div></div>
+          <Button asChild>
+            <Link to="/admin/discount-codes/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Code
+            </Link>
+          </Button>
+        </div>
+
+        {/* Discount Codes Section */}
+        <section>
+          <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Existing Discount Codes</h2>
+          <p className="text-sm text-muted-foreground mb-4">Manage and view all discount codes for your organization.</p>
+
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
                   <tr className="border-b border-border bg-muted/50">
                     <th className="text-left p-4 font-semibold text-foreground">Code</th>
                     <th className="text-left p-4 font-semibold text-foreground">Name</th>
@@ -217,183 +288,203 @@ export default function AdminDiscountCodes() {
                     <th className="text-left p-4 font-semibold text-foreground">Valid Until</th>
                     <th className="text-left p-4 font-semibold text-foreground min-w-[200px]">Actions</th>
                   </tr>
-                </thead>
-                <tbody>
+                  </thead>
+                  <tbody>
                   {discountCodes.map((code) => {
                     const isExpired = code.valid_until && new Date() > new Date(code.valid_until);
                     const status = isExpired ? 'expired' : code.is_active ? 'active' : 'inactive';
-                    
+
                     return (
-                      <tr key={code.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                        <td className="p-4">
-                          <div className="text-sm font-mono font-medium">{code.code}</div>
-                        </td>
-                        <td className="p-4">
-                          <div className="text-sm font-medium">{code.name}</div>
-                          {code.description && (
-                            <div className="text-xs text-muted-foreground">{code.description}</div>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="text-sm font-medium">
-                            {code.discount_type === 'fixed_amount'
-                              ? formatCurrency(code.discount_value * 100)
-                              : `${code.discount_value}%`}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {Array.isArray(code.applicable_to) 
-                              ? code.applicable_to.map(type => type.replace('_', ' ')).join(', ')
-                              : code.applicable_to} • {code.scope.replace('_', ' ')}
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="text-sm">
-                            {code.scope === 'per_family' && code.families ? (
-                              <div>
-                                <div className="font-medium">{code.families.family_name}</div>
-                                <div className="text-xs text-muted-foreground">Family</div>
-                              </div>
-                            ) : code.scope === 'per_student' && code.students ? (
-                              <div>
-                                <div className="font-medium">{code.students.first_name} {code.students.last_name}</div>
-                                <div className="text-xs text-muted-foreground">Student</div>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-muted-foreground">No association</div>
+                        <tr key={code.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                          <td className="p-4">
+                            <div className="text-sm font-mono font-medium">{code.code}</div>
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm font-medium">{code.name}</div>
+                            {code.description && (
+                                <div className="text-xs text-muted-foreground">{code.description}</div>
                             )}
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="text-sm">
-                            {code.created_automatically ? (
-                              <div className="text-xs text-blue-600 dark:text-blue-400">Auto-generated</div>
-                            ) : code.creator ? (
-                              <div>
-                                <div className="font-medium">
-                                  {(() => {
-                                    const firstName = code.creator.first_name || '';
-                                    const lastName = code.creator.last_name || '';
-                                    const fullName = `${firstName} ${lastName}`.trim();
-                                    return fullName || code.creator.email;
-                                  })()}
-                                </div>
-                                {code.creator.first_name && code.creator.last_name && (
-                                  <div className="text-xs text-muted-foreground">{code.creator.email}</div>
-                                )}
-                                <div className="text-xs text-muted-foreground">Manual</div>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-muted-foreground">Unknown</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="text-sm">
-                            {code.current_uses}
-                            {code.max_uses ? ` / ${code.max_uses}` : ' / ∞'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">{code.usage_type.replace('_', ' ')}</div>
-                        </td>
-                        <td className="p-4">
-                          <Badge 
-                            variant={status === 'active' ? 'default' : status === 'expired' ? 'destructive' : 'secondary'}
-                          >
-                            {status === 'expired' ? 'Expired' : status === 'active' ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </td>
-                        <td className="p-4 text-sm">
-                          {code.valid_until ? formatDate(code.valid_until) : 'No expiry'}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-2 flex-wrap">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              asChild
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm font-medium">
+                              {code.discount_type === 'fixed_amount'
+                                  ? formatCurrency(code.discount_value * 100)
+                                  : `${code.discount_value}%`}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {Array.isArray(code.applicable_to)
+                                  ? code.applicable_to.map(type => type.replace('_', ' ')).join(', ')
+                                  : code.applicable_to} • {code.scope.replace('_', ' ')}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm">
+                              {code.scope === 'per_family' && code.families ? (
+                                  <div>
+                                    <div className="font-medium">{code.families.family_name}</div>
+                                    <div className="text-xs text-muted-foreground">Family</div>
+                                  </div>
+                              ) : code.scope === 'per_student' && code.students ? (
+                                  <div>
+                                    <div className="font-medium">{code.students.first_name} {code.students.last_name}</div>
+                                    <div className="text-xs text-muted-foreground">Student</div>
+                                  </div>
+                              ) : (
+                                  <div className="text-xs text-muted-foreground">No association</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm">
+                              {code.created_automatically ? (
+                                  <div className="text-xs text-blue-600 dark:text-blue-400">Auto-generated</div>
+                              ) : code.creator ? (
+                                  <div>
+                                    <div className="font-medium">
+                                      {(() => {
+                                        const firstName = code.creator.first_name || '';
+                                        const lastName = code.creator.last_name || '';
+                                        const fullName = `${firstName} ${lastName}`.trim();
+                                        return fullName || code.creator.email;
+                                      })()}
+                                    </div>
+                                    {code.creator.first_name && code.creator.last_name && (
+                                        <div className="text-xs text-muted-foreground">{code.creator.email}</div>
+                                    )}
+                                    <div className="text-xs text-muted-foreground">Manual</div>
+                                  </div>
+                              ) : (
+                                  <div className="text-xs text-muted-foreground">Unknown</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm">
+                              {code.current_uses}
+                              {code.max_uses ? ` / ${code.max_uses}` : ' / ∞'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{code.usage_type.replace('_', ' ')}</div>
+                          </td>
+                          <td className="p-4">
+                            <Badge
+                                variant={status === 'active' ? 'default' : status === 'expired' ? 'destructive' : 'secondary'}
                             >
-                              <Link to={`/admin/discount-codes/${code.id}/edit`}>
-                                Edit
-                              </Link>
-                            </Button>
-                            {code.is_active ? (
+                              {status === 'expired' ? 'Expired' : status === 'active' ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </td>
+                          <td className="p-4 text-sm">
+                            {code.valid_until ? formatDate(code.valid_until) : 'No expiry'}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex gap-2 flex-wrap">
                               <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-yellow-600 hover:text-yellow-700 whitespace-nowrap"
-                                onClick={() => openDialog('deactivate', code.id, code.name)}
-                              >
-                                Deactivate
-                              </Button>
-                            ) : (
-                              <>
-                                <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-green-600 hover:text-green-700 whitespace-nowrap"
-                                  onClick={() => openDialog('activate', code.id, code.name)}
-                                >
-                                  Activate
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="whitespace-nowrap"
-                                  onClick={() => openDialog('delete', code.id, code.name)}
-                                >
-                                  Delete
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                                  asChild
+                              >
+                                <Link to={`/admin/discount-codes/${code.id}/edit`}>
+                                  Edit
+                                </Link>
+                              </Button>
+                              {code.is_active ? (
+                                  <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-yellow-600 hover:text-yellow-700 whitespace-nowrap"
+                                      onClick={() => openDialog('deactivate', code.id, code.name)}
+                                  >
+                                    Deactivate
+                                  </Button>
+                              ) : (
+                                  <>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-green-600 hover:text-green-700 whitespace-nowrap"
+                                        onClick={() => openDialog('activate', code.id, code.name)}
+                                    >
+                                      Activate
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="whitespace-nowrap"
+                                        onClick={() => openDialog('delete', code.id, code.name)}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-            {discountCodes.length === 0 && (
-              <div className="p-8 text-center text-muted-foreground">
-                <p>No discount codes found.</p>
-                <p className="text-sm mt-1">Create your first discount code to get started.</p>
+                  </tbody>
+                </table>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
+              {discountCodes.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>No discount codes found.</p>
+                    <p className="text-sm mt-1">Create your first discount code to get started.</p>
+                  </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
 
-      {/* Confirmation Dialog */}
-      <AlertDialog open={dialogState.isOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{getDialogContent().title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {getDialogContent().description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDialog}>Cancel</AlertDialogCancel>
-            <Form 
-              method="post" 
-              className="inline"
-              onSubmit={() => {
-                // console.log('Form submitting with dialog state:', dialogState);
-                // console.log('Intent value:', dialogState.action);
-                // console.log('ID value:', dialogState.codeId);
-              }}
-            >
-              <input type="hidden" name="intent" value={dialogState.action || ''} />
-              <input type="hidden" name="id" value={dialogState.codeId || ''} />
+        {/* Confirmation Dialog */}
+        <AlertDialog open={dialogState.isOpen} onOpenChange={(open) => !open && closeDialog()}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{getDialogContent().title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {getDialogContent().description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={closeDialog}>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                type="submit"
-                className={getDialogContent().actionVariant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                  onClick={async () => {
+                    console.log('Delete button clicked, dialog state:', dialogState);
+                    if (dialogState.action && dialogState.codeId) {
+                      try {
+                        console.log('Submitting form with:', { intent: dialogState.action, id: dialogState.codeId });
+                        const formData = new FormData();
+                        formData.append('intent', dialogState.action);
+                        formData.append('id', dialogState.codeId);
+
+                        const response = await fetch('/admin/discount-codes?index', {
+                          method: 'POST',
+                          body: formData
+                        });
+
+                        console.log('Response status:', response.status);
+
+                        if (response.ok) {
+                          console.log('Action successful, reloading page');
+                          closeDialog();
+                          window.location.reload();
+                        } else {
+                          const errorText = await response.text();
+                          console.error('Server error:', response.status, errorText);
+                          alert(`Error: ${response.status} - ${errorText}`);
+                        }
+                      } catch (error) {
+                        console.error('Network error:', error);
+                        alert('Network error occurred. Please try again.');
+                      }
+                    } else {
+                      console.error('Missing dialog state:', dialogState);
+                    }
+                  }}
+                  className={getDialogContent().actionVariant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
               >
                 {getDialogContent().actionText}
               </AlertDialogAction>
-            </Form>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
   );
 }
