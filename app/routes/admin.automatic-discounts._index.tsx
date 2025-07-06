@@ -1,12 +1,23 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link } from "@remix-run/react";
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
+import { useLoaderData, Link, useNavigation, useSubmit } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { Plus, Edit, Trash2, Zap, Calendar, Target } from "lucide-react";
 import { AutoDiscountService } from "~/services/auto-discount.server";
 import { requireAdminUser } from "~/utils/auth.server";
 import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
 // Type definitions for assignment data with joins
 type AssignmentWithJoins = {
   id: string;
@@ -35,8 +46,32 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
+export async function action({ request }: ActionFunctionArgs) {
+  await requireAdminUser(request);
+  
+  const formData = await request.formData();
+  const intent = formData.get('intent');
+  const ruleId = formData.get('ruleId');
+  
+  if (intent === 'delete' && ruleId) {
+    try {
+      await AutoDiscountService.deleteAutomationRule(ruleId.toString());
+      return redirect('/admin/automatic-discounts');
+    } catch (error) {
+      console.error('Error deleting automation rule:', error);
+      throw new Response('Failed to delete automation rule', { status: 500 });
+    }
+  }
+  
+  return json({ success: false });
+}
+
 export default function AutomaticDiscountsIndex() {
   const { automationRules, assignments } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const isSubmitting = navigation.state === 'submitting';
 
   return (
     <div className="space-y-6">
@@ -172,7 +207,13 @@ export default function AutomaticDiscountsIndex() {
                         <Edit className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => setDeleteConfirmId(rule.id)}
+                      disabled={isSubmitting}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -243,6 +284,41 @@ export default function AutomaticDiscountsIndex() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the automation rule
+              {deleteConfirmId && (
+                <span className="font-semibold">
+                  {' '}{automationRules.find(rule => rule.id === deleteConfirmId)?.name}
+                </span>
+              )}
+              {' '}and remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteConfirmId) {
+                  const formData = new FormData();
+                  formData.append('intent', 'delete');
+                  formData.append('ruleId', deleteConfirmId);
+                  submit(formData, { method: 'post', replace: true });
+                }
+              }}
+              disabled={isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete Rule'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
