@@ -2,9 +2,11 @@ import { json, type LoaderFunctionArgs } from "@vercel/remix";
 import { Outlet, useLoaderData, useLocation, useRevalidator } from "@remix-run/react"; // Import useLoaderData, useRevalidator
 import * as React from "react";
 import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix"; // Import client helper
-import Navbar from "~/components/Navbar";
+import PublicNavbar from "~/components/PublicNavbar";
+import FamilyNavbar from "~/components/FamilyNavbar";
+import AdminNavbar from "~/components/AdminNavbar";
 import Footer from "~/components/Footer";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
 import type { Database } from "~/types/database.types"; // Import Database type
 
 // Loader to get the session state AND environment variables for the client
@@ -13,16 +15,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
     const { data: { session } } = await supabaseServer.auth.getSession();
 
-    // Return session, ENV, and headers (important for setting/clearing cookies)
-    return json({ session, ENV }, { headers });
+    // Check if user is admin if they're logged in
+    let isAdmin = false;
+    if (session?.user) {
+        isAdmin = await isUserAdmin(session.user.id);
+    }
+
+    // Return session, ENV, isAdmin status, and headers (important for setting/clearing cookies)
+    return json({ session, ENV, isAdmin }, { headers });
 }
 
 
 export default function Layout() {
-    const { session: serverSession, ENV } = useLoaderData<typeof loader>();
+    const { session: serverSession, ENV, isAdmin } = useLoaderData<typeof loader>();
     const revalidator = useRevalidator();
     const location = useLocation();
     const isReceiptPage = location.pathname.startsWith('/family/receipt/');
+    const isAdminRoute = location.pathname.startsWith('/admin');
+    const isFamilyRoute = location.pathname.startsWith('/family');
 
     // State to hold the client-side Supabase instance
     const [supabase, setSupabase] = React.useState<SupabaseClient<Database> | null>(null);
@@ -70,11 +80,23 @@ export default function Layout() {
 
     const user = serverSession?.user;
 
+    // Determine which navbar to render based on route and user status
+    const renderNavbar = () => {
+        if (isAdminRoute && user && isAdmin) {
+            return <AdminNavbar />;
+        } else if (isFamilyRoute && user && !isAdmin) {
+            return <FamilyNavbar />;
+        } else {
+            // Public navbar for home page, classes, about, etc.
+            return <PublicNavbar user={user} isAdmin={isAdmin} />;
+        }
+    };
+
     return (
         <div className="flex flex-col min-h-screen text-gray-900 dark:text-white">
             {/* Conditionally add print:hidden class to the Navbar */}
             <div className={isReceiptPage ? 'print:hidden' : ''}>
-                <Navbar user={user}/>
+                {renderNavbar()}
             </div>
             <main className="flex-grow pt-16 pb-16">
                 <Outlet/>
