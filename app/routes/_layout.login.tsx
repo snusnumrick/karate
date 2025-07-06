@@ -1,4 +1,4 @@
-import { Link, useActionData, useFetcher, useNavigation } from "@remix-run/react"; // Import useNavigation
+import { Link, useActionData, useFetcher, useNavigation, useSearchParams } from "@remix-run/react"; // Import useNavigation and useSearchParams
 import { ActionFunctionArgs, json, redirect, TypedResponse } from "@vercel/remix";
 import { AuthApiError } from "@supabase/supabase-js"; // Import AuthApiError
 import { Button } from "~/components/ui/button";
@@ -105,6 +105,8 @@ export default function LoginPage() {
     const fetcher = useFetcher<ResendActionData>(); // Use the imported type
     const navigation = useNavigation(); // Get navigation state
     const isSubmitting = navigation.state === 'submitting'; // Check if form is submitting
+    const [searchParams] = useSearchParams();
+    const successMessage = searchParams.get('message');
 
     // Define a type for the resend action data if needed, or use inline type
     // type ResendActionData = { success?: boolean; error?: string };
@@ -132,6 +134,16 @@ export default function LoginPage() {
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="bg-white dark:bg-gray-700 py-8 px-4 shadow sm:rounded-lg sm:px-10">
                         <form className="space-y-6" method="post">
+                            {/* Display success message from URL params */}
+                            {successMessage && (
+                                <Alert variant="default">
+                                    <AlertTitle className="dark:text-green-200">Success</AlertTitle>
+                                    <AlertDescription className="dark:text-green-300">
+                                        {successMessage}
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
                             {/* Display Login Errors */}
                             {actionData?.error && (
                                 <Alert variant="destructive">
@@ -203,10 +215,10 @@ export default function LoginPage() {
                                     </div>
 
                                     <div className="text-sm">
-                                        <a href="/forgot-password"
+                                        <Link to="/forgot-password"
                                            className="font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300">
                                             Forgot your password?
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
 
