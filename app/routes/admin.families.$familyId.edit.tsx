@@ -217,6 +217,7 @@ export default function EditFamilyPage() {
                                     className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.name}
                                     aria-describedby="name-error"
+                                    tabIndex={1}
                                 />
                                 {actionData?.fieldErrors?.name && (
                                     <p id="name-error" className="text-sm text-destructive">
@@ -237,6 +238,7 @@ export default function EditFamilyPage() {
                                     className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.email}
                                     aria-describedby="email-error"
+                                    tabIndex={2}
                                 />
                                 {actionData?.fieldErrors?.email && (
                                     <p id="email-error" className="text-sm text-destructive">
@@ -256,6 +258,7 @@ export default function EditFamilyPage() {
                                     className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.primary_phone}
                                     aria-describedby="primary_phone-error"
+                                    tabIndex={3}
                                 />
                                 {actionData?.fieldErrors?.primary_phone && (
                                     <p id="primary_phone-error" className="text-sm text-destructive">
@@ -275,6 +278,7 @@ export default function EditFamilyPage() {
                                     className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.address}
                                     aria-describedby="address-error"
+                                    tabIndex={4}
                                 />
                                 {actionData?.fieldErrors?.address && (
                                     <p id="address-error" className="text-sm text-destructive">
@@ -294,6 +298,7 @@ export default function EditFamilyPage() {
                                     className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.city}
                                     aria-describedby="city-error"
+                                    tabIndex={5}
                                 />
                                 {actionData?.fieldErrors?.city && (
                                     <p id="city-error" className="text-sm text-destructive">
@@ -323,6 +328,7 @@ export default function EditFamilyPage() {
                                                 className="input-custom-styles w-full"
                                                 aria-invalid={!!actionData?.fieldErrors?.province}
                                                 aria-describedby="province-error"
+                                                tabIndex={6}
                                             >
                                                 <SelectValue placeholder="Select a province"/>
                                             </SelectTrigger>
@@ -357,6 +363,7 @@ export default function EditFamilyPage() {
                                     className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.postal_code}
                                     aria-describedby="postal_code-error"
+                                    tabIndex={7}
                                 />
                                 {actionData?.fieldErrors?.postal_code && (
                                     <p id="postal_code-error" className="text-sm text-destructive">
@@ -376,6 +383,7 @@ export default function EditFamilyPage() {
                                 className="input-custom-styles" // Added custom style
                                 aria-invalid={!!actionData?.fieldErrors?.emergency_contact}
                                 aria-describedby="emergency_contact-error"
+                                tabIndex={8}
                             />
                             {actionData?.fieldErrors?.emergency_contact && (
                                 <p id="emergency_contact-error" className="text-sm text-destructive">
@@ -394,6 +402,7 @@ export default function EditFamilyPage() {
                                 className="input-custom-styles" // Added custom style
                                 aria-invalid={!!actionData?.fieldErrors?.health_info}
                                 aria-describedby="health_info-error"
+                                tabIndex={9}
                             />
                             {actionData?.fieldErrors?.health_info && (
                                 <p id="health_info-error" className="text-sm text-destructive">
@@ -412,6 +421,7 @@ export default function EditFamilyPage() {
                                 className="input-custom-styles" // Added custom style
                                 aria-invalid={!!actionData?.fieldErrors?.notes}
                                 aria-describedby="notes-error"
+                                tabIndex={10}
                             />
                             {actionData?.fieldErrors?.notes && (
                                 <p id="notes-error" className="text-sm text-destructive">
@@ -440,6 +450,7 @@ export default function EditFamilyPage() {
                                             className="input-custom-styles w-full"
                                             aria-invalid={!!actionData?.fieldErrors?.referral_source}
                                             aria-describedby="referral_source-error"
+                                            tabIndex={11}
                                         >
                                             <SelectValue placeholder="Select a source"/>
                                         </SelectTrigger>
@@ -472,6 +483,7 @@ export default function EditFamilyPage() {
                                 className="input-custom-styles" // Added custom style
                                 aria-invalid={!!actionData?.fieldErrors?.referral_name}
                                 aria-describedby="referral_name-error"
+                                tabIndex={12}
                             />
                             {actionData?.fieldErrors?.referral_name && (
                                 <p id="referral_name-error" className="text-sm text-destructive">
@@ -483,10 +495,10 @@ export default function EditFamilyPage() {
                         <Separator className="my-4"/>
 
                         <div className="flex justify-end space-x-2">
-                            <Button type="button" variant="outline" asChild>
+                            <Button type="button" variant="outline" asChild tabIndex={13}>
                                 <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
                             </Button>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting} tabIndex={14}>
                                 {isSubmitting ? "Saving..." : "Save Changes"}
                             </Button>
                         </div>

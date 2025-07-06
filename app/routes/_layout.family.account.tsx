@@ -416,7 +416,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Family Last Name</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input {...field} className="input-custom-styles" tabIndex={1}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -428,7 +428,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Primary Phone</FormLabel>
-                                                <FormControl><Input type="tel" {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input type="tel" {...field} className="input-custom-styles" tabIndex={2}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -440,7 +440,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Family Email</FormLabel>
-                                                <FormControl><Input type="email" {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input type="email" {...field} className="input-custom-styles" tabIndex={3}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -451,7 +451,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Home Address</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input {...field} className="input-custom-styles" tabIndex={4}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -462,7 +462,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>City</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input {...field} className="input-custom-styles" tabIndex={5}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -483,7 +483,7 @@ export default function AccountSettingsPage() {
                                                         >
                                                             <FormControl>
                                                                 {/* Applied input-custom-styles for consistency */}
-                                                                <SelectTrigger className="input-custom-styles"><SelectValue
+                                                                <SelectTrigger className="input-custom-styles" tabIndex={6}><SelectValue
                                                                     placeholder="Select province"/></SelectTrigger>
                                                             </FormControl>
                                                             <SelectContent>
@@ -514,7 +514,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Postal Code</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input {...field} className="input-custom-styles" tabIndex={7}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -527,7 +527,7 @@ export default function AccountSettingsPage() {
                                             <FormItem className="md:col-span-2">
                                                 <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                       value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={8}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -540,7 +540,7 @@ export default function AccountSettingsPage() {
                                                 <FormLabel>Personal Health Number / Info</FormLabel>
                                                 {/* Removed duplicated FormItem and FormLabel */}
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                       value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={9}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -552,7 +552,7 @@ export default function AccountSettingsPage() {
                                             <FormItem className="md:col-span-2">
                                                 <FormLabel>Emergency Contact (Not Guardian 1 or 2)</FormLabel>
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                       value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={10}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -565,14 +565,14 @@ export default function AccountSettingsPage() {
                                                 <FormLabel>Family Notes (Internal Use)</FormLabel>
                                                 {/* Removed duplicated FormItem and FormLabel */}
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                       value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={11}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
                                     />
                                 </div>
 
-                                <Button type="submit" disabled={isSubmitting}>
+                                <Button type="submit" disabled={isSubmitting} tabIndex={12}>
                                     {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
                                 </Button>
                             </Form>
@@ -610,7 +610,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>Current Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} className="input-custom-styles"/>
+                                                    <Input type="password" {...field} className="input-custom-styles" tabIndex={13}/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -624,7 +624,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>New Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} className="input-custom-styles"/>
+                                                    <Input type="password" {...field} className="input-custom-styles" tabIndex={14}/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -643,7 +643,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>Confirm Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} className="input-custom-styles"/>
+                                                    <Input type="password" {...field} className="input-custom-styles" tabIndex={15}/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -659,6 +659,7 @@ export default function AccountSettingsPage() {
                                                     <Checkbox
                                                         checked={field.value}
                                                         onCheckedChange={field.onChange}
+                                                        tabIndex={16}
                                                     />
                                                 </FormControl>
                                                 <div className="space-y-1 leading-none">
@@ -674,6 +675,7 @@ export default function AccountSettingsPage() {
                                 <Button
                                     type="submit"
                                     disabled={isSubmitting}
+                                    tabIndex={17}
                                 >
                                     {isSubmitting && navigation.formData?.get('intent') === 'updatePreferences'
                                         ? 'Saving...'

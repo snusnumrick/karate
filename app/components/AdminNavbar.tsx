@@ -23,7 +23,8 @@ import {
     Tag,
     User,
     Users,
-    X
+    X,
+    Zap
 } from "lucide-react";
 import {ClientOnly} from './client-only'; // Import ClientOnly
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,} from "~/components/ui/dropdown-menu"; // Import DropdownMenu components
@@ -48,6 +49,7 @@ const adminNavItems = [
 const discountNavItems = [
     {to: "/admin/discount-codes", label: "Discount Codes", icon: Tag},
     {to: "/admin/discount-templates", label: "Discount Templates", icon: FileText},
+    {to: "/admin/automatic-discounts", label: "Automatic Discounts", icon: Zap},
 ];
 
 // Define Store navigation items
@@ -291,43 +293,77 @@ function AdminNavLink({to, label, children}: AdminNavLinkProps) {
 function AdminDiscountDropdown() {
     const location = useLocation();
     const isDiscountActive = location.pathname.startsWith('/admin/discount');
+    const [isOpen, setIsOpen] = useState(false);
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [canShowTooltip, setCanShowTooltip] = useState(true);
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (open) {
+            setShowTooltip(false);
+            setCanShowTooltip(false);
+        } else {
+            // Delay allowing tooltip to show again after dropdown closes
+            setTimeout(() => setCanShowTooltip(true), 300);
+        }
+    };
 
     return (
-        <DropdownMenu>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn(
-                                "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
-                                isDiscountActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
-                            )}
-                            aria-label="Discount Management"
-                        >
-                            <Tag className="h-5 w-5"/>
-                        </Button>
-                    </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                    <p>Discounts</p>
-                </TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
-                {discountNavItems.map((item) => (
-                    <DropdownMenuItem key={item.to} className="p-0">
-                        <Link
-                            to={item.to}
-                            className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
-                        >
-                            <item.icon className="h-4 w-4 mr-2"/>
-                            {item.label}
-                        </Link>
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="relative">
+            <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
+                            isDiscountActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
+                        )}
+                        aria-label="Discount Management"
+                        onMouseEnter={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onMouseLeave={() => {
+                            setShowTooltip(false);
+                        }}
+                        onFocus={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onBlur={() => {
+                            setShowTooltip(false);
+                        }}
+                        onClick={() => {
+                            setShowTooltip(false);
+                        }}
+                    >
+                        <Tag className="h-5 w-5"/>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
+                    {discountNavItems.map((item) => (
+                        <DropdownMenuItem key={item.to} className="p-0">
+                            <Link
+                                to={item.to}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                            >
+                                <item.icon className="h-4 w-4 mr-2"/>
+                                {item.label}
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {showTooltip && !isOpen && canShowTooltip && (
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
+                    Discounts
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -335,50 +371,83 @@ function AdminDiscountDropdown() {
 function AdminStoreDropdown() {
     const location = useLocation();
     const isStoreActive = location.pathname.startsWith('/admin/store');
+    const [isOpen, setIsOpen] = useState(false);
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [canShowTooltip, setCanShowTooltip] = useState(true);
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (open) {
+            setShowTooltip(false);
+            setCanShowTooltip(false);
+        } else {
+            // Delay allowing tooltip to show again after dropdown closes
+            setTimeout(() => setCanShowTooltip(true), 300);
+        }
+    };
 
     return (
-        <DropdownMenu>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    {/* Use DropdownMenuTrigger directly inside TooltipTrigger */}
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost" // Use ghost variant for icon button look
-                            size="icon" // Use icon size
-                            className={cn(
-                                "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0", // Adjusted padding/hover for icon
-                                isStoreActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30" // Active style on trigger
-                            )}
-                            aria-label="Store Management" // Add aria-label
-                        >
-                            <ShoppingBag className="h-5 w-5"/> {/* Slightly larger icon */}
-                            {/* Removed "Store" text */}
-                        </Button>
-                    </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                    <p>Store</p>
-                </TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="start"
-                                 className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto"> {/* Added height constraint and scrolling */}
-                {/* <DropdownMenuLabel>Store Management</DropdownMenuLabel> */}
-                {/* <DropdownMenuSeparator /> */}
-                {storeNavItems.map((item) => (
-                    // Removed asChild as a test for the React.Children.only error
-                    <DropdownMenuItem key={item.to} className="p-0"> {/* Remove padding from item */}
-                        {/* Apply styling directly to Link */}
-                        <Link
-                            to={item.to}
-                            className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
-                        >
-                            <item.icon className="h-4 w-4 mr-2"/>
-                            {item.label}
-                        </Link>
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="relative">
+            <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost" // Use ghost variant for icon button look
+                        size="icon" // Use icon size
+                        className={cn(
+                            "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0", // Adjusted padding/hover for icon
+                            isStoreActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30" // Active style on trigger
+                        )}
+                        aria-label="Store Management" // Add aria-label
+                        onMouseEnter={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onMouseLeave={() => {
+                            setShowTooltip(false);
+                        }}
+                        onFocus={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onBlur={() => {
+                            setShowTooltip(false);
+                        }}
+                        onClick={() => {
+                            setShowTooltip(false);
+                        }}
+                    >
+                        <ShoppingBag className="h-5 w-5"/> {/* Slightly larger icon */}
+                        {/* Removed "Store" text */}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start"
+                                     className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto"> {/* Added height constraint and scrolling */}
+                    {/* <DropdownMenuLabel>Store Management</DropdownMenuLabel> */}
+                    {/* <DropdownMenuSeparator /> */}
+                    {storeNavItems.map((item) => (
+                        // Removed asChild as a test for the React.Children.only error
+                        <DropdownMenuItem key={item.to} className="p-0"> {/* Remove padding from item */}
+                            {/* Apply styling directly to Link */}
+                            <Link
+                                to={item.to}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                            >
+                                <item.icon className="h-4 w-4 mr-2"/>
+                                {item.label}
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {showTooltip && !isOpen && canShowTooltip && (
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
+                    Store
+                </div>
+            )}
+        </div>
     );
 }
 

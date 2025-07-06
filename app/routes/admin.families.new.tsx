@@ -11,6 +11,7 @@ import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import { siteConfig } from "~/config/site"; // Import siteConfig
+import {recordStudentEnrollmentEvent} from "~/utils/auto-discount-events.server";
 
 // Define potential action data structure
 type ActionData = {
@@ -234,11 +235,19 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
 
         if (studentsToInsert.length > 0) {
-            const {error: studentError} = await supabaseAdmin
+            const {data: newStudents, error: studentError} = await supabaseAdmin
                 .from('students')
-                .insert(studentsToInsert);
+                .insert(studentsToInsert)
+                .select();
 
             if (studentError) throw new Error(`Failed to create students: ${studentError.message}`);
+            
+            // Trigger student enrollment events for each new student
+            if (newStudents) {
+                for (const student of newStudents) {
+                    await recordStudentEnrollmentEvent(student.id, student.family_id);
+                }
+            }
         }
 
         // Redirect to the main families list on success
@@ -320,32 +329,32 @@ export default function AdminNewFamilyPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <Label htmlFor="familyName">Family Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="familyName" name="familyName" required/>
+                            <Input id="familyName" name="familyName" required tabIndex={1}/>
                             {actionData?.fieldErrors?.familyName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyName}</p>}
                         </div>
                         <div>
                             <Label htmlFor="familyEmail">Family Email <span className="text-red-500">*</span></Label>
-                            <Input id="familyEmail" name="familyEmail" type="email" required/>
+                            <Input id="familyEmail" name="familyEmail" type="email" required tabIndex={2}/>
                             {actionData?.fieldErrors?.familyEmail &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyEmail}</p>}
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="address">Home Address <span className="text-red-500">*</span></Label>
-                            <Input id="address" name="address" required/>
+                            <Input id="address" name="address" required tabIndex={3}/>
                             {actionData?.fieldErrors?.address &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.address}</p>}
                         </div>
                         <div>
                             <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
-                            <Input id="city" name="city" required/>
+                            <Input id="city" name="city" required tabIndex={4}/>
                             {actionData?.fieldErrors?.city &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.city}</p>}
                         </div>
                         <div>
                             <Label htmlFor="province">Province <span className="text-red-500">*</span></Label>
                             <Select name="province" required>
-                                <SelectTrigger id="province"><SelectValue
+                                <SelectTrigger id="province" tabIndex={5}><SelectValue
                                     placeholder="Select province"/></SelectTrigger>
                                 <SelectContent>
                                     {/* Use provinces from siteConfig */}
@@ -361,13 +370,13 @@ export default function AdminNewFamilyPage() {
                         </div>
                         <div>
                             <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
-                            <Input id="postalCode" name="postalCode" required/>
+                            <Input id="postalCode" name="postalCode" required tabIndex={6}/>
                             {actionData?.fieldErrors?.postalCode &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.postalCode}</p>}
                         </div>
                         <div>
                             <Label htmlFor="primaryPhone">Primary Phone <span className="text-red-500">*</span></Label>
-                            <Input id="primaryPhone" name="primaryPhone" type="tel" required/>
+                            <Input id="primaryPhone" name="primaryPhone" type="tel" required tabIndex={7}/>
                             {actionData?.fieldErrors?.primaryPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.primaryPhone}</p>}
                         </div>
@@ -385,13 +394,13 @@ export default function AdminNewFamilyPage() {
                         <div>
                             <Label htmlFor="guardian1FirstName">First Name <span
                                 className="text-red-500">*</span></Label>
-                            <Input id="guardian1FirstName" name="guardian1FirstName" required/>
+                            <Input id="guardian1FirstName" name="guardian1FirstName" required tabIndex={8}/>
                             {actionData?.fieldErrors?.guardian1FirstName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1FirstName}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian1LastName">Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1LastName" name="guardian1LastName" required/>
+                            <Input id="guardian1LastName" name="guardian1LastName" required tabIndex={9}/>
                             {actionData?.fieldErrors?.guardian1LastName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1LastName}</p>}
                         </div>
@@ -399,7 +408,7 @@ export default function AdminNewFamilyPage() {
                             <Label htmlFor="guardian1Relationship">Relationship to Student(s) <span
                                 className="text-red-500">*</span></Label>
                             <Select name="guardian1Relationship" required>
-                                <SelectTrigger id="guardian1Relationship"><SelectValue
+                                <SelectTrigger id="guardian1Relationship" tabIndex={10}><SelectValue
                                     placeholder="Select relationship"/></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Mother">Mother</SelectItem>
@@ -414,21 +423,21 @@ export default function AdminNewFamilyPage() {
                         <div>
                             <Label htmlFor="guardian1Email">Email (for Portal Invite) <span
                                 className="text-red-500">*</span></Label>
-                            <Input id="guardian1Email" name="guardian1Email" type="email" required/>
+                            <Input id="guardian1Email" name="guardian1Email" type="email" required tabIndex={11}/>
                             {actionData?.fieldErrors?.guardian1Email &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Email}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian1HomePhone">Home Phone <span
                                 className="text-red-500">*</span></Label>
-                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" required/>
+                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" required tabIndex={12}/>
                             {actionData?.fieldErrors?.guardian1HomePhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1HomePhone}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian1CellPhone">Cell Phone <span
                                 className="text-red-500">*</span></Label>
-                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" required/>
+                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" required tabIndex={13}/>
                             {actionData?.fieldErrors?.guardian1CellPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1CellPhone}</p>}
                         </div>
@@ -446,14 +455,14 @@ export default function AdminNewFamilyPage() {
                         <div>
                             <Label htmlFor="guardian2FirstName">First Name <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2FirstName" name="guardian2FirstName"/>
+                            <Input id="guardian2FirstName" name="guardian2FirstName" tabIndex={14}/>
                             {actionData?.fieldErrors?.guardian2FirstName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2FirstName}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian2LastName">Last Name <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2LastName" name="guardian2LastName"/>
+                            <Input id="guardian2LastName" name="guardian2LastName" tabIndex={15}/>
                             {actionData?.fieldErrors?.guardian2LastName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2LastName}</p>}
                         </div>
@@ -461,7 +470,7 @@ export default function AdminNewFamilyPage() {
                             <Label htmlFor="guardian2Relationship">Relationship to Student(s) <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
                             <Select name="guardian2Relationship">
-                                <SelectTrigger id="guardian2Relationship"><SelectValue
+                                <SelectTrigger id="guardian2Relationship" tabIndex={16}><SelectValue
                                     placeholder="Select relationship"/></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Mother">Mother</SelectItem>
@@ -476,14 +485,14 @@ export default function AdminNewFamilyPage() {
                         <div>
                             <Label htmlFor="guardian2Email">Email <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2Email" name="guardian2Email" type="email"/>
+                            <Input id="guardian2Email" name="guardian2Email" type="email" tabIndex={17}/>
                             {actionData?.fieldErrors?.guardian2Email &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Email}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian2HomePhone">Home Phone <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel"/>
+                            <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel" tabIndex={18}/>
                             {actionData?.fieldErrors?.guardian2HomePhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
                         </div>
@@ -492,7 +501,7 @@ export default function AdminNewFamilyPage() {
                             <Label htmlFor="guardian2CellPhone">Cell Phone <span
                                 className="text-red-500">*</span></Label>
                             <Input id="guardian2CellPhone" name="guardian2CellPhone"
-                                   type="tel"/> {/* Removed non-functional required attribute */}
+                                   type="tel" tabIndex={19}/> {/* Removed non-functional required attribute */}
                             {actionData?.fieldErrors?.guardian2CellPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2CellPhone}</p>}
                         </div>
@@ -527,14 +536,14 @@ export default function AdminNewFamilyPage() {
                                     {/* Use indexed names like studentFirstName[] */}
                                     <Label htmlFor={`studentFirstName-${student.id}`}>First Name <span
                                         className="text-red-500">*</span></Label>
-                                    <Input id={`studentFirstName-${student.id}`} name="studentFirstName[]" required/>
+                                    <Input id={`studentFirstName-${student.id}`} name="studentFirstName[]" required tabIndex={23 + index * 15}/>
                                     {actionData?.fieldErrors?.[`studentFirstName[${index}]`] &&
                                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentFirstName[${index}]`]}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentLastName-${student.id}`}>Last Name <span
                                         className="text-red-500">*</span></Label>
-                                    <Input id={`studentLastName-${student.id}`} name="studentLastName[]" required/>
+                                    <Input id={`studentLastName-${student.id}`} name="studentLastName[]" required tabIndex={24 + index * 15}/>
                                     {actionData?.fieldErrors?.[`studentLastName[${index}]`] &&
                                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentLastName[${index}]`]}</p>}
                                 </div>
@@ -542,7 +551,7 @@ export default function AdminNewFamilyPage() {
                                     <Label htmlFor={`studentDob-${student.id}`}>Date of Birth (YYYY-MM-DD) <span
                                         className="text-red-500">*</span></Label>
                                     <Input id={`studentDob-${student.id}`} name="studentDob[]" type="date" required
-                                           placeholder="YYYY-MM-DD"/>
+                                           placeholder="YYYY-MM-DD" tabIndex={25 + index * 15}/>
                                     {actionData?.fieldErrors?.[`studentDob[${index}]`] &&
                                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentDob[${index}]`]}</p>}
                                 </div>
@@ -550,7 +559,7 @@ export default function AdminNewFamilyPage() {
                                     <Label htmlFor={`studentGender-${student.id}`}>Gender <span
                                         className="text-red-500">*</span></Label>
                                     <Select name="studentGender[]" required>
-                                        <SelectTrigger id={`studentGender-${student.id}`}><SelectValue
+                                        <SelectTrigger id={`studentGender-${student.id}`} tabIndex={26 + index * 15}><SelectValue
                                             placeholder="Select gender"/></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Male">Male</SelectItem>
@@ -566,20 +575,20 @@ export default function AdminNewFamilyPage() {
                                 <div>
                                     <Label htmlFor={`studentSchool-${student.id}`}>School <span
                                         className="text-red-500">*</span></Label>
-                                    <Input id={`studentSchool-${student.id}`} name="studentSchool[]" required/>
+                                    <Input id={`studentSchool-${student.id}`} name="studentSchool[]" required tabIndex={27 + index * 15}/>
                                     {actionData?.fieldErrors?.[`studentSchool[${index}]`] &&
                                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentSchool[${index}]`]}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentGradeLevel-${student.id}`}>Grade Level</Label>
-                                    <Input id={`studentGradeLevel-${student.id}`} name="studentGradeLevel[]"/>
+                                    <Input id={`studentGradeLevel-${student.id}`} name="studentGradeLevel[]" tabIndex={28 + index * 15}/>
                                     {/* Optional field, no error display unless specific validation added */}
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentTShirtSize-${student.id}`}>T-Shirt Size <span
                                         className="text-red-500">*</span></Label>
                                     <Select name="studentTShirtSize[]" required>
-                                        <SelectTrigger id={`studentTShirtSize-${student.id}`}><SelectValue
+                                        <SelectTrigger id={`studentTShirtSize-${student.id}`} tabIndex={29 + index * 15}><SelectValue
                                             placeholder="Select size"/></SelectTrigger>
                                         <SelectContent>
                                             {/* Add appropriate sizes */}
@@ -599,11 +608,11 @@ export default function AdminNewFamilyPage() {
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentCellPhone-${student.id}`}>Cell Phone</Label>
-                                    <Input id={`studentCellPhone-${student.id}`} name="studentCellPhone[]" type="tel"/>
+                                    <Input id={`studentCellPhone-${student.id}`} name="studentCellPhone[]" type="tel" tabIndex={30 + index * 15}/>
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentEmail-${student.id}`}>Email</Label>
-                                    <Input id={`studentEmail-${student.id}`} name="studentEmail[]" type="email"/>
+                                    <Input id={`studentEmail-${student.id}`} name="studentEmail[]" type="email" tabIndex={31 + index * 15}/>
                                 </div>
                             </div>
                             {/* Health Information Sub-section */}
@@ -613,25 +622,25 @@ export default function AdminNewFamilyPage() {
                                     <div className="md:col-span-2">
                                         <Label htmlFor={`studentAllergies-${student.id}`}>Allergies</Label>
                                         <Textarea id={`studentAllergies-${student.id}`} name="studentAllergies[]"
-                                                  placeholder="List any known allergies"/>
+                                                  placeholder="List any known allergies" tabIndex={32 + index * 15}/>
                                     </div>
                                     <div className="md:col-span-2">
                                         <Label htmlFor={`studentMedications-${student.id}`}>Medications</Label>
                                         <Textarea id={`studentMedications-${student.id}`} name="studentMedications[]"
-                                                  placeholder="List any medications the student takes"/>
+                                                  placeholder="List any medications the student takes" tabIndex={33 + index * 15}/>
                                     </div>
                                     <div className="md:col-span-2">
                                         <Label htmlFor={`studentSpecialNeeds-${student.id}`}>Special Needs /
                                             Considerations</Label>
                                         <Textarea id={`studentSpecialNeeds-${student.id}`} name="studentSpecialNeeds[]"
-                                                  placeholder="Any special needs, learning considerations, or other relevant info"/>
+                                                  placeholder="Any special needs, learning considerations, or other relevant info" tabIndex={34 + index * 15}/>
                                     </div>
                                     <div>
                                         <Label htmlFor={`studentImmunizationsUpToDate-${student.id}`}>Immunizations
                                             Up-to-Date?</Label>
                                         <Select name="studentImmunizationsUpToDate[]">
                                             <SelectTrigger
-                                                id={`studentImmunizationsUpToDate-${student.id}`}><SelectValue
+                                                id={`studentImmunizationsUpToDate-${student.id}`} tabIndex={35 + index * 15}><SelectValue
                                                 placeholder="Select status"/></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="Yes">Yes</SelectItem>
@@ -645,14 +654,14 @@ export default function AdminNewFamilyPage() {
                                             Notes</Label>
                                         <Textarea id={`studentImmunizationNotes-${student.id}`}
                                                   name="studentImmunizationNotes[]"
-                                                  placeholder="Any notes regarding immunizations"/>
+                                                  placeholder="Any notes regarding immunizations" tabIndex={36 + index * 15}/>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     ))}
 
-                    <Button type="button" variant="outline" onClick={addStudent} className="mt-2">
+                    <Button type="button" variant="outline" onClick={addStudent} className="mt-2" tabIndex={20}>
                         + Add Another Student
                     </Button>
                 </section>
@@ -660,10 +669,10 @@ export default function AdminNewFamilyPage() {
 
                 {/* Submit Button */}
                 <div className="flex justify-end gap-4 pt-4 border-t border-border">
-                    <Button type="button" variant="outline" asChild>
+                    <Button type="button" variant="outline" asChild tabIndex={21}>
                         <Link to="/admin/families">Cancel</Link>
                     </Button>
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting} tabIndex={22}>
                         {isSubmitting ? 'Creating Family...' : 'Create Family'}
                     </Button>
                 </div>

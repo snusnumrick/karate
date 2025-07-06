@@ -34,8 +34,6 @@ export const siteConfig = {
         currency: "$",
         currencyCode: "CAD", // Optional: For more specific contexts
         freeTrial: "FREE TRIAL",
-        firstMonth: 49,
-        secondMonth: 100,
         monthly: 121,
         yearly: 1200, // Example yearly price (e.g., ~10% discount)
         oneOnOneSession: 80, // Example price for a single 1:1 session
@@ -47,8 +45,6 @@ export const siteConfig = {
         get tiers(): { label: string; description: string }[] {
             return [
                 {label: "Free Trial", description: "Your first class is on us!"},
-                {label: "1st Month", description: `(${this.currency}${this.firstMonth})`}, // Display price from main config
-                {label: "2nd Month", description: `(${this.currency}${this.secondMonth})`}, // Display price from main config
                 {label: "Monthly", description: `(${this.currency}${this.monthly} - Ongoing)`}, // Display price from main config
                 {label: "Yearly Membership", description: `(${this.currency}${this.yearly} - Paid Annually)`}, // Display price from main config
                 {label: "1:1 Session", description: `(${this.currency}${this.oneOnOneSession} - Per Session)`}, // Display price from main config
@@ -58,8 +54,6 @@ export const siteConfig = {
     stripe: {
         // Replace with your actual Stripe Price IDs from your Stripe Dashboard (Test or Live)
         priceIds: {
-            firstMonth: 'price_1RA2PJPbU9pROzQRCCSzYnNS', // Replace with the actual ID for $49 price
-            secondMonth: 'price_1RA2PJPbU9pROzQRS6Iwa59M', // Replace with the actual ID for $100 price
             monthly: 'price_1RA2PJPbU9pROzQRbfS2BBcw', // Replace with the actual ID for $121 price
             yearly: 'price_1RA2RnPbU9pROzQRdATPqVhf', // Replace with the actual ID for $1200 price
             oneOnOneSession: 'price_1RA2TNPbU9pROzQRdxViZv5P', // Replace with the actual ID for $80 price

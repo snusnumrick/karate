@@ -2481,7 +2481,7 @@ CREATE TABLE IF NOT EXISTS public.discount_codes (
     
     -- Discount Type
     discount_type text NOT NULL CHECK (discount_type IN ('fixed_amount', 'percentage')),
-    discount_value numeric(10,2) NOT NULL CHECK (discount_value > 0),
+    discount_value numeric(10,4) NOT NULL CHECK (discount_value > 0),
     
     -- Usage Restrictions
     usage_type text NOT NULL CHECK (usage_type IN ('one_time', 'ongoing')),
@@ -2682,7 +2682,7 @@ CREATE TABLE IF NOT EXISTS public.discount_templates (
     
     -- Discount Type
     discount_type text NOT NULL CHECK (discount_type IN ('fixed_amount', 'percentage')),
-    discount_value numeric(10,2) NOT NULL CHECK (discount_value > 0),
+    discount_value numeric(10,4) NOT NULL CHECK (discount_value > 0),
     
     -- Usage Restrictions
     usage_type text NOT NULL CHECK (usage_type IN ('one_time', 'ongoing')),
@@ -2913,6 +2913,300 @@ $$;
 
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION public.increment_discount_code_usage(uuid) TO authenticated;
+
+-- --- Automatic Discount Assignment System ---
+
+-- Create discount_event_type enum
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discount_event_type') THEN
+            CREATE TYPE discount_event_type AS ENUM (
+                'student_enrollment',
+                'first_payment',
+                'belt_promotion',
+                'attendance_milestone',
+                'family_referral',
+                'birthday',
+                'seasonal_promotion'
+            );
+        END IF;
+    END
+$$;
+
+-- Discount Events Table
+CREATE TABLE IF NOT EXISTS public.discount_events (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type discount_event_type NOT NULL,
+    student_id uuid NULL REFERENCES public.students(id) ON DELETE CASCADE,
+    family_id uuid NULL REFERENCES public.families(id) ON DELETE CASCADE,
+    event_data jsonb NULL, -- Additional event-specific data
+    created_at timestamptz NOT NULL DEFAULT now(),
+    processed_at timestamptz NULL
+);
+
+-- Add indexes for discount_events
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_type') THEN
+            CREATE INDEX idx_discount_events_type ON public.discount_events (event_type);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_student') THEN
+            CREATE INDEX idx_discount_events_student ON public.discount_events (student_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_family') THEN
+            CREATE INDEX idx_discount_events_family ON public.discount_events (family_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_processed') THEN
+            CREATE INDEX idx_discount_events_processed ON public.discount_events (processed_at);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_created_at') THEN
+            CREATE INDEX idx_discount_events_created_at ON public.discount_events (created_at);
+        END IF;
+    END
+$$;
+
+-- Enable RLS for discount_events
+ALTER TABLE public.discount_events ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for discount_events
+DO
+$$
+    BEGIN
+        -- Allow admins to manage all discount events
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage discount events'
+                         AND tablename = 'discount_events') THEN
+            CREATE POLICY "Allow admins to manage discount events" ON public.discount_events
+                FOR ALL USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+        
+        -- Allow system to insert events
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow system to insert discount events'
+                         AND tablename = 'discount_events') THEN
+            CREATE POLICY "Allow system to insert discount events" ON public.discount_events
+                FOR INSERT TO authenticated WITH CHECK (true); -- Controlled by application logic
+        END IF;
+    END
+$$;
+
+-- Discount Automation Rules Table
+CREATE TABLE IF NOT EXISTS public.discount_automation_rules (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name text NOT NULL,
+    description text NULL,
+    event_type discount_event_type NOT NULL,
+    discount_template_id uuid REFERENCES public.discount_templates(id) ON DELETE CASCADE, -- Made nullable for multiple templates
+    conditions jsonb NULL, -- Additional conditions (e.g., student age, belt level)
+    is_active boolean NOT NULL DEFAULT true,
+    max_uses_per_student integer NULL, -- Limit how many times a student can benefit
+    valid_from timestamptz NULL,
+    valid_until timestamptz NULL,
+    uses_multiple_templates boolean NOT NULL DEFAULT false, -- Flag for multiple template support
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Junction table for multiple discount templates per automation rule
+CREATE TABLE IF NOT EXISTS public.automation_rule_discount_templates (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    automation_rule_id uuid NOT NULL REFERENCES public.discount_automation_rules(id) ON DELETE CASCADE,
+    discount_template_id uuid NOT NULL REFERENCES public.discount_templates(id) ON DELETE CASCADE,
+    sequence_order integer NOT NULL DEFAULT 1, -- Order of application
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(automation_rule_id, discount_template_id),
+    UNIQUE(automation_rule_id, sequence_order)
+);
+
+-- Add indexes for discount_automation_rules
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_event_type') THEN
+            CREATE INDEX idx_automation_rules_event_type ON public.discount_automation_rules (event_type);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_active') THEN
+            CREATE INDEX idx_automation_rules_active ON public.discount_automation_rules (is_active);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_template') THEN
+            CREATE INDEX idx_automation_rules_template ON public.discount_automation_rules (discount_template_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_validity') THEN
+            CREATE INDEX idx_automation_rules_validity ON public.discount_automation_rules (valid_from, valid_until);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_multiple_templates') THEN
+            CREATE INDEX idx_automation_rules_multiple_templates ON public.discount_automation_rules (uses_multiple_templates);
+        END IF;
+    END
+$$;
+
+-- Add indexes for automation_rule_discount_templates
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_automation_rule') THEN
+            CREATE INDEX idx_rule_templates_automation_rule ON public.automation_rule_discount_templates (automation_rule_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_discount_template') THEN
+            CREATE INDEX idx_rule_templates_discount_template ON public.automation_rule_discount_templates (discount_template_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_sequence') THEN
+            CREATE INDEX idx_rule_templates_sequence ON public.automation_rule_discount_templates (automation_rule_id, sequence_order);
+        END IF;
+    END
+$$;
+
+-- Enable RLS for discount_automation_rules
+ALTER TABLE public.discount_automation_rules ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for discount_automation_rules
+DO
+$$
+    BEGIN
+        -- Allow admins to manage all automation rules
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage automation rules'
+                         AND tablename = 'discount_automation_rules') THEN
+            CREATE POLICY "Allow admins to manage automation rules" ON public.discount_automation_rules
+                FOR ALL USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
+
+-- Enable RLS for automation_rule_discount_templates
+ALTER TABLE public.automation_rule_discount_templates ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for automation_rule_discount_templates
+DO
+$$
+    BEGIN
+        -- Allow admins to manage all automation rule discount templates
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage automation rule discount templates'
+                         AND tablename = 'automation_rule_discount_templates') THEN
+            CREATE POLICY "Allow admins to manage automation rule discount templates" ON public.automation_rule_discount_templates
+                FOR ALL USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+    END
+$$;
+
+-- Add trigger to update discount_automation_rules.updated_at
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM information_schema.triggers
+                       WHERE trigger_name = 'discount_automation_rules_updated') THEN
+            CREATE TRIGGER discount_automation_rules_updated
+                BEFORE UPDATE
+                ON public.discount_automation_rules
+                FOR EACH ROW
+            EXECUTE FUNCTION update_modified_column();
+        END IF;
+    END
+$$;
+
+-- Discount Assignments Table
+CREATE TABLE IF NOT EXISTS public.discount_assignments (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    automation_rule_id uuid NOT NULL REFERENCES public.discount_automation_rules(id) ON DELETE CASCADE,
+    discount_event_id uuid NOT NULL REFERENCES public.discount_events(id) ON DELETE CASCADE,
+    student_id uuid NULL REFERENCES public.students(id) ON DELETE CASCADE,
+    family_id uuid NULL REFERENCES public.families(id) ON DELETE CASCADE,
+    discount_code_id uuid NOT NULL REFERENCES public.discount_codes(id) ON DELETE CASCADE,
+    assigned_at timestamptz NOT NULL DEFAULT now(),
+    expires_at timestamptz NULL
+);
+
+-- Add indexes for discount_assignments
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_student') THEN
+            CREATE INDEX idx_discount_assignments_student ON public.discount_assignments (student_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_family') THEN
+            CREATE INDEX idx_discount_assignments_family ON public.discount_assignments (family_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_rule') THEN
+            CREATE INDEX idx_discount_assignments_rule ON public.discount_assignments (automation_rule_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_event') THEN
+            CREATE INDEX idx_discount_assignments_event ON public.discount_assignments (discount_event_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_code') THEN
+            CREATE INDEX idx_discount_assignments_code ON public.discount_assignments (discount_code_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_assigned_at') THEN
+            CREATE INDEX idx_discount_assignments_assigned_at ON public.discount_assignments (assigned_at);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_expires_at') THEN
+            CREATE INDEX idx_discount_assignments_expires_at ON public.discount_assignments (expires_at);
+        END IF;
+    END
+$$;
+
+-- Enable RLS for discount_assignments
+ALTER TABLE public.discount_assignments ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for discount_assignments
+DO
+$$
+    BEGIN
+        -- Allow users to view their own family's discount assignments
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow users to view own family discount assignments'
+                         AND tablename = 'discount_assignments') THEN
+            CREATE POLICY "Allow users to view own family discount assignments" ON public.discount_assignments
+                FOR SELECT TO authenticated USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.family_id = family_id)
+                );
+        END IF;
+        
+        -- Allow admins to manage all discount assignments
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage discount assignments'
+                         AND tablename = 'discount_assignments') THEN
+            CREATE POLICY "Allow admins to manage discount assignments" ON public.discount_assignments
+                FOR ALL USING (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                ) WITH CHECK (
+                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                );
+        END IF;
+        
+        -- Allow system to insert discount assignments
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow system to insert discount assignments'
+                         AND tablename = 'discount_assignments') THEN
+            CREATE POLICY "Allow system to insert discount assignments" ON public.discount_assignments
+                FOR INSERT TO authenticated WITH CHECK (true); -- Controlled by application logic
+        END IF;
+    END
+$$;
+
+-- --- End Automatic Discount Assignment System ---
 
 -- --- End Discount Codes System ---
 

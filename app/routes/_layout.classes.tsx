@@ -70,26 +70,29 @@ export default function ClassesPage() {
                                     <li key={tier.label} className="flex justify-between items-center">
                                         <span
                                             className="font-semibold text-gray-800 dark:text-gray-200">{tier.label}</span>
-                                        {/* {tier.price ? ( // Price removed as it's not in siteConfig.tiers
-                                            <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                                                {siteConfig.pricing.currency}{tier.price}
-                                                {tier.label.includes("Month") || tier.label === "Monthly" ? <span
-                                                    className="text-sm font-normal text-gray-500 dark:text-gray-400"> / mo</span> : ""}
-                                            </span>
-                                        ) : ( */}
-                                            <span
-                                                className="text-lg font-bold text-blue-700 dark:text-blue-300">{tier.description || "Free"}</span>
-                                        {/* )} */}
-                                        {/* )} */} {/* This closing parenthesis was part of the original error, removing it */}
+                                        <span
+                                            className="text-lg font-bold text-blue-700 dark:text-blue-300">{tier.description || "Free"}</span>
                                     </li>
                                 ))}
-                                {/* Add a clarifying note if needed */}
-                                <li className="pt-3 border-t border-blue-200 dark:border-gray-600">
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        The first class is a free trial. Subsequent months follow the tiered pricing.
-                                    </p>
-                                </li>
                             </ul>
+                            
+                            {/* Special pricing highlight for new students */}
+            <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                <h3 className="text-xl font-bold text-green-600 dark:text-green-400 mb-3">🎉 New Student Benefits</h3>
+                <ul className="space-y-2 text-base text-green-700 dark:text-green-300">
+                    <li>• <strong>Free trial class</strong> - Try before you commit!</li>
+                    <li>• <strong>Automatic discounts</strong> for new students</li>
+                    <li>• <strong>No long-term contracts</strong> - Pay monthly</li>
+                    <li>• <strong>Family discounts</strong> available for multiple children</li>
+                </ul>
+            </div>
+                            
+                            <div className="mt-4">
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    Start with a free trial class, then enjoy special introductory pricing automatically applied for new students. 
+                                    Regular monthly tuition is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per student.
+                                </p>
+                            </div>
                         </div>
 
 

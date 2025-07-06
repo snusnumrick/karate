@@ -255,20 +255,20 @@ export default function AdminStudentDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="first_name">First Name <span className="text-red-500">*</span></Label>
-                                <Input id="first_name" name="first_name" defaultValue={student.first_name} required/>
+                                <Input id="first_name" name="first_name" defaultValue={student.first_name} required tabIndex={1}/>
                                 {actionData?.fieldErrors?.first_name &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.first_name}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="last_name">Last Name <span className="text-red-500">*</span></Label>
-                                <Input id="last_name" name="last_name" defaultValue={student.last_name} required/>
+                                <Input id="last_name" name="last_name" defaultValue={student.last_name} required tabIndex={2}/>
                                 {actionData?.fieldErrors?.last_name &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.last_name}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="gender">Gender <span className="text-red-500">*</span></Label>
                                 <Select name="gender" defaultValue={student.gender} required>
-                                    <SelectTrigger id="gender"><SelectValue
+                                    <SelectTrigger id="gender" tabIndex={3}><SelectValue
                                         placeholder="Select gender"/></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Male">Male</SelectItem>
@@ -282,7 +282,7 @@ export default function AdminStudentDetailPage() {
                             <div>
                                 <Label htmlFor="birth_date">Birth Date <span className="text-red-500">*</span></Label>
                                 <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date}
-                                       required/>
+                                       required tabIndex={4}/>
                                 {actionData?.fieldErrors?.birth_date &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.birth_date}</p>}
                             </div>
@@ -291,7 +291,7 @@ export default function AdminStudentDetailPage() {
                                 <Label htmlFor="t_shirt_size">T-Shirt Size <span
                                     className="text-red-500">*</span></Label>
                                 <Select name="t_shirt_size" defaultValue={student.t_shirt_size} required>
-                                    <SelectTrigger id="t_shirt_size"><SelectValue
+                                    <SelectTrigger id="t_shirt_size" tabIndex={5}><SelectValue
                                         placeholder="Select size"/></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="YXS">Youth XS</SelectItem>
@@ -311,14 +311,14 @@ export default function AdminStudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="school">School <span className="text-red-500">*</span></Label>
-                                <Input id="school" name="school" defaultValue={student.school} required/>
+                                <Input id="school" name="school" defaultValue={student.school} required tabIndex={6}/>
                                 {actionData?.fieldErrors?.school &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.school}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="grade_level">Grade Level</Label>
                                 <Select name="grade_level" defaultValue={student.grade_level || ''}>
-                                    <SelectTrigger id="grade_level"><SelectValue
+                                    <SelectTrigger id="grade_level" tabIndex={7}><SelectValue
                                         placeholder="Select grade"/></SelectTrigger>
                                     <SelectContent>
                                         {/* Removed SelectItem with value="" */}
@@ -341,11 +341,11 @@ export default function AdminStudentDetailPage() {
                             <div>
                                 <Label htmlFor="cell_phone">Cell Phone</Label>
                                 <Input id="cell_phone" name="cell_phone" type="tel"
-                                       defaultValue={student.cell_phone || ''}/>
+                                       defaultValue={student.cell_phone || ''} tabIndex={8}/>
                             </div>
                             <div>
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" name="email" type="email" defaultValue={student.email || ''}/>
+                                <Input id="email" name="email" type="email" defaultValue={student.email || ''} tabIndex={9}/>
                             </div>
                         </div>
                     </div>
@@ -359,28 +359,29 @@ export default function AdminStudentDetailPage() {
                                     id="immunizations_up_to_date"
                                     name="immunizations_up_to_date"
                                     defaultChecked={student.immunizations_up_to_date === 'true'}
+                                    tabIndex={10}
                                 />
                                 <Label htmlFor="immunizations_up_to_date">Immunizations Up-to-Date?</Label>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="immunization_notes">Immunization Notes</Label>
                                 <Textarea id="immunization_notes" name="immunization_notes"
-                                          defaultValue={student.immunization_notes || ''} rows={2}/>
+                                          defaultValue={student.immunization_notes || ''} rows={2} tabIndex={11}/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="allergies">Allergies</Label>
                                 <Textarea id="allergies" name="allergies" defaultValue={student.allergies || ''}
-                                          rows={2}/>
+                                          rows={2} tabIndex={12}/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="medications">Medications</Label>
                                 <Textarea id="medications" name="medications" defaultValue={student.medications || ''}
-                                          rows={2}/>
+                                          rows={2} tabIndex={13}/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="special_needs">Special Needs</Label>
                                 <Textarea id="special_needs" name="special_needs"
-                                          defaultValue={student.special_needs || ''} rows={2}/>
+                                          defaultValue={student.special_needs || ''} rows={2} tabIndex={14}/>
                             </div>
                         </div>
                     </div>
@@ -388,10 +389,10 @@ export default function AdminStudentDetailPage() {
                     {/* Action Buttons */}
                     <div className="flex justify-end gap-4 mt-6">
                         <Button type="button" variant="outline" onClick={() => setIsEditing(false)}
-                                disabled={isSubmitting}>
+                                disabled={isSubmitting} tabIndex={15}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting} tabIndex={16}>
                             {isSubmitting ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>

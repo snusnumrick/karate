@@ -18,21 +18,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import type { AvailableDiscountCode, AvailableDiscountsResponse } from '~/routes/api.available-discounts.$familyId';
 import type { DiscountValidationResult } from "~/types/discount";
 
-// Payment Calculation (Existing logic needs adjustment)
+// Payment Calculation (Flat Monthly Rate)
 //
-// The logic resides entirely within the loader function of the payment page (app/routes/_layout.family.payment.tsx). It does not rely on a specific "tier" field stored in the database. Instead, it calculates the next
-// appropriate tier dynamically each time the payment page is loaded:
+// The logic resides entirely within the loader function of the payment page (app/routes/_layout.family.payment.tsx). With automatic discounts now in place,
+// all students pay the same flat monthly rate, and discounts are applied automatically based on enrollment events and other criteria.
 //
 //  1 Fetch Successful Payment History: The loader queries the payments table for all records associated with the current family_id that have a status of 'succeeded'.
 //  2 Fetch Payment-Student Links: It then queries the payment_students junction table to find out which specific student_id was included in each of those successful payments.
 //  3 Count Past Payments Per Student: For each student belonging to the family, the code counts how many times their student_id appears in the results from step 2 (i.e., how many successful payments they have been part
-//    of in the past).
-//  4 Determine Next Tier: Based on this pastPaymentCount:
-//     • If pastPaymentCount is 0, the student is considered to be on their "Trial" or needing their "1st Month" payment. The loader calculates the nextPaymentAmount using siteConfig.pricing.firstMonth and sets the
-//       nextPaymentTierLabel to "1st Month".
-//     • If pastPaymentCount is 1, the student needs their "2nd Month" payment. The loader uses siteConfig.pricing.secondMonth and sets the label to "2nd Month".
-//     • If pastPaymentCount is 2 or more, the student is on the "Ongoing" rate. The loader uses siteConfig.pricing.monthly and sets the label to "Monthly".
-//  5 Pass to Component: This calculated nextPaymentAmount and nextPaymentTierLabel (along with eligibility status) for each student are then passed as studentPaymentDetails to the payment page component for display and
+//    of in the past). This is kept for historical tracking purposes.
+//  4 Set Flat Monthly Rate: All students now use the same monthly rate (siteConfig.pricing.monthly) regardless of their payment history.
+//     Automatic discounts will be applied at checkout for new students and other qualifying events.
+//  5 Pass to Component: The calculated nextPaymentAmount and nextPaymentTierLabel (along with eligibility status) for each student are then passed as studentPaymentDetails to the payment page component for display and
 //    use in the dynamic total calculation when checkboxes are selected.
 
 
@@ -43,11 +40,11 @@ interface StudentPaymentDetail {
     lastName: string;
     eligibility: EligibilityStatus; // Current status (Trial, Paid, Expired)
     needsPayment: boolean; // True if status is Trial or Expired
-    nextPaymentAmount: number; // Amount in dollars for their next tier
-    nextPaymentTierLabel: string; // Label for their next tier (1st Month, 2nd Month, Monthly)
-    pastPaymentCount: number; // Needed to determine next tier
-    // Add calculated price IDs for monthly tiers
-    nextPaymentPriceId: string; // Stripe Price ID for their next monthly tier
+    nextPaymentAmount: number; // Amount in dollars for monthly payment
+    nextPaymentTierLabel: string; // Label for payment (Monthly)
+    pastPaymentCount: number; // Kept for historical tracking
+    // Stripe Price ID for monthly payment
+    nextPaymentPriceId: string; // Stripe Price ID for monthly payment
 }
 
 // Define payment options
@@ -167,26 +164,12 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         // 1. Check current eligibility
         const eligibility = await checkStudentEligibility(student.id, supabaseServer);
 
-        // 2. Determine next payment tier based on past successful payments
+        // 2. Determine next payment amount - now using flat monthly rate
+        // Automatic discounts will handle reduced pricing for new students
         const pastPaymentCount = paymentStudentLinks.filter(link => link.student_id === student.id).length;
-        let nextPaymentAmount = 0;
-        let nextPaymentTierLabel = "";
-        let nextPaymentPriceId = ""; // Stripe Price ID
-
-        // Determine next MONTHLY tier and price ID
-        if (pastPaymentCount === 0) {
-            nextPaymentAmount = siteConfig.pricing.firstMonth;
-            nextPaymentTierLabel = "1st Month";
-            nextPaymentPriceId = siteConfig.stripe.priceIds.firstMonth;
-        } else if (pastPaymentCount === 1) {
-            nextPaymentAmount = siteConfig.pricing.secondMonth;
-            nextPaymentTierLabel = "2nd Month";
-            nextPaymentPriceId = siteConfig.stripe.priceIds.secondMonth;
-        } else { // 2 or more past payments
-            nextPaymentAmount = siteConfig.pricing.monthly;
-            nextPaymentTierLabel = "Monthly";
-            nextPaymentPriceId = siteConfig.stripe.priceIds.monthly;
-        }
+        const nextPaymentAmount = siteConfig.pricing.monthly;
+        const nextPaymentTierLabel = "Monthly";
+        const nextPaymentPriceId = siteConfig.stripe.priceIds.monthly;
 
         // 3. Determine if group class payment is needed now
         // Eligibility check already filters for group payments ('Paid - Monthly', 'Paid - Yearly', 'Expired', 'Trial')
@@ -240,7 +223,7 @@ type ActionResponse = {
 
 // Update return type: Action returns JSON data (success/error)
 export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionResponse & { success?: boolean; paymentId?: string }>> {
-    const { supabaseServer, response } = getSupabaseServerClient(request);
+    const { response } = getSupabaseServerClient(request);
     const formData = await request.formData();
 
     const familyId = formData.get('familyId') as string;
@@ -290,27 +273,8 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             totalAmountInCents = siteConfig.pricing.yearly * studentIds.length * 100;
         } else { // Monthly
             type = 'monthly_group'; // Assign to 'type'
-            // Need to fetch student history again server-side for accurate subtotal calculation
-            for (const studentId of studentIds) {
-                // Use the same logic as the API endpoint to get history
-                const { count: pastPaymentCount, error: countError } = await supabaseServer
-                    .from('payment_students')
-                    .select('payments!inner(status)', { count: 'exact', head: true })
-                    .eq('student_id', studentId)
-                    .eq('payments.status', 'succeeded');
-
-                if (countError) {
-                    console.error(`Action Error: Failed to get payment count for student ${studentId}`, countError.message);
-                    throw new Error(`Could not verify payment history for student ${studentId}.`);
-                }
-                const count = pastPaymentCount ?? 0;
-
-                let unitAmount: number; // Amount in cents
-                if (count === 0) unitAmount = siteConfig.pricing.firstMonth * 100;
-                else if (count === 1) unitAmount = siteConfig.pricing.secondMonth * 100;
-                else unitAmount = siteConfig.pricing.monthly * 100;
-                totalAmountInCents += unitAmount; // This is actually the subtotal
-            }
+            // Use flat monthly rate for all students - automatic discounts will handle reduced pricing
+            totalAmountInCents = siteConfig.pricing.monthly * studentIds.length * 100;
         }
         // Rename totalAmountInCents to subtotalAmountInCents for clarity
         const subtotalAmountInCents = totalAmountInCents;
@@ -722,19 +686,19 @@ export default function FamilyPaymentPage() {
                             onValueChange={(value) => setPaymentOption(value as PaymentOption)} className="space-y-2">
                     {/* Option 1: Monthly Group Fees */}
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="monthly" id="opt-monthly" disabled={!hasEligibleStudentsForGroupPayment}/>
+                        <RadioGroupItem value="monthly" id="opt-monthly" disabled={!hasEligibleStudentsForGroupPayment} tabIndex={1}/>
                         <Label htmlFor="opt-monthly"
                                className={`text-sm ${!hasEligibleStudentsForGroupPayment ? 'cursor-not-allowed text-gray-400 dark:text-gray-500' : ''}`}>Pay Monthly Group Class Fees</Label>
                     </div>
                     {/* Option 2: Yearly Group Fees */}
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="yearly" id="opt-yearly" disabled={!hasEligibleStudentsForGroupPayment}/>
+                        <RadioGroupItem value="yearly" id="opt-yearly" disabled={!hasEligibleStudentsForGroupPayment} tabIndex={2}/>
                         <Label htmlFor="opt-yearly" className={`text-sm ${!hasEligibleStudentsForGroupPayment ? 'cursor-not-allowed text-gray-400 dark:text-gray-500' : ''}`}>Pay Yearly Group Class Fees
                             ({siteConfig.pricing.currency}{siteConfig.pricing.yearly}/student)</Label>
                     </div>
                     {/* Option 3: Individual Session */}
                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="individual" id="opt-individual"/> {/* Corrected value */}
+                        <RadioGroupItem value="individual" id="opt-individual" tabIndex={3}/> {/* Corrected value */}
                         <Label htmlFor="opt-individual" className="text-sm">Purchase Individual Session(s) {/* Corrected label */}
                             ({siteConfig.pricing.currency}{siteConfig.pricing.oneOnOneSession}/session)</Label>
                     </div>
@@ -751,6 +715,7 @@ export default function FamilyPaymentPage() {
                             value={oneOnOneQuantity}
                             onChange={(e) => setOneOnOneQuantity(parseInt(e.target.value, 10) || 1)}
                             className="mt-1 w-20"
+                            tabIndex={4}
                         />
                          {fetcher.data?.fieldErrors?.oneOnOneQuantity && ( // Use fetcher.data
                             <p className="text-red-500 text-sm mt-1">{fetcher.data.fieldErrors.oneOnOneQuantity}</p>
@@ -781,6 +746,7 @@ export default function FamilyPaymentPage() {
                                         checked={selectedStudentIds.has(detail.studentId)}
                                         onCheckedChange={(checked) => handleCheckboxChange(detail.studentId, checked)}
                                         className="mt-1" // Align checkbox better
+                                        tabIndex={5}
                                     />
                                 ) : (
                                     <div className="w-4 h-4 mt-1"> {/* Placeholder for alignment */} </div>
@@ -843,6 +809,7 @@ export default function FamilyPaymentPage() {
                             checked={applyDiscount}
                             onCheckedChange={(checked) => setApplyDiscount(checked === true)}
                             disabled={fetcher.state !== 'idle'}
+                            tabIndex={6}
                         />
                         <Label htmlFor="apply-discount" className="text-lg font-semibold">
                             Apply Discount Code
@@ -866,7 +833,7 @@ export default function FamilyPaymentPage() {
                                         onValueChange={setSelectedDiscountId}
                                         disabled={fetcher.state !== 'idle'}
                                     >
-                                        <SelectTrigger className="w-full">
+                                        <SelectTrigger className="w-full" tabIndex={7}>
                                             <SelectValue placeholder="Choose a discount code" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -947,14 +914,11 @@ export default function FamilyPaymentPage() {
                     <InfoCircledIcon className="h-4 w-4 text-blue-600 dark:text-blue-300"/>
                     <AlertTitle className="text-blue-800 dark:text-blue-200">How Pricing Works</AlertTitle>
                     <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
-                        Your first class is a <span
-                        className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
                         Your first class is a <span className="font-semibold">{siteConfig.pricing.freeTrial}</span>.
-                        Monthly fees are
-                        tiered: {formatCurrency(siteConfig.pricing.firstMonth * 100)} (1st), {formatCurrency(siteConfig.pricing.secondMonth * 100)} (2nd),
-                        then {formatCurrency(siteConfig.pricing.monthly * 100)}/mo per student.
+                        Monthly fee: {formatCurrency(siteConfig.pricing.monthly * 100)}/mo per student.
                         Yearly fee: {formatCurrency(siteConfig.pricing.yearly * 100)}/year per student.
                         1:1 Sessions: {formatCurrency(siteConfig.pricing.oneOnOneSession * 100)}/session.
+                        New students may be eligible for automatic discounts.
                         Prices shown are before tax. Applicable taxes (e.g., GST, PST) will be added to the final amount.
                     </AlertDescription>
                 </Alert>
@@ -994,6 +958,7 @@ export default function FamilyPaymentPage() {
                         ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
                         (paymentOption === 'individual' && oneOnOneQuantity <= 0)
                     }
+                    tabIndex={8}
                 >
                     {/* Display calculated total on button or "Proceed" for zero payments */}
                     {fetcher.state !== 'idle' 

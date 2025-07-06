@@ -265,6 +265,7 @@ export default function EditGuardiansPage() {
                                                     required
                                                     aria-invalid={!!errors?.first_name}
                                                     aria-describedby={`guardian_${guardianId}_first_name-error`}
+                                                    tabIndex={index * 10 + 1}
                                                 />
                                                 {errors?.first_name && (
                                                     <p id={`guardian_${guardianId}_first_name-error`}
@@ -284,6 +285,7 @@ export default function EditGuardiansPage() {
                                                     required
                                                     aria-invalid={!!errors?.last_name}
                                                     aria-describedby={`guardian_${guardianId}_last_name-error`}
+                                                    tabIndex={index * 10 + 2}
                                                 />
                                                 {errors?.last_name && (
                                                     <p id={`guardian_${guardianId}_last_name-error`}
@@ -308,6 +310,7 @@ export default function EditGuardiansPage() {
                                                         className="input-custom-styles"
                                                         aria-invalid={!!errors?.relationship}
                                                         aria-describedby={`guardian_${guardianId}_relationship-error`}
+                                                        tabIndex={index * 10 + 3}
                                                     >
                                                         <SelectValue placeholder="Select relationship"/>
                                                     </SelectTrigger>
@@ -337,6 +340,7 @@ export default function EditGuardiansPage() {
                                                     required // Added required
                                                     aria-invalid={!!errors?.cell_phone}
                                                     aria-describedby={`guardian_${guardianId}_cell_phone-error`}
+                                                    tabIndex={index * 10 + 4}
                                                 />
                                                 {errors?.cell_phone && (
                                                     <p id={`guardian_${guardianId}_cell_phone-error`}
@@ -357,6 +361,7 @@ export default function EditGuardiansPage() {
                                                     required // Added required
                                                     aria-invalid={!!errors?.home_phone}
                                                     aria-describedby={`guardian_${guardianId}_home_phone-error`}
+                                                    tabIndex={index * 10 + 5}
                                                 />
                                                 {errors?.home_phone && (
                                                     <p id={`guardian_${guardianId}_home_phone-error`}
@@ -376,6 +381,7 @@ export default function EditGuardiansPage() {
                                                     defaultValue={guardian.work_phone ?? ''}
                                                     aria-invalid={!!errors?.work_phone}
                                                     aria-describedby={`guardian_${guardianId}_work_phone-error`}
+                                                    tabIndex={index * 10 + 6}
                                                 />
                                                 {errors?.work_phone && (
                                                     <p id={`guardian_${guardianId}_work_phone-error`}
@@ -396,6 +402,7 @@ export default function EditGuardiansPage() {
                                                     required // Added required
                                                     aria-invalid={!!errors?.email}
                                                     aria-describedby={`guardian_${guardianId}_email-error`}
+                                                    tabIndex={index * 10 + 7}
                                                 />
                                                 {errors?.email && (
                                                     <p id={`guardian_${guardianId}_email-error`}
@@ -414,6 +421,7 @@ export default function EditGuardiansPage() {
                                                     defaultValue={guardian.employer ?? ''}
                                                     aria-invalid={!!errors?.employer}
                                                     aria-describedby={`guardian_${guardianId}_employer-error`}
+                                                    tabIndex={index * 10 + 8}
                                                 />
                                                 {errors?.employer && (
                                                     <p id={`guardian_${guardianId}_employer-error`}
@@ -434,6 +442,7 @@ export default function EditGuardiansPage() {
                                                     defaultValue={guardian.employer_phone ?? ''}
                                                     aria-invalid={!!errors?.employer_phone}
                                                     aria-describedby={`guardian_${guardianId}_employer_phone-error`}
+                                                    tabIndex={index * 10 + 9}
                                                 />
                                                 {errors?.employer_phone && (
                                                     <p id={`guardian_${guardianId}_employer_phone-error`}
@@ -453,6 +462,7 @@ export default function EditGuardiansPage() {
                                                     defaultValue={guardian.employer_notes ?? ''}
                                                     aria-invalid={!!errors?.employer_notes}
                                                     aria-describedby={`guardian_${guardianId}_employer_notes-error`}
+                                                    tabIndex={index * 10 + 10}
                                                 />
                                                 {errors?.employer_notes && (
                                                     <p id={`guardian_${guardianId}_employer_notes-error`}
@@ -469,10 +479,10 @@ export default function EditGuardiansPage() {
                             <Separator className="my-4"/>
 
                             <div className="flex justify-end space-x-2">
-                                <Button type="button" variant="outline" asChild>
+                                <Button type="button" variant="outline" asChild tabIndex={guardians.length * 10 + 1}>
                                     <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
                                 </Button>
-                                <Button type="submit" disabled={isSubmitting}>
+                                <Button type="submit" disabled={isSubmitting} tabIndex={guardians.length * 10 + 2}>
                                     {isSubmitting ? "Saving Guardians..." : "Save All Changes"}
                                 </Button>
                             </div>

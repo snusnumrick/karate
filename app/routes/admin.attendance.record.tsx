@@ -315,6 +315,7 @@ export default function RecordAttendancePage() {
                         value={selectedDate}
                         onChange={handleDateChange}
                         className="input-custom-styles w-auto inline-block" // Applied custom style, removed redundant
+                        tabIndex={1}
                     />
                 </div>
             </div>
@@ -339,7 +340,7 @@ export default function RecordAttendancePage() {
                     )}
 
                     <div className="space-y-6">
-                        {students.map((student) => {
+                        {students.map((student, index) => {
                             const existing = existingRecords[student.id];
                             const defaultStatus = existing ? (existing.present ? 'present' : 'absent') : undefined;
                             const defaultNotes = existing?.notes ?? '';
@@ -376,11 +377,11 @@ export default function RecordAttendancePage() {
                                                 className="flex space-x-4"
                                             >
                                                 <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="present" id={`present-${student.id}`}/>
+                                                    <RadioGroupItem value="present" id={`present-${student.id}`} tabIndex={2 + index * 2}/>
                                                     <Label htmlFor={`present-${student.id}`}>Present</Label>
                                                 </div>
                                                 <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="absent" id={`absent-${student.id}`}/>
+                                                    <RadioGroupItem value="absent" id={`absent-${student.id}`} tabIndex={3 + index * 2}/>
                                                     <Label htmlFor={`absent-${student.id}`}>Absent</Label>
                                                 </div>
                                             </RadioGroup>
@@ -397,6 +398,7 @@ export default function RecordAttendancePage() {
                                                 rows={2}
                                                 placeholder="e.g., Left early, arrived late"
                                                 className="input-custom-styles mt-1" // Applied custom style
+                                                tabIndex={2 + students.length * 2 + index}
                                             />
                                         </div>
                                     </div>
@@ -411,7 +413,7 @@ export default function RecordAttendancePage() {
 
                     {students.length > 0 && (
                         <div className="mt-8 flex justify-end">
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting} tabIndex={2 + students.length * 3}>
                                 {isSubmitting ? "Saving Attendance..." : "Save Attendance"}
                             </Button>
                         </div>

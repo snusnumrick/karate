@@ -1,6 +1,7 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {recordStudentEnrollmentEvent} from "~/utils/auto-discount-events.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
@@ -97,7 +98,7 @@ export async function action({request}: ActionFunctionArgs) {
     }
 
     try {
-        const {error: studentInsertError} = await supabaseServer.from('students').insert({
+        const {data: newStudent, error: studentInsertError} = await supabaseServer.from('students').insert({
             family_id: familyId,
             first_name: firstName,
             last_name: lastName,
@@ -116,11 +117,16 @@ export async function action({request}: ActionFunctionArgs) {
             cell_phone: cellPhone,
             // Add other fields as necessary, ensure they match your DB schema
             // Note: Initial belt rank (White) should be added via belt_awards by an admin if needed.
-        });
+        }).select().single();
 
         if (studentInsertError) {
             console.error("Error inserting student:", studentInsertError);
             throw studentInsertError;
+        }
+
+        // Record student enrollment event for automatic discount processing
+        if (newStudent?.id) {
+            await recordStudentEnrollmentEvent(newStudent.id, familyId);
         }
 
         // Redirect back to the family portal on success
@@ -167,21 +173,21 @@ export default function AddStudentPage() {
                                 First Name<span className="text-red-500">*</span>
                             </Label>
                             <Input type="text" id="firstName" name="firstName" required
-                                   className="input-custom-styles focus:ring-green-500"/>
+                                   className="input-custom-styles focus:ring-green-500" tabIndex={1}/>
                         </div>
                         <div>
                             <Label htmlFor="lastName" className="block text-sm font-medium mb-1">
                                 Last Name<span className="text-red-500">*</span>
                             </Label>
                             <Input type="text" id="lastName" name="lastName" required
-                                   className="input-custom-styles focus:ring-green-500" /* defaultValue={studentLastName} */ />
+                                   className="input-custom-styles focus:ring-green-500" tabIndex={2} /* defaultValue={studentLastName} */ />
                         </div>
                         <div>
                             <Label htmlFor="birthDate" className="block text-sm font-medium mb-1">
                                 Birth Date<span className="text-red-500">*</span>
                             </Label>
                             <Input type="date" id="birthDate" name="birthDate" required
-                                   className="input-custom-styles focus:ring-green-500 dark:[color-scheme:dark]"/>
+                                   className="input-custom-styles focus:ring-green-500 dark:[color-scheme:dark]" tabIndex={3}/>
                         </div>
                         <div>
                             <Label htmlFor="gender" className="block text-sm font-medium mb-1">
@@ -189,7 +195,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="gender" required>
                                 <SelectTrigger id="gender"
-                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
+                                               className="input-custom-styles w-full" tabIndex={4}> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select gender"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -206,7 +212,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="tShirtSize" required>
                                 <SelectTrigger id="tShirtSize"
-                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
+                                               className="input-custom-styles w-full" tabIndex={5}> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select size"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -227,7 +233,7 @@ export default function AddStudentPage() {
                             <Label htmlFor="school" className="block text-sm font-medium mb-1">
                                 School<span className="text-red-500">*</span>
                             </Label>
-                            <Input type="text" id="school" name="school" required className="input-custom-styles focus:ring-green-500"/>
+                            <Input type="text" id="school" name="school" required className="input-custom-styles focus:ring-green-500" tabIndex={6}/>
                         </div>
                         <div>
                             <Label htmlFor="gradeLevel" className="block text-sm font-medium mb-1">
@@ -235,7 +241,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="gradeLevel" required>
                                 <SelectTrigger id="gradeLevel"
-                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
+                                               className="input-custom-styles w-full" tabIndex={7}> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select grade"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -268,31 +274,31 @@ export default function AddStudentPage() {
                             <Label htmlFor="email" className="block text-sm font-medium mb-1">
                                 Student Email
                             </Label>
-                            <Input type="email" id="email" name="email" className="input-custom-styles focus:ring-green-500"/>
+                            <Input type="email" id="email" name="email" className="input-custom-styles focus:ring-green-500" tabIndex={8}/>
                         </div>
                         <div>
                             <Label htmlFor="cellPhone" className="block text-sm font-medium mb-1">
                                 Student Cell #
                             </Label>
-                            <Input type="tel" id="cellPhone" name="cellPhone" className="input-custom-styles focus:ring-green-500"/>
+                            <Input type="tel" id="cellPhone" name="cellPhone" className="input-custom-styles focus:ring-green-500" tabIndex={9}/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="specialNeeds" className="block text-sm font-medium mb-1">
                                 Special Needs (Leave blank if NONE)
                             </Label>
-                            <Input type="text" id="specialNeeds" name="specialNeeds" className="input-custom-styles focus:ring-green-500"/>
+                            <Input type="text" id="specialNeeds" name="specialNeeds" className="input-custom-styles focus:ring-green-500" tabIndex={10}/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="allergies" className="block text-sm font-medium mb-1">
                                 Allergies (Leave blank if NONE)
                             </Label>
-                            <Textarea id="allergies" name="allergies" rows={3} className="input-custom-styles focus:ring-green-500"/>
+                            <Textarea id="allergies" name="allergies" rows={3} className="input-custom-styles focus:ring-green-500" tabIndex={11}/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="medications" className="block text-sm font-medium mb-1">
                                 Medications (Leave blank if NONE)
                             </Label>
-                            <Textarea id="medications" name="medications" rows={3} className="input-custom-styles focus:ring-green-500"/>
+                            <Textarea id="medications" name="medications" rows={3} className="input-custom-styles focus:ring-green-500" tabIndex={12}/>
                         </div>
                         <div>
                             <Label htmlFor="immunizationsUpToDate" className="block text-sm font-medium mb-1">
@@ -300,7 +306,7 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="immunizationsUpToDate">
                                 <SelectTrigger id="immunizationsUpToDate"
-                                               className="input-custom-styles w-full"> {/* Applied custom style, removed redundant */}
+                                               className="input-custom-styles w-full" tabIndex={13}> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select option"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -315,7 +321,7 @@ export default function AddStudentPage() {
                                 Immunization Notes
                             </Label>
                             <Textarea id="immunizationNotes" name="immunizationNotes" rows={3}
-                                      className="input-custom-styles focus:ring-green-500"/>
+                                      className="input-custom-styles focus:ring-green-500" tabIndex={14}/>
                         </div>
                     </div>
 
@@ -331,6 +337,7 @@ export default function AddStudentPage() {
                             type="submit"
                             disabled={isSubmitting}
                             className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                            tabIndex={15}
                         >
                             {isSubmitting ? "Adding Student..." : "Add Student"}
                         </Button>

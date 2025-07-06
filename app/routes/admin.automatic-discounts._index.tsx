@@ -1,0 +1,248 @@
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData, Link } from "@remix-run/react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
+import { Plus, Edit, Trash2, Zap, Calendar, Target } from "lucide-react";
+import { AutoDiscountService } from "~/services/auto-discount.server";
+import { requireAdminUser } from "~/utils/auth.server";
+import { formatDistanceToNow } from "date-fns";
+// Type definitions for assignment data with joins
+type AssignmentWithJoins = {
+  id: string;
+  assigned_at: string;
+  families?: { name?: string } | null;
+  students?: { first_name?: string; last_name?: string } | null;
+  discount_codes?: {
+    code?: string;
+    name?: string;
+    discount_type?: string;
+    discount_value?: number;
+  } | null;
+};
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  await requireAdminUser(request);
+  
+  try {
+    const automationRules = await AutoDiscountService.getAutomationRules();
+    const assignments = await AutoDiscountService.getDiscountAssignments();
+    
+    return json({ automationRules, assignments });
+  } catch (error) {
+    console.error('Error loading automatic discounts:', error);
+    throw new Response('Failed to load automatic discounts', { status: 500 });
+  }
+}
+
+export default function AutomaticDiscountsIndex() {
+  const { automationRules, assignments } = useLoaderData<typeof loader>();
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Automatic Discounts</h1>
+          <p className="text-muted-foreground">
+            Manage automation rules and view discount assignments
+          </p>
+        </div>
+        <div className="flex space-x-3">
+            <Link to="/admin/automatic-discounts/assignments">
+              <Button variant="outline">
+                View Assignments
+              </Button>
+            </Link>
+            <Link to="/admin/automatic-discounts/utilities">
+              <Button variant="outline">
+                Utilities
+              </Button>
+            </Link>
+            <Link to="/admin/automatic-discounts/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                New Automation Rule
+              </Button>
+            </Link>
+          </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Rules</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {automationRules.filter(rule => rule.is_active).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              of {automationRules.length} total rules
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Assignments</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{assignments.length}</div>
+            <p className="text-xs text-muted-foreground">
+              discounts automatically assigned
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recent Assignments</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {assignments.filter(a => {
+                const assignedDate = new Date(a.assigned_at);
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return assignedDate > weekAgo;
+              }).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              in the last 7 days
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Automation Rules */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Automation Rules</CardTitle>
+          <CardDescription>
+            Rules that automatically assign discounts when specific events occur
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {automationRules.length === 0 ? (
+            <div className="text-center py-8">
+              <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No automation rules yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Create your first automation rule to start automatically assigning discounts
+              </p>
+              <Link to="/admin/automatic-discounts/new">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Rule
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {automationRules.map((rule) => (
+                <div
+                  key={rule.id}
+                  className="flex items-center justify-between p-4 border dark:border-gray-700 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium">{rule.name}</h3>
+                      <Badge variant={rule.is_active ? "default" : "secondary"}>
+                        {rule.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Event: <span className="font-medium">{rule.event_type.replace('_', ' ')}</span>
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>Created {formatDistanceToNow(new Date(rule.created_at))} ago</span>
+                      {rule.valid_until && (
+                        <span>Expires {formatDistanceToNow(new Date(rule.valid_until))} from now</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link to={`/admin/automatic-discounts/${rule.id}`}>
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Assignments */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Assignments</CardTitle>
+          <CardDescription>
+            Latest automatic discount assignments
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {assignments.length === 0 ? (
+            <div className="text-center py-8">
+              <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No assignments yet</h3>
+              <p className="text-muted-foreground">
+                Discounts will appear here when automation rules are triggered
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {assignments.slice(0, 10).map((assignment) => (
+                <div
+                  key={assignment.id}
+                  className="flex items-center justify-between p-4 border dark:border-gray-700 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium">
+                        {(assignment as AssignmentWithJoins).families?.name || `${(assignment as AssignmentWithJoins).students?.first_name} ${(assignment as AssignmentWithJoins).students?.last_name}`}
+                      </h4>
+                      <Badge variant="outline">
+                        {(assignment as AssignmentWithJoins).discount_codes?.code}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Assigned {formatDistanceToNow(new Date(assignment.assigned_at))} ago
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {(assignment as AssignmentWithJoins).discount_codes?.discount_type === 'percentage' ?
+                  `${(assignment as AssignmentWithJoins).discount_codes?.discount_value}%` :
+                  `$${(assignment as AssignmentWithJoins).discount_codes?.discount_value}`} off
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {(assignment as AssignmentWithJoins).discount_codes?.name}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {assignments.length > 10 && (
+                <div className="text-center pt-4">
+                  <Link to="/admin/automatic-discounts/assignments">
+                    <Button variant="outline">View All Assignments</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

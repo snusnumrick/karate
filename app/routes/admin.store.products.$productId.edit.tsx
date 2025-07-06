@@ -363,6 +363,7 @@ export default function EditProductPage() {
                         aria-invalid={!!actionData?.fieldErrors?.name}
                         aria-describedby="name-error"
                         className="input-custom-styles"
+                        tabIndex={1}
                     />
                     {actionData?.fieldErrors?.name && (
                         <p id="name-error" className="text-sm text-destructive mt-1">{actionData.fieldErrors.name}</p>
@@ -378,6 +379,7 @@ export default function EditProductPage() {
                         rows={4}
                         defaultValue={defaultValues.description}
                         className="input-custom-styles"
+                        tabIndex={2}
                     />
                 </div>
 
@@ -430,6 +432,7 @@ export default function EditProductPage() {
                         aria-invalid={!!actionData?.fieldErrors?.image}
                         aria-describedby="image-error"
                         className="input-custom-styles file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                        tabIndex={3}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                         {product.image_url ? 'Upload a new image to replace the current one.' : 'Upload an image.'} Max 5MB. JPG, PNG, WEBP, GIF.
@@ -446,13 +449,14 @@ export default function EditProductPage() {
                         id="is_active"
                         name="is_active"
                         defaultChecked={defaultValues.is_active}
+                        tabIndex={4}
                     />
                     <Label htmlFor="is_active">Active (Visible in store)</Label>
                 </div>
 
                 {/* Submit Button */}
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting} tabIndex={5}>
                         {isSubmitting ? "Saving Changes..." : "Save Changes"}
                     </Button>
                 </div>

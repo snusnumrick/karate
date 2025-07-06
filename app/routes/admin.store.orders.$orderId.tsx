@@ -280,7 +280,7 @@ export default function AdminOrderDetailPage() {
                                 <div>
                                     <Label htmlFor="status">Order Status</Label>
                                     <Select name="status" defaultValue={order.status} required>
-                                        <SelectTrigger id="status" aria-invalid={!!actionData?.fieldErrors?.status} aria-describedby="status-error">
+                                        <SelectTrigger id="status" aria-invalid={!!actionData?.fieldErrors?.status} aria-describedby="status-error" tabIndex={1}>
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -304,11 +304,12 @@ export default function AdminOrderDetailPage() {
                                         rows={3}
                                         placeholder="Add any notes regarding pickup..."
                                         className="input-custom-styles"
+                                        tabIndex={2}
                                     />
                                 </div>
                             </CardContent>
                             <CardFooter className="flex justify-end">
-                                <Button type="submit" disabled={isSubmitting}>
+                                <Button type="submit" disabled={isSubmitting} tabIndex={3}>
                                     {isSubmitting ? "Updating..." : "Update Order"}
                                 </Button>
                             </CardFooter>

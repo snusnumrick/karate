@@ -43,7 +43,7 @@ for communication between families and administrators.
     - Multiple payment options initiated from Family Portal (`/family/payment`): Monthly Group, Yearly Group, Individual Sessions (purchased in quantities).
     - **Discount Code Support:** Apply discount codes during payment with real-time validation and calculation.
     - View payment history, including payment type and applied discounts (`/family/payment-history`).
-    - Dynamic pricing tiers based on student payment history (1st Month, 2nd Month, Ongoing Monthly). Prices shown are before tax.
+    - Flat monthly rate for all students with automatic discounts applied for new students and other qualifying events. Prices shown are before tax.
     - Applicable sales taxes (e.g., GST, PST) are calculated based on active rates defined in the `tax_rates` database table and the `applicableTaxNames` setting in `app/config/site.ts`. The breakdown (including tax name, description, rate, and amount) is stored in the `payment_taxes` table, and the total amount (subtotal + all taxes) is stored in the `payments` table and sent to Stripe.
     - Custom, print-friendly payment receipts including tax breakdown (displaying tax description) and discount details are generated and accessible via the Family Portal (`/family/receipt/:paymentId`) instead of using Stripe's default receipts. The URL is stored in the `payments.receipt_url` field. Requires `VITE_SITE_URL` environment variable to be set correctly.
     - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
@@ -89,20 +89,36 @@ for communication between families and administrators.
     - Initiate new conversations with specific families (`/admin/messages/new`).
     - Receive real-time updates for new messages and conversation changes.
 - **Discount Code Management:**
-    - Create and manage discount codes with flexible rules (`/admin/discount-codes`).
-    - Support for fixed amount and percentage discounts.
-    - Configure applicability (training, store, or both) and scope (per-student or per-family).
-    - Set usage restrictions (one-time or ongoing) and validity periods.
-    - Track discount code usage and view statistics (`/admin/discount-codes`).
-    - Create new discount codes with comprehensive options (`/admin/discount-codes/new`).
-    - Automatic discount code generation for programmatic use cases.
-    - **Discount Templates:** Create and manage reusable templates (`/admin/discount-templates`) to streamline discount code creation with pre-configured settings for consistent pricing structures.
+        - Create and manage discount codes with flexible rules (`/admin/discount-codes`).
+        - Support for fixed amount and percentage discounts.
+        - Configure applicability (training, store, or both) and scope (per-student or per-family).
+        - Set usage restrictions (one-time or ongoing) and validity periods.
+        - Track discount code usage and view statistics (`/admin/discount-codes`).
+        - Create new discount codes with comprehensive options (`/admin/discount-codes/new`).
+        - Automatic discount code generation for programmatic use cases.
+        - **Discount Templates:** Create and manage reusable templates (`/admin/discount-templates`) to streamline discount code creation with pre-configured settings for consistent pricing structures.
+    - **Automatic Discount Assignment:**
+        - Event-driven automatic discount assignment system (`/admin/automatic-discounts`).
+        - Create automation rules linking events to discount templates (`/admin/automatic-discounts/new`).
+        - Support for student enrollment, payment milestones, attendance tracking, and belt promotion events.
+        - Flexible rule conditions based on age, belt rank, attendance count, and payment history.
+        - View and manage discount assignments with comprehensive filtering (`/admin/automatic-discounts/assignments`).
+        - Monitor recent events and rule processing (`/admin/automatic-discounts/events`).
+        - Batch processing tools for applying rules to historical data (`/admin/automatic-discounts/utilities`).
+        - Duplicate prevention and usage limit enforcement.
+        - Complete audit trail for all automatic assignments.
 
 ### Automated Notifications
 - **Student Absence:** Email to family when student marked absent.
 - **Newly Required Waiver:** Email to families needing to sign a newly required waiver.
 - **Payment Reminder (Scheduled):** Supabase Edge Function (`payment-reminder`) emails families with 'Expired' student eligibility.
 - **Missing Waiver Reminder (Scheduled):** Supabase Edge Function (`missing-waiver-reminder`) emails families missing required signatures.
+
+### Automated Discount Assignment
+- **Event-Driven Processing:** Automatic discount assignment triggered by student enrollment, payment milestones, attendance achievements, and belt promotions.
+- **Real-Time Rule Evaluation:** Immediate processing of automation rules when qualifying events occur.
+- **Smart Duplicate Prevention:** Prevents multiple assignments of the same discount to ensure fair usage.
+- **Flexible Conditions:** Support for age ranges, belt rank requirements, attendance thresholds, and payment history criteria.
 
 ### Technical & SEO
 - Built with Remix for SSR and performance.
@@ -316,16 +332,20 @@ for communication between families and administrators.
     - `app/routes/_admin.messages...`: Admin-facing messaging routes (nested under admin layout).
     - `app/components/ConversationList.tsx`, `app/components/AdminConversationList.tsx`, `app/components/MessageView.tsx`, `app/components/MessageInput.tsx`: Core UI components for messaging.
     - `app/routes/admin.discount-codes...`: Admin-facing discount code management routes.
+    - `app/routes/admin.automatic-discounts...`: Admin-facing automatic discount management routes.
     - `app/routes/api.discount-codes.validate.tsx`, `app/routes/api.available-discounts.$familyId.tsx`: API endpoints for discount code validation and retrieval.
     - `app/services/discount.server.ts`: Server-side discount code logic (validation, application, usage tracking).
+    - `app/services/auto-discount.server.ts`: Server-side automatic discount logic (event processing, rule evaluation, assignment).
+    - `app/utils/auto-discount-events.server.ts`: Event integration utilities for automatic discount triggers.
     - `app/components/DiscountCodeSelector.tsx`: User-facing component for discount code input and validation.
     - `app/types/discount.ts`, `app/types/supabase-extensions.d.ts`: TypeScript definitions for discount system and extended Supabase types.
     - **Note:** While dedicated API routes exist for specific tasks, much of the core backend logic (data fetching, mutations) is handled within the `loader` and `action` functions of the standard Remix routes (`app/routes/`), serving as endpoints for the web UI itself rather than standalone APIs.
     - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
 - **UI:** Built with [Shadcn](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn@latest add <component>` to add new components consistently.
-- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`).
+- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`, `discount_events`, `discount_automation_rules`, `discount_assignments`).
     - **Discount System:** Comprehensive discount code system with tables for `discount_codes` (code definitions, rules, validity) and `discount_code_usage` (usage tracking, audit trail). Supports fixed amount and percentage discounts with flexible applicability rules (training, store, both) and scope (per-student, per-family). Includes usage restrictions (one-time, ongoing) and automatic discount generation capabilities.
+    - **Automatic Discount System:** Event-driven automatic discount assignment with tables for `discount_events` (student/family events), `discount_automation_rules` (rule definitions linking events to discount templates), and `discount_assignments` (tracking of automatically assigned discounts). Supports complex rule conditions, duplicate prevention, and comprehensive audit trails.
 - **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.
 - **Environment Variables:** Managed via `.env` locally and platform environment variables in production (see Deployment). Use `.env.example` as a template.
 - **Email:** Uses Resend for transactional emails. See `app/utils/email.server.ts` and function-specific email logic.

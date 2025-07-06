@@ -199,7 +199,8 @@ export default function RegisterPage() {
                                         </Label>
                                         <Select name="referralSource" required>
                                             <SelectTrigger id="referralSource"
-                                                           className={`input-custom-styles w-full ${errors?.referralSource ? 'border-red-500' : ''}`}> {/* Applied custom style, removed redundant */}
+                                                           className={`input-custom-styles w-full ${errors?.referralSource ? 'border-red-500' : ''}`}
+                                                           tabIndex={1}> {/* Applied custom style, removed redundant */}
                                                 <SelectValue placeholder="Select an option"/>
                                             </SelectTrigger>
                                             <SelectContent>
@@ -225,6 +226,7 @@ export default function RegisterPage() {
                                             id="referralName"
                                             name="referralName"
                                             className="input-custom-styles"
+                                            tabIndex={2}
                                         />
                                     </div>
                                 </div>
@@ -241,6 +243,7 @@ export default function RegisterPage() {
                                         name="familyName"
                                         required
                                         className={`input-custom-styles ${errors?.familyName ? 'border-red-500' : ''}`}
+                                        tabIndex={3}
                                     />
                                     {errors?.familyName && (
                                         <p className="text-red-500 text-sm mt-1">{errors.familyName}</p>
@@ -260,6 +263,7 @@ export default function RegisterPage() {
                                             name="address"
                                             required
                                             className={`input-custom-styles ${errors?.address ? 'border-red-500' : ''}`}
+                                            tabIndex={4}
                                         />
                                         {errors?.address && (
                                             <p className="text-red-500 text-sm mt-1">{errors.address}</p>
@@ -276,6 +280,7 @@ export default function RegisterPage() {
                                             name="city"
                                             required
                                             className={`input-custom-styles ${errors?.city ? 'border-red-500' : ''}`}
+                                            tabIndex={5}
                                         />
                                         {errors?.city && (
                                             <p className="text-red-500 text-sm mt-1">{errors.city}</p>
@@ -288,7 +293,8 @@ export default function RegisterPage() {
                                         </Label>
                                         <Select name="province" required>
                                             <SelectTrigger id="province"
-                                                           className={`input-custom-styles w-full ${errors?.province ? 'border-red-500' : ''}`}> {/* Applied custom style, removed redundant */}
+                                                           className={`input-custom-styles w-full ${errors?.province ? 'border-red-500' : ''}`}
+                                                           tabIndex={6}> {/* Applied custom style, removed redundant */}
                                                 <SelectValue placeholder="Select a province"/>
                                             </SelectTrigger>
                                             <SelectContent>
@@ -315,6 +321,7 @@ export default function RegisterPage() {
                                             name="postalCode"
                                             required
                                             className={`input-custom-styles ${errors?.postalCode ? 'border-red-500' : ''}`}
+                                            tabIndex={7}
                                         />
                                         {errors?.postalCode && (
                                             <p className="text-red-500 text-sm mt-1">{errors.postalCode}</p>
@@ -331,6 +338,7 @@ export default function RegisterPage() {
                                             name="primaryPhone"
                                             required
                                             className={`input-custom-styles ${errors?.primaryPhone ? 'border-red-500' : ''}`}
+                                            tabIndex={8}
                                         />
                                         {errors?.primaryPhone && (
                                             <p className="text-red-500 text-sm mt-1">{errors.primaryPhone}</p>
@@ -355,7 +363,8 @@ export default function RegisterPage() {
                                             name="emergencyContact"
                                             required
                                             rows={3}
-                                            className="input-custom-styles" // Removed redundant focus/dark styles
+                                            className="input-custom-styles"
+                                            tabIndex={9} // Removed redundant focus/dark styles
                                         />
                                     </div>
 
@@ -367,7 +376,8 @@ export default function RegisterPage() {
                                             id="healthNumber"
                                             name="healthNumber"
                                             rows={3}
-                                            className="input-custom-styles" // Applied custom style
+                                            className="input-custom-styles"
+                                            tabIndex={10} // Applied custom style
                                         />
                                     </div>
                                 </div>
@@ -388,6 +398,7 @@ export default function RegisterPage() {
                                             name="contact1FirstName"
                                             required
                                             className={`input-custom-styles ${errors?.contact1FirstName ? 'border-red-500' : ''}`}
+                                            tabIndex={11}
                                         />
                                         {errors?.contact1FirstName && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1FirstName}</p>
@@ -405,6 +416,7 @@ export default function RegisterPage() {
                                             required
                                             // Removed defaultValue={familyName}
                                             className={`input-custom-styles ${errors?.contact1LastName ? 'border-red-500' : ''}`}
+                                            tabIndex={12}
                                         />
                                         {errors?.contact1LastName && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1LastName}</p>
@@ -417,7 +429,8 @@ export default function RegisterPage() {
                                         </Label>
                                         <Select name="contact1Type" required>
                                             <SelectTrigger id="contact1Type"
-                                                           className={`input-custom-styles w-full ${errors?.contact1Type ? 'border-red-500' : ''}`}> {/* Applied custom style, removed redundant */}
+                                                           className={`input-custom-styles w-full ${errors?.contact1Type ? 'border-red-500' : ''}`}
+                                                           tabIndex={13}> {/* Applied custom style, removed redundant */}
                                                 <SelectValue placeholder="Select relationship"/>
                                             </SelectTrigger>
                                             <SelectContent>
@@ -447,6 +460,7 @@ export default function RegisterPage() {
                                             //required
                                             // Removed defaultValue={primaryPhone}
                                             className={`input-custom-styles ${errors?.contact1HomePhone ? 'border-red-500' : ''}`}
+                                            tabIndex={14}
                                         />
                                         {errors?.contact1HomePhone && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1HomePhone}</p>
@@ -465,6 +479,7 @@ export default function RegisterPage() {
                                             name="contact1CellPhone"
                                             required
                                             className={`input-custom-styles ${errors?.contact1CellPhone ? 'border-red-500' : ''}`}
+                                            tabIndex={15}
                                         />
                                         {errors?.contact1CellPhone && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1CellPhone}</p>
@@ -486,6 +501,7 @@ export default function RegisterPage() {
                                             required
                                             autoComplete="username" // Added autocomplete attribute
                                             className={`input-custom-styles ${errors?.contact1Email ? 'border-red-500' : ''}`}
+                                            tabIndex={16}
                                         />
                                         {errors?.contact1Email && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1Email}</p>
@@ -505,6 +521,7 @@ export default function RegisterPage() {
                                             name="contact1EmailConfirm"
                                             required
                                             className={`input-custom-styles ${errors?.contact1EmailConfirm ? 'border-red-500' : ''}`}
+                                            tabIndex={17}
                                         />
                                         {errors?.contact1EmailConfirm && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1EmailConfirm}</p>
@@ -522,6 +539,7 @@ export default function RegisterPage() {
                                             minLength={8}
                                             autoComplete="new-password" // Added autocomplete attribute
                                             className={`input-custom-styles ${errors?.portalPassword ? 'border-red-500' : ''}`}
+                                            tabIndex={18}
                                         />
                                         {errors?.portalPassword && (
                                             <p className="text-red-500 text-sm mt-1">{errors.portalPassword}</p>
@@ -542,6 +560,7 @@ export default function RegisterPage() {
                                             minLength={8}
                                             autoComplete="new-password" // Added autocomplete attribute
                                             className={`input-custom-styles ${errors?.portalPasswordConfirm ? 'border-red-500' : ''}`}
+                                            tabIndex={19}
                                         />
                                         {errors?.portalPasswordConfirm && (
                                             <p className="text-red-500 text-sm mt-1">{errors.portalPasswordConfirm}</p>
@@ -558,6 +577,7 @@ export default function RegisterPage() {
                                             name="marketingEmails"
                                             defaultChecked={true}
                                             className="dark:border-gray-400 dark:data-[state=checked]:bg-green-400"
+                                            tabIndex={20}
                                         />
                                         <Label htmlFor="marketingEmails" className="text-sm font-medium">
                                             I want to receive promotional emails and updates
@@ -579,6 +599,7 @@ export default function RegisterPage() {
                                 <Button
                                     type="submit"
                                     className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
+                                    tabIndex={21}
                                 >
                                     SUBMIT REGISTRATION
                                 </Button>

@@ -113,7 +113,7 @@ export interface DiscountCodeWithUsage extends DiscountCode {
   recent_usage?: DiscountCodeUsage[];
   families?: {
     id: string;
-    family_name: string;
+    name: string;
   } | null;
   students?: {
     id: string;

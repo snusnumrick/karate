@@ -197,6 +197,7 @@ export default function EditDiscountTemplate() {
                   defaultValue={template.name}
                   placeholder="e.g., Student Discount Template"
                   className={actionData?.errors?.name ? "border-red-500" : ""}
+                  tabIndex={1}
                 />
                 {actionData?.errors?.name && (
                   <p className="text-sm text-red-500">{actionData.errors.name}</p>
@@ -206,7 +207,7 @@ export default function EditDiscountTemplate() {
               <div className="space-y-2">
                 <Label htmlFor="discount_type">Discount Type *</Label>
                 <Select name="discount_type" defaultValue={template.discount_type}>
-                  <SelectTrigger className={actionData?.errors?.discount_type ? "border-red-500" : ""}>
+                  <SelectTrigger className={actionData?.errors?.discount_type ? "border-red-500" : ""} tabIndex={2}>
                     <SelectValue placeholder="Select discount type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -228,6 +229,7 @@ export default function EditDiscountTemplate() {
                 defaultValue={template.description || ""}
                 placeholder="Optional description for this template"
                 rows={3}
+                tabIndex={3}
               />
             </div>
 
@@ -238,11 +240,12 @@ export default function EditDiscountTemplate() {
                   id="discount_value"
                   name="discount_value"
                   type="number"
-                  step="0.01"
+                  step="0.0001"
                   min="0"
                   defaultValue={template.discount_value}
-                  placeholder="e.g., 10 or 15.50"
+                  placeholder="e.g., 10 or 82.6447"
                   className={actionData?.errors?.discount_value ? "border-red-500" : ""}
+                  tabIndex={4}
                 />
                 {actionData?.errors?.discount_value && (
                   <p className="text-sm text-red-500">{actionData.errors.discount_value}</p>
@@ -252,7 +255,7 @@ export default function EditDiscountTemplate() {
               <div className="space-y-2">
                 <Label htmlFor="usage_type">Usage Type *</Label>
                 <Select name="usage_type" defaultValue={template.usage_type}>
-                  <SelectTrigger className={actionData?.errors?.usage_type ? "border-red-500" : ""}>
+                  <SelectTrigger className={actionData?.errors?.usage_type ? "border-red-500" : ""} tabIndex={5}>
                     <SelectValue placeholder="Select usage type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -276,13 +279,14 @@ export default function EditDiscountTemplate() {
                   min="1"
                   defaultValue={template.max_uses || ""}
                   placeholder="Leave empty for unlimited"
+                  tabIndex={6}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="scope">Scope *</Label>
                 <Select name="scope" defaultValue={template.scope}>
-                  <SelectTrigger className={actionData?.errors?.scope ? "border-red-500" : ""}>
+                  <SelectTrigger className={actionData?.errors?.scope ? "border-red-500" : ""} tabIndex={7}>
                     <SelectValue placeholder="Select scope" />
                   </SelectTrigger>
                   <SelectContent>
@@ -305,6 +309,7 @@ export default function EditDiscountTemplate() {
                     name="applicable_to" 
                     value="monthly_group" 
                     defaultChecked={template.applicable_to.includes('monthly_group')}
+                    tabIndex={8}
                   />
                   <Label htmlFor="monthly_group">Monthly Group</Label>
                 </div>
@@ -314,6 +319,7 @@ export default function EditDiscountTemplate() {
                     name="applicable_to" 
                     value="yearly_group" 
                     defaultChecked={template.applicable_to.includes('yearly_group')}
+                    tabIndex={9}
                   />
                   <Label htmlFor="yearly_group">Yearly Group</Label>
                 </div>
@@ -323,6 +329,7 @@ export default function EditDiscountTemplate() {
                     name="applicable_to" 
                     value="individual_session" 
                     defaultChecked={template.applicable_to.includes('individual_session')}
+                    tabIndex={10}
                   />
                   <Label htmlFor="individual_session">Individual Session</Label>
                 </div>
@@ -332,6 +339,7 @@ export default function EditDiscountTemplate() {
                     name="applicable_to" 
                     value="store_purchase" 
                     defaultChecked={template.applicable_to.includes('store_purchase')}
+                    tabIndex={11}
                   />
                   <Label htmlFor="store_purchase">Store Purchase</Label>
                 </div>
@@ -341,6 +349,7 @@ export default function EditDiscountTemplate() {
                     name="applicable_to" 
                     value="other" 
                     defaultChecked={template.applicable_to.includes('other')}
+                    tabIndex={12}
                   />
                   <Label htmlFor="other">Other</Label>
                 </div>
@@ -351,22 +360,22 @@ export default function EditDiscountTemplate() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox id="is_active" name="is_active" defaultChecked={template.is_active} />
+              <Checkbox id="is_active" name="is_active" defaultChecked={template.is_active} tabIndex={13} />
               <Label htmlFor="is_active">Active Template</Label>
             </div>
 
             <div className="flex gap-4">
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} tabIndex={14}>
                 <Save className="h-4 w-4 mr-2" />
                 {isSubmitting ? "Updating..." : "Update Template"}
               </Button>
-              <Button type="button" variant="outline" asChild>
+              <Button type="button" variant="outline" asChild tabIndex={15}>
                 <Link to="/admin/discount-templates">Cancel</Link>
               </Button>
               
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button type="button" variant="destructive" className="ml-auto">
+                  <Button type="button" variant="destructive" className="ml-auto" tabIndex={16}>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete Template
                   </Button>
@@ -379,10 +388,10 @@ export default function EditDiscountTemplate() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel tabIndex={17}>Cancel</AlertDialogCancel>
                     <Form method="post" className="inline">
                       <input type="hidden" name="intent" value="delete" />
-                      <AlertDialogAction type="submit" className="bg-red-600 hover:bg-red-700">
+                      <AlertDialogAction type="submit" className="bg-red-600 hover:bg-red-700" tabIndex={18}>
                         Delete Template
                       </AlertDialogAction>
                     </Form>

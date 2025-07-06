@@ -252,8 +252,9 @@ export default function AdminEditDiscountCodePage() {
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="Enter discount code"
                   required
+                  tabIndex={1}
                 />
-                <Button type="button" onClick={generateCode} variant="outline">
+                <Button type="button" onClick={generateCode} variant="outline" tabIndex={2}>
                   Generate
                 </Button>
               </div>
@@ -270,6 +271,7 @@ export default function AdminEditDiscountCodePage() {
                 defaultValue={discountCode.name}
                 placeholder="Enter discount name"
                 required
+                tabIndex={3}
               />
               {actionData?.fieldErrors?.name && (
                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.name}</p>
@@ -283,6 +285,7 @@ export default function AdminEditDiscountCodePage() {
                 name="description"
                 defaultValue={discountCode.description || ''}
                 placeholder="Enter description"
+                tabIndex={4}
               />
             </div>
           </div>
@@ -295,7 +298,7 @@ export default function AdminEditDiscountCodePage() {
             <div>
               <Label htmlFor="discountType">Discount Type <span className="text-red-500">*</span></Label>
               <Select name="discountType" defaultValue={discountCode.discount_type} required>
-                <SelectTrigger>
+                <SelectTrigger tabIndex={5}>
                   <SelectValue placeholder="Select discount type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -314,10 +317,11 @@ export default function AdminEditDiscountCodePage() {
                 id="value"
                 name="value"
                 type="number"
-                step="0.01"
+                step="0.0001"
                 defaultValue={discountCode.discount_value}
-                placeholder="Enter discount value"
+                placeholder="Enter discount value (e.g., 82.6447)"
                 required
+                tabIndex={6}
               />
               {actionData?.fieldErrors?.value && (
                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.value}</p>
@@ -327,7 +331,7 @@ export default function AdminEditDiscountCodePage() {
             <div>
               <Label htmlFor="usageType">Usage Type <span className="text-red-500">*</span></Label>
               <Select name="usageType" defaultValue={discountCode.usage_type} required>
-                <SelectTrigger>
+                <SelectTrigger tabIndex={7}>
                   <SelectValue placeholder="Select usage type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -348,6 +352,7 @@ export default function AdminEditDiscountCodePage() {
                 type="number"
                 defaultValue={discountCode.max_uses || ''}
                 placeholder="Enter max uses (optional)"
+                tabIndex={8}
               />
             </div>
           </div>
@@ -368,6 +373,7 @@ export default function AdminEditDiscountCodePage() {
                     value="monthly_group"
                     defaultChecked={discountCode.applicable_to.includes('monthly_group' as PaymentTypeEnum)}
                     className="rounded border-gray-300"
+                    tabIndex={9}
                   />
                   <Label htmlFor="monthly_group" className="text-sm font-normal">Monthly Group Training</Label>
                 </div>
@@ -379,6 +385,7 @@ export default function AdminEditDiscountCodePage() {
                     value="yearly_group"
                     defaultChecked={discountCode.applicable_to.includes('yearly_group' as PaymentTypeEnum)}
                     className="rounded border-gray-300"
+                    tabIndex={10}
                   />
                   <Label htmlFor="yearly_group" className="text-sm font-normal">Yearly Group Training</Label>
                 </div>
@@ -390,6 +397,7 @@ export default function AdminEditDiscountCodePage() {
                     value="individual_session"
                     defaultChecked={discountCode.applicable_to.includes('individual_session' as PaymentTypeEnum)}
                     className="rounded border-gray-300"
+                    tabIndex={11}
                   />
                   <Label htmlFor="individual_session" className="text-sm font-normal">Individual Session</Label>
                 </div>
@@ -401,6 +409,7 @@ export default function AdminEditDiscountCodePage() {
                     value="store_purchase"
                     defaultChecked={discountCode.applicable_to.includes('store_purchase' as PaymentTypeEnum)}
                     className="rounded border-gray-300"
+                    tabIndex={12}
                   />
                   <Label htmlFor="store_purchase" className="text-sm font-normal">Store Purchase</Label>
                 </div>
@@ -412,6 +421,7 @@ export default function AdminEditDiscountCodePage() {
                     value="other"
                     defaultChecked={discountCode.applicable_to.includes('other' as PaymentTypeEnum)}
                     className="rounded border-gray-300"
+                    tabIndex={13}
                   />
                   <Label htmlFor="other" className="text-sm font-normal">Other</Label>
                 </div>
@@ -424,7 +434,7 @@ export default function AdminEditDiscountCodePage() {
             <div>
               <Label htmlFor="scope">Scope <span className="text-red-500">*</span></Label>
               <Select name="scope" value={selectedScope} onValueChange={(value) => setSelectedScope(value as 'per_student' | 'per_family')} required>
-                <SelectTrigger>
+                <SelectTrigger tabIndex={14}>
                   <SelectValue placeholder="Select scope" />
                 </SelectTrigger>
                 <SelectContent>
@@ -448,7 +458,7 @@ export default function AdminEditDiscountCodePage() {
             <div className="mb-4">
               <Label htmlFor="familyId">Family Selection <span className="text-red-500">*</span></Label>
               <Select name="familyId" value={selectedFamily} onValueChange={setSelectedFamily} required>
-                <SelectTrigger>
+                <SelectTrigger tabIndex={15}>
                   <SelectValue placeholder="Select family" />
                 </SelectTrigger>
                 <SelectContent>
@@ -468,7 +478,7 @@ export default function AdminEditDiscountCodePage() {
               <div className="mb-4">
                 <Label htmlFor="studentId">Student Selection <span className="text-red-500">*</span></Label>
                 <Select name="studentId" value={selectedStudent} onValueChange={setSelectedStudent} required>
-                  <SelectTrigger>
+                  <SelectTrigger tabIndex={16}>
                     <SelectValue placeholder="Select student" />
                   </SelectTrigger>
                   <SelectContent>
@@ -499,6 +509,7 @@ export default function AdminEditDiscountCodePage() {
                 type="datetime-local"
                 defaultValue={formatDateTimeLocal(discountCode.valid_from)}
                 required
+                tabIndex={17}
               />
               {actionData?.fieldErrors?.validFrom && (
                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.validFrom}</p>
@@ -512,6 +523,7 @@ export default function AdminEditDiscountCodePage() {
                 name="validUntil"
                 type="datetime-local"
                 defaultValue={formatDateTimeLocal(discountCode.valid_until)}
+                tabIndex={18}
               />
             </div>
           </div>
@@ -519,10 +531,10 @@ export default function AdminEditDiscountCodePage() {
 
         {/* Submit Button */}
         <div className="flex justify-end gap-4 pt-4 border-t border-border">
-          <Button type="button" variant="outline" asChild>
+          <Button type="button" variant="outline" asChild tabIndex={19}>
             <Link to="/admin/discount-codes">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} tabIndex={20}>
             {isSubmitting ? 'Updating...' : 'Update Discount Code'}
           </Button>
         </div>

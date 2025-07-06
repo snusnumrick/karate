@@ -474,7 +474,7 @@ export default function AdminNewPaymentPage() {
                                 onValueChange={setSelectedFamily}
                                 required
                             >
-                                <SelectTrigger id="familyId">
+                                <SelectTrigger id="familyId" tabIndex={1}>
                                     <SelectValue placeholder="Select a family"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -499,7 +499,7 @@ export default function AdminNewPaymentPage() {
                                 onValueChange={setSelectedType} // Update handler
                                 required
                             >
-                                <SelectTrigger id="type"> {/* Update id */}
+                                <SelectTrigger id="type" tabIndex={2}> {/* Update id */}
                                     <SelectValue placeholder="Select payment type"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -528,6 +528,7 @@ export default function AdminNewPaymentPage() {
                                                     id={`student-${student.id}`}
                                                     checked={selectedStudentIds.has(student.id)}
                                                     onCheckedChange={(checked) => handleCheckboxChange(student.id, !!checked)}
+                                                    tabIndex={2 + familyStudents.indexOf(student) + 1}
                                                 />
                                                 <Label htmlFor={`student-${student.id}`} className="font-normal cursor-pointer">
                                                     {student.first_name} {student.last_name}
@@ -557,6 +558,7 @@ export default function AdminNewPaymentPage() {
                                     placeholder="e.g., 5"
                                     required={selectedType === 'individual_session'} // Check selectedType state
                                     className="mt-1"
+                                    tabIndex={3}
                                 />
                                 {actionData?.fieldErrors?.quantity && (
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.quantity}</p>
@@ -578,6 +580,7 @@ export default function AdminNewPaymentPage() {
                                 className="mt-1"
                                 value={subtotalStr} // Control input value
                                 onChange={(e) => setSubtotalStr(e.target.value)} // Update state on change
+                                tabIndex={4}
                             />
                             {actionData?.fieldErrors?.subtotalAmount && (
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.subtotalAmount}</p>
@@ -615,6 +618,7 @@ export default function AdminNewPaymentPage() {
                                     defaultValue={getTodayDateString()}
                                     required={selectedMethod !== 'stripe'}
                                     className="mt-1"
+                                    tabIndex={5}
                                 />
                                 {actionData?.fieldErrors?.paymentDate && (
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.paymentDate}</p>
@@ -631,7 +635,7 @@ export default function AdminNewPaymentPage() {
                                 onValueChange={setSelectedMethod}
                                 required
                             >
-                                <SelectTrigger id="paymentMethod">
+                                <SelectTrigger id="paymentMethod" tabIndex={6}>
                                     <SelectValue placeholder="Select payment method"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -668,6 +672,7 @@ export default function AdminNewPaymentPage() {
                                 placeholder="e.g., Cheque #123, Paid for June fees"
                                 className="mt-1"
                                 rows={3}
+                                tabIndex={7}
                             />
                         </div>
 
@@ -676,7 +681,7 @@ export default function AdminNewPaymentPage() {
                     <input type="hidden" name="studentIds" value={Array.from(selectedStudentIds).join(',')} />
 
                     <div className="mt-8 flex justify-end">
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting} tabIndex={8}>
                             {isSubmitting ? "Recording..." : "Record Payment"}
                         </Button>
                     </div>

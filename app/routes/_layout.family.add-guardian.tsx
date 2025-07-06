@@ -229,7 +229,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>First Name</FormLabel>
-                                            <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
+                                            <FormControl><Input {...field} className="input-custom-styles" tabIndex={1}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -240,7 +240,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Last Name</FormLabel>
-                                            <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
+                                            <FormControl><Input {...field} className="input-custom-styles" tabIndex={2}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -254,7 +254,7 @@ export default function AddGuardianPage() {
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     {/* Applied input-custom-styles for consistency */}
-                                                    <SelectTrigger className="input-custom-styles"><SelectValue
+                                                    <SelectTrigger className="input-custom-styles" tabIndex={3}><SelectValue
                                                         placeholder="Select relationship"/></SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
@@ -276,7 +276,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Home Phone</FormLabel>
-                                            <FormControl><Input type="tel" {...field} className="input-custom-styles"/></FormControl>
+                                            <FormControl><Input type="tel" {...field} className="input-custom-styles" tabIndex={4}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -287,7 +287,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Cell Phone</FormLabel>
-                                            <FormControl><Input type="tel" {...field} className="input-custom-styles"/></FormControl>
+                                            <FormControl><Input type="tel" {...field} className="input-custom-styles" tabIndex={5}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -298,7 +298,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Email</FormLabel>
-                                            <FormControl><Input type="email" {...field} className="input-custom-styles"/></FormControl>
+                                            <FormControl><Input type="email" {...field} className="input-custom-styles" tabIndex={6}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -310,7 +310,7 @@ export default function AddGuardianPage() {
                                         <FormItem>
                                             <FormLabel>Work Phone (Optional)</FormLabel>
                                             <FormControl><Input type="tel" {...field}
-                                                                value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={7}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -322,7 +322,7 @@ export default function AddGuardianPage() {
                                         <FormItem>
                                             <FormLabel>Employer (Optional)</FormLabel>
                                             <FormControl><Input {...field}
-                                                                value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={8}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -334,7 +334,7 @@ export default function AddGuardianPage() {
                                         <FormItem>
                                             <FormLabel>Employer Phone (Optional)</FormLabel>
                                             <FormControl><Input type="tel" {...field}
-                                                                value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={9}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -346,7 +346,7 @@ export default function AddGuardianPage() {
                                         <FormItem className="md:col-span-2">
                                             <FormLabel>Employer Notes (Optional)</FormLabel>
                                             <FormControl><Textarea {...field}
-                                                                   value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                   value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={10}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -355,10 +355,10 @@ export default function AddGuardianPage() {
 
                             {/* Action Buttons */}
                             <div className="flex justify-end gap-4 mt-6">
-                                <Button type="button" variant="outline" asChild>
+                                <Button type="button" variant="outline" asChild tabIndex={11}>
                                     <Link to="/family">Cancel</Link>
                                 </Button>
-                                <Button type="submit" disabled={isSubmitting}>
+                                <Button type="submit" disabled={isSubmitting} tabIndex={12}>
                                     {isSubmitting ? 'Saving...' : 'Save Guardian'}
                                 </Button>
                             </div>

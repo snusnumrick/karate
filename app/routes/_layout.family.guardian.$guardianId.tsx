@@ -324,7 +324,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>First Name</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input {...field} tabIndex={1} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -335,7 +335,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Last Name</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input {...field} tabIndex={2} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -349,7 +349,7 @@ export default function GuardianDetailPage() {
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl>
                                                         {/* Applied input-custom-styles for consistency */}
-                                                        <SelectTrigger className="input-custom-styles"><SelectValue
+                                                        <SelectTrigger tabIndex={3} className="input-custom-styles"><SelectValue
                                                             placeholder="Select relationship"/></SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
@@ -369,7 +369,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Home Phone</FormLabel>
-                                                <FormControl><Input type="tel" {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input type="tel" {...field} tabIndex={4} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -380,7 +380,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Cell Phone</FormLabel>
-                                                <FormControl><Input type="tel" {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input type="tel" {...field} tabIndex={5} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -391,7 +391,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Email</FormLabel>
-                                                <FormControl><Input type="email" {...field} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input type="email" {...field} tabIndex={6} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -403,7 +403,7 @@ export default function GuardianDetailPage() {
                                             <FormItem>
                                                 <FormLabel>Work Phone</FormLabel>
                                                 <FormControl><Input type="tel" {...field}
-                                                                    value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                    value={getDefaultValue(field.value)} tabIndex={7} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -415,7 +415,7 @@ export default function GuardianDetailPage() {
                                             <FormItem>
                                                 <FormLabel>Employer</FormLabel>
                                                 <FormControl><Input {...field}
-                                                                    value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                    value={getDefaultValue(field.value)} tabIndex={8} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -427,7 +427,7 @@ export default function GuardianDetailPage() {
                                             <FormItem>
                                                 <FormLabel>Employer Phone</FormLabel>
                                                 <FormControl><Input type="tel" {...field}
-                                                                    value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                    value={getDefaultValue(field.value)} tabIndex={9} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -439,7 +439,7 @@ export default function GuardianDetailPage() {
                                             <FormItem className="md:col-span-2">
                                                 <FormLabel>Employer Notes</FormLabel>
                                                 <FormControl><Textarea {...field}
-                                                                       value={getDefaultValue(field.value)} className="input-custom-styles"/></FormControl>
+                                                                       value={getDefaultValue(field.value)} tabIndex={10} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -449,10 +449,10 @@ export default function GuardianDetailPage() {
                                 {/* Action Buttons */}
                                 <div className="flex justify-end gap-4 mt-6">
                                     <Button type="button" variant="outline" onClick={() => setIsEditing(false)}
-                                            disabled={isSubmitting}>
+                                            disabled={isSubmitting} tabIndex={11}>
                                         Cancel
                                     </Button>
-                                    <Button type="submit" disabled={isSubmitting}>
+                                    <Button type="submit" disabled={isSubmitting} tabIndex={12}>
                                         {isSubmitting && formIntent === 'updateGuardian' ? 'Saving...' : 'Save Changes'}
                                     </Button>
                                 </div>

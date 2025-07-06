@@ -292,6 +292,7 @@ export default function EditProductVariantPage() {
                         aria-invalid={!!actionData?.fieldErrors?.size}
                         aria-describedby="size-error"
                         className="input-custom-styles"
+                        tabIndex={1}
                     />
                     {actionData?.fieldErrors?.size && (
                         <p id="size-error" className="text-sm text-destructive mt-1">{actionData.fieldErrors.size}</p>
@@ -313,6 +314,7 @@ export default function EditProductVariantPage() {
                         aria-invalid={!!actionData?.fieldErrors?.price}
                         aria-describedby="price-error"
                         className="input-custom-styles"
+                        tabIndex={2}
                     />
                      {actionData?.fieldErrors?.price && (
                         <p id="price-error" className="text-sm text-destructive mt-1">{actionData.fieldErrors.price}</p>
@@ -334,6 +336,7 @@ export default function EditProductVariantPage() {
                         aria-invalid={!!actionData?.fieldErrors?.stock_quantity}
                         aria-describedby="stock-error"
                         className="input-custom-styles"
+                        tabIndex={3}
                     />
                      {actionData?.fieldErrors?.stock_quantity && (
                         <p id="stock-error" className="text-sm text-destructive mt-1">{actionData.fieldErrors.stock_quantity}</p>
@@ -346,13 +349,14 @@ export default function EditProductVariantPage() {
                         id="is_active"
                         name="is_active"
                         defaultChecked={defaultValues.is_active}
+                        tabIndex={4}
                     />
                     <Label htmlFor="is_active">Active (Available for purchase)</Label>
                 </div>
 
                 {/* Submit Button */}
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting} tabIndex={5}>
                         {isSubmitting ? "Saving Changes..." : "Save Changes"}
                     </Button>
                 </div>
@@ -369,6 +373,7 @@ export default function EditProductVariantPage() {
                     variant="destructive"
                     onClick={() => setIsDeleteDialogOpen(true)}
                     disabled={isSubmitting && formIntent === 'delete'}
+                    tabIndex={6}
                 >
                     <Trash2 className="mr-2 h-4 w-4" />
                     {isSubmitting && formIntent === 'delete' ? 'Deleting...' : 'Delete Variant'}
@@ -387,7 +392,7 @@ export default function EditProductVariantPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isSubmitting && formIntent === 'delete'}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={isSubmitting && formIntent === 'delete'} tabIndex={7}>Cancel</AlertDialogCancel>
                         {/* Use a Form inside the dialog for submission */}
                         <Form method="post" onSubmit={() => setIsDeleteDialogOpen(false)}>
                             <input type="hidden" name="intent" value="delete" />
@@ -395,6 +400,7 @@ export default function EditProductVariantPage() {
                                 type="submit" // Submit the form
                                 disabled={isSubmitting && formIntent === 'delete'}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                tabIndex={8}
                             >
                                 {isSubmitting && formIntent === 'delete' ? 'Deleting...' : 'Delete Variant'}
                             </AlertDialogAction>

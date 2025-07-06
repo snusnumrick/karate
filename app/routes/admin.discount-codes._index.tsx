@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from '@remix-run/node';
-import { useLoaderData, Link, useFetcher } from '@remix-run/react';
+import { useLoaderData, Link } from "@remix-run/react";
 import { useState } from 'react';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { DiscountService } from '~/services/discount.server';
@@ -128,90 +128,7 @@ export default function AdminDiscountCodes() {
     setDialogState({ isOpen: false, action: null, codeId: null, codeName: null });
   };
 
-  // Action button components using fetcher.Form
-  function DeactivateButton({ codeId, codeName }: { codeId: string, codeName: string }) {
-    const fetcher = useFetcher();
-    const isDeactivating = fetcher.state !== 'idle';
 
-    const handleDeactivate = (event: React.MouseEvent<HTMLButtonElement>) => {
-      if (!window.confirm(`Are you sure you want to deactivate "${codeName}"?`)) {
-        event.preventDefault();
-      }
-    };
-
-    return (
-        <fetcher.Form method="post">
-          <input type="hidden" name="intent" value="deactivate" />
-          <input type="hidden" name="id" value={codeId} />
-          <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              className="text-yellow-600 hover:text-yellow-700 whitespace-nowrap"
-              onClick={handleDeactivate}
-              disabled={isDeactivating}
-          >
-            {isDeactivating ? 'Deactivating...' : 'Deactivate'}
-          </Button>
-        </fetcher.Form>
-    );
-  }
-
-  function ActivateButton({ codeId, codeName }: { codeId: string, codeName: string }) {
-    const fetcher = useFetcher();
-    const isActivating = fetcher.state !== 'idle';
-
-    const handleActivate = (event: React.MouseEvent<HTMLButtonElement>) => {
-      if (!window.confirm(`Are you sure you want to activate "${codeName}"?`)) {
-        event.preventDefault();
-      }
-    };
-
-    return (
-        <fetcher.Form method="post">
-          <input type="hidden" name="intent" value="activate" />
-          <input type="hidden" name="id" value={codeId} />
-          <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              className="text-green-600 hover:text-green-700 whitespace-nowrap"
-              onClick={handleActivate}
-              disabled={isActivating}
-          >
-            {isActivating ? 'Activating...' : 'Activate'}
-          </Button>
-        </fetcher.Form>
-    );
-  }
-
-  function DeleteButton({ codeId, codeName }: { codeId: string, codeName: string }) {
-    const fetcher = useFetcher();
-    const isDeleting = fetcher.state !== 'idle';
-
-    const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
-      if (!window.confirm(`Are you sure you want to delete "${codeName}"? This cannot be undone.`)) {
-        event.preventDefault();
-      }
-    };
-
-    return (
-        <fetcher.Form method="post">
-          <input type="hidden" name="intent" value="delete" />
-          <input type="hidden" name="id" value={codeId} />
-          <Button
-              type="submit"
-              variant="destructive"
-              size="sm"
-              className="whitespace-nowrap"
-              onClick={handleDelete}
-              disabled={isDeleting}
-          >
-            {isDeleting ? 'Deleting...' : 'Delete'}
-          </Button>
-        </fetcher.Form>
-    );
-  }
 
 
 
@@ -321,7 +238,7 @@ export default function AdminDiscountCodes() {
                             <div className="text-sm">
                               {code.scope === 'per_family' && code.families ? (
                                   <div>
-                                    <div className="font-medium">{code.families.family_name}</div>
+                                    <div className="font-medium">{code.families.name}</div>
                                     <div className="text-xs text-muted-foreground">Family</div>
                                   </div>
                               ) : code.scope === 'per_student' && code.students ? (

@@ -364,9 +364,10 @@ export default function AdminNewDiscountCodePage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="Enter discount code"
+                  tabIndex={1}
                   required
                 />
-                <Button type="button" onClick={generateCode} variant="outline" disabled={isGeneratingCode}>
+                <Button type="button" onClick={generateCode} variant="outline" disabled={isGeneratingCode} tabIndex={2}>
                   {isGeneratingCode ? 'Generating...' : 'Generate'}
                 </Button>
               </div>
@@ -383,6 +384,7 @@ export default function AdminNewDiscountCodePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter discount name"
+                tabIndex={3}
                 required
               />
               {actionData?.fieldErrors?.name && (
@@ -398,6 +400,7 @@ export default function AdminNewDiscountCodePage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter description"
+                tabIndex={4}
               />
             </div>
           </div>
@@ -410,7 +413,7 @@ export default function AdminNewDiscountCodePage() {
             <div>
               <Label htmlFor="discountType">Discount Type <span className="text-red-500">*</span></Label>
               <Select name="discountType" value={discountType} onValueChange={setDiscountType} required>
-                <SelectTrigger>
+                <SelectTrigger tabIndex={5}>
                   <SelectValue placeholder="Select discount type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -429,10 +432,11 @@ export default function AdminNewDiscountCodePage() {
                 id="value"
                 name="value"
                 type="number"
-                step="0.01"
+                step="0.0001"
                 value={discountValue}
                 onChange={(e) => setDiscountValue(e.target.value)}
-                placeholder="Enter discount value"
+                placeholder="Enter discount value (e.g., 82.6447)"
+                tabIndex={6}
                 required
               />
               {actionData?.fieldErrors?.value && (
@@ -443,7 +447,7 @@ export default function AdminNewDiscountCodePage() {
             <div>
               <Label htmlFor="usageType">Usage Type <span className="text-red-500">*</span></Label>
               <Select name="usageType" value={usageType} onValueChange={setUsageType} required>
-                <SelectTrigger>
+                <SelectTrigger tabIndex={7}>
                   <SelectValue placeholder="Select usage type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -466,6 +470,7 @@ export default function AdminNewDiscountCodePage() {
                 value={maxUses}
                 onChange={(e) => setMaxUses(e.target.value)}
                 placeholder="Enter max uses (leave empty for unlimited)"
+                tabIndex={8}
               />
             </div>
           </div>
@@ -487,6 +492,7 @@ export default function AdminNewDiscountCodePage() {
                     checked={applicableTo.includes('monthly_group')}
                     onChange={(e) => handleApplicableToChange('monthly_group', e.target.checked)}
                     className="rounded border-gray-300"
+                    tabIndex={9}
                   />
                   <Label htmlFor="monthly_group" className="text-sm font-normal">Monthly Group Training</Label>
                 </div>
@@ -499,6 +505,7 @@ export default function AdminNewDiscountCodePage() {
                     checked={applicableTo.includes('yearly_group')}
                     onChange={(e) => handleApplicableToChange('yearly_group', e.target.checked)}
                     className="rounded border-gray-300"
+                    tabIndex={10}
                   />
                   <Label htmlFor="yearly_group" className="text-sm font-normal">Yearly Group Training</Label>
                 </div>
@@ -511,6 +518,7 @@ export default function AdminNewDiscountCodePage() {
                     checked={applicableTo.includes('individual_session')}
                     onChange={(e) => handleApplicableToChange('individual_session', e.target.checked)}
                     className="rounded border-gray-300"
+                    tabIndex={11}
                   />
                   <Label htmlFor="individual_session" className="text-sm font-normal">Individual Session</Label>
                 </div>
@@ -523,6 +531,7 @@ export default function AdminNewDiscountCodePage() {
                     checked={applicableTo.includes('store_purchase')}
                     onChange={(e) => handleApplicableToChange('store_purchase', e.target.checked)}
                     className="rounded border-gray-300"
+                    tabIndex={12}
                   />
                   <Label htmlFor="store_purchase" className="text-sm font-normal">Store Purchase</Label>
                 </div>
@@ -535,6 +544,7 @@ export default function AdminNewDiscountCodePage() {
                     checked={applicableTo.includes('other')}
                     onChange={(e) => handleApplicableToChange('other', e.target.checked)}
                     className="rounded border-gray-300"
+                    tabIndex={13}
                   />
                   <Label htmlFor="other" className="text-sm font-normal">Other</Label>
                 </div>
@@ -547,7 +557,7 @@ export default function AdminNewDiscountCodePage() {
             <div>
               <Label htmlFor="scope">Scope <span className="text-red-500">*</span></Label>
               <Select name="scope" value={selectedScope} onValueChange={setSelectedScope} required>
-                <SelectTrigger>
+                <SelectTrigger tabIndex={14}>
                   <SelectValue placeholder="Select scope" />
                 </SelectTrigger>
                 <SelectContent>
@@ -571,7 +581,7 @@ export default function AdminNewDiscountCodePage() {
             <div className="mb-4">
               <Label htmlFor="familyId">Family Selection <span className="text-red-500">*</span></Label>
               <Select name="familyId" value={selectedFamily} onValueChange={setSelectedFamily} required>
-                <SelectTrigger>
+                <SelectTrigger tabIndex={15}>
                   <SelectValue placeholder="Select family" />
                 </SelectTrigger>
                 <SelectContent>
@@ -591,7 +601,7 @@ export default function AdminNewDiscountCodePage() {
               <div className="mb-4">
                 <Label htmlFor="studentId">Student Selection <span className="text-red-500">*</span></Label>
                 <Select name="studentId" value={selectedStudent} onValueChange={setSelectedStudent} required>
-                  <SelectTrigger>
+                  <SelectTrigger tabIndex={16}>
                     <SelectValue placeholder="Select student" />
                   </SelectTrigger>
                   <SelectContent>
@@ -622,6 +632,7 @@ export default function AdminNewDiscountCodePage() {
                 type="datetime-local"
                 value={validFrom}
                 onChange={(e) => setValidFrom(e.target.value)}
+                tabIndex={17}
                 required
               />
               {actionData?.fieldErrors?.validFrom && (
@@ -637,6 +648,7 @@ export default function AdminNewDiscountCodePage() {
                 type="datetime-local"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
+                tabIndex={18}
               />
             </div>
           </div>
@@ -646,10 +658,10 @@ export default function AdminNewDiscountCodePage() {
 
         {/* Submit Button */}
         <div className="flex justify-end gap-4 pt-4 border-t border-border">
-          <Button type="button" variant="outline" asChild>
+          <Button type="button" variant="outline" asChild tabIndex={20}>
             <Link to="/admin/discount-codes">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} tabIndex={19}>
             {isSubmitting ? 'Creating...' : 'Create Discount Code'}
           </Button>
         </div>

@@ -279,6 +279,7 @@ export default function EditWaiverPage() {
                                 defaultValue={waiver.title}
                                 required
                                 className="mt-1"
+                                tabIndex={1}
                             />
                         </div>
 
@@ -291,6 +292,7 @@ export default function EditWaiverPage() {
                                 defaultValue={waiver.description}
                                 required
                                 className="mt-1"
+                                tabIndex={2}
                             />
                         </div>
 
@@ -303,6 +305,7 @@ export default function EditWaiverPage() {
                                 required
                                 rows={10}
                                 className="mt-1 font-mono" // Use mono font for markdown editing
+                                tabIndex={3}
                             />
                         </div>
 
@@ -311,13 +314,14 @@ export default function EditWaiverPage() {
                                 id="required"
                                 name="required"
                                 defaultChecked={waiver.required}
+                                tabIndex={4}
                             />
                             <Label htmlFor="required">Required for Registration</Label>
                         </div>
                     </div>
 
                     <div className="mt-6 flex justify-end">
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting} tabIndex={5}>
                             {isSubmitting ? "Saving..." : "Save Changes"}
                         </Button>
                     </div>

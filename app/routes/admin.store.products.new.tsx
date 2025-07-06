@@ -163,6 +163,7 @@ export default function AddProductPage() {
                         aria-invalid={!!actionData?.fieldErrors?.name}
                         aria-describedby="name-error"
                         className="input-custom-styles"
+                        tabIndex={1}
                     />
                     {actionData?.fieldErrors?.name && (
                         <p id="name-error" className="text-sm text-destructive mt-1">{actionData.fieldErrors.name}</p>
@@ -177,6 +178,7 @@ export default function AddProductPage() {
                         name="description"
                         rows={4}
                         className="input-custom-styles"
+                        tabIndex={2}
                     />
                 </div>
 
@@ -198,6 +200,7 @@ export default function AddProductPage() {
                         aria-invalid={!!actionData?.fieldErrors?.image}
                         aria-describedby="image-error"
                         className="my-6 file:mr-4 file:px-2 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                        tabIndex={3}
                     />
                     <p className="text-sm text-muted-foreground mt-1">Optional. Max 5MB. Allowed types: JPG, PNG, WEBP, GIF.</p>
                     {actionData?.fieldErrors?.image && (
@@ -207,13 +210,13 @@ export default function AddProductPage() {
 
                 {/* Active Status */}
                 <div className="flex items-center space-x-2 pt-2"> {/* Added padding top */}
-                    <Switch id="is_active" name="is_active" defaultChecked={true} />
+                    <Switch id="is_active" name="is_active" defaultChecked={true} tabIndex={4} />
                     <Label htmlFor="is_active">Active (Visible in store)</Label>
                 </div>
 
                 {/* Submit Button */}
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting} tabIndex={5}>
                         {isSubmitting ? "Adding Product..." : "Add Product"}
                     </Button>
                 </div>

@@ -149,6 +149,7 @@ export default function NewDiscountTemplate() {
                   name="name"
                   placeholder="e.g., Student Discount Template"
                   className={actionData?.errors?.name ? "border-red-500" : ""}
+                  tabIndex={1}
                 />
                 {actionData?.errors?.name && (
                   <p className="text-sm text-red-500">{actionData.errors.name}</p>
@@ -158,7 +159,7 @@ export default function NewDiscountTemplate() {
               <div className="space-y-2">
                 <Label htmlFor="discount_type">Discount Type *</Label>
                 <Select name="discount_type">
-                  <SelectTrigger className={actionData?.errors?.discount_type ? "border-red-500" : ""}>
+                  <SelectTrigger className={actionData?.errors?.discount_type ? "border-red-500" : ""} tabIndex={2}>
                     <SelectValue placeholder="Select discount type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -179,6 +180,7 @@ export default function NewDiscountTemplate() {
                 name="description"
                 placeholder="Optional description for this template"
                 rows={3}
+                tabIndex={3}
               />
             </div>
 
@@ -189,10 +191,11 @@ export default function NewDiscountTemplate() {
                   id="discount_value"
                   name="discount_value"
                   type="number"
-                  step="0.01"
+                  step="0.0001"
                   min="0"
-                  placeholder="e.g., 10 or 15.50"
+                  placeholder="e.g., 10 or 82.6447"
                   className={actionData?.errors?.discount_value ? "border-red-500" : ""}
+                  tabIndex={4}
                 />
                 {actionData?.errors?.discount_value && (
                   <p className="text-sm text-red-500">{actionData.errors.discount_value}</p>
@@ -202,7 +205,7 @@ export default function NewDiscountTemplate() {
               <div className="space-y-2">
                 <Label htmlFor="usage_type">Usage Type *</Label>
                 <Select name="usage_type">
-                  <SelectTrigger className={actionData?.errors?.usage_type ? "border-red-500" : ""}>
+                  <SelectTrigger className={actionData?.errors?.usage_type ? "border-red-500" : ""} tabIndex={5}>
                     <SelectValue placeholder="Select usage type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -225,13 +228,14 @@ export default function NewDiscountTemplate() {
                   type="number"
                   min="1"
                   placeholder="Leave empty for unlimited"
+                  tabIndex={6}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="scope">Scope *</Label>
                 <Select name="scope">
-                  <SelectTrigger className={actionData?.errors?.scope ? "border-red-500" : ""}>
+                  <SelectTrigger className={actionData?.errors?.scope ? "border-red-500" : ""} tabIndex={7}>
                     <SelectValue placeholder="Select scope" />
                   </SelectTrigger>
                   <SelectContent>
@@ -249,23 +253,23 @@ export default function NewDiscountTemplate() {
               <Label>Applicable To *</Label>
               <div className="grid gap-2 md:grid-cols-2">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="monthly_group" name="applicable_to" value="monthly_group" />
+                  <Checkbox id="monthly_group" name="applicable_to" value="monthly_group" tabIndex={8} />
                   <Label htmlFor="monthly_group">Monthly Group</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="yearly_group" name="applicable_to" value="yearly_group" />
+                  <Checkbox id="yearly_group" name="applicable_to" value="yearly_group" tabIndex={9} />
                   <Label htmlFor="yearly_group">Yearly Group</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="individual_session" name="applicable_to" value="individual_session" />
+                  <Checkbox id="individual_session" name="applicable_to" value="individual_session" tabIndex={10} />
                   <Label htmlFor="individual_session">Individual Session</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="store_purchase" name="applicable_to" value="store_purchase" />
+                  <Checkbox id="store_purchase" name="applicable_to" value="store_purchase" tabIndex={11} />
                   <Label htmlFor="store_purchase">Store Purchase</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="other" name="applicable_to" value="other" />
+                  <Checkbox id="other" name="applicable_to" value="other" tabIndex={12} />
                   <Label htmlFor="other">Other</Label>
                 </div>
               </div>
@@ -275,16 +279,16 @@ export default function NewDiscountTemplate() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox id="is_active" name="is_active" defaultChecked />
+              <Checkbox id="is_active" name="is_active" defaultChecked tabIndex={13} />
               <Label htmlFor="is_active">Active Template</Label>
             </div>
 
             <div className="flex gap-4">
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} tabIndex={14}>
                 <Save className="h-4 w-4 mr-2" />
                 {isSubmitting ? "Creating..." : "Create Template"}
               </Button>
-              <Button type="button" variant="outline" asChild>
+              <Button type="button" variant="outline" asChild tabIndex={15}>
                 <Link to="/admin/discount-templates">Cancel</Link>
               </Button>
             </div>

@@ -2,6 +2,7 @@ import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunctio
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
 import {createClient} from "@supabase/supabase-js";
 import {Database} from "~/types/database.types";
+import {recordStudentEnrollmentEvent} from "~/utils/auto-discount-events.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
@@ -144,6 +145,12 @@ export async function action({request, params}: ActionFunctionArgs) {
         }
 
         console.log(`[Admin Add Student Action] Successfully added student ${newStudent?.id} to family ${familyId}`);
+        
+        // Record student enrollment event for automatic discount processing
+        if (newStudent?.id) {
+            await recordStudentEnrollmentEvent(newStudent.id, familyId);
+        }
+        
         // Redirect back to the admin family detail page on success
         return redirect(`/admin/families/${familyId}`);
 
@@ -214,7 +221,8 @@ export default function AdminAddStudentPage() {
                                 <Label htmlFor="firstName">First Name<span className="text-destructive">*</span></Label>
                                 <Input type="text" id="firstName" name="firstName" required
                                        defaultValue={getFormData('firstName')}
-                                       aria-invalid={!!getFieldError('firstName')} aria-describedby="firstName-error"/>
+                                       aria-invalid={!!getFieldError('firstName')} aria-describedby="firstName-error"
+                                       tabIndex={1}/>
                                 {getFieldError('firstName') && <p id="firstName-error"
                                                                   className="text-sm text-destructive">{getFieldError('firstName')}</p>}
                             </div>
@@ -223,7 +231,7 @@ export default function AdminAddStudentPage() {
                                 <Label htmlFor="lastName">Last Name<span className="text-destructive">*</span></Label>
                                 <Input type="text" id="lastName" name="lastName" required
                                        defaultValue={getFormData('lastName')} aria-invalid={!!getFieldError('lastName')}
-                                       aria-describedby="lastName-error"/>
+                                       aria-describedby="lastName-error" tabIndex={2}/>
                                 {getFieldError('lastName') && <p id="lastName-error"
                                                                  className="text-sm text-destructive">{getFieldError('lastName')}</p>}
                             </div>
@@ -233,7 +241,7 @@ export default function AdminAddStudentPage() {
                                 <Input type="date" id="birthDate" name="birthDate" required
                                        defaultValue={getFormData('birthDate')}
                                        aria-invalid={!!getFieldError('birthDate')} aria-describedby="birthDate-error"
-                                       className="dark:[color-scheme:dark]"/>
+                                       className="dark:[color-scheme:dark]" tabIndex={3}/>
                                 {getFieldError('birthDate') && <p id="birthDate-error"
                                                                   className="text-sm text-destructive">{getFieldError('birthDate')}</p>}
                             </div>
@@ -242,7 +250,7 @@ export default function AdminAddStudentPage() {
                                 <Label htmlFor="gender">Gender<span className="text-destructive">*</span></Label>
                                 <Select name="gender" required defaultValue={getFormData('gender')}>
                                     <SelectTrigger id="gender" aria-invalid={!!getFieldError('gender')}
-                                                   aria-describedby="gender-error">
+                                                   aria-describedby="gender-error" tabIndex={4}>
                                         <SelectValue placeholder="Select gender"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -261,7 +269,7 @@ export default function AdminAddStudentPage() {
                                     className="text-destructive">*</span></Label>
                                 <Select name="tShirtSize" required defaultValue={getFormData('tShirtSize')}>
                                     <SelectTrigger id="tShirtSize" aria-invalid={!!getFieldError('tShirtSize')}
-                                                   aria-describedby="tShirtSize-error">
+                                                   aria-describedby="tShirtSize-error" tabIndex={5}>
                                         <SelectValue placeholder="Select size"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -285,7 +293,7 @@ export default function AdminAddStudentPage() {
                                 <Label htmlFor="school">School<span className="text-destructive">*</span></Label>
                                 <Input type="text" id="school" name="school" required
                                        defaultValue={getFormData('school')} aria-invalid={!!getFieldError('school')}
-                                       aria-describedby="school-error"/>
+                                       aria-describedby="school-error" tabIndex={6}/>
                                 {getFieldError('school') && <p id="school-error"
                                                                className="text-sm text-destructive">{getFieldError('school')}</p>}
                             </div>
@@ -295,7 +303,7 @@ export default function AdminAddStudentPage() {
                                     className="text-destructive">*</span></Label>
                                 <Select name="gradeLevel" required defaultValue={getFormData('gradeLevel')}>
                                     <SelectTrigger id="gradeLevel" aria-invalid={!!getFieldError('gradeLevel')}
-                                                   aria-describedby="gradeLevel-error">
+                                                   aria-describedby="gradeLevel-error" tabIndex={7}>
                                         <SelectValue placeholder="Select grade"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -329,7 +337,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1">
                                 <Label htmlFor="beltRank">Starting Belt Rank</Label>
                                 <Select name="beltRank" defaultValue={getFormData('beltRank')}>
-                                    <SelectTrigger id="beltRank">
+                                    <SelectTrigger id="beltRank" tabIndex={8}>
                                         <SelectValue placeholder="Select belt rank (usually White)"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -344,38 +352,38 @@ export default function AdminAddStudentPage() {
                             {/* Student Email */}
                             <div className="space-y-1">
                                 <Label htmlFor="email">Student Email</Label>
-                                <Input type="email" id="email" name="email" defaultValue={getFormData('email')}/>
+                                <Input type="email" id="email" name="email" defaultValue={getFormData('email')} tabIndex={9}/>
                             </div>
                             {/* Student Cell Phone */}
                             <div className="space-y-1">
                                 <Label htmlFor="cellPhone">Student Cell #</Label>
                                 <Input type="tel" id="cellPhone" name="cellPhone"
-                                       defaultValue={getFormData('cellPhone')}/>
+                                       defaultValue={getFormData('cellPhone')} tabIndex={10}/>
                             </div>
                             {/* Special Needs */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="specialNeeds">Special Needs (Leave blank if NONE)</Label>
                                 <Input type="text" id="specialNeeds" name="specialNeeds"
-                                       defaultValue={getFormData('specialNeeds')}/>
+                                       defaultValue={getFormData('specialNeeds')} tabIndex={11}/>
                             </div>
                             {/* Allergies */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="allergies">Allergies (Leave blank if NONE)</Label>
                                 <Textarea id="allergies" name="allergies" rows={3}
-                                          defaultValue={getFormData('allergies')}/>
+                                          defaultValue={getFormData('allergies')} tabIndex={12}/>
                             </div>
                             {/* Medications */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="medications">Medications (Leave blank if NONE)</Label>
                                 <Textarea id="medications" name="medications" rows={3}
-                                          defaultValue={getFormData('medications')}/>
+                                          defaultValue={getFormData('medications')} tabIndex={13}/>
                             </div>
                             {/* Immunizations Up To Date */}
                             <div className="space-y-1">
                                 <Label htmlFor="immunizationsUpToDate">Immunizations Up To Date?</Label>
                                 <Select name="immunizationsUpToDate"
                                         defaultValue={getFormData('immunizationsUpToDate')}>
-                                    <SelectTrigger id="immunizationsUpToDate">
+                                    <SelectTrigger id="immunizationsUpToDate" tabIndex={14}>
                                         <SelectValue placeholder="Select option"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -389,7 +397,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="immunizationNotes">Immunization Notes</Label>
                                 <Textarea id="immunizationNotes" name="immunizationNotes" rows={3}
-                                          defaultValue={getFormData('immunizationNotes')}/>
+                                          defaultValue={getFormData('immunizationNotes')} tabIndex={15}/>
                             </div>
                         </div>
 
@@ -404,13 +412,14 @@ export default function AdminAddStudentPage() {
 
 
                         <div className="flex justify-end mt-6">
-                            <Button type="button" variant="outline" asChild className="mr-2">
+                            <Button type="button" variant="outline" asChild className="mr-2" tabIndex={16}>
                                 <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={isSubmitting}
                                 className="bg-blue-600 text-white hover:bg-blue-700"
+                                tabIndex={17}
                             >
                                 {isSubmitting ? "Adding Student..." : "Add Student"}
                             </Button>

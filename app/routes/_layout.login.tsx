@@ -180,6 +180,7 @@ export default function LoginPage() {
                                         type="email"
                                         autoComplete="email"
                                         required
+                                        tabIndex={1}
                                     />
                                 </div>
 
@@ -191,12 +192,13 @@ export default function LoginPage() {
                                         type="password"
                                         autoComplete="current-password"
                                         required
+                                        tabIndex={2}
                                     />
                                 </div>
 
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
-                                        <Checkbox id="remember-me" name="remember-me"/>
+                                        <Checkbox id="remember-me" name="remember-me" tabIndex={3}/>
                                         <Label htmlFor="remember-me" className="dark:text-gray-300">Remember me</Label>
                                     </div>
 
@@ -212,6 +214,7 @@ export default function LoginPage() {
                                     type="submit"
                                     className="w-full bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800 disabled:opacity-50"
                                     disabled={isSubmitting} // Disable button when submitting
+                                    tabIndex={4}
                                 >
                                     {isSubmitting ? 'Signing in...' : 'Sign in'}
                                 </Button>

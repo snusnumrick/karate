@@ -219,6 +219,7 @@ export default function AdminNewMessage() {
                             ref={familySelectRef} // Attach ref
                             id="familyId"
                             className={cn("w-full", "mt-1", familyIdError ? "border-red-500" : "")} // Use w-full for width, remove input-custom-styles
+                            tabIndex={1}
                         >
                             <SelectValue placeholder="Select a family..." />
                         </SelectTrigger>
@@ -244,6 +245,7 @@ export default function AdminNewMessage() {
                         maxLength={255}
                         disabled={isSubmitting}
                         className={cn("input-custom-styles", "mt-1", subjectError ? "border-red-500" : "")} // Apply custom styles + conditional error
+                        tabIndex={2}
                     />
                     {subjectError && <p className="text-sm text-red-600 mt-1">{subjectError}</p>}
                 </div>
@@ -257,13 +259,14 @@ export default function AdminNewMessage() {
                         rows={6}
                         disabled={isSubmitting}
                         className={cn("input-custom-styles", "mt-1", messageError ? "border-red-500" : "")} // Apply custom styles + conditional error
+                        tabIndex={3}
                     />
                     {messageError && <p className="text-sm text-red-600 mt-1">{messageError}</p>}
                 </div>
 
                 {/* Submit Button - aligned right */}
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting} tabIndex={4}>
                     {isSubmitting ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...

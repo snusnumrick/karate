@@ -145,7 +145,7 @@ export default function AddAchievementPage() { // Function name can stay for now
                 <div>
                     <Label htmlFor="type">Belt Awarded</Label>
                     <Select name="type" required>
-                        <SelectTrigger id="type">
+                        <SelectTrigger id="type" tabIndex={1}>
                             <SelectValue placeholder="Select belt rank"/>
                         </SelectTrigger>
                         <SelectContent>
@@ -162,23 +162,23 @@ export default function AddAchievementPage() { // Function name can stay for now
                 <div>
                     {/* Assuming 'description' is notes */}
                     <Label htmlFor="description">Notes (Optional)</Label>
-                    <Textarea id="description" name="description" rows={3}/>
+                    <Textarea id="description" name="description" rows={3} tabIndex={2}/>
                     {actionData?.fieldErrors?.description &&
                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.description}</p>}
                 </div>
                 <div>
                     <Label htmlFor="awarded_date">Awarded Date</Label>
-                    <Input id="awarded_date" name="awarded_date" type="date" required defaultValue={today}/>
+                    <Input id="awarded_date" name="awarded_date" type="date" required defaultValue={today} tabIndex={3}/>
                     {actionData?.fieldErrors?.awarded_date &&
                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.awarded_date}</p>}
                 </div>
 
                 <div className="flex justify-end gap-4">
                     {/* Remove asChild from Cancel button - Update path */}
-                    <Button type="button" variant="outline">
+                    <Button type="button" variant="outline" tabIndex={4}>
                         <Link to={`/admin/student-belts/${params.studentId}`}>Cancel</Link>
                     </Button>
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting} tabIndex={5}>
                         {isSubmitting ? 'Adding...' : 'Add Belt Award'} {/* Updated text */}
                     </Button>
                 </div>
