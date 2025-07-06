@@ -1,26 +1,13 @@
 // Import types needed for merging parent meta
-import type { MetaFunction, MetaArgs, MetaDescriptor, LoaderFunctionArgs } from "@remix-run/node";
+import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 import { Link } from "@remix-run/react";
-import { redirect } from "@vercel/remix";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
-import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
 
-// Loader to check if user is admin and redirect to admin dashboard
-export async function loader({ request }: LoaderFunctionArgs) {
-    const { supabaseServer } = getSupabaseServerClient(request);
-    const { data: { user } } = await supabaseServer.auth.getUser();
-    
-    // If user is logged in, check if they're an admin
-    if (user) {
-        const isAdmin = await isUserAdmin(user.id);
-        if (isAdmin) {
-            // Redirect admin users to the admin dashboard
-            return redirect('/admin');
-        }
-    }
-    
-    // For non-admin users or non-logged-in users, continue to show the home page
+// Loader for homepage - no redirects, allow all users to see the public homepage
+export async function loader() {
+    // Allow all users (including admins) to see the public homepage
+    // The navbar will adapt based on user status via the main layout
     return null;
 }
 

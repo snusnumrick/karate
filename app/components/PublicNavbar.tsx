@@ -3,12 +3,17 @@ import {Form, Link} from "@remix-run/react";
 import {ModeToggle} from "./mode-toggle";
 import {Sheet, SheetContent, SheetTitle, SheetTrigger} from "./ui/sheet";
 import {Button} from "./ui/button";
-import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/tooltip"; // Import Tooltip components
-import {LogOut, Menu, MessageSquare, Sun, X} from "lucide-react"; // Import LogOut, Sun, AND MessageSquare
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/tooltip";
+import {LogOut, Menu, Sun, X} from "lucide-react";
 import type { Session } from "@supabase/auth-helpers-remix";
-import {ClientOnly} from './client-only'; // Import ClientOnly
+import {ClientOnly} from './client-only';
 
-export default function Navbar({ user }: { user?: Session['user'] | null }) {
+interface PublicNavbarProps {
+    user?: Session['user'] | null;
+    isAdmin?: boolean;
+}
+
+export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
     const [isOpen, setIsOpen] = React.useState(false);
 
     return (
@@ -17,36 +22,38 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex items-center">
-                            <div className="relative h-10 w-10 mr-4">
-                                <img
-                                    src="/logo-light.svg"
-                                    alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC"
-                                    className="h-full w-full dark:hidden"
-                                />
-                                <img
-                                    src="/logo-dark.svg"
-                                    alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC, Dark Mode"
-                                    className="h-full w-full hidden dark:block"
-                                />
-                            </div>
-                            <Link to="/" className="flex-shrink-0 flex items-center">
-                                <span
-                                    className="text-green-600 dark:text-green-400 font-bold text-xl">KARATE GREENEGIN</span>
+                            <Link to="/" className="flex items-center">
+                                <div className="relative h-10 w-10 mr-4">
+                                    <img
+                                        src="/logo-light.svg"
+                                        alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC"
+                                        className="h-full w-full dark:hidden"
+                                    />
+                                    <img
+                                        src="/logo-dark.svg"
+                                        alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC, Dark Mode"
+                                        className="h-full w-full hidden dark:block"
+                                    />
+                                </div>
+                                <span className="text-green-600 dark:text-green-400 font-bold text-xl">KARATE GREENEGIN</span>
                             </Link>
                         </div>
 
-                        {/* Desktop Navigation - Hidden below lg */}
+                        {/* Desktop Navigation */}
                         <nav className="hidden lg:flex lg:space-x-8 lg:items-center">
-                            {/* Home link removed, logo links to home */}
                             <NavLink to="/classes">Classes</NavLink>
                             <NavLink to="/about">About</NavLink>
-                            <NavLink to="/contact">Contact</NavLink>
-                            {/* Messages icon moved next to ModeToggle */}
+                            {user && !isAdmin && (
+                                <NavLink to="/family">Family Portal</NavLink>
+                            )}
+                            {user && isAdmin && (
+                                <NavLink to="/admin">Admin Panel</NavLink>
+                            )}
                         </nav>
 
-                        {/* Right-side items: Mode toggle, Messages Icon, User actions/Login, Mobile menu trigger */}
-                        <div className="flex items-center space-x-2"> {/* Reduced space slightly */}
-                            {/* Wrap ModeToggle in ClientOnly to prevent hydration mismatch */}
+                        {/* Right-side items */}
+                        <div className="flex items-center space-x-2">
+                            {/* Mode Toggle */}
                             <ClientOnly
                                 fallback={
                                     <Button variant="outline" size="icon" disabled>
@@ -58,7 +65,6 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                                 {() => (
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            {/* ModeToggle component already renders a Button */}
                                             <ModeToggle/>
                                         </TooltipTrigger>
                                         <TooltipContent side="bottom">
@@ -68,54 +74,10 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                                 )}
                             </ClientOnly>
 
-                            {/* Messages Icon Button - Only visible if logged in */}
-                            {user && (
-                                <ClientOnly fallback={
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                        <Button variant="outline" size="icon" disabled>
-                                            <MessageSquare className="h-[1.2rem] w-[1.2rem]"/>
-                                            <span className="sr-only">Messages (Loading...)</span>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom">
-                                        <p>Messages (Loading...)</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            }>
-                                {() => (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            {user ? (
-                                                <Button variant="outline" size="icon" asChild>
-                                                    <Link to="/family/messages">
-                                                        <MessageSquare className="h-[1.2rem] w-[1.2rem]"/>
-                                                        <span className="sr-only">Messages</span>
-                                                    </Link>
-                                                </Button>
-                                            ) : (
-                                                <Button variant="outline" size="icon" disabled>
-                                                    <MessageSquare className="h-[1.2rem] w-[1.2rem]"/>
-                                                    <span className="sr-only">Messages (Login required)</span>
-                                                </Button>
-                                            )}
-                                        </TooltipTrigger>
-                                        <TooltipContent side="bottom">
-                                            <p>{user ? "Messages" : "Messages (Login required)"}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                )}
-                                </ClientOnly>
-                            )}
-
-                            {/* Desktop Auth Buttons - Hidden below lg */}
-                            {/* Wrap user-specific section in ClientOnly */}
-                            <ClientOnly fallback={<div
-                                className="hidden lg:block h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
+                            {/* Desktop Auth Buttons */}
+                            <ClientOnly fallback={<div className="hidden lg:block h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>}>
                                 {() => user ? (
                                     <div className="hidden lg:flex items-center space-x-4">
-                                        <NavLink to="/family">Family Portal</NavLink>
-                                        {/* Removed Messages link from here as it's now in main nav */}
                                         <Form action="/logout" method="post">
                                             <Button
                                                 type="submit"
@@ -128,27 +90,16 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                                         </Form>
                                     </div>
                                 ) : (
-                                    // Render login link only if user is not present on client - Hidden below lg
                                     <Link
                                         to="/login"
                                         className="hidden lg:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                                     >
-                                        Login {/* Add text back inside Link */}
+                                        Login
                                     </Link>
                                 )}
                             </ClientOnly>
-                            {/* Fallback for non-user state (Login button) - Render this outside ClientOnly if needed when logged out */}
-                            {/* We render the login link within the ClientOnly block when user is null, so this separate block is not needed */}
-                            {/* {!user && (
-                                 <Link
-                                    to="/login"
-                                    className="hidden md:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                            )} */}
-                            {/* Remove stray characters > and </Link> */}
-                            {/* End Desktop Auth Buttons */}
 
-
-                            {/* Mobile Menu Button - Hidden on lg and up */}
+                            {/* Mobile Menu Button */}
                             <Sheet open={isOpen} onOpenChange={setIsOpen}>
                                 <SheetTrigger asChild className="lg:hidden">
                                     <Button
@@ -167,35 +118,33 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                                     <div className="flex-1 overflow-y-auto py-4">
                                         <SheetTitle className="px-4 mb-2">Navigation</SheetTitle>
                                         <div className="flex flex-col space-y-4 px-4">
-                                            {/* Home link removed, logo links to home */}
                                             <MobileNavLink to="/classes" onClick={() => setIsOpen(false)}>
                                                 Classes
                                             </MobileNavLink>
                                             <MobileNavLink to="/about" onClick={() => setIsOpen(false)}>
                                                 About
                                             </MobileNavLink>
-                                            <MobileNavLink to="/contact" onClick={() => setIsOpen(false)}>
-                                                Contact
-                                            </MobileNavLink>
 
                                             {/* Mobile Auth Links */}
                                             {user ? (
                                                 <>
-                                                    <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
-                                                        Family Portal
-                                                    </MobileNavLink>
-                                                    {/* Add Messages link for mobile */}
-                                                    <MobileNavLink to="/family/messages"
-                                                                   onClick={() => setIsOpen(false)}>
-                                                        <MessageSquare className="h-5 w-5 mr-2 inline-block"/> Messages
-                                                    </MobileNavLink>
+                                                    {!isAdmin && (
+                                                        <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
+                                                            Family Portal
+                                                        </MobileNavLink>
+                                                    )}
+                                                    {isAdmin && (
+                                                        <MobileNavLink to="/admin" onClick={() => setIsOpen(false)}>
+                                                            Admin Panel
+                                                        </MobileNavLink>
+                                                    )}
                                                     <Form action="/logout" method="post" className="mt-2">
                                                         <Button
                                                             type="submit"
                                                             variant="outline"
                                                             size="sm"
                                                             className="w-full justify-start text-red-600 dark:text-red-400 border-red-600 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                                            onClick={() => setIsOpen(false)} // Close sheet on click
+                                                            onClick={() => setIsOpen(false)}
                                                         >
                                                             <LogOut className="h-5 w-5 mr-2 inline-block"/> Logout
                                                         </Button>
@@ -211,18 +160,13 @@ export default function Navbar({ user }: { user?: Session['user'] | null }) {
                                 </SheetContent>
                             </Sheet>
                         </div>
-                        {/* Closes flex items-center space-x-2 div */}
                     </div>
-                    {/* Closes flex justify-between h-16 div */}
                 </div>
-                {/* Closes max-w-7xl div */}
             </header>
-            {/* Header ends here */}
         </TooltipProvider>
     );
 }
 
-// Correct the function definition syntax
 function NavLink({to, children}: { to: string; children: React.ReactNode }) {
     return (
         <Link
