@@ -8,10 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Comprehensive Automatic Discount System:**
+    - New automatic discount engine with rule-based assignment capabilities
+    - Advanced discount templates with flexible configuration options
+    - Automatic discount assignments with utilities for bulk management
+    - Enhanced admin interface for managing discount rules and templates
+    - Database schema updates to support complex discount logic
+    - Event-driven discount processing with server-side automation
+- **Three-Tier Navigation System:**
+    - Role-based navigation that adapts to user authentication state and permissions
+    - PublicNavbar component for homepage and public pages
+    - FamilyNavbar component with pictorial menu for family portal
+    - Dynamic navbar rendering based on route and user status
+    - Consistent logo placement across all navigation types
+    - Admin homepage access while maintaining admin privileges
+- **Password Reset Functionality:**
+    - Complete forgot password flow with Supabase integration
+    - Secure email-based reset using `resetPasswordForEmail()` and `verifyOtp()`
+    - New dedicated pages for password reset request and confirmation (`_layout.forgot-password.tsx`, `_layout.reset-password.tsx`)
+    - Enhanced login page with proper forgot password navigation
+    - Robust error handling for invalid/expired reset links
+    - Server-side session validation for secure password reset process
 
 ### Changed
+- **Navigation System:** Navigation now adapts dynamically to user authentication state and role (Breaking change)
+- **Admin Interface:** Improved delete functionality for automatic discount rules with consistent UI
+- **UI Components:** Replaced custom modals with Shadcn AlertDialog for UI consistency
+- **State Management:** Implemented proper state management with useSubmit and deleteConfirmId
+- **Dark Mode:** Added dark mode compatibility for all confirmation dialogs
+- **User Experience:** Enhanced confirmation messages with specific rule names for better clarity
+- **Code Organization:** Modernized admin UI with new component patterns and improved maintainability
 
 ### Fixed
+- **Database:** Corrected database field names in discount assignments queries
+- **Data Consistency:** Improved data consistency across discount-related operations
+- **Error Handling:** Enhanced error handling for database operations and authentication flows
+- **Performance:** Optimized query performance for discount rule processing
+- **Security:** Improved authentication flows with proper session validation
+- **Accessibility:** Better ARIA labels and focus management throughout the application
 
 ## [1.4.3] - 2025-05-10
 
