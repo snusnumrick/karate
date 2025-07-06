@@ -72,7 +72,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         discount_codes (code, current_uses, max_uses)
       `)
       .eq('automation_rule_id', ruleId)
-      .order('created_at', { ascending: false })
+      .order('assigned_at', { ascending: false })
       .limit(50);
 
     if (assignmentsError) {
