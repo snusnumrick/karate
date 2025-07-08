@@ -6,8 +6,8 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { 
   format, 
   startOfMonth, 
@@ -42,6 +42,10 @@ type ClassSession = {
     programs: {
       name: string;
     } | null;
+  } | null;
+  instructor?: {
+    first_name: string;
+    last_name: string;
   } | null;
 };
 
@@ -174,6 +178,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
             programs (
               name
             )
+          ),
+          instructor:profiles(
+            first_name,
+            last_name
           )
         `)
         .in('class_id', classIds)
@@ -434,6 +442,15 @@ export default function FamilyCalendarPage() {
                     dayEvents.length > 0 ? 'md:cursor-default' : ''
                   }`}
                   onClick={() => handleDayClick(day)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleDayClick(day);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View events for ${format(day, 'MMMM d, yyyy')}`}
                 >
                   <div className={`text-sm font-medium mb-2 ${
                     !isCurrentMonth ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'
