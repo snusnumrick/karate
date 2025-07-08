@@ -437,7 +437,7 @@ export default function FamilyCalendarPage() {
                   className={`min-h-[120px] p-2 border-r border-b last:border-r-0 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
                     !isCurrentMonth ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
                   } ${
-                    isCurrentDay ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                    isCurrentDay ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500 dark:border-blue-400 shadow-md' : ''
                   } ${
                     dayEvents.length > 0 ? 'md:cursor-default' : ''
                   }`}
@@ -455,7 +455,7 @@ export default function FamilyCalendarPage() {
                   <div className={`text-sm font-medium mb-2 ${
                     !isCurrentMonth ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'
                   } ${
-                    isCurrentDay ? 'text-blue-600 dark:text-blue-400' : ''
+                    isCurrentDay ? 'text-blue-700 dark:text-blue-300 font-bold' : ''
                   }`}>
                     {format(day, 'd')}
                   </div>
