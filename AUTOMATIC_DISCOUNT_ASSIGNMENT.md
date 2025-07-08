@@ -53,6 +53,7 @@ CREATE TABLE discount_automation_rules (
   event_type discount_event_type NOT NULL,
   discount_template_id UUID REFERENCES discount_templates(id) ON DELETE CASCADE,
   conditions JSONB, -- Additional conditions (e.g., student age, belt level)
+  applicable_programs uuid[], -- Program filtering: restrict rule to specific programs
   is_active BOOLEAN DEFAULT true,
   max_uses_per_student INTEGER, -- Limit how many times a student can benefit
   valid_from TIMESTAMP WITH TIME ZONE,
@@ -62,7 +63,8 @@ CREATE TABLE discount_automation_rules (
   
   INDEX idx_automation_rules_event_type (event_type),
   INDEX idx_automation_rules_active (is_active),
-  INDEX idx_automation_rules_template (discount_template_id)
+  INDEX idx_automation_rules_template (discount_template_id),
+  INDEX idx_automation_rules_programs USING GIN (applicable_programs)
 );
 ```
 
@@ -139,6 +141,40 @@ const discountItems = [
 6. **Assignment**: Link the discount code to the student/family
 7. **Notification**: Optionally notify the family about the new discount
 
+## Program Filtering
+
+Automation rules can now be restricted to specific programs using the `applicable_programs` field. This allows for targeted discount assignment based on which programs a student is enrolled in.
+
+### How Program Filtering Works
+
+1. **Rule Configuration**: When creating or editing an automation rule, administrators can select specific programs that the rule applies to
+2. **Event Processing**: When an event is processed, the system checks if the student is enrolled in any of the rule's applicable programs
+3. **Eligibility Check**: If `applicable_programs` is specified and the student has no matching program enrollments, the rule is skipped
+4. **Backward Compatibility**: Rules without program restrictions continue to apply to all students regardless of their program enrollments
+
+### Database Implementation
+
+- **Field**: `applicable_programs uuid[]` - Array of program UUIDs
+- **Index**: GIN index for efficient program filtering queries
+- **Validation**: Database trigger ensures all program IDs are valid and active
+
+### Service Integration
+
+The `AutoDiscountService.evaluateRuleConditions()` method includes program filtering logic:
+
+```typescript
+// Check program filtering first
+if (rule.applicable_programs && rule.applicable_programs.length > 0 && event.student_id) {
+  const studentPrograms = await this.getStudentPrograms(event.student_id);
+  const hasMatchingProgram = rule.applicable_programs.some(programId => 
+    studentPrograms.includes(programId)
+  );
+  if (!hasMatchingProgram) {
+    return false; // Student not enrolled in any applicable programs
+  }
+}
+```
+
 ## Example Use Cases
 
 ### Student Enrollment Discounts
@@ -154,14 +190,29 @@ const discountItems = [
 }
 ```
 
-### Belt Promotion Rewards
+### Program-Specific Belt Promotion Rewards
 ```json
 {
-  "name": "Belt Promotion Celebration",
+  "name": "Competition Team Belt Promotion",
   "event_type": "belt_promotion",
   "discount_template_id": "template-uuid",
+  "applicable_programs": ["competition-team-uuid", "advanced-training-uuid"],
   "conditions": {
     "belt_level_min": "yellow"
+  },
+  "max_uses_per_student": 1
+}
+```
+
+### Age-Group Specific Enrollment Discounts
+```json
+{
+  "name": "Little Dragons Welcome Discount",
+  "event_type": "student_enrollment",
+  "discount_template_id": "template-uuid",
+  "applicable_programs": ["little-dragons-uuid"],
+  "conditions": {
+    "student_age_max": 6
   },
   "max_uses_per_student": 1
 }

@@ -26,10 +26,19 @@ for communication between families and administrators.
     - Track required waiver signature status.
     - Browse and purchase items (e.g., Gi) from the online store (`/family/store/purchase/:studentId`).
     - View past store order history (`/family/orders`).
+    - **Multi-Class Program Features:**
+        - Browse available training programs with detailed descriptions and requirements.
+        - View program schedules, pricing, and instructor information.
+        - Enroll students in multiple programs with eligibility validation.
+        - Manage enrollment status and waitlist positions.
+        - View family class calendar with all enrolled programs.
+        - Track enrollment history and program progress.
+        - Automatic family discount calculations for multiple enrollments.
     - **In-App Messaging:**
         - View conversations with Admins/Instructors (`/family/messages`).
         - Read and reply to messages within a conversation (`/family/messages/:conversationId`).
         - Initiate new conversations with Admins/Instructors (`/family/messages/new`).
+        - Receive class-specific announcements and program updates.
         - Receive real-time updates for new messages.
 - **Student Management (Family View):**
     - View detailed student information (`/family/student/:studentId`).
@@ -40,16 +49,23 @@ for communication between families and administrators.
 - **Waiver Management:** Digitally sign required waivers (Liability, Code of Conduct, Photo/Video, Payment/Dress Code).
 - **Payments:**
     - Secure, embedded payment form using Stripe Elements (`/pay/:paymentId`).
-    - Multiple payment options initiated from Family Portal (`/family/payment`): Monthly Group, Yearly Group, Individual Sessions (purchased in quantities).
+    - Multiple payment options initiated from Family Portal (`/family/payment`): Monthly Group, Yearly Group, Individual Sessions, Program Enrollments.
+    - **Program-Based Payments:** Dedicated payment workflows for multi-class program enrollments with automatic pricing calculation.
+    - **Family Discount System:** Automatic discount calculations for families with multiple program enrollments.
     - **Discount Code Support:** Apply discount codes during payment with real-time validation and calculation.
     - View payment history, including payment type and applied discounts (`/family/payment-history`).
     - Flat monthly rate for all students with automatic discounts applied for new students and other qualifying events. Prices shown are before tax.
     - Applicable sales taxes (e.g., GST, PST) are calculated based on active rates defined in the `tax_rates` database table and the `applicableTaxNames` setting in `app/config/site.ts`. The breakdown (including tax name, description, rate, and amount) is stored in the `payment_taxes` table, and the total amount (subtotal + all taxes) is stored in the `payments` table and sent to Stripe.
     - Custom, print-friendly payment receipts including tax breakdown (displaying tax description) and discount details are generated and accessible via the Family Portal (`/family/receipt/:paymentId`) instead of using Stripe's default receipts. The URL is stored in the `payments.receipt_url` field. Requires `VITE_SITE_URL` environment variable to be set correctly.
-    - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Expired") based on payment history (`app/utils/supabase.server.ts`).
+    - Student eligibility status ("Trial", "Paid - Monthly", "Paid - Yearly", "Program Enrolled", "Expired") based on payment history and program enrollments (`app/utils/supabase.server.ts`).
 
 ### Administrative Panel (`/admin`)
-- **Dashboard:** Overview statistics (Families, Students, Payments, Attendance, Waivers).
+- **Dashboard:** Comprehensive overview with statistics cards showing:
+    - Total Families, Students, and Payments with quick access links
+    - Multi-class system metrics: Active Programs, Active Classes, Total Enrollments, and Capacity Utilization
+    - Additional statistics for Attendance and Waivers
+    - Quick action buttons for creating new programs and classes
+    - Consistent green color scheme for improved visual coherence
 - **Family Management:**
     - View all families (`/admin/families`).
     - Register new families (`/admin/families/new`).
@@ -62,19 +78,41 @@ for communication between families and administrators.
     - View family's Individual Session balance and record usage of a session for the student (`/admin/students/:studentId`).
     - Manage student belt awards (promotions) (`/admin/student-belts/:studentId`).
     - Delete students (available on family detail page `/admin/families/:familyId`).
+- **Multi-Class Program Management:**
+    - Create and manage training programs with structured curricula (`/admin/programs`).
+    - Define program details: name, description, age groups, belt requirements, pricing structure.
+    - Set eligibility rules based on age, belt rank, and prerequisites.
+    - Configure program capacity limits and enrollment restrictions.
+    - Track program statistics and enrollment metrics.
+- **Class Management:**
+    - Create classes from program templates (`/admin/classes`).
+    - Schedule recurring class sessions with flexible timing options.
+    - Assign instructors and manage class capacity.
+    - Auto-generate class sessions based on program schedules.
+    - Track class attendance and session management.
+    - Integration with existing attendance tracking system.
+- **Enrollment System:**
+    - Comprehensive enrollment management with status tracking (`/admin/enrollments`).
+    - Automated waitlist management with priority processing.
+    - Enrollment validation against program eligibility rules.
+    - Capacity management with automatic enrollment from waitlists.
+    - Family discount calculations for multiple enrollments.
+    - Enrollment history and audit trail.
 - **Attendance Tracking:**
     - Record daily attendance (`/admin/attendance/record`).
     - View attendance history with filtering (`/admin/attendance`).
     - View attendance reports with rates (`/admin/attendance/report`).
+    - Integration with class-based attendance for multi-class programs.
 - **Waiver Management:**
     - View/Edit waiver documents (`/admin/waivers`, `/admin/waivers/:waiverId`).
     - Mark waivers as required, triggering notifications.
     - View report of families/students with missing required waivers (`/admin/waivers/missing`).
 - **Payment Management:**
-    - Record manual payments, specifying type (Monthly, Yearly, Individual Session, Other) and quantity for Individual Sessions (`/admin/payments/new`).
+    - Record manual payments, specifying type (Monthly, Yearly, Individual Session, Program Enrollment, Other) (`/admin/payments/new`).
+    - Program-based payment processing with automatic pricing calculation.
     - View payment history including payment type (`/admin/payments`).
     - View pending payments (e.g., from failed online transactions) (`/admin/payments/pending`).
-    - *Note: Full payment history/reporting might be a future enhancement.*
+    - Integration with enrollment payment workflows.
 - **Store Management:**
     - Manage products (add, edit, delete with image uploads) (`/admin/store/products`).
     - Manage product variants (add, edit, delete) (`/admin/store/products/:productId/variants`).
@@ -87,6 +125,8 @@ for communication between families and administrators.
     - View conversations initiated by families, with visual indicators for unread messages (`/admin/messages`).
     - Reply to family messages within a conversation (`/admin/messages/:conversationId`).
     - Initiate new conversations with specific families (`/admin/messages/new`).
+    - Class-based messaging system for program announcements.
+    - Bulk messaging capabilities for class and program communications.
     - Receive real-time updates for new messages and conversation changes.
 - **Discount Code Management:**
         - Create and manage discount codes with flexible rules (`/admin/discount-codes`).
@@ -114,9 +154,19 @@ for communication between families and administrators.
 - **Payment Reminder (Scheduled):** Supabase Edge Function (`payment-reminder`) emails families with 'Expired' student eligibility.
 - **Missing Waiver Reminder (Scheduled):** Supabase Edge Function (`missing-waiver-reminder`) emails families missing required signatures.
 
+### Multi-Class System
+- **Structured Program Management:** Create and manage comprehensive training programs with detailed curricula, age groups, and belt requirements.
+- **Flexible Class Scheduling:** Generate recurring class sessions with customizable timing and instructor assignments.
+- **Intelligent Enrollment System:** Automated enrollment processing with eligibility validation, capacity management, and waitlist handling.
+- **Family-Centric Approach:** Support for multiple program enrollments per family with automatic discount calculations.
+- **Calendar Integration:** Unified class calendar showing all enrolled programs and sessions.
+- **Progress Tracking:** Monitor student progress across multiple programs with comprehensive reporting.
+- **Seamless Payment Integration:** Program-specific payment workflows with automatic pricing and family discounts.
+
 ### Automated Discount Assignment
 - **Event-Driven Processing:** Automatic discount assignment triggered by student enrollment, payment milestones, attendance achievements, and belt promotions.
 - **Real-Time Rule Evaluation:** Immediate processing of automation rules when qualifying events occur.
+- **Program Filtering:** Target discounts to specific programs (e.g., competition team, age groups) for precise discount application.
 - **Smart Duplicate Prevention:** Prevents multiple assignments of the same discount to ensure fair usage.
 - **Flexible Conditions:** Support for age ranges, belt rank requirements, attendance thresholds, and payment history criteria.
 
@@ -320,11 +370,18 @@ for communication between families and administrators.
 - **Project Structure:**
     - `app/routes/`: Contains all Remix route modules (UI and server logic). Includes `$.tsx` for 404 handling.
         - `app/routes/admin.tsx`: Admin dashboard route (path `/admin`, uses `admin.tsx` layout).
+        - `app/routes/admin.programs.tsx`: Admin program management interface.
+        - `app/routes/admin.classes.tsx`: Admin class management interface.
+        - `app/routes/admin.enrollments.tsx`: Admin enrollment management interface.
     - `app/components/`: Shared React components (UI elements, layout parts).
     - `app/utils/`: Utility functions (database interactions, email sending, helpers).
     - `app/config/`: Site-wide configuration.
-    - `app/types/`: TypeScript type definitions (including `database.types.ts`).
-    - `app/routes/api.create-payment-intent.ts`: Backend endpoint for Stripe Payment Intent creation (handles both regular payments and store purchases).
+    - `app/types/`: TypeScript type definitions (including `database.types.ts`, `multi-class.ts`).
+    - `app/services/`: Server-side business logic and data access layer.
+        - `app/services/program.server.ts`: Program management logic (CRUD, eligibility, statistics).
+        - `app/services/class.server.ts`: Class management logic (scheduling, sessions, capacity).
+        - `app/services/enrollment.server.ts`: Enrollment processing logic (validation, waitlists, status tracking).
+    - `app/routes/api.create-payment-intent.ts`: Backend endpoint for Stripe Payment Intent creation (handles regular payments, store purchases, and program enrollments).
     - `app/routes/api.webhooks.stripe.ts`: Handles incoming Stripe webhook events (updates payment status, order status, stock levels).
     - `app/routes/_layout.family.store...`: Family-facing store routes.
     - `app/routes/admin.store...`: Admin-facing store management routes.
@@ -338,12 +395,14 @@ for communication between families and administrators.
     - `app/services/auto-discount.server.ts`: Server-side automatic discount logic (event processing, rule evaluation, assignment).
     - `app/utils/auto-discount-events.server.ts`: Event integration utilities for automatic discount triggers.
     - `app/components/DiscountCodeSelector.tsx`: User-facing component for discount code input and validation.
-    - `app/types/discount.ts`, `app/types/supabase-extensions.d.ts`: TypeScript definitions for discount system and extended Supabase types.
+    - `app/types/discount.ts`, `app/types/multi-class.ts`, `app/types/supabase-extensions.d.ts`: TypeScript definitions for discount system, multi-class system, and extended Supabase types.
     - **Note:** While dedicated API routes exist for specific tasks, much of the core backend logic (data fetching, mutations) is handled within the `loader` and `action` functions of the standard Remix routes (`app/routes/`), serving as endpoints for the web UI itself rather than standalone APIs.
     - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
 - **UI:** Built with [Shadcn](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn@latest add <component>` to add new components consistently.
-- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`, `discount_events`, `discount_automation_rules`, `discount_assignments`).
+- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`, `discount_events`, `discount_automation_rules`, `discount_assignments`, `programs`, `classes`, `class_sessions`, `enrollments`, `enrollment_history`).
+    - **Hybrid JSONB + Explicit Columns Architecture:** The system uses a performance-optimized hybrid approach combining explicit columns for commonly used fields with JSONB for additional/custom data. Migration `002_add_explicit_columns.sql` added explicit pricing columns (`monthly_fee`, `registration_fee`, `payment_frequency`, `family_discount`) and eligibility columns (`min_age`, `max_age`, `gender_restriction`, `special_needs_support`) to `programs` table, plus schedule columns (`days_of_week[]`, `start_time`, `end_time`, `timezone`) to `classes` table. This provides better performance through targeted indexing while maintaining flexibility.
+    - **Multi-Class System:** Comprehensive program and class management with tables for `programs` (training program definitions with curricula and requirements), `classes` (specific class instances with scheduling and capacity), `class_sessions` (individual session occurrences), `enrollments` (student program registrations with status tracking), and `enrollment_history` (audit trail of enrollment changes). Includes automated session generation, capacity management, waitlist handling, and family discount calculations.
     - **Discount System:** Comprehensive discount code system with tables for `discount_codes` (code definitions, rules, validity) and `discount_code_usage` (usage tracking, audit trail). Supports fixed amount and percentage discounts with flexible applicability rules (training, store, both) and scope (per-student, per-family). Includes usage restrictions (one-time, ongoing) and automatic discount generation capabilities.
     - **Automatic Discount System:** Event-driven automatic discount assignment with tables for `discount_events` (student/family events), `discount_automation_rules` (rule definitions linking events to discount templates), and `discount_assignments` (tracking of automatically assigned discounts). Supports complex rule conditions, duplicate prevention, and comprehensive audit trails.
 - **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.

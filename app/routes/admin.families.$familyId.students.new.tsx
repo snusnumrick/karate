@@ -2,7 +2,7 @@ import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunctio
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
 import {createClient} from "@supabase/supabase-js";
 import {Database} from "~/types/database.types";
-import {recordStudentEnrollmentEvent} from "~/utils/auto-discount-events.server";
+
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
@@ -145,11 +145,6 @@ export async function action({request, params}: ActionFunctionArgs) {
         }
 
         console.log(`[Admin Add Student Action] Successfully added student ${newStudent?.id} to family ${familyId}`);
-        
-        // Record student enrollment event for automatic discount processing
-        if (newStudent?.id) {
-            await recordStudentEnrollmentEvent(newStudent.id, familyId);
-        }
         
         // Redirect back to the admin family detail page on success
         return redirect(`/admin/families/${familyId}`);

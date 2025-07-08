@@ -29,12 +29,24 @@ export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
     guardians?: GuardianRow[]; // Add guardians array
 };
 
+// Define upcoming class session type
+type UpcomingClassSession = {
+    student_id: string;
+    student_name: string;
+    class_name: string;
+    session_date: string;
+    start_time: string;
+    end_time: string;
+    instructor_name?: string;
+};
+
 interface LoaderData {
     profile?: { familyId: string };
     family?: FamilyData;
     individualSessionBalance?: number; // Renamed balance field
     error?: string;
     allWaiversSigned?: boolean;
+    upcomingClasses?: UpcomingClassSession[];
 }
 
 // Placeholder loader - will need to fetch actual family data later
@@ -191,12 +203,65 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         individualSessionBalance = 0; // Ensure balance is reset if outer catch is hit
     }
 
-    // Return profile, combined family data, and waiver status
+    // 6. Fetch upcoming class sessions for enrolled students (one per student)
+    let upcomingClasses: UpcomingClassSession[] = [];
+    
+    if (studentsWithEligibility.length > 0) {
+        try {
+            const upcomingClassesPromises = studentsWithEligibility.map(async (student) => {
+                const { data } = await supabaseServer
+                    .from('class_sessions')
+                    .select(`
+                        session_date,
+                        start_time,
+                        end_time,
+                        classes!inner(
+                            name,
+                            enrollments!inner(
+                                student_id,
+                                students(
+                                    first_name,
+                                    last_name
+                                )
+                            )
+                        ),
+                        instructor:profiles(
+                            first_name,
+                            last_name
+                        )
+                    `)
+                    .eq('classes.enrollments.student_id', student.id)
+                    .eq('classes.enrollments.status', 'active')
+                    .gte('session_date', new Date().toISOString().split('T')[0]) // Only future sessions
+                    .order('session_date', { ascending: true })
+                    .order('start_time', { ascending: true })
+                    .limit(1); // Limit to next 1 session per student
+                
+                return data?.[0] ? {
+                    student_id: data[0].classes.enrollments[0].student_id,
+                    student_name: `${data[0].classes.enrollments[0].students.first_name} ${data[0].classes.enrollments[0].students.last_name}`,
+                    class_name: data[0].classes.name,
+                    session_date: data[0].session_date,
+                    start_time: data[0].start_time,
+                    end_time: data[0].end_time,
+                    instructor_name: data[0].instructor ? `${data[0].instructor.first_name} ${data[0].instructor.last_name}` : undefined
+                } : null;
+            });
+            
+            const upcomingClassesResults = await Promise.all(upcomingClassesPromises);
+            upcomingClasses = upcomingClassesResults.filter(Boolean) as UpcomingClassSession[];
+        } catch (error) {
+            console.error('Error processing upcoming class sessions:', error);
+        }
+    }
+
+    // Return profile, combined family data, waiver status, and upcoming classes
     return json({
         profile: {familyId: String(profileData.family_id)},
         family: finalFamilyData, // Use the combined data
         individualSessionBalance, // Include the renamed balance in the response
-        allWaiversSigned
+        allWaiversSigned,
+        upcomingClasses
     }, {headers});
 }
 
@@ -218,8 +283,8 @@ const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "defau
 };
 
 export default function FamilyPortal() {
-    // Now loader returns profile, family data, waiver status, and individual session balance
-    const {family, individualSessionBalance, error, allWaiversSigned} = useLoaderData<typeof loader>();
+    // Now loader returns profile, family data, waiver status, individual session balance, and upcoming classes
+    const {family, individualSessionBalance, error, allWaiversSigned, upcomingClasses} = useLoaderData<typeof loader>();
 
     // Handle specific error messages from the loader
     if (error) {
@@ -288,6 +353,58 @@ export default function FamilyPortal() {
                     <Button asChild className="mt-4">
                         <Link to="/family/add-student">Add Student</Link>
                     </Button>
+                </div>
+
+                {/* Next Classes Section */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold mb-4">Next Classes</h2>
+                    {upcomingClasses && upcomingClasses.length > 0 ? (
+                        <div className="space-y-3">
+                            {upcomingClasses.map((session, index) => (
+                                <div key={index} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md border-l-4 border-blue-500">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                            <p className="font-medium text-gray-900 dark:text-gray-100">
+                                                {session.student_name}
+                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                {session.class_name}
+                                            </p>
+                                            {session.instructor_name && (
+                                                <p className="text-xs text-gray-500 dark:text-gray-500">
+                                                    Instructor: {session.instructor_name}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                {formatDate(session.session_date, { formatString: 'MMM d' })}
+                                            </p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                {session.start_time.slice(0, 5)} - {session.end_time.slice(0, 5)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <Button asChild className="mt-4">
+                                <Link to="/family/calendar">View Full Calendar</Link>
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="text-center py-4">
+                            <p className="text-gray-600 dark:text-gray-400 mb-4">No upcoming classes scheduled.</p>
+                            {family?.students && family.students.length > 0 ? (
+                                <p className="text-sm text-gray-500 dark:text-gray-500">
+                                    Contact us to schedule classes for your students.
+                                </p>
+                            ) : (
+                                <p className="text-sm text-gray-500 dark:text-gray-500">
+                                    Add students to see their upcoming classes.
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Guardians Section */}

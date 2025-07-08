@@ -19,10 +19,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
   
   try {
-    const templates = await DiscountTemplateService.getActiveTemplates();
-    return json({ templates });
+    const [templates, programs] = await Promise.all([
+      DiscountTemplateService.getActiveTemplates(),
+      import('~/services/program.server').then(m => m.getPrograms({ is_active: true }))
+    ]);
+    return json({ templates, programs });
   } catch (error) {
-    throw new Response('Failed to load discount templates', { status: 500 });
+    throw new Response('Failed to load data', { status: 500 });
   }
 }
 
@@ -37,6 +40,10 @@ export async function action({ request }: ActionFunctionArgs) {
   const validFrom = formData.get('valid_from') as string;
   const validUntil = formData.get('valid_until') as string;
   const isActive = formData.get('is_active') === 'on';
+  
+  // Handle applicable programs
+  const applicablePrograms = formData.getAll('applicable_programs') as string[];
+  const filteredPrograms = applicablePrograms.filter(id => id && id.trim() !== '');
   
   // Handle multiple discount templates
   let discountTemplateIds: string[] = [];
@@ -77,6 +84,7 @@ export async function action({ request }: ActionFunctionArgs) {
       conditions: Object.keys(conditions).length > 0 ? conditions : undefined,
       valid_from: validFrom || undefined,
       valid_until: validUntil || undefined,
+      applicable_programs: filteredPrograms.length > 0 ? filteredPrograms : undefined,
       is_active: isActive,
     });
     
@@ -102,7 +110,7 @@ const beltRanks = [
 ];
 
 export default function NewAutomationRule() {
-  const { templates } = useLoaderData<typeof loader>();
+  const { templates, programs } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
@@ -250,6 +258,43 @@ export default function NewAutomationRule() {
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Program Filtering Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Program Filtering</CardTitle>
+            <CardDescription>
+              Select specific programs this rule should apply to. Leave empty to apply to all programs.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Applicable Programs (optional)</Label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                {programs.map((program) => (
+                  <div key={program.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`program_${program.id}`}
+                      name="applicable_programs"
+                      value={program.id}
+                    />
+                    <Label htmlFor={`program_${program.id}`} className="flex-1 cursor-pointer">
+                      {program.name}
+                      {program.description && (
+                        <span className="text-sm text-muted-foreground block">
+                          {program.description}
+                        </span>
+                      )}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                If no programs are selected, the rule will apply to students in any program.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

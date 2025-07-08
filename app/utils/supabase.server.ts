@@ -2,6 +2,9 @@ import {createServerClient} from "@supabase/auth-helpers-remix";
 import {createClient} from "@supabase/supabase-js"; // Import standard client
 import type {Database} from "~/types/database.types";
 
+// Export createClient for use in other modules
+export { createClient };
+
 import { siteConfig } from "~/config/site"; // Import siteConfig for tax rate
 import { DiscountService } from "~/services/discount.server";
 

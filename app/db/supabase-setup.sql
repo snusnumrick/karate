@@ -80,6 +80,24 @@ $$
     END
 $$;
 
+-- Create enum for days of the week
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'day_of_week') THEN
+            CREATE TYPE day_of_week AS ENUM (
+                'monday',
+                'tuesday', 
+                'wednesday',
+                'thursday',
+                'friday',
+                'saturday',
+                'sunday'
+            );
+        END IF;
+    END
+$$;
+
 
 -- Create tables with IF NOT EXISTS to avoid errors on subsequent runs
 
@@ -115,7 +133,7 @@ CREATE TABLE IF NOT EXISTS guardians
     first_name     text                                            NOT NULL,
     last_name      text                                            NOT NULL,
     relationship   text                                            NOT NULL,
-    home_phone     varchar(20),                                     
+    home_phone     varchar(20),
     work_phone     varchar(20),
     cell_phone     varchar(20)                                     NOT NULL,
     email          text                                            NOT NULL,
@@ -203,7 +221,8 @@ $$
         -- Allow admins to manage products
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
-                       WHERE policyname = 'Allow admins to manage products' AND tablename = 'products') THEN
+                       WHERE policyname = 'Allow admins to manage products'
+                         AND tablename = 'products') THEN
             CREATE POLICY "Allow admins to manage products" ON public.products
                 FOR ALL USING (
                 EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
@@ -343,7 +362,8 @@ $$
         -- Allow family members to view their own orders
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
-                       WHERE policyname = 'Allow family members to view their orders' AND tablename = 'orders') THEN
+                       WHERE policyname = 'Allow family members to view their orders'
+                         AND tablename = 'orders') THEN
             CREATE POLICY "Allow family members to view their orders" ON public.orders
                 FOR SELECT USING (
                 EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.family_id = orders.family_id)
@@ -352,7 +372,8 @@ $$
         -- Allow admins to manage all orders
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
-                       WHERE policyname = 'Allow admins to manage orders' AND tablename = 'orders') THEN
+                       WHERE policyname = 'Allow admins to manage orders'
+                         AND tablename = 'orders') THEN
             CREATE POLICY "Allow admins to manage orders" ON public.orders
                 FOR ALL USING (
                 EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
@@ -428,7 +449,8 @@ $$
         -- Allow admins to manage all order items
         IF NOT EXISTS (SELECT 1
                        FROM pg_policies
-                       WHERE policyname = 'Allow admins to manage order items' AND tablename = 'order_items') THEN
+                       WHERE policyname = 'Allow admins to manage order items'
+                         AND tablename = 'order_items') THEN
             CREATE POLICY "Allow admins to manage order items" ON public.order_items
                 FOR ALL USING (
                 EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
@@ -863,17 +885,17 @@ CREATE TABLE IF NOT EXISTS waiver_signatures
 
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
+BEGIN
+IF NOT EXISTS (SELECT 1
                        FROM pg_indexes
                        WHERE indexname = 'idx_waiver_signatures_user_id') THEN
-            CREATE INDEX idx_waiver_signatures_user_id ON waiver_signatures (user_id);
-        END IF;
+CREATE INDEX idx_waiver_signatures_user_id ON waiver_signatures (user_id);
+END IF;
 
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_waiver_signatures_waiver_id') THEN
-            CREATE INDEX idx_waiver_signatures_waiver_id ON waiver_signatures (waiver_id);
-        END IF;
-    END
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_waiver_signatures_waiver_id') THEN
+CREATE INDEX idx_waiver_signatures_waiver_id ON waiver_signatures (waiver_id);
+END IF;
+END;
 $$;
 
 -- Policy Agreements table removed in favor of enhanced waiver_signatures
@@ -903,13 +925,12 @@ ALTER TABLE profiles
 DO
 $$
     BEGIN
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_indexes
                        WHERE indexname = 'idx_profiles_family_id') THEN
-            CREATE INDEX idx_profiles_family_id ON profiles (family_id);
-        END IF;
-    END
-$$;
+CREATE INDEX idx_profiles_family_id ON profiles (family_id);
+END IF;
+END $$;
 
 -- Drop existing triggers first to avoid conflicts when recreating
 DROP TRIGGER IF EXISTS families_updated ON families;
@@ -920,9 +941,9 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
     RETURNS TRIGGER AS
 $$
 BEGIN
-    INSERT INTO public.profiles (id, email)
-    VALUES (NEW.id, NEW.email);
-    RETURN NEW;
+INSERT INTO public.profiles (id, email)
+VALUES (NEW.id, NEW.email);
+RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -930,17 +951,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DO
 $$
     BEGIN
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_trigger
                        WHERE tgname = 'on_auth_user_created') THEN
-            CREATE TRIGGER on_auth_user_created
-                AFTER INSERT
-                ON auth.users
-                FOR EACH ROW
-            EXECUTE PROCEDURE public.handle_new_user();
-        END IF;
-    END
-$$;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT
+    ON auth.users
+    FOR EACH ROW
+EXECUTE PROCEDURE public.handle_new_user();
+END IF;
+END $$;
 
 -- Enable row level security on all tables
 ALTER TABLE families
@@ -986,28 +1006,36 @@ ALTER TABLE public.tax_rates
 
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
+BEGIN
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow authenticated users to view active tax rates'
                          AND tablename = 'tax_rates') THEN
-            CREATE POLICY "Allow authenticated users to view active tax rates" ON public.tax_rates
-                FOR SELECT TO authenticated USING (is_active = true);
-        END IF;
-        IF NOT EXISTS (SELECT 1
+CREATE POLICY "Allow authenticated users to view active tax rates" ON public.tax_rates
+    FOR SELECT TO authenticated USING (is_active = true);
+END IF;
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage tax rates' AND tablename = 'tax_rates') THEN
-            CREATE POLICY "Allow admins to manage tax rates" ON public.tax_rates
-                FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow admins to manage tax rates" ON public.tax_rates
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
 
 -- Insert initial tax rates (BC Example) - Make idempotent
+DO $$
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM public.tax_rates LIMIT 1) THEN
 INSERT INTO public.tax_rates (name, rate, description, region, is_active)
 VALUES ('GST', 0.05, 'Goods and Services Tax', 'CA', true),
        ('PST_BC', 0.07, 'Provincial Sales Tax (British Columbia)', 'BC', true)
@@ -1016,6 +1044,8 @@ ON CONFLICT (name) DO UPDATE SET rate        = EXCLUDED.rate,
                                  region      = EXCLUDED.region,
                                  is_active   = EXCLUDED.is_active,
                                  updated_at  = now();
+END IF;
+END $$;
 
 
 -- Payment Taxes Junction Table
@@ -1038,14 +1068,14 @@ ALTER TABLE public.payment_taxes
 -- Add indexes
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_payment_id') THEN
-            CREATE INDEX idx_payment_taxes_payment_id ON public.payment_taxes (payment_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_tax_rate_id') THEN
-            CREATE INDEX idx_payment_taxes_tax_rate_id ON public.payment_taxes (tax_rate_id);
-        END IF;
-    END
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_payment_id') THEN
+CREATE INDEX idx_payment_taxes_payment_id ON public.payment_taxes (payment_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_taxes_tax_rate_id') THEN
+CREATE INDEX idx_payment_taxes_tax_rate_id ON public.payment_taxes (tax_rate_id);
+END IF;
+END;
 $$;
 
 -- Enable RLS for payment_taxes
@@ -1056,300 +1086,302 @@ DO
 $$
     BEGIN
         -- Allow family members to view taxes linked to their payments
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow family members to view their payment taxes'
                          AND tablename = 'payment_taxes') THEN
-            CREATE POLICY "Allow family members to view their payment taxes" ON public.payment_taxes
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM public.payments pay
-                                 JOIN public.profiles p ON pay.family_id = p.family_id
-                        WHERE payment_taxes.payment_id = pay.id
-                          AND p.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Allow family members to view their payment taxes" ON public.payment_taxes
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM public.payments pay
+                     JOIN public.profiles p ON pay.family_id = p.family_id
+            WHERE payment_taxes.payment_id = pay.id
+              AND p.id = auth.uid())
+    );
+END IF;
 
-        -- Allow admins to manage all payment taxes
-        IF NOT EXISTS (SELECT 1
+-- Allow admins to manage all payment taxes
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage payment taxes' AND tablename = 'payment_taxes') THEN
-            CREATE POLICY "Allow admins to manage payment taxes" ON public.payment_taxes
-                FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow admins to manage payment taxes" ON public.payment_taxes
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
 
 -- End New Tax Tables --
 
 -- Add RLS policies conditionally
 DO
 $$
-    BEGIN
-        -- Check if policy exists before creating/replacing
-        -- Modify policy to allow viewing own profile OR admin/instructor profiles
-        DROP POLICY IF EXISTS "Profiles are viewable by user or admin role" ON public.profiles; -- Drop potentially existing policy
-        DROP POLICY IF EXISTS "Profiles are viewable by user" ON public.profiles;
-        -- Drop older policy if exists
+BEGIN
+-- Check if policy exists before creating/replacing
+-- Modify policy to allow viewing own profile OR admin/instructor profiles
+DROP POLICY IF EXISTS "Profiles are viewable by user or admin role" ON public.profiles; -- Drop potentially existing policy
+DROP POLICY IF EXISTS "Profiles are viewable by user" ON public.profiles;
+-- Drop older policy if exists
 
-        -- Check if the target policy already exists before creating it
-        IF NOT EXISTS (SELECT 1
+-- Check if the target policy already exists before creating it
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'profiles'
                          AND policyname = 'Profiles viewable by user, admin, or instructor') THEN
-            CREATE POLICY "Profiles viewable by user, admin, or instructor" ON public.profiles
-                FOR SELECT USING (
-                auth.uid() = id -- Can view own profile
-                    OR
-                role = 'admin' -- Can view admin profiles
-                    OR
-                role = 'instructor' -- Can view instructor profiles (needed for recipient list)
-                );
-        END IF;
+CREATE POLICY "Profiles viewable by user, admin, or instructor" ON public.profiles
+    FOR SELECT USING (
+    auth.uid() = id -- Can view own profile
+        OR
+    role = 'admin' -- Can view admin profiles
+        OR
+    role = 'instructor' -- Can view instructor profiles (needed for recipient list)
+    );
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'families'
                          AND policyname = 'Families are viewable by members') THEN
-            CREATE POLICY "Families are viewable by members" ON families
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.family_id = families.id
-                          AND profiles.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Families are viewable by members" ON families
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.family_id = families.id
+              AND profiles.id = auth.uid())
+    );
+END IF;
 
-        -- Policy to allow authenticated users to insert new families
-        IF NOT EXISTS (SELECT 1
+-- Policy to allow authenticated users to insert new families
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'families'
                          AND policyname = 'Authenticated users can insert families') THEN
-            CREATE POLICY "Authenticated users can insert families" ON public.families
-                FOR INSERT TO authenticated
-                WITH CHECK (auth.role() = 'authenticated');
-        END IF;
+CREATE POLICY "Authenticated users can insert families" ON public.families
+    FOR INSERT TO authenticated
+    WITH CHECK (auth.role() = 'authenticated');
+END IF;
 
-        -- Policy to allow admins to view all families
-        IF NOT EXISTS (SELECT 1
+-- Policy to allow admins to view all families
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'families'
                          AND policyname = 'Admins can view all families') THEN
-            CREATE POLICY "Admins can view all families" ON families
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.id = auth.uid()
-                          AND profiles.role = 'admin')
-                );
-        END IF;
+CREATE POLICY "Admins can view all families" ON families
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.role = 'admin')
+    );
+END IF;
 
-        -- Policy to allow admins to manage all families
-        IF NOT EXISTS (SELECT 1
+-- Policy to allow admins to manage all families
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'families'
                          AND policyname = 'Admins can manage all families') THEN
-            CREATE POLICY "Admins can manage all families" ON families
-                FOR ALL USING (
-                EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.id = auth.uid()
-                          AND profiles.role = 'admin')
-                ) WITH CHECK (
-                EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.id = auth.uid()
-                          AND profiles.role = 'admin')
-                );
-        END IF;
+CREATE POLICY "Admins can manage all families" ON families
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.role = 'admin')
+    );
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'guardians'
                          AND policyname = 'Guardians are viewable by family members') THEN
-            CREATE POLICY "Guardians are viewable by family members" ON guardians
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.family_id = guardians.family_id
-                          AND profiles.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Guardians are viewable by family members" ON guardians
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.family_id = guardians.family_id
+              AND profiles.id = auth.uid())
+    );
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'students'
                          AND policyname = 'Students are viewable by family members') THEN
-            CREATE POLICY "Students are viewable by family members" ON students
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.family_id = students.family_id
-                          AND profiles.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Students are viewable by family members" ON students
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.family_id = students.family_id
+              AND profiles.id = auth.uid())
+    );
+END IF;
 
-        -- Policy to allow family members to INSERT students into their own family
-        IF NOT EXISTS (SELECT 1
+-- Policy to allow family members to INSERT students into their own family
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'students'
                          AND policyname = 'Family members can insert students into their family') THEN
-            CREATE POLICY "Family members can insert students into their family" ON students
-                FOR INSERT
-                WITH CHECK (
-                EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.id = auth.uid()
-                          AND profiles.family_id = students.family_id)
-                );
-        END IF;
+CREATE POLICY "Family members can insert students into their family" ON students
+    FOR INSERT
+    WITH CHECK (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.family_id = students.family_id)
+    );
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'payments'
                          AND policyname = 'Payments are viewable by family members') THEN
-            CREATE POLICY "Payments are viewable by family members" ON payments
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.family_id = payments.family_id
-                          AND profiles.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Payments are viewable by family members" ON payments
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.family_id = payments.family_id
+              AND profiles.id = auth.uid())
+    );
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'payment_students'
                          AND policyname = 'Payment_students are viewable by related users') THEN
-            CREATE POLICY "Payment_students are viewable by related users" ON payment_students
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM payments
-                                 JOIN profiles ON profiles.family_id = payments.family_id
-                        WHERE payment_students.payment_id = payments.id
-                          AND profiles.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Payment_students are viewable by related users" ON payment_students
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM payments
+                     JOIN profiles ON profiles.family_id = payments.family_id
+            WHERE payment_students.payment_id = payments.id
+              AND profiles.id = auth.uid())
+    );
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'belt_awards'
                          AND policyname = 'Belt awards are viewable by family members' -- Renamed policy and table
         ) THEN
-            CREATE POLICY "Belt awards are viewable by family members" ON belt_awards -- Renamed policy and table
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM students
-                                 JOIN profiles ON profiles.family_id = students.family_id
-                        WHERE belt_awards.student_id = students.id -- Renamed table
-                          AND profiles.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Belt awards are viewable by family members" ON belt_awards -- Renamed policy and table
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM students
+                     JOIN profiles ON profiles.family_id = students.family_id
+            WHERE belt_awards.student_id = students.id -- Renamed table
+              AND profiles.id = auth.uid())
+    );
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'attendance'
                          AND policyname = 'Attendance is viewable by family members') THEN
-            CREATE POLICY "Attendance is viewable by family members" ON attendance
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM students
-                                 JOIN profiles ON profiles.family_id = students.family_id
-                        WHERE attendance.student_id = students.id
-                          AND profiles.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Attendance is viewable by family members" ON attendance
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM students
+                     JOIN profiles ON profiles.family_id = students.family_id
+            WHERE attendance.student_id = students.id
+              AND profiles.id = auth.uid())
+    );
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'waivers'
                          AND policyname = 'Waivers are viewable by all authenticated users') THEN
-            CREATE POLICY "Waivers are viewable by all authenticated users" ON waivers
-                FOR SELECT USING (auth.role() = 'authenticated');
-        END IF;
+CREATE POLICY "Waivers are viewable by all authenticated users" ON waivers
+    FOR SELECT USING (auth.role() = 'authenticated');
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'waiver_signatures'
                          AND policyname = 'Waiver signatures are viewable by the signer') THEN
-            CREATE POLICY "Waiver signatures are viewable by the signer" ON waiver_signatures
-                FOR SELECT USING (auth.uid() = user_id);
-        END IF;
+CREATE POLICY "Waiver signatures are viewable by the signer" ON waiver_signatures
+    FOR SELECT USING (auth.uid() = user_id);
+END IF;
 
-        -- Enhanced waiver_signatures RLS policies
-        IF NOT EXISTS (SELECT 1
+-- Enhanced waiver_signatures RLS policies
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'waiver_signatures'
                          AND policyname = 'Users can view their waiver signatures') THEN
-            CREATE POLICY "Users can view their waiver signatures" ON waiver_signatures
-                FOR SELECT USING (auth.uid() = user_id);
-        END IF;
+CREATE POLICY "Users can view their waiver signatures" ON waiver_signatures
+    FOR SELECT USING (auth.uid() = user_id);
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'waiver_signatures'
                          AND policyname = 'Users can create their waiver signatures') THEN
-            CREATE POLICY "Users can create their waiver signatures" ON waiver_signatures
-                FOR INSERT WITH CHECK (auth.uid() = user_id);
-        END IF;
+CREATE POLICY "Users can create their waiver signatures" ON waiver_signatures
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'waiver_signatures'
                          AND policyname = 'Admins can manage waiver signatures') THEN
-            CREATE POLICY "Admins can manage waiver signatures" ON waiver_signatures
-                FOR ALL TO authenticated
-                USING (EXISTS (SELECT 1
-                               FROM profiles
-                               WHERE profiles.id = auth.uid()
-                                 AND profiles.role = 'admin'));
-        END IF;
-    END
-$$;
+CREATE POLICY "Admins can manage waiver signatures" ON waiver_signatures
+    FOR ALL TO authenticated
+    USING (EXISTS (SELECT 1
+                   FROM profiles
+                   WHERE profiles.id = auth.uid()
+                     AND profiles.role = 'admin'));
+END IF;
+END $$;
 
 -- Add validation constraints conditionally
 DO
 $$
-    BEGIN
-        -- Check if constraint exists before adding
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Check if constraint exists before adding
+IF NOT EXISTS (SELECT 1
                        FROM pg_constraint
                        WHERE conname = 'valid_province') THEN
-            ALTER TABLE families
-                ADD CONSTRAINT valid_province
-                    CHECK (province IN ('AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'));
-        END IF;
+ALTER TABLE families
+    ADD CONSTRAINT valid_province
+        CHECK (province IN ('AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'));
+END IF;
 
-        IF NOT EXISTS (SELECT 1
+IF NOT EXISTS (SELECT 1
                        FROM pg_constraint
                        WHERE conname = 'valid_t_shirt_size') THEN
-            ALTER TABLE students
-                ADD CONSTRAINT valid_t_shirt_size
-                    CHECK (t_shirt_size IN ('YXS', 'YS', 'YM', 'YL', 'YXL', 'AS', 'AM', 'AL', 'AXL', 'A2XL'));
-        END IF;
-    END
-$$;
+ALTER TABLE students
+    ADD CONSTRAINT valid_t_shirt_size
+        CHECK (t_shirt_size IN ('YXS', 'YS', 'YM', 'YL', 'YXL', 'AS', 'AM', 'AL', 'AXL', 'A2XL'));
+END IF;
+END $$;
 
 -- Add update timestamp trigger for families table
 -- Only create trigger if it doesn't exist
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
+BEGIN
+IF NOT EXISTS (SELECT 1
                        FROM pg_trigger
                        WHERE tgname = 'families_updated') THEN
-            CREATE TRIGGER families_updated
-                BEFORE UPDATE
-                ON families
-                FOR EACH ROW
-            EXECUTE FUNCTION update_modified_column();
-        END IF;
-    END
-$$;
+CREATE TRIGGER families_updated
+    BEFORE UPDATE
+    ON families
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+END $$;
 
 -- Function to count successful payments for a student (used for tier calculation)
 -- Make it SECURITY DEFINER to ensure it can read payments table regardless of caller RLS
@@ -1362,14 +1394,14 @@ $$
 DECLARE
     payment_count INT;
 BEGIN
-    SELECT COUNT(*)
-    INTO payment_count
-    FROM public.payment_students ps
-             JOIN public.payments p ON ps.payment_id = p.id
-    WHERE ps.student_id = p_student_id
-      AND p.status = 'succeeded'; -- Ensure using the correct enum value ('succeeded')
+SELECT COUNT(*)
+INTO payment_count
+FROM public.payment_students ps
+         JOIN public.payments p ON ps.payment_id = p.id
+WHERE ps.student_id = p_student_id
+  AND p.status = 'succeeded'; -- Ensure using the correct enum value ('succeeded')
 
-    RETURN payment_count;
+RETURN payment_count;
 END;
 $$;
 
@@ -1406,19 +1438,17 @@ CREATE TABLE IF NOT EXISTS public.one_on_one_sessions
 DO
 $$
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_family_id') THEN
-            CREATE INDEX idx_one_on_one_sessions_family_id ON public.one_on_one_sessions (family_id);
-        END IF;
-    END
-$$;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_family_id') THEN
+CREATE INDEX idx_one_on_one_sessions_family_id ON public.one_on_one_sessions (family_id);
+END IF;
+END $$;
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_payment_id') THEN
-            CREATE INDEX idx_one_on_one_sessions_payment_id ON public.one_on_one_sessions (payment_id);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_sessions_payment_id') THEN
+CREATE INDEX idx_one_on_one_sessions_payment_id ON public.one_on_one_sessions (payment_id);
+END IF;
+END $$;
 
 -- Enable Row Level Security (Important!)
 ALTER TABLE public.one_on_one_sessions
@@ -1427,41 +1457,40 @@ ALTER TABLE public.one_on_one_sessions
 -- Grant access to authenticated users
 DO
 $$
-    BEGIN
-        -- Allow families to view their own session balances
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow families to view their own session balances
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow family members to view their own sessions'
                          AND tablename = 'one_on_one_sessions') THEN
-            CREATE POLICY "Allow family members to view their own sessions" ON public.one_on_one_sessions
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM public.profiles p
-                        WHERE p.id = auth.uid()
-                          AND p.family_id = one_on_one_sessions.family_id)
-                );
-        END IF;
+CREATE POLICY "Allow family members to view their own sessions" ON public.one_on_one_sessions
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.family_id = one_on_one_sessions.family_id)
+    );
+END IF;
 
-        -- Allow admins to manage all sessions (SELECT, INSERT, UPDATE, DELETE)
-        IF NOT EXISTS (SELECT 1
+-- Allow admins to manage all sessions (SELECT, INSERT, UPDATE, DELETE)
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage all sessions'
                          AND tablename = 'one_on_one_sessions') THEN
-            CREATE POLICY "Allow admins to manage all sessions" ON public.one_on_one_sessions
-                FOR ALL USING (
-                EXISTS (SELECT 1
-                        FROM public.profiles p
-                        WHERE p.id = auth.uid()
-                          AND p.role = 'admin')
-                ) WITH CHECK (
-                EXISTS (SELECT 1
-                        FROM public.profiles p
-                        WHERE p.id = auth.uid()
-                          AND p.role = 'admin')
-                );
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow admins to manage all sessions" ON public.one_on_one_sessions
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
 
 -- Grant access to service_role (for backend operations) - Note: service_role bypasses RLS by default.
 -- Policies for service_role are typically not needed,
@@ -1483,30 +1512,27 @@ CREATE TABLE IF NOT EXISTS public.one_on_one_session_usage
 -- Add indexes (idempotently)
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
+BEGIN
+IF NOT EXISTS (SELECT 1
                        FROM pg_indexes
                        WHERE indexname = 'idx_one_on_one_session_usage_session_purchase_id') THEN
-            CREATE INDEX idx_one_on_one_session_usage_session_purchase_id ON public.one_on_one_session_usage (session_purchase_id);
-        END IF;
-    END
-$$;
+CREATE INDEX idx_one_on_one_session_usage_session_purchase_id ON public.one_on_one_session_usage (session_purchase_id);
+END IF;
+END $$;
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_student_id') THEN
-            CREATE INDEX idx_one_on_one_session_usage_student_id ON public.one_on_one_session_usage (student_id);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_student_id') THEN
+CREATE INDEX idx_one_on_one_session_usage_student_id ON public.one_on_one_session_usage (student_id);
+END IF;
+END $$;
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_recorded_by') THEN
-            CREATE INDEX idx_one_on_one_session_usage_recorded_by ON public.one_on_one_session_usage (recorded_by);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_one_on_one_session_usage_recorded_by') THEN
+CREATE INDEX idx_one_on_one_session_usage_recorded_by ON public.one_on_one_session_usage (recorded_by);
+END IF;
+END $$;
 
 -- Enable Row Level Security
 ALTER TABLE public.one_on_one_session_usage
@@ -1515,42 +1541,41 @@ ALTER TABLE public.one_on_one_session_usage
 -- Grant access policies as needed
 DO
 $$
-    BEGIN
-        -- Allow families to see usage linked to their sessions
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow families to see usage linked to their sessions
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow family members to view usage of their sessions'
                          AND tablename = 'one_on_one_session_usage') THEN
-            CREATE POLICY "Allow family members to view usage of their sessions" ON public.one_on_one_session_usage
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM public.one_on_one_sessions s
-                                 JOIN public.profiles p ON s.family_id = p.family_id
-                        WHERE one_on_one_session_usage.session_purchase_id = s.id
-                          AND p.id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Allow family members to view usage of their sessions" ON public.one_on_one_session_usage
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM public.one_on_one_sessions s
+                     JOIN public.profiles p ON s.family_id = p.family_id
+            WHERE one_on_one_session_usage.session_purchase_id = s.id
+              AND p.id = auth.uid())
+    );
+END IF;
 
-        -- Allow admins to manage all session usage (SELECT, INSERT, UPDATE, DELETE)
-        IF NOT EXISTS (SELECT 1
+-- Allow admins to manage all session usage (SELECT, INSERT, UPDATE, DELETE)
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage session usage'
                          AND tablename = 'one_on_one_session_usage') THEN
-            CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_session_usage
-                FOR ALL USING (
-                EXISTS (SELECT 1
-                        FROM public.profiles p
-                        WHERE p.id = auth.uid()
-                          AND p.role = 'admin')
-                ) WITH CHECK (
-                EXISTS (SELECT 1
-                        FROM public.profiles p
-                        WHERE p.id = auth.uid()
-                          AND p.role = 'admin')
-                );
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_session_usage
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
 
 
 -- Optional: Create a function or view to easily get the remaining balance per family
@@ -1605,15 +1630,14 @@ ALTER TABLE public.conversations
 DO
 $$
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'conversations_updated') THEN
-            CREATE TRIGGER conversations_updated
-                BEFORE UPDATE
-                ON public.conversations
-                FOR EACH ROW
-            EXECUTE FUNCTION public.update_modified_column();
-        END IF;
-    END
-$$;
+IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'conversations_updated') THEN
+CREATE TRIGGER conversations_updated
+    BEFORE UPDATE
+    ON public.conversations
+    FOR EACH ROW
+EXECUTE FUNCTION public.update_modified_column();
+END IF;
+END $$;
 
 -- Conversation Participants Table (Junction between conversations and users)
 CREATE TABLE IF NOT EXISTS public.conversation_participants
@@ -1635,15 +1659,14 @@ ALTER TABLE public.conversation_participants
 -- Add indexes
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_conversation_id') THEN
-            CREATE INDEX idx_conversation_participants_conversation_id ON public.conversation_participants (conversation_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_user_id') THEN
-            CREATE INDEX idx_conversation_participants_user_id ON public.conversation_participants (user_id);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_conversation_id') THEN
+CREATE INDEX idx_conversation_participants_conversation_id ON public.conversation_participants (conversation_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_conversation_participants_user_id') THEN
+CREATE INDEX idx_conversation_participants_user_id ON public.conversation_participants (user_id);
+END IF;
+END $$;
 
 -- Enable RLS
 ALTER TABLE public.conversation_participants
@@ -1664,18 +1687,17 @@ CREATE TABLE IF NOT EXISTS public.messages
 -- Add indexes
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_conversation_id') THEN
-            CREATE INDEX idx_messages_conversation_id ON public.messages (conversation_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_sender_id') THEN
-            CREATE INDEX idx_messages_sender_id ON public.messages (sender_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_created_at') THEN
-            CREATE INDEX idx_messages_created_at ON public.messages (created_at); -- For sorting messages
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_conversation_id') THEN
+CREATE INDEX idx_messages_conversation_id ON public.messages (conversation_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_sender_id') THEN
+CREATE INDEX idx_messages_sender_id ON public.messages (sender_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_messages_created_at') THEN
+CREATE INDEX idx_messages_created_at ON public.messages (created_at); -- For sorting messages
+END IF;
+END $$;
 
 -- Enable RLS
 ALTER TABLE public.messages
@@ -1686,152 +1708,165 @@ CREATE OR REPLACE FUNCTION public.update_conversation_last_message_at()
     RETURNS TRIGGER AS
 $$
 BEGIN
-    UPDATE public.conversations
-    SET last_message_at = NEW.created_at,
-        updated_at      = NEW.created_at -- Also update conversation updated_at
-    WHERE id = NEW.conversation_id;
-    RETURN NEW;
+UPDATE public.conversations
+SET last_message_at = NEW.created_at,
+    updated_at      = NEW.created_at -- Also update conversation updated_at
+WHERE id = NEW.conversation_id;
+RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER; -- Use DEFINER if needed to bypass RLS, but check implications
 
 DO
 $$
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'messages_update_conversation_ts') THEN
-            CREATE TRIGGER messages_update_conversation_ts
-                AFTER INSERT
-                ON public.messages
-                FOR EACH ROW
-            EXECUTE FUNCTION public.update_conversation_last_message_at();
-        END IF;
-    END
-$$;
+IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'messages_update_conversation_ts') THEN
+CREATE TRIGGER messages_update_conversation_ts
+    AFTER INSERT
+    ON public.messages
+    FOR EACH ROW
+EXECUTE FUNCTION public.update_conversation_last_message_at();
+END IF;
+END $$;
 
 
 -- --- Messaging RLS Policies ---
 
 DO
 $$
-    BEGIN
-        -- Conversations: Users can see conversations they are participants in. Admins can see all.
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Conversations: Users can see conversations they are participants in. Admins can see all.
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow participants to view conversations'
                          AND tablename = 'conversations') THEN
-            CREATE POLICY "Allow participants to view conversations" ON public.conversations
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM public.conversation_participants cp
-                        WHERE cp.conversation_id = conversations.id
-                          AND cp.user_id = auth.uid())
-                    OR
-                EXISTS ( -- Admins can view all
-                    SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
+CREATE POLICY "Allow participants to view conversations" ON public.conversations
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM public.conversation_participants cp
+            WHERE cp.conversation_id = conversations.id
+              AND cp.user_id = auth.uid())
+        OR
+    EXISTS ( -- Admins can view all
+        SELECT 1
+        FROM public.profiles p
+        WHERE p.id = auth.uid()
+          AND p.role = 'admin')
+    );
+END IF;
 
-        -- Conversations: Users can create conversations (policy might need refinement based on who can initiate)
-        -- For now, allow any authenticated user to create a conversation record.
-        -- Participant insertion logic will handle who is actually *in* the conversation.
-        IF NOT EXISTS (SELECT 1
+-- Conversations: Users can create conversations (policy might need refinement based on who can initiate)
+-- For now, allow any authenticated user to create a conversation record.
+-- Participant insertion logic will handle who is actually *in* the conversation.
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow authenticated users to create conversations'
                          AND tablename = 'conversations') THEN
-            CREATE POLICY "Allow authenticated users to create conversations" ON public.conversations
-                FOR INSERT TO authenticated WITH CHECK (true); -- Simplistic for now
-        END IF;
+CREATE POLICY "Allow authenticated users to create conversations" ON public.conversations
+    FOR INSERT TO authenticated WITH CHECK (true); -- Simplistic for now
+END IF;
 
-        -- Conversation Participants: Users can see their own participation record. Admins can see all.
-        IF NOT EXISTS (SELECT 1
+-- Conversation Participants: Users can see their own participation record. Admins can see all.
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow users to view their own participation'
                          AND tablename = 'conversation_participants') THEN
-            CREATE POLICY "Allow users to view their own participation" ON public.conversation_participants
-                FOR SELECT USING (
-                user_id = auth.uid()
-                    OR
-                EXISTS ( -- Admins can view all
-                    SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
+CREATE POLICY "Allow users to view their own participation" ON public.conversation_participants
+    FOR SELECT USING (
+    user_id = auth.uid()
+        OR
+    EXISTS ( -- Admins can view all
+        SELECT 1
+        FROM public.profiles p
+        WHERE p.id = auth.uid()
+          AND p.role = 'admin')
+    );
+END IF;
 
-        -- Conversation Participants: Users can insert themselves into a conversation (or be added by logic).
-        -- This needs careful consideration. Let's allow users to insert records where user_id = auth.uid().
-        -- Server-side logic (e.g., an RPC function or action) should handle adding *other* users.
-        IF NOT EXISTS (SELECT 1
+-- Conversation Participants: Users can insert themselves into a conversation (or be added by logic).
+-- This needs careful consideration. Let's allow users to insert records where user_id = auth.uid().
+-- Server-side logic (e.g., an RPC function or action) should handle adding *other* users.
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow users to insert themselves as participants'
                          AND tablename = 'conversation_participants') THEN
-            CREATE POLICY "Allow users to insert themselves as participants" ON public.conversation_participants
-                FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
-        END IF;
-        -- Consider adding admin insert policy if needed:
-        IF NOT EXISTS (SELECT 1
+CREATE POLICY "Allow users to insert themselves as participants" ON public.conversation_participants
+    FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+END IF;
+-- Consider adding admin insert policy if needed:
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to insert participants'
                          AND tablename = 'conversation_participants') THEN
-            CREATE POLICY "Allow admins to insert participants" ON public.conversation_participants
-                FOR INSERT TO authenticated WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
+CREATE POLICY "Allow admins to insert participants" ON public.conversation_participants
+    FOR INSERT TO authenticated WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
 
 
-        -- Messages: Users can see messages in conversations they are participants in. Admins can see all.
-        IF NOT EXISTS (SELECT 1
+-- Messages: Users can see messages in conversations they are participants in. Admins can see all.
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow participants to view messages' AND tablename = 'messages') THEN
-            CREATE POLICY "Allow participants to view messages" ON public.messages
-                FOR SELECT USING (
-                EXISTS (SELECT 1
-                        FROM public.conversation_participants cp
-                        WHERE cp.conversation_id = messages.conversation_id
-                          AND cp.user_id = auth.uid())
-                    OR
-                EXISTS ( -- Admins can view all
-                    SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
+CREATE POLICY "Allow participants to view messages" ON public.messages
+    FOR SELECT USING (
+    EXISTS (SELECT 1
+            FROM public.conversation_participants cp
+            WHERE cp.conversation_id = messages.conversation_id
+              AND cp.user_id = auth.uid())
+        OR
+    EXISTS ( -- Admins can view all
+        SELECT 1
+        FROM public.profiles p
+        WHERE p.id = auth.uid()
+          AND p.role = 'admin')
+    );
+END IF;
 
-        -- Messages: Users can insert messages into conversations they are participants in.
-        IF NOT EXISTS (SELECT 1
+-- Messages: Users can insert messages into conversations they are participants in.
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow participants to insert messages' AND tablename = 'messages') THEN
-            CREATE POLICY "Allow participants to insert messages" ON public.messages
-                FOR INSERT TO authenticated WITH CHECK (
-                sender_id = auth.uid() -- Ensure sender is the authenticated user
-                    AND
-                EXISTS ( -- Ensure sender is a participant in the conversation
-                    SELECT 1
-                    FROM public.conversation_participants cp
-                    WHERE cp.conversation_id = messages.conversation_id
-                      AND cp.user_id = auth.uid())
-                );
-        END IF;
+CREATE POLICY "Allow participants to insert messages" ON public.messages
+    FOR INSERT TO authenticated WITH CHECK (
+    sender_id = auth.uid() -- Ensure sender is the authenticated user
+        AND
+    EXISTS ( -- Ensure sender is a participant in the conversation
+        SELECT 1
+        FROM public.conversation_participants cp
+        WHERE cp.conversation_id = messages.conversation_id
+          AND cp.user_id = auth.uid())
+    );
+END IF;
 
-        -- Optional: Allow admins to delete messages (or specific roles)
-        IF NOT EXISTS (SELECT 1
+-- Optional: Allow admins to delete messages (or specific roles)
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to delete messages' AND tablename = 'messages') THEN
-            CREATE POLICY "Allow admins to delete messages" ON public.messages
-                FOR DELETE USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
+CREATE POLICY "Allow admins to delete messages" ON public.messages
+    FOR DELETE USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
 
-        -- Conversation Participants: Allow users to update their own last_read_at timestamp.
-        IF NOT EXISTS (SELECT 1
+-- Conversation Participants: Allow users to update their own last_read_at timestamp.
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow users to update their own last_read_at'
                          AND tablename = 'conversation_participants') THEN
-            CREATE POLICY "Allow users to update their own last_read_at" ON public.conversation_participants
-                FOR UPDATE TO authenticated
-                USING (user_id = auth.uid()) -- Can only update your own record
-                WITH CHECK (user_id = auth.uid() AND conversation_id = conversation_id); -- Ensure user_id isn't changed, allow updating last_read_at
-        END IF;
+CREATE POLICY "Allow users to update their own last_read_at" ON public.conversation_participants
+    FOR UPDATE TO authenticated
+    USING (user_id = auth.uid()) -- Can only update your own record
+    WITH CHECK (user_id = auth.uid() AND conversation_id = conversation_id); -- Ensure user_id isn't changed, allow updating last_read_at
+END IF;
 
-    END
-$$;
+END $$;
 
 -- --- End Messaging RLS Policies ---
 
@@ -1850,43 +1885,46 @@ AS
 $$
 DECLARE
     new_conversation_id uuid;
-    admin_instructor_id uuid;
+admin_instructor_id uuid;
 BEGIN
     -- Set search_path at the beginning of the function execution for this transaction
-    SET LOCAL search_path = public, extensions;
+SET LOCAL search_path = public, extensions;
 
-    -- 1. Create the conversation
-    INSERT INTO public.conversations (subject)
-    VALUES (p_subject)
-    RETURNING id INTO new_conversation_id;
+-- 1. Create the conversation
+INSERT INTO public.conversations (subject)
+VALUES (p_subject)
+RETURNING id
+INTO new_conversation_id;
 
-    -- 2. Add the sender as a participant
-    INSERT INTO public.conversation_participants (conversation_id, user_id)
-    VALUES (new_conversation_id, p_sender_id);
+-- 2. Add the sender as a participant
+INSERT INTO public.conversation_participants (conversation_id, user_id)
+VALUES (new_conversation_id, p_sender_id);
 
-    -- 3. Add all admin and instructor users as participants
-    FOR admin_instructor_id IN
-        SELECT id FROM public.profiles WHERE role IN ('admin', 'instructor')
-        LOOP
-            -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user is both sender and admin/instructor
-            INSERT INTO public.conversation_participants (conversation_id, user_id)
-            VALUES (new_conversation_id, admin_instructor_id)
-            ON CONFLICT (conversation_id, user_id) DO NOTHING;
-        END LOOP;
+-- 3. Add all admin and instructor users as participants
+FOR admin_instructor_id IN
+SELECT id
+FROM public.profiles
+WHERE role IN ('admin', 'instructor')
+    LOOP
+-- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user is both sender and admin/instructor
+INSERT INTO public.conversation_participants (conversation_id, user_id)
+VALUES (new_conversation_id, admin_instructor_id)
+ON CONFLICT (conversation_id, user_id) DO NOTHING;
+END LOOP;
 
-    -- 4. Add the initial message
-    INSERT INTO public.messages (conversation_id, sender_id, content)
-    VALUES (new_conversation_id, p_sender_id, p_content);
+-- 4. Add the initial message
+INSERT INTO public.messages (conversation_id, sender_id, content)
+VALUES (new_conversation_id, p_sender_id, p_content);
 
-    -- 4. Return the new conversation ID
-    RETURN new_conversation_id;
+-- 4. Return the new conversation ID
+RETURN new_conversation_id;
 
 EXCEPTION
     WHEN OTHERS THEN
         -- Log the error details if possible (requires extensions or specific logging setup)
         RAISE WARNING 'Error in create_new_conversation: SQLSTATE: %, MESSAGE: %', SQLSTATE, SQLERRM;
         -- Re-raise the original error to ensure the transaction fails
-        RAISE;
+RAISE;
 END;
 $$;
 
@@ -1907,16 +1945,16 @@ CREATE OR REPLACE FUNCTION public.mark_conversation_as_read(
 AS
 $$
 BEGIN
-    UPDATE public.conversation_participants
-    SET last_read_at = now()
-    WHERE conversation_id = p_conversation_id
-      AND user_id = p_user_id;
+UPDATE public.conversation_participants
+SET last_read_at = now()
+WHERE conversation_id = p_conversation_id
+  AND user_id = p_user_id;
 
-    -- Check if the update affected any rows
-    IF NOT FOUND THEN
+-- Check if the update affected any rows
+IF NOT FOUND THEN
         RAISE EXCEPTION 'User % is not a participant in conversation %',
             p_user_id, p_conversation_id;
-    END IF;
+END IF;
 END;
 $$;
 
@@ -1927,11 +1965,11 @@ CREATE OR REPLACE FUNCTION public.update_sender_last_read_at()
     RETURNS TRIGGER AS
 $$
 BEGIN
-    UPDATE public.conversation_participants
-    SET last_read_at = NEW.created_at
-    WHERE conversation_id = NEW.conversation_id
-      AND user_id = NEW.sender_id;
-    RETURN NEW;
+UPDATE public.conversation_participants
+SET last_read_at = NEW.created_at
+WHERE conversation_id = NEW.conversation_id
+  AND user_id = NEW.sender_id;
+RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -1955,42 +1993,45 @@ AS
 $$
 DECLARE
     new_conversation_id uuid;
-    family_member_id    uuid;
+family_member_id    uuid;
 BEGIN
     -- Set search_path for safety within SECURITY DEFINER
-    SET LOCAL search_path = public, extensions;
+SET LOCAL search_path = public, extensions;
 
-    -- 1. Create the conversation
-    INSERT INTO public.conversations (subject)
-    VALUES (p_subject)
-    RETURNING id INTO new_conversation_id;
+-- 1. Create the conversation
+INSERT INTO public.conversations (subject)
+VALUES (p_subject)
+RETURNING id
+INTO new_conversation_id;
 
-    -- 2. Add the sender (admin/instructor) as a participant
-    INSERT INTO public.conversation_participants (conversation_id, user_id)
-    VALUES (new_conversation_id, p_sender_id);
+-- 2. Add the sender (admin/instructor) as a participant
+INSERT INTO public.conversation_participants (conversation_id, user_id)
+VALUES (new_conversation_id, p_sender_id);
 
-    -- 3. Find all users associated with the target family and add them as participants
-    FOR family_member_id IN
-        SELECT id FROM public.profiles WHERE family_id = p_target_family_id
-        LOOP
-        -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user somehow exists twice or overlaps
-        -- Explicitly set last_read_at to -infinity for new family participants
-            INSERT INTO public.conversation_participants (conversation_id, user_id, last_read_at)
-            VALUES (new_conversation_id, family_member_id, '-infinity'::timestamptz)
-            ON CONFLICT (conversation_id, user_id) DO NOTHING;
-        END LOOP;
+-- 3. Find all users associated with the target family and add them as participants
+FOR family_member_id IN
+SELECT id
+FROM public.profiles
+WHERE family_id = p_target_family_id
+    LOOP
+-- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user somehow exists twice or overlaps
+-- Explicitly set last_read_at to -infinity for new family participants
+INSERT INTO public.conversation_participants (conversation_id, user_id, last_read_at)
+VALUES (new_conversation_id, family_member_id, '-infinity'::timestamptz)
+ON CONFLICT (conversation_id, user_id) DO NOTHING;
+END LOOP;
 
-    -- 4. Add the initial message from the sender
-    INSERT INTO public.messages (conversation_id, sender_id, content)
-    VALUES (new_conversation_id, p_sender_id, p_message_body);
+-- 4. Add the initial message from the sender
+INSERT INTO public.messages (conversation_id, sender_id, content)
+VALUES (new_conversation_id, p_sender_id, p_message_body);
 
-    -- 5. Return the new conversation ID
-    RETURN new_conversation_id;
+-- 5. Return the new conversation ID
+RETURN new_conversation_id;
 
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'Error in create_admin_initiated_conversation: SQLSTATE: %, MESSAGE: %', SQLSTATE, SQLERRM;
-        RAISE;
+RAISE;
 END;
 $$;
 
@@ -2012,29 +2053,29 @@ CREATE OR REPLACE FUNCTION execute_admin_query(query_text TEXT)
 AS
 $$
 DECLARE
-    result        JSONB;
-    trimmed_query TEXT;
+    result JSONB;
+trimmed_query TEXT;
 BEGIN
 
     -- Check if the query starts with 'select' (case-insensitive) followed by whitespace or end of string
     -- using a case-insensitive regular expression match (~*)
-    IF TRIM(query_text) !~* '^\s*select(\s|$)' THEN
+IF TRIM(query_text) !~* '^\s*select(\s|$)' THEN
         RAISE EXCEPTION 'Only SELECT statements are allowed for security reasons. Query must start with SELECT.';
-    END IF;
+END IF;
 
-    -- Set a statement timeout to prevent long-running queries
-    EXECUTE 'SET LOCAL statement_timeout = 5000';
-    -- 5 seconds in milliseconds
+-- Set a statement timeout to prevent long-running queries
+EXECUTE 'SET LOCAL statement_timeout = 5000';
+-- 5 seconds in milliseconds
 
-    -- Execute the query and convert the result to JSON
-    EXECUTE 'SELECT jsonb_agg(row_to_json(t)) FROM (' || query_text || ') t' INTO result;
+-- Execute the query and convert the result to JSON
+EXECUTE 'SELECT jsonb_agg(row_to_json(t)) FROM (' || query_text || ') t' INTO result;
 
-    -- Return an empty array instead of null if no results
-    IF result IS NULL THEN
+-- Return an empty array instead of null if no results
+IF result IS NULL THEN
         result := '[]'::JSONB;
-    END IF;
+END IF;
 
-    RETURN result;
+RETURN result;
 EXCEPTION
     WHEN others THEN
         -- Return the error as JSON
@@ -2061,28 +2102,29 @@ CREATE OR REPLACE FUNCTION execute_explain_query(query_text TEXT)
 AS
 $$
 DECLARE
-    result     JSONB;
-    safe_query TEXT;
+    result JSONB;
+safe_query TEXT;
 BEGIN
     -- Remove any trailing semicolons to avoid multi-statement attacks
-    safe_query := regexp_replace(trim(query_text), ';+$', '');
+safe_query := regexp_replace(trim(query_text), ';+$', '');
 
     -- Set a statement timeout to prevent long-running queries
     -- Basic check: Ensure it starts with SELECT (case-insensitive)
     -- This adds a layer of safety within the function itself.
-    IF safe_query !~* '^\s*select(\s|$)' THEN
+IF safe_query !~* '^\s*select(\s|$)' THEN
         RAISE EXCEPTION 'Validation Error: Only SELECT statements can be explained.';
-    END IF;
+END IF;
 
-    -- Set a statement timeout
-    EXECUTE 'SET LOCAL statement_timeout = 3000'; -- 3 seconds
+-- Set a statement timeout
+EXECUTE 'SET LOCAL statement_timeout = 3000';
+-- 3 seconds
 
-    -- Execute EXPLAIN. This will throw an error if syntax is invalid.
-    -- We don't need to capture the output for simple validation.
-    EXECUTE 'EXPLAIN ' || safe_query;
+-- Execute EXPLAIN. This will throw an error if syntax is invalid.
+-- We don't need to capture the output for simple validation.
+EXECUTE 'EXPLAIN ' || safe_query;
 
-    -- If EXPLAIN succeeded without error, return success
-    RETURN jsonb_build_object('success', true);
+-- If EXPLAIN succeeded without error, return success
+RETURN jsonb_build_object('success', true);
 
 EXCEPTION
     WHEN others THEN
@@ -2189,22 +2231,22 @@ CREATE OR REPLACE FUNCTION public.decrement_variant_stock(variant_id uuid, decre
 AS
 $$
 BEGIN
-    UPDATE public.product_variants
-    SET stock_quantity = stock_quantity - decrement_quantity
-    WHERE id = variant_id
-      AND stock_quantity >= decrement_quantity;
-    -- Ensure stock doesn't go negative
+UPDATE public.product_variants
+SET stock_quantity = stock_quantity - decrement_quantity
+WHERE id = variant_id
+  AND stock_quantity >= decrement_quantity;
+-- Ensure stock doesn't go negative
 
-    -- Optional: Raise an exception if stock would go negative or variant not found
-    IF NOT FOUND THEN
+-- Optional: Raise an exception if stock would go negative or variant not found
+IF NOT FOUND THEN
         -- Check if the variant exists at all
         IF NOT EXISTS (SELECT 1 FROM public.product_variants WHERE id = variant_id) THEN
             RAISE EXCEPTION 'Product variant with ID % not found.', variant_id;
-        ELSE
+ELSE
             -- Variant exists, but stock was insufficient
             RAISE EXCEPTION 'Insufficient stock for product variant ID %.', variant_id;
-        END IF;
-    END IF;
+END IF;
+END IF;
 
 END;
 $$;
@@ -2428,36 +2470,32 @@ $$
 DECLARE
     new_family_id uuid;
 BEGIN
-    -- Ensure operations run with expected schema context
-    SET LOCAL search_path = public, extensions;
+-- Ensure operations run with expected schema context
+SET LOCAL search_path = public, extensions;
 
-    -- 1. Create the family record
-    INSERT INTO public.families (
-        name, address, city, province, postal_code, primary_phone, email,
-        referral_source, referral_name, emergency_contact, health_info
-    ) VALUES (
-        p_family_name, p_address, p_city, p_province, p_postal_code, p_primary_phone, p_user_email,
-        p_referral_source, p_referral_name, p_emergency_contact, p_health_info
-    ) RETURNING id INTO new_family_id;
+-- 1. Create the family record
+INSERT INTO public.families (name, address, city, province, postal_code, primary_phone, email,
+                             referral_source, referral_name, emergency_contact, health_info)
+VALUES (p_family_name, p_address, p_city, p_province, p_postal_code, p_primary_phone, p_user_email,
+        p_referral_source, p_referral_name, p_emergency_contact, p_health_info)
+RETURNING id
+INTO new_family_id;
 
-    -- 2. Update the user's profile with the new family_id and their first/last name
-    -- The profile record is created by the on_auth_user_created trigger.
-    UPDATE public.profiles
-    SET family_id = new_family_id,
-        first_name = p_contact1_first_name,
-        last_name = p_contact1_last_name
-        -- role is already defaulted to 'user' in the table definition and by the trigger's insert.
-    WHERE id = p_user_id;
+-- 2. Update the user's profile with the new family_id and their first/last name
+-- The profile record is created by the on_auth_user_created trigger.
+UPDATE public.profiles
+SET family_id  = new_family_id,
+    first_name = p_contact1_first_name,
+    last_name  = p_contact1_last_name
+-- role is already defaulted to 'user' in the table definition and by the trigger's insert.
+WHERE id = p_user_id;
 
-    -- 3. Create the primary guardian record
-    INSERT INTO public.guardians (
-        family_id, first_name, last_name, relationship, home_phone, work_phone, cell_phone, email
-    ) VALUES (
-        new_family_id, p_contact1_first_name, p_contact1_last_name, p_contact1_type,
-        p_contact1_home_phone, p_contact1_work_phone, p_contact1_cell_phone, p_user_email
-    );
+-- 3. Create the primary guardian record
+INSERT INTO public.guardians (family_id, first_name, last_name, relationship, home_phone, work_phone, cell_phone, email)
+VALUES (new_family_id, p_contact1_first_name, p_contact1_last_name, p_contact1_type,
+        p_contact1_home_phone, p_contact1_work_phone, p_contact1_cell_phone, p_user_email);
 
-    RETURN new_family_id;
+RETURN new_family_id;
 END;
 $$;
 
@@ -2515,44 +2553,44 @@ DO
 $$
     BEGIN
         -- Add association check constraint if it doesn't exist
-        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'discount_codes_association_check') THEN
-            ALTER TABLE public.discount_codes ADD CONSTRAINT discount_codes_association_check CHECK (
-                (family_id IS NOT NULL AND student_id IS NULL) OR
-                (family_id IS NULL AND student_id IS NOT NULL)
-            );
-        END IF;
-        
-        -- Add scope association check constraint if it doesn't exist
-        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'discount_codes_scope_association_check') THEN
-            ALTER TABLE public.discount_codes ADD CONSTRAINT discount_codes_scope_association_check CHECK (
-                (scope = 'per_family' AND family_id IS NOT NULL) OR
-                (scope = 'per_student' AND student_id IS NOT NULL)
-            );
-        END IF;
-    END
-$$;
+IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'discount_codes_association_check') THEN
+ALTER TABLE public.discount_codes
+    ADD CONSTRAINT discount_codes_association_check CHECK (
+        (family_id IS NOT NULL AND student_id IS NULL) OR
+        (family_id IS NULL AND student_id IS NOT NULL)
+        );
+END IF;
+
+-- Add scope association check constraint if it doesn't exist
+IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'discount_codes_scope_association_check') THEN
+ALTER TABLE public.discount_codes
+    ADD CONSTRAINT discount_codes_scope_association_check CHECK (
+        (scope = 'per_family' AND family_id IS NOT NULL) OR
+        (scope = 'per_student' AND student_id IS NOT NULL)
+        );
+END IF;
+END $$;
 
 -- Add indexes for discount_codes
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_code') THEN
-            CREATE INDEX idx_discount_codes_code ON public.discount_codes (code);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_active') THEN
-            CREATE INDEX idx_discount_codes_active ON public.discount_codes (is_active, valid_from, valid_until);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_created_by') THEN
-            CREATE INDEX idx_discount_codes_created_by ON public.discount_codes (created_by);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_family_id') THEN
-            CREATE INDEX idx_discount_codes_family_id ON public.discount_codes (family_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_student_id') THEN
-            CREATE INDEX idx_discount_codes_student_id ON public.discount_codes (student_id);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_code') THEN
+CREATE INDEX idx_discount_codes_code ON public.discount_codes (code);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_active') THEN
+CREATE INDEX idx_discount_codes_active ON public.discount_codes (is_active, valid_from, valid_until);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_created_by') THEN
+CREATE INDEX idx_discount_codes_created_by ON public.discount_codes (created_by);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_family_id') THEN
+CREATE INDEX idx_discount_codes_family_id ON public.discount_codes (family_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_codes_student_id') THEN
+CREATE INDEX idx_discount_codes_student_id ON public.discount_codes (student_id);
+END IF;
+END $$;
 
 -- Enable RLS for discount_codes
 ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY;
@@ -2560,30 +2598,36 @@ ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for discount_codes
 DO
 $$
-    BEGIN
-        -- Allow authenticated users to view active discount codes
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow authenticated users to view active discount codes
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow authenticated users to view active discount codes'
                          AND tablename = 'discount_codes') THEN
-            CREATE POLICY "Allow authenticated users to view active discount codes" ON public.discount_codes
-                FOR SELECT TO authenticated USING (is_active = true AND valid_from <= now() AND (valid_until IS NULL OR valid_until >= now()));
-        END IF;
-        
-        -- Allow admins to manage all discount codes
-        IF NOT EXISTS (SELECT 1
+CREATE POLICY "Allow authenticated users to view active discount codes" ON public.discount_codes
+    FOR SELECT TO authenticated USING (is_active = true AND valid_from <= now() AND
+                                       (valid_until IS NULL OR valid_until >= now()));
+END IF;
+
+-- Allow admins to manage all discount codes
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage discount codes'
                          AND tablename = 'discount_codes') THEN
-            CREATE POLICY "Allow admins to manage discount codes" ON public.discount_codes
-                FOR ALL USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                ) WITH CHECK (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow admins to manage discount codes" ON public.discount_codes
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
 
 -- Discount Code Usage Table
 CREATE TABLE IF NOT EXISTS public.discount_code_usage (
@@ -2604,21 +2648,20 @@ CREATE TABLE IF NOT EXISTS public.discount_code_usage (
 -- Add indexes for discount_code_usage
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_discount_code_id') THEN
-            CREATE INDEX idx_discount_code_usage_discount_code_id ON public.discount_code_usage (discount_code_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_payment_id') THEN
-            CREATE INDEX idx_discount_code_usage_payment_id ON public.discount_code_usage (payment_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_family_id') THEN
-            CREATE INDEX idx_discount_code_usage_family_id ON public.discount_code_usage (family_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_student_id') THEN
-            CREATE INDEX idx_discount_code_usage_student_id ON public.discount_code_usage (student_id);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_discount_code_id') THEN
+CREATE INDEX idx_discount_code_usage_discount_code_id ON public.discount_code_usage (discount_code_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_payment_id') THEN
+CREATE INDEX idx_discount_code_usage_payment_id ON public.discount_code_usage (payment_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_family_id') THEN
+CREATE INDEX idx_discount_code_usage_family_id ON public.discount_code_usage (family_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_code_usage_student_id') THEN
+CREATE INDEX idx_discount_code_usage_student_id ON public.discount_code_usage (student_id);
+END IF;
+END $$;
 
 -- Enable RLS for discount_code_usage
 ALTER TABLE public.discount_code_usage ENABLE ROW LEVEL SECURITY;
@@ -2626,39 +2669,44 @@ ALTER TABLE public.discount_code_usage ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for discount_code_usage
 DO
 $$
-    BEGIN
-        -- Allow users to view their own family's discount usage
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow users to view their own family's discount usage
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow users to view own family discount usage'
                          AND tablename = 'discount_code_usage') THEN
-            CREATE POLICY "Allow users to view own family discount usage" ON public.discount_code_usage
-                FOR SELECT TO authenticated USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.family_id = family_id)
-                );
-        END IF;
-        
-        -- Allow admins to view all discount usage
-        IF NOT EXISTS (SELECT 1
+CREATE POLICY "Allow users to view own family discount usage" ON public.discount_code_usage
+    FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.family_id = family_id)
+    );
+END IF;
+
+-- Allow admins to view all discount usage
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to view all discount usage'
                          AND tablename = 'discount_code_usage') THEN
-            CREATE POLICY "Allow admins to view all discount usage" ON public.discount_code_usage
-                FOR SELECT TO authenticated USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-        
-        -- Allow system to insert discount usage records
-        IF NOT EXISTS (SELECT 1
+CREATE POLICY "Allow admins to view all discount usage" ON public.discount_code_usage
+    FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+
+-- Allow system to insert discount usage records
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow system to insert discount usage'
                          AND tablename = 'discount_code_usage') THEN
-            CREATE POLICY "Allow system to insert discount usage" ON public.discount_code_usage
-                FOR INSERT TO authenticated WITH CHECK (true); -- Will be controlled by application logic
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow system to insert discount usage" ON public.discount_code_usage
+    FOR INSERT TO authenticated WITH CHECK (true); -- Will be controlled by application logic
+END IF;
+END $$;
 
 -- Add discount fields to payments table
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS discount_code_id uuid NULL REFERENCES public.discount_codes(id) ON DELETE SET NULL;
@@ -2667,12 +2715,11 @@ ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS discount_amount integer NUL
 -- Add index for payments discount_code_id
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payments_discount_code_id') THEN
-            CREATE INDEX idx_payments_discount_code_id ON public.payments (discount_code_id);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payments_discount_code_id') THEN
+CREATE INDEX idx_payments_discount_code_id ON public.payments (discount_code_id);
+END IF;
+END $$;
 
 -- Discount Templates Table
 CREATE TABLE IF NOT EXISTS public.discount_templates (
@@ -2706,15 +2753,14 @@ CREATE TABLE IF NOT EXISTS public.discount_templates (
 -- Add indexes for discount_templates
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_templates_active') THEN
-            CREATE INDEX idx_discount_templates_active ON public.discount_templates (is_active);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_templates_created_by') THEN
-            CREATE INDEX idx_discount_templates_created_by ON public.discount_templates (created_by);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_templates_active') THEN
+CREATE INDEX idx_discount_templates_active ON public.discount_templates (is_active);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_templates_created_by') THEN
+CREATE INDEX idx_discount_templates_created_by ON public.discount_templates (created_by);
+END IF;
+END $$;
 
 -- Enable RLS for discount_templates
 ALTER TABLE public.discount_templates ENABLE ROW LEVEL SECURITY;
@@ -2722,53 +2768,56 @@ ALTER TABLE public.discount_templates ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for discount_templates
 DO
 $$
-    BEGIN
-        -- Allow admins to manage all discount templates
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow admins to manage all discount templates
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage discount templates'
                          AND tablename = 'discount_templates') THEN
-            CREATE POLICY "Allow admins to manage discount templates" ON public.discount_templates
-                FOR ALL USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                ) WITH CHECK (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow admins to manage discount templates" ON public.discount_templates
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
 
 -- Add trigger to update discount_templates.updated_at
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
+BEGIN
+IF NOT EXISTS (SELECT 1
                        FROM information_schema.triggers
                        WHERE trigger_name = 'discount_templates_updated') THEN
-            CREATE TRIGGER discount_templates_updated
-                BEFORE UPDATE
-                ON public.discount_templates
-                FOR EACH ROW
-            EXECUTE FUNCTION update_modified_column();
-        END IF;
-    END
-$$;
+CREATE TRIGGER discount_templates_updated
+    BEFORE UPDATE
+    ON public.discount_templates
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+END $$;
 
 -- Add trigger to update discount_codes.updated_at
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
+BEGIN
+IF NOT EXISTS (SELECT 1
                        FROM pg_trigger
                        WHERE tgname = 'discount_codes_updated') THEN
-            CREATE TRIGGER discount_codes_updated
-                BEFORE UPDATE
-                ON public.discount_codes
-                FOR EACH ROW
-            EXECUTE FUNCTION update_modified_column();
-        END IF;
-    END
-$$;
+CREATE TRIGGER discount_codes_updated
+    BEFORE UPDATE
+    ON public.discount_codes
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+END $$;
 
 -- Function to validate and apply discount code
 -- Fixed column ambiguity issue by using different variable names
@@ -2790,63 +2839,71 @@ SECURITY DEFINER
 AS $$
 DECLARE
     v_discount_code public.discount_codes%ROWTYPE;
-    v_calculated_discount integer;
-    v_usage_count integer;
-    v_result_discount_code_id uuid; -- Use different variable name to avoid ambiguity
+v_calculated_discount integer;
+v_usage_count integer;
+v_result_discount_code_id uuid; -- Use different variable name to avoid ambiguity
 BEGIN
     -- Initialize return values
-    is_valid := false;
-    v_result_discount_code_id := NULL;
-    discount_amount := 0;
-    error_message := NULL;
+is_valid := false;
+v_result_discount_code_id := NULL;
+discount_amount := 0;
+error_message := NULL;
     
     -- Find the discount code
-    SELECT * INTO v_discount_code
-    FROM public.discount_codes
-    WHERE code = p_code AND is_active = true;
-    
-    -- Check if code exists
-    IF NOT FOUND THEN
+SELECT *
+INTO v_discount_code
+FROM public.discount_codes
+WHERE code = p_code
+  AND is_active = true;
+
+-- Check if code exists
+IF NOT FOUND THEN
         error_message := 'Invalid discount code';
-        RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
-        RETURN;
-    END IF;
-    
-    -- Check validity dates
-    IF v_discount_code.valid_from > now() THEN
+RETURN QUERY
+SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
+RETURN;
+END IF;
+
+-- Check validity dates
+IF v_discount_code.valid_from > now() THEN
         error_message := 'Discount code is not yet valid';
-        RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
-        RETURN;
-    END IF;
-    
-    IF v_discount_code.valid_until IS NOT NULL AND v_discount_code.valid_until < now() THEN
+RETURN QUERY
+SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
+RETURN;
+END IF;
+
+IF v_discount_code.valid_until IS NOT NULL AND v_discount_code.valid_until < now() THEN
         error_message := 'Discount code has expired';
-        RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
-        RETURN;
-    END IF;
-    
-    -- Check applicability
-    IF NOT (p_applicable_to = ANY(v_discount_code.applicable_to)) THEN
+RETURN QUERY
+SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
+RETURN;
+END IF;
+
+-- Check applicability
+IF NOT (p_applicable_to = ANY(v_discount_code.applicable_to)) THEN
         error_message := 'Discount code is not applicable to this type of purchase';
-        RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
-        RETURN;
-    END IF;
-    
-    -- Check usage limits
-    IF v_discount_code.max_uses IS NOT NULL THEN
-        SELECT current_uses INTO v_usage_count
-        FROM public.discount_codes
-        WHERE id = v_discount_code.id;
-        
-        IF v_usage_count >= v_discount_code.max_uses THEN
+RETURN QUERY
+SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
+RETURN;
+END IF;
+
+-- Check usage limits
+IF v_discount_code.max_uses IS NOT NULL THEN
+SELECT current_uses
+INTO v_usage_count
+FROM public.discount_codes
+WHERE id = v_discount_code.id;
+
+IF v_usage_count >= v_discount_code.max_uses THEN
             error_message := 'Discount code has reached its usage limit';
-            RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
-            RETURN;
-        END IF;
-    END IF;
-    
-    -- Check for previous usage if one-time code
-    IF v_discount_code.usage_type = 'one_time' THEN
+RETURN QUERY
+SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
+RETURN;
+END IF;
+END IF;
+
+-- Check for previous usage if one-time code
+IF v_discount_code.usage_type = 'one_time' THEN
         IF v_discount_code.scope = 'per_family' THEN
             -- Check if family has used this code before
             IF EXISTS (
@@ -2854,41 +2911,44 @@ BEGIN
                 WHERE discount_code_usage.discount_code_id = v_discount_code.id AND family_id = p_family_id
             ) THEN
                 error_message := 'This discount code has already been used by your family';
-                RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
-                RETURN;
-            END IF;
-        ELSIF v_discount_code.scope = 'per_student' AND p_student_id IS NOT NULL THEN
+RETURN QUERY
+SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
+RETURN;
+END IF;
+ELSIF v_discount_code.scope = 'per_student' AND p_student_id IS NOT NULL THEN
             -- Check if student has used this code before
             IF EXISTS (
                 SELECT 1 FROM public.discount_code_usage
                 WHERE discount_code_usage.discount_code_id = v_discount_code.id AND student_id = p_student_id
             ) THEN
                 error_message := 'This discount code has already been used for this student';
-                RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
-                RETURN;
-            END IF;
-        END IF;
-    END IF;
-    
-    -- Calculate discount amount
-    IF p_subtotal_amount IS NOT NULL THEN
+RETURN QUERY
+SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
+RETURN;
+END IF;
+END IF;
+END IF;
+
+-- Calculate discount amount
+IF p_subtotal_amount IS NOT NULL THEN
         IF v_discount_code.discount_type = 'fixed_amount' THEN
             -- Convert discount_value from dollars to cents
             v_calculated_discount := (v_discount_code.discount_value * 100)::integer;
             -- Ensure discount doesn't exceed subtotal
-            v_calculated_discount := LEAST(v_calculated_discount, p_subtotal_amount);
-        ELSIF v_discount_code.discount_type = 'percentage' THEN
+v_calculated_discount := LEAST(v_calculated_discount, p_subtotal_amount);
+ELSIF v_discount_code.discount_type = 'percentage' THEN
             -- Calculate percentage of subtotal
             v_calculated_discount := (p_subtotal_amount * v_discount_code.discount_value / 100)::integer;
-        END IF;
-    END IF;
-    
-    -- Return success
-    is_valid := true;
-    v_result_discount_code_id := v_discount_code.id;
-    discount_amount := COALESCE(v_calculated_discount, 0);
-    
-    RETURN QUERY SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
+END IF;
+END IF;
+
+-- Return success
+is_valid := true;
+v_result_discount_code_id := v_discount_code.id;
+discount_amount := COALESCE(v_calculated_discount, 0);
+
+RETURN QUERY
+SELECT is_valid, v_result_discount_code_id, discount_amount, error_message;
 END;
 $$;
 
@@ -2904,10 +2964,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-    UPDATE public.discount_codes
-    SET current_uses = current_uses + 1,
-        updated_at = now()
-    WHERE id = p_discount_code_id;
+UPDATE public.discount_codes
+SET current_uses = current_uses + 1,
+    updated_at   = now()
+WHERE id = p_discount_code_id;
 END;
 $$;
 
@@ -2920,19 +2980,18 @@ GRANT EXECUTE ON FUNCTION public.increment_discount_code_usage(uuid) TO authenti
 DO
 $$
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discount_event_type') THEN
-            CREATE TYPE discount_event_type AS ENUM (
-                'student_enrollment',
-                'first_payment',
-                'belt_promotion',
-                'attendance_milestone',
-                'family_referral',
-                'birthday',
-                'seasonal_promotion'
-            );
-        END IF;
-    END
-$$;
+IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discount_event_type') THEN
+CREATE TYPE discount_event_type AS ENUM (
+    'student_enrollment',
+    'first_payment',
+    'belt_promotion',
+    'attendance_milestone',
+    'family_referral',
+    'birthday',
+    'seasonal_promotion'
+    );
+END IF;
+END $$;
 
 -- Discount Events Table
 CREATE TABLE IF NOT EXISTS public.discount_events (
@@ -2948,24 +3007,23 @@ CREATE TABLE IF NOT EXISTS public.discount_events (
 -- Add indexes for discount_events
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_type') THEN
-            CREATE INDEX idx_discount_events_type ON public.discount_events (event_type);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_student') THEN
-            CREATE INDEX idx_discount_events_student ON public.discount_events (student_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_family') THEN
-            CREATE INDEX idx_discount_events_family ON public.discount_events (family_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_processed') THEN
-            CREATE INDEX idx_discount_events_processed ON public.discount_events (processed_at);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_created_at') THEN
-            CREATE INDEX idx_discount_events_created_at ON public.discount_events (created_at);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_type') THEN
+CREATE INDEX idx_discount_events_type ON public.discount_events (event_type);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_student') THEN
+CREATE INDEX idx_discount_events_student ON public.discount_events (student_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_family') THEN
+CREATE INDEX idx_discount_events_family ON public.discount_events (family_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_processed') THEN
+CREATE INDEX idx_discount_events_processed ON public.discount_events (processed_at);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_events_created_at') THEN
+CREATE INDEX idx_discount_events_created_at ON public.discount_events (created_at);
+END IF;
+END $$;
 
 -- Enable RLS for discount_events
 ALTER TABLE public.discount_events ENABLE ROW LEVEL SECURITY;
@@ -2973,30 +3031,35 @@ ALTER TABLE public.discount_events ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for discount_events
 DO
 $$
-    BEGIN
-        -- Allow admins to manage all discount events
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow admins to manage all discount events
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage discount events'
                          AND tablename = 'discount_events') THEN
-            CREATE POLICY "Allow admins to manage discount events" ON public.discount_events
-                FOR ALL USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                ) WITH CHECK (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-        
-        -- Allow system to insert events
-        IF NOT EXISTS (SELECT 1
+CREATE POLICY "Allow admins to manage discount events" ON public.discount_events
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+
+-- Allow system to insert events
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow system to insert discount events'
                          AND tablename = 'discount_events') THEN
-            CREATE POLICY "Allow system to insert discount events" ON public.discount_events
-                FOR INSERT TO authenticated WITH CHECK (true); -- Controlled by application logic
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow system to insert discount events" ON public.discount_events
+    FOR INSERT TO authenticated WITH CHECK (true); -- Controlled by application logic
+END IF;
+END $$;
 
 -- Discount Automation Rules Table
 CREATE TABLE IF NOT EXISTS public.discount_automation_rules (
@@ -3006,6 +3069,7 @@ CREATE TABLE IF NOT EXISTS public.discount_automation_rules (
     event_type discount_event_type NOT NULL,
     discount_template_id uuid REFERENCES public.discount_templates(id) ON DELETE CASCADE, -- Made nullable for multiple templates
     conditions jsonb NULL, -- Additional conditions (e.g., student age, belt level)
+    applicable_programs uuid[] NULL, -- Array of program IDs this rule applies to (NULL = all programs)
     is_active boolean NOT NULL DEFAULT true,
     max_uses_per_student integer NULL, -- Limit how many times a student can benefit
     valid_from timestamptz NULL,
@@ -3029,40 +3093,41 @@ CREATE TABLE IF NOT EXISTS public.automation_rule_discount_templates (
 -- Add indexes for discount_automation_rules
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_event_type') THEN
-            CREATE INDEX idx_automation_rules_event_type ON public.discount_automation_rules (event_type);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_active') THEN
-            CREATE INDEX idx_automation_rules_active ON public.discount_automation_rules (is_active);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_template') THEN
-            CREATE INDEX idx_automation_rules_template ON public.discount_automation_rules (discount_template_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_validity') THEN
-            CREATE INDEX idx_automation_rules_validity ON public.discount_automation_rules (valid_from, valid_until);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_multiple_templates') THEN
-            CREATE INDEX idx_automation_rules_multiple_templates ON public.discount_automation_rules (uses_multiple_templates);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_event_type') THEN
+CREATE INDEX idx_automation_rules_event_type ON public.discount_automation_rules (event_type);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_active') THEN
+CREATE INDEX idx_automation_rules_active ON public.discount_automation_rules (is_active);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_template') THEN
+CREATE INDEX idx_automation_rules_template ON public.discount_automation_rules (discount_template_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_validity') THEN
+CREATE INDEX idx_automation_rules_validity ON public.discount_automation_rules (valid_from, valid_until);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_multiple_templates') THEN
+CREATE INDEX idx_automation_rules_multiple_templates ON public.discount_automation_rules (uses_multiple_templates);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_automation_rules_programs') THEN
+CREATE INDEX idx_automation_rules_programs ON public.discount_automation_rules USING GIN (applicable_programs);
+END IF;
+END $$;
 
 -- Add indexes for automation_rule_discount_templates
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_automation_rule') THEN
-            CREATE INDEX idx_rule_templates_automation_rule ON public.automation_rule_discount_templates (automation_rule_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_discount_template') THEN
-            CREATE INDEX idx_rule_templates_discount_template ON public.automation_rule_discount_templates (discount_template_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_sequence') THEN
-            CREATE INDEX idx_rule_templates_sequence ON public.automation_rule_discount_templates (automation_rule_id, sequence_order);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_automation_rule') THEN
+CREATE INDEX idx_rule_templates_automation_rule ON public.automation_rule_discount_templates (automation_rule_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_discount_template') THEN
+CREATE INDEX idx_rule_templates_discount_template ON public.automation_rule_discount_templates (discount_template_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_rule_templates_sequence') THEN
+CREATE INDEX idx_rule_templates_sequence ON public.automation_rule_discount_templates (automation_rule_id, sequence_order);
+END IF;
+END $$;
 
 -- Enable RLS for discount_automation_rules
 ALTER TABLE public.discount_automation_rules ENABLE ROW LEVEL SECURITY;
@@ -3070,21 +3135,26 @@ ALTER TABLE public.discount_automation_rules ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for discount_automation_rules
 DO
 $$
-    BEGIN
-        -- Allow admins to manage all automation rules
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow admins to manage all automation rules
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage automation rules'
                          AND tablename = 'discount_automation_rules') THEN
-            CREATE POLICY "Allow admins to manage automation rules" ON public.discount_automation_rules
-                FOR ALL USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                ) WITH CHECK (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow admins to manage automation rules" ON public.discount_automation_rules
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
 
 -- Enable RLS for automation_rule_discount_templates
 ALTER TABLE public.automation_rule_discount_templates ENABLE ROW LEVEL SECURITY;
@@ -3092,37 +3162,41 @@ ALTER TABLE public.automation_rule_discount_templates ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for automation_rule_discount_templates
 DO
 $$
-    BEGIN
-        -- Allow admins to manage all automation rule discount templates
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow admins to manage all automation rule discount templates
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage automation rule discount templates'
                          AND tablename = 'automation_rule_discount_templates') THEN
-            CREATE POLICY "Allow admins to manage automation rule discount templates" ON public.automation_rule_discount_templates
-                FOR ALL USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                ) WITH CHECK (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow admins to manage automation rule discount templates" ON public.automation_rule_discount_templates
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
 
 -- Add trigger to update discount_automation_rules.updated_at
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
+BEGIN
+IF NOT EXISTS (SELECT 1
                        FROM information_schema.triggers
                        WHERE trigger_name = 'discount_automation_rules_updated') THEN
-            CREATE TRIGGER discount_automation_rules_updated
-                BEFORE UPDATE
-                ON public.discount_automation_rules
-                FOR EACH ROW
-            EXECUTE FUNCTION update_modified_column();
-        END IF;
-    END
-$$;
+CREATE TRIGGER discount_automation_rules_updated
+    BEFORE UPDATE
+    ON public.discount_automation_rules
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+END $$;
 
 -- Discount Assignments Table
 CREATE TABLE IF NOT EXISTS public.discount_assignments (
@@ -3139,30 +3213,29 @@ CREATE TABLE IF NOT EXISTS public.discount_assignments (
 -- Add indexes for discount_assignments
 DO
 $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_student') THEN
-            CREATE INDEX idx_discount_assignments_student ON public.discount_assignments (student_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_family') THEN
-            CREATE INDEX idx_discount_assignments_family ON public.discount_assignments (family_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_rule') THEN
-            CREATE INDEX idx_discount_assignments_rule ON public.discount_assignments (automation_rule_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_event') THEN
-            CREATE INDEX idx_discount_assignments_event ON public.discount_assignments (discount_event_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_code') THEN
-            CREATE INDEX idx_discount_assignments_code ON public.discount_assignments (discount_code_id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_assigned_at') THEN
-            CREATE INDEX idx_discount_assignments_assigned_at ON public.discount_assignments (assigned_at);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_expires_at') THEN
-            CREATE INDEX idx_discount_assignments_expires_at ON public.discount_assignments (expires_at);
-        END IF;
-    END
-$$;
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_student') THEN
+CREATE INDEX idx_discount_assignments_student ON public.discount_assignments (student_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_family') THEN
+CREATE INDEX idx_discount_assignments_family ON public.discount_assignments (family_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_rule') THEN
+CREATE INDEX idx_discount_assignments_rule ON public.discount_assignments (automation_rule_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_event') THEN
+CREATE INDEX idx_discount_assignments_event ON public.discount_assignments (discount_event_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_code') THEN
+CREATE INDEX idx_discount_assignments_code ON public.discount_assignments (discount_code_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_assigned_at') THEN
+CREATE INDEX idx_discount_assignments_assigned_at ON public.discount_assignments (assigned_at);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_discount_assignments_expires_at') THEN
+CREATE INDEX idx_discount_assignments_expires_at ON public.discount_assignments (expires_at);
+END IF;
+END $$;
 
 -- Enable RLS for discount_assignments
 ALTER TABLE public.discount_assignments ENABLE ROW LEVEL SECURITY;
@@ -3170,43 +3243,676 @@ ALTER TABLE public.discount_assignments ENABLE ROW LEVEL SECURITY;
 -- RLS Policies for discount_assignments
 DO
 $$
-    BEGIN
-        -- Allow users to view their own family's discount assignments
-        IF NOT EXISTS (SELECT 1
+BEGIN
+-- Allow users to view their own family's discount assignments
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow users to view own family discount assignments'
                          AND tablename = 'discount_assignments') THEN
-            CREATE POLICY "Allow users to view own family discount assignments" ON public.discount_assignments
-                FOR SELECT TO authenticated USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.family_id = family_id)
-                );
-        END IF;
-        
-        -- Allow admins to manage all discount assignments
-        IF NOT EXISTS (SELECT 1
+CREATE POLICY "Allow users to view own family discount assignments" ON public.discount_assignments
+    FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.family_id = family_id)
+    );
+END IF;
+
+-- Allow admins to manage all discount assignments
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow admins to manage discount assignments'
                          AND tablename = 'discount_assignments') THEN
-            CREATE POLICY "Allow admins to manage discount assignments" ON public.discount_assignments
-                FOR ALL USING (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                ) WITH CHECK (
-                    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-                );
-        END IF;
-        
-        -- Allow system to insert discount assignments
-        IF NOT EXISTS (SELECT 1
+CREATE POLICY "Allow admins to manage discount assignments" ON public.discount_assignments
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+
+-- Allow system to insert discount assignments
+IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE policyname = 'Allow system to insert discount assignments'
                          AND tablename = 'discount_assignments') THEN
-            CREATE POLICY "Allow system to insert discount assignments" ON public.discount_assignments
-                FOR INSERT TO authenticated WITH CHECK (true); -- Controlled by application logic
-        END IF;
-    END
-$$;
+CREATE POLICY "Allow system to insert discount assignments" ON public.discount_assignments
+    FOR INSERT TO authenticated WITH CHECK (true); -- Controlled by application logic
+END IF;
+END $$;
 
 -- --- End Automatic Discount Assignment System ---
 
 -- --- End Discount Codes System ---
+
+-- --- Multi-Class System ---
+
+-- Programs Table
+CREATE TABLE IF NOT EXISTS public.programs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name text NOT NULL,
+    description text NULL,
+    duration_minutes integer NOT NULL DEFAULT 60,
+    min_age integer CHECK (min_age >= 0),
+    max_age integer CHECK (max_age >= min_age),
+    gender_restriction text DEFAULT 'none' CHECK (gender_restriction IN ('male', 'female', 'none')),
+    special_needs_support boolean DEFAULT false,
+    monthly_fee numeric(10,2) DEFAULT 0,
+    registration_fee numeric(10,2) DEFAULT 0,
+    yearly_fee numeric(10,2) DEFAULT 0,
+    individual_session_fee numeric(10,2) DEFAULT 0,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Classes Table
+CREATE TABLE IF NOT EXISTS public.classes (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    program_id uuid NOT NULL REFERENCES public.programs(id) ON DELETE CASCADE,
+    name text NOT NULL,
+    description text NULL,
+    max_capacity integer NULL,
+    instructor_id uuid REFERENCES public.profiles(id),
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Class Schedule Table - normalized approach with proper types
+CREATE TABLE IF NOT EXISTS public.class_schedules (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    class_id uuid NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
+    day_of_week day_of_week NOT NULL,
+    start_time TIME NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(class_id, day_of_week, start_time) -- Prevent duplicate schedules
+);
+
+-- Enrollment Status Enum
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enrollment_status') THEN
+        CREATE TYPE enrollment_status AS ENUM ('active', 'inactive', 'completed', 'dropped', 'waitlist');
+    ELSE
+        -- Add 'waitlist' to existing enum if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'waitlist' AND enumtypid = 'enrollment_status'::regtype) THEN
+            ALTER TYPE enrollment_status ADD VALUE 'waitlist';
+        END IF;
+    END IF;
+END $$;
+
+-- Enrollments Table
+DO
+$$
+    BEGIN
+        -- Create the table if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'enrollments' AND table_schema = 'public') THEN
+            CREATE TABLE public.enrollments (
+                                                id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                                                student_id uuid NOT NULL,
+                                                class_id uuid NOT NULL,
+                                                program_id uuid NOT NULL,
+                                                status enrollment_status NOT NULL DEFAULT 'active',
+                                                enrolled_at timestamptz NOT NULL DEFAULT now(),
+                                                completed_at timestamptz NULL,
+                                                dropped_at timestamptz NULL,
+                                                notes text NULL,
+                                                created_at timestamptz NOT NULL DEFAULT now(),
+                                                updated_at timestamptz NOT NULL DEFAULT now()
+            );
+            RAISE NOTICE 'Created enrollments table';
+        ELSE
+            RAISE NOTICE 'Enrollments table already exists';
+        END IF;
+
+        -- Add missing columns if they don't exist (for repair scenarios)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrollments' AND column_name = 'student_id' AND table_schema = 'public') THEN
+            ALTER TABLE public.enrollments ADD COLUMN student_id uuid NOT NULL;
+            RAISE NOTICE 'Added student_id column to enrollments';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrollments' AND column_name = 'class_id' AND table_schema = 'public') THEN
+            ALTER TABLE public.enrollments ADD COLUMN class_id uuid NOT NULL;
+            RAISE NOTICE 'Added class_id column to enrollments';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrollments' AND column_name = 'program_id' AND table_schema = 'public') THEN
+            ALTER TABLE public.enrollments ADD COLUMN program_id uuid NOT NULL;
+            RAISE NOTICE 'Added program_id column to enrollments';
+        END IF;
+
+        -- Add unique constraint if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'enrollments_student_id_class_id_key' AND conrelid = 'public.enrollments'::regclass) THEN
+            ALTER TABLE public.enrollments ADD CONSTRAINT enrollments_student_id_class_id_key UNIQUE (student_id, class_id);
+            RAISE NOTICE 'Added unique constraint on (student_id, class_id) to enrollments';
+        END IF;
+
+    END $$;
+
+-- Add/Repair Foreign Key Constraints for Enrollments Table
+DO
+$$
+    BEGIN
+        -- Add enrollments -> students foreign key if missing
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE table_name = 'enrollments'
+              AND constraint_type = 'FOREIGN KEY'
+              AND constraint_name = 'enrollments_student_id_fkey'
+              AND table_schema = 'public'
+        ) THEN
+            ALTER TABLE public.enrollments
+                ADD CONSTRAINT enrollments_student_id_fkey
+                    FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+            RAISE NOTICE 'Added enrollments -> students foreign key';
+        END IF;
+
+        -- Add enrollments -> classes foreign key if missing
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE table_name = 'enrollments'
+              AND constraint_type = 'FOREIGN KEY'
+              AND constraint_name = 'enrollments_class_id_fkey'
+              AND table_schema = 'public'
+        ) THEN
+            ALTER TABLE public.enrollments
+                ADD CONSTRAINT enrollments_class_id_fkey
+                    FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
+            RAISE NOTICE 'Added enrollments -> classes foreign key';
+        END IF;
+
+        -- Add enrollments -> programs foreign key if missing
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE table_name = 'enrollments'
+              AND constraint_type = 'FOREIGN KEY'
+              AND constraint_name = 'enrollments_program_id_fkey'
+              AND table_schema = 'public'
+        ) THEN
+            ALTER TABLE public.enrollments
+                ADD CONSTRAINT enrollments_program_id_fkey
+                    FOREIGN KEY (program_id) REFERENCES public.programs(id) ON DELETE CASCADE;
+            RAISE NOTICE 'Added enrollments -> programs foreign key';
+        END IF;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE WARNING 'Error adding foreign keys to enrollments: %', SQLERRM;
+    END $$;
+
+-- Add indexes for programs
+DO
+$$
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_active') THEN
+CREATE INDEX idx_programs_active ON public.programs (is_active);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_monthly_fee') THEN
+CREATE INDEX idx_programs_monthly_fee ON public.programs (monthly_fee);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_yearly_fee') THEN
+CREATE INDEX idx_programs_yearly_fee ON public.programs (yearly_fee);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_session_fee') THEN
+CREATE INDEX idx_programs_session_fee ON public.programs (individual_session_fee);
+END IF;
+END $$;
+
+-- Add indexes for classes
+DO
+$$
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_classes_program') THEN
+CREATE INDEX idx_classes_program ON public.classes (program_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_classes_active') THEN
+CREATE INDEX idx_classes_active ON public.classes (is_active);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_classes_capacity') THEN
+CREATE INDEX idx_classes_capacity ON public.classes (max_capacity);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_classes_instructor') THEN
+CREATE INDEX idx_classes_instructor ON public.classes (instructor_id);
+END IF;
+-- Indexes for class_schedules table
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_schedules_class_id') THEN
+CREATE INDEX idx_class_schedules_class_id ON public.class_schedules (class_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_schedules_day_time') THEN
+CREATE INDEX idx_class_schedules_day_time ON public.class_schedules (day_of_week, start_time);
+END IF;
+END $$;
+
+-- Add indexes for enrollments
+DO
+$$
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollments_student') THEN
+CREATE INDEX idx_enrollments_student ON public.enrollments (student_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollments_class') THEN
+CREATE INDEX idx_enrollments_class ON public.enrollments (class_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollments_program') THEN
+CREATE INDEX idx_enrollments_program ON public.enrollments (program_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollments_status') THEN
+CREATE INDEX idx_enrollments_status ON public.enrollments (status);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollments_enrolled_at') THEN
+CREATE INDEX idx_enrollments_enrolled_at ON public.enrollments (enrolled_at);
+END IF;
+END $$;
+
+-- Enable RLS for programs
+ALTER TABLE public.programs ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for programs
+DO
+$$
+BEGIN
+-- Allow everyone to view active programs
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow everyone to view active programs'
+                         AND tablename = 'programs') THEN
+CREATE POLICY "Allow everyone to view active programs" ON public.programs
+    FOR SELECT TO authenticated USING (is_active = true);
+END IF;
+
+-- Allow admins to manage all programs
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage programs'
+                         AND tablename = 'programs') THEN
+CREATE POLICY "Allow admins to manage programs" ON public.programs
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
+
+-- Enable RLS for classes
+ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for classes
+DO
+$$
+BEGIN
+-- Allow everyone to view active classes
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow everyone to view active classes'
+                         AND tablename = 'classes') THEN
+CREATE POLICY "Allow everyone to view active classes" ON public.classes
+    FOR SELECT TO authenticated USING (is_active = true);
+END IF;
+
+-- Allow admins to manage all classes
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage classes'
+                         AND tablename = 'classes') THEN
+CREATE POLICY "Allow admins to manage classes" ON public.classes
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
+
+-- Class Sessions Table - individual session occurrences
+CREATE TABLE IF NOT EXISTS public.class_sessions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    class_id uuid NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
+    session_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+    instructor_id uuid REFERENCES public.profiles(id),
+    notes TEXT,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(class_id, session_date, start_time) -- Prevent duplicate sessions
+);
+
+-- Add indexes for class_sessions
+DO
+$$
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_sessions_class_id') THEN
+CREATE INDEX idx_class_sessions_class_id ON public.class_sessions (class_id);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_sessions_date') THEN
+CREATE INDEX idx_class_sessions_date ON public.class_sessions (session_date);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_sessions_status') THEN
+CREATE INDEX idx_class_sessions_status ON public.class_sessions (status);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_sessions_instructor') THEN
+CREATE INDEX idx_class_sessions_instructor ON public.class_sessions (instructor_id);
+END IF;
+END $$;
+
+-- Enable RLS for class_schedules
+ALTER TABLE public.class_schedules ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for class_schedules
+DO
+$$
+BEGIN
+-- Allow everyone to view schedules for active classes
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow everyone to view class schedules'
+                         AND tablename = 'class_schedules') THEN
+CREATE POLICY "Allow everyone to view class schedules" ON public.class_schedules
+    FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1
+            FROM public.classes c
+            WHERE c.id = class_id
+              AND c.is_active = true)
+    );
+END IF;
+
+-- Allow admins to manage all class schedules
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage class schedules'
+                         AND tablename = 'class_schedules') THEN
+CREATE POLICY "Allow admins to manage class schedules" ON public.class_schedules
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
+
+-- Enable RLS for class_sessions
+ALTER TABLE public.class_sessions ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for class_sessions
+DO
+$$
+BEGIN
+-- Allow families to view sessions for classes their students are enrolled in
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow families to view enrolled class sessions'
+                         AND tablename = 'class_sessions') THEN
+CREATE POLICY "Allow families to view enrolled class sessions" ON public.class_sessions
+    FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1
+            FROM public.enrollments e
+                     JOIN public.students s ON s.id = e.student_id
+                     JOIN public.profiles p ON p.family_id = s.family_id
+            WHERE e.class_id = class_sessions.class_id
+              AND e.status = 'active'
+              AND p.id = auth.uid())
+    );
+END IF;
+
+-- Allow admins to manage all class sessions
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage class sessions'
+                         AND tablename = 'class_sessions') THEN
+CREATE POLICY "Allow admins to manage class sessions" ON public.class_sessions
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
+
+-- Enable RLS for enrollments
+ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for enrollments
+DO
+$$
+BEGIN
+-- Allow users to view their own family's enrollments
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow users to view own family enrollments'
+                         AND tablename = 'enrollments') THEN
+CREATE POLICY "Allow users to view own family enrollments" ON public.enrollments
+    FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1
+            FROM public.students s
+                     JOIN public.profiles p ON p.family_id = s.family_id
+            WHERE s.id = student_id
+              AND p.id = auth.uid())
+    );
+END IF;
+
+-- Allow admins to manage all enrollments
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE policyname = 'Allow admins to manage enrollments'
+                         AND tablename = 'enrollments') THEN
+CREATE POLICY "Allow admins to manage enrollments" ON public.enrollments
+    FOR ALL USING (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND p.role = 'admin')
+    );
+END IF;
+END $$;
+
+-- Add triggers to update timestamps
+DO
+$$
+BEGIN
+IF NOT EXISTS (SELECT 1
+                       FROM information_schema.triggers
+                       WHERE trigger_name = 'programs_updated') THEN
+CREATE TRIGGER programs_updated
+    BEFORE UPDATE
+    ON public.programs
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+
+IF NOT EXISTS (SELECT 1
+                       FROM information_schema.triggers
+                       WHERE trigger_name = 'classes_updated') THEN
+CREATE TRIGGER classes_updated
+    BEFORE UPDATE
+    ON public.classes
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+
+IF NOT EXISTS (SELECT 1
+                       FROM information_schema.triggers
+                       WHERE trigger_name = 'enrollments_updated') THEN
+CREATE TRIGGER enrollments_updated
+    BEFORE UPDATE
+    ON public.enrollments
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+
+IF NOT EXISTS (SELECT 1
+                       FROM information_schema.triggers
+                       WHERE trigger_name = 'class_sessions_updated') THEN
+CREATE TRIGGER class_sessions_updated
+    BEFORE UPDATE
+    ON public.class_sessions
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+END $$;
+
+-- Note: Removed enrollment count trigger and function since current_enrollment column
+-- was removed from classes table. Enrollment counts are now calculated dynamically.
+
+-- Drop the problematic trigger and function if they exist
+DROP TRIGGER IF EXISTS trigger_update_class_enrollment_count ON public.enrollments;
+DROP TRIGGER IF EXISTS enrollment_count_trigger ON public.enrollments;
+DROP FUNCTION IF EXISTS update_class_enrollment_count() CASCADE;
+
+-- Function to generate class sessions based on class_schedules table
+DROP FUNCTION IF EXISTS generate_class_sessions(uuid,date,date);
+CREATE OR REPLACE FUNCTION generate_class_sessions(
+    p_class_id UUID,
+    p_start_date DATE,
+    p_end_date DATE
+) RETURNS INTEGER AS $$
+DECLARE
+    schedule_record RECORD;
+    date_record RECORD;
+    end_time TIME;
+    duration_minutes INTEGER;
+    sessions_created INTEGER := 0;
+BEGIN
+    -- Get program duration
+    SELECT p.duration_minutes INTO duration_minutes
+    FROM programs p
+    JOIN classes c ON c.program_id = p.id
+    WHERE c.id = p_class_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Class not found: %', p_class_id;
+    END IF;
+    
+    -- Delete existing sessions in the date range
+    DELETE FROM class_sessions 
+    WHERE class_id = p_class_id 
+    AND session_date BETWEEN p_start_date AND p_end_date;
+    
+    -- Generate sessions for each schedule entry
+    FOR schedule_record IN 
+        SELECT day_of_week, start_time
+        FROM class_schedules
+        WHERE class_id = p_class_id
+    LOOP
+        end_time := schedule_record.start_time + (duration_minutes || ' minutes')::INTERVAL;
+        
+        -- Generate sessions for this day/time combination
+        FOR date_record IN 
+            SELECT d::date as session_date
+            FROM generate_series(p_start_date, p_end_date, '1 day'::interval) d
+            WHERE TRIM(LOWER(to_char(d, 'day'))) = TRIM(schedule_record.day_of_week::text)
+        LOOP
+            INSERT INTO class_sessions (
+                class_id,
+                session_date,
+                start_time,
+                end_time,
+                status
+            ) VALUES (
+                p_class_id,
+                date_record.session_date,
+                schedule_record.start_time,
+                end_time,
+                'scheduled'
+            );
+            sessions_created := sessions_created + 1;
+        END LOOP;
+    END LOOP;
+    
+    RETURN sessions_created;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Insert sample programs
+/*INSERT INTO public.programs (name, description, age_group, belt_system, duration_weeks, monthly_fee, registration_fee, payment_frequency, family_discount, min_age, max_age, gender_restriction, special_needs_support, is_active)
+VALUES 
+    ('Little Dragons', 'Martial arts program for young children focusing on basic movements, discipline, and fun', 'Kids (4-6)', 'Traditional', 12, 80.00, 50.00, 'monthly', 10.00, 4, 6, 'none', true, true),
+    ('Youth Karate', 'Traditional karate training for children and teens', 'Kids (7-12)', 'Traditional', 16, 90.00, 75.00, 'monthly', 15.00, 7, 12, 'none', true, true),
+    ('Teen Martial Arts', 'Advanced martial arts training for teenagers', 'Teens (13-17)', 'Traditional', 20, 100.00, 75.00, 'monthly', 15.00, 13, 17, 'none', false, true),
+    ('Adult Karate', 'Traditional karate training for adults of all skill levels', 'Adults (18+)', 'Traditional', 24, 110.00, 100.00, 'monthly', 20.00, 18, NULL, 'none', false, true),
+    ('Competition Team', 'Advanced training for students interested in martial arts competitions', 'All Ages', 'Competition', 52, 150.00, 150.00, 'monthly', 25.00, 8, NULL, 'none', false, true)
+ON CONFLICT DO NOTHING;*/
+
+-- Insert sample classes
+/*INSERT INTO public.classes (program_id, name, description, instructor, max_capacity, is_active)
+SELECT 
+    p.id,
+    p.name || ' - ' || schedule.time_slot,
+    'Regular class for ' || p.name || ' program',
+    schedule.instructor,
+    schedule.capacity,
+    true
+FROM public.programs p
+CROSS JOIN (
+    VALUES 
+        ('Morning MWF', 'Sensei Johnson', 15),
+        ('Evening MWF', 'Sensei Smith', 20),
+        ('Saturday Morning', 'Sensei Davis', 25),
+        ('Tuesday Evening', 'Sensei Johnson', 18),
+        ('Thursday Evening', 'Sensei Smith', 18)
+) AS schedule(time_slot, instructor, capacity)
+WHERE p.name IN ('Little Dragons', 'Youth Karate', 'Adult Karate')
+ON CONFLICT DO NOTHING;*/
+
+-- Insert sample class schedules
+/*INSERT INTO public.class_schedules (class_id, day_of_week, start_time)
+SELECT 
+    c.id,
+    schedule_data.day_of_week::day_of_week,
+    schedule_data.start_time::TIME
+FROM public.classes c
+CROSS JOIN (
+    VALUES 
+        ('Morning MWF', 'monday', '09:00'),
+        ('Morning MWF', 'wednesday', '09:00'),
+        ('Morning MWF', 'friday', '09:00'),
+        ('Evening MWF', 'monday', '18:00'),
+        ('Evening MWF', 'wednesday', '18:00'),
+        ('Evening MWF', 'friday', '18:00'),
+        ('Saturday Morning', 'saturday', '10:00'),
+        ('Tuesday Evening', 'tuesday', '18:30'),
+        ('Thursday Evening', 'thursday', '18:30')
+) AS schedule_data(time_slot, day_of_week, start_time)
+WHERE c.name LIKE '%' || schedule_data.time_slot
+ON CONFLICT DO NOTHING;*/
+
+-- --- End Multi-Class System ---
 

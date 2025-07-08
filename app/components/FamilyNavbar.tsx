@@ -4,6 +4,7 @@ import {ModeToggle} from "./mode-toggle";
 import {Sheet, SheetContent, SheetTitle, SheetTrigger} from "./ui/sheet";
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/tooltip";
 import {
+    Calendar,
     CalendarCheck,
     CreditCard,
     FileText,
@@ -23,6 +24,7 @@ import {Button} from "~/components/ui/button";
 // Define navigation items for family portal
 const familyNavItems = [
     {to: "/family", label: "Dashboard", icon: Home},
+    {to: "/family/calendar", label: "Calendar", icon: Calendar},
     {to: "/family/account", label: "Account", icon: User},
     {to: "/family/attendance", label: "Attendance", icon: CalendarCheck},
     {to: "/family/payment", label: "Payment", icon: CreditCard},

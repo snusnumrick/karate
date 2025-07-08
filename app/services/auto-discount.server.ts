@@ -29,6 +29,7 @@ export interface CreateAutomationRuleData {
   conditions?: Json;
   valid_from?: string;
   valid_until?: string;
+  applicable_programs?: string[]; // Program IDs that this rule applies to
   is_active?: boolean;
   uses_multiple_templates?: boolean;
 }
@@ -116,7 +117,18 @@ export class AutoDiscountService {
     rule: DiscountAutomationRule,
     event: DiscountEvent
   ): Promise<boolean> {
-    // If no conditions, rule applies to all events of this type
+    // Check program filtering first
+    if (rule.applicable_programs && rule.applicable_programs.length > 0 && event.student_id) {
+      const studentPrograms = await this.getStudentPrograms(event.student_id);
+      const hasMatchingProgram = rule.applicable_programs.some(programId => 
+        studentPrograms.includes(programId)
+      );
+      if (!hasMatchingProgram) {
+        return false;
+      }
+    }
+
+    // If no conditions, rule applies to all events of this type (after program check)
     if (!rule.conditions) {
       return true;
     }
@@ -126,13 +138,7 @@ export class AutoDiscountService {
     // Example condition evaluations
     // You can extend this based on your specific business logic
     
-    // Check minimum age condition
-    if (conditions.min_age && event.student_id) {
-      const studentAge = await this.getStudentAge(event.student_id);
-      if (studentAge < (conditions.min_age as number)) {
-        return false;
-      }
-    }
+
 
     // Check belt rank condition
     if (conditions.belt_rank && event.student_id) {
@@ -375,6 +381,40 @@ export class AutoDiscountService {
   }
 
   /**
+   * Get programs that a student is enrolled in
+   */
+  static async getStudentPrograms(studentId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select(`
+        classes!inner(
+          program_id
+        )
+      `)
+      .eq('student_id', studentId)
+      .eq('status', 'active');
+
+    if (error) {
+      console.error('Error fetching student programs:', error);
+      return [];
+    }
+
+    // Extract unique program IDs
+    const programIds = data
+      ?.map(enrollment => {
+        const classes = enrollment.classes;
+        // Check if classes is a valid object with program_id
+        if (classes && typeof classes === 'object' && 'program_id' in classes) {
+          return (classes as { program_id: string }).program_id;
+        }
+        return null;
+      })
+      .filter((id): id is string => Boolean(id)) || [];
+    
+    return [...new Set(programIds)];
+  }
+
+  /**
    * CRUD operations for automation rules
    */
   static async createAutomationRule(ruleData: CreateAutomationRuleData): Promise<DiscountAutomationRule> {
@@ -395,6 +435,7 @@ export class AutoDiscountService {
         valid_from: ruleData.valid_from,
         valid_until: ruleData.valid_until,
         uses_multiple_templates: usesMultipleTemplates,
+        applicable_programs: ruleData.applicable_programs || null,
         is_active: ruleData.is_active ?? true,
       })
       .select()

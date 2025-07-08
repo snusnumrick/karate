@@ -59,8 +59,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       throw new Response("Automation rule not found", { status: 404 });
     }
 
-    // Get all active discount templates for the dropdown
-    const templates = await DiscountTemplateService.getActiveTemplates();
+    // Get all active discount templates and programs
+    const [templates, programs] = await Promise.all([
+      DiscountTemplateService.getActiveTemplates(),
+      import('~/services/program.server').then(m => m.getPrograms({ is_active: true }))
+    ]);
 
     // Get assignments for this rule
     const { data: assignments, error: assignmentsError } = await supabaseServer
@@ -82,6 +85,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     return json({
       rule,
       templates,
+      programs,
       assignments: assignments || [],
     });
   } catch (error) {
@@ -107,6 +111,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const eventType = formData.get("event_type") as string;
       const discountTemplateId = formData.get("discount_template_id") as string;
       const isActive = formData.get("is_active") === "on";
+      
+      // Extract applicable programs
+      const applicablePrograms = formData.getAll("applicable_programs") as string[];
+      const filteredPrograms = applicablePrograms.filter(id => id && id.trim() !== "");
 
       
       // Parse conditions based on event type
@@ -137,6 +145,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         discount_template_id: discountTemplateId,
         conditions,
         is_active: isActive,
+        applicable_programs: filteredPrograms.length > 0 ? filteredPrograms : undefined,
       });
 
       return redirect("/admin/automatic-discounts");
@@ -153,7 +162,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function EditAutomationRule() {
-  const { rule, templates, assignments } = useLoaderData<typeof loader>();
+  const { rule, templates, programs, assignments } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const [eventType, setEventType] = useState(rule.event_type);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -304,6 +313,36 @@ export default function EditAutomationRule() {
                   </div>
                 </div>
               )}
+
+              {/* Program Filtering */}
+              <Card className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Label className="text-sm font-medium">Program Filtering (optional)</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select specific programs this rule applies to. Leave empty to apply to all programs.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                    {programs.map((program) => (
+                      <div key={program.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`program-${program.id}`}
+                          name="applicable_programs"
+                          value={program.id}
+                          defaultChecked={rule.applicable_programs?.includes(program.id) || false}
+                        />
+                        <Label
+                          htmlFor={`program-${program.id}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {program.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

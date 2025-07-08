@@ -41,6 +41,45 @@ export type Database = {
           },
         ]
       }
+      automation_rule_discount_templates: {
+        Row: {
+          automation_rule_id: string
+          created_at: string
+          discount_template_id: string
+          id: string
+          sequence_order: number
+        }
+        Insert: {
+          automation_rule_id: string
+          created_at?: string
+          discount_template_id: string
+          id?: string
+          sequence_order?: number
+        }
+        Update: {
+          automation_rule_id?: string
+          created_at?: string
+          discount_template_id?: string
+          id?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rule_discount_templates_automation_rule_id_fkey"
+            columns: ["automation_rule_id"]
+            isOneToOne: false
+            referencedRelation: "discount_automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_rule_discount_templates_discount_template_id_fkey"
+            columns: ["discount_template_id"]
+            isOneToOne: false
+            referencedRelation: "discount_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       belt_awards: {
         Row: {
           awarded_date: string
@@ -69,6 +108,57 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          instructor_id: string | null
+          is_active: boolean
+          max_capacity: number | null
+          name: string
+          program_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          instructor_id?: string | null
+          is_active?: boolean
+          max_capacity?: number | null
+          name: string
+          program_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          instructor_id?: string | null
+          is_active?: boolean
+          max_capacity?: number | null
+          name?: string
+          program_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
             referencedColumns: ["id"]
           },
         ]
@@ -128,6 +218,426 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      discount_assignments: {
+        Row: {
+          assigned_at: string
+          automation_rule_id: string
+          discount_code_id: string
+          discount_event_id: string
+          expires_at: string | null
+          family_id: string | null
+          id: string
+          student_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          automation_rule_id: string
+          discount_code_id: string
+          discount_event_id: string
+          expires_at?: string | null
+          family_id?: string | null
+          id?: string
+          student_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          automation_rule_id?: string
+          discount_code_id?: string
+          discount_event_id?: string
+          expires_at?: string | null
+          family_id?: string | null
+          id?: string
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_assignments_automation_rule_id_fkey"
+            columns: ["automation_rule_id"]
+            isOneToOne: false
+            referencedRelation: "discount_automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_assignments_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_assignments_discount_event_id_fkey"
+            columns: ["discount_event_id"]
+            isOneToOne: false
+            referencedRelation: "discount_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_assignments_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_assignments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_automation_rules: {
+        Row: {
+          applicable_programs: string[] | null
+          conditions: Json | null
+          created_at: string
+          description: string | null
+          discount_template_id: string
+          event_type: Database["public"]["Enums"]["discount_event_type"]
+          id: string
+          is_active: boolean
+          max_uses_per_student: number | null
+          name: string
+          updated_at: string
+          uses_multiple_templates: boolean
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          applicable_programs?: string[] | null
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          discount_template_id: string
+          event_type: Database["public"]["Enums"]["discount_event_type"]
+          id?: string
+          is_active?: boolean
+          max_uses_per_student?: number | null
+          name: string
+          updated_at?: string
+          uses_multiple_templates?: boolean
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          applicable_programs?: string[] | null
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          discount_template_id?: string
+          event_type?: Database["public"]["Enums"]["discount_event_type"]
+          id?: string
+          is_active?: boolean
+          max_uses_per_student?: number | null
+          name?: string
+          updated_at?: string
+          uses_multiple_templates?: boolean
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_automation_rules_discount_template_id_fkey"
+            columns: ["discount_template_id"]
+            isOneToOne: false
+            referencedRelation: "discount_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_code_usage: {
+        Row: {
+          discount_amount: number
+          discount_code_id: string
+          family_id: string
+          final_amount: number
+          id: string
+          original_amount: number
+          payment_id: string
+          student_id: string | null
+          used_at: string
+        }
+        Insert: {
+          discount_amount: number
+          discount_code_id: string
+          family_id: string
+          final_amount: number
+          id?: string
+          original_amount: number
+          payment_id: string
+          student_id?: string | null
+          used_at?: string
+        }
+        Update: {
+          discount_amount?: number
+          discount_code_id?: string
+          family_id?: string
+          final_amount?: number
+          id?: string
+          original_amount?: number
+          payment_id?: string
+          student_id?: string | null
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_code_usage_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_usage_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_usage_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_usage_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_codes: {
+        Row: {
+          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
+          code: string
+          created_at: string
+          created_automatically: boolean
+          created_by: string | null
+          current_uses: number
+          description: string | null
+          discount_type: string
+          discount_value: number
+          family_id: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          name: string
+          scope: string
+          student_id: string | null
+          updated_at: string
+          usage_type: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
+          code: string
+          created_at?: string
+          created_automatically?: boolean
+          created_by?: string | null
+          current_uses?: number
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          family_id?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name: string
+          scope: string
+          student_id?: string | null
+          updated_at?: string
+          usage_type: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          applicable_to?: Database["public"]["Enums"]["payment_type_enum"][]
+          code?: string
+          created_at?: string
+          created_automatically?: boolean
+          created_by?: string | null
+          current_uses?: number
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          family_id?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name?: string
+          scope?: string
+          student_id?: string | null
+          updated_at?: string
+          usage_type?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_codes_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_codes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: Database["public"]["Enums"]["discount_event_type"]
+          family_id: string | null
+          id: string
+          processed_at: string | null
+          student_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: Database["public"]["Enums"]["discount_event_type"]
+          family_id?: string | null
+          id?: string
+          processed_at?: string | null
+          student_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: Database["public"]["Enums"]["discount_event_type"]
+          family_id?: string | null
+          id?: string
+          processed_at?: string | null
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_events_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_templates: {
+        Row: {
+          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          name: string
+          scope: string
+          updated_at: string
+          usage_type: string
+        }
+        Insert: {
+          applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name: string
+          scope: string
+          updated_at?: string
+          usage_type: string
+        }
+        Update: {
+          applicable_to?: Database["public"]["Enums"]["payment_type_enum"][]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name?: string
+          scope?: string
+          updated_at?: string
+          usage_type?: string
+        }
+        Relationships: []
+      }
+      enrollments: {
+        Row: {
+          class_id: string
+          completed_at: string | null
+          created_at: string
+          dropped_at: string | null
+          enrolled_at: string
+          id: string
+          notes: string | null
+          program_id: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          completed_at?: string | null
+          created_at?: string
+          dropped_at?: string | null
+          enrolled_at?: string
+          id?: string
+          notes?: string | null
+          program_id: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          completed_at?: string | null
+          created_at?: string
+          dropped_at?: string | null
+          enrolled_at?: string
+          id?: string
+          notes?: string | null
+          program_id?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       families: {
         Row: {
@@ -192,7 +702,7 @@ export type Database = {
           employer_phone: string | null
           family_id: string
           first_name: string
-          home_phone: string
+          home_phone: string | null
           id: string
           last_name: string
           relationship: string
@@ -206,7 +716,7 @@ export type Database = {
           employer_phone?: string | null
           family_id: string
           first_name: string
-          home_phone: string
+          home_phone?: string | null
           id?: string
           last_name: string
           relationship: string
@@ -220,7 +730,7 @@ export type Database = {
           employer_phone?: string | null
           family_id?: string
           first_name?: string
-          home_phone?: string
+          home_phone?: string | null
           id?: string
           last_name?: string
           relationship?: string
@@ -539,6 +1049,8 @@ export type Database = {
         Row: {
           card_last4: string | null
           created_at: string | null
+          discount_amount: number | null
+          discount_code_id: string | null
           family_id: string
           id: string
           notes: string | null
@@ -557,6 +1069,8 @@ export type Database = {
         Insert: {
           card_last4?: string | null
           created_at?: string | null
+          discount_amount?: number | null
+          discount_code_id?: string | null
           family_id: string
           id?: string
           notes?: string | null
@@ -575,6 +1089,8 @@ export type Database = {
         Update: {
           card_last4?: string | null
           created_at?: string | null
+          discount_amount?: number | null
+          discount_code_id?: string | null
           family_id?: string
           id?: string
           notes?: string | null
@@ -591,6 +1107,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_family_id_fkey"
             columns: ["family_id"]
@@ -756,6 +1279,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      programs: {
+        Row: {
+          age_group: string | null
+          belt_system: string | null
+          created_at: string
+          description: string | null
+          duration_weeks: number | null
+          eligibility_rules: Json | null
+          family_discount: number | null
+          gender_restriction: string | null
+          id: string
+          is_active: boolean
+          max_age: number | null
+          min_age: number | null
+          monthly_fee: number | null
+          name: string
+          payment_frequency: string | null
+          pricing_structure: Json | null
+          registration_fee: number | null
+          special_needs_support: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          age_group?: string | null
+          belt_system?: string | null
+          created_at?: string
+          description?: string | null
+          duration_weeks?: number | null
+          eligibility_rules?: Json | null
+          family_discount?: number | null
+          gender_restriction?: string | null
+          id?: string
+          is_active?: boolean
+          max_age?: number | null
+          min_age?: number | null
+          monthly_fee?: number | null
+          name: string
+          payment_frequency?: string | null
+          pricing_structure?: Json | null
+          registration_fee?: number | null
+          special_needs_support?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          age_group?: string | null
+          belt_system?: string | null
+          created_at?: string
+          description?: string | null
+          duration_weeks?: number | null
+          eligibility_rules?: Json | null
+          family_discount?: number | null
+          gender_restriction?: string | null
+          id?: string
+          is_active?: boolean
+          max_age?: number | null
+          min_age?: number | null
+          monthly_fee?: number | null
+          name?: string
+          payment_frequency?: string | null
+          pricing_structure?: Json | null
+          registration_fee?: number | null
+          special_needs_support?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       students: {
         Row: {
@@ -1016,9 +1605,28 @@ export type Database = {
         Args: { p_family_id: string }
         Returns: number
       }
+      increment_discount_code_usage: {
+        Args: { p_discount_code_id: string }
+        Returns: undefined
+      }
       mark_conversation_as_read: {
         Args: { p_conversation_id: string; p_user_id: string }
         Returns: undefined
+      }
+      validate_discount_code: {
+        Args: {
+          p_code: string
+          p_family_id: string
+          p_student_id?: string
+          p_subtotal_amount?: number
+          p_applicable_to?: Database["public"]["Enums"]["payment_type_enum"]
+        }
+        Returns: {
+          is_valid: boolean
+          discount_code_id: string
+          discount_amount: number
+          error_message: string
+        }[]
       }
     }
     Enums: {
@@ -1032,6 +1640,15 @@ export type Database = {
         | "red"
         | "brown"
         | "black"
+      discount_event_type:
+        | "student_enrollment"
+        | "first_payment"
+        | "belt_promotion"
+        | "attendance_milestone"
+        | "family_referral"
+        | "birthday"
+        | "seasonal_promotion"
+      enrollment_status: "active" | "inactive" | "completed" | "dropped"
       order_status:
         | "pending_payment"
         | "paid_pending_pickup"
@@ -1170,6 +1787,16 @@ export const Constants = {
         "brown",
         "black",
       ],
+      discount_event_type: [
+        "student_enrollment",
+        "first_payment",
+        "belt_promotion",
+        "attendance_milestone",
+        "family_referral",
+        "birthday",
+        "seasonal_promotion",
+      ],
+      enrollment_status: ["active", "inactive", "completed", "dropped"],
       order_status: [
         "pending_payment",
         "paid_pending_pickup",

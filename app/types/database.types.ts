@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       attendance: {
@@ -41,6 +46,45 @@ export type Database = {
           },
         ]
       }
+      automation_rule_discount_templates: {
+        Row: {
+          automation_rule_id: string
+          created_at: string
+          discount_template_id: string
+          id: string
+          sequence_order: number
+        }
+        Insert: {
+          automation_rule_id: string
+          created_at?: string
+          discount_template_id: string
+          id?: string
+          sequence_order?: number
+        }
+        Update: {
+          automation_rule_id?: string
+          created_at?: string
+          discount_template_id?: string
+          id?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rule_discount_templates_automation_rule_id_fkey"
+            columns: ["automation_rule_id"]
+            isOneToOne: false
+            referencedRelation: "discount_automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_rule_discount_templates_discount_template_id_fkey"
+            columns: ["discount_template_id"]
+            isOneToOne: false
+            referencedRelation: "discount_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       belt_awards: {
         Row: {
           awarded_date: string
@@ -69,6 +113,135 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_schedules: {
+        Row: {
+          class_id: string
+          created_at: string
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          id: string
+          start_time: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          id?: string
+          start_time: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          day_of_week?: Database["public"]["Enums"]["day_of_week"]
+          id?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
+      class_sessions: {
+        Row: {
+          class_id: string
+          created_at: string
+          end_time: string
+          id: string
+          instructor_id: string | null
+          notes: string | null
+          session_date: string
+          start_time: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          instructor_id?: string | null
+          notes?: string | null
+          session_date: string
+          start_time: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          instructor_id?: string | null
+          notes?: string | null
+          session_date?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_sessions_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          instructor_id: string | null
+          is_active: boolean
+          max_capacity: number | null
+          name: string
+          program_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          instructor_id?: string | null
+          is_active?: boolean
+          max_capacity?: number | null
+          name: string
+          program_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          instructor_id?: string | null
+          is_active?: boolean
+          max_capacity?: number | null
+          name?: string
+          program_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
             referencedColumns: ["id"]
           },
         ]
@@ -128,6 +301,134 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      discount_assignments: {
+        Row: {
+          assigned_at: string
+          automation_rule_id: string
+          discount_code_id: string
+          discount_event_id: string
+          expires_at: string | null
+          family_id: string | null
+          id: string
+          student_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          automation_rule_id: string
+          discount_code_id: string
+          discount_event_id: string
+          expires_at?: string | null
+          family_id?: string | null
+          id?: string
+          student_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          automation_rule_id?: string
+          discount_code_id?: string
+          discount_event_id?: string
+          expires_at?: string | null
+          family_id?: string | null
+          id?: string
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_assignments_automation_rule_id_fkey"
+            columns: ["automation_rule_id"]
+            isOneToOne: false
+            referencedRelation: "discount_automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_assignments_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_assignments_discount_event_id_fkey"
+            columns: ["discount_event_id"]
+            isOneToOne: false
+            referencedRelation: "discount_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_assignments_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_assignments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_automation_rules: {
+        Row: {
+          applicable_programs: string[] | null
+          conditions: Json | null
+          created_at: string
+          description: string | null
+          discount_template_id: string
+          event_type: Database["public"]["Enums"]["discount_event_type"]
+          id: string
+          is_active: boolean
+          max_uses_per_student: number | null
+          name: string
+          updated_at: string
+          uses_multiple_templates: boolean
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          applicable_programs?: string[] | null
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          discount_template_id: string
+          event_type: Database["public"]["Enums"]["discount_event_type"]
+          id?: string
+          is_active?: boolean
+          max_uses_per_student?: number | null
+          name: string
+          updated_at?: string
+          uses_multiple_templates?: boolean
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          applicable_programs?: string[] | null
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          discount_template_id?: string
+          event_type?: Database["public"]["Enums"]["discount_event_type"]
+          id?: string
+          is_active?: boolean
+          max_uses_per_student?: number | null
+          name?: string
+          updated_at?: string
+          uses_multiple_templates?: boolean
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_automation_rules_discount_template_id_fkey"
+            columns: ["discount_template_id"]
+            isOneToOne: false
+            referencedRelation: "discount_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       discount_code_usage: {
         Row: {
@@ -278,6 +579,51 @@ export type Database = {
           },
         ]
       }
+      discount_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: Database["public"]["Enums"]["discount_event_type"]
+          family_id: string | null
+          id: string
+          processed_at: string | null
+          student_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: Database["public"]["Enums"]["discount_event_type"]
+          family_id?: string | null
+          id?: string
+          processed_at?: string | null
+          student_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: Database["public"]["Enums"]["discount_event_type"]
+          family_id?: string | null
+          id?: string
+          processed_at?: string | null
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_events_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discount_templates: {
         Row: {
           applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
@@ -326,199 +672,63 @@ export type Database = {
         }
         Relationships: []
       }
-      discount_events: {
+      enrollments: {
         Row: {
+          class_id: string
+          completed_at: string | null
           created_at: string
-          event_data: Json | null
-          event_type: Database["public"]["Enums"]["discount_event_type"]
-          family_id: string | null
+          dropped_at: string | null
+          enrolled_at: string
           id: string
-          student_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          event_data?: Json | null
-          event_type: Database["public"]["Enums"]["discount_event_type"]
-          family_id?: string | null
-          id?: string
-          student_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          event_data?: Json | null
-          event_type?: Database["public"]["Enums"]["discount_event_type"]
-          family_id?: string | null
-          id?: string
-          student_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "discount_events_family_id_fkey"
-            columns: ["family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "discount_events_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      automation_rule_discount_templates: {
-        Row: {
-          automation_rule_id: string
-          created_at: string
-          discount_template_id: string
-          id: string
-          sequence_order: number
-        }
-        Insert: {
-          automation_rule_id: string
-          created_at?: string
-          discount_template_id: string
-          id?: string
-          sequence_order?: number
-        }
-        Update: {
-          automation_rule_id?: string
-          created_at?: string
-          discount_template_id?: string
-          id?: string
-          sequence_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_rule_discount_templates_automation_rule_id_fkey"
-            columns: ["automation_rule_id"]
-            isOneToOne: false
-            referencedRelation: "discount_automation_rules"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_rule_discount_templates_discount_template_id_fkey"
-            columns: ["discount_template_id"]
-            isOneToOne: false
-            referencedRelation: "discount_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      discount_automation_rules: {
-        Row: {
-          conditions: Json | null
-          created_at: string
-          created_by: string | null
-          discount_template_id: string
-          event_type: Database["public"]["Enums"]["discount_event_type"]
-          id: string
-          is_active: boolean
-          name: string
+          notes: string | null
+          program_id: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          student_id: string
           updated_at: string
-          uses_multiple_templates: boolean
-          valid_from: string | null
-          valid_until: string | null
         }
         Insert: {
-          conditions?: Json | null
+          class_id: string
+          completed_at?: string | null
           created_at?: string
-          created_by?: string | null
-          discount_template_id: string
-          event_type: Database["public"]["Enums"]["discount_event_type"]
+          dropped_at?: string | null
+          enrolled_at?: string
           id?: string
-          is_active?: boolean
-          name: string
+          notes?: string | null
+          program_id: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          student_id: string
           updated_at?: string
-          uses_multiple_templates?: boolean
-          valid_from?: string | null
-          valid_until?: string | null
         }
         Update: {
-          conditions?: Json | null
+          class_id?: string
+          completed_at?: string | null
           created_at?: string
-          created_by?: string | null
-          discount_template_id?: string
-          event_type?: Database["public"]["Enums"]["discount_event_type"]
+          dropped_at?: string | null
+          enrolled_at?: string
           id?: string
-          is_active?: boolean
-          name?: string
+          notes?: string | null
+          program_id?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          student_id?: string
           updated_at?: string
-          uses_multiple_templates?: boolean
-          valid_from?: string | null
-          valid_until?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "discount_automation_rules_discount_template_id_fkey"
-            columns: ["discount_template_id"]
+            foreignKeyName: "enrollments_class_id_fkey"
+            columns: ["class_id"]
             isOneToOne: false
-            referencedRelation: "discount_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      discount_assignments: {
-        Row: {
-          assigned_at: string
-          automation_rule_id: string
-          discount_code_id: string | null
-          discount_event_id: string
-          family_id: string | null
-          id: string
-          student_id: string | null
-        }
-        Insert: {
-          assigned_at?: string
-          automation_rule_id: string
-          discount_code_id?: string | null
-          discount_event_id: string
-          family_id?: string | null
-          id?: string
-          student_id?: string | null
-        }
-        Update: {
-          assigned_at?: string
-          automation_rule_id?: string
-          discount_code_id?: string | null
-          discount_event_id?: string
-          family_id?: string | null
-          id?: string
-          student_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "discount_assignments_automation_rule_id_fkey"
-            columns: ["automation_rule_id"]
-            isOneToOne: false
-            referencedRelation: "discount_automation_rules"
+            referencedRelation: "classes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "discount_assignments_discount_code_id_fkey"
-            columns: ["discount_code_id"]
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
             isOneToOne: false
-            referencedRelation: "discount_codes"
+            referencedRelation: "programs"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "discount_assignments_discount_event_id_fkey"
-            columns: ["discount_event_id"]
-            isOneToOne: false
-            referencedRelation: "discount_events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "discount_assignments_family_id_fkey"
-            columns: ["family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "discount_assignments_student_id_fkey"
+            foreignKeyName: "enrollments_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
@@ -1167,6 +1377,60 @@ export type Database = {
           },
         ]
       }
+      programs: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          gender_restriction: string | null
+          id: string
+          individual_session_fee: number | null
+          is_active: boolean
+          max_age: number | null
+          min_age: number | null
+          monthly_fee: number | null
+          name: string
+          registration_fee: number | null
+          special_needs_support: boolean | null
+          updated_at: string
+          yearly_fee: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          gender_restriction?: string | null
+          id?: string
+          individual_session_fee?: number | null
+          is_active?: boolean
+          max_age?: number | null
+          min_age?: number | null
+          monthly_fee?: number | null
+          name: string
+          registration_fee?: number | null
+          special_needs_support?: boolean | null
+          updated_at?: string
+          yearly_fee?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          gender_restriction?: string | null
+          id?: string
+          individual_session_fee?: number | null
+          is_active?: boolean
+          max_age?: number | null
+          min_age?: number | null
+          monthly_fee?: number | null
+          name?: string
+          registration_fee?: number | null
+          special_needs_support?: boolean | null
+          updated_at?: string
+          yearly_fee?: number | null
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           allergies: string | null
@@ -1402,6 +1666,10 @@ export type Database = {
         Args: { query_text: string }
         Returns: Json
       }
+      generate_class_sessions: {
+        Args: { p_class_id: string; p_start_date: string; p_end_date: string }
+        Returns: number
+      }
       get_admin_conversation_summaries: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1461,6 +1729,14 @@ export type Database = {
         | "red"
         | "brown"
         | "black"
+      day_of_week:
+        | "monday"
+        | "tuesday"
+        | "wednesday"
+        | "thursday"
+        | "friday"
+        | "saturday"
+        | "sunday"
       discount_event_type:
         | "student_enrollment"
         | "first_payment"
@@ -1469,6 +1745,12 @@ export type Database = {
         | "family_referral"
         | "birthday"
         | "seasonal_promotion"
+      enrollment_status:
+        | "active"
+        | "inactive"
+        | "completed"
+        | "dropped"
+        | "waitlist"
       order_status:
         | "pending_payment"
         | "paid_pending_pickup"
@@ -1488,21 +1770,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -1520,14 +1806,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -1543,14 +1831,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1566,14 +1856,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1581,14 +1873,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
@@ -1607,6 +1901,15 @@ export const Constants = {
         "brown",
         "black",
       ],
+      day_of_week: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
       discount_event_type: [
         "student_enrollment",
         "first_payment",
@@ -1615,6 +1918,13 @@ export const Constants = {
         "family_referral",
         "birthday",
         "seasonal_promotion",
+      ],
+      enrollment_status: [
+        "active",
+        "inactive",
+        "completed",
+        "dropped",
+        "waitlist",
       ],
       order_status: [
         "pending_payment",

@@ -12,6 +12,7 @@ import {
     CreditCard,
     Database,
     FileText,
+    GraduationCap,
     LayoutDashboard,
     ListOrdered,
     LogOut,
@@ -45,6 +46,13 @@ const adminNavItems = [
     // Store items will be handled by the Dropdown below
 ];
 
+// Define Classes & Programs navigation items
+const classNavItems = [
+    {to: "/admin/programs", label: "Programs", icon: GraduationCap},
+    {to: "/admin/classes", label: "Classes", icon: CalendarCheck},
+    {to: "/admin/enrollments", label: "Enrollments", icon: Users},
+];
+
 // Define Discount navigation items
 const discountNavItems = [
     {to: "/admin/discount-codes", label: "Discount Codes", icon: Tag},
@@ -64,6 +72,7 @@ export default function AdminNavbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [isStoreMobileOpen, setIsStoreMobileOpen] = useState(false);
     const [isDiscountMobileOpen, setIsDiscountMobileOpen] = useState(false);
+    const [isClassMobileOpen, setIsClassMobileOpen] = useState(false);
     // const location = useLocation(); // Get current location - Removed as it's unused here
 
     return (
@@ -101,6 +110,8 @@ export default function AdminNavbar() {
                                     {/* Slightly larger icon, no margin */}
                                 </AdminNavLink>
                             ))}
+                            {/* Classes & Programs Dropdown */}
+                            <AdminClassDropdown/>
                             {/* Discount Dropdown */}
                             <AdminDiscountDropdown/>
                             {/* Store Dropdown */}
@@ -155,38 +166,40 @@ export default function AdminNavbar() {
                                         >
                                             <div className="flex-1 overflow-y-auto py-4">
                                                 <SheetTitle className="px-4 mb-2">Admin Navigation</SheetTitle>
-                                                <div className="flex flex-col space-y-2 px-4">
-                                                    {adminNavItems.map((item) => (
-                                                        <AdminMobileNavLink key={item.to} to={item.to}
-                                                                            onClick={() => setIsOpen(false)}>
-                                                            <item.icon className="h-5 w-5 mr-2 inline-block"/>
-                                                            {item.label}
-                                                        </AdminMobileNavLink>
-                                                    ))}
+                                                <div className="flex flex-col space-y-2">
+                                                    <div className="px-4">
+                                                        {adminNavItems.map((item) => (
+                                                            <AdminMobileNavLink key={item.to} to={item.to}
+                                                                                onClick={() => setIsOpen(false)}>
+                                                                <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                                {item.label}
+                                                            </AdminMobileNavLink>
+                                                        ))}
+                                                    </div>
                                                     
-                                                    {/* Discount Mobile Links */}
+                                                    {/* Classes & Programs Mobile Links */}
                                                     <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
                                                     <div className="px-4 py-2">
                                                         <button
                                                             onClick={(e) => {
                                                                 e.preventDefault();
-                                                                setIsDiscountMobileOpen(!isDiscountMobileOpen);
+                                                                setIsClassMobileOpen(!isClassMobileOpen);
                                                             }}
                                                             className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
                                                         >
-                                                            <Tag className="h-5 w-5 mr-2"/>
-                                                            <span className="font-medium">Discounts</span>
+                                                            <GraduationCap className="h-5 w-5 mr-2"/>
+                                                            <span className="font-medium">Classes & Programs</span>
                                                             <span className="ml-auto">
-                                                                {isDiscountMobileOpen ?
+                                                                {isClassMobileOpen ?
                                                                     <ChevronDown className="h-4 w-4"/> :
                                                                     <ChevronRight className="h-4 w-4"/>
                                                                 }
                                                             </span>
                                                         </button>
                                                     </div>
-                                                    {isDiscountMobileOpen && (
+                                                    {isClassMobileOpen && (
                                                         <div className="pl-6 space-y-1 mb-2">
-                                                            {discountNavItems.map((item) => (
+                                                            {classNavItems.map((item) => (
                                                                 <AdminMobileNavLink key={item.to} to={item.to}
                                                                                     onClick={() => setIsOpen(false)}>
                                                                     <item.icon className="h-5 w-5 mr-2 inline-block"/>
@@ -195,39 +208,76 @@ export default function AdminNavbar() {
                                                             ))}
                                                         </div>
                                                     )}
-                                                    {/* Store Mobile Links - Separator already exists in provided file content */}
-                                                    <div
-                                                        className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
-                                                    {/* Store Mobile Menu - Collapsible */}
-                                                    <div className="px-4 py-2">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                setIsStoreMobileOpen(!isStoreMobileOpen);
-                                                            }}
-                                                            className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
-                                                        >
-                                                            <ShoppingBag className="h-5 w-5 mr-2"/>
-                                                            <span className="font-medium">Store</span>
-                                                            <span className="ml-auto">
-                                                            {isStoreMobileOpen ?
-                                                                <ChevronDown className="h-4 w-4"/> :
-                                                                <ChevronRight className="h-4 w-4"/>
-                                                            }
-                                                        </span>
-                                                        </button>
-                                                    </div>
-                                                    {isStoreMobileOpen && (
-                                                        <div className="pl-6 space-y-1 mb-2">
-                                                            {storeNavItems.map((item) => (
-                                                                <AdminMobileNavLink key={item.to} to={item.to}
-                                                                                    onClick={() => setIsOpen(false)}>
-                                                                    <item.icon className="h-5 w-5 mr-2 inline-block"/>
-                                                                    {item.label}
-                                                                </AdminMobileNavLink>
-                                                            ))}
+                                                    
+                                                    {/* Discount Mobile Links */}
+                                                    <React.Fragment>
+                                                        <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
+                                                        <div className="px-4 py-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    setIsDiscountMobileOpen(!isDiscountMobileOpen);
+                                                                }}
+                                                                className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
+                                                            >
+                                                                <Tag className="h-5 w-5 mr-2"/>
+                                                                <span className="font-medium">Discounts</span>
+                                                                <span className="ml-auto">
+                                                                    {isDiscountMobileOpen ? (
+                                                                        <ChevronDown className="h-4 w-4"/>
+                                                                    ) : (
+                                                                        <ChevronRight className="h-4 w-4"/>
+                                                                    )}
+                                                                </span>
+                                                            </button>
                                                         </div>
-                                                    )}
+                                                        {isDiscountMobileOpen && (
+                                                            <div className="pl-6 space-y-1 mb-2">
+                                                                {discountNavItems.map((item) => (
+                                                                    <AdminMobileNavLink key={item.to} to={item.to}
+                                                                                        onClick={() => setIsOpen(false)}>
+                                                                        <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                                        {item.label}
+                                                                    </AdminMobileNavLink>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </React.Fragment>
+                                                    
+                                                    {/* Store Mobile Links */}
+                                                    <React.Fragment>
+                                                        <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
+                                                        <div className="px-4 py-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    setIsStoreMobileOpen(!isStoreMobileOpen);
+                                                                }}
+                                                                className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
+                                                            >
+                                                                <ShoppingBag className="h-5 w-5 mr-2"/>
+                                                                <span className="font-medium">Store</span>
+                                                                <span className="ml-auto">
+                                                                    {isStoreMobileOpen ? (
+                                                                        <ChevronDown className="h-4 w-4"/>
+                                                                    ) : (
+                                                                        <ChevronRight className="h-4 w-4"/>
+                                                                    )}
+                                                                </span>
+                                                            </button>
+                                                        </div>
+                                                        {isStoreMobileOpen && (
+                                                            <div className="pl-6 space-y-1 mb-2">
+                                                                {storeNavItems.map((item) => (
+                                                                    <AdminMobileNavLink key={item.to} to={item.to}
+                                                                                        onClick={() => setIsOpen(false)}>
+                                                                        <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                                        {item.label}
+                                                                    </AdminMobileNavLink>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </React.Fragment>
 
                                                     {/* Mobile Logout */}
                                                     <Form action="/logout" method="post"
@@ -286,6 +336,84 @@ function AdminNavLink({to, label, children}: AdminNavLinkProps) {
                 <p>{label}</p>
             </TooltipContent>
         </Tooltip>
+    );
+}
+
+// Classes & Programs Dropdown Component for Desktop (Icon Trigger + Tooltip)
+function AdminClassDropdown() {
+    const location = useLocation();
+    const isClassActive = location.pathname.startsWith('/admin/programs') || location.pathname.startsWith('/admin/classes') || location.pathname.startsWith('/admin/enrollments');
+    const [isOpen, setIsOpen] = useState(false);
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [canShowTooltip, setCanShowTooltip] = useState(true);
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (open) {
+            setShowTooltip(false);
+            setCanShowTooltip(false);
+        } else {
+            // Delay allowing tooltip to show again after dropdown closes
+            setTimeout(() => setCanShowTooltip(true), 300);
+        }
+    };
+
+    return (
+        <div className="relative">
+            <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
+                            isClassActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
+                        )}
+                        aria-label="Classes & Programs Management"
+                        onMouseEnter={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onMouseLeave={() => {
+                            setShowTooltip(false);
+                        }}
+                        onFocus={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onBlur={() => {
+                            setShowTooltip(false);
+                        }}
+                        onClick={() => {
+                            setShowTooltip(false);
+                        }}
+                    >
+                        <GraduationCap className="h-5 w-5"/>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
+                    {classNavItems.map((item) => (
+                        <DropdownMenuItem key={item.to} className="p-0">
+                            <Link
+                                to={item.to}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                            >
+                                <item.icon className="h-4 w-4 mr-2"/>
+                                {item.label}
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {showTooltip && !isOpen && canShowTooltip && (
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
+                    Classes & Programs
+                </div>
+            )}
+        </div>
     );
 }
 

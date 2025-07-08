@@ -11,7 +11,7 @@ import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import { siteConfig } from "~/config/site"; // Import siteConfig
-import {recordStudentEnrollmentEvent} from "~/utils/auto-discount-events.server";
+
 
 // Define potential action data structure
 type ActionData = {
@@ -235,19 +235,12 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
 
         if (studentsToInsert.length > 0) {
-            const {data: newStudents, error: studentError} = await supabaseAdmin
+            const {error: studentError} = await supabaseAdmin
                 .from('students')
                 .insert(studentsToInsert)
                 .select();
 
             if (studentError) throw new Error(`Failed to create students: ${studentError.message}`);
-            
-            // Trigger student enrollment events for each new student
-            if (newStudents) {
-                for (const student of newStudents) {
-                    await recordStudentEnrollmentEvent(student.id, student.family_id);
-                }
-            }
         }
 
         // Redirect to the main families list on success

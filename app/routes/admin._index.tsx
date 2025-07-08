@@ -51,6 +51,42 @@ export async function loader(_: LoaderFunctionArgs) {
             console.error("Error fetching discount codes count:", discountCodesError.message);
         }
 
+        // Fetch class system stats
+        const [
+            {count: activeProgramsCount, error: programsError},
+            {count: activeClassesCount, error: classesError},
+            {count: totalEnrollmentsCount, error: enrollmentsError},
+            {data: classCapacityData, error: capacityError},
+            {count: waitlistCount, error: waitlistError},
+            {data: nextClassData, error: nextClassError}
+        ] = await Promise.all([
+            supabaseAdmin.from('programs').select('id', {count: 'exact', head: true}).eq('is_active', true),
+            supabaseAdmin.from('classes').select('id', {count: 'exact', head: true}).eq('is_active', true),
+            supabaseAdmin.from('enrollments').select('id', {count: 'exact', head: true}).eq('status', 'active'),
+            supabaseAdmin.from('classes')
+                .select('id, max_capacity')
+                .eq('is_active', true),
+            supabaseAdmin.from('enrollments').select('id', {count: 'exact', head: true}).eq('status', 'waitlist'),
+            supabaseAdmin.from('class_sessions')
+                .select(`
+                    session_date,
+                    start_time,
+                    class:classes(name)
+                `)
+                .eq('status', 'scheduled')
+                .gte('session_date', new Date().toISOString().split('T')[0])
+                .order('session_date', { ascending: true })
+                .order('start_time', { ascending: true })
+                .limit(1)
+        ]);
+
+        if (programsError) console.error("Error fetching programs count:", programsError.message);
+        if (classesError) console.error("Error fetching classes count:", classesError.message);
+        if (enrollmentsError) console.error("Error fetching enrollments count:", enrollmentsError.message);
+        if (capacityError) console.error("Error fetching capacity data:", capacityError.message);
+        if (waitlistError) console.error("Error fetching waitlist count:", waitlistError.message);
+        if (nextClassError) console.error("Error fetching next class:", nextClassError.message);
+
         // Now fetch dashboard stats in parallel
         const [
             {count: familyCount, error: familiesError},
@@ -113,6 +149,21 @@ export async function loader(_: LoaderFunctionArgs) {
         // Calculate discount usage stats
         const totalDiscountAmount = discountUsageData?.reduce((sum, usage) => sum + (usage.discount_amount || 0), 0) || 0;
         const discountUsageCount = discountUsageData?.length || 0;
+
+        // Calculate total enrollment from actual enrollment count
+        const totalEnrolled = totalEnrollmentsCount || 0;
+
+        // Format next class data
+        let nextClassInfo = "No upcoming classes";
+        if (nextClassData && nextClassData.length > 0) {
+            const nextClass = nextClassData[0];
+            const sessionDate = new Date(nextClass.session_date);
+            const today = new Date();
+            const isToday = sessionDate.toDateString() === today.toDateString();
+            const timeStr = nextClass.start_time;
+            const dateStr = isToday ? "Today" : sessionDate.toLocaleDateString();
+            nextClassInfo = `${(nextClass.class as { name?: string })?.name || 'Class'} - ${dateStr} at ${timeStr}`;
+        }
 
         // Count families missing waivers instead of individual users
         // Use the already declared requiredWaiverIds from above
@@ -193,6 +244,14 @@ export async function loader(_: LoaderFunctionArgs) {
             activeDiscountCodes: activeDiscountCodes ?? 0,
             totalDiscountAmount: totalDiscountAmount,
             discountUsageCount: discountUsageCount,
+            // New class system stats
+            activeProgramsCount: activeProgramsCount ?? 0,
+            activeClassesCount: activeClassesCount ?? 0,
+            totalEnrollmentsCount: totalEnrollmentsCount ?? 0,
+            totalEnrolled: totalEnrolled,
+            totalCapacity: classCapacityData?.reduce((sum, classData) => sum + (classData.max_capacity || 0), 0) || 0,
+            waitlistCount: waitlistCount ?? 0,
+            nextClassInfo: nextClassInfo,
         }); // Remove headers object
 
     } catch (error) {
@@ -223,7 +282,7 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold mb-8 text-gray-800 dark:text-gray-100">Admin Dashboard</h1>
 
             {/* Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
                 {/* Total Families Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
                     <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Families</h2>
@@ -244,6 +303,50 @@ export default function AdminDashboard() {
                     </Link>
                 </div>
 
+                {/* Active Programs Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Active Programs</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.activeProgramsCount}</p>
+                    <Link to="/admin/programs"
+                          className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
+                        Manage programs →
+                    </Link>
+                </div>
+
+                {/* Active Classes Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Active Classes</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.activeClassesCount}</p>
+                    <Link to="/admin/classes"
+                          className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
+                        Manage classes →
+                    </Link>
+                </div>
+
+                {/* Total Enrollments Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Enrollments</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.totalEnrollmentsCount}</p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {data.waitlistCount} on waitlist
+                    </div>
+                    <Link to="/admin/enrollments"
+                          className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
+                        Manage enrollments →
+                    </Link>
+                </div>
+
+                {/* Capacity Utilization Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-blue-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Capacity Utilization</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+                        {data.totalCapacity > 0 ? Math.round((data.totalEnrolled / data.totalCapacity) * 100) : 0}%
+                    </p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {data.totalEnrolled} / {data.totalCapacity} spots filled
+                    </div>
+                </div>
+
                 {/* Total Payments Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
                     <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Payments (Completed)</h2>
@@ -252,16 +355,6 @@ export default function AdminDashboard() {
                     <Link to="/admin/payments"
                           className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
                         View payment history →
-                    </Link>
-                </div>
-
-                {/* Today's Attendance Card */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
-                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Today&apos;s Attendance</h2>
-                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.attendanceToday}</p>
-                    <Link to="/admin/attendance"
-                          className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
-                        Manage attendance →
                     </Link>
                 </div>
 
@@ -292,6 +385,18 @@ export default function AdminDashboard() {
                             Register New Family
                         </Link>
                         <Link
+                            to="/admin/programs/new"
+                            className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                        >
+                            Create New Program
+                        </Link>
+                        <Link
+                            to="/admin/classes/new"
+                            className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                        >
+                            Create New Class
+                        </Link>
+                        <Link
                             to="/admin/attendance/record"
                             className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                         >
@@ -302,13 +407,6 @@ export default function AdminDashboard() {
                             className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                         >
                             Process New Payment
-                        </Link>
-                        {/* Update link to point to the student list */}
-                        <Link
-                            to="/admin/students"
-                            className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
-                        >
-                            Manage Students
                         </Link>
                         <Link
                             to="/admin/discount-codes/new"
@@ -324,31 +422,46 @@ export default function AdminDashboard() {
                     <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">System Status</h2>
                     <div className="space-y-4">
                         <div>
+                            <h3 className="font-medium text-gray-700 dark:text-gray-300">Today&apos;s Attendance</h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                {data.attendanceToday} students attended today
+                            </p>
+                            <Link to="/admin/attendance"
+                                  className="text-green-600 dark:text-green-400 text-sm hover:underline">
+                                Manage attendance →
+                            </Link>
+                        </div>
+
+                        <div>
                             <h3 className="font-medium text-gray-700 dark:text-gray-300">Upcoming Classes</h3>
                             <p className="text-gray-600 dark:text-gray-400">
-                                Next class: Today at 6:00 PM {/* This could be dynamic later */}
+                                Next class: {data.nextClassInfo}
                             </p>
+                            <Link to="/admin/classes"
+                                  className="text-green-600 dark:text-green-400 text-sm hover:underline">
+                                View all classes →
+                            </Link>
                         </div>
 
                         <div>
                             <h3 className="font-medium text-gray-700 dark:text-gray-300">Missing Waivers</h3>
                             <p className="text-gray-600 dark:text-gray-400">
-                                {data.missingWaiversCount} families missing required waivers {/* Now counting families */}
+                                {data.missingWaiversCount} families missing required waivers
                             </p>
                             <Link to="/admin/waivers/missing"
                                   className="text-green-600 dark:text-green-400 text-sm hover:underline">
-                                View details
+                                View details →
                             </Link>
                         </div>
 
                         <div>
                             <h3 className="font-medium text-gray-700 dark:text-gray-300">Pending Payments</h3>
                             <p className="text-gray-600 dark:text-gray-400">
-                                {data.pendingPaymentsCount} families with pending payments {/* Using fetched data */}
+                                {data.pendingPaymentsCount} families with pending payments
                             </p>
                             <Link to="/admin/payments/pending"
                                   className="text-green-600 dark:text-green-400 text-sm hover:underline">
-                                View details
+                                View details →
                             </Link>
                         </div>
                     </div>

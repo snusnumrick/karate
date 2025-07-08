@@ -1,7 +1,7 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
-import {recordStudentEnrollmentEvent} from "~/utils/auto-discount-events.server";
+
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
@@ -98,7 +98,7 @@ export async function action({request}: ActionFunctionArgs) {
     }
 
     try {
-        const {data: newStudent, error: studentInsertError} = await supabaseServer.from('students').insert({
+        const {error: studentInsertError} = await supabaseServer.from('students').insert({
             family_id: familyId,
             first_name: firstName,
             last_name: lastName,
@@ -124,10 +124,7 @@ export async function action({request}: ActionFunctionArgs) {
             throw studentInsertError;
         }
 
-        // Record student enrollment event for automatic discount processing
-        if (newStudent?.id) {
-            await recordStudentEnrollmentEvent(newStudent.id, familyId);
-        }
+
 
         // Redirect back to the family portal on success
         return redirect("/family", {headers});
