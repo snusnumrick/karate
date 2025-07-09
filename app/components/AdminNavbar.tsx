@@ -6,6 +6,7 @@ import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/too
 // Note: MessageSquare was already added in the provided file content, no change needed here.
 import {
     Boxes,
+    Calendar,
     CalendarCheck,
     ChevronDown,
     ChevronRight,
@@ -35,6 +36,7 @@ import {Button} from "~/components/ui/button"; // Import cn utility
 // Define navigation items for reuse
 const adminNavItems = [
     {to: "/admin", label: "Dashboard", icon: LayoutDashboard},
+    {to: "/admin/calendar", label: "Calendar", icon: Calendar},
     {to: "/admin/families", label: "Families", icon: Users},
     {to: "/admin/students", label: "Students", icon: User},
     {to: "/admin/payments", label: "Payments", icon: CreditCard},

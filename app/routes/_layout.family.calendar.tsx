@@ -5,22 +5,19 @@ import type { Database } from "~/types/database.types";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent } from "~/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { 
   format, 
   startOfMonth, 
   endOfMonth, 
   startOfWeek, 
   endOfWeek, 
-  addDays, 
-  addMonths, 
-  subMonths, 
-  isSameMonth, 
-  isToday,
   parseISO
 } from "date-fns";
+import { Calendar } from "~/components/calendar";
+import type { CalendarEvent } from "~/components/calendar/types";
+import { sessionsToCalendarEvents, attendanceToCalendarEvents } from "~/components/calendar/utils";
 
 
 // Define types
@@ -64,18 +61,11 @@ type EnrollmentWithClass = {
   } | null;
 };
 
-type CalendarEvent = {
-  type: 'session' | 'attendance';
-  date: string;
-  session?: ClassSession;
-  attendance?: AttendanceRow;
-  student_id: string;
-  student_name: string;
-};
-
 type LoaderData = {
   students: StudentRow[];
-  events: CalendarEvent[];
+  sessions: ClassSession[];
+  attendance: AttendanceRow[];
+  enrollments: EnrollmentWithClass[];
   familyName: string | null;
   currentMonth: string;
 };
@@ -127,7 +117,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const studentIds = students.map(s => s.id);
 
     if (studentIds.length === 0) {
-      return json({ students, events: [], familyName, currentMonth }, { headers });
+      return json({ students, sessions: [], attendance: [], enrollments: [], familyName, currentMonth }, { headers });
     }
 
     // Get date range for the month view (including surrounding weeks)
@@ -209,44 +199,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (attendanceError) throw attendanceError;
     const attendanceRecords = attendanceData as AttendanceRow[] ?? [];
 
-    // Combine sessions and attendance into calendar events
-    const events: CalendarEvent[] = [];
-
-    // Add session events
-    upcomingSessions.forEach(session => {
-      // Find which students are enrolled in this class
-      const enrolledStudents = enrollments.filter(e => e.class_id === session.class_id);
-      enrolledStudents.forEach(enrollment => {
-        const student = students.find(s => s.id === enrollment.student_id);
-        if (student) {
-          events.push({
-            type: 'session',
-            date: session.session_date,
-            session,
-            student_id: student.id,
-            student_name: `${student.first_name} ${student.last_name}`
-          });
-        }
-      });
-    });
-
-    // Add attendance events
-    attendanceRecords.forEach(attendance => {
-      const student = students.find(s => s.id === attendance.student_id);
-      if (student) {
-        events.push({
-          type: 'attendance',
-          date: attendance.class_date,
-          attendance,
-          student_id: student.id,
-          student_name: attendance.students ? 
-            `${attendance.students.first_name} ${attendance.students.last_name}` : 
-            `${student.first_name} ${student.last_name}`
-        });
-      }
-    });
-
-    return json({ students, events, familyName, currentMonth }, { headers });
+    return json({ 
+      students, 
+      sessions: upcomingSessions, 
+      attendance: attendanceRecords, 
+      enrollments, 
+      familyName, 
+      currentMonth 
+    }, { headers });
 
   } catch (error) {
     const message = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -256,45 +216,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function FamilyCalendarPage() {
-  const { students, events, familyName, currentMonth } = useLoaderData<LoaderData>();
+  const { students, sessions, attendance, enrollments, familyName, currentMonth } = useLoaderData<LoaderData>();
   const [, setSearchParams] = useSearchParams();
-  const [selectedStudent, setSelectedStudent] = useState<string>('all');
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [currentDate, setCurrentDate] = useState(() => parseISO(currentMonth + '-01'));
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const currentDate = parseISO(currentMonth + '-01');
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const calendarStart = startOfWeek(monthStart);
-  const calendarEnd = endOfWeek(monthEnd);
+  // Convert raw data to calendar events
+  const studentList = students.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` }));
+  const sessionEvents = sessionsToCalendarEvents(sessions, enrollments, studentList);
+  const attendanceEvents = attendanceToCalendarEvents(attendance, sessions, enrollments, studentList);
+  const allEvents = [...sessionEvents, ...attendanceEvents];
 
-  // Filter events by selected student
-  const filteredEvents = selectedStudent === 'all' 
-    ? events 
-    : events.filter(event => event.student_id === selectedStudent);
-
-  // Group events by date
-  const eventsByDate = filteredEvents.reduce((acc, event) => {
-    const dateKey = event.date;
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
-    }
-    acc[dateKey].push(event);
-    return acc;
-  }, {} as Record<string, CalendarEvent[]>);
-
-  // Generate calendar days
-  const calendarDays = [];
-  let day = calendarStart;
-  while (day <= calendarEnd) {
-    calendarDays.push(day);
-    day = addDays(day, 1);
-  }
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const newDate = direction === 'prev' 
-      ? subMonths(currentDate, 1)
-      : addMonths(currentDate, 1);
+  const handleDateChange = (newDate: Date) => {
+    setCurrentDate(newDate);
     const newMonth = format(newDate, 'yyyy-MM');
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
@@ -303,53 +238,57 @@ export default function FamilyCalendarPage() {
     });
   };
 
-  const getEventsForDate = (date: Date) => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    return eventsByDate[dateKey] || [];
-  };
-
-  const handleDayClick = (date: Date) => {
-    const dayEvents = getEventsForDate(date);
-    if (dayEvents.length > 0) {
-      setSelectedDay(date);
-      setIsModalOpen(true);
-    }
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setIsModalOpen(true);
   };
 
   const renderEventDetails = (event: CalendarEvent) => {
-    if (event.type === 'session' && event.session) {
+    if (event.type === 'session') {
       return (
         <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center justify-between mb-2">
-            <Badge 
-              variant={event.session.status === 'scheduled' ? 'default' : 
-                     event.session.status === 'completed' ? 'secondary' : 'destructive'}
-            >
-              {event.session.status === 'scheduled' ? 'Scheduled' : 
-               event.session.status === 'completed' ? 'Completed' : 'Cancelled'}
+            <Badge variant="default">
+              Session
             </Badge>
-            <span className="text-sm font-medium">
-              {format(parseISO(`2000-01-01T${event.session.start_time}`), 'h:mm a')} - 
-              {format(parseISO(`2000-01-01T${event.session.end_time}`), 'h:mm a')}
-            </span>
+            {event.startTime && event.endTime && (
+              <span className="text-sm font-medium">
+                {event.startTime} - {event.endTime}
+              </span>
+            )}
           </div>
-          <h4 className="font-semibold text-lg">{event.session.classes?.name || 'Class'}</h4>
-          <p className="text-gray-600 dark:text-gray-400">Student: {event.student_name}</p>
-          {event.session.instructor && (
-            <p className="text-gray-600 dark:text-gray-400">Instructor: {event.session.instructor.first_name} {event.session.instructor.last_name}</p>
+          <h4 className="font-semibold text-lg">{event.className}</h4>
+          {event.programName && (
+            <p className="text-gray-600 dark:text-gray-400">Program: {event.programName}</p>
+          )}
+          {event.studentNames && event.studentNames.length > 0 && (
+            <div className="text-gray-600 dark:text-gray-400">
+              <p className="font-medium">Enrolled Students:</p>
+              <ul className="list-disc list-inside ml-2">
+                {event.studentNames.map((studentName, index) => (
+                  <li key={index}>{studentName}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {event.studentName && (
+            <p className="text-gray-600 dark:text-gray-400">Student: {event.studentName}</p>
           )}
         </div>
       );
-    } else if (event.type === 'attendance' && event.attendance) {
+    } else if (event.type === 'attendance') {
       return (
         <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center justify-between mb-2">
-            <Badge variant={event.attendance.present ? 'default' : 'destructive'}>
-              {event.attendance.present ? 'Present' : 'Absent'}
+            <Badge variant={event.status === 'present' ? 'default' : 'destructive'}>
+              {event.status?.toUpperCase()}
             </Badge>
           </div>
           <h4 className="font-semibold text-lg">Attendance Record</h4>
-          <p className="text-gray-600 dark:text-gray-400">Student: {event.student_name}</p>
+          <p className="text-gray-600 dark:text-gray-400">Class: {event.className}</p>
+          {event.studentName && (
+            <p className="text-gray-600 dark:text-gray-400">Student: {event.studentName}</p>
+          )}
         </div>
       );
     }
@@ -357,207 +296,84 @@ export default function FamilyCalendarPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">
-        &larr; Back to Family Portal
-      </Link>
-      
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-          <CalendarIcon className="inline-block mr-2 h-8 w-8" />
-          Calendar {familyName ? `for ${familyName}` : ''}
-        </h1>
+    <div className="sm:container sm:mx-auto px-2 sm:px-4 py-4">
+      <div className="px-2 sm:px-0">
+        <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block text-sm">
+          &larr; Back to Family Portal
+        </Link>
         
-        {/* Student Filter */}
-        <div className="flex items-center gap-4">
-          <label htmlFor="student-filter" className="text-sm font-medium">Show events for:</label>
-          <select 
-            id="student-filter"
-            value={selectedStudent} 
-            onChange={(e) => setSelectedStudent(e.target.value)}
-            className="px-3 py-1 border rounded-md bg-white dark:bg-gray-800"
-          >
-            <option value="all">All Students</option>
-            {students.map(student => (
-              <option key={student.id} value={student.id}>
-                {student.first_name} {student.last_name}
-              </option>
-            ))}
-          </select>
+        <div className="mb-3 sm:mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">
+            <CalendarIcon className="inline-block mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="hidden sm:inline">Calendar {familyName ? `for ${familyName}` : ''}</span>
+            <span className="sm:hidden">Calendar</span>
+          </h1>
         </div>
       </div>
 
-      {/* Calendar Navigation */}
-      <div className="flex items-center justify-between mb-6">
-        <Button 
-          variant="outline" 
-          onClick={() => navigateMonth('prev')}
-          className="flex items-center gap-2"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Previous
-        </Button>
-        
-        <h2 className="text-xl font-semibold">
-          {format(currentDate, 'MMMM yyyy')}
-        </h2>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => navigateMonth('next')}
-          className="flex items-center gap-2"
-        >
-          Next
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+      {/* Shared Calendar Component */}
+      <div className="-mx-2 sm:mx-0">
+        <Calendar
+          events={allEvents}
+          currentDate={currentDate}
+          onDateChange={handleDateChange}
+          onEventClick={handleEventClick}
+          filterOptions={{
+            students: studentList,
+            selectedStudentId: 'all',
+            onStudentChange: (studentId) => {
+              // Handle student filter change if needed
+              console.log('Student filter changed:', studentId);
+            }
+          }}
+        />
       </div>
-
-      {/* Calendar Grid */}
-      <Card>
-        <CardContent className="p-0">
-          {/* Calendar Header */}
-          <div className="grid grid-cols-7 border-b">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="p-3 text-center font-medium text-gray-500 dark:text-gray-400 border-r last:border-r-0">
-                {day}
-              </div>
-            ))}
-          </div>
-          
-          {/* Calendar Body */}
-          <div className="grid grid-cols-7">
-            {calendarDays.map((day, index) => {
-              const dayEvents = getEventsForDate(day);
-              const isCurrentMonth = isSameMonth(day, currentDate);
-              const isCurrentDay = isToday(day);
-              
-              return (
-                <div 
-                  key={index} 
-                  className={`min-h-[120px] p-2 border-r border-b last:border-r-0 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                    !isCurrentMonth ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
-                  } ${
-                    isCurrentDay ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500 dark:border-blue-400 shadow-md' : ''
-                  } ${
-                    dayEvents.length > 0 ? 'md:cursor-default' : ''
-                  }`}
-                  onClick={() => handleDayClick(day)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleDayClick(day);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`View events for ${format(day, 'MMMM d, yyyy')}`}
-                >
-                  <div className={`text-sm font-medium mb-2 ${
-                    !isCurrentMonth ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'
-                  } ${
-                    isCurrentDay ? 'text-blue-700 dark:text-blue-300 font-bold' : ''
-                  }`}>
-                    {format(day, 'd')}
-                  </div>
-                  
-                  <div className="space-y-1">
-                    {/* Desktop view - show all events */}
-                    <div className="hidden md:block">
-                      {dayEvents.map((event, eventIndex) => (
-                        <div key={eventIndex} className="text-xs">
-                          {event.type === 'session' && event.session ? (
-                            <Badge 
-                              variant={event.session.status === 'scheduled' ? 'default' : 
-                                     event.session.status === 'completed' ? 'secondary' : 'destructive'}
-                              className="w-full justify-start text-xs p-1"
-                            >
-                              <div className="truncate">
-                                {format(parseISO(`2000-01-01T${event.session.start_time}`), 'h:mm a')}
-                                <br />
-                                {event.session.classes?.name || 'Class'}
-                                <br />
-                                <span className="text-xs opacity-75">{event.student_name}</span>
-                              </div>
-                            </Badge>
-                          ) : event.type === 'attendance' && event.attendance ? (
-                            <Badge 
-                              variant={event.attendance.present ? 'default' : 'destructive'}
-                              className="w-full justify-start text-xs p-1"
-                            >
-                              <div className="truncate">
-                                {event.attendance.present ? '✓ Present' : '✗ Absent'}
-                                <br />
-                                <span className="text-xs opacity-75">{event.student_name}</span>
-                              </div>
-                            </Badge>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Mobile view - show event count indicator */}
-                    <div className="md:hidden">
-                      {dayEvents.length > 0 && (
-                        <div className="text-xs text-center">
-                          <Badge variant="outline" className="text-xs">
-                            {dayEvents.length} event{dayEvents.length !== 1 ? 's' : ''}
-                          </Badge>
-                          <div className="text-xs text-gray-500 mt-1">Tap to view</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Legend */}
-      <div className="mt-6 flex flex-wrap gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <Badge variant="default" className="text-xs">Scheduled Session</Badge>
-          <span>Upcoming class session</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">Completed Session</Badge>
-          <span>Past class session</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="default" className="text-xs">✓ Present</Badge>
-          <span>Student attended</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="destructive" className="text-xs">✗ Absent</Badge>
-          <span>Student was absent</span>
+      <div className="mt-3 sm:mt-4 px-2 sm:px-0">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 text-xs">
+          <div className="flex items-center gap-1">
+            <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500 dark:border-blue-400 rounded text-xs text-blue-900 dark:text-blue-100 font-medium">
+              Session
+            </div>
+            <span>Scheduled class</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Badge variant="default" className="text-xs h-4 sm:h-5">Present</Badge>
+            <span>Attended class</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Badge variant="destructive" className="text-xs h-4 sm:h-5">Absent</Badge>
+            <span>Missed class</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Badge variant="secondary" className="text-xs h-4 sm:h-5">Late</Badge>
+            <span>Arrived late</span>
+          </div>
+          <div className="flex items-center gap-1 col-span-2 sm:col-span-1">
+            <Badge variant="outline" className="text-xs h-4 sm:h-5">Excused</Badge>
+            <span>Excused absence</span>
+          </div>
         </div>
       </div>
 
       {/* Quick Links */}
-      <div className="mt-8 flex gap-4">
-        <Link to="/family/attendance">
-          <Button variant="outline">View Attendance History</Button>
-        </Link>
-        <Link to="/family">
-          <Button variant="outline">Back to Family Portal</Button>
-        </Link>
+      <div className="mt-4 px-2 sm:px-0">
+        <Button asChild>
+          <Link to="/family/attendance">Attendance History</Link>
+        </Button>
       </div>
 
-      {/* Mobile Day Detail Modal */}
+      {/* Event Detail Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-md mx-auto">
           <DialogHeader>
              <DialogTitle>
-               {selectedDay && format(selectedDay, 'EEEE, MMMM d, yyyy')}
+               Event Details
              </DialogTitle>
            </DialogHeader>
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {selectedDay && getEventsForDate(selectedDay).map((event, index) => (
-              <div key={index}>
-                {renderEventDetails(event)}
-              </div>
-            ))}
+            {selectedEvent && renderEventDetails(selectedEvent)}
           </div>
         </DialogContent>
       </Dialog>

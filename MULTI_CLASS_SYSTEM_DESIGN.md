@@ -575,14 +575,15 @@ export async function createClassPayment(paymentData: ClassPaymentData): Promise
 
 **Backend Infrastructure Ready:** All enrollment services, validation logic, and payment processing are implemented and ready to support family self-enrollment when the frontend routes are built.
 
-### Phase 6: Calendar & Scheduling (Week 7) 🟡 PARTIALLY COMPLETED
+### Phase 6: Calendar & Scheduling (Week 7) ✅ COMPLETED
 - [x] Class session auto-generation
 - [x] Calendar components and views (family calendar fully implemented)
 - [x] Session management and updates (per-class admin interface complete)
 - [x] Integration with existing attendance system
-- [ ] Comprehensive admin calendar interface (system-wide view)
+- [x] Reusable calendar component architecture
+- [x] Comprehensive admin calendar interface (system-wide view)
 
-**Status Notes:** Family calendar interface (`_layout.family.calendar.tsx`) and per-class admin session management (`admin.classes.$id.sessions.tsx`) are fully implemented. However, a comprehensive admin calendar interface that provides a system-wide view of all classes and sessions across programs is still pending. Backend infrastructure (`getCalendarEvents`, `getWeeklySchedule`) exists but no `/admin/calendar` route has been implemented.
+**Status Notes:** All calendar functionality is now complete. Family calendar interface (`_layout.family.calendar.tsx`), per-class admin session management (`admin.classes.$id.sessions.tsx`), and comprehensive admin calendar (`admin.calendar.tsx`) are fully implemented. Extracted reusable calendar components (`~/components/calendar/`) provide consistent calendar functionality across the application. The admin calendar includes enhanced filtering by program/instructor/status, enrollment statistics, administrative actions, and system-wide visibility of all classes and sessions.
 
 ### Phase 7: Messaging Integration (Week 8) ❌ NOT COMPLETED
 - [ ] Class-based messaging system
@@ -718,19 +719,32 @@ This comprehensive design provides a solid foundation for implementing a robust 
 - **Admin UI**: Complete session management interface with generation, editing, and listing
 - **Family Calendar**: Full-featured calendar with monthly navigation, filtering, and event details
 - **Mobile Support**: Responsive design with mobile-optimized event viewing
+- **Reusable Components**: Extracted shared calendar architecture for consistent UI across admin and family interfaces
+
+#### Calendar Component Architecture ✅ COMPLETED
+- **Shared Types** (`~/components/calendar/types.ts`): Common interfaces for CalendarEvent, CalendarDay, and component props
+- **Utility Functions** (`~/components/calendar/utils.ts`): Calendar generation, event processing, and date manipulation helpers
+- **UI Components**: Modular calendar components for consistent functionality
+  - `CalendarHeader`: Month navigation and current date display
+  - `CalendarFilters`: Student filtering and selection controls
+  - `CalendarGrid`: Main calendar layout with day cells and event rendering
+  - `CalendarEvent`: Individual event display with status badges
+  - `Calendar`: Main component integrating all sub-components
+- **Family Calendar Refactor**: Updated `_layout.family.calendar.tsx` to use shared components
+- **Admin Ready**: Components designed for easy integration into future admin calendar interface
 
 ### Current Status Summary
-**Completed Phases:** 7/10 (70%)
+**Completed Phases:** 8/10 (80%)
 - ✅ Phase 1: Core Infrastructure
 - ✅ Phase 2: Admin Program Management  
 - ✅ Phase 3: Admin Class Management
 - ✅ Phase 4: Enrollment System
 - ✅ Phase 5: Family Portal Integration
 - ✅ Phase 8: Payment Integration
+- ✅ Phase 6: Calendar & Scheduling
 - ✅ Phase 9: Advanced Features (waitlist, auto-enrollment, basic analytics)
 
-**Partially Complete:** 2/10 (20%)
-- 🟡 Phase 6: Calendar & Scheduling (family calendar and per-class session management complete, admin calendar pending)
+**Partially Complete:** 1/10 (10%)
 - 🟡 Phase 7: Messaging Integration (individual messaging complete, class-based pending)
 
 **Remaining:** 1/10 (10%)
@@ -765,11 +779,185 @@ The multi-class system integrates seamlessly with the automatic discount assignm
 - **Automated Processing**: No manual intervention required for discount assignment
 - **Audit Trail**: Complete tracking of program-filtered discount assignments
 
+## Admin Calendar System Design
+
+### Overview
+The Admin Calendar provides a comprehensive system-wide view of all classes, sessions, and events across programs. Building on the existing reusable calendar components and multi-class infrastructure, it offers enhanced administrative capabilities for managing the entire studio schedule.
+
+### Core Architecture
+
+#### Route Structure
+```
+/admin/calendar - Main admin calendar interface
+```
+
+#### Data Architecture
+Extends the existing `CalendarEvent` interface with admin-specific properties:
+
+```typescript
+interface AdminCalendarEvent extends CalendarEvent {
+  // Program and Class Context
+  programId: string;
+  programName: string;
+  programColor?: string;
+  classId: string;
+  className: string;
+  
+  // Enrollment Information
+  enrollmentStats: {
+    enrolled: number;
+    capacity: number;
+    waitlist: number;
+  };
+  
+  // Instructor Details
+  instructorId?: string;
+  instructorName?: string;
+  
+  // Administrative Metadata
+  paymentStatus: 'pending' | 'partial' | 'complete';
+  attendanceRecorded: boolean;
+  sessionGenerated: boolean;
+  
+  // Quick Actions
+  adminActions: {
+    canEditSession: boolean;
+    canRecordAttendance: boolean;
+    canManageEnrollments: boolean;
+    canViewPayments: boolean;
+  };
+}
+```
+
+### Admin-Specific Features
+
+#### Enhanced Filtering System
+- **Program-Based Filtering**: Filter by specific programs (Little Dragons, Competition Team, etc.)
+- **Instructor Filtering**: View classes by assigned instructor
+- **Status Filtering**: Filter by enrollment status, payment status, attendance recording
+- **Date Range Selection**: Custom date ranges beyond monthly view
+- **Capacity Alerts**: Highlight classes nearing capacity or with waitlists
+
+#### Administrative Actions
+- **Direct Session Management**: Click events to access session editing interface
+- **Quick Attendance Recording**: One-click access to attendance recording
+- **Enrollment Overview**: View and manage class enrollments directly from calendar
+- **Payment Status Monitoring**: Visual indicators for payment completion status
+- **Instructor Assignment**: Quick instructor assignment and reassignment
+
+#### System-Wide Visibility
+- **Multi-Program Overview**: Simultaneous view of all programs and classes
+- **Conflict Detection**: Visual indicators for scheduling conflicts
+- **Capacity Management**: Real-time enrollment vs. capacity tracking
+- **Revenue Tracking**: Payment status integration for financial oversight
+
+### Implementation Strategy
+
+#### Phase 1: Core Calendar Interface
+1. **Route Creation**: Implement `/admin/calendar` route
+2. **Data Integration**: Extend calendar event fetching for admin context
+3. **Component Integration**: Utilize existing calendar components with admin enhancements
+4. **Basic Filtering**: Implement program and instructor filtering
+
+#### Phase 2: Enhanced Administrative Features
+1. **Advanced Filtering**: Add status-based and date range filtering
+2. **Quick Actions**: Implement direct links to session management, attendance, enrollments
+3. **Visual Enhancements**: Add capacity indicators, payment status badges, conflict warnings
+4. **Mobile Optimization**: Ensure responsive design for tablet and mobile admin use
+
+#### Phase 3: Integration and Analytics
+1. **Deep Integration**: Connect with existing admin modules (classes, enrollments, payments)
+2. **Analytics Integration**: Add calendar-based reporting and insights
+3. **Notification System**: Implement alerts for capacity issues, payment problems, scheduling conflicts
+4. **Export Functionality**: Calendar export for external scheduling tools
+
+### Technical Implementation
+
+#### Backend Services
+Leverage existing services with admin-specific extensions:
+- `class.server.ts` - Enhanced with admin calendar data fetching
+- `enrollment.server.ts` - Integration for enrollment statistics
+- `program.server.ts` - Program-based filtering and organization
+
+#### Frontend Components
+Build on existing calendar architecture:
+- **AdminCalendar**: Main component extending base Calendar
+- **AdminCalendarFilters**: Enhanced filtering with admin-specific options
+- **AdminCalendarEvent**: Event component with administrative actions
+- **AdminCalendarHeader**: Header with admin controls and quick actions
+
+#### Data Flow
+```typescript
+// Admin Calendar Loader
+export async function loader({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const month = url.searchParams.get('month') || getCurrentMonth();
+  const programFilter = url.searchParams.get('program');
+  const instructorFilter = url.searchParams.get('instructor');
+  
+  const events = await getAdminCalendarEvents({
+    month,
+    programFilter,
+    instructorFilter,
+    includeEnrollmentStats: true,
+    includePaymentStatus: true,
+    includeAdminActions: true
+  });
+  
+  return json({ events, filters: { program: programFilter, instructor: instructorFilter } });
+}
+```
+
+### Integration Points
+
+#### Existing Admin Modules
+- **Program Management** (`/admin/programs`) - Program-based filtering and navigation
+- **Class Management** (`/admin/classes`) - Direct links to class editing and session management
+- **Enrollment System** (`/admin/enrollments`) - Enrollment statistics and management
+- **Payment Processing** - Payment status indicators and quick access
+- **Attendance System** - Direct attendance recording access
+
+#### Navigation Integration
+Add to AdminNavbar.tsx:
+```typescript
+{
+  name: "Calendar",
+  href: "/admin/calendar",
+  icon: CalendarIcon,
+  current: pathname === "/admin/calendar"
+}
+```
+
+### Benefits
+
+#### Administrative Efficiency
+- **Centralized View**: Single interface for all scheduling oversight
+- **Quick Actions**: Reduced clicks for common administrative tasks
+- **Real-Time Status**: Immediate visibility into class status and issues
+- **Conflict Prevention**: Visual scheduling conflict detection
+
+#### Enhanced Decision Making
+- **Capacity Planning**: Visual enrollment vs. capacity tracking
+- **Resource Allocation**: Instructor assignment and scheduling optimization
+- **Financial Oversight**: Payment status integration for revenue tracking
+- **Operational Insights**: Calendar-based analytics and reporting
+
+#### User Experience
+- **Consistent Interface**: Leverages familiar calendar components
+- **Mobile Responsive**: Optimized for various device sizes
+- **Intuitive Navigation**: Clear visual hierarchy and action buttons
+- **Performance Optimized**: Efficient data loading and rendering
+
+### Success Metrics
+- **Time Reduction**: Decreased time for schedule management tasks
+- **Error Reduction**: Fewer scheduling conflicts and capacity issues
+- **User Adoption**: Admin usage rates and feedback scores
+- **Operational Efficiency**: Improved class utilization and revenue tracking
+
 ### Next Priority Items (Updated July 2025)
 1. **Family Self-Enrollment Routes** (HIGH PRIORITY) - Enable families to browse and enroll in programs/classes independently
-2. **Admin Calendar Interface** (MEDIUM PRIORITY) - Comprehensive system-wide calendar view for administrators (`/admin/calendar`)
-3. **Class-Based Messaging System** (MEDIUM PRIORITY) - Implement bulk messaging and class announcements
-4. **Advanced Analytics & Reporting** (MEDIUM PRIORITY) - Enhanced reporting dashboard with program performance metrics
-5. **Testing & Quality Assurance** (HIGH PRIORITY) - Comprehensive testing framework and deployment preparation
+2. **Class-Based Messaging System** (MEDIUM PRIORITY) - Implement bulk messaging and class announcements
+3. **Advanced Analytics & Reporting** (MEDIUM PRIORITY) - Enhanced reporting dashboard with program performance metrics
+4. **Testing & Quality Assurance** (HIGH PRIORITY) - Comprehensive testing framework and deployment preparation
 
-**Note:** Family Calendar Interface and per-class Session Management UI are complete. Admin calendar interface for system-wide view is still pending.
+**Note:** Family Calendar Interface, per-class Session Management UI, and Admin Calendar Interface are complete. The comprehensive admin calendar system is now fully implemented with enhanced filtering, administrative actions, and system-wide visibility.

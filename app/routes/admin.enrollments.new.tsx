@@ -164,8 +164,13 @@ export default function NewEnrollmentPage() {
         return false;
       }
 
-      // Check special needs support
+      // Check special needs support - strict matching
       if (selectedStudent.special_needs && !program.special_needs_support) {
+        // Student has special needs but program doesn't support them
+        return false;
+      }
+      if (!selectedStudent.special_needs && program.special_needs_support) {
+        // Student doesn't have special needs but program is for special needs students
         return false;
       }
 
@@ -246,15 +251,15 @@ export default function NewEnrollmentPage() {
                     }}
                     required
                   >
-                    <SelectTrigger className="h-11">
+                    <SelectTrigger className="h-11 w-full [&>span]:line-clamp-none">
                       <SelectValue placeholder="Choose a family to get started" />
                     </SelectTrigger>
                     <SelectContent>
                       {families.map((family) => (
                         <SelectItem key={family.id} value={family.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{family.name}</span>
-                            <Badge variant="outline" className="ml-2">
+                          <div className="flex items-center justify-between w-full min-w-0">
+                            <span className="truncate flex-1">{family.name}</span>
+                            <Badge variant="outline" className="ml-2 flex-shrink-0">
                               {family.students.length} student{family.students.length !== 1 ? 's' : ''}
                             </Badge>
                           </div>
@@ -315,7 +320,7 @@ export default function NewEnrollmentPage() {
                     disabled={!selectedStudentId} 
                     required
                   >
-                    <SelectTrigger className={`h-11 ${!selectedStudentId ? 'opacity-50' : ''}`}>
+                    <SelectTrigger className={`h-11 w-full [&>span]:line-clamp-none ${!selectedStudentId ? 'opacity-50' : ''}`}>
                       <SelectValue placeholder={
                         !selectedStudentId 
                           ? "Select student first" 
@@ -324,14 +329,14 @@ export default function NewEnrollmentPage() {
                             : "Select class"
                       } />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="w-full min-w-[300px]">
                       {eligibleClasses.map((classItem) => {
                         const { program } = getClassInfo(classItem.id);
                         return (
-                          <SelectItem key={classItem.id} value={classItem.id}>
-                            <div className="flex flex-col items-start">
-                              <span className="font-medium">{program?.name}</span>
-                              <span className="text-sm text-muted-foreground">{classItem.name}</span>
+                          <SelectItem key={classItem.id} value={classItem.id} className="w-full">
+                            <div className="flex flex-col items-start w-full min-w-0">
+                              <span className="font-medium w-full truncate">{program?.name}</span>
+                              <span className="text-sm text-muted-foreground w-full whitespace-normal break-words">{classItem.name}</span>
                             </div>
                           </SelectItem>
                         );

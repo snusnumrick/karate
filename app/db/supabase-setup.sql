@@ -1243,6 +1243,25 @@ CREATE POLICY "Family members can insert students into their family" ON students
     );
 END IF;
 
+-- Policy to allow family members to UPDATE students in their own family
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'students'
+                         AND policyname = 'Family members can update students in their family') THEN
+CREATE POLICY "Family members can update students in their family" ON students
+    FOR UPDATE USING (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.family_id = students.family_id)
+    ) WITH CHECK (
+    EXISTS (SELECT 1
+            FROM profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.family_id = students.family_id)
+    );
+END IF;
+
 IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'payments'

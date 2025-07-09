@@ -29,12 +29,26 @@ import {beltColorMap} from "~/utils/constants";
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'>; // Omit removed column
 type BeltAwardRow = Database['public']['Tables']['belt_awards']['Row']; // Use BeltAwardRow
+type EnrollmentRow = Database['public']['Tables']['enrollments']['Row'];
 
-// Extend loader data type to include derived current belt
+// Define enrollment with class and program details
+type EnrollmentWithDetails = EnrollmentRow & {
+    classes: {
+        id: string;
+        name: string;
+        program_id: string;
+        programs: {
+            name: string;
+        } | null;
+    } | null;
+};
+
+// Extend loader data type to include derived current belt and enrollments
 type LoaderData = {
     student: StudentRow;
     beltAwards: BeltAwardRow[];
     currentBeltRank: BeltRankEnum | null; // Add derived current belt rank
+    enrollments: EnrollmentWithDetails[]; // Add enrollments
 };
 
 // Define potential action data structure
@@ -106,11 +120,36 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         ? beltAwardsData[0].type // Assuming awards are sorted descending by date
         : null;
 
-    // Return the student data, belt awards, and derived current rank
+    // Fetch the student's enrollments
+    const {data: enrollmentsData, error: enrollmentsError} = await supabaseServer
+        .from('enrollments')
+        .select(`
+            *,
+            classes (
+                id,
+                name,
+                program_id,
+                programs (
+                    name
+                )
+            )
+        `)
+        .eq('student_id', studentId)
+        .order('enrolled_at', {ascending: false});
+
+    if (enrollmentsError) {
+        console.error("Error fetching student enrollments:", enrollmentsError?.message);
+        // Don't fail the whole page load, just return an empty array
+    }
+
+    const enrollments = enrollmentsData as EnrollmentWithDetails[] || [];
+
+    // Return the student data, belt awards, derived current rank, and enrollments
     return json({
         student: studentData as StudentRow,
         beltAwards: beltAwardsData as BeltAwardRow[],
-        currentBeltRank: currentBeltRank
+        currentBeltRank: currentBeltRank,
+        enrollments: enrollments
     }, {headers});
 }
 
@@ -236,9 +275,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         const {error: updateError} = await supabaseServer
             .from('students')
             .update(updateData)
-            .eq('id', studentId)
-            .select() // Optionally select the updated data
-            .single();
+            .eq('id', studentId);
 
         if (updateError) {
             console.error("Error updating student:", updateError);
@@ -255,24 +292,32 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
 
 export default function StudentDetailPage() {
-    // Update to use the extended LoaderData type including currentBeltRank
-    // Update to use the extended LoaderData type including currentBeltRank
-    const {student, beltAwards, currentBeltRank} = useLoaderData<LoaderData>();
+    // Update to use the extended LoaderData type including currentBeltRank and enrollments
+    const {student, beltAwards, currentBeltRank, enrollments} = useLoaderData<LoaderData>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const submit = useSubmit(); // Get submit hook
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete dialog
+    const [hasJustSubmitted, setHasJustSubmitted] = useState(false); // Track if we just submitted
 
     const isSubmitting = navigation.state === "submitting";
     const formIntent = navigation.formData?.get('intent'); // Get intent for loading state
-
-    // Reset edit mode on successful update
+    
+    // Track when form is submitted
     useEffect(() => {
-        if (actionData?.success && isEditing) {
-            setIsEditing(false);
+        if (navigation.state === "submitting") {
+            setHasJustSubmitted(true);
         }
-    }, [actionData, isEditing]);
+    }, [navigation.state]);
+
+    // Reset edit mode on successful update (only if we just submitted)
+    useEffect(() => {
+        if (actionData?.success && isEditing && hasJustSubmitted && navigation.state === 'idle') {
+            setIsEditing(false);
+            setHasJustSubmitted(false);
+        }
+    }, [actionData?.success, isEditing, hasJustSubmitted, navigation.state]);
 
 
     return (
@@ -289,7 +334,7 @@ export default function StudentDetailPage() {
                     <AlertDescription>{actionData.error}</AlertDescription>
                 </Alert>
             )}
-            {actionData?.success && actionData.message && (
+            {actionData?.success && actionData.message && !isEditing && (
                 <Alert variant="default"
                        className="mb-4 bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
                     <AlertTitle>Success</AlertTitle>
@@ -476,12 +521,58 @@ export default function StudentDetailPage() {
                         <h2 className="text-xl font-semibold mb-4 border-b pb-2">Health</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <p><strong>Immunizations
-                                Up-to-Date:</strong> {student.immunizations_up_to_date ? 'Yes' : 'No'}</p>
+                                Up-to-Date:</strong> {student.immunizations_up_to_date === 'true' ? 'Yes' : 'No'}</p>
                             <p><strong>Immunization Notes:</strong> {student.immunization_notes || 'None'}</p>
                             <p><strong>Allergies:</strong> {student.allergies || 'None'}</p>
                             <p><strong>Medications:</strong> {student.medications || 'None'}</p>
                             <p><strong>Special Needs:</strong> {student.special_needs || 'None'}</p>
                         </div>
+                    </div>
+
+                    {/* Enrollments Section */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Class Enrollments</h2>
+                        {enrollments && enrollments.length > 0 ? (
+                            <div className="space-y-4">
+                                {enrollments.map((enrollment) => (
+                                    <div key={enrollment.id}
+                                         className="bg-gray-50 dark:bg-gray-700 rounded-md p-4 shadow">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div>
+                                                <h3 className="font-medium text-gray-800 dark:text-gray-100">
+                                                    {enrollment.classes?.name || 'Unknown Class'}
+                                                </h3>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                    Program: {enrollment.classes?.programs?.name || 'Unknown Program'}
+                                                </p>
+                                            </div>
+                                            <Badge 
+                                                variant={enrollment.status === 'active' ? 'default' : 
+                                                        enrollment.status === 'waitlist' ? 'secondary' : 
+                                                        enrollment.status === 'completed' ? 'outline' : 'destructive'}
+                                                className="capitalize"
+                                            >
+                                                {enrollment.status}
+                                            </Badge>
+                                        </div>
+                                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                                            <p>Enrolled: {formatDate(enrollment.enrolled_at, { formatString: 'MMM d, yyyy' })}</p>
+                                            {enrollment.completed_at && (
+                                                <p>Completed: {formatDate(enrollment.completed_at, { formatString: 'MMM d, yyyy' })}</p>
+                                            )}
+                                            {enrollment.dropped_at && (
+                                                <p>Dropped: {formatDate(enrollment.dropped_at, { formatString: 'MMM d, yyyy' })}</p>
+                                            )}
+                                            {enrollment.notes && (
+                                                <p className="mt-2">Notes: {enrollment.notes}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-gray-600 dark:text-gray-400">No class enrollments found.</p>
+                        )}
                     </div>
 
                     {/* Belt Awards Section */}
@@ -516,11 +607,13 @@ export default function StudentDetailPage() {
                         )}
                     </div>
 
-
                     {/* Action Buttons */}
                     <div className="flex flex-wrap justify-between items-center gap-4 mt-6">
                         <div className="flex gap-4">
-                            <Button variant="outline" onClick={() => setIsEditing(true)}>
+                            <Button variant="outline" onClick={() => {
+                                setIsEditing(true);
+                                setHasJustSubmitted(false); // Clear the flag when entering edit mode
+                            }}>
                                 Edit Student
                             </Button>
                             <Button asChild variant="secondary">

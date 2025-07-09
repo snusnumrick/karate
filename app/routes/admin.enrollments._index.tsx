@@ -1,5 +1,5 @@
 import { json, LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation, useSearchParams, Link } from "@remix-run/react";
+import { useLoaderData, Form, useNavigation, useSearchParams, Link, useSubmit } from "@remix-run/react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -8,6 +8,16 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Plus, Edit, Trash2, Users, Clock, AlertCircle, CheckCircle } from "lucide-react";
 import { requireAdminUser } from "~/utils/auth.server";
@@ -82,9 +92,11 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function AdminEnrollments() {
   const { enrollments, classes, programs, stats, filters } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
+  const submit = useSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedEnrollment, setSelectedEnrollment] = useState<ClassEnrollment | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteEnrollmentId, setDeleteEnrollmentId] = useState<string | null>(null);
   
   const isSubmitting = navigation.state === "submitting";
   
@@ -216,10 +228,10 @@ export default function AdminEnrollments() {
                 <SelectTrigger>
                   <SelectValue placeholder="All classes" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-full min-w-[300px]">
                   <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((classItem) => (
-                    <SelectItem key={classItem.id} value={classItem.id}>
+                    <SelectItem key={classItem.id} value={classItem.id} className="whitespace-normal">
                       {classItem.name}
                     </SelectItem>
                   ))}
@@ -273,7 +285,7 @@ export default function AdminEnrollments() {
                       {getStudentName(enrollment)}
                     </TableCell>
                     <TableCell>{program?.name || "Unknown"}</TableCell>
-                    <TableCell>{classItem?.name || "Unknown"}</TableCell>
+                    <TableCell className="min-w-[200px]">{classItem?.name || "Unknown"}</TableCell>
                     <TableCell>{getStatusBadge(enrollment.status)}</TableCell>
                     <TableCell>
                       {new Date(enrollment.enrolled_at).toLocaleDateString()}
@@ -295,24 +307,14 @@ export default function AdminEnrollments() {
                         </Button>
                         
                         {enrollment.status !== "dropped" && (
-                          <Form method="post" className="inline">
-                            <input type="hidden" name="intent" value="drop" />
-                            <input type="hidden" name="id" value={enrollment.id} />
-                            <input type="hidden" name="reason" value="Admin action" />
-                            <Button
-                              type="submit"
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={(e) => {
-                                if (!confirm("Are you sure you want to drop this enrollment?")) {
-                                  e.preventDefault();
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </Form>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => setDeleteEnrollmentId(enrollment.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -408,6 +410,38 @@ export default function AdminEnrollments() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteEnrollmentId} onOpenChange={() => setDeleteEnrollmentId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently drop the student from the class and update their enrollment status.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+               onClick={() => {
+                 if (deleteEnrollmentId) {
+                   const formData = new FormData();
+                   formData.append('intent', 'drop');
+                   formData.append('id', deleteEnrollmentId);
+                   formData.append('reason', 'Admin action');
+                   
+                   submit(formData, { method: 'post' });
+                   setDeleteEnrollmentId(null);
+                 }
+               }}
+               disabled={isSubmitting}
+               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+             >
+               {isSubmitting ? 'Dropping...' : 'Drop Student'}
+             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
