@@ -116,7 +116,11 @@ export default function AdminClassesIndex() {
                     <Clock className="h-4 w-4" />
                     <span>
                       {classItem.next_session ? (
-                        `Next: ${new Date(classItem.next_session.session_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${classItem.next_session.start_time.slice(0, 5)}`
+                        (() => {
+                          const [year, month, day] = classItem.next_session.session_date.split('-').map(Number);
+                          const sessionDate = new Date(year, month - 1, day);
+                          return `Next: ${sessionDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${classItem.next_session.start_time.slice(0, 5)}`;
+                        })()
                       ) : (
                         'No upcoming sessions'
                       )}

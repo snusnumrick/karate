@@ -157,7 +157,9 @@ export async function loader(_: LoaderFunctionArgs) {
         let nextClassInfo = "No upcoming classes";
         if (nextClassData && nextClassData.length > 0) {
             const nextClass = nextClassData[0];
-            const sessionDate = new Date(nextClass.session_date);
+            // Parse date string as local date to avoid timezone issues
+            const [year, month, day] = nextClass.session_date.split('-').map(Number);
+            const sessionDate = new Date(year, month - 1, day);
             const today = new Date();
             const isToday = sessionDate.toDateString() === today.toDateString();
             const timeStr = nextClass.start_time;

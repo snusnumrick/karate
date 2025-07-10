@@ -105,10 +105,14 @@ export function sessionsToCalendarEvents(
           .filter(Boolean) as string[] :
         [];
       
+      // Parse date string as local date to avoid timezone issues
+      const [year, month, day] = session.session_date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      
       events.push({
         id: `session-${session.id}`,
         title: className,
-        date: new Date(session.session_date),
+        date: localDate,
         type: 'session' as const,
         className,
         sessionId: session.id,
@@ -177,10 +181,20 @@ export function attendanceToCalendarEvents(
       status = 'absent';
     }
     
+    // Parse date string as local date to avoid timezone issues
+    const dateString = record.class_date || session?.session_date;
+    let localDate: Date;
+    if (dateString) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      localDate = new Date(year, month - 1, day);
+    } else {
+      localDate = new Date();
+    }
+    
     return {
       id: `attendance-${record.id}`,
       title: `${className} - ${student?.name || 'Unknown Student'}`,
-      date: new Date(record.class_date || session?.session_date || new Date()),
+      date: localDate,
       type: 'attendance' as const,
       status,
       className,

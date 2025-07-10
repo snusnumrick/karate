@@ -121,8 +121,20 @@ export default function ClassSessions() {
     }
   };
   
-  const upcomingSessions = sessions.filter(s => new Date(s.session_date) >= new Date());
-  const pastSessions = sessions.filter(s => new Date(s.session_date) < new Date());
+  const upcomingSessions = sessions.filter(s => {
+    const [year, month, day] = s.session_date.split('-').map(Number);
+    const sessionDate = new Date(year, month - 1, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+    return sessionDate >= today;
+  });
+  const pastSessions = sessions.filter(s => {
+    const [year, month, day] = s.session_date.split('-').map(Number);
+    const sessionDate = new Date(year, month - 1, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+    return sessionDate < today;
+  });
   
   return (
     <div className="container mx-auto py-6">

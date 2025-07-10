@@ -643,19 +643,35 @@ export async function getCalendarEvents(
     };
   }
 
-  return (data || []).map((session: SessionWithRelations) => ({
-    id: session.id,
-    title: session.class?.name || 'Class Session',
-    start: new Date(`${session.session_date}T${session.start_time}`),
-    end: new Date(`${session.session_date}T${session.end_time}`),
-    type: 'session' as const,
-    class_id: session.class_id,
-    session_id: session.id,
-
-    enrollment_count: 0, // TODO: Calculate actual enrollment count if needed
-
-    status: session.status as 'scheduled' | 'completed' | 'cancelled',
-  }));
+  return (data || []).map((session: SessionWithRelations) => {
+    // Parse date string as local date to avoid timezone issues
+    const [year, month, day] = session.session_date.split('-').map(Number);
+    const startDateTime = new Date(year, month - 1, day);
+    const endDateTime = new Date(year, month - 1, day);
+    
+    // Parse time strings and set hours/minutes
+    if (session.start_time) {
+      const [startHour, startMinute] = session.start_time.split(':').map(Number);
+      startDateTime.setHours(startHour, startMinute, 0, 0);
+    }
+    
+    if (session.end_time) {
+      const [endHour, endMinute] = session.end_time.split(':').map(Number);
+      endDateTime.setHours(endHour, endMinute, 0, 0);
+    }
+    
+    return {
+      id: session.id,
+      title: session.class?.name || 'Class Session',
+      start: startDateTime,
+      end: endDateTime,
+      type: 'session' as const,
+      class_id: session.class_id,
+      session_id: session.id,
+      enrollment_count: 0, // TODO: Calculate actual enrollment count if needed
+      status: session.status as 'scheduled' | 'completed' | 'cancelled',
+    };
+  });
 }
 
 /**
