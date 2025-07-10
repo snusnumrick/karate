@@ -40,7 +40,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const registrationFee = formData.get("registration_fee") ? parseFloat(formData.get("registration_fee") as string) : undefined;
   const yearlyFee = formData.get("yearly_fee") ? parseFloat(formData.get("yearly_fee") as string) : undefined;
   const individualSessionFee = formData.get("individual_session_fee") ? parseFloat(formData.get("individual_session_fee") as string) : undefined;
-  const isActive = formData.get("is_active") !== "off";
+  const isActive = formData.get("is_active") === "on";
 
   // Validation
   const errors: {
@@ -230,7 +230,7 @@ export default function NewProgram() {
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-3">
                   <Label htmlFor="duration_minutes" className="text-sm font-medium flex items-center gap-2">
-                    <span>Duration (minutes)</span>
+                    <span>Session Duration (minutes)</span>
                     <span className="text-xs bg-muted px-2 py-1 rounded">Required</span>
                   </Label>
                   <Input

@@ -90,7 +90,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const yearlyFee = formData.get("yearly_fee") ? parseFloat(formData.get("yearly_fee") as string) : undefined;
   const individualSessionFee = formData.get("individual_session_fee") ? parseFloat(formData.get("individual_session_fee") as string) : undefined;
 
-  const isActive = formData.get("is_active") !== "off";
+  const isActive = formData.get("is_active") === "on";
 
   // Validation
   const errors: {
