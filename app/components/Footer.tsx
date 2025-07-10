@@ -17,10 +17,7 @@ export default function Footer({ user }: { user?: Session['user'] | null }) {
 
     // Conditionally add/remove links based on user state
     const quickLinks = [...baseLinks];
-    if (user) {
-        // Add Family Portal for logged-in users
-        quickLinks.push({path: "/family", label: "Family Portal"});
-    } else {
+    if (!user) {
         // Add Register for logged-out users
         quickLinks.push({path: "/register", label: "Register"});
     }
