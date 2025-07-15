@@ -70,9 +70,11 @@ export interface Achievement {
 export interface AttendanceRecord {
     id: string;
     studentId: string;
+    classSessionId: string;
+    status: 'present' | 'absent' | 'excused' | 'late';
+    notes?: string | null;
     classDate: string;
     present: boolean;
-    notes?: string;
 }
 
 // Enum for Payment Status
@@ -125,4 +127,95 @@ export interface UserProfile {
     email: string;
     role: 'user' | 'admin' | 'instructor';
     familyId?: string;
+}
+
+// Belt rank enum to match database
+export type BeltRank = 
+    | 'white'
+    | 'yellow'
+    | 'orange'
+    | 'green'
+    | 'blue'
+    | 'purple'
+    | 'red'
+    | 'brown'
+    | 'black';
+
+// Program interface for multi-class system
+export interface Program {
+    id: string;
+    name: string;
+    description?: string;
+    durationMinutes: number;
+    // Capacity constraints
+    maxCapacity?: number; // Upper bound for all classes in this program
+    // Frequency constraints
+    sessionsPerWeek: number; // Required frequency
+    minSessionsPerWeek?: number; // Optional minimum (for flexible programs)
+    maxSessionsPerWeek?: number; // Optional maximum (for flexible programs)
+    // Belt requirements
+    minBeltRank?: BeltRank; // Minimum belt rank required
+    maxBeltRank?: BeltRank; // Maximum belt rank allowed
+    beltRankRequired: boolean; // Whether belt rank is enforced
+    // Prerequisite programs
+    prerequisitePrograms?: string[]; // Array of program IDs that must be completed first
+    // Age and demographic constraints
+    minAge?: number;
+    maxAge?: number;
+    genderRestriction: 'male' | 'female' | 'none';
+    specialNeedsSupport: boolean;
+    // Pricing structure
+    monthlyFee: number;
+    registrationFee: number;
+    yearlyFee: number;
+    individualSessionFee: number;
+    // System fields
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// Class interface for multi-class system
+export interface Class {
+    id: string;
+    programId: string;
+    name: string;
+    description?: string;
+    maxCapacity?: number; // Must be <= program.maxCapacity
+    instructorId?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    // Related data
+    program?: Program;
+    schedules?: ClassSchedule[];
+    enrollments?: Enrollment[];
+}
+
+// Class schedule interface
+export interface ClassSchedule {
+    id: string;
+    classId: string;
+    dayOfWeek: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+    startTime: string;
+    createdAt: string;
+}
+
+// Enrollment interface
+export interface Enrollment {
+    id: string;
+    studentId: string;
+    classId: string;
+    programId: string;
+    status: 'active' | 'inactive' | 'completed' | 'dropped' | 'waitlist' | 'trial';
+    enrolledAt: string;
+    completedAt?: string;
+    droppedAt?: string;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
+    // Related data
+    student?: Student;
+    class?: Class;
+    program?: Program;
 }

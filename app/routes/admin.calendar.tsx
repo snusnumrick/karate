@@ -7,7 +7,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Calendar } from "~/components/calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { Calendar as CalendarIcon, Users, DollarSign, Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter } from "lucide-react";
@@ -179,7 +179,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         if (!enrollmentCounts[enrollment.class_id]) {
           enrollmentCounts[enrollment.class_id] = { enrolled: 0, waitlist: 0 };
         }
-        if (enrollment.status === 'active') {
+        if (enrollment.status === 'active' || enrollment.status === 'trial') {
           enrollmentCounts[enrollment.class_id].enrolled++;
         } else if (enrollment.status === 'waitlist') {
           enrollmentCounts[enrollment.class_id].waitlist++;
@@ -187,18 +187,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
       });
     }
 
-    // Check attendance records for sessions (by date)
-    const sessionDates = [...new Set(sessions.map(s => s.session_date))];
+    // Check attendance records for sessions
+    const sessionIds = sessions.map(s => s.id);
     const attendanceRecords: Record<string, boolean> = {};
 
-    if (sessionDates.length > 0) {
+    if (sessionIds.length > 0) {
       const { data: attendanceData } = await supabaseServer
         .from('attendance')
-        .select('class_date')
-        .in('class_date', sessionDates);
+        .select('class_session_id')
+        .in('class_session_id', sessionIds);
 
       (attendanceData || []).forEach(record => {
-        attendanceRecords[record.class_date] = true;
+        if (record.class_session_id) {
+          attendanceRecords[record.class_session_id] = true;
+        }
       });
     }
 
@@ -247,7 +249,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           instructorName: instructorData ? instructorData.first_name + ' ' + instructorData.last_name : undefined,
           
           paymentStatus: 'complete' as const, // Would need payment integration
-          attendanceRecorded: !!attendanceRecords[session.session_date],
+          attendanceRecorded: !!attendanceRecords[session.id],
           sessionGenerated: true,
           
           adminActions: {
@@ -455,6 +457,13 @@ export default function AdminCalendar() {
             />
           </CardContent>
         </Card>
+      </div>
+
+      {/* Month/Year Header */}
+      <div className="text-center py-2">
+        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+          {format(currentDate, 'MMMM yyyy')} Overview
+        </h2>
       </div>
 
       {/* Stats Cards */}

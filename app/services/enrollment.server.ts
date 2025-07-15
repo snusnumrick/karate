@@ -312,10 +312,10 @@ export async function validateEnrollment(
 
     // Check capacity
     const { count: enrollmentCount } = await supabase
-      .from('enrollments')
-      .select('id', { count: 'exact' })
-      .eq('class_id', classId)
-      .eq('status', 'active');
+    .from('enrollments')
+    .select('id', { count: 'exact' })
+    .eq('class_id', classId)
+    .in('status', ['active', 'trial']);
 
     const currentEnrollment = enrollmentCount || 0;
     const maxCapacity = classData.max_capacity || 0;
@@ -342,7 +342,7 @@ export async function validateEnrollment(
       }
     }
 
-    // Check program eligibility
+    // Check program eligibility using comprehensive database function
     if (classData.program) {
       const eligibilityCheck = await checkProgramEligibility(
         classData.program.id,
@@ -352,42 +352,23 @@ export async function validateEnrollment(
       
       meetsEligibility = eligibilityCheck.eligible;
       if (!meetsEligibility) {
-        errors.push(...eligibilityCheck.reasons);
-      }
-
-      // More detailed checks
-      const { data: student } = await supabase
-        .from('students')
-        .select('birth_date')
-        .eq('id', studentId)
-        .single();
-
-      if (student) {
-        // Age check
-        const birthDate = new Date(student.birth_date);
-        const today = new Date();
-        const age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-
-        // Age check
-        if (classData.program.min_age !== null || classData.program.max_age !== null) {
-          if (classData.program.min_age !== null && actualAge < classData.program.min_age) {
-            errors.push(`Student is too young (${actualAge} years old, minimum ${classData.program.min_age})`);
-            ageAppropriate = false;
-          } else if (classData.program.max_age !== null && actualAge > classData.program.max_age) {
-            errors.push(`Student is too old (${actualAge} years old, maximum ${classData.program.max_age})`);
-            ageAppropriate = false;
-          } else {
-            ageAppropriate = true;
-          }
+        // Handle cases where reasons might not be an array or might be undefined
+        if (Array.isArray(eligibilityCheck.reasons)) {
+          errors.push(...eligibilityCheck.reasons);
+        } else if (eligibilityCheck.reasons) {
+          errors.push(String(eligibilityCheck.reasons));
         } else {
-          ageAppropriate = true;
+          errors.push('Student does not meet program eligibility requirements');
         }
-
-        // Belt requirements (placeholder - implement when belt system is ready)
-        beltRequirementsMet = true; // Default to true for now
       }
+
+      // The checkProgramEligibility function now handles all validation:
+      // - Age requirements (min_age, max_age)
+      // - Belt rank requirements (min_belt_rank, max_belt_rank, belt_rank_required)
+      // - Prerequisite programs (prerequisite_programs)
+      // So we can set these flags based on the comprehensive check
+      ageAppropriate = eligibilityCheck.eligible;
+      beltRequirementsMet = eligibilityCheck.eligible;
     }
 
     // Check for schedule conflicts
@@ -447,7 +428,7 @@ export async function processWaitlist(
     .from('enrollments')
     .select('id', { count: 'exact' })
     .eq('class_id', classId)
-    .eq('status', 'active');
+    .in('status', ['active', 'trial']);
 
   const currentEnrollment = enrollmentCount || 0;
   const maxCapacity = classData.max_capacity || 0;
@@ -565,7 +546,7 @@ export async function getEnrollmentStats(
 
   const stats = {
     total_enrolled: enrollments?.length || 0,
-    active_enrollments: enrollments?.filter((e: { status: string }) => e.status === 'active').length || 0,
+    active_enrollments: enrollments?.filter((e: { status: string }) => ['active', 'trial'].includes(e.status)).length || 0,
     waitlist_count: enrollments?.filter((e: { status: string }) => e.status === 'waitlist').length || 0,
     completion_rate: 0,
     average_attendance: 0,

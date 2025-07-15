@@ -4,6 +4,7 @@ import { Link, useLoaderData } from "@remix-run/react"; // Remove useRouteError
 import { createClient } from '@supabase/supabase-js'; // Import createClient
 import { PaymentStatus } from "~/types/models"; // Import the enum
 
+
 // Loader now only fetches data, assumes auth handled by parent layout (_admin.tsx)
 // Give the unused argument object a name prefixed with underscore and disable the lint rule for this line
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -62,7 +63,7 @@ export async function loader(_: LoaderFunctionArgs) {
         ] = await Promise.all([
             supabaseAdmin.from('programs').select('id', {count: 'exact', head: true}).eq('is_active', true),
             supabaseAdmin.from('classes').select('id', {count: 'exact', head: true}).eq('is_active', true),
-            supabaseAdmin.from('enrollments').select('id', {count: 'exact', head: true}).eq('status', 'active'),
+            supabaseAdmin.from('enrollments').select('id', {count: 'exact', head: true}).in('status', ['active', 'trial']),
             supabaseAdmin.from('classes')
                 .select('id, max_capacity')
                 .eq('is_active', true),
@@ -233,6 +234,47 @@ export async function loader(_: LoaderFunctionArgs) {
         
         const missingWaiversCount = familiesMissingWaivers;
 
+        // Fetch today's sessions
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todaysSessions, error: sessionsError } = await supabaseAdmin
+            .from('class_sessions')
+            .select(`
+                id,
+                session_date,
+                start_time,
+                end_time,
+                status,
+                class_id,
+                classes!inner(
+                    id,
+                    name,
+                    programs!inner(name)
+                )
+            `)
+            .eq('session_date', today)
+            .order('start_time');
+
+        if (sessionsError) {
+            console.error("Error fetching today's sessions:", sessionsError.message);
+        }
+
+        // Calculate session statistics
+        const totalTodaysSessions = todaysSessions?.length || 0;
+        const completedSessions = todaysSessions?.filter((s: { status: string }) => s.status === 'completed').length || 0;
+        const inProgressSessions = todaysSessions?.filter((s: { status: string; session_date: string; start_time: string; end_time: string }) => {
+            if (s.status !== 'scheduled') return false;
+            const now = new Date();
+            const sessionStart = new Date(`${s.session_date}T${s.start_time}`);
+            const sessionEnd = new Date(`${s.session_date}T${s.end_time}`);
+            return now >= sessionStart && now <= sessionEnd;
+        }).length || 0;
+        const upcomingSessions = todaysSessions?.filter((s: { status: string; session_date: string; start_time: string }) => {
+            if (s.status !== 'scheduled') return false;
+            const now = new Date();
+            const sessionStart = new Date(`${s.session_date}T${s.start_time}`);
+            return now < sessionStart;
+        }).length || 0;
+
         console.log("Admin index loader - Data fetched.");
 
         // Return data without explicitly setting headers
@@ -254,6 +296,12 @@ export async function loader(_: LoaderFunctionArgs) {
             totalCapacity: classCapacityData?.reduce((sum, classData) => sum + (classData.max_capacity || 0), 0) || 0,
             waitlistCount: waitlistCount ?? 0,
             nextClassInfo: nextClassInfo,
+            // Today's sessions data
+            totalTodaysSessions,
+            completedSessions,
+            inProgressSessions,
+            upcomingSessions,
+            todaysSessions: todaysSessions || [],
         }); // Remove headers object
 
     } catch (error) {
@@ -372,6 +420,8 @@ export default function AdminDashboard() {
                         Manage discount codes →
                     </Link>
                 </div>
+
+
             </div>
 
             {/* Quick Actions & System Status */}
@@ -465,6 +515,60 @@ export default function AdminDashboard() {
                                   className="text-green-600 dark:text-green-400 text-sm hover:underline">
                                 View details →
                             </Link>
+                        </div>
+
+                        <div>
+                            <h3 className="font-medium text-gray-700 dark:text-gray-300">Today&apos;s Sessions</h3>
+                            <div className="space-y-2">
+                                {data.todaysSessions.length > 0 ? (
+                                    data.todaysSessions.slice(0, 3).map((session) => (
+                                        <div key={session.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                    {(session.classes as { name?: string })?.name}
+                                </p>
+                                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                    {session.start_time} - {session.end_time}
+                                                </p>
+                                            </div>
+                                            <div className="flex space-x-2">
+                                                <Link
+                                                    to={`/admin/attendance/record?session=${session.id}`}
+                                                    className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                                                >
+                                                    Attendance
+                                                </Link>
+                                                {session.status === 'scheduled' && (
+                                                    <>
+                                                        <Link
+                                            to={`/admin/classes/${(session.classes as { id?: string })?.id}/sessions/${session.id}/complete`}
+                                            className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded hover:bg-green-200 dark:hover:bg-green-800"
+                                        >
+                                            Complete
+                                        </Link>
+                                        <Link
+                                            to={`/admin/classes/${(session.classes as { id?: string })?.id}/sessions/${session.id}/cancel`}
+                                            className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-2 py-1 rounded hover:bg-red-200 dark:hover:bg-red-800"
+                                        >
+                                            Cancel
+                                        </Link>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-gray-600 dark:text-gray-400 text-sm">
+                                        No sessions scheduled for today
+                                    </p>
+                                )}
+                                {data.todaysSessions.length > 3 && (
+                                    <Link to="/admin/sessions/today"
+                                          className="text-blue-600 dark:text-blue-400 text-sm hover:underline block">
+                                        View all {data.todaysSessions.length} sessions →
+                                    </Link>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

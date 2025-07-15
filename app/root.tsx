@@ -104,6 +104,7 @@ export function Layout() {
             <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
             {/* CSP is now set via HTTP header in entry.server.tsx */}
             {/* Favicon links are now managed solely by the links function */}
+            <meta name="google-site-verification" content="u2fl3O-U-93ZYbncQ8drQwMBMNDWPY159eyNaoJO3Kk" />
             <Meta/>
             <Links/>
             {/* Add Organization Schema */}

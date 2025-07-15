@@ -3318,17 +3318,37 @@ CREATE TABLE IF NOT EXISTS public.programs (
     name text NOT NULL,
     description text NULL,
     duration_minutes integer NOT NULL DEFAULT 60,
+    -- Capacity constraints
+    max_capacity integer NULL, -- Upper bound for all classes in this program
+    -- Frequency constraints
+    sessions_per_week integer NOT NULL DEFAULT 1, -- Required frequency
+    min_sessions_per_week integer NULL, -- Optional minimum (for flexible programs)
+    max_sessions_per_week integer NULL, -- Optional maximum (for flexible programs)
+    -- Belt requirements
+    min_belt_rank belt_rank_enum NULL, -- Minimum belt rank required
+    max_belt_rank belt_rank_enum NULL, -- Maximum belt rank allowed
+    belt_rank_required boolean NOT NULL DEFAULT false, -- Whether belt rank is enforced
+    -- Prerequisite programs
+    prerequisite_programs uuid[] NULL, -- Array of program IDs that must be completed first
+    -- Age and demographic constraints
     min_age integer CHECK (min_age >= 0),
     max_age integer CHECK (max_age >= min_age),
     gender_restriction text DEFAULT 'none' CHECK (gender_restriction IN ('male', 'female', 'none')),
     special_needs_support boolean DEFAULT false,
+    -- Pricing structure
     monthly_fee numeric(10,2) DEFAULT 0,
     registration_fee numeric(10,2) DEFAULT 0,
     yearly_fee numeric(10,2) DEFAULT 0,
     individual_session_fee numeric(10,2) DEFAULT 0,
+    -- System fields
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    -- Constraints
+    CHECK (min_sessions_per_week IS NULL OR min_sessions_per_week > 0),
+    CHECK (max_sessions_per_week IS NULL OR max_sessions_per_week >= COALESCE(min_sessions_per_week, 1)),
+    CHECK (sessions_per_week >= COALESCE(min_sessions_per_week, 1)),
+    CHECK (sessions_per_week <= COALESCE(max_sessions_per_week, sessions_per_week))
 );
 
 -- Classes Table
@@ -3359,11 +3379,15 @@ DO
 $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enrollment_status') THEN
-        CREATE TYPE enrollment_status AS ENUM ('active', 'inactive', 'completed', 'dropped', 'waitlist');
+        CREATE TYPE enrollment_status AS ENUM ('active', 'inactive', 'completed', 'dropped', 'waitlist', 'trial');
     ELSE
         -- Add 'waitlist' to existing enum if it doesn't exist
         IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'waitlist' AND enumtypid = 'enrollment_status'::regtype) THEN
             ALTER TYPE enrollment_status ADD VALUE 'waitlist';
+        END IF;
+        -- Add 'trial' to existing enum if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'trial' AND enumtypid = 'enrollment_status'::regtype) THEN
+            ALTER TYPE enrollment_status ADD VALUE 'trial';
         END IF;
     END IF;
 END $$;
@@ -3380,6 +3404,7 @@ $$
                                                 class_id uuid NOT NULL,
                                                 program_id uuid NOT NULL,
                                                 status enrollment_status NOT NULL DEFAULT 'active',
+                                                paid_until timestamptz,
                                                 enrolled_at timestamptz NOT NULL DEFAULT now(),
                                                 completed_at timestamptz NULL,
                                                 dropped_at timestamptz NULL,
@@ -3482,6 +3507,19 @@ CREATE INDEX idx_programs_yearly_fee ON public.programs (yearly_fee);
 END IF;
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_session_fee') THEN
 CREATE INDEX idx_programs_session_fee ON public.programs (individual_session_fee);
+END IF;
+-- New indexes for multi-class system
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_max_capacity') THEN
+CREATE INDEX idx_programs_max_capacity ON public.programs (max_capacity);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_sessions_per_week') THEN
+CREATE INDEX idx_programs_sessions_per_week ON public.programs (sessions_per_week);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_belt_ranks') THEN
+CREATE INDEX idx_programs_belt_ranks ON public.programs (min_belt_rank, max_belt_rank);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_prerequisites') THEN
+CREATE INDEX idx_programs_prerequisites ON public.programs USING GIN (prerequisite_programs);
 END IF;
 END $$;
 
@@ -3932,6 +3970,288 @@ CROSS JOIN (
 ) AS schedule_data(time_slot, day_of_week, start_time)
 WHERE c.name LIKE '%' || schedule_data.time_slot
 ON CONFLICT DO NOTHING;*/
+
+-- Helper functions for multi-class system
+
+-- Function to convert belt rank enum to ordinal number for comparison
+CREATE OR REPLACE FUNCTION belt_rank_ordinal(rank belt_rank_enum)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN CASE rank
+        WHEN 'white' THEN 1
+        WHEN 'yellow' THEN 2
+        WHEN 'orange' THEN 3
+        WHEN 'green' THEN 4
+        WHEN 'blue' THEN 5
+        WHEN 'purple' THEN 6
+        WHEN 'red' THEN 7
+        WHEN 'brown' THEN 8
+        WHEN 'black' THEN 9
+        ELSE 0
+    END;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- Function to get student's current belt rank
+CREATE OR REPLACE FUNCTION get_student_current_belt_rank(student_id_param UUID)
+RETURNS belt_rank_enum AS $$
+DECLARE
+    current_rank belt_rank_enum;
+BEGIN
+    SELECT belt_rank INTO current_rank
+    FROM belt_awards
+    WHERE student_id = student_id_param
+    ORDER BY awarded_date DESC
+    LIMIT 1;
+    
+    -- Return white belt if no awards found
+    RETURN COALESCE(current_rank, 'white');
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to check if student meets program eligibility requirements
+CREATE OR REPLACE FUNCTION check_program_eligibility(
+    student_id_param UUID,
+    program_id_param UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    student_record RECORD;
+    program_record RECORD;
+    current_belt belt_rank_enum;
+    current_belt_ordinal INTEGER;
+    min_belt_ordinal INTEGER;
+    max_belt_ordinal INTEGER;
+    prerequisite_id UUID;
+    prerequisite_completed BOOLEAN;
+BEGIN
+    -- Get student information
+    SELECT birth_date, gender, special_needs INTO student_record
+    FROM students
+    WHERE id = student_id_param;
+    
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Get program requirements
+    SELECT 
+        min_age, max_age,
+        min_belt_rank, max_belt_rank, belt_rank_required,
+        prerequisite_programs,
+        gender_restriction,
+        special_needs_support
+    INTO program_record
+    FROM programs
+    WHERE id = program_id_param AND is_active = true;
+    
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Check age requirements
+    IF program_record.min_age IS NOT NULL THEN
+        IF EXTRACT(YEAR FROM AGE(student_record.birth_date)) < program_record.min_age THEN
+            RETURN FALSE;
+        END IF;
+    END IF;
+    
+    IF program_record.max_age IS NOT NULL THEN
+        IF EXTRACT(YEAR FROM AGE(student_record.birth_date)) > program_record.max_age THEN
+            RETURN FALSE;
+        END IF;
+    END IF;
+    
+    -- Check gender restrictions
+    IF program_record.gender_restriction IS NOT NULL AND program_record.gender_restriction != 'none' THEN
+        IF student_record.gender IS NULL OR student_record.gender != program_record.gender_restriction THEN
+            RETURN FALSE;
+        END IF;
+    END IF;
+    
+    -- Check special needs support
+    IF student_record.special_needs IS NOT NULL AND student_record.special_needs != '' AND program_record.special_needs_support = false THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Check belt rank requirements if enforced
+    IF program_record.belt_rank_required THEN
+        current_belt := get_student_current_belt_rank(student_id_param);
+        current_belt_ordinal := belt_rank_ordinal(current_belt);
+        
+        IF program_record.min_belt_rank IS NOT NULL THEN
+            min_belt_ordinal := belt_rank_ordinal(program_record.min_belt_rank);
+            IF current_belt_ordinal < min_belt_ordinal THEN
+                RETURN FALSE;
+            END IF;
+        END IF;
+        
+        IF program_record.max_belt_rank IS NOT NULL THEN
+            max_belt_ordinal := belt_rank_ordinal(program_record.max_belt_rank);
+            IF current_belt_ordinal > max_belt_ordinal THEN
+                RETURN FALSE;
+            END IF;
+        END IF;
+    END IF;
+    
+    -- Check prerequisite programs
+    IF program_record.prerequisite_programs IS NOT NULL THEN
+        FOREACH prerequisite_id IN ARRAY program_record.prerequisite_programs
+        LOOP
+            SELECT EXISTS(
+                SELECT 1 FROM enrollments e
+                WHERE e.student_id = student_id_param
+                AND e.program_id = prerequisite_id
+                AND e.status = 'completed'
+            ) INTO prerequisite_completed;
+            
+            IF NOT prerequisite_completed THEN
+                RETURN FALSE;
+            END IF;
+        END LOOP;
+    END IF;
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to check if student meets class eligibility requirements (program + capacity)
+CREATE OR REPLACE FUNCTION check_class_eligibility(
+    student_id_param UUID,
+    class_id_param UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    program_id_var UUID;
+    current_enrollment_count INTEGER;
+    class_max_capacity INTEGER;
+BEGIN
+    -- Get class information
+    SELECT program_id, max_capacity INTO program_id_var, class_max_capacity
+    FROM classes
+    WHERE id = class_id_param AND is_active = true;
+    
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- First check program eligibility
+    IF NOT check_program_eligibility(student_id_param, program_id_var) THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Check class capacity if set
+    IF class_max_capacity IS NOT NULL THEN
+        -- Count current active enrollments for this class
+        SELECT COUNT(*) INTO current_enrollment_count
+        FROM enrollments
+        WHERE class_id = class_id_param 
+        AND status IN ('active', 'waitlist');
+        
+        -- Check if class is at capacity
+        IF current_enrollment_count >= class_max_capacity THEN
+            RETURN FALSE;
+        END IF;
+    END IF;
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function to validate class capacity against program capacity
+CREATE OR REPLACE FUNCTION validate_class_capacity()
+RETURNS TRIGGER AS $$
+DECLARE
+    program_max_capacity INTEGER;
+BEGIN
+    -- Get program max capacity
+    SELECT max_capacity INTO program_max_capacity
+    FROM programs
+    WHERE id = NEW.program_id;
+    
+    -- If program has max capacity and class capacity exceeds it, raise error
+    IF program_max_capacity IS NOT NULL AND NEW.max_capacity IS NOT NULL THEN
+        IF NEW.max_capacity > program_max_capacity THEN
+            RAISE EXCEPTION 'Class capacity (%) cannot exceed program max capacity (%)', 
+                NEW.max_capacity, program_max_capacity;
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add trigger to validate class capacity
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'validate_class_capacity_trigger') THEN
+        CREATE TRIGGER validate_class_capacity_trigger
+            BEFORE INSERT OR UPDATE ON public.classes
+            FOR EACH ROW
+            EXECUTE FUNCTION validate_class_capacity();
+    END IF;
+END
+$$;
+
+-- Trigger function to validate class schedule frequency against program requirements
+CREATE OR REPLACE FUNCTION validate_class_schedule_frequency()
+RETURNS TRIGGER AS $$
+DECLARE
+    program_record RECORD;
+    schedule_count INTEGER;
+BEGIN
+    -- Get program frequency requirements
+    SELECT 
+        sessions_per_week,
+        min_sessions_per_week,
+        max_sessions_per_week
+    INTO program_record
+    FROM programs p
+    JOIN classes c ON c.program_id = p.id
+    WHERE c.id = NEW.class_id;
+    
+    -- Count current schedules for this class
+    SELECT COUNT(*) INTO schedule_count
+    FROM class_schedules
+    WHERE class_id = NEW.class_id;
+    
+    -- Skip validation for pay-per-session programs (no subscription commitment)
+    IF program_record.sessions_per_week = 0 THEN
+        RETURN NEW;
+    END IF;
+    
+    -- Validate against frequency constraints
+    IF program_record.min_sessions_per_week IS NOT NULL THEN
+        IF schedule_count < program_record.min_sessions_per_week THEN
+            RAISE EXCEPTION 'Class must have at least % sessions per week', 
+                program_record.min_sessions_per_week;
+        END IF;
+    END IF;
+    
+    IF program_record.max_sessions_per_week IS NOT NULL THEN
+        IF schedule_count > program_record.max_sessions_per_week THEN
+            RAISE EXCEPTION 'Class cannot have more than % sessions per week', 
+                program_record.max_sessions_per_week;
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add trigger to validate class schedule frequency
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'validate_schedule_frequency_trigger') THEN
+        CREATE TRIGGER validate_schedule_frequency_trigger
+            AFTER INSERT OR UPDATE OR DELETE ON public.class_schedules
+            FOR EACH ROW
+            EXECUTE FUNCTION validate_class_schedule_frequency();
+    END IF;
+END
+$$;
 
 -- --- End Multi-Class System ---
 

@@ -14,7 +14,7 @@ export interface AvailableDiscountsResponse {
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const { supabaseServer, response } = getSupabaseServerClient(request);
+  const { supabaseClient, supabaseServer, response } = getSupabaseServerClient(request);
   const familyId = params.familyId;
 
   if (!familyId) {
@@ -25,8 +25,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 
   try {
-    // Get user to verify they have access to this family
-    const { data: { user } } = await supabaseServer.auth.getUser();
+    // Get user to verify they have access to this family - use supabaseClient for auth
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
       return json({ discounts: [], error: "Authentication required" }, { 
         status: 401, 
@@ -34,14 +34,25 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       });
     }
 
-    // Verify user belongs to this family
+    // Verify user belongs to this family or is an admin - use supabaseServer for data queries
     const { data: profileData, error: profileError } = await supabaseServer
       .from('profiles')
-      .select('family_id')
+      .select('family_id, role')
       .eq('id', user.id)
       .single();
 
-    if (profileError || profileData?.family_id !== familyId) {
+    if (profileError) {
+      return json({ discounts: [], error: "Access denied" }, { 
+        status: 403, 
+        headers: response.headers 
+      });
+    }
+
+    // Allow access if user is admin or belongs to the family
+    const isAdmin = profileData?.role === 'admin';
+    const belongsToFamily = profileData?.family_id === familyId;
+    
+    if (!isAdmin && !belongsToFamily) {
       return json({ discounts: [], error: "Access denied" }, { 
         status: 403, 
         headers: response.headers 
@@ -62,11 +73,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const applicableDiscounts: AvailableDiscountCode[] = [];
 
     for (const discount of allDiscountCodes) {
-      console.log(`Checking discount code ${discount.name} (${discount.id})...`);
+      console.log(`Checking discount code ${discount.code} (${discount.id})...`);
 
       // Check if discount is applicable to the payment type
       if (!discount.applicable_to.includes(applicableTo)) {
-        console.log(`  Discount is not applicable to ${applicableTo}.`);
+        // console.log(`  Discount is not applicable to ${applicableTo}.`);
         continue;
       }
 
@@ -118,8 +129,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
           console.error('Error checking discount usage:', usageError);
           continue;
         }
-
-        console.log(`  Discount has not been used yet. ${usageData?.length || 0} usages found.`);
 
         if (usageData && usageData.length > 0) {
           console.log(`  Discount has already been used.`);

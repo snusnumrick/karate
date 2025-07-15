@@ -7,31 +7,49 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       attendance: {
         Row: {
           class_date: string
+          class_session_id: string | null
           id: string
           notes: string | null
           present: boolean
+          status: string
           student_id: string
         }
         Insert: {
           class_date: string
+          class_session_id?: string | null
           id?: string
           notes?: string | null
           present: boolean
+          status?: string
           student_id: string
         }
         Update: {
           class_date?: string
+          class_session_id?: string | null
           id?: string
           notes?: string | null
           present?: boolean
+          status?: string
           student_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_class_session_id_fkey"
+            columns: ["class_session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_student_id_fkey"
             columns: ["student_id"]
@@ -40,6 +58,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      attendance_backup: {
+        Row: {
+          class_date: string | null
+          id: string | null
+          notes: string | null
+          present: boolean | null
+          student_id: string | null
+        }
+        Insert: {
+          class_date?: string | null
+          id?: string | null
+          notes?: string | null
+          present?: boolean | null
+          student_id?: string | null
+        }
+        Update: {
+          class_date?: string | null
+          id?: string | null
+          notes?: string | null
+          present?: boolean | null
+          student_id?: string | null
+        }
+        Relationships: []
       }
       automation_rule_discount_templates: {
         Row: {
@@ -112,6 +154,84 @@ export type Database = {
           },
         ]
       }
+      class_schedules: {
+        Row: {
+          class_id: string
+          created_at: string
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          id: string
+          start_time: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          id?: string
+          start_time: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          day_of_week?: Database["public"]["Enums"]["day_of_week"]
+          id?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
+      class_sessions: {
+        Row: {
+          class_id: string
+          created_at: string
+          end_time: string
+          id: string
+          instructor_id: string | null
+          notes: string | null
+          session_date: string
+          start_time: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          instructor_id?: string | null
+          notes?: string | null
+          session_date: string
+          start_time: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          instructor_id?: string | null
+          notes?: string | null
+          session_date?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_sessions_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           created_at: string
@@ -159,6 +279,13 @@ export type Database = {
             columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs_with_belt_info"
             referencedColumns: ["id"]
           },
         ]
@@ -598,6 +725,7 @@ export type Database = {
           enrolled_at: string
           id: string
           notes: string | null
+          paid_until: string | null
           program_id: string
           status: Database["public"]["Enums"]["enrollment_status"]
           student_id: string
@@ -611,6 +739,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           notes?: string | null
+          paid_until?: string | null
           program_id: string
           status?: Database["public"]["Enums"]["enrollment_status"]
           student_id: string
@@ -624,12 +753,34 @@ export type Database = {
           enrolled_at?: string
           id?: string
           notes?: string | null
+          paid_until?: string | null
           program_id?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
           student_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "enrollments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs_with_belt_info"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "enrollments_student_id_fkey"
             columns: ["student_id"]
@@ -1282,67 +1433,79 @@ export type Database = {
       }
       programs: {
         Row: {
-          age_group: string | null
-          belt_system: string | null
+          belt_rank_required: boolean | null
           created_at: string
           description: string | null
-          duration_weeks: number | null
-          eligibility_rules: Json | null
-          family_discount: number | null
+          duration_minutes: number
           gender_restriction: string | null
           id: string
+          individual_session_fee: number | null
           is_active: boolean
           max_age: number | null
+          max_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity: number | null
+          max_sessions_per_week: number | null
           min_age: number | null
+          min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week: number | null
           monthly_fee: number | null
           name: string
-          payment_frequency: string | null
-          pricing_structure: Json | null
+          prerequisite_programs: string[] | null
           registration_fee: number | null
+          sessions_per_week: number
           special_needs_support: boolean | null
           updated_at: string
+          yearly_fee: number | null
         }
         Insert: {
-          age_group?: string | null
-          belt_system?: string | null
+          belt_rank_required?: boolean | null
           created_at?: string
           description?: string | null
-          duration_weeks?: number | null
-          eligibility_rules?: Json | null
-          family_discount?: number | null
+          duration_minutes?: number
           gender_restriction?: string | null
           id?: string
+          individual_session_fee?: number | null
           is_active?: boolean
           max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity?: number | null
+          max_sessions_per_week?: number | null
           min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week?: number | null
           monthly_fee?: number | null
           name: string
-          payment_frequency?: string | null
-          pricing_structure?: Json | null
+          prerequisite_programs?: string[] | null
           registration_fee?: number | null
+          sessions_per_week?: number
           special_needs_support?: boolean | null
           updated_at?: string
+          yearly_fee?: number | null
         }
         Update: {
-          age_group?: string | null
-          belt_system?: string | null
+          belt_rank_required?: boolean | null
           created_at?: string
           description?: string | null
-          duration_weeks?: number | null
-          eligibility_rules?: Json | null
-          family_discount?: number | null
+          duration_minutes?: number
           gender_restriction?: string | null
           id?: string
+          individual_session_fee?: number | null
           is_active?: boolean
           max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity?: number | null
+          max_sessions_per_week?: number | null
           min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week?: number | null
           monthly_fee?: number | null
           name?: string
-          payment_frequency?: string | null
-          pricing_structure?: Json | null
+          prerequisite_programs?: string[] | null
           registration_fee?: number | null
+          sessions_per_week?: number
           special_needs_support?: boolean | null
           updated_at?: string
+          yearly_fee?: number | null
         }
         Relationships: []
       }
@@ -1520,8 +1683,107 @@ export type Database = {
           },
         ]
       }
+      programs_with_belt_info: {
+        Row: {
+          belt_rank_required: boolean | null
+          belt_requirement_display: string | null
+          capacity_display: string | null
+          created_at: string | null
+          description: string | null
+          duration_minutes: number | null
+          frequency_display: string | null
+          gender_restriction: string | null
+          id: string | null
+          individual_session_fee: number | null
+          is_active: boolean | null
+          max_age: number | null
+          max_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity: number | null
+          max_sessions_per_week: number | null
+          min_age: number | null
+          min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week: number | null
+          monthly_fee: number | null
+          name: string | null
+          prerequisite_programs: string[] | null
+          registration_fee: number | null
+          sessions_per_week: number | null
+          special_needs_support: boolean | null
+          updated_at: string | null
+          yearly_fee: number | null
+        }
+        Insert: {
+          belt_rank_required?: boolean | null
+          belt_requirement_display?: never
+          capacity_display?: never
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          frequency_display?: never
+          gender_restriction?: string | null
+          id?: string | null
+          individual_session_fee?: number | null
+          is_active?: boolean | null
+          max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity?: number | null
+          max_sessions_per_week?: number | null
+          min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week?: number | null
+          monthly_fee?: number | null
+          name?: string | null
+          prerequisite_programs?: string[] | null
+          registration_fee?: number | null
+          sessions_per_week?: number | null
+          special_needs_support?: boolean | null
+          updated_at?: string | null
+          yearly_fee?: number | null
+        }
+        Update: {
+          belt_rank_required?: boolean | null
+          belt_requirement_display?: never
+          capacity_display?: never
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          frequency_display?: never
+          gender_restriction?: string | null
+          id?: string | null
+          individual_session_fee?: number | null
+          is_active?: boolean | null
+          max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity?: number | null
+          max_sessions_per_week?: number | null
+          min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week?: number | null
+          monthly_fee?: number | null
+          name?: string | null
+          prerequisite_programs?: string[] | null
+          registration_fee?: number | null
+          sessions_per_week?: number | null
+          special_needs_support?: boolean | null
+          updated_at?: string | null
+          yearly_fee?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      belt_rank_ordinal: {
+        Args: { rank: Database["public"]["Enums"]["belt_rank_enum"] }
+        Returns: number
+      }
+      check_class_eligibility: {
+        Args: { student_id_param: string; class_id_param: string }
+        Returns: boolean
+      }
+      check_program_eligibility: {
+        Args: { student_id_param: string; program_id_param: string }
+        Returns: boolean
+      }
       complete_new_user_registration: {
         Args: {
           p_user_id: string
@@ -1581,6 +1843,10 @@ export type Database = {
         Args: { query_text: string }
         Returns: Json
       }
+      generate_class_sessions: {
+        Args: { p_class_id: string; p_start_date: string; p_end_date: string }
+        Returns: number
+      }
       get_admin_conversation_summaries: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1604,6 +1870,36 @@ export type Database = {
       get_family_one_on_one_balance: {
         Args: { p_family_id: string }
         Returns: number
+      }
+      get_program_statistics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_programs: number
+          programs_with_belt_requirements: number
+          private_programs: number
+          group_programs: number
+          open_programs: number
+          avg_sessions_per_week: number
+        }[]
+      }
+      get_student_current_belt_rank: {
+        Args: { student_id_param: string }
+        Returns: Database["public"]["Enums"]["belt_rank_enum"]
+      }
+      get_student_eligible_programs: {
+        Args: { student_id_param: string }
+        Returns: {
+          program_id: string
+          program_name: string
+          description: string
+          belt_requirement_display: string
+          frequency_display: string
+          capacity_display: string
+          monthly_fee: number
+          individual_session_fee: number
+          is_eligible: boolean
+          eligibility_reason: string
+        }[]
       }
       increment_discount_code_usage: {
         Args: { p_discount_code_id: string }
@@ -1640,6 +1936,14 @@ export type Database = {
         | "red"
         | "brown"
         | "black"
+      day_of_week:
+        | "monday"
+        | "tuesday"
+        | "wednesday"
+        | "thursday"
+        | "friday"
+        | "saturday"
+        | "sunday"
       discount_event_type:
         | "student_enrollment"
         | "first_payment"
@@ -1648,7 +1952,13 @@ export type Database = {
         | "family_referral"
         | "birthday"
         | "seasonal_promotion"
-      enrollment_status: "active" | "inactive" | "completed" | "dropped"
+      enrollment_status:
+        | "active"
+        | "inactive"
+        | "completed"
+        | "dropped"
+        | "waitlist"
+        | "trial"
       order_status:
         | "pending_payment"
         | "paid_pending_pickup"
@@ -1668,21 +1978,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -1700,14 +2014,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -1723,14 +2039,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1746,14 +2064,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1761,14 +2081,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
@@ -1787,6 +2109,15 @@ export const Constants = {
         "brown",
         "black",
       ],
+      day_of_week: [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ],
       discount_event_type: [
         "student_enrollment",
         "first_payment",
@@ -1796,7 +2127,14 @@ export const Constants = {
         "birthday",
         "seasonal_promotion",
       ],
-      enrollment_status: ["active", "inactive", "completed", "dropped"],
+      enrollment_status: [
+        "active",
+        "inactive",
+        "completed",
+        "dropped",
+        "waitlist",
+        "trial",
+      ],
       order_status: [
         "pending_payment",
         "paid_pending_pickup",

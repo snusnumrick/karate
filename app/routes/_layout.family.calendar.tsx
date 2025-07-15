@@ -225,7 +225,12 @@ export default function FamilyCalendarPage() {
   // Convert raw data to calendar events
   const studentList = students.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` }));
   const sessionEvents = sessionsToCalendarEvents(sessions, enrollments, studentList);
-  const attendanceEvents = attendanceToCalendarEvents(attendance, sessions, enrollments, studentList);
+  const attendanceEvents = attendanceToCalendarEvents(
+    attendance.map(a => ({...a, status: a.status as 'present' | 'absent' | 'excused' | 'late'})),
+    sessions, 
+    enrollments, 
+    studentList
+  );
   const allEvents = [...sessionEvents, ...attendanceEvents];
 
   const handleDateChange = (newDate: Date) => {

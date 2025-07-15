@@ -157,22 +157,28 @@ export function mapPaymentToSupabase(payment: Payment): Database['public']['Tabl
 
 // Attendance mappers
 export function mapAttendanceFromSupabase(row: Database['public']['Tables']['attendance']['Row']): AttendanceRecord {
+    if (!row.class_session_id) {
+        throw new Error("Class session ID is missing for an attendance record.");
+    }
     return {
         id: row.id,
         studentId: row.student_id,
+        classSessionId: row.class_session_id,
+        status: row.status as 'present' | 'absent' | 'excused' | 'late',
+        notes: row.notes || undefined,
         classDate: row.class_date,
-        present: row.present,
-        notes: row.notes || undefined
+        present: row.present
     };
 }
 
-export function mapAttendanceToSupabase(record: AttendanceRecord): Database['public']['Tables']['attendance']['Insert'] {
+export function mapAttendanceToSupabase(record: Omit<AttendanceRecord, 'id'>): Database['public']['Tables']['attendance']['Insert'] {
     return {
-        id: record.id,
         student_id: record.studentId,
+        class_session_id: record.classSessionId,
+        status: record.status,
+        notes: record.notes,
         class_date: record.classDate,
-        present: record.present,
-        notes: record.notes
+        present: record.present
     };
 }
 

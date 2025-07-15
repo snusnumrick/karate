@@ -32,14 +32,30 @@ export async function action({ request }: ActionFunctionArgs) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   const durationMinutes = formData.get("duration_minutes") ? parseInt(formData.get("duration_minutes") as string) : undefined;
+  
+  // Capacity and frequency fields
+  const maxCapacity = formData.get("max_capacity") ? parseInt(formData.get("max_capacity") as string) : undefined;
+  const sessionsPerWeek = formData.get("sessions_per_week") ? parseInt(formData.get("sessions_per_week") as string) : undefined;
+  const minSessionsPerWeek = formData.get("min_sessions_per_week") ? parseInt(formData.get("min_sessions_per_week") as string) : undefined;
+  const maxSessionsPerWeek = formData.get("max_sessions_per_week") ? parseInt(formData.get("max_sessions_per_week") as string) : undefined;
+  
+  // Belt requirements
+  const beltRankRequired = formData.get("belt_rank_required") === "on";
+  const minBeltRank = formData.get("min_belt_rank") as string || undefined;
+  const maxBeltRank = formData.get("max_belt_rank") as string || undefined;
+  
+  // Age and demographic constraints
   const minAge = formData.get("min_age") ? parseInt(formData.get("min_age") as string) : undefined;
   const maxAge = formData.get("max_age") ? parseInt(formData.get("max_age") as string) : undefined;
   const genderRestriction = formData.get("gender_restriction") as string || "none";
   const specialNeedsSupport = formData.get("special_needs_support") === "on";
+  
+  // Pricing
   const monthlyFee = formData.get("monthly_fee") ? parseFloat(formData.get("monthly_fee") as string) : undefined;
   const registrationFee = formData.get("registration_fee") ? parseFloat(formData.get("registration_fee") as string) : undefined;
   const yearlyFee = formData.get("yearly_fee") ? parseFloat(formData.get("yearly_fee") as string) : undefined;
   const individualSessionFee = formData.get("individual_session_fee") ? parseFloat(formData.get("individual_session_fee") as string) : undefined;
+  
   const isActive = formData.get("is_active") === "on";
 
   // Validation
@@ -95,14 +111,27 @@ export async function action({ request }: ActionFunctionArgs) {
       name,
       description: description || undefined,
       duration_minutes: durationMinutes,
+      // Capacity constraints
+      max_capacity: maxCapacity,
+      // Frequency constraints
+      sessions_per_week: sessionsPerWeek,
+      min_sessions_per_week: minSessionsPerWeek,
+      max_sessions_per_week: maxSessionsPerWeek,
+      // Belt requirements
+      belt_rank_required: beltRankRequired,
+      min_belt_rank: minBeltRank as 'white' | 'yellow' | 'orange' | 'green' | 'blue' | 'purple' | 'red' | 'brown' | 'black' | undefined,
+      max_belt_rank: maxBeltRank as 'white' | 'yellow' | 'orange' | 'green' | 'blue' | 'purple' | 'red' | 'brown' | 'black' | undefined,
+      // Age and demographic constraints
       min_age: minAge,
       max_age: maxAge,
       gender_restriction: genderRestriction as 'male' | 'female' | 'none',
       special_needs_support: specialNeedsSupport,
+      // Pricing structure
       monthly_fee: monthlyFee,
       yearly_fee: yearlyFee,
       individual_session_fee: individualSessionFee,
       registration_fee: registrationFee,
+      // System fields
       is_active: isActive,
     };
 
@@ -322,6 +351,131 @@ export default function NewProgram() {
                       Check if this program provides special accommodations
                     </p>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Capacity and Frequency Section */}
+            <div className="space-y-6">
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-semibold text-foreground">Capacity & Frequency</h3>
+                <p className="text-sm text-muted-foreground mt-1">Set capacity limits and training frequency requirements</p>
+              </div>
+              
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="space-y-3">
+                  <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity</Label>
+                  <Input
+                    id="max_capacity"
+                    name="max_capacity"
+                    type="number"
+                    min="1"
+                    placeholder="e.g., 20"
+                    className="h-11"
+                  />
+                  <p className="text-xs text-muted-foreground">Maximum students per class (leave empty for unlimited)</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="sessions_per_week" className="text-sm font-medium">Sessions Per Week</Label>
+                  <Input
+                    id="sessions_per_week"
+                    name="sessions_per_week"
+                    type="number"
+                    min="1"
+                    placeholder="e.g., 2"
+                    className="h-11"
+                  />
+                  <p className="text-xs text-muted-foreground">Required training frequency</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Flexible Frequency</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      name="min_sessions_per_week"
+                      type="number"
+                      min="1"
+                      placeholder="Min"
+                      className="h-11"
+                    />
+                    <Input
+                      name="max_sessions_per_week"
+                      type="number"
+                      min="1"
+                      placeholder="Max"
+                      className="h-11"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Optional: for flexible programs (e.g., 3-5x/week)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Belt Requirements Section */}
+            <div className="space-y-6">
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-semibold text-foreground">Belt Requirements</h3>
+                <p className="text-sm text-muted-foreground mt-1">Set belt rank eligibility requirements</p>
+              </div>
+              
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3 p-4 border rounded-lg bg-muted/30">
+                    <Checkbox
+                      id="belt_rank_required"
+                      name="belt_rank_required"
+                      className="mt-1"
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="belt_rank_required" className="text-sm font-medium cursor-pointer">
+                        Enforce Belt Requirements
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Check to require specific belt ranks for enrollment
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="min_belt_rank" className="text-sm font-medium">Minimum Belt Rank</Label>
+                  <Select name="min_belt_rank">
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select minimum belt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="white">White Belt</SelectItem>
+                      <SelectItem value="yellow">Yellow Belt</SelectItem>
+                      <SelectItem value="orange">Orange Belt</SelectItem>
+                      <SelectItem value="green">Green Belt</SelectItem>
+                      <SelectItem value="blue">Blue Belt</SelectItem>
+                      <SelectItem value="purple">Purple Belt</SelectItem>
+                      <SelectItem value="red">Red Belt</SelectItem>
+                      <SelectItem value="brown">Brown Belt</SelectItem>
+                      <SelectItem value="black">Black Belt</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="max_belt_rank" className="text-sm font-medium">Maximum Belt Rank</Label>
+                  <Select name="max_belt_rank">
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select maximum belt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="white">White Belt</SelectItem>
+                      <SelectItem value="yellow">Yellow Belt</SelectItem>
+                      <SelectItem value="orange">Orange Belt</SelectItem>
+                      <SelectItem value="green">Green Belt</SelectItem>
+                      <SelectItem value="blue">Blue Belt</SelectItem>
+                      <SelectItem value="purple">Purple Belt</SelectItem>
+                      <SelectItem value="red">Red Belt</SelectItem>
+                      <SelectItem value="brown">Brown Belt</SelectItem>
+                      <SelectItem value="black">Black Belt</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

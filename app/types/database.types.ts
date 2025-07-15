@@ -17,26 +17,39 @@ export type Database = {
       attendance: {
         Row: {
           class_date: string
+          class_session_id: string | null
           id: string
           notes: string | null
           present: boolean
+          status: string
           student_id: string
         }
         Insert: {
           class_date: string
+          class_session_id?: string | null
           id?: string
           notes?: string | null
           present: boolean
+          status?: string
           student_id: string
         }
         Update: {
           class_date?: string
+          class_session_id?: string | null
           id?: string
           notes?: string | null
           present?: boolean
+          status?: string
           student_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_class_session_id_fkey"
+            columns: ["class_session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_student_id_fkey"
             columns: ["student_id"]
@@ -45,6 +58,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      attendance_backup: {
+        Row: {
+          class_date: string | null
+          id: string | null
+          notes: string | null
+          present: boolean | null
+          student_id: string | null
+        }
+        Insert: {
+          class_date?: string | null
+          id?: string | null
+          notes?: string | null
+          present?: boolean | null
+          student_id?: string | null
+        }
+        Update: {
+          class_date?: string | null
+          id?: string | null
+          notes?: string | null
+          present?: boolean | null
+          student_id?: string | null
+        }
+        Relationships: []
       }
       automation_rule_discount_templates: {
         Row: {
@@ -242,6 +279,13 @@ export type Database = {
             columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs_with_belt_info"
             referencedColumns: ["id"]
           },
         ]
@@ -681,6 +725,7 @@ export type Database = {
           enrolled_at: string
           id: string
           notes: string | null
+          paid_until: string | null
           program_id: string
           status: Database["public"]["Enums"]["enrollment_status"]
           student_id: string
@@ -694,6 +739,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           notes?: string | null
+          paid_until?: string | null
           program_id: string
           status?: Database["public"]["Enums"]["enrollment_status"]
           student_id: string
@@ -707,6 +753,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           notes?: string | null
+          paid_until?: string | null
           program_id?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
           student_id?: string
@@ -725,6 +772,13 @@ export type Database = {
             columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs_with_belt_info"
             referencedColumns: ["id"]
           },
           {
@@ -1379,6 +1433,7 @@ export type Database = {
       }
       programs: {
         Row: {
+          belt_rank_required: boolean | null
           created_at: string
           description: string | null
           duration_minutes: number
@@ -1387,15 +1442,23 @@ export type Database = {
           individual_session_fee: number | null
           is_active: boolean
           max_age: number | null
+          max_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity: number | null
+          max_sessions_per_week: number | null
           min_age: number | null
+          min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week: number | null
           monthly_fee: number | null
           name: string
+          prerequisite_programs: string[] | null
           registration_fee: number | null
+          sessions_per_week: number
           special_needs_support: boolean | null
           updated_at: string
           yearly_fee: number | null
         }
         Insert: {
+          belt_rank_required?: boolean | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
@@ -1404,15 +1467,23 @@ export type Database = {
           individual_session_fee?: number | null
           is_active?: boolean
           max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity?: number | null
+          max_sessions_per_week?: number | null
           min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week?: number | null
           monthly_fee?: number | null
           name: string
+          prerequisite_programs?: string[] | null
           registration_fee?: number | null
+          sessions_per_week?: number
           special_needs_support?: boolean | null
           updated_at?: string
           yearly_fee?: number | null
         }
         Update: {
+          belt_rank_required?: boolean | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
@@ -1421,10 +1492,17 @@ export type Database = {
           individual_session_fee?: number | null
           is_active?: boolean
           max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity?: number | null
+          max_sessions_per_week?: number | null
           min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week?: number | null
           monthly_fee?: number | null
           name?: string
+          prerequisite_programs?: string[] | null
           registration_fee?: number | null
+          sessions_per_week?: number
           special_needs_support?: boolean | null
           updated_at?: string
           yearly_fee?: number | null
@@ -1605,8 +1683,107 @@ export type Database = {
           },
         ]
       }
+      programs_with_belt_info: {
+        Row: {
+          belt_rank_required: boolean | null
+          belt_requirement_display: string | null
+          capacity_display: string | null
+          created_at: string | null
+          description: string | null
+          duration_minutes: number | null
+          frequency_display: string | null
+          gender_restriction: string | null
+          id: string | null
+          individual_session_fee: number | null
+          is_active: boolean | null
+          max_age: number | null
+          max_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity: number | null
+          max_sessions_per_week: number | null
+          min_age: number | null
+          min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week: number | null
+          monthly_fee: number | null
+          name: string | null
+          prerequisite_programs: string[] | null
+          registration_fee: number | null
+          sessions_per_week: number | null
+          special_needs_support: boolean | null
+          updated_at: string | null
+          yearly_fee: number | null
+        }
+        Insert: {
+          belt_rank_required?: boolean | null
+          belt_requirement_display?: never
+          capacity_display?: never
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          frequency_display?: never
+          gender_restriction?: string | null
+          id?: string | null
+          individual_session_fee?: number | null
+          is_active?: boolean | null
+          max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity?: number | null
+          max_sessions_per_week?: number | null
+          min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week?: number | null
+          monthly_fee?: number | null
+          name?: string | null
+          prerequisite_programs?: string[] | null
+          registration_fee?: number | null
+          sessions_per_week?: number | null
+          special_needs_support?: boolean | null
+          updated_at?: string | null
+          yearly_fee?: number | null
+        }
+        Update: {
+          belt_rank_required?: boolean | null
+          belt_requirement_display?: never
+          capacity_display?: never
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          frequency_display?: never
+          gender_restriction?: string | null
+          id?: string | null
+          individual_session_fee?: number | null
+          is_active?: boolean | null
+          max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_capacity?: number | null
+          max_sessions_per_week?: number | null
+          min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_sessions_per_week?: number | null
+          monthly_fee?: number | null
+          name?: string | null
+          prerequisite_programs?: string[] | null
+          registration_fee?: number | null
+          sessions_per_week?: number | null
+          special_needs_support?: boolean | null
+          updated_at?: string | null
+          yearly_fee?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      belt_rank_ordinal: {
+        Args: { rank: Database["public"]["Enums"]["belt_rank_enum"] }
+        Returns: number
+      }
+      check_class_eligibility: {
+        Args: { student_id_param: string; class_id_param: string }
+        Returns: boolean
+      }
+      check_program_eligibility: {
+        Args: { student_id_param: string; program_id_param: string }
+        Returns: boolean
+      }
       complete_new_user_registration: {
         Args: {
           p_user_id: string
@@ -1694,6 +1871,36 @@ export type Database = {
         Args: { p_family_id: string }
         Returns: number
       }
+      get_program_statistics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_programs: number
+          programs_with_belt_requirements: number
+          private_programs: number
+          group_programs: number
+          open_programs: number
+          avg_sessions_per_week: number
+        }[]
+      }
+      get_student_current_belt_rank: {
+        Args: { student_id_param: string }
+        Returns: Database["public"]["Enums"]["belt_rank_enum"]
+      }
+      get_student_eligible_programs: {
+        Args: { student_id_param: string }
+        Returns: {
+          program_id: string
+          program_name: string
+          description: string
+          belt_requirement_display: string
+          frequency_display: string
+          capacity_display: string
+          monthly_fee: number
+          individual_session_fee: number
+          is_eligible: boolean
+          eligibility_reason: string
+        }[]
+      }
       increment_discount_code_usage: {
         Args: { p_discount_code_id: string }
         Returns: undefined
@@ -1751,6 +1958,7 @@ export type Database = {
         | "completed"
         | "dropped"
         | "waitlist"
+        | "trial"
       order_status:
         | "pending_payment"
         | "paid_pending_pickup"
@@ -1925,6 +2133,7 @@ export const Constants = {
         "completed",
         "dropped",
         "waitlist",
+        "trial",
       ],
       order_status: [
         "pending_payment",

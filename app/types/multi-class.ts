@@ -17,14 +17,29 @@ export interface Program {
   name: string;
   description?: string;
   duration_minutes?: number;
+  // Capacity constraints
+  max_capacity?: number;
+  // Frequency constraints
+  sessions_per_week?: number;
+  min_sessions_per_week?: number;
+  max_sessions_per_week?: number;
+  // Belt requirements
+  min_belt_rank?: 'white' | 'yellow' | 'orange' | 'green' | 'blue' | 'purple' | 'red' | 'brown' | 'black';
+  max_belt_rank?: 'white' | 'yellow' | 'orange' | 'green' | 'blue' | 'purple' | 'red' | 'brown' | 'black';
+  belt_rank_required?: boolean;
+  // Prerequisite programs
+  prerequisite_programs?: string[];
+  // Age and demographic constraints
   min_age?: number;
   max_age?: number;
   gender_restriction?: 'male' | 'female' | 'none';
   special_needs_support?: boolean;
+  // Pricing structure
   monthly_fee?: number;
   registration_fee?: number;
   yearly_fee?: number;
   individual_session_fee?: number;
+  // System fields
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -55,7 +70,7 @@ export interface ClassEnrollment {
   class_id: string;
   student_id: string;
   program_id: string;
-  status: 'active' | 'dropped' | 'completed' | 'waitlist';
+  status: 'active' | 'dropped' | 'completed' | 'waitlist' | 'trial';
   enrolled_at: string;
   completed_at?: string;
   dropped_at?: string;
@@ -106,14 +121,29 @@ export interface CreateProgramData {
   name: string;
   description?: string;
   duration_minutes?: number;
+  // Capacity constraints
+  max_capacity?: number;
+  // Frequency constraints
+  sessions_per_week?: number;
+  min_sessions_per_week?: number;
+  max_sessions_per_week?: number;
+  // Belt requirements
+  min_belt_rank?: 'white' | 'yellow' | 'orange' | 'green' | 'blue' | 'purple' | 'red' | 'brown' | 'black';
+  max_belt_rank?: 'white' | 'yellow' | 'orange' | 'green' | 'blue' | 'purple' | 'red' | 'brown' | 'black';
+  belt_rank_required?: boolean;
+  // Prerequisite programs
+  prerequisite_programs?: string[];
+  // Age and demographic constraints
   min_age?: number;
   max_age?: number;
   gender_restriction?: 'male' | 'female' | 'none';
   special_needs_support?: boolean;
+  // Pricing structure
   monthly_fee?: number;
   registration_fee?: number;
   yearly_fee?: number;
   individual_session_fee?: number;
+  // System fields
   is_active?: boolean;
 }
 
@@ -138,7 +168,7 @@ export interface CreateEnrollmentData {
   class_id: string;
   student_id: string;
   program_id: string;
-  status?: 'active' | 'waitlist';
+  status?: 'active' | 'waitlist' | 'trial';
   notes?: string;
 }
 
@@ -146,7 +176,7 @@ export interface UpdateEnrollmentData {
   id: string;
   class_id?: string;
   student_id?: string;
-  status?: 'active' | 'dropped' | 'completed' | 'waitlist';
+  status?: 'active' | 'dropped' | 'completed' | 'waitlist' | 'trial';
   notes?: string;
 }
 
@@ -180,7 +210,7 @@ export interface EnrollmentFilters {
   class_id?: string;
   student_id?: string;
   family_id?: string;
-  status?: 'active' | 'dropped' | 'completed' | 'waitlist';
+  status?: 'active' | 'dropped' | 'completed' | 'waitlist' | 'trial';
   enrollment_date_from?: string;
   enrollment_date_to?: string;
 }

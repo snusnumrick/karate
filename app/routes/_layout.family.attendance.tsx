@@ -12,6 +12,7 @@ type AttendanceRow = Database['public']['Tables']['attendance']['Row'];
 
 type AttendanceWithStudentName = AttendanceRow & {
     students: Pick<StudentRow, 'first_name' | 'last_name'> | null;
+    class_sessions: { session_date: string } | null;
 };
 
 type LoaderData = {
@@ -76,10 +77,11 @@ export async function loader({request}: LoaderFunctionArgs) {
                 .from('attendance')
                 .select(`
           *,
-          students ( first_name, last_name )
+          students ( first_name, last_name ),
+          class_sessions!inner ( session_date )
         `)
                 .in('student_id', studentIds)
-                .order('class_date', {ascending: false}); // Show most recent first
+                .order('class_sessions.session_date', {ascending: false}); // Show most recent first
 
             if (attendanceError) throw attendanceError;
             // Ensure students relation is at least null
@@ -142,15 +144,21 @@ export default function FamilyAttendancePage() {
                         <TableBody>
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{formatDate(record.class_date, { formatString: 'MMM d, yyyy' })}</TableCell>
+                                    <TableCell>{formatDate(record.class_sessions?.session_date, { formatString: 'MMM d, yyyy' })}</TableCell>
                                     <TableCell className="font-medium">
                                         {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
                                     </TableCell>
                                     <TableCell>
-                                        {record.present ? (
+                                        {record.status === 'present' ? (
                                             <Badge variant="default">Present</Badge>
-                                        ) : (
+                                        ) : record.status === 'absent' ? (
                                             <Badge variant="destructive">Absent</Badge>
+                                        ) : record.status === 'excused' ? (
+                                            <Badge variant="secondary">Excused</Badge>
+                                        ) : record.status === 'late' ? (
+                                            <Badge variant="outline">Late</Badge>
+                                        ) : (
+                                            <Badge variant="outline">Unknown</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell>{record.notes || '-'}</TableCell>

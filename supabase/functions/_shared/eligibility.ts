@@ -7,6 +7,7 @@ export type EligibilityStatus = {
   reason: 'Trial' | 'Paid - Monthly' | 'Paid - Yearly' | 'Expired'; // More specific reasons
   lastPaymentDate?: string; // Optional: ISO date string of the last successful payment
   paymentType?: Database['public']['Enums']['payment_type_enum']; // Added payment type
+  paidUntil?: string;
 };
 
 // Configuration (consider making these env vars if they change often)
@@ -15,99 +16,57 @@ const YEARLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS = 370; // ~1 year + buffer
 
 export async function checkStudentEligibility(
   studentId: string,
-  supabaseClient: SupabaseClient<Database>, // Use the passed client
+  supabaseClient: SupabaseClient<Database>,
 ): Promise<EligibilityStatus> {
   console.log(`Checking eligibility for student ID: ${studentId}`);
 
-  // 1. Fetch successful payments linked to this student, ordered by date descending.
-  //    We will filter by type *after* fetching to simplify the initial query.
-  const { data: paymentLinks, error: linkError } = await supabaseClient
-    .from('payment_students')
-    .select(
-      `                                                                                                                                                                                                        
-            payment_id,                                                                                                                                                                                                  
-            payments!inner ( id, payment_date, status, type )                                                                                                                                                            
-        `,
-    ) // Use !inner join syntax to ensure payment exists, select type
+  // 1. Fetch the student's active enrollments with their paid_until dates.
+  const { data: enrollments, error } = await supabaseClient
+    .from('enrollments')
+    .select('paid_until, status')
     .eq('student_id', studentId)
-    .eq('payments.status', 'succeeded') // Keep filter for successful payments
-    .order('payment_date', { foreignTable: 'payments', ascending: false }); // Get most recent first
+    .in('status', ['active', 'trial']); // Check for active or trial enrollments
 
-  if (linkError) {
-    console.error(
-      `Error fetching successful payment links for student ${studentId}:`,
-      linkError.message,
-    );
-    // Default to not eligible if we can't verify payments
-    return { eligible: false, reason: 'Expired' }; // Use 'Expired'
+  if (error) {
+    console.error(`Error fetching enrollments for student ${studentId}:`, error.message);
+    return { eligible: false, reason: 'Expired' };
   }
 
-  // Filter out null payments and filter for the correct *type* here in the code
-  const successfulGroupPayments = paymentLinks
-    .sort((a, b) => new Date(b!.payment_date).getTime() - new Date(a!.payment_date).getTime()) // Sort by date descending after filtering
-    ?.map((link) => link.payments)
-    .filter((payment) =>
-      payment !== null &&
-      payment.payment_date !== null &&
-      payment.type !== null &&
-      ['monthly_group', 'yearly_group'].includes(payment.type) // Filter for group types now
-    ) as Array<{
-      id: string;
-      payment_date: string;
-      status: string;
-      type: Database['public']['Enums']['payment_type_enum'];
-    }> ?? [];
-
-  // 2. Check for Free Trial (zero successful group payments)
-  if (successfulGroupPayments.length === 0) {
-    console.log(`No successful group payment history for student ${studentId}. Status: Trial`);
-    return { eligible: true, reason: 'Trial' };
+  if (!enrollments || enrollments.length === 0) {
+    console.log(`No active enrollments found for student ${studentId}.`);
+    return { eligible: false, reason: 'Expired' };
   }
 
-  // 3. Check the most recent group payment date against the appropriate eligibility window
-  const mostRecentGroupPayment = successfulGroupPayments[0];
-  const lastPaymentDate = new Date(mostRecentGroupPayment.payment_date);
-  const paymentType = mostRecentGroupPayment.type;
-
+  // For simplicity, we'll check if *any* enrollment makes the student eligible.
+  // A more complex system might need to check a specific enrollment (e.g., for a specific class).
   const today = new Date();
-  let eligibilityCutoffDate = new Date(today);
+  let isEligible = false;
+  let eligibilityReason: EligibilityStatus['reason'] = 'Expired';
+  let paidUntil: string | undefined = undefined;
 
-  let reason: EligibilityStatus['reason'] = 'Expired'; // Default if checks fail
-  let eligibilityWindowDays: number;
+  for (const enrollment of enrollments) {
+    if (enrollment.status === 'trial') {
+        return { eligible: true, reason: 'Trial' };
+    }
 
-  if (paymentType === 'yearly_group') {
-    eligibilityWindowDays = YEARLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS;
-    reason = 'Paid - Yearly';
-  } else { // Default to monthly for 'monthly_group' (or any unexpected type that slipped through)
-    eligibilityWindowDays = MONTHLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS;
-    reason = 'Paid - Monthly';
+    if (enrollment.paid_until) {
+      const paidUntilDate = new Date(enrollment.paid_until);
+      if (paidUntilDate >= today) {
+        isEligible = true;
+        // This is a simplification. We don't know if the last payment was monthly or yearly.
+        // We'll just say 'Paid'. A more complex system could store the last payment type on the enrollment.
+        eligibilityReason = 'Paid - Monthly'; // Or 'Paid - Yearly' if you can determine it.
+        paidUntil = enrollment.paid_until;
+        break; // Found an eligible enrollment, no need to check others.
+      }
+    }
   }
 
-  eligibilityCutoffDate.setDate(today.getDate() - eligibilityWindowDays);
-
-  console.log(
-    `Student ${studentId}: Last ${paymentType} payment date: ${mostRecentGroupPayment.payment_date}, Checking against cutoff: ${eligibilityCutoffDate.toISOString()}`,
-  );
-
-  if (lastPaymentDate >= eligibilityCutoffDate) {
-    // Payment is recent enough
-    console.log(`Student ${studentId}: Status: ${reason} (Active)`);
-    return {
-      eligible: true,
-      reason: reason, // Use the determined reason
-      lastPaymentDate: mostRecentGroupPayment.payment_date,
-      paymentType: paymentType,
-    };
+  if (isEligible) {
+    console.log(`Student ${studentId} is eligible. Reason: ${eligibilityReason}`);
+    return { eligible: true, reason: eligibilityReason, paidUntil };
+  } else {
+    console.log(`Student ${studentId} is not eligible. No active enrollments are paid up.`);
+    return { eligible: false, reason: 'Expired' };
   }
-
-  // 4. If not on trial and the most recent group payment is outside the window
-  console.log(
-    `Student ${studentId}: Status: Expired (Last payment ${mostRecentGroupPayment.payment_date} is before cutoff ${eligibilityCutoffDate.toISOString()})`,
-  );
-  return {
-    eligible: false,
-    reason: 'Expired',
-    lastPaymentDate: mostRecentGroupPayment.payment_date, // Still pass the date for context
-    paymentType: paymentType,
-  };
 }

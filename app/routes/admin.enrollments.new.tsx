@@ -119,6 +119,7 @@ export default function NewEnrollmentPage() {
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [eligibleClasses, setEligibleClasses] = useState<typeof classes>([]);
   
   const isSubmitting = navigation.state === "submitting";
   
@@ -135,50 +136,35 @@ export default function NewEnrollmentPage() {
     return { class: classItem, program };
   };
 
-  const getEligibleClasses = () => {
+  // Update eligible classes when student changes
+  useEffect(() => {
     if (!selectedStudent) {
-      return classes; // Show all classes if no student selected
+      setEligibleClasses(classes); // Show all classes if no student selected
+      return;
     }
 
-    return classes.filter(classItem => {
-      const program = programs.find(p => p.id === classItem.program_id);
-      if (!program) return false;
-
-      // Calculate student age
-      const birthDate = new Date(selectedStudent.birth_date);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-
-      // Check age requirements
-       if (program.min_age != null && actualAge < program.min_age) {
-         return false;
-       }
-       if (program.max_age != null && actualAge > program.max_age) {
-         return false;
-       }
-
-      // Check gender restrictions
-      if (program.gender_restriction && program.gender_restriction !== 'none' && program.gender_restriction !== selectedStudent.gender) {
-        return false;
+    // Filter classes based on eligibility
+    const filterEligibleClasses = async () => {
+      try {
+        const response = await fetch(`/api/student-eligible-classes/${selectedStudent.id}`);
+        if (response.ok) {
+          const eligibleClassIds = await response.json();
+          const filtered = classes.filter(c => eligibleClassIds.includes(c.id));
+          setEligibleClasses(filtered);
+        } else {
+          // Fallback to showing all classes if API fails
+          console.warn('Failed to fetch eligible classes, showing all classes');
+          setEligibleClasses(classes);
+        }
+      } catch (error) {
+        console.error('Error fetching eligible classes:', error);
+        // Fallback to showing all classes if there's an error
+        setEligibleClasses(classes);
       }
+    };
 
-      // Check special needs support - strict matching
-      if (selectedStudent.special_needs && !program.special_needs_support) {
-        // Student has special needs but program doesn't support them
-        return false;
-      }
-      if (!selectedStudent.special_needs && program.special_needs_support) {
-        // Student doesn't have special needs but program is for special needs students
-        return false;
-      }
-
-      return true;
-    });
-  };
-
-  const eligibleClasses = getEligibleClasses();
+    filterEligibleClasses();
+  }, [selectedStudent, classes]);
   
   // Auto-select student when family changes
   useEffect(() => {
@@ -347,7 +333,7 @@ export default function NewEnrollmentPage() {
                     <Alert variant="warning">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
-                        No classes are available for this student based on age, gender, or special needs requirements.
+                        No classes are available for this student based on eligibility requirements (age, gender, special needs, belt rank, or prerequisites).
                       </AlertDescription>
                     </Alert>
                   )}

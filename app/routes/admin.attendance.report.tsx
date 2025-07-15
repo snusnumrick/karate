@@ -84,9 +84,13 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
         // Fetch attendance records within the date range
         const {data: attendanceRecords, error: attendanceError} = await supabaseAdmin
             .from('attendance')
-            .select('student_id, present')
-            .gte('class_date', startDate)
-            .lte('class_date', endDate);
+            .select(`
+                student_id, 
+                status,
+                class_sessions!inner(session_date)
+            `)
+            .gte('class_sessions.session_date', startDate)
+            .lte('class_sessions.session_date', endDate);
 
         if (attendanceError) throw new Response("Failed to load attendance data.", {status: 500});
 
@@ -99,7 +103,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
             if (!studentStats[record.student_id]) {
                 studentStats[record.student_id] = {present: 0, absent: 0};
             }
-            if (record.present) {
+            if (record.status === 'present') {
                 overallPresent++;
                 studentStats[record.student_id].present++;
             } else {

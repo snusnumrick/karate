@@ -1,21 +1,36 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link } from "@remix-run/react";
+import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getPrograms } from "~/services/program.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Plus, Edit, Users, Calendar, DollarSign } from "lucide-react";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Plus, Edit, Users, Calendar, DollarSign, Archive } from "lucide-react";
 import type { Program } from "~/types/multi-class";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
-  const programs = await getPrograms();
-  return json({ programs });
+  
+  const url = new URL(request.url);
+  const showInactive = url.searchParams.get('showInactive') === 'true';
+  
+  const programs = await getPrograms(showInactive ? {} : { is_active: true });
+  return json({ programs, showInactive });
 }
 
 export default function ProgramsIndex() {
-  const { programs } = useLoaderData<typeof loader>();
+  const { programs, showInactive } = useLoaderData<typeof loader>();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const handleToggleInactive = (checked: boolean) => {
+    if (checked) {
+      searchParams.set('showInactive', 'true');
+    } else {
+      searchParams.delete('showInactive');
+    }
+    setSearchParams(searchParams);
+  };
 
   return (
     <div className="space-y-6">
@@ -26,28 +41,60 @@ export default function ProgramsIndex() {
             Manage your martial arts programs and their configurations
           </p>
         </div>
-        <Button asChild>
-          <Link to="/admin/programs/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Program
-          </Link>
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="show-inactive"
+              checked={showInactive}
+              onCheckedChange={handleToggleInactive}
+            />
+            <label
+              htmlFor="show-inactive"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Show Inactive
+            </label>
+          </div>
+          <Button asChild>
+            <Link to="/admin/programs/new">
+              <Plus className="h-4 w-4 mr-2" />
+              New Program
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {programs.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No programs found</h3>
+            {showInactive ? (
+              <Archive className="h-12 w-12 text-muted-foreground mb-4" />
+            ) : (
+              <Users className="h-12 w-12 text-muted-foreground mb-4" />
+            )}
+            <h3 className="text-lg font-semibold mb-2">
+              {showInactive ? "No programs found" : "No active programs found"}
+            </h3>
             <p className="text-muted-foreground text-center mb-4">
-              Create your first program to start managing classes and enrollments
+              {showInactive
+                ? "Create your first program to start managing classes and enrollments"
+                : "All programs are currently inactive, or create your first program to get started"
+              }
             </p>
-            <Button asChild>
-              <Link to="/admin/programs/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Program
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              {!showInactive && (
+                <Button variant="outline" onClick={() => handleToggleInactive(true)}>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Show Inactive Programs
+                </Button>
+              )}
+              <Button asChild>
+                <Link to="/admin/programs/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Program
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -70,10 +117,14 @@ export default function ProgramsIndex() {
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground flex items-center">
                       <DollarSign className="h-4 w-4 mr-1" />
-                      Monthly Fee:
+                      {program.monthly_fee ? 'Monthly Fee:' : 
+                       program.yearly_fee ? 'Yearly Fee:' : 
+                       program.individual_session_fee ? 'Session Fee:' : 'Monthly Fee:'}
                     </span>
                     <span>
-                      {program.monthly_fee ? `$${program.monthly_fee}` : 'Not set'}
+                      {program.monthly_fee ? `$${program.monthly_fee}` : 
+                       program.yearly_fee ? `$${program.yearly_fee}` : 
+                       program.individual_session_fee ? `$${program.individual_session_fee}` : 'Not set'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">

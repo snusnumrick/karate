@@ -293,6 +293,17 @@ export class DiscountService {
     // Add the original code to the result for display purposes
     if (result.is_valid) {
       result.code = request.code;
+      
+      // Fetch the discount name for display purposes
+      const { data: discountData } = await supabase
+        .from('discount_codes')
+        .select('name')
+        .eq('code', request.code)
+        .single();
+      
+      if (discountData) {
+        result.name = discountData.name;
+      }
     }
     
     return result;

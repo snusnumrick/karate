@@ -278,7 +278,7 @@ export default function AdminDiscountCodes() {
                           <td className="p-4">
                             <div className="text-sm">
                               {code.current_uses}
-                              {code.max_uses ? ` / ${code.max_uses}` : ' / ∞'}
+                              {code.usage_type === 'one_time' ? ' /  1' : (code.max_uses ? ` / ${code.max_uses}` : ' / ∞')}
                             </div>
                             <div className="text-xs text-muted-foreground">{code.usage_type.replace('_', ' ')}</div>
                           </td>

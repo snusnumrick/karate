@@ -1,6 +1,10 @@
 import {createServerClient} from "@supabase/auth-helpers-remix";
 import {createClient} from "@supabase/supabase-js"; // Import standard client
 import type {Database} from "~/types/database.types";
+import type { EligibilityStatus } from '~/types/payment';
+
+// Re-export EligibilityStatus for other modules
+export type { EligibilityStatus };
 
 // Export createClient for use in other modules
 export { createClient };
@@ -268,12 +272,7 @@ export async function createInitialPaymentRecord(
 const MONTHLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS = 35; // ~1 month + buffer
 const YEARLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS = 370; // ~1 year + buffer
 
-export type EligibilityStatus = {
-    eligible: boolean;
-    reason: 'Trial' | 'Paid - Monthly' | 'Paid - Yearly' | 'Expired'; // More specific reasons
-    lastPaymentDate?: string; // Optional: ISO date string of the last successful payment
-    type?: Database['public']['Enums']['payment_type_enum']; // Use 'type' to match DB column
-};
+
 
 /**
  * Checks if a student is eligible to attend class today based on payment status.
@@ -288,93 +287,96 @@ export async function checkStudentEligibility(
     studentId: string,
     supabaseAdmin: ReturnType<typeof createClient<Database>>
 ): Promise<EligibilityStatus> {
-    // 1. Fetch successful payments linked to this student.
-    //    We will filter by type *after* fetching to simplify the initial query.
+    // 1. Fetch successful payments and enrollments linked to this student.
     const {data: paymentLinks, error: linkError} = await supabaseAdmin
         .from('payment_students')
         .select(`                                                                                                                                                                                                        
             payment_id,                                                                                                                                                                                                  
             payments!inner ( id, payment_date, status, type )                                                                                                                                                            
-        `) // Use !inner join syntax to ensure payment exists, select type
+        `)
         .eq('student_id', studentId)
-        .eq('payments.status', 'succeeded'); // Keep filter for successful payments, remove problematic ordering
-    // Sort the raw payment links by date first to ensure proper ordering
+        .eq('payments.status', 'succeeded');
+
+    const {data: enrollments} = await supabaseAdmin
+        .from('enrollments')
+        .select('paid_until')
+        .eq('student_id', studentId)
+        .eq('status', 'active')
+        .order('paid_until', {ascending: false})
+        .limit(1);
+
     const sortedPaymentLinks = paymentLinks?.sort((a, b) => {
         const dateA = a.payments?.payment_date ? new Date(a.payments.payment_date).getTime() : 0;
         const dateB = b.payments?.payment_date ? new Date(b.payments.payment_date).getTime() : 0;
-        return dateB - dateA; // Descending order (most recent first)
+        return dateB - dateA;
     });
-    // console.log(`[checkStudentEligibility] Fetching successful payments for student ${studentId}: ${sortedPaymentLinks?.map(link => link.payments?.payment_date).filter(Boolean)}`);
 
     if (linkError) {
         console.error(`Error fetching successful payment links for student ${studentId}:`, linkError.message);
-        // Default to not eligible if we can't verify payments
-        return {eligible: false, reason: 'Expired'}; // Use 'Expired'
+        return {eligible: false, reason: 'Expired'};
     }
 
-    // Filter out null payments and filter for the correct *type* here in the code
     const successfulGroupPayments = sortedPaymentLinks
         ?.map(link => link.payments)
         .filter(payment =>
             payment !== null &&
             payment.payment_date !== null &&
             payment.type !== null &&
-            ['monthly_group', 'yearly_group'].includes(payment.type) // Filter for group types now
+            ['monthly_group', 'yearly_group'].includes(payment.type)
         ) as Array<{
         id: string,
         payment_date: string,
         status: string,
-        type: Database['public']['Enums']['payment_type_enum'] // This 'type' is correct (from DB)
+        type: Database['public']['Enums']['payment_type_enum']
     }> ?? [];
-    // console.log(`[checkStudentEligibility] Found ${successfulGroupPayments.length} successful group payments for student ${studentId}: ${successfulGroupPayments.map(payment => payment.payment_date)}.`);
 
-
-    // 2. Check for Free Trial (zero successful group payments)
     if (successfulGroupPayments.length === 0) {
+        console.log(`[checkStudentEligibility] Student ${studentId} is on Free Trial.`);
         return {eligible: true, reason: 'Trial'};
     }
 
-    // 3. Check the most recent group payment date against the appropriate eligibility window
     const mostRecentGroupPayment = successfulGroupPayments[0];
     const lastPaymentDate = new Date(mostRecentGroupPayment.payment_date);
-    const type = mostRecentGroupPayment.type; // Use 'type' variable
+    const type = mostRecentGroupPayment.type;
 
     const today = new Date();
     const eligibilityCutoffDate = new Date(today);
 
-    let reason: EligibilityStatus['reason'] = 'Expired'; // Default if checks fail
+    let reason: EligibilityStatus['reason'] = 'Expired';
     let eligibilityWindowDays: number;
 
-    if (type === 'yearly_group') { // Check against 'type' variable
+    if (type === 'yearly_group') {
         eligibilityWindowDays = YEARLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS;
         reason = 'Paid - Yearly';
-    } else { // Default to monthly for 'monthly_group' (or any unexpected type that slipped through)
+    } else {
         eligibilityWindowDays = MONTHLY_PAYMENT_ELIGIBILITY_WINDOW_DAYS;
         reason = 'Paid - Monthly';
     }
 
     eligibilityCutoffDate.setDate(today.getDate() - eligibilityWindowDays);
 
+    const paidUntil = enrollments?.[0]?.paid_until ? new Date(enrollments[0].paid_until) : null;
+
     if (lastPaymentDate >= eligibilityCutoffDate) {
-        // Payment is recent enough
+        console.log(`[checkStudentEligibility] Student ${studentId} is eligible for ${reason} payment.`);
         return {
             eligible: true,
-            reason: reason, // Use the determined reason
+            reason: reason,
             lastPaymentDate: mostRecentGroupPayment.payment_date,
-            type: type, // Use 'type'
+            type: type,
+            paidUntil: paidUntil?.toISOString()
         };
     }
 
-    // 4. If not on trial and the most recent group payment is outside the window
+    console.log(`[checkStudentEligibility] Student ${studentId} is NOT eligible for ${reason} payment.`);
     return {
         eligible: false,
         reason: 'Expired',
-        lastPaymentDate: mostRecentGroupPayment.payment_date, // Still pass the date for context
-        type: type, // Use 'type'
+        lastPaymentDate: mostRecentGroupPayment.payment_date,
+        type: type,
+        paidUntil: paidUntil?.toISOString()
     };
 }
-
-
 // Helper function to get the base site URL
 function getSiteUrl(): string {
     // Ensure this environment variable is set in your deployment environment (Vercel, Netlify, etc.)
@@ -434,13 +436,11 @@ export async function updatePaymentStatus(
     if (status === 'succeeded') {
         updateData.payment_date = new Date().toISOString();
         try {
-            // Construct the ABSOLUTE URL to our custom receipt page
-            const siteBaseUrl = getSiteUrl(); // Get base URL (e.g., https://yourdomain.com)
+            const siteBaseUrl = getSiteUrl();
             updateData.receipt_url = `${siteBaseUrl}/family/receipt/${supabasePaymentId}`;
-            console.log(`[updatePaymentStatus] Generated receipt URL for ${supabasePaymentId}: ${updateData.receipt_url} from site url: ${siteBaseUrl}`);
         } catch (e) {
-             console.error(`[updatePaymentStatus] Failed to generate receipt URL for ${supabasePaymentId} due to missing VITE_SITE_URL. Payment status updated, but receipt URL is null.`, e);
-             updateData.receipt_url = null; // Ensure it's null if generation fails
+            console.error(`[updatePaymentStatus] Failed to generate receipt URL for ${supabasePaymentId} due to missing VITE_SITE_URL.`, e);
+            updateData.receipt_url = null;
         }
     } else if (status === 'failed') {
         // Also set payment_date for failed payments, but no receipt URL
@@ -472,12 +472,55 @@ export async function updatePaymentStatus(
 
     // Optional: Log/verify amounts from metadata against DB record
     if (status === 'succeeded') {
-        if (subtotalAmountFromMeta !== null && data.subtotal_amount !== subtotalAmountFromMeta) {
-            console.warn(`[Webhook ${supabasePaymentId}] Subtotal mismatch! DB: ${data.subtotal_amount}, Meta: ${subtotalAmountFromMeta}`);
-        }
-        if (totalAmountFromMeta !== null && data.total_amount !== totalAmountFromMeta) {
-            console.warn(`[Webhook ${supabasePaymentId}] Total amount mismatch! DB: ${data.total_amount}, Meta: ${totalAmountFromMeta}`);
-            // Potentially throw error or alert if amounts don't match
+        // If the payment was successful, update the enrollment's paid_until date
+        if (type === 'monthly_group' || type === 'yearly_group') {
+            const { data: studentLinks, error: studentLinkError } = await supabaseAdmin
+                .from('payment_students')
+                .select('student_id')
+                .eq('payment_id', supabasePaymentId);
+
+            if (studentLinkError) {
+                console.error(`Failed to fetch students for payment ${supabasePaymentId}:`, studentLinkError.message);
+            } else if (studentLinks) {
+                for (const link of studentLinks) {
+                    const studentId = link.student_id;
+                    // Find the student's enrollment to update paid_until
+                    const { data: enrollment, error: enrollmentError } = await supabaseAdmin
+                        .from('enrollments')
+                        .select('id, paid_until') // select id for logging
+                        .eq('student_id', studentId)
+                        // Optional: add a filter for active enrollments if applicable
+                        .eq('status', 'active')
+                        .single(); // Assuming one enrollment per student for simplicity
+
+                    if (enrollmentError || !enrollment) {
+                        console.error(`[updatePaymentStatus] Could not fetch enrollment for student ${studentId} to update paid_until`, enrollmentError);
+                        continue; // Move to next student
+                    }
+
+                    const today = new Date();
+                    const currentPaidUntil = enrollment.paid_until ? new Date(enrollment.paid_until) : today;
+                    // Start extending from today or the future paid_until date, whichever is later
+                    const startDate = currentPaidUntil > today ? currentPaidUntil : today;
+
+                    const newPaidUntil = new Date(startDate);
+                    if (type === 'monthly_group') {
+                        newPaidUntil.setMonth(newPaidUntil.getMonth() + 1);
+                    } else { // yearly_group
+                        newPaidUntil.setFullYear(newPaidUntil.getFullYear() + 1);
+                    }
+
+                    const { error: updateEnrollmentError } = await supabaseAdmin
+                        .from('enrollments')
+                        .update({ paid_until: newPaidUntil.toISOString() })
+                        .eq('id', enrollment.id);
+
+                    if (updateEnrollmentError) {
+                        console.error(`[updatePaymentStatus] Failed to update paid_until for enrollment ${enrollment.id}`, updateEnrollmentError);
+                    }
+
+                }
+            }
         }
     }
 

@@ -17,6 +17,7 @@ type AllStudents = StudentName[];
 
 type AttendanceWithStudentName = AttendanceRow & {
     students: Pick<StudentName, 'first_name' | 'last_name'> | null; // Keep nested structure for display
+    class_sessions: { session_date: string } | null;
 };
 
 type LoaderData = {
@@ -74,17 +75,19 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
             .from('attendance')
             .select(`
         *,
-        students ( first_name, last_name )
-      `)
-            .order('class_date', {ascending: false}); // Order by date descending by default
+        students ( first_name, last_name ),
+        class_sessions!inner ( session_date )
+      `);
+            // Note: Cannot order by joined table fields directly in PostgREST
+            // Will sort client-side after fetching data
 
         // Apply filters
         if (startDate) {
-            query = query.gte('class_date', startDate);
+            query = query.gte('class_sessions.session_date', startDate);
         }
         if (endDate) {
             // Add time component to ensure inclusivity if needed, or adjust based on DB type
-            query = query.lte('class_date', endDate);
+            query = query.lte('class_sessions.session_date', endDate);
         }
         if (studentId) {
             query = query.eq('student_id', studentId);
@@ -101,8 +104,12 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
         // Ensure students relation is at least null
         const typedRecords = attendanceRecords?.map(r => ({...r, students: r.students ?? null})) ?? [];
 
-        // Sorting can be complex with filters, maybe sort client-side or refine DB query later
-        // For now, rely on default date sorting from query
+        // Sort client-side by session date descending (newest first)
+        typedRecords.sort((a, b) => {
+            const dateA = a.class_sessions?.session_date || '';
+            const dateB = b.class_sessions?.session_date || '';
+            return dateB.localeCompare(dateA); // Descending order
+        });
 
         const filterParams = {startDate, endDate, studentId};
         return json({attendanceRecords: typedRecords, filterParams, allStudents});
@@ -213,15 +220,21 @@ export default function AttendanceHistoryPage() { // Renamed component
                         <TableBody>
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{formatDate(record.class_date, { formatString: 'MMM d, yyyy' })}</TableCell> {/* Format date */}
+                                    <TableCell>{formatDate(record.class_sessions?.session_date, { formatString: 'MMM d, yyyy' })}</TableCell> {/* Format date */}
                                     <TableCell className="font-medium">
                                         {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
                                     </TableCell>
                                     <TableCell>
-                                        {record.present ? (
+                                        {record.status === 'present' ? (
                                             <Badge variant="default">Present</Badge>
-                                        ) : (
+                                        ) : record.status === 'absent' ? (
                                             <Badge variant="destructive">Absent</Badge>
+                                        ) : record.status === 'excused' ? (
+                                            <Badge variant="secondary">Excused</Badge>
+                                        ) : record.status === 'late' ? (
+                                            <Badge variant="outline">Late</Badge>
+                                        ) : (
+                                            <Badge variant="outline">Unknown</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell>{record.notes || '-'}</TableCell>

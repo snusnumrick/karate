@@ -131,7 +131,7 @@ export async function action({request}: ActionFunctionArgs) {
                 paymentMethodString = `${cardBrand.charAt(0).toUpperCase() + cardBrand.slice(1)} card`; // e.g., "Visa card"
             }
 
-            // console.log(`[Webhook PI Succeeded] Calling updatePaymentStatus for Supabase payment ${supabasePaymentId} to succeeded. Amounts from metadata: Subtotal=${subtotalAmountFromMeta}, Tax=${taxAmountFromMeta}, Total=${totalAmountFromMeta}`);
+            console.log(`[Webhook] Calling updatePaymentStatus for paymentId: ${supabasePaymentId}`);
             await updatePaymentStatus(
                 supabasePaymentId, // Use the ID from metadata
                 "succeeded",
@@ -148,40 +148,40 @@ export async function action({request}: ActionFunctionArgs) {
                 // Pass card details
                 cardLast4 // Pass the extracted last 4 digits
             );
-            // console.log(`[Webhook PI Succeeded] updatePaymentStatus completed for Supabase payment ${supabasePaymentId}`);
+            console.log(`[Webhook] updatePaymentStatus finished successfully for paymentId: ${supabasePaymentId}`);
 
             // --- Handle Store Purchase Success ---
             if (type === 'store_purchase' && orderId) {
-                console.log(`[Webhook PI Succeeded] Processing successful store purchase for order ${orderId}`);
+                console.log(`[Webhook] Processing successful store purchase for order ${orderId}`);
                 const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
                 // 1. Update Order Status
+                console.log(`[Webhook] Updating order status for orderId: ${orderId}`);
                 const { error: orderUpdateError } = await supabaseAdmin
                     .from('orders')
                     .update({ status: 'paid_pending_pickup', updated_at: new Date().toISOString() })
                     .eq('id', orderId);
 
                 if (orderUpdateError) {
-                    console.error(`[Webhook PI Succeeded] FAILED to update order ${orderId} status:`, orderUpdateError.message);
+                    console.error(`[Webhook] FAILED to update order ${orderId} status:`, orderUpdateError.message);
                     // Log error, but don't fail the webhook for this, payment is already processed. Needs monitoring.
                 } else {
-                    console.log(`[Webhook PI Succeeded] Successfully updated order ${orderId} status to paid_pending_pickup.`);
+                    console.log(`[Webhook] Successfully updated order ${orderId} status to paid_pending_pickup.`);
                 }
 
-                // 2. Decrement Stock (Needs careful consideration for atomicity/retries)
-                // Fetch order items to know which variants and quantities to decrement
+                // 2. Decrement Stock
+                console.log(`[Webhook] Decrementing stock for orderId: ${orderId}`);
                 const { data: orderItems, error: itemsError } = await supabaseAdmin
                     .from('order_items')
                     .select('product_variant_id, quantity')
                     .eq('order_id', orderId);
 
                 if (itemsError) {
-                     console.error(`[Webhook PI Succeeded] FAILED to fetch order items for order ${orderId} to decrement stock:`, itemsError.message);
+                     console.error(`[Webhook] FAILED to fetch order items for order ${orderId} to decrement stock:`, itemsError.message);
                      // Log error, needs manual stock adjustment or retry mechanism.
                 } else if (orderItems) {
                     for (const item of orderItems) {
-                        // Use RPC call for atomic decrement? Or handle potential race conditions here.
-                        // Simple decrement for now:
+                        console.log(`[Webhook] Decrementing stock for variant: ${item.product_variant_id} by ${item.quantity}`);
                         const { error: stockDecrementError } = await supabaseAdmin.rpc('decrement_variant_stock', {
                             variant_id: item.product_variant_id,
                             decrement_quantity: item.quantity
@@ -190,21 +190,22 @@ export async function action({request}: ActionFunctionArgs) {
                         // Check if the RPC function exists and handle potential errors
                         if (stockDecrementError) {
                              if (stockDecrementError.code === '42883') { // Function does not exist
-                                console.error(`[Webhook PI Succeeded] RPC function 'decrement_variant_stock' not found. Please create it. Stock not decremented for variant ${item.product_variant_id}.`);
+                                console.error(`[Webhook] RPC function 'decrement_variant_stock' not found. Please create it. Stock not decremented for variant ${item.product_variant_id}.`);
                              } else {
-                                console.error(`[Webhook PI Succeeded] FAILED to decrement stock for variant ${item.product_variant_id} (Order ${orderId}):`, stockDecrementError.message);
+                                console.error(`[Webhook] FAILED to decrement stock for variant ${item.product_variant_id} (Order ${orderId}):`, stockDecrementError.message);
                                 // Log error, needs manual stock adjustment or retry mechanism.
                              }
                         } else {
-                            console.log(`[Webhook PI Succeeded] Decremented stock for variant ${item.product_variant_id} by ${item.quantity} (Order ${orderId}).`);
+                            console.log(`[Webhook] Decremented stock for variant ${item.product_variant_id} by ${item.quantity} (Order ${orderId}).`);
                         }
                     }
+                    console.log(`[Webhook] Stock decrement process finished for orderId: ${orderId}`);
                 }
             }
             // --- End Handle Store Purchase Success ---
 
         } catch (updateError) {
-            console.error(`[Webhook PI Succeeded] Failed during post-payment processing for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
+            console.error(`[Webhook] Failed during post-payment processing for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
             // Return 500 so Stripe retries the webhook
             return json({ error: "Database update or post-processing failed." }, { status: 500 });
         }

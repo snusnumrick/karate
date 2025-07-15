@@ -63,6 +63,7 @@ export interface DiscountValidationResult {
   is_valid: boolean;
   discount_code_id?: string;
   code?: string;
+  name?: string; // Add discount name
   discount_amount: number; // in cents
   error_message?: string;
 }

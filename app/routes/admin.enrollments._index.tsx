@@ -44,6 +44,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const stats = {
     total: enrollments.length,
     active: enrollments.filter(e => e.status === 'active').length,
+    trial: enrollments.filter(e => e.status === 'trial').length,
     waitlisted: enrollments.filter(e => e.status === 'waitlist').length,
     dropped: enrollments.filter(e => e.status === 'dropped').length
   };
@@ -113,6 +114,8 @@ export default function AdminEnrollments() {
     switch (status) {
       case "active":
         return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
+      case "trial":
+        return <Badge className="bg-blue-100 text-blue-800"><CheckCircle className="h-3 w-3 mr-1" />Trial</Badge>;
       case "waitlist":
         return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Waitlisted</Badge>;
       case "dropped":
@@ -156,7 +159,7 @@ export default function AdminEnrollments() {
       </div>
       
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="grid gap-4 md:grid-cols-5 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Enrollments</CardTitle>
@@ -174,6 +177,16 @@ export default function AdminEnrollments() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Trial</CardTitle>
+            <Clock className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.trial}</div>
           </CardContent>
         </Card>
         
@@ -248,6 +261,7 @@ export default function AdminEnrollments() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="trial">Trial</SelectItem>
                   <SelectItem value="waitlist">Waitlisted</SelectItem>
                   <SelectItem value="dropped">Dropped</SelectItem>
                 </SelectContent>

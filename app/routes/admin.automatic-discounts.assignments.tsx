@@ -388,7 +388,7 @@ export default function DiscountAssignments() {
                           {assignment.discount_codes?.code}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Used: {assignment.discount_codes?.current_uses || 0}/{assignment.discount_codes?.max_uses || '∞'}
+                          Used: {assignment.discount_codes?.current_uses || 0}{assignment.discount_codes?.usage_type === 'one_time' ? '' : `/${assignment.discount_codes?.max_uses || '∞'}`}
                         </div>
                       </TableCell>
                       <TableCell>

@@ -18,14 +18,29 @@ export async function createProgram(
       name: programData.name,
       description: programData.description,
       duration_minutes: programData.duration_minutes,
+      // Capacity constraints
+      max_capacity: programData.max_capacity,
+      // Frequency constraints
+      sessions_per_week: programData.sessions_per_week,
+      min_sessions_per_week: programData.min_sessions_per_week,
+      max_sessions_per_week: programData.max_sessions_per_week,
+      // Belt requirements
+      min_belt_rank: programData.min_belt_rank,
+      max_belt_rank: programData.max_belt_rank,
+      belt_rank_required: programData.belt_rank_required ?? false,
+      // Prerequisite programs
+      prerequisite_programs: programData.prerequisite_programs,
+      // Age and demographic constraints
       min_age: programData.min_age,
       max_age: programData.max_age,
       gender_restriction: programData.gender_restriction,
       special_needs_support: programData.special_needs_support,
+      // Pricing structure
       monthly_fee: programData.monthly_fee,
       registration_fee: programData.registration_fee,
       yearly_fee: programData.yearly_fee,
       individual_session_fee: programData.individual_session_fee,
+      // System fields
       is_active: programData.is_active ?? true,
     })
     .select()
@@ -54,14 +69,29 @@ export async function updateProgram(
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.description !== undefined) updateData.description = updates.description;
   if (updates.duration_minutes !== undefined) updateData.duration_minutes = updates.duration_minutes;
+  // Capacity constraints
+  if (updates.max_capacity !== undefined) updateData.max_capacity = updates.max_capacity;
+  // Frequency constraints
+  if (updates.sessions_per_week !== undefined) updateData.sessions_per_week = updates.sessions_per_week;
+  if (updates.min_sessions_per_week !== undefined) updateData.min_sessions_per_week = updates.min_sessions_per_week;
+  if (updates.max_sessions_per_week !== undefined) updateData.max_sessions_per_week = updates.max_sessions_per_week;
+  // Belt requirements
+  if (updates.min_belt_rank !== undefined) updateData.min_belt_rank = updates.min_belt_rank;
+  if (updates.max_belt_rank !== undefined) updateData.max_belt_rank = updates.max_belt_rank;
+  if (updates.belt_rank_required !== undefined) updateData.belt_rank_required = updates.belt_rank_required;
+  // Prerequisite programs
+  if (updates.prerequisite_programs !== undefined) updateData.prerequisite_programs = updates.prerequisite_programs;
+  // Age and demographic constraints
   if (updates.min_age !== undefined) updateData.min_age = updates.min_age;
   if (updates.max_age !== undefined) updateData.max_age = updates.max_age;
   if (updates.gender_restriction !== undefined) updateData.gender_restriction = updates.gender_restriction;
   if (updates.special_needs_support !== undefined) updateData.special_needs_support = updates.special_needs_support;
+  // Pricing structure
   if (updates.monthly_fee !== undefined) updateData.monthly_fee = updates.monthly_fee;
   if (updates.registration_fee !== undefined) updateData.registration_fee = updates.registration_fee;
   if (updates.yearly_fee !== undefined) updateData.yearly_fee = updates.yearly_fee;
   if (updates.individual_session_fee !== undefined) updateData.individual_session_fee = updates.individual_session_fee;
+  // System fields
   if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
 
   const { data, error } = await supabase
@@ -78,37 +108,7 @@ export async function updateProgram(
   return data;
 }
 
-/**
- * Delete a program (soft delete by setting is_active to false)
- */
-export async function deleteProgram(
-  id: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-): Promise<void> {
-  // Check if program has active classes
-  const { data: activeClasses, error: classError } = await supabase
-    .from('classes')
-    .select('id')
-    .eq('program_id', id)
-    .eq('is_active', true);
 
-  if (classError) {
-    throw new Error(`Failed to check for active classes: ${classError.message}`);
-  }
-
-  if (activeClasses && activeClasses.length > 0) {
-    throw new Error('Cannot delete program with active classes. Please deactivate all classes first.');
-  }
-
-  const { error } = await supabase
-    .from('programs')
-    .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq('id', id);
-
-  if (error) {
-    throw new Error(`Failed to delete program: ${error.message}`);
-  }
-}
 
 /**
  * Get all programs with optional filtering
@@ -249,37 +249,68 @@ export async function getProgramStats(
 }
 
 /**
- * Check if a student can enroll in a program (simplified - always eligible)
+ * Check if a student can enroll in a program using database function
  */
 export async function checkProgramEligibility(
   programId: string,
   studentId: string,
   supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 ): Promise<{ eligible: boolean; reasons: string[] }> {
-  // Simplified eligibility check - just verify program and student exist
-  const [programResult, studentResult] = await Promise.all([
-    supabase.from('programs').select('id, is_active').eq('id', programId).single(),
-    supabase.from('students').select('id').eq('id', studentId).single(),
-  ]);
+  try {
+    // Use the database function for comprehensive eligibility checking
+    // Note: The function returns a simple boolean, not an object
+    const { data, error } = await supabase
+      .rpc('check_program_eligibility', {
+        student_id_param: studentId,
+        program_id_param: programId
+      });
 
-  if (programResult.error || studentResult.error) {
-    return { eligible: false, reasons: ['Program or student not found'] };
+    if (error) {
+      console.error('Error checking program eligibility:', error);
+      return { eligible: false, reasons: ['Error checking eligibility'] };
+    }
+
+    console.log('check_program_eligibility result:', programId, studentId, data);
+
+    // The database function returns a simple boolean
+    const isEligible = Boolean(data);
+    
+    if (isEligible) {
+      return { eligible: true, reasons: [] };
+    } else {
+      // Since the DB function doesn't provide specific reasons, we return a generic message
+      return { eligible: false, reasons: ['Student does not meet program requirements'] };
+    }
+  } catch (error) {
+    console.error('Exception in checkProgramEligibility:', error);
+    return { eligible: false, reasons: ['System error checking eligibility'] };
   }
-
-  if (!programResult.data.is_active) {
-    return { eligible: false, reasons: ['Program is not active'] };
-  }
-
-  return { eligible: true, reasons: [] };
 }
 
 /**
- * Get programs suitable for a specific student (simplified)
+ * Get programs suitable for a specific student based on eligibility
  */
 export async function getProgramsForStudent(
   studentId: string,
   supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 ): Promise<Program[]> {
-  // Simplified - just return all active programs
-  return await getPrograms({ is_active: true }, supabase);
+  // Get all active programs
+  const allPrograms = await getPrograms({ is_active: true }, supabase);
+  
+  // Filter programs based on student eligibility
+  const eligiblePrograms: Program[] = [];
+  
+  for (const program of allPrograms) {
+    const eligibilityCheck = await checkProgramEligibility(
+      program.id,
+      studentId,
+      supabase
+    );
+    
+    if (eligibilityCheck.eligible) {
+      eligiblePrograms.push(program);
+    }
+  }
+  
+  return eligiblePrograms;
 }
