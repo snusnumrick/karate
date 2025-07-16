@@ -211,7 +211,7 @@ export default function AttendanceHistoryPage() { // Renamed component
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Date</TableHead> {/* Add Date column */}
+                                <TableHead>Date</TableHead>
                                 <TableHead>Student Name</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Notes</TableHead>
@@ -220,7 +220,7 @@ export default function AttendanceHistoryPage() { // Renamed component
                         <TableBody>
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{formatDate(record.class_sessions?.session_date, { formatString: 'MMM d, yyyy' })}</TableCell> {/* Format date */}
+                                    <TableCell>{formatDate(record.class_sessions?.session_date, { formatString: 'MMM d, yyyy' })}</TableCell>
                                     <TableCell className="font-medium">
                                         {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
                                     </TableCell>
@@ -238,7 +238,6 @@ export default function AttendanceHistoryPage() { // Renamed component
                                         )}
                                     </TableCell>
                                     <TableCell>{record.notes || '-'}</TableCell>
-                                    {/* Add edit/delete actions later if needed */}
                                 </TableRow>
                             ))}
                         </TableBody>

@@ -324,7 +324,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>First Name</FormLabel>
-                                                <FormControl><Input {...field} tabIndex={1} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input {...field} autoComplete="given-name" tabIndex={1} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -335,7 +335,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Last Name</FormLabel>
-                                                <FormControl><Input {...field} tabIndex={2} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input {...field} autoComplete="family-name" tabIndex={2} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -369,7 +369,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Home Phone</FormLabel>
-                                                <FormControl><Input type="tel" {...field} tabIndex={4} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input type="tel" {...field} autoComplete="home tel" tabIndex={4} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -380,7 +380,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Cell Phone</FormLabel>
-                                                <FormControl><Input type="tel" {...field} tabIndex={5} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input type="tel" {...field} autoComplete="mobile tel" tabIndex={5} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -391,7 +391,7 @@ export default function GuardianDetailPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Email</FormLabel>
-                                                <FormControl><Input type="email" {...field} tabIndex={6} className="input-custom-styles"/></FormControl>
+                                                <FormControl><Input type="email" {...field} autoComplete="email" tabIndex={6} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -403,7 +403,7 @@ export default function GuardianDetailPage() {
                                             <FormItem>
                                                 <FormLabel>Work Phone</FormLabel>
                                                 <FormControl><Input type="tel" {...field}
-                                                                    value={getDefaultValue(field.value)} tabIndex={7} className="input-custom-styles"/></FormControl>
+                                                                    value={getDefaultValue(field.value)} autoComplete="work tel" tabIndex={7} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -415,7 +415,7 @@ export default function GuardianDetailPage() {
                                             <FormItem>
                                                 <FormLabel>Employer</FormLabel>
                                                 <FormControl><Input {...field}
-                                                                    value={getDefaultValue(field.value)} tabIndex={8} className="input-custom-styles"/></FormControl>
+                                                                    value={getDefaultValue(field.value)} autoComplete="organization" tabIndex={8} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -427,7 +427,7 @@ export default function GuardianDetailPage() {
                                             <FormItem>
                                                 <FormLabel>Employer Phone</FormLabel>
                                                 <FormControl><Input type="tel" {...field}
-                                                                    value={getDefaultValue(field.value)} tabIndex={9} className="input-custom-styles"/></FormControl>
+                                                                    value={getDefaultValue(field.value)} autoComplete="work tel" tabIndex={9} className="input-custom-styles"/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}

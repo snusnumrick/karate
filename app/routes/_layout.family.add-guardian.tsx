@@ -229,7 +229,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>First Name</FormLabel>
-                                            <FormControl><Input {...field} className="input-custom-styles" tabIndex={1}/></FormControl>
+                                            <FormControl><Input {...field} autoComplete="given-name" className="input-custom-styles" tabIndex={1}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -240,7 +240,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Last Name</FormLabel>
-                                            <FormControl><Input {...field} className="input-custom-styles" tabIndex={2}/></FormControl>
+                                            <FormControl><Input {...field} autoComplete="family-name" className="input-custom-styles" tabIndex={2}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -276,7 +276,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Home Phone</FormLabel>
-                                            <FormControl><Input type="tel" {...field} className="input-custom-styles" tabIndex={4}/></FormControl>
+                                            <FormControl><Input type="tel" {...field} autoComplete="home tel" className="input-custom-styles" tabIndex={4}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -287,7 +287,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Cell Phone</FormLabel>
-                                            <FormControl><Input type="tel" {...field} className="input-custom-styles" tabIndex={5}/></FormControl>
+                                            <FormControl><Input type="tel" {...field} autoComplete="mobile tel" className="input-custom-styles" tabIndex={5}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -298,7 +298,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Email</FormLabel>
-                                            <FormControl><Input type="email" {...field} className="input-custom-styles" tabIndex={6}/></FormControl>
+                                            <FormControl><Input type="email" {...field} autoComplete="email" className="input-custom-styles" tabIndex={6}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -310,7 +310,7 @@ export default function AddGuardianPage() {
                                         <FormItem>
                                             <FormLabel>Work Phone (Optional)</FormLabel>
                                             <FormControl><Input type="tel" {...field}
-                                                                value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={7}/></FormControl>
+                                                                value={getDefaultValue(field.value)} autoComplete="work tel" className="input-custom-styles" tabIndex={7}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -322,7 +322,7 @@ export default function AddGuardianPage() {
                                         <FormItem>
                                             <FormLabel>Employer (Optional)</FormLabel>
                                             <FormControl><Input {...field}
-                                                                value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={8}/></FormControl>
+                                                                value={getDefaultValue(field.value)} autoComplete="organization" className="input-custom-styles" tabIndex={8}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -334,7 +334,7 @@ export default function AddGuardianPage() {
                                         <FormItem>
                                             <FormLabel>Employer Phone (Optional)</FormLabel>
                                             <FormControl><Input type="tel" {...field}
-                                                                value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={9}/></FormControl>
+                                                                value={getDefaultValue(field.value)} autoComplete="work tel" className="input-custom-styles" tabIndex={9}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}

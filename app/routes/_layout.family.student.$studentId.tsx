@@ -502,13 +502,13 @@ export default function StudentDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="first_name">First Name</Label>
-                                <Input id="first_name" name="first_name" defaultValue={student.first_name} required className="input-custom-styles"/>
+                                <Input id="first_name" name="first_name" autoComplete="given-name" defaultValue={student.first_name} required className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.first_name &&
                                     <p className="text-red-500 text-sm">{actionData.fieldErrors.first_name}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="last_name">Last Name</Label>
-                                <Input id="last_name" name="last_name" defaultValue={student.last_name} required className="input-custom-styles"/>
+                                <Input id="last_name" name="last_name" autoComplete="family-name" defaultValue={student.last_name} required className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.last_name &&
                                     <p className="text-red-500 text-sm">{actionData.fieldErrors.last_name}</p>}
                             </div>
@@ -577,12 +577,12 @@ export default function StudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="cell_phone">Cell Phone</Label>
-                                <Input id="cell_phone" name="cell_phone" type="tel"
+                                <Input id="cell_phone" name="cell_phone" type="tel" autoComplete="mobile tel"
                                        defaultValue={student.cell_phone || ''} className="input-custom-styles"/>
                             </div>
                             <div>
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" name="email" type="email" defaultValue={student.email || ''} className="input-custom-styles"/>
+                                <Input id="email" name="email" type="email" autoComplete="email" defaultValue={student.email || ''} className="input-custom-styles"/>
                             </div>
                         </div>
                     </div>

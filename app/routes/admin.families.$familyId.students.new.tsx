@@ -214,7 +214,7 @@ export default function AdminAddStudentPage() {
                             {/* First Name */}
                             <div className="space-y-1">
                                 <Label htmlFor="firstName">First Name<span className="text-destructive">*</span></Label>
-                                <Input type="text" id="firstName" name="firstName" required
+                                <Input type="text" id="firstName" name="firstName" autoComplete="given-name" required
                                        defaultValue={getFormData('firstName')}
                                        aria-invalid={!!getFieldError('firstName')} aria-describedby="firstName-error"
                                        tabIndex={1}/>
@@ -224,7 +224,7 @@ export default function AdminAddStudentPage() {
                             {/* Last Name */}
                             <div className="space-y-1">
                                 <Label htmlFor="lastName">Last Name<span className="text-destructive">*</span></Label>
-                                <Input type="text" id="lastName" name="lastName" required
+                                <Input type="text" id="lastName" name="lastName" autoComplete="family-name" required
                                        defaultValue={getFormData('lastName')} aria-invalid={!!getFieldError('lastName')}
                                        aria-describedby="lastName-error" tabIndex={2}/>
                                 {getFieldError('lastName') && <p id="lastName-error"
@@ -347,12 +347,12 @@ export default function AdminAddStudentPage() {
                             {/* Student Email */}
                             <div className="space-y-1">
                                 <Label htmlFor="email">Student Email</Label>
-                                <Input type="email" id="email" name="email" defaultValue={getFormData('email')} tabIndex={9}/>
+                                <Input type="email" id="email" name="email" autoComplete="email" defaultValue={getFormData('email')} tabIndex={9}/>
                             </div>
                             {/* Student Cell Phone */}
                             <div className="space-y-1">
                                 <Label htmlFor="cellPhone">Student Cell #</Label>
-                                <Input type="tel" id="cellPhone" name="cellPhone"
+                                <Input type="tel" id="cellPhone" name="cellPhone" autoComplete="mobile tel"
                                        defaultValue={getFormData('cellPhone')} tabIndex={10}/>
                             </div>
                             {/* Special Needs */}

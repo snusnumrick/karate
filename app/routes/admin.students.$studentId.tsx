@@ -140,7 +140,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
     // --- Handle "Edit Student" Intent ---
     if (intent === "edit") {
-        // --- Data Extraction (Remains similar, but use StudentUpdateData type) ---
+        // --- Data Extraction (Remains the same) ---
         const updateData: StudentUpdateData = {
             first_name: formData.get('first_name') as string,
             last_name: formData.get('last_name') as string,
@@ -255,13 +255,13 @@ export default function AdminStudentDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="first_name">First Name <span className="text-red-500">*</span></Label>
-                                <Input id="first_name" name="first_name" defaultValue={student.first_name} required tabIndex={1}/>
+                                <Input id="first_name" name="first_name" autoComplete="given-name" defaultValue={student.first_name} required tabIndex={1}/>
                                 {actionData?.fieldErrors?.first_name &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.first_name}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="last_name">Last Name <span className="text-red-500">*</span></Label>
-                                <Input id="last_name" name="last_name" defaultValue={student.last_name} required tabIndex={2}/>
+                                <Input id="last_name" name="last_name" autoComplete="family-name" defaultValue={student.last_name} required tabIndex={2}/>
                                 {actionData?.fieldErrors?.last_name &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.last_name}</p>}
                             </div>
@@ -340,12 +340,12 @@ export default function AdminStudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="cell_phone">Cell Phone</Label>
-                                <Input id="cell_phone" name="cell_phone" type="tel"
+                                <Input id="cell_phone" name="cell_phone" type="tel" autoComplete="mobile tel"
                                        defaultValue={student.cell_phone || ''} tabIndex={8}/>
                             </div>
                             <div>
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" name="email" type="email" defaultValue={student.email || ''} tabIndex={9}/>
+                                <Input id="email" name="email" type="email" autoComplete="email" defaultValue={student.email || ''} tabIndex={9}/>
                             </div>
                         </div>
                     </div>

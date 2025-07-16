@@ -322,25 +322,25 @@ export default function AdminNewFamilyPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <Label htmlFor="familyName">Family Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="familyName" name="familyName" required tabIndex={1}/>
+                            <Input id="familyName" name="familyName" autoComplete="family-name" required tabIndex={1}/>
                             {actionData?.fieldErrors?.familyName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyName}</p>}
                         </div>
                         <div>
                             <Label htmlFor="familyEmail">Family Email <span className="text-red-500">*</span></Label>
-                            <Input id="familyEmail" name="familyEmail" type="email" required tabIndex={2}/>
+                            <Input id="familyEmail" name="familyEmail" type="email" autoComplete="email" required tabIndex={2}/>
                             {actionData?.fieldErrors?.familyEmail &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyEmail}</p>}
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="address">Home Address <span className="text-red-500">*</span></Label>
-                            <Input id="address" name="address" required tabIndex={3}/>
+                            <Input id="address" name="address" autoComplete="street-address" required tabIndex={3}/>
                             {actionData?.fieldErrors?.address &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.address}</p>}
                         </div>
                         <div>
                             <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
-                            <Input id="city" name="city" required tabIndex={4}/>
+                            <Input id="city" name="city" autoComplete="address-level2" required tabIndex={4}/>
                             {actionData?.fieldErrors?.city &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.city}</p>}
                         </div>
@@ -363,13 +363,13 @@ export default function AdminNewFamilyPage() {
                         </div>
                         <div>
                             <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
-                            <Input id="postalCode" name="postalCode" required tabIndex={6}/>
+                            <Input id="postalCode" name="postalCode" autoComplete="postal-code" required tabIndex={6}/>
                             {actionData?.fieldErrors?.postalCode &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.postalCode}</p>}
                         </div>
                         <div>
                             <Label htmlFor="primaryPhone">Primary Phone <span className="text-red-500">*</span></Label>
-                            <Input id="primaryPhone" name="primaryPhone" type="tel" required tabIndex={7}/>
+                            <Input id="primaryPhone" name="primaryPhone" type="tel" autoComplete="tel" required tabIndex={7}/>
                             {actionData?.fieldErrors?.primaryPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.primaryPhone}</p>}
                         </div>
@@ -387,13 +387,13 @@ export default function AdminNewFamilyPage() {
                         <div>
                             <Label htmlFor="guardian1FirstName">First Name <span
                                 className="text-red-500">*</span></Label>
-                            <Input id="guardian1FirstName" name="guardian1FirstName" required tabIndex={8}/>
+                            <Input id="guardian1FirstName" name="guardian1FirstName" autoComplete="given-name" required tabIndex={8}/>
                             {actionData?.fieldErrors?.guardian1FirstName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1FirstName}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian1LastName">Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1LastName" name="guardian1LastName" required tabIndex={9}/>
+                            <Input id="guardian1LastName" name="guardian1LastName" autoComplete="family-name" required tabIndex={9}/>
                             {actionData?.fieldErrors?.guardian1LastName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1LastName}</p>}
                         </div>
@@ -416,21 +416,21 @@ export default function AdminNewFamilyPage() {
                         <div>
                             <Label htmlFor="guardian1Email">Email (for Portal Invite) <span
                                 className="text-red-500">*</span></Label>
-                            <Input id="guardian1Email" name="guardian1Email" type="email" required tabIndex={11}/>
+                            <Input id="guardian1Email" name="guardian1Email" type="email" autoComplete="email" required tabIndex={11}/>
                             {actionData?.fieldErrors?.guardian1Email &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Email}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian1HomePhone">Home Phone <span
                                 className="text-red-500">*</span></Label>
-                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" required tabIndex={12}/>
+                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" autoComplete="home tel" required tabIndex={12}/>
                             {actionData?.fieldErrors?.guardian1HomePhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1HomePhone}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian1CellPhone">Cell Phone <span
                                 className="text-red-500">*</span></Label>
-                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" required tabIndex={13}/>
+                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" autoComplete="mobile tel" required tabIndex={13}/>
                             {actionData?.fieldErrors?.guardian1CellPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1CellPhone}</p>}
                         </div>
@@ -448,14 +448,14 @@ export default function AdminNewFamilyPage() {
                         <div>
                             <Label htmlFor="guardian2FirstName">First Name <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2FirstName" name="guardian2FirstName" tabIndex={14}/>
+                            <Input id="guardian2FirstName" name="guardian2FirstName" autoComplete="given-name" tabIndex={14}/>
                             {actionData?.fieldErrors?.guardian2FirstName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2FirstName}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian2LastName">Last Name <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2LastName" name="guardian2LastName" tabIndex={15}/>
+                            <Input id="guardian2LastName" name="guardian2LastName" autoComplete="family-name" tabIndex={15}/>
                             {actionData?.fieldErrors?.guardian2LastName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2LastName}</p>}
                         </div>
@@ -478,14 +478,14 @@ export default function AdminNewFamilyPage() {
                         <div>
                             <Label htmlFor="guardian2Email">Email <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2Email" name="guardian2Email" type="email" tabIndex={17}/>
+                            <Input id="guardian2Email" name="guardian2Email" type="email" autoComplete="email" tabIndex={17}/>
                             {actionData?.fieldErrors?.guardian2Email &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Email}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian2HomePhone">Home Phone <span
                                 className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel" tabIndex={18}/>
+                            <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel" autoComplete="home tel" tabIndex={18}/>
                             {actionData?.fieldErrors?.guardian2HomePhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
                         </div>
@@ -494,7 +494,7 @@ export default function AdminNewFamilyPage() {
                             <Label htmlFor="guardian2CellPhone">Cell Phone <span
                                 className="text-red-500">*</span></Label>
                             <Input id="guardian2CellPhone" name="guardian2CellPhone"
-                                   type="tel" tabIndex={19}/> {/* Removed non-functional required attribute */}
+                                   type="tel" autoComplete="mobile tel" tabIndex={19}/> {/* Removed non-functional required attribute */}
                             {actionData?.fieldErrors?.guardian2CellPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2CellPhone}</p>}
                         </div>
@@ -529,14 +529,14 @@ export default function AdminNewFamilyPage() {
                                     {/* Use indexed names like studentFirstName[] */}
                                     <Label htmlFor={`studentFirstName-${student.id}`}>First Name <span
                                         className="text-red-500">*</span></Label>
-                                    <Input id={`studentFirstName-${student.id}`} name="studentFirstName[]" required tabIndex={23 + index * 15}/>
+                                    <Input id={`studentFirstName-${student.id}`} name="studentFirstName[]" autoComplete="given-name" required tabIndex={23 + index * 15}/>
                                     {actionData?.fieldErrors?.[`studentFirstName[${index}]`] &&
                                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentFirstName[${index}]`]}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentLastName-${student.id}`}>Last Name <span
                                         className="text-red-500">*</span></Label>
-                                    <Input id={`studentLastName-${student.id}`} name="studentLastName[]" required tabIndex={24 + index * 15}/>
+                                    <Input id={`studentLastName-${student.id}`} name="studentLastName[]" autoComplete="family-name" required tabIndex={24 + index * 15}/>
                                     {actionData?.fieldErrors?.[`studentLastName[${index}]`] &&
                                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentLastName[${index}]`]}</p>}
                                 </div>
@@ -601,11 +601,11 @@ export default function AdminNewFamilyPage() {
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentCellPhone-${student.id}`}>Cell Phone</Label>
-                                    <Input id={`studentCellPhone-${student.id}`} name="studentCellPhone[]" type="tel" tabIndex={30 + index * 15}/>
+                                    <Input id={`studentCellPhone-${student.id}`} name="studentCellPhone[]" type="tel" autoComplete="mobile tel" tabIndex={30 + index * 15}/>
                                 </div>
                                 <div>
                                     <Label htmlFor={`studentEmail-${student.id}`}>Email</Label>
-                                    <Input id={`studentEmail-${student.id}`} name="studentEmail[]" type="email" tabIndex={31 + index * 15}/>
+                                    <Input id={`studentEmail-${student.id}`} name="studentEmail[]" type="email" autoComplete="email" tabIndex={31 + index * 15}/>
                                 </div>
                             </div>
                             {/* Health Information Sub-section */}

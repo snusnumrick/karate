@@ -55,6 +55,14 @@ export function assignEventsToCalendarDays(days: CalendarDay[], events: Calendar
 }
 
 /**
+ * Parse a date string (YYYY-MM-DD) as a local date to avoid timezone issues
+ */
+export function parseLocalDate(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
  * Convert class sessions to calendar events
  */
 export function sessionsToCalendarEvents(
@@ -106,8 +114,7 @@ export function sessionsToCalendarEvents(
         [];
       
       // Parse date string as local date to avoid timezone issues
-      const [year, month, day] = session.session_date.split('-').map(Number);
-      const localDate = new Date(year, month - 1, day);
+      const localDate = parseLocalDate(session.session_date);
       
       events.push({
         id: `session-${session.id}`,
@@ -185,8 +192,7 @@ export function attendanceToCalendarEvents(
     const dateString = record.class_date || session?.session_date;
     let localDate: Date;
     if (dateString) {
-      const [year, month, day] = dateString.split('-').map(Number);
-      localDate = new Date(year, month - 1, day);
+      localDate = parseLocalDate(dateString);
     } else {
       localDate = new Date();
     }

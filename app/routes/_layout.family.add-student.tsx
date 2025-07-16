@@ -170,6 +170,7 @@ export default function AddStudentPage() {
                                 First Name<span className="text-red-500">*</span>
                             </Label>
                             <Input type="text" id="firstName" name="firstName" required
+                                   autoComplete="given-name"
                                    className="input-custom-styles focus:ring-green-500" tabIndex={1}/>
                         </div>
                         <div>
@@ -177,6 +178,7 @@ export default function AddStudentPage() {
                                 Last Name<span className="text-red-500">*</span>
                             </Label>
                             <Input type="text" id="lastName" name="lastName" required
+                                   autoComplete="family-name"
                                    className="input-custom-styles focus:ring-green-500" tabIndex={2} /* defaultValue={studentLastName} */ />
                         </div>
                         <div>
@@ -271,13 +273,13 @@ export default function AddStudentPage() {
                             <Label htmlFor="email" className="block text-sm font-medium mb-1">
                                 Student Email
                             </Label>
-                            <Input type="email" id="email" name="email" className="input-custom-styles focus:ring-green-500" tabIndex={8}/>
+                            <Input type="email" id="email" name="email" autoComplete="email" className="input-custom-styles focus:ring-green-500" tabIndex={8}/>
                         </div>
                         <div>
                             <Label htmlFor="cellPhone" className="block text-sm font-medium mb-1">
                                 Student Cell #
                             </Label>
-                            <Input type="tel" id="cellPhone" name="cellPhone" className="input-custom-styles focus:ring-green-500" tabIndex={9}/>
+                            <Input type="tel" id="cellPhone" name="cellPhone" autoComplete="mobile tel" className="input-custom-styles focus:ring-green-500" tabIndex={9}/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="specialNeeds" className="block text-sm font-medium mb-1">
