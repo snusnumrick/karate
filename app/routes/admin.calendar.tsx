@@ -2,6 +2,7 @@ import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { parseLocalDate } from "~/components/calendar/utils";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -225,7 +226,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         return {
           id: session.id,
           title: classData.name,
-          date: parseISO(session.session_date),
+          date: parseLocalDate(session.session_date),
           type: 'session' as const,
           status: session.status as 'scheduled' | 'completed' | 'cancelled',
           className: classData.name,

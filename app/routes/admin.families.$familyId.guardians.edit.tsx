@@ -338,6 +338,7 @@ export default function EditGuardiansPage() {
                                                     type="tel"
                                                     defaultValue={guardian.cell_phone ?? ''} // Use cell_phone
                                                     required // Added required
+                                                    autoComplete="mobile tel"
                                                     aria-invalid={!!errors?.cell_phone}
                                                     aria-describedby={`guardian_${guardianId}_cell_phone-error`}
                                                     tabIndex={index * 10 + 4}
@@ -359,6 +360,7 @@ export default function EditGuardiansPage() {
                                                     type="tel"
                                                     defaultValue={guardian.home_phone ?? ''}
                                                     required // Added required
+                                                    autoComplete="home tel"
                                                     aria-invalid={!!errors?.home_phone}
                                                     aria-describedby={`guardian_${guardianId}_home_phone-error`}
                                                     tabIndex={index * 10 + 5}
@@ -379,6 +381,7 @@ export default function EditGuardiansPage() {
                                                     name={`guardian_${guardianId}_work_phone`}
                                                     type="tel"
                                                     defaultValue={guardian.work_phone ?? ''}
+                                                    autoComplete="work tel"
                                                     aria-invalid={!!errors?.work_phone}
                                                     aria-describedby={`guardian_${guardianId}_work_phone-error`}
                                                     tabIndex={index * 10 + 6}
@@ -400,6 +403,7 @@ export default function EditGuardiansPage() {
                                                     type="email"
                                                     defaultValue={guardian.email ?? ''}
                                                     required // Added required
+                                                    autoComplete="email"
                                                     aria-invalid={!!errors?.email}
                                                     aria-describedby={`guardian_${guardianId}_email-error`}
                                                     tabIndex={index * 10 + 7}
@@ -440,6 +444,7 @@ export default function EditGuardiansPage() {
                                                     name={`guardian_${guardianId}_employer_phone`}
                                                     type="tel"
                                                     defaultValue={guardian.employer_phone ?? ''}
+                                                    autoComplete="work tel"
                                                     aria-invalid={!!errors?.employer_phone}
                                                     aria-describedby={`guardian_${guardianId}_employer_phone-error`}
                                                     tabIndex={index * 10 + 9}

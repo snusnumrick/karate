@@ -235,6 +235,7 @@ export default function EditFamilyPage() {
                                     type="email"
                                     defaultValue={family.email}
                                     required
+                                    autoComplete="email"
                                     className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.email}
                                     aria-describedby="email-error"
@@ -255,6 +256,7 @@ export default function EditFamilyPage() {
                                     name="primary_phone"
                                     type="tel"
                                     defaultValue={family.primary_phone ?? ''}
+                                    autoComplete="tel"
                                     className="input-custom-styles" // Added custom style
                                     aria-invalid={!!actionData?.fieldErrors?.primary_phone}
                                     aria-describedby="primary_phone-error"

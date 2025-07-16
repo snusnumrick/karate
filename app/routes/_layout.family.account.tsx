@@ -416,7 +416,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Family Last Name</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles" tabIndex={1}/></FormControl>
+                                                <FormControl><Input {...field} autoComplete="family-name" className="input-custom-styles" tabIndex={1}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -428,7 +428,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Primary Phone</FormLabel>
-                                                <FormControl><Input type="tel" {...field} className="input-custom-styles" tabIndex={2}/></FormControl>
+                                                <FormControl><Input type="tel" {...field} autoComplete="tel" className="input-custom-styles" tabIndex={2}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -440,7 +440,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Family Email</FormLabel>
-                                                <FormControl><Input type="email" {...field} className="input-custom-styles" tabIndex={3}/></FormControl>
+                                                <FormControl><Input type="email" {...field} autoComplete="email" className="input-custom-styles" tabIndex={3}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -451,7 +451,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Home Address</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles" tabIndex={4}/></FormControl>
+                                                <FormControl><Input {...field} autoComplete="street-address" className="input-custom-styles" tabIndex={4}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -462,7 +462,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>City</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles" tabIndex={5}/></FormControl>
+                                                <FormControl><Input {...field} autoComplete="address-level2" className="input-custom-styles" tabIndex={5}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -514,7 +514,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Postal Code</FormLabel>
-                                                <FormControl><Input {...field} className="input-custom-styles" tabIndex={7}/></FormControl>
+                                                <FormControl><Input {...field} autoComplete="postal-code" className="input-custom-styles" tabIndex={7}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>
                                             </FormItem>
                                         )}
@@ -610,7 +610,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>Current Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} className="input-custom-styles" tabIndex={13}/>
+                                                    <Input type="password" {...field} autoComplete="current-password" className="input-custom-styles" tabIndex={13}/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -624,7 +624,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>New Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} className="input-custom-styles" tabIndex={14}/>
+                                                    <Input type="password" {...field} autoComplete="new-password" className="input-custom-styles" tabIndex={14}/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -643,7 +643,7 @@ export default function AccountSettingsPage() {
                                             <FormItem>
                                                 <FormLabel>Confirm Password</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} className="input-custom-styles" tabIndex={15}/>
+                                                    <Input type="password" {...field} autoComplete="new-password" className="input-custom-styles" tabIndex={15}/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>

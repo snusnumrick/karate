@@ -78,14 +78,17 @@ export async function loader({request}: LoaderFunctionArgs) {
                 .select(`
           *,
           students ( first_name, last_name ),
-          class_sessions!inner ( session_date )
+          class_sessions ( session_date )
         `)
                 .in('student_id', studentIds)
-                .order('class_sessions.session_date', {ascending: false}); // Show most recent first
+                .not('class_session_id', 'is', null) // Only get records with valid class sessions
+                .order('class_date', {ascending: false}); // Order by class_date instead
 
             if (attendanceError) throw attendanceError;
-            // Ensure students relation is at least null
-            attendanceRecords = (attendanceData ?? []).map(r => ({...r, students: r.students ?? null}));
+            // Ensure students relation is at least null and filter out records without class_sessions
+            attendanceRecords = (attendanceData ?? [])
+                .filter(r => r.class_sessions !== null) // Filter out any records without class sessions
+                .map(r => ({...r, students: r.students ?? null}));
             console.log(`Fetched ${attendanceRecords.length} attendance records.`);
         } else {
             console.log("No students in family, skipping attendance fetch.");
@@ -144,7 +147,7 @@ export default function FamilyAttendancePage() {
                         <TableBody>
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{formatDate(record.class_sessions?.session_date, { formatString: 'MMM d, yyyy' })}</TableCell>
+                                    <TableCell>{formatDate(record.class_sessions?.session_date || record.class_date, { formatString: 'MMM d, yyyy' })}</TableCell>
                                     <TableCell className="font-medium">
                                         {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
                                     </TableCell>

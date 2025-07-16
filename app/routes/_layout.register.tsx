@@ -337,6 +337,7 @@ export default function RegisterPage() {
                                             id="primaryPhone"
                                             name="primaryPhone"
                                             required
+                                            autoComplete="tel"
                                             className={`input-custom-styles ${errors?.primaryPhone ? 'border-red-500' : ''}`}
                                             tabIndex={8}
                                         />
@@ -459,6 +460,7 @@ export default function RegisterPage() {
                                             name="contact1HomePhone"
                                             //required
                                             // Removed defaultValue={primaryPhone}
+                                            autoComplete="home tel"
                                             className={`input-custom-styles ${errors?.contact1HomePhone ? 'border-red-500' : ''}`}
                                             tabIndex={14}
                                         />
@@ -478,6 +480,7 @@ export default function RegisterPage() {
                                             id="contact1CellPhone"
                                             name="contact1CellPhone"
                                             required
+                                            autoComplete="mobile tel"
                                             className={`input-custom-styles ${errors?.contact1CellPhone ? 'border-red-500' : ''}`}
                                             tabIndex={15}
                                         />
