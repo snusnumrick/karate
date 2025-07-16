@@ -46,20 +46,18 @@ export default function FamilyNavbar() {
                         <div className="flex items-center">
                             {/* Logo linking to home page */}
                             <Link to="/" className="flex items-center">
-                                <div className="relative h-10 w-10 mr-4">
+                                <div className="relative h-10 w-43 mr-4">
                                     <img
-                                        src="/logo-light.svg"
+                                        src="/images/family-logo-light.png"
                                         alt="Karate Greenegin Logo"
                                         className="h-full w-full dark:hidden"
                                     />
                                     <img
-                                        src="/logo-dark.svg"
+                                        src="/images/family-logo-dark.png"
                                         alt="Karate Greenegin Logo"
                                         className="h-full w-full hidden dark:block"
                                     />
                                 </div>
-                                <span
-                                    className="text-green-600 dark:text-green-400 font-bold text-xl">FAMILY PORTAL</span>
                             </Link>
                         </div>
 

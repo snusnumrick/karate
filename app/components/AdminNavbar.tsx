@@ -86,21 +86,17 @@ export default function AdminNavbar() {
                     <div className="flex justify-between h-16">
                         <div className="flex items-center">
                             {/* Use the same logo as the main navbar */}
-                            <Link to="/" className="relative h-10 w-10 mr-4">
+                            <Link to="/" className="relative h-10 w-43 mr-4">
                                 <img
-                                    src="/logo-light.svg"
+                                    src="/images/admin-logo-light.png"
                                     alt="Karate Greenegin Logo"
                                     className="h-full w-full dark:hidden"
                                 />
                                 <img
-                                    src="/logo-dark.svg"
+                                    src="/images/admin-logo-dark.png"
                                     alt="Karate Greenegin Logo"
                                     className="h-full w-full hidden dark:block"
                                 />
-                            </Link>
-                            <Link to="/admin" className="flex-shrink-0 flex items-center">
-                                <span
-                                    className="text-green-600 dark:text-green-400 font-bold text-xl">ADMIN PANEL</span>
                             </Link>
                         </div>
 

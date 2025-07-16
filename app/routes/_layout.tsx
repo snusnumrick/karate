@@ -98,7 +98,7 @@ export default function Layout() {
             <div className={isReceiptPage ? 'print:hidden' : ''}>
                 {renderNavbar()}
             </div>
-            <main className="flex-grow pt-16 pb-16 sm:pt-2 sm:pb-2">
+            <main className="flex-grow pb-16 sm:pb-2">
                 <Outlet/>
             </main>
             {/* Conditionally add print:hidden class to the Footer */}

@@ -60,43 +60,86 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 export default function Index() {
     return (
         <div className="bg-amber-50 dark:bg-gray-800">
-            {/* Hero Section */}
-            <div className="bg-green-600 text-white">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                        <div>
-                            <div className="mb-6">
-                                <h1 className="text-4xl md:text-5xl font-bold">
-                                    DISCOVER <br/> THE ART OF <br/> THE &ldquo;EMPTY HAND&rdquo;
-                                </h1>
-                            </div>
-                            <p className="text-xl mb-8">
+            {/* Hero Section with Background Image */}
+            <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
+                {/* Background Image */}
+                <div 
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                    style={{
+                        backgroundImage: `url('/images/karate.jpg')`
+                    }}
+                >
+                </div>
+                
+                {/* Dark overlay for better text readability */}
+                <div className="absolute inset-0 bg-black bg-opacity-60 dark:bg-opacity-50"></div>
+                
+                {/* Hero Content */}
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-center text-white">
+                    <div className="max-w-4xl mx-auto">
+                        {/* Main Heading */}
+                        <div className="mb-8">
+                            <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-4">
+                                DISCOVER
+                                <span className="block text-green-300 dark:text-green-400">THE ART OF</span>
+                                <span className="block text-4xl md:text-6xl">THE &ldquo;EMPTY HAND&rdquo;</span>
+                            </h1>
+                        </div>
+                        
+                        {/* Subtitle */}
+                        <div className="mb-12">
+                            <p className="text-xl md:text-2xl mb-6 leading-relaxed max-w-3xl mx-auto">
                                 &ldquo;This class is an introduction to one of the most sophisticated martial arts ‒ the
-                                Art of Karate.
-                                While karate focuses on defence techniques, its teaching goes far beyond fighting&rdquo;
+                                Art of Karate. While karate focuses on defence techniques, its teaching goes far beyond fighting&rdquo;
                             </p>
-                            <p className="text-lg mb-4 italic">{siteConfig.pricing.freeTrial} available!</p> {/* Add free trial mention */}
+                            <p className="text-lg md:text-xl text-green-300 dark:text-green-400 font-semibold">{siteConfig.pricing.freeTrial} available!</p>
+                        </div>
+                        
+                        {/* Call to Action Buttons */}
+                        <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
                             <Link
                                 to="/register"
-                                className="inline-block bg-white text-green-600 font-bold py-3 px-8 rounded-lg text-lg hover:bg-gray-100 transition"
+                                className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-10 rounded-lg text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
                             >
                                 Join us! OSS!
                             </Link>
+                            <Link
+                                to="/contact"
+                                className="inline-block bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-bold py-4 px-10 rounded-lg text-lg transition-all duration-300 transform hover:scale-105"
+                            >
+                                Learn More
+                            </Link>
                         </div>
-                        <div className="flex justify-center">
-                            <div className="relative h-96 w-full">
-                                <div
-                                    className="absolute left-0 md:left-10 top-0 h-full w-full bg-green-700 transform skew-x-0 md:-skew-x-12 origin-top-right z-0"></div>
-                                <div className="absolute h-full w-full flex items-center justify-center z-10">
-                                    <img
-                                        src="/images/karate-pose.svg"
-                                        alt="Karate pose silhouette"
-                                        className="w-full h-full object-contain"
-                                    />
-                                </div>
+                        
+                        {/* Quick Info Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
+                                <Clock className="h-8 w-8 text-green-400 mx-auto mb-3" />
+                                <h3 className="font-bold text-lg mb-2">Class Schedule</h3>
+                                <p className="text-sm">{siteConfig.classes.days}</p>
+                                <p className="text-sm">{siteConfig.classes.time}</p>
+                            </div>
+                            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
+                                <Users className="h-8 w-8 text-green-400 mx-auto mb-3" />
+                                <h3 className="font-bold text-lg mb-2">Age Range</h3>
+                                <p className="text-sm">Ages {siteConfig.classes.ageRange}</p>
+                                <p className="text-sm">All skill levels welcome</p>
+                            </div>
+                            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
+                                <Award className="h-8 w-8 text-green-400 mx-auto mb-3" />
+                                <h3 className="font-bold text-lg mb-2">Expert Instruction</h3>
+                                <p className="text-sm">5th Dan Black Belt</p>
+                                <p className="text-sm">Sensei Negin</p>
                             </div>
                         </div>
                     </div>
+                </div>
+                
+                {/* Scroll indicator */}
+                <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white animate-bounce">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
                 </div>
             </div>
 
