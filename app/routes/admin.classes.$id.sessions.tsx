@@ -140,9 +140,9 @@ export default function ClassSessions() {
     <div className="container mx-auto py-6">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" size="sm" asChild>
-          <Link to={`/admin/classes/${classData.id}/edit`}>
+          <Link to="/admin/classes">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Class
+            Back to Classes
           </Link>
         </Button>
         <div>
