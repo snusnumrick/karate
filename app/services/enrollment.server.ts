@@ -19,7 +19,98 @@ export async function enrollStudent(
   enrollmentData: CreateEnrollmentData,
   supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 ): Promise<ClassEnrollment> {
-  // Validate enrollment first
+  // Check if student has an existing enrollment for this class
+  const { data: existingEnrollment } = await supabase
+    .from('enrollments')
+    .select('id, status')
+    .eq('class_id', enrollmentData.class_id)
+    .eq('student_id', enrollmentData.student_id)
+    .single();
+
+  // If student has a dropped or completed enrollment, update it instead of creating new one
+  if (existingEnrollment && ['dropped', 'completed'].includes(existingEnrollment.status)) {
+    // Validate enrollment first
+    const validation = await validateEnrollment(
+      enrollmentData.class_id,
+      enrollmentData.student_id,
+      supabase
+    );
+
+    if (!validation.is_valid) {
+      throw new Error(`Enrollment validation failed: ${validation.errors.join(', ')}`);
+    }
+
+    // Check for schedule conflicts
+    const { hasConflicts, conflicts } = await checkScheduleConflicts(
+      enrollmentData.student_id,
+      enrollmentData.class_id,
+      supabase
+    );
+
+    if (hasConflicts) {
+      const conflictMessages = conflicts.map(c => 
+        `Conflicts with ${c.conflicting_class_name} on ${(c.conflict_days as string[]).join(', ')}`
+      );
+      throw new Error(`Schedule conflicts detected: ${conflictMessages.join('; ')}`);
+    }
+
+    // Determine enrollment status based on capacity
+    let enrollmentStatus = enrollmentData.status || 'active';
+    if (!validation.capacity_available && enrollmentStatus === 'active') {
+      enrollmentStatus = 'waitlist';
+    }
+
+    // Update existing enrollment
+     const reEnrollmentNote = enrollmentData.notes 
+       ? `Re-enrolled: ${enrollmentData.notes}` 
+       : 'Re-enrolled';
+     
+     const { data, error } = await supabase
+       .from('enrollments')
+       .update({
+         status: enrollmentStatus,
+         notes: reEnrollmentNote,
+         enrolled_at: new Date().toISOString(),
+         updated_at: new Date().toISOString(),
+         completed_at: null,
+         dropped_at: null,
+       })
+      .eq('id', existingEnrollment.id)
+      .select(`
+        *,
+        class:classes(
+          id,
+          name,
+          program:programs(name)
+        ),
+        student:students(
+          id,
+          first_name,
+          last_name,
+          birth_date,
+          family_id
+        )
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to re-enroll student: ${error.message}`);
+    }
+
+    // If enrolled as active, check if we can promote anyone from waitlist
+    if (enrollmentStatus === 'active') {
+      await processWaitlist(enrollmentData.class_id, supabase);
+    }
+
+    // Record student enrollment event for automatic discount processing
+    if (data.student?.id && data.student?.family_id) {
+      await recordStudentEnrollmentEvent(data.student.id, data.student.family_id);
+    }
+
+    return data;
+  }
+
+  // For new enrollments or existing active/waitlist enrollments, proceed with validation
   const validation = await validateEnrollment(
     enrollmentData.class_id,
     enrollmentData.student_id,
@@ -339,7 +430,10 @@ export async function validateEnrollment(
         errors.push('Student is already enrolled in this class');
       } else if (existingEnrollment.status === 'waitlist') {
         errors.push('Student is already on the waitlist for this class');
+      } else if (existingEnrollment.status === 'trial') {
+        errors.push('Student is already enrolled in this class as a trial');
       }
+      // Note: dropped and completed enrollments are allowed to be re-enrolled
     }
 
     // Check program eligibility using comprehensive database function
