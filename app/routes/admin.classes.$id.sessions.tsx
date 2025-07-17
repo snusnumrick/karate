@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link, Form, useNavigation, useActionData } from "@remix-run/react";
+import { useLoaderData, Link, Form, useNavigation, useActionData, useFetcher } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
@@ -8,12 +8,28 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { ArrowLeft, Calendar, Clock, Plus, Edit2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
+import { ArrowLeft, Calendar, Clock, Plus, Edit2, Trash2, ExternalLink } from "lucide-react";
 import { requireAdminUser } from "~/utils/auth.server";
-import { getClassById, getClassSessions, generateClassSessions, updateClassSession } from "~/services/class.server";
+import { getClassById, getClassSessions, generateClassSessions, updateClassSession, deleteClassSession } from "~/services/class.server";
+import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { ClassSession, BulkSessionGeneration } from "~/types/multi-class";
 import { useState } from "react";
 import { formatDate } from "~/utils/misc";
+
+type ActionData = {
+  error?: string;
+  success?: string;
+};
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -85,6 +101,22 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return json({ success: "Session updated successfully" });
     }
     
+    if (intent === "delete_session") {
+      const sessionId = formData.get("session_id") as string;
+      
+      // Check if session has attendance records
+      const hasAttendance = await hasAttendanceRecords(sessionId);
+      if (hasAttendance) {
+        return json(
+          { error: "Cannot delete session with attendance records. Please remove attendance first." },
+          { status: 400 }
+        );
+      }
+
+      await deleteClassSession(sessionId);
+      return json({ success: "Session deleted successfully" });
+    }
+    
     return json({ error: "Invalid intent" }, { status: 400 });
   } catch (error) {
     return json(
@@ -96,12 +128,31 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function ClassSessions() {
   const { classData, sessions } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+  const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
-  const isSubmitting = navigation.state === "submitting";
+  const fetcher = useFetcher<ActionData>();
+  const isSubmitting = navigation.state === "submitting" || fetcher.state === "submitting";
   
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [editingSession, setEditingSession] = useState<ClassSession | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<ClassSession | null>(null);
+
+  const handleDelete = (session: ClassSession) => {
+    setSessionToDelete(session);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (sessionToDelete) {
+      fetcher.submit(
+        { intent: "delete_session", session_id: sessionToDelete.id },
+        { method: "post" }
+      );
+      setIsDeleteDialogOpen(false);
+      setSessionToDelete(null);
+    }
+  };
   
 
   
@@ -145,12 +196,18 @@ export default function ClassSessions() {
             Back to Classes
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">Class Sessions</h1>
           <p className="text-muted-foreground">
             {classData.name} • Manage individual class sessions
           </p>
         </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/admin/sessions">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            All Sessions
+          </Link>
+        </Button>
       </div>
       
       {actionData && 'error' in actionData && (
@@ -162,6 +219,18 @@ export default function ClassSessions() {
       {actionData && 'success' in actionData && (
         <Alert className="mb-6">
           <AlertDescription>{actionData.success}</AlertDescription>
+        </Alert>
+      )}
+      
+      {fetcher.data && 'error' in fetcher.data && (
+        <Alert className="mb-6">
+          <AlertDescription>{fetcher.data.error}</AlertDescription>
+        </Alert>
+      )}
+      
+      {fetcher.data && 'success' in fetcher.data && (
+        <Alert className="mb-6">
+          <AlertDescription>{fetcher.data.success}</AlertDescription>
         </Alert>
       )}
       
@@ -266,13 +335,26 @@ export default function ClassSessions() {
                       {session.status}
                     </Badge>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingSession(session)}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingSession(session)}
+                      tabIndex={0}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(session)}
+                      disabled={isSubmitting}
+                      tabIndex={0}
+                      aria-label={`Delete session on ${formatDate(session.session_date, { formatString: 'EEEE, MMMM d, yyyy' })}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               ))}
               {upcomingSessions.length === 0 && (
@@ -387,6 +469,35 @@ export default function ClassSessions() {
           </Card>
         </div>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the session on
+              <span className="font-semibold"> {sessionToDelete && formatDate(sessionToDelete.session_date, { formatString: 'EEEE, MMMM d, yyyy' })}</span> and remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              disabled={isSubmitting}
+              tabIndex={0}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              tabIndex={0}
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete Session'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

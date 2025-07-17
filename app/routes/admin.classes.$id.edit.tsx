@@ -281,6 +281,7 @@ export default function EditClass() {
                   size="sm"
                   onClick={addSchedule}
                   className="flex items-center gap-2 h-9"
+                  tabIndex={0}
                 >
                   <Plus className="h-4 w-4" />
                   Add Schedule
@@ -350,6 +351,7 @@ export default function EditClass() {
                           size="sm"
                           onClick={() => removeSchedule(index)}
                           className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          tabIndex={0}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -404,6 +406,7 @@ export default function EditClass() {
               variant="destructive"
               disabled={isSubmitting}
               onClick={() => setIsDeleteDialogOpen(true)}
+              tabIndex={0}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               {isSubmitting ? "Deleting..." : "Delete Class"}
@@ -422,7 +425,7 @@ export default function EditClass() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isSubmitting} tabIndex={0}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   const formData = new FormData();
@@ -432,6 +435,7 @@ export default function EditClass() {
                 }}
                 disabled={isSubmitting}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                tabIndex={0}
               >
                 {isSubmitting ? 'Deleting...' : 'Delete Class'}
               </AlertDialogAction>

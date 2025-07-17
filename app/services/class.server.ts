@@ -544,6 +544,89 @@ export async function deleteClassSession(
 }
 
 /**
+ * Bulk delete class sessions by date range and optional filters
+ */
+export async function bulkDeleteClassSessions(
+  filters: {
+    date_from: string;
+    date_to: string;
+    class_id?: string;
+    status?: 'scheduled' | 'completed' | 'cancelled';
+  },
+  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+): Promise<{ deletedCount: number; skippedCount: number; errors: string[] }> {
+  // First, get all sessions that match the criteria
+  let query = supabase
+    .from('class_sessions')
+    .select('id')
+    .gte('session_date', filters.date_from)
+    .lte('session_date', filters.date_to);
+
+  if (filters.class_id) {
+    query = query.eq('class_id', filters.class_id);
+  }
+
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  const { data: sessions, error: fetchError } = await query;
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch sessions for bulk delete: ${fetchError.message}`);
+  }
+
+  if (!sessions || sessions.length === 0) {
+    return { deletedCount: 0, skippedCount: 0, errors: [] };
+  }
+
+  const sessionIds = sessions.map(s => s.id);
+  
+  // Check which sessions have attendance records
+  const { data: attendanceRecords, error: attendanceError } = await supabase
+    .from('attendance')
+    .select('class_session_id')
+    .in('class_session_id', sessionIds);
+
+  if (attendanceError) {
+    throw new Error(`Failed to check attendance records: ${attendanceError.message}`);
+  }
+
+  const sessionsWithAttendance = new Set(
+    attendanceRecords?.map(a => a.class_session_id) || []
+  );
+
+  const sessionsToDelete = sessionIds.filter(id => !sessionsWithAttendance.has(id));
+  const sessionsToSkip = sessionIds.filter(id => sessionsWithAttendance.has(id));
+
+  let deletedCount = 0;
+  const errors: string[] = [];
+
+  // Delete sessions in batches to avoid overwhelming the database
+  const batchSize = 50;
+  for (let i = 0; i < sessionsToDelete.length; i += batchSize) {
+    const batch = sessionsToDelete.slice(i, i + batchSize);
+    
+    const { error: deleteError } = await supabase
+      .from('class_sessions')
+      .delete()
+      .in('id', batch);
+
+    if (deleteError) {
+      errors.push(`Failed to delete batch ${Math.floor(i / batchSize) + 1}: ${deleteError.message}`);
+    } else {
+      deletedCount += batch.length;
+    }
+  }
+
+  return {
+    deletedCount,
+    skippedCount: sessionsToSkip.length,
+    errors
+  };
+}
+
+/**
  * Get class sessions with optional filtering
  */
 export async function getClassSessions(
