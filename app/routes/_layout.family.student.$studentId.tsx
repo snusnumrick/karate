@@ -410,6 +410,20 @@ export default function StudentDetailPage() {
     };
     // Helper function to render enrollment-specific payment options
     const renderEnrollmentPaymentSection = () => {
+        // Check if there are any active or trial enrollments
+        const hasActiveEnrollments = sortedEnrollments && sortedEnrollments.some(e => e.status === 'active' || e.status === 'trial');
+        
+        if (!hasActiveEnrollments) {
+            return (
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg border border-gray-200 dark:border-gray-600 text-center">
+                    <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">No Active Enrollments</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                        Payment options are only available when the student has active or trial enrollments.
+                    </p>
+                </div>
+            );
+        }
+
         // Combined payment section rendering logic
         if (!selectedEnrollmentId) {
             return (
@@ -886,20 +900,22 @@ export default function StudentDetailPage() {
                             </div>
                         </div>
 
-                        {/* Payment Section */}
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-gray-800 dark:to-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-                                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                    Payment Options
-                                </h2>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    {getPaymentSubtitle()}
-                                </p>
+                        {/* Payment Section - Only show if student has active or trial enrollments */}
+                        {sortedEnrollments && sortedEnrollments.some(e => e.status === 'active' || e.status === 'trial') && (
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-gray-800 dark:to-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                        Payment Options
+                                    </h2>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                        {getPaymentSubtitle()}
+                                    </p>
+                                </div>
+                                <div className="p-6">
+                                    {renderEnrollmentPaymentSection()}
+                                </div>
                             </div>
-                            <div className="p-6">
-                                {renderEnrollmentPaymentSection()}
-                            </div>
-                        </div>
+                        )}
                         {/* Belt Awards History */}
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                             <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-gray-800 dark:to-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
