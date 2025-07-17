@@ -27,12 +27,12 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
                                     <img
                                         src="/images/karate-logo-light.png"
                                         alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC"
-                                        className="h-full w-full dark:hidden"
+                                        className="h-10 w-43 dark:hidden"
                                     />
                                     <img
                                         src="/images/karate-logo-dark.png"
                                         alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC, Dark Mode"
-                                        className="h-full w-full hidden dark:block"
+                                        className="h-10 w-43 hidden dark:block"
                                     />
                                 </div>
                             </Link>

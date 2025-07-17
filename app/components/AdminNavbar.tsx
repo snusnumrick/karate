@@ -90,12 +90,12 @@ export default function AdminNavbar() {
                                 <img
                                     src="/images/admin-logo-light.png"
                                     alt="Karate Greenegin Logo"
-                                    className="h-full w-full dark:hidden"
+                                    className="h-10 w-43 dark:hidden"
                                 />
                                 <img
                                     src="/images/admin-logo-dark.png"
                                     alt="Karate Greenegin Logo"
-                                    className="h-full w-full hidden dark:block"
+                                    className="h-10 w-43 hidden dark:block"
                                 />
                             </Link>
                         </div>

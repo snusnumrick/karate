@@ -50,12 +50,12 @@ export default function FamilyNavbar() {
                                     <img
                                         src="/images/family-logo-light.png"
                                         alt="Karate Greenegin Logo"
-                                        className="h-full w-full dark:hidden"
+                                        className="h-10 w-43 dark:hidden"
                                     />
                                     <img
                                         src="/images/family-logo-dark.png"
                                         alt="Karate Greenegin Logo"
-                                        className="h-full w-full hidden dark:block"
+                                        className="h-10 w-43 hidden dark:block"
                                     />
                                 </div>
                             </Link>
