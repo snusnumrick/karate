@@ -22,6 +22,7 @@ import { formatDate } from "~/utils/misc";
 import React from "react";
 import { getFamilyDetails, type FamilyDetails } from "~/services/family.server"; // Import service function and type
 import { deleteStudent } from "~/services/student.server"; // Import deleteStudent service function (removed .ts)
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define the shape of the data returned by the loader using the imported type
 type LoaderData = {
@@ -151,6 +152,8 @@ export default function FamilyDetailPage() {
             {/* Only render the detail view if no child route (like edit) is active */}
             {!outlet && (
                 <>
+                    <AppBreadcrumb items={breadcrumbPatterns.adminFamilyDetail(family.name)} className="mb-6" />
+                    
                     {/* Updated header to match standard site styling */}
                     <div className="text-center mb-10">
                         {/* Adjusted header classes to match payments page */}

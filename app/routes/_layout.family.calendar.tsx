@@ -18,6 +18,7 @@ import {
 import { Calendar } from "~/components/calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { sessionsToCalendarEvents, attendanceToCalendarEvents } from "~/components/calendar/utils";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 // Define types
@@ -303,9 +304,7 @@ export default function FamilyCalendarPage() {
   return (
     <div className="sm:container sm:mx-auto px-2 sm:px-4 py-4">
       <div className="px-2 sm:px-0">
-        <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block text-sm">
-          &larr; Back to Family Portal
-        </Link>
+        <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} className="mb-4" />
         
         <div className="mb-3 sm:mb-4">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">

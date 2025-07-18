@@ -27,6 +27,7 @@ import {Badge} from "~/components/ui/badge"; // Import Badge
 import {formatDate} from '~/utils/misc'; // Import the new formatDate utility
 import {beltColorMap} from "~/utils/constants";
 import { StudentPaymentSection } from '~/components/StudentPaymentSection';
+import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 
 // Define types based on updated Supabase schema
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
@@ -477,11 +478,7 @@ export default function StudentDetailPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl student-payment-page">
-            <div className="mb-6">
-                <Link to="/family" className="text-blue-600 hover:underline inline-flex items-center gap-2">
-                    &larr; Back to Family Portal
-                </Link>
-            </div>
+            <AppBreadcrumb items={breadcrumbPatterns.familyStudentDetail(student.first_name, student.last_name)} className="mb-6" />
 
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
@@ -771,7 +768,7 @@ export default function StudentDetailPage() {
                                         Edit Student Info
                                     </Button>
                                     <Button asChild variant="outline" className="w-full justify-start">
-                                        <Link to="/family/attendance">View Attendance</Link>
+                                        <Link to={`/family/student/${student.id}/attendance`}>View Attendance</Link>
                                     </Button>
                                     <Button asChild variant="outline" className="w-full justify-start">
                                         <Link to={`/family/store/purchase/${student.id}`}>Purchase Gi</Link>

@@ -3,6 +3,7 @@ import {Link, useLoaderData, useRouteError} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define types
 type ProfileRow = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'email' | 'family_id'>;
@@ -127,9 +128,8 @@ export default function MissingWaiversPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">
-                &larr; Back to Admin Dashboard
-            </Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminWaiversMissing()} />
+            
             <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Families Missing Required Waivers</h1>
 
             {familiesMissingWaivers.length === 0 ? (
@@ -198,8 +198,7 @@ export function ErrorBoundary() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Admin
-                Dashboard</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminWaiversMissing()} />
             <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
                 <h2 className="text-xl font-bold mb-2">Error Loading Missing Waivers ({errorStatus})</h2>
                 <p>{errorMessage}</p>

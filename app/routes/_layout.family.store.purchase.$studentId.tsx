@@ -13,6 +13,7 @@ import type { Database, Tables, TablesInsert } from "~/types/database.types";
 import { formatCurrency } from "~/utils/misc"; // Assuming you have a currency formatter
 import { siteConfig } from "~/config/site"; // For tax calculation consistency
 import { ArrowLeft, Info } from 'lucide-react'; // Added Info icon
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // --- Helper Function for Size Recommendation ---
 const tShirtToUniformSizeMap: { [key: string]: string } = {
@@ -383,11 +384,11 @@ export default function PurchaseGiPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-2xl">
-            <Link to={`/family/student/${student.id}`} className="inline-flex items-center text-sm text-blue-600 hover:underline mb-4">
-                <ArrowLeft className="mr-1 h-4 w-4" /> Back to {student.first_name}&apos;s Details
-            </Link>
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.familyStorePurchase(student.first_name, student.last_name, student.id)} 
+            />
 
-            <h1 className="text-3xl font-bold mb-2">Purchase Uniform</h1>
+            <h1 className="text-3xl font-bold mb-2 mt-6">Purchase Uniform</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Select the correct size Gi for {student.first_name} {student.last_name}.
                 The size defaults to their registered T-shirt size ({student.t_shirt_size || 'N/A'}). {/* Use JS string */}

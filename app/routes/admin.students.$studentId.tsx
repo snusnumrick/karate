@@ -34,6 +34,7 @@ import {
     type StudentDetails, // Import service types
     type StudentUpdateData
 } from "~/services/student.server"; // Import service functions
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb"; // Import breadcrumb component
 
 // Define types using imported service types
 type LoaderData = {
@@ -210,8 +211,7 @@ export default function AdminStudentDetailPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/admin/students" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to
-                Student List</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminStudentDetail(student.first_name, student.last_name)} className="mb-4" />
 
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">Student Details: {student.first_name} {student.last_name}</h1>
@@ -579,8 +579,7 @@ export function ErrorBoundary() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/admin/students" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to
-                Student List</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminStudents()} />
             <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
                 <h2 className="text-xl font-bold mb-2">Error Loading Student Details ({errorStatus})</h2>
                 <p>{errorMessage}</p>

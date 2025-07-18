@@ -4,7 +4,7 @@ import type {Database} from "~/types/database.types";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Badge} from "~/components/ui/badge";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
-import {formatDate} from "~/utils/misc"; // Import formatDate utility
+import {formatDate} from "~/utils/misc";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define types
@@ -17,20 +17,25 @@ type AttendanceWithStudentName = AttendanceRow & {
 };
 
 type LoaderData = {
-    students: StudentRow[];
+    student: StudentRow;
     attendanceRecords: AttendanceWithStudentName[];
     familyName: string | null;
 };
 
-export async function loader({request}: LoaderFunctionArgs) {
-    console.log("Entering /family/attendance loader...");
+export async function loader({request, params}: LoaderFunctionArgs) {
+    console.log("Entering /family/student/$studentId/attendance loader...");
+    const studentId = params.studentId;
+    if (!studentId) {
+        throw new Response("Student ID is required", {status: 400});
+    }
+
     const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
     const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {
         console.log("User not logged in, redirecting to login.");
-        return redirect("/login?redirectTo=/family/attendance", {headers});
+        return redirect("/login?redirectTo=/family", {headers});
     }
 
     // Get user's profile to find their family ID
@@ -42,7 +47,6 @@ export async function loader({request}: LoaderFunctionArgs) {
 
     if (profileError || !profile || !profile.family_id) {
         console.error("Error fetching profile or no family ID found for user:", user.id, profileError?.message);
-        // Redirect to main family page, maybe they need to create/join a family
         return redirect("/family", {headers});
     }
 
@@ -50,6 +54,19 @@ export async function loader({request}: LoaderFunctionArgs) {
     console.log(`Fetching data for family ID: ${familyId}`);
 
     try {
+        // Fetch the specific student data
+        const {data: studentData, error: studentError} = await supabaseServer
+            .from('students')
+            .select('id, first_name, last_name, family_id')
+            .eq('id', studentId)
+            .eq('family_id', familyId) // Ensure student belongs to user's family
+            .single();
+
+        if (studentError || !studentData) {
+            console.error("Error fetching student data or student not found:", studentError?.message);
+            throw new Response("Student not found or access denied", {status: 404});
+        }
+
         // Fetch family name (optional, for display)
         const {data: familyData} = await supabaseServer
             .from('families')
@@ -58,88 +75,68 @@ export async function loader({request}: LoaderFunctionArgs) {
             .single();
         const familyName = familyData?.name ?? null;
 
-        // Fetch students in the family
-        const {data: studentsData, error: studentsError} = await supabaseServer
-            .from('students')
-            .select('id, first_name, last_name')
-            .eq('family_id', familyId)
-            .order('last_name', {ascending: true})
-            .order('first_name', {ascending: true});
+        // Fetch attendance records for this specific student
+        const {data: attendanceData, error: attendanceError} = await supabaseServer
+            .from('attendance')
+            .select(`
+                *,
+                students ( first_name, last_name ),
+                class_sessions ( session_date )
+            `)
+            .eq('student_id', studentId)
+            .not('class_session_id', 'is', null) // Only get records with valid class sessions
+            .order('class_date', {ascending: false}); // Order by class_date instead
 
-        if (studentsError) throw studentsError;
-        const students = studentsData ?? [];
-        const studentIds = students.map(s => s.id);
-        console.log(`Found ${students.length} students for family.`);
+        if (attendanceError) throw attendanceError;
+        
+        // Ensure students relation is at least null and filter out records without class_sessions
+        const attendanceRecords = (attendanceData ?? [])
+            .filter(r => r.class_sessions !== null) // Filter out any records without class sessions
+            .map(r => ({...r, students: r.students ?? null}));
+        
+        console.log(`Fetched ${attendanceRecords.length} attendance records for student ${studentData.first_name} ${studentData.last_name}.`);
 
-        // Fetch attendance records for these students
-        let attendanceRecords: AttendanceWithStudentName[] = [];
-        if (studentIds.length > 0) {
-            const {data: attendanceData, error: attendanceError} = await supabaseServer
-                .from('attendance')
-                .select(`
-          *,
-          students ( first_name, last_name ),
-          class_sessions ( session_date )
-        `)
-                .in('student_id', studentIds)
-                .not('class_session_id', 'is', null) // Only get records with valid class sessions
-                .order('class_date', {ascending: false}); // Order by class_date instead
-
-            if (attendanceError) throw attendanceError;
-            // Ensure students relation is at least null and filter out records without class_sessions
-            attendanceRecords = (attendanceData ?? [])
-                .filter(r => r.class_sessions !== null) // Filter out any records without class sessions
-                .map(r => ({...r, students: r.students ?? null}));
-            console.log(`Fetched ${attendanceRecords.length} attendance records.`);
-        } else {
-            console.log("No students in family, skipping attendance fetch.");
-        }
-
-        return json({students, attendanceRecords, familyName}, {headers});
+        return json({
+            student: studentData,
+            attendanceRecords,
+            familyName
+        }, {headers});
 
     } catch (error) {
         const message = error instanceof Error ? error.message : "An unknown error occurred.";
-        console.error("Error in /family/attendance loader:", message);
+        console.error("Error in /family/student/$studentId/attendance loader:", message);
         // Throw a response to trigger the ErrorBoundary
         throw new Response(`Failed to load attendance data: ${message}`, {status: 500});
     }
 }
 
-export default function FamilyAttendancePage() {
-    const {students, attendanceRecords, familyName} = useLoaderData<LoaderData>();
-
-    // Optional: Group records by student client-side if needed, or rely on sorting
-    // const recordsByStudent = attendanceRecords.reduce((acc, record) => {
-    //   const studentId = record.student_id;
-    //   if (!acc[studentId]) {
-    //     acc[studentId] = {
-    //       name: record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student',
-    //       records: []
-    //     };
-    //   }
-    //   acc[studentId].records.push(record);
-    //   return acc;
-    // }, {} as Record<string, { name: string; records: AttendanceWithStudentName[] }>);
+export default function StudentAttendancePage() {
+    const {student, attendanceRecords, familyName} = useLoaderData<LoaderData>();
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyAttendance()} />
+            <AppBreadcrumb items={breadcrumbPatterns.familyStudentAttendance(student.first_name, student.last_name, student.id)} className="mb-6" />
             
             <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
-                Attendance History {familyName ? `for ${familyName}` : ''}
+                Attendance History for {student.first_name} {student.last_name}
             </h1>
 
-            {students.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400">No students found in this family.</p>
-            ) : attendanceRecords.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400">No attendance records found for your student(s).</p>
+            {attendanceRecords.length === 0 ? (
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md text-center">
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">No attendance records found for {student.first_name}.</p>
+                    <Link 
+                        to={`/family/student/${student.id}`}
+                        className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                        ← Back to {student.first_name}&apos;s Profile
+                    </Link>
+                </div>
             ) : (
                 <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Student</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Notes</TableHead>
                             </TableRow>
@@ -147,9 +144,8 @@ export default function FamilyAttendancePage() {
                         <TableBody>
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{formatDate(record.class_sessions?.session_date || record.class_date, { formatString: 'MMM d, yyyy' })}</TableCell>
                                     <TableCell className="font-medium">
-                                        {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
+                                        {formatDate(record.class_sessions?.session_date || record.class_date, { formatString: 'MMM d, yyyy' })}
                                     </TableCell>
                                     <TableCell>
                                         {record.status === 'present' ? (
@@ -169,6 +165,23 @@ export default function FamilyAttendancePage() {
                             ))}
                         </TableBody>
                     </Table>
+                    
+                    <div className="p-6 bg-gray-50 dark:bg-gray-700 border-t">
+                        <div className="flex justify-between items-center">
+                            <Link 
+                                to={`/family/student/${student.id}`}
+                                className="text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                                ← Back to {student.first_name}&apos;s Profile
+                            </Link>
+                            <Link 
+                                to="/family/attendance"
+                                className="text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                                View Family Attendance →
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
@@ -178,33 +191,28 @@ export default function FamilyAttendancePage() {
 // Add a specific ErrorBoundary for this route
 export function ErrorBoundary() {
     const error = useRouteError();
-    console.error("Error caught in FamilyAttendancePage ErrorBoundary:", error);
+    console.error("Error caught in StudentAttendancePage ErrorBoundary:", error);
 
     let errorMessage = "An unknown error occurred while loading attendance data.";
-    let errorStack = undefined;
 
     if (error instanceof Response) {
         errorMessage = `Error: ${error.status} - ${error.statusText || 'Failed to load data.'}`;
-        // Attempt to read the response body if it's text
-        // Note: This might not always work depending on the response type
-        // const bodyText = await error.text().catch(() => '');
-        // if (bodyText) errorMessage += `\nDetails: ${bodyText}`;
     } else if (error instanceof Error) {
         errorMessage = error.message;
-        errorStack = error.stack;
     }
 
     return (
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            <AppBreadcrumb items={breadcrumbPatterns.familyAttendance()} />
-            
-            <h2 className="text-xl font-bold mb-2">Error Loading Attendance</h2>
-            <p>{errorMessage}</p>
-            {process.env.NODE_ENV === "development" && errorStack && (
-                <pre className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs">
-          {errorStack}
-        </pre>
-            )}
+        <div className="container mx-auto px-4 py-8">
+            <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                <h2 className="text-lg font-semibold mb-2">Error Loading Attendance</h2>
+                <p className="mb-4">{errorMessage}</p>
+                <Link 
+                    to="/family"
+                    className="text-blue-600 hover:underline"
+                >
+                    ← Back to Family Portal
+                </Link>
+            </div>
         </div>
     );
 }

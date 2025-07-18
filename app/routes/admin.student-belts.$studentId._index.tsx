@@ -20,6 +20,7 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/
 import {Badge}from "~/components/ui/badge";
 import {formatDate}from "~/utils/misc"; // Import formatDate utility
 import {Edit, Trash2}from 'lucide-react'; // Icons for actions
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define types (assuming table renamed to 'belt_awards')
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
@@ -152,12 +153,10 @@ export default function AdminStudentAchievementsPage() { // Function name can st
 
     return (
         <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminStudentBelts(student.id, `${student.first_name} ${student.last_name}`)} />
+            
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <Link to={`/admin/students/${params.studentId}`}
-                          className="text-blue-600 hover:underline mb-2 inline-block text-sm">
-                        &larr; Back to Student Details
-                    </Link>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                         Belt Awards for {student.first_name} {student.last_name} {/* Renamed title */}
                     </h1>

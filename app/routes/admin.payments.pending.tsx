@@ -7,6 +7,7 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/
 import {Badge}from "~/components/ui/badge";
 import {formatDate}from "~/utils/misc"; // Import formatDate utility
 import {PaymentStatus}from "~/types/models"; // Import the enum
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define types
 // Define the structure for pending payments, including the nested family object
@@ -80,9 +81,7 @@ export default function PendingPaymentsPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">
-                &larr; Back to Admin Dashboard
-            </Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminPaymentsPending()} className="mb-6" />
             <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Families with Pending Payments</h1>
 
             {pendingPayments.length === 0 ? (
@@ -152,8 +151,7 @@ export function ErrorBoundary() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/admin" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Admin
-                Dashboard</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminPaymentsPending()} className="mb-6" />
             <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
                 <h2 className="text-xl font-bold mb-2">Error Loading Pending Payments ({errorStatus})</h2>
                 <p>{errorMessage}</p>

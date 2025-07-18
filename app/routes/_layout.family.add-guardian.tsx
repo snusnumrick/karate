@@ -14,6 +14,7 @@ import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {Form as UIForm, FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form"; // Shadcn Form components
 import {ClientOnly} from "~/components/client-only";
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // --- Types and Schemas ---
 type GuardianInsert = Database['public']['Tables']['guardians']['Insert'];
@@ -191,8 +192,7 @@ export default function AddGuardianPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family
-                Portal</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.familyAddGuardian()} />
 
             <h1 className="text-3xl font-bold mb-6">Add New Guardian</h1>
 

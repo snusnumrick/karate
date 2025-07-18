@@ -2,6 +2,7 @@ import {json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Link, useLoaderData} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {formatDate} from "~/utils/misc";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 export async function loader({request}: LoaderFunctionArgs) {
@@ -51,11 +52,7 @@ export default function PaymentHistoryPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <div className="mb-6">
-                <Link to="/family" className="text-blue-600 hover:underline dark:text-blue-400">
-                    &larr; Back to Family Portal
-                </Link>
-            </div>
+            <AppBreadcrumb items={breadcrumbPatterns.familyPaymentHistory()} className="mb-6" />
 
             <h1 className="text-3xl font-bold mb-6">Full Payment History</h1>
 
@@ -159,11 +156,7 @@ export function ErrorBoundary() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <div className="mb-6">
-                <Link to="/family" className="text-blue-600 hover:underline dark:text-blue-400">
-                    &larr; Back to Family Portal
-                </Link>
-            </div>
+            <AppBreadcrumb items={breadcrumbPatterns.familyPaymentHistory()} className="mb-6" />
             <h1 className="text-3xl font-bold mb-6 text-red-600 dark:text-red-400">Error Loading Payment History</h1>
             <p className="text-gray-600 dark:text-gray-400">
                 {error.message}

@@ -9,6 +9,7 @@ import { Badge } from "~/components/ui/badge";
 // Removed Button import as it's not used
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type OrderRow = Tables<'orders'>;
 type OrderItemRow = Tables<'order_items'>;
@@ -100,11 +101,7 @@ export default function FamilyOrders() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-             <div className="mb-6">
-                <Link to="/family" className="text-blue-600 hover:underline dark:text-blue-400">
-                    &larr; Back to Family Portal
-                </Link>
-            </div>
+            <AppBreadcrumb items={breadcrumbPatterns.familyOrders()} />
 
             <h1 className="text-3xl font-bold mb-6">Order History</h1>
 
@@ -187,11 +184,8 @@ export function ErrorBoundary() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <div className="mb-6">
-                <Link to="/family" className="text-blue-600 hover:underline dark:text-blue-400">
-                    &larr; Back to Family Portal
-                </Link>
-            </div>
+            <AppBreadcrumb items={breadcrumbPatterns.familyOrders()} />
+            
             <h1 className="text-3xl font-bold mb-6 text-red-600 dark:text-red-400">Error Loading Order History</h1>
             <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />

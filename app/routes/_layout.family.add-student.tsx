@@ -8,6 +8,7 @@ import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Loader to get family ID and name for context
 export async function loader({request}: LoaderFunctionArgs) {
@@ -150,8 +151,7 @@ export default function AddStudentPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/family" className="text-blue-600 hover:underline mb-6 inline-block">&larr; Back to Family
-                Portal</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.familyAddStudent()} className="mb-6" />
 
             <h1 className="text-3xl font-bold mb-2">Add Student to {familyName}</h1>
             <p className="text-muted-foreground mb-6">Enter the details for the new student.</p>
@@ -353,8 +353,7 @@ export function ErrorBoundary() {
     // For now, a simple one:
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/family" className="text-blue-600 hover:underline mb-6 inline-block">&larr; Back to Family
-                Portal</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.familyAddStudent()} className="mb-6" />
             <Alert variant="destructive">
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>

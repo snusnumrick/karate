@@ -26,6 +26,7 @@ import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {Form as UIForm, FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form"; // Shadcn Form components
 import {ClientOnly} from "~/components/client-only";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb"; // Import breadcrumb component
 
 // --- Types and Schemas ---
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
@@ -276,8 +277,7 @@ export default function GuardianDetailPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family
-                Portal</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.familyGuardian(`${guardian.first_name} ${guardian.last_name}`)} className="mb-6" />
 
             <h1 className="text-3xl font-bold mb-6">Guardian Details</h1>
 

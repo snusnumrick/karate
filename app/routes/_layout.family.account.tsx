@@ -15,6 +15,7 @@ import {ClientOnly} from "~/components/client-only";
 import {useEffect} from "react";
 import {Checkbox} from "~/components/ui/checkbox"; // Import Checkbox for preferences
 import { siteConfig } from "~/config/site"; // Import siteConfig
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb"; // Import breadcrumb component
 
 // Define a type for serialized Zod issues (plain objects)
 type SerializedZodIssue = {
@@ -362,8 +363,7 @@ export default function AccountSettingsPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-8">
-            <Link to="/family" className="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Family
-                Portal</Link>
+            <AppBreadcrumb items={breadcrumbPatterns.familyAccount()} className="mb-6" />
 
             <ClientOnly fallback={<div className="text-center p-8">Loading account settings...</div>}>
                 {() => (
