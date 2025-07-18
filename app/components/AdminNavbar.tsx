@@ -36,28 +36,32 @@ import {Button} from "~/components/ui/button"; // Import cn utility
 // Define navigation items for reuse
 const adminNavItems = [
     {to: "/admin", label: "Dashboard", icon: LayoutDashboard},
-    {to: "/admin/calendar", label: "Calendar", icon: Calendar},
-    {to: "/admin/families", label: "Families", icon: Users},
-    {to: "/admin/students", label: "Students", icon: User},
     {to: "/admin/payments", label: "Payments", icon: CreditCard},
     {to: "/admin/waivers", label: "Waivers", icon: FileText},
     {to: "/admin/messages", label: "Messages", icon: MessageSquare},
     {to: "/admin/db-chat", label: "DB Chat", icon: Database},
-    // Attendance items will be handled by the Dropdown below
+    // Calendar, Attendance, Families, Students, Enrollments, Programs, Classes, Sessions will be handled by dropdowns
     // Discount items will be handled by the Dropdown below
     // Store items will be handled by the Dropdown below
 ];
 
-// Define Classes & Programs navigation items
-const classNavItems = [
-    {to: "/admin/programs", label: "Programs", icon: GraduationCap},
-    {to: "/admin/classes", label: "Classes", icon: CalendarCheck},
-    {to: "/admin/enrollments", label: "Enrollments", icon: Users},
+// Define Calendar & Attendance navigation items
+const calendarAttendanceNavItems = [
+    {to: "/admin/calendar", label: "Calendar", icon: Calendar},
+    {to: "/admin/attendance", label: "Attendance", icon: CalendarCheck},
 ];
 
-// Define Attendance navigation items
-const attendanceNavItems = [
-    {to: "/admin/attendance", label: "Attendance", icon: CalendarCheck},
+// Define People Management navigation items (Families, Students, Enrollments)
+const peopleNavItems = [
+    {to: "/admin/families", label: "Families", icon: Users},
+    {to: "/admin/students", label: "Students", icon: User},
+    {to: "/admin/enrollments", label: "Enrollments", icon: ListOrdered},
+];
+
+// Define Programs & Classes navigation items (Programs, Classes, Sessions)
+const programsClassesNavItems = [
+    {to: "/admin/programs", label: "Programs", icon: GraduationCap},
+    {to: "/admin/classes", label: "Classes", icon: CalendarCheck},
     {to: "/admin/sessions", label: "Sessions", icon: Calendar},
 ];
 
@@ -80,8 +84,9 @@ export default function AdminNavbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [isStoreMobileOpen, setIsStoreMobileOpen] = useState(false);
     const [isDiscountMobileOpen, setIsDiscountMobileOpen] = useState(false);
-    const [isClassMobileOpen, setIsClassMobileOpen] = useState(false);
-    const [isAttendanceMobileOpen, setIsAttendanceMobileOpen] = useState(false);
+    const [isProgramsClassesMobileOpen, setIsProgramsClassesMobileOpen] = useState(false);
+    const [isCalendarAttendanceMobileOpen, setIsCalendarAttendanceMobileOpen] = useState(false);
+    const [isPeopleMobileOpen, setIsPeopleMobileOpen] = useState(false);
     // const location = useLocation(); // Get current location - Removed as it's unused here
 
     return (
@@ -115,10 +120,12 @@ export default function AdminNavbar() {
                                     {/* Slightly larger icon, no margin */}
                                 </AdminNavLink>
                             ))}
-                            {/* Attendance Dropdown */}
-                            <AdminAttendanceDropdown/>
-                            {/* Classes & Programs Dropdown */}
-                            <AdminClassDropdown/>
+                            {/* Calendar & Attendance Dropdown */}
+                            <AdminCalendarAttendanceDropdown/>
+                            {/* People Management Dropdown (Families, Students, Enrollments) */}
+                            <AdminPeopleDropdown/>
+                            {/* Programs & Classes Dropdown */}
+                            <AdminProgramsClassesDropdown/>
                             {/* Discount Dropdown */}
                             <AdminDiscountDropdown/>
                             {/* Store Dropdown */}
@@ -184,29 +191,29 @@ export default function AdminNavbar() {
                                                         ))}
                                                     </div>
                                                     
-                                                    {/* Attendance Mobile Links */}
+                                                    {/* Calendar & Attendance Mobile Links */}
                                                     <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
                                                     <div className="px-4 py-2">
                                                         <button
                                                             onClick={(e) => {
                                                                 e.preventDefault();
-                                                                setIsAttendanceMobileOpen(!isAttendanceMobileOpen);
+                                                                setIsCalendarAttendanceMobileOpen(!isCalendarAttendanceMobileOpen);
                                                             }}
                                                             className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
                                                         >
-                                                            <CalendarCheck className="h-5 w-5 mr-2"/>
-                                                            <span className="font-medium">Attendance & Sessions</span>
+                                                            <Calendar className="h-5 w-5 mr-2"/>
+                                                            <span className="font-medium">Calendar & Attendance</span>
                                                             <span className="ml-auto">
-                                                                {isAttendanceMobileOpen ?
+                                                                {isCalendarAttendanceMobileOpen ?
                                                                     <ChevronDown className="h-4 w-4"/> :
                                                                     <ChevronRight className="h-4 w-4"/>
                                                                 }
                                                             </span>
                                                         </button>
                                                     </div>
-                                                    {isAttendanceMobileOpen && (
+                                                    {isCalendarAttendanceMobileOpen && (
                                                         <div className="pl-6 space-y-1 mb-2">
-                                                            {attendanceNavItems.map((item) => (
+                                                            {calendarAttendanceNavItems.map((item) => (
                                                                 <AdminMobileNavLink key={item.to} to={item.to}
                                                                                     onClick={() => setIsOpen(false)}>
                                                                     <item.icon className="h-5 w-5 mr-2 inline-block"/>
@@ -216,29 +223,61 @@ export default function AdminNavbar() {
                                                         </div>
                                                     )}
                                                     
-                                                    {/* Classes & Programs Mobile Links */}
+                                                    {/* People Management Mobile Links */}
                                                     <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
                                                     <div className="px-4 py-2">
                                                         <button
                                                             onClick={(e) => {
                                                                 e.preventDefault();
-                                                                setIsClassMobileOpen(!isClassMobileOpen);
+                                                                setIsPeopleMobileOpen(!isPeopleMobileOpen);
                                                             }}
                                                             className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
                                                         >
-                                                            <GraduationCap className="h-5 w-5 mr-2"/>
-                                                            <span className="font-medium">Classes & Programs</span>
+                                                            <Users className="h-5 w-5 mr-2"/>
+                                                            <span className="font-medium">People Management</span>
                                                             <span className="ml-auto">
-                                                                {isClassMobileOpen ?
+                                                                {isPeopleMobileOpen ?
                                                                     <ChevronDown className="h-4 w-4"/> :
                                                                     <ChevronRight className="h-4 w-4"/>
                                                                 }
                                                             </span>
                                                         </button>
                                                     </div>
-                                                    {isClassMobileOpen && (
+                                                    {isPeopleMobileOpen && (
                                                         <div className="pl-6 space-y-1 mb-2">
-                                                            {classNavItems.map((item) => (
+                                                            {peopleNavItems.map((item) => (
+                                                                <AdminMobileNavLink key={item.to} to={item.to}
+                                                                                    onClick={() => setIsOpen(false)}>
+                                                                    <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                                    {item.label}
+                                                                </AdminMobileNavLink>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Programs & Classes Mobile Links */}
+                                                    <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
+                                                    <div className="px-4 py-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setIsProgramsClassesMobileOpen(!isProgramsClassesMobileOpen);
+                                                            }}
+                                                            className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
+                                                        >
+                                                            <GraduationCap className="h-5 w-5 mr-2"/>
+                                                            <span className="font-medium">Programs & Classes</span>
+                                                            <span className="ml-auto">
+                                                                {isProgramsClassesMobileOpen ?
+                                                                    <ChevronDown className="h-4 w-4"/> :
+                                                                    <ChevronRight className="h-4 w-4"/>
+                                                                }
+                                                            </span>
+                                                        </button>
+                                                    </div>
+                                                    {isProgramsClassesMobileOpen && (
+                                                        <div className="pl-6 space-y-1 mb-2">
+                                                            {programsClassesNavItems.map((item) => (
                                                                 <AdminMobileNavLink key={item.to} to={item.to}
                                                                                     onClick={() => setIsOpen(false)}>
                                                                     <item.icon className="h-5 w-5 mr-2 inline-block"/>
@@ -378,10 +417,10 @@ function AdminNavLink({to, label, children}: AdminNavLinkProps) {
     );
 }
 
-// Classes & Programs Dropdown Component for Desktop (Icon Trigger + Tooltip)
-function AdminClassDropdown() {
+// Calendar & Attendance Dropdown Component for Desktop (Icon Trigger + Tooltip)
+function AdminCalendarAttendanceDropdown() {
     const location = useLocation();
-    const isClassActive = location.pathname.startsWith('/admin/programs') || location.pathname.startsWith('/admin/classes') || location.pathname.startsWith('/admin/enrollments');
+    const isCalendarAttendanceActive = location.pathname.startsWith('/admin/calendar') || location.pathname.startsWith('/admin/attendance');
     const [isOpen, setIsOpen] = useState(false);
     const [showTooltip, setShowTooltip] = useState(false);
     const [canShowTooltip, setCanShowTooltip] = useState(true);
@@ -406,9 +445,165 @@ function AdminClassDropdown() {
                         size="icon"
                         className={cn(
                             "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
-                            isClassActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
+                            isCalendarAttendanceActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
                         )}
-                        aria-label="Classes & Programs Management"
+                        aria-label="Calendar & Attendance Management"
+                        onMouseEnter={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onMouseLeave={() => {
+                            setShowTooltip(false);
+                        }}
+                        onFocus={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onBlur={() => {
+                            setShowTooltip(false);
+                        }}
+                        onClick={() => {
+                            setShowTooltip(false);
+                        }}
+                    >
+                        <Calendar className="h-5 w-5"/>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
+                    {calendarAttendanceNavItems.map((item) => (
+                        <DropdownMenuItem key={item.to} className="p-0">
+                            <Link
+                                to={item.to}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                            >
+                                <item.icon className="h-4 w-4 mr-2"/>
+                                {item.label}
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {showTooltip && !isOpen && canShowTooltip && (
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
+                    Calendar & Attendance
+                </div>
+            )}
+        </div>
+    );
+}
+
+// People Management Dropdown Component for Desktop (Icon Trigger + Tooltip)
+function AdminPeopleDropdown() {
+    const location = useLocation();
+    const isPeopleActive = location.pathname.startsWith('/admin/families') || location.pathname.startsWith('/admin/students') || location.pathname.startsWith('/admin/enrollments');
+    const [isOpen, setIsOpen] = useState(false);
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [canShowTooltip, setCanShowTooltip] = useState(true);
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (open) {
+            setShowTooltip(false);
+            setCanShowTooltip(false);
+        } else {
+            // Delay allowing tooltip to show again after dropdown closes
+            setTimeout(() => setCanShowTooltip(true), 300);
+        }
+    };
+
+    return (
+        <div className="relative">
+            <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
+                            isPeopleActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
+                        )}
+                        aria-label="People Management"
+                        onMouseEnter={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onMouseLeave={() => {
+                            setShowTooltip(false);
+                        }}
+                        onFocus={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onBlur={() => {
+                            setShowTooltip(false);
+                        }}
+                        onClick={() => {
+                            setShowTooltip(false);
+                        }}
+                    >
+                        <Users className="h-5 w-5"/>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
+                    {peopleNavItems.map((item) => (
+                        <DropdownMenuItem key={item.to} className="p-0">
+                            <Link
+                                to={item.to}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                            >
+                                <item.icon className="h-4 w-4 mr-2"/>
+                                {item.label}
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {showTooltip && !isOpen && canShowTooltip && (
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
+                    People Management
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Programs & Classes Dropdown Component for Desktop (Icon Trigger + Tooltip)
+function AdminProgramsClassesDropdown() {
+    const location = useLocation();
+    const isProgramsClassesActive = location.pathname.startsWith('/admin/programs') || location.pathname.startsWith('/admin/classes') || location.pathname.startsWith('/admin/sessions');
+    const [isOpen, setIsOpen] = useState(false);
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [canShowTooltip, setCanShowTooltip] = useState(true);
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (open) {
+            setShowTooltip(false);
+            setCanShowTooltip(false);
+        } else {
+            // Delay allowing tooltip to show again after dropdown closes
+            setTimeout(() => setCanShowTooltip(true), 300);
+        }
+    };
+
+    return (
+        <div className="relative">
+            <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
+                            isProgramsClassesActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
+                        )}
+                        aria-label="Programs & Classes Management"
                         onMouseEnter={() => {
                             if (!isOpen && canShowTooltip) {
                                 setShowTooltip(true);
@@ -433,7 +628,7 @@ function AdminClassDropdown() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
-                    {classNavItems.map((item) => (
+                    {programsClassesNavItems.map((item) => (
                         <DropdownMenuItem key={item.to} className="p-0">
                             <Link
                                 to={item.to}
@@ -449,85 +644,7 @@ function AdminClassDropdown() {
             </DropdownMenu>
             {showTooltip && !isOpen && canShowTooltip && (
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
-                    Classes & Programs
-                </div>
-            )}
-        </div>
-    );
-}
-
-// Attendance Dropdown Component for Desktop (Icon Trigger + Tooltip)
-function AdminAttendanceDropdown() {
-    const location = useLocation();
-    const isAttendanceActive = location.pathname.startsWith('/admin/attendance') || location.pathname.startsWith('/admin/sessions');
-    const [isOpen, setIsOpen] = useState(false);
-    const [showTooltip, setShowTooltip] = useState(false);
-    const [canShowTooltip, setCanShowTooltip] = useState(true);
-
-    const handleOpenChange = (open: boolean) => {
-        setIsOpen(open);
-        if (open) {
-            setShowTooltip(false);
-            setCanShowTooltip(false);
-        } else {
-            // Delay allowing tooltip to show again after dropdown closes
-            setTimeout(() => setCanShowTooltip(true), 300);
-        }
-    };
-
-    return (
-        <div className="relative">
-            <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                            "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
-                            isAttendanceActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
-                        )}
-                        aria-label="Attendance & Sessions Management"
-                        onMouseEnter={() => {
-                            if (!isOpen && canShowTooltip) {
-                                setShowTooltip(true);
-                            }
-                        }}
-                        onMouseLeave={() => {
-                            setShowTooltip(false);
-                        }}
-                        onFocus={() => {
-                            if (!isOpen && canShowTooltip) {
-                                setShowTooltip(true);
-                            }
-                        }}
-                        onBlur={() => {
-                            setShowTooltip(false);
-                        }}
-                        onClick={() => {
-                            setShowTooltip(false);
-                        }}
-                    >
-                        <CalendarCheck className="h-5 w-5"/>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
-                    {attendanceNavItems.map((item) => (
-                        <DropdownMenuItem key={item.to} className="p-0">
-                            <Link
-                                to={item.to}
-                                onClick={() => setIsOpen(false)}
-                                className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
-                            >
-                                <item.icon className="h-4 w-4 mr-2"/>
-                                {item.label}
-                            </Link>
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
-            {showTooltip && !isOpen && canShowTooltip && (
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
-                    Attendance & Sessions
+                    Programs & Classes
                 </div>
             )}
         </div>
