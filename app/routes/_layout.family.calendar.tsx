@@ -17,7 +17,7 @@ import {
 } from "date-fns";
 import { Calendar } from "~/components/calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
-import { sessionsToCalendarEvents, attendanceToCalendarEvents } from "~/components/calendar/utils";
+import { sessionsToCalendarEvents, attendanceToCalendarEvents, parseLocalDate, formatLocalDate } from "~/components/calendar/utils";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
@@ -176,8 +176,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
           )
         `)
         .in('class_id', classIds)
-        .gte('session_date', format(calendarStart, 'yyyy-MM-dd'))
-        .lte('session_date', format(calendarEnd, 'yyyy-MM-dd'))
+        .gte('session_date', formatLocalDate(calendarStart))
+        .lte('session_date', formatLocalDate(calendarEnd))
         .order('session_date', { ascending: true })
         .order('start_time', { ascending: true });
 
@@ -193,8 +193,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         students ( first_name, last_name )
       `)
       .in('student_id', studentIds)
-      .gte('class_date', format(calendarStart, 'yyyy-MM-dd'))
-      .lte('class_date', format(calendarEnd, 'yyyy-MM-dd'))
+      .gte('class_date', formatLocalDate(calendarStart))
+      .lte('class_date', formatLocalDate(calendarEnd))
       .order('class_date', { ascending: true });
 
     if (attendanceError) throw attendanceError;

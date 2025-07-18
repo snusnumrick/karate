@@ -13,6 +13,7 @@ import type {
   CalendarEvent,
   WeeklySchedule
 } from '~/types/multi-class';
+import { formatLocalDate, getTodayLocalDateString } from '~/components/calendar/utils';
 
 /**
  * Get all instructors (profiles with instructor role)
@@ -334,7 +335,7 @@ export async function getClassById(
   const schedules = schedulesResult.data || [];
 
   // Find next upcoming session
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayLocalDateString();
   const { data: nextSession } = await supabase
     .from('class_sessions')
     .select('*')
@@ -391,7 +392,7 @@ export async function getClassById(
       nextDate.setDate(now.getDate() + earliestDaysFromNow);
       
       nextScheduledTime = {
-        session_date: nextDate.toISOString().split('T')[0],
+        session_date: formatLocalDate(nextDate),
         start_time: earliestSchedule.start_time,
         end_time: earliestSchedule.start_time, // We don't have end_time in schedule, so use start_time
         status: 'scheduled'
@@ -770,7 +771,7 @@ export async function getWeeklySchedule(
   
   const events = await getCalendarEvents(
     weekStartDate,
-    weekEndDate.toISOString().split('T')[0],
+    formatLocalDate(weekEndDate),
     classIds,
     supabase
   );

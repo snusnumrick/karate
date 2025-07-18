@@ -9,6 +9,7 @@ import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import {siteConfig} from "~/config/site";
 import { PaymentForm } from "~/components/PaymentForm";
 import { getFamilyPaymentEligibilityData, getFamilyIdFromUser, type PaymentEligibilityData } from "~/services/payment-eligibility.server";
+import { getTodayLocalDateString } from "~/components/calendar/utils";
 
 // Payment Calculation (Flat Monthly Rate)
 //
@@ -192,7 +193,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 .from('payments')
                 .update({
                     status: 'succeeded',
-                    payment_date: new Date().toISOString().split('T')[0], // Convert to YYYY-MM-DD format for date field
+                    payment_date: getTodayLocalDateString(), // Convert to YYYY-MM-DD format for date field
                     payment_method: 'discount_100_percent'
                 })
                 .eq('id', paymentRecord.id)

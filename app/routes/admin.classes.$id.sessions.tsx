@@ -25,6 +25,7 @@ import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { ClassSession, BulkSessionGeneration } from "~/types/multi-class";
 import { useState } from "react";
 import { formatDate } from "~/utils/misc";
+import { parseLocalDate, getTodayLocalDateString, formatLocalDate } from "~/components/calendar/utils";
 
 type ActionData = {
   error?: string;
@@ -258,7 +259,7 @@ export default function ClassSessions() {
                     id="start_date"
                     name="start_date"
                     type="date"
-                    defaultValue={new Date().toISOString().split('T')[0]}
+                    defaultValue={getTodayLocalDateString()}
                     required
                   />
                 </div>
@@ -269,7 +270,7 @@ export default function ClassSessions() {
                     id="end_date"
                     name="end_date"
                     type="date"
-                    defaultValue={new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]}
+                    defaultValue={formatLocalDate(new Date(new Date().setFullYear(new Date().getFullYear() + 1)))}
                     required
                   />
                 </div>

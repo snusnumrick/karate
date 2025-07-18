@@ -2,7 +2,7 @@ import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
-import { parseLocalDate } from "~/components/calendar/utils";
+import { parseLocalDate, formatLocalDate } from "~/components/calendar/utils";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -102,11 +102,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const currentMonth = monthParam || format(new Date(), 'yyyy-MM');
 
   try {
-    // Get date range for the month view
+    // Get date range for the month view using local date formatting
     const monthStart = startOfMonth(parseISO(currentMonth + '-01'));
     const monthEnd = endOfMonth(monthStart);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
+    const startDate = formatLocalDate(monthStart);
+    const endDate = formatLocalDate(monthEnd);
 
     // Fetch programs for filtering
     const { data: programsData } = await supabaseServer

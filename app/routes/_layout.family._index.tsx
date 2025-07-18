@@ -8,6 +8,7 @@ import {Badge} from "~/components/ui/badge"; // Import Badge
 import {Database} from "~/types/database.types";
 import {formatDate} from "~/utils/misc"; // For formatting dates
 import {beltColorMap} from "~/utils/constants"; // Import belt color mapping
+import { parseLocalDate, getTodayLocalDateString } from "~/components/calendar/utils";
 
 // Define Guardian type
 type GuardianRow = Database["public"]["Tables"]["guardians"]["Row"];
@@ -263,7 +264,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
                     `)
                     .eq('classes.enrollments.student_id', student.id)
                     .in('classes.enrollments.status', ['active', 'trial'])
-                    .gte('session_date', new Date().toISOString().split('T')[0]) // Only future sessions
+                    .gte('session_date', getTodayLocalDateString()) // Only future sessions
                     .order('session_date', { ascending: true })
                     .order('start_time', { ascending: true })
                     .limit(1); // Limit to next 1 session per student

@@ -3,6 +3,7 @@ import { Link, useLoaderData } from "@remix-run/react"; // Remove useRouteError
 // Remove getSupabaseServerClient import as it's no longer needed here
 import { createClient } from '@supabase/supabase-js'; // Import createClient
 import { PaymentStatus } from "~/types/models"; // Import the enum
+import { getTodayLocalDateString } from "~/components/calendar/utils";
 
 
 // Loader now only fetches data, assumes auth handled by parent layout (_admin.tsx)
@@ -75,7 +76,7 @@ export async function loader(_: LoaderFunctionArgs) {
                     class:classes(name)
                 `)
                 .eq('status', 'scheduled')
-                .gte('session_date', new Date().toISOString().split('T')[0])
+                .gte('session_date', getTodayLocalDateString())
                 .order('session_date', { ascending: true })
                 .order('start_time', { ascending: true })
                 .limit(1)
@@ -106,7 +107,7 @@ export async function loader(_: LoaderFunctionArgs) {
             supabaseAdmin.from('payments').select('total_amount').eq('status', PaymentStatus.Succeeded), // Use total_amount
             supabaseAdmin.from('attendance')
                 .select('id', {count: 'exact', head: true})
-                .eq('class_date', new Date().toISOString().split('T')[0]) // Today's date
+                .eq('class_date', getTodayLocalDateString()) // Today's date
                 .eq('present', true), // Use admin client
             supabaseAdmin.from('payments')
                 .select('family_id')
@@ -235,7 +236,8 @@ export async function loader(_: LoaderFunctionArgs) {
         const missingWaiversCount = familiesMissingWaivers;
 
         // Fetch today's sessions
-        const today = new Date().toISOString().split('T')[0];
+        // Get today's date in local timezone to avoid timezone issues
+        const today = getTodayLocalDateString();
         const { data: todaysSessions, error: sessionsError } = await supabaseAdmin
             .from('class_sessions')
             .select(`
@@ -258,20 +260,32 @@ export async function loader(_: LoaderFunctionArgs) {
             console.error("Error fetching today's sessions:", sessionsError.message);
         }
 
-        // Calculate session statistics
+        // Calculate session statistics using local date parsing
         const totalTodaysSessions = todaysSessions?.length || 0;
         const completedSessions = todaysSessions?.filter((s: { status: string }) => s.status === 'completed').length || 0;
         const inProgressSessions = todaysSessions?.filter((s: { status: string; session_date: string; start_time: string; end_time: string }) => {
             if (s.status !== 'scheduled') return false;
             const now = new Date();
-            const sessionStart = new Date(`${s.session_date}T${s.start_time}`);
-            const sessionEnd = new Date(`${s.session_date}T${s.end_time}`);
+            // Parse session date as local date to avoid timezone issues
+            const [year, month, day] = s.session_date.split('-').map(Number);
+            const sessionDate = new Date(year, month - 1, day);
+            const [startHour, startMin] = s.start_time.split(':').map(Number);
+            const [endHour, endMin] = s.end_time.split(':').map(Number);
+            const sessionStart = new Date(sessionDate);
+            sessionStart.setHours(startHour, startMin, 0, 0);
+            const sessionEnd = new Date(sessionDate);
+            sessionEnd.setHours(endHour, endMin, 0, 0);
             return now >= sessionStart && now <= sessionEnd;
         }).length || 0;
         const upcomingSessions = todaysSessions?.filter((s: { status: string; session_date: string; start_time: string }) => {
             if (s.status !== 'scheduled') return false;
             const now = new Date();
-            const sessionStart = new Date(`${s.session_date}T${s.start_time}`);
+            // Parse session date as local date to avoid timezone issues
+            const [year, month, day] = s.session_date.split('-').map(Number);
+            const sessionDate = new Date(year, month - 1, day);
+            const [startHour, startMin] = s.start_time.split(':').map(Number);
+            const sessionStart = new Date(sessionDate);
+            sessionStart.setHours(startHour, startMin, 0, 0);
             return now < sessionStart;
         }).length || 0;
 
