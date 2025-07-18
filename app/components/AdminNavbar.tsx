@@ -95,12 +95,12 @@ export default function AdminNavbar() {
                             {/* Use the same logo as the main navbar */}
                             <Link to="/" className="relative h-10 w-43 mr-4">
                                 <img
-                                    src="/images/admin-logo-light.png"
+                                    src="/images/karate-logo-light.png"
                                     alt="Karate Greenegin Logo"
                                     className="h-10 w-43 dark:hidden"
                                 />
                                 <img
-                                    src="/images/admin-logo-dark.png"
+                                    src="/images/karate-logo-dark.png"
                                     alt="Karate Greenegin Logo"
                                     className="h-10 w-43 hidden dark:block"
                                 />
