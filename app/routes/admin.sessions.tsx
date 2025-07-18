@@ -1,7 +1,7 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, useFetcher, Link } from "@remix-run/react";
 import { format, parseISO, addDays } from "date-fns";
-import { Trash2, Calendar, Clock, Users, AlertTriangle, Edit2 } from "lucide-react";
+import { Trash2, Calendar, Clock, Users, AlertTriangle, Edit2, Plus } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,9 +20,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { getClassSessions, deleteClassSession, bulkDeleteClassSessions } from "~/services/class.server";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
+import { getClassSessions, deleteClassSession, bulkDeleteClassSessions, getClasses, createClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
-import type { ClassSession } from "~/types/multi-class";
+import type { ClassSession, Class, CreateSessionData } from "~/types/multi-class";
 import { useState } from "react";
 
 type ActionData = {
@@ -56,19 +65,58 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const dateFrom = url.searchParams.get("date_from") || undefined;
   const dateTo = url.searchParams.get("date_to") || undefined;
 
-  const sessions = await getClassSessions({
-    class_id: classId,
-    status,
-    session_date_from: dateFrom,
-    session_date_to: dateTo,
-  });
+  const [sessions, classes] = await Promise.all([
+    getClassSessions({
+      class_id: classId,
+      status,
+      session_date_from: dateFrom,
+      session_date_to: dateTo,
+    }),
+    getClasses({ is_active: true })
+  ]);
 
-  return json({ sessions: sessions as SessionWithClass[] });
+  return json({ 
+    sessions: sessions as SessionWithClass[], 
+    classes: classes as Class[]
+  });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
+
+  if (intent === "create_makeup_session") {
+    const classId = formData.get("class_id") as string;
+    const sessionDate = formData.get("session_date") as string;
+    const startTime = formData.get("start_time") as string;
+    const endTime = formData.get("end_time") as string;
+    const notes = formData.get("notes") as string;
+
+    if (!classId || !sessionDate || !startTime || !endTime) {
+      return json(
+        { error: "Class, date, start time, and end time are required" },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const sessionData: CreateSessionData = {
+        class_id: classId,
+        session_date: sessionDate,
+        start_time: startTime,
+        end_time: endTime,
+        notes: notes || undefined,
+      };
+
+      await createClassSession(sessionData);
+      return json({ success: "Makeup session created successfully" });
+    } catch (error) {
+      return json(
+        { error: error instanceof Error ? error.message : "Failed to create makeup session" },
+        { status: 500 }
+      );
+    }
+  }
 
   if (intent === "delete") {
     const sessionId = formData.get("sessionId") as string;
@@ -134,7 +182,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function AdminSessions() {
-  const { sessions } = useLoaderData<typeof loader>();
+  const { sessions, classes } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<ActionData>();
   const [filters, setFilters] = useState({
     class_id: "all",
@@ -145,11 +193,19 @@ export default function AdminSessions() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<SessionWithClass | null>(null);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isCreateMakeupDialogOpen, setIsCreateMakeupDialogOpen] = useState(false);
   const [bulkDeleteForm, setBulkDeleteForm] = useState({
     dateFrom: format(new Date(), 'yyyy-MM-dd'),
     dateTo: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
     classId: "all",
     status: "all"
+  });
+  const [makeupSessionForm, setMakeupSessionForm] = useState({
+    classId: "",
+    sessionDate: format(new Date(), 'yyyy-MM-dd'),
+    startTime: "09:00",
+    endTime: "10:00",
+    notes: ""
   });
 
   const getStatusColor = (status: string) => {
@@ -194,6 +250,36 @@ export default function AdminSessions() {
 
   const handleBulkDelete = () => {
     setIsBulkDeleteDialogOpen(true);
+  };
+
+  const handleCreateMakeupSession = () => {
+    setIsCreateMakeupDialogOpen(true);
+  };
+
+  const confirmCreateMakeupSession = () => {
+    if (!makeupSessionForm.classId) {
+      return;
+    }
+
+    fetcher.submit(
+      {
+        intent: "create_makeup_session",
+        class_id: makeupSessionForm.classId,
+        session_date: makeupSessionForm.sessionDate,
+        start_time: makeupSessionForm.startTime,
+        end_time: makeupSessionForm.endTime,
+        notes: makeupSessionForm.notes,
+      },
+      { method: "post" }
+    );
+    setIsCreateMakeupDialogOpen(false);
+    setMakeupSessionForm({
+      classId: "",
+      sessionDate: format(new Date(), 'yyyy-MM-dd'),
+      startTime: "09:00",
+      endTime: "10:00",
+      notes: ""
+    });
   };
 
   const confirmBulkDelete = () => {
@@ -250,14 +336,23 @@ export default function AdminSessions() {
               Manage sessions across all classes
             </p>
           </div>
-          <Button 
-            onClick={handleBulkDelete}
-            variant="destructive"
-            className="flex items-center gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Bulk Delete
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleCreateMakeupSession}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Create Makeup Session
+            </Button>
+            <Button 
+              onClick={handleBulkDelete}
+              variant="destructive"
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Bulk Delete
+            </Button>
+          </div>
         </div>
 
       {fetcher.data?.error && (
@@ -562,6 +657,106 @@ export default function AdminSessions() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Makeup Session Dialog */}
+      <Dialog open={isCreateMakeupDialogOpen} onOpenChange={setIsCreateMakeupDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Makeup Session</DialogTitle>
+            <DialogDescription>
+              Create a makeup session outside of the regular class schedule. This session will be available for attendance tracking.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="makeup-class">Class *</Label>
+              <Select 
+                value={makeupSessionForm.classId} 
+                onValueChange={(value) => setMakeupSessionForm(prev => ({ ...prev, classId: value }))}
+                required
+              >
+                <SelectTrigger tabIndex={0}>
+                  <SelectValue placeholder="Select a class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.program?.name} - {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="makeup-date">Session Date *</Label>
+              <Input
+                id="makeup-date"
+                type="date"
+                value={makeupSessionForm.sessionDate}
+                onChange={(e) => setMakeupSessionForm(prev => ({ ...prev, sessionDate: e.target.value }))}
+                required
+                tabIndex={0}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="makeup-start-time">Start Time *</Label>
+                <Input
+                  id="makeup-start-time"
+                  type="time"
+                  value={makeupSessionForm.startTime}
+                  onChange={(e) => setMakeupSessionForm(prev => ({ ...prev, startTime: e.target.value }))}
+                  required
+                  tabIndex={0}
+                />
+              </div>
+              <div>
+                <Label htmlFor="makeup-end-time">End Time *</Label>
+                <Input
+                  id="makeup-end-time"
+                  type="time"
+                  value={makeupSessionForm.endTime}
+                  onChange={(e) => setMakeupSessionForm(prev => ({ ...prev, endTime: e.target.value }))}
+                  required
+                  tabIndex={0}
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="makeup-notes">Notes (Optional)</Label>
+              <Textarea
+                id="makeup-notes"
+                placeholder="Add any special notes for this makeup session..."
+                value={makeupSessionForm.notes}
+                onChange={(e) => setMakeupSessionForm(prev => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+                tabIndex={0}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCreateMakeupDialogOpen(false)}
+              tabIndex={0}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmCreateMakeupSession}
+              disabled={!makeupSessionForm.classId || !makeupSessionForm.sessionDate || !makeupSessionForm.startTime || !makeupSessionForm.endTime || fetcher.state === "submitting"}
+              tabIndex={0}
+            >
+              {fetcher.state === "submitting" ? 'Creating...' : 'Create Session'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

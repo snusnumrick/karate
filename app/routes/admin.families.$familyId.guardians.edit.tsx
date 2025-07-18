@@ -149,7 +149,7 @@ export async function action({request, params}: ActionFunctionArgs) {
         if (!relationship) currentGuardianErrors.relationship = "Relationship is required.";
         if (!cell_phone) currentGuardianErrors.cell_phone = "Cell phone is required.";
         if (!email) currentGuardianErrors.email = "Email is required.";
-        if (!home_phone) currentGuardianErrors.home_phone = "Home phone is required."; // Added validation
+        // Home phone is now optional
         // Optional fields don't need presence validation unless specific formats are required
         // Add more specific validation (email format, phone format, etc.)
 
@@ -359,7 +359,6 @@ export default function EditGuardiansPage() {
                                                     name={`guardian_${guardianId}_home_phone`}
                                                     type="tel"
                                                     defaultValue={guardian.home_phone ?? ''}
-                                                    required // Added required
                                                     autoComplete="home tel"
                                                     aria-invalid={!!errors?.home_phone}
                                                     aria-describedby={`guardian_${guardianId}_home_phone-error`}

@@ -62,7 +62,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     if (!guardian1FirstName) fieldErrors.guardian1FirstName = "Guardian 1 first name is required.";
     if (!guardian1LastName) fieldErrors.guardian1LastName = "Guardian 1 last name is required.";
     if (!guardian1Relationship) fieldErrors.guardian1Relationship = "Guardian 1 relationship is required.";
-    if (!guardian1HomePhone) fieldErrors.guardian1HomePhone = "Guardian 1 home phone is required.";
+    // Guardian 1 home phone is now optional
     if (!guardian1CellPhone) fieldErrors.guardian1CellPhone = "Guardian 1 cell phone is required.";
     if (!guardian1Email) fieldErrors.guardian1Email = "Guardian 1 email is required.";
 
@@ -76,7 +76,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         if (!guardian2FirstName) fieldErrors.guardian2FirstName = "Guardian 2 first name is required if adding Guardian 2.";
         if (!guardian2LastName) fieldErrors.guardian2LastName = "Guardian 2 last name is required if adding Guardian 2.";
         if (!guardian2Relationship) fieldErrors.guardian2Relationship = "Guardian 2 relationship is required if adding Guardian 2.";
-        if (!guardian2HomePhone) fieldErrors.guardian2HomePhone = "Guardian 2 home phone is required if adding Guardian 2."; // Make home phone required
+        // Guardian 2 home phone is now optional
         if (!guardian2CellPhone) fieldErrors.guardian2CellPhone = "Guardian 2 cell phone is required if adding Guardian 2."; // Cell phone is already required
         if (!guardian2Email) fieldErrors.guardian2Email = "Guardian 2 email is required if adding Guardian 2."; // Make email required
     }
@@ -421,9 +421,8 @@ export default function AdminNewFamilyPage() {
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Email}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian1HomePhone">Home Phone <span
-                                className="text-red-500">*</span></Label>
-                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" autoComplete="home tel" required tabIndex={12}/>
+                            <Label htmlFor="guardian1HomePhone">Home Phone</Label>
+                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" autoComplete="home tel" tabIndex={12}/>
                             {actionData?.fieldErrors?.guardian1HomePhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1HomePhone}</p>}
                         </div>
@@ -483,8 +482,7 @@ export default function AdminNewFamilyPage() {
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Email}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian2HomePhone">Home Phone <span
-                                className="text-red-500">*</span></Label> {/* Add indicator */}
+                            <Label htmlFor="guardian2HomePhone">Home Phone</Label>
                             <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel" autoComplete="home tel" tabIndex={18}/>
                             {actionData?.fieldErrors?.guardian2HomePhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}

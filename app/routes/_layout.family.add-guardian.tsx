@@ -35,7 +35,7 @@ const addGuardianSchema = z.object({
     first_name: z.string().trim().min(1, "First name is required"),
     last_name: z.string().trim().min(1, "Last name is required"),
     relationship: z.string().trim().min(1, "Relationship is required"),
-    home_phone: z.string().trim().min(1, "Home phone is required"),
+    home_phone: z.string().optional().nullable(),
     cell_phone: z.string().trim().min(1, "Cell phone is required"),
     email: z.string().email("Invalid email address"),
     work_phone: z.string().optional().nullable(),
@@ -276,7 +276,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Home Phone</FormLabel>
-                                            <FormControl><Input type="tel" {...field} autoComplete="home tel" className="input-custom-styles" tabIndex={4}/></FormControl>
+                                            <FormControl><Input type="tel" {...field} value={getDefaultValue(field.value)} autoComplete="home tel" className="input-custom-styles" tabIndex={4}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
