@@ -83,6 +83,11 @@ export const siteConfig = {
             summary: "gemini-2.0-flash"
         }
     },
+    // Territory Acknowledgement
+    territoryAcknowledgement: {
+        title: "Territory Acknowledgement",
+        text: "At Greenegin Karate, we acknowledge we live, work, and train on the traditional, unceded territories of the Lekwungen-speaking Peoples, including the Songhees and Esquimalt Nations. We are grateful for their care of this territory and honour their ongoing connection to it. As martial artists, we commit to respect, humility, and integrity in our relationships with this territory and its peoples."
+    },
     // Add other site-wide config as needed
 };
 

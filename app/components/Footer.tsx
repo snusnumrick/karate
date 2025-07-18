@@ -134,6 +134,18 @@ export default function Footer({ user }: { user?: Session['user'] | null }) {
 
                 <Separator className="bg-green-700 dark:bg-gray-700"/>
 
+                {/* Territory Acknowledgement Section */}
+{/*                <div className="mt-6 mb-6 text-center">
+                    <h3 className="text-lg font-semibold text-green-100 dark:text-gray-300 mb-3">
+                        {siteConfig.territoryAcknowledgement.title}
+                    </h3>
+                    <p className="text-green-200 dark:text-gray-400 text-sm leading-relaxed px-4 md:px-12">
+                        {siteConfig.territoryAcknowledgement.text}
+                    </p>
+                </div>
+
+                <Separator className="bg-green-700 dark:bg-gray-700"/>*/}
+
                 <div className="text-center text-green-200 dark:text-gray-400 text-sm mt-6">
                     <Button variant="link" className="text-green-200">
                         <Link to="https://www.ponto.studio/">&copy; {new Date().getFullYear()}

@@ -193,6 +193,14 @@ export default function AboutPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Territory Acknowledgement Section */}
+                <div className="mt-12 bg-green-600 dark:bg-green-700 rounded-lg shadow-xl p-8 md:p-12 text-white text-center">
+                    <h2 className="text-2xl font-bold mb-6">{siteConfig.territoryAcknowledgement.title}</h2>
+                    <p className="text-green-100 dark:text-green-200 leading-relaxed max-w-4xl mx-auto">
+                        {siteConfig.territoryAcknowledgement.text}
+                    </p>
+                </div>
             </div>
         </div>
     );
