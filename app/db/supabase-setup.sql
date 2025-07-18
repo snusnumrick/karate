@@ -644,42 +644,6 @@ $$
     END
 $$;
 
--- Attendance table
-CREATE TABLE IF NOT EXISTS attendance
-(
-    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_id uuid REFERENCES students (id) ON DELETE CASCADE NOT NULL,
-    class_date date                                            NOT NULL,
-    present    boolean                                         NOT NULL,
-    notes      text,
-    CONSTRAINT attendance_class_date_student_id_key UNIQUE (class_date, student_id) -- Add unique constraint
-);
-
-DO
-$$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
-                       FROM pg_indexes
-                       WHERE indexname = 'idx_attendance_student_id') THEN
-            CREATE INDEX idx_attendance_student_id ON attendance (student_id);
-        END IF;
-    END
-$$;
-
--- Ensure the unique constraint exists even if the table was created previously without it
-DO
-$$
-    BEGIN
-        IF NOT EXISTS (SELECT 1
-                       FROM pg_constraint
-                       WHERE conname = 'attendance_class_date_student_id_key'
-                         AND conrelid = 'public.attendance'::regclass) THEN
-            ALTER TABLE public.attendance
-                ADD CONSTRAINT attendance_class_date_student_id_key UNIQUE (class_date, student_id);
-        END IF;
-    END;
-$$;
-
 -- Waivers table
 CREATE TABLE IF NOT EXISTS waivers
 (
@@ -1304,11 +1268,28 @@ CREATE POLICY "Belt awards are viewable by family members" ON belt_awards -- Ren
     );
 END IF;
 
+-- Attendance RLS policies (session-based)
 IF NOT EXISTS (SELECT 1
                        FROM pg_policies
                        WHERE tablename = 'attendance'
-                         AND policyname = 'Attendance is viewable by family members') THEN
-CREATE POLICY "Attendance is viewable by family members" ON attendance
+                         AND policyname = 'Admins can manage all attendance') THEN
+CREATE POLICY "Admins can manage all attendance" ON attendance
+    FOR ALL TO authenticated
+    USING (EXISTS (SELECT 1
+                   FROM profiles
+                   WHERE profiles.id = auth.uid()
+                     AND profiles.role = 'admin'))
+    WITH CHECK (EXISTS (SELECT 1
+                        FROM profiles
+                        WHERE profiles.id = auth.uid()
+                          AND profiles.role = 'admin'));
+END IF;
+
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'attendance'
+                         AND policyname = 'Family members can view their students attendance') THEN
+CREATE POLICY "Family members can view their students attendance" ON attendance
     FOR SELECT USING (
     EXISTS (SELECT 1
             FROM students
@@ -1316,6 +1297,26 @@ CREATE POLICY "Attendance is viewable by family members" ON attendance
             WHERE attendance.student_id = students.id
               AND profiles.id = auth.uid())
     );
+END IF;
+
+IF NOT EXISTS (SELECT 1
+                       FROM pg_policies
+                       WHERE tablename = 'attendance'
+                         AND policyname = 'Instructors can manage attendance for their sessions') THEN
+CREATE POLICY "Instructors can manage attendance for their sessions" ON attendance
+    FOR ALL TO authenticated
+    USING (EXISTS (SELECT 1
+                   FROM profiles
+                            JOIN class_sessions cs ON cs.instructor_id = profiles.id
+                   WHERE profiles.id = auth.uid()
+                     AND profiles.role = 'instructor'
+                     AND cs.id = attendance.class_session_id))
+    WITH CHECK (EXISTS (SELECT 1
+                        FROM profiles
+                                 JOIN class_sessions cs ON cs.instructor_id = profiles.id
+                        WHERE profiles.id = auth.uid()
+                          AND profiles.role = 'instructor'
+                          AND cs.id = attendance.class_session_id));
 END IF;
 
 IF NOT EXISTS (SELECT 1
@@ -3759,6 +3760,100 @@ CREATE POLICY "Allow admins to manage class sessions" ON public.class_sessions
 END IF;
 END $$;
 
+-- Attendance table (session-based tracking)
+CREATE TABLE IF NOT EXISTS public.attendance
+(
+    id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id       uuid REFERENCES public.students (id) ON DELETE CASCADE NOT NULL,
+    class_session_id uuid REFERENCES public.class_sessions (id) ON DELETE CASCADE NOT NULL,
+    status           text NOT NULL CHECK (status IN ('present', 'absent', 'late', 'excused')),
+    notes            text,
+    created_at       timestamptz NOT NULL DEFAULT now(),
+    updated_at       timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT attendance_session_student_unique UNIQUE (class_session_id, student_id)
+);
+
+-- Add columns to existing table if they don't exist (for migration compatibility)
+DO
+$$
+    BEGIN
+        -- Add class_session_id column if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name = 'attendance' AND column_name = 'class_session_id') THEN
+            ALTER TABLE public.attendance 
+                ADD COLUMN class_session_id uuid REFERENCES public.class_sessions (id) ON DELETE CASCADE;
+        END IF;
+        
+        -- Add status column if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name = 'attendance' AND column_name = 'status') THEN
+            ALTER TABLE public.attendance 
+                ADD COLUMN status text CHECK (status IN ('present', 'absent', 'late', 'excused'));
+        END IF;
+        
+        -- Drop old constraint if it exists
+        IF EXISTS (SELECT 1 FROM pg_constraint 
+                  WHERE conname = 'attendance_class_date_student_id_key' 
+                    AND conrelid = 'public.attendance'::regclass) THEN
+            ALTER TABLE public.attendance DROP CONSTRAINT attendance_class_date_student_id_key;
+        END IF;
+        
+        -- Drop class_date column if it exists (after ensuring data migration)
+        IF EXISTS (SELECT 1 FROM information_schema.columns 
+                  WHERE table_name = 'attendance' AND column_name = 'class_date') THEN
+            -- Note: In production, you should migrate data before dropping the column
+            ALTER TABLE public.attendance DROP COLUMN class_date;
+        END IF;
+        
+        -- Drop present column if it exists (replaced by status)
+        IF EXISTS (SELECT 1 FROM information_schema.columns 
+                  WHERE table_name = 'attendance' AND column_name = 'present') THEN
+            -- Note: In production, you should migrate data before dropping the column
+            ALTER TABLE public.attendance DROP COLUMN present;
+        END IF;
+    END
+$$;
+
+-- Add indexes for attendance
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_indexes
+                       WHERE indexname = 'idx_attendance_student_id') THEN
+            CREATE INDEX idx_attendance_student_id ON public.attendance (student_id);
+        END IF;
+    END
+$$;
+
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_indexes
+                       WHERE indexname = 'idx_attendance_class_session_id') THEN
+            CREATE INDEX idx_attendance_class_session_id ON public.attendance (class_session_id);
+        END IF;
+    END
+$$;
+
+-- Ensure the new unique constraint exists
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_constraint
+                       WHERE conname = 'attendance_session_student_unique'
+                         AND conrelid = 'public.attendance'::regclass) THEN
+            ALTER TABLE public.attendance
+                ADD CONSTRAINT attendance_session_student_unique UNIQUE (class_session_id, student_id);
+        END IF;
+    END;
+$$;
+
+-- Enable RLS for attendance
+ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+
 -- Enable RLS for enrollments
 ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
 
@@ -3841,6 +3936,16 @@ IF NOT EXISTS (SELECT 1
 CREATE TRIGGER class_sessions_updated
     BEFORE UPDATE
     ON public.class_sessions
+    FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
+END IF;
+
+IF NOT EXISTS (SELECT 1
+                       FROM information_schema.triggers
+                       WHERE trigger_name = 'attendance_updated') THEN
+CREATE TRIGGER attendance_updated
+    BEFORE UPDATE
+    ON public.attendance
     FOR EACH ROW
 EXECUTE FUNCTION update_modified_column();
 END IF;
