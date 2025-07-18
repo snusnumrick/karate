@@ -5,7 +5,7 @@ export interface CalendarEvent {
   title: string;
   date: Date;
   type: 'session' | 'attendance';
-  status?: 'present' | 'absent' | 'excused' | 'late';
+  status?: 'present' | 'absent' | 'excused' | 'late' | 'scheduled' | 'completed' | 'cancelled';
   className?: string;
   studentName?: string;
   studentNames?: string[]; // For session events with multiple enrolled students

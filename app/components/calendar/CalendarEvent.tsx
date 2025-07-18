@@ -1,5 +1,5 @@
 import { Badge } from '~/components/ui/badge';
-import { formatEventTime, getAttendanceStatusVariant } from './utils';
+import { formatEventTime, getAttendanceStatusVariant, getSessionStatusColors } from './utils';
 import type { CalendarEventProps } from './types';
 
 export function CalendarEvent({ event, onClick, compact = false }: CalendarEventProps) {
@@ -17,24 +17,31 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
   };
 
   if (event.type === 'session') {
+    const colors = getSessionStatusColors(event.status);
+    
     return (
       <div
-        className={`p-0.5 sm:p-1 mb-0.5 sm:mb-1 bg-blue-100 dark:bg-blue-900/30 border-l-2 sm:border-l-4 border-blue-500 dark:border-blue-400 rounded cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors`}
+        className={`p-0.5 sm:p-1 mb-0.5 sm:mb-1 ${colors.background} border-l-2 sm:border-l-4 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         role="button"
         tabIndex={0}
-        aria-label={`Session: ${event.className}`}
+        aria-label={`Session: ${event.className} - ${event.status}`}
       >
-        <div className="font-medium text-blue-900 dark:text-blue-100 text-xs leading-tight">
+        <div className={`font-medium ${colors.text} text-xs leading-tight`}>
           {compact ? (event.className && event.className.length > 15 ? event.className.substring(0, 15) + '...' : event.className) : event.className}
         </div>
         {!compact && event.programName && (
-          <div className="text-xs text-blue-700 dark:text-blue-200 leading-tight">{event.programName}</div>
+          <div className={`text-xs ${colors.text} opacity-80 leading-tight`}>{event.programName}</div>
         )}
         {!compact && (event.startTime || event.endTime) && (
-          <div className="text-xs text-blue-600 dark:text-blue-300 leading-tight">
+          <div className={`text-xs ${colors.text} opacity-70 leading-tight`}>
             {formatEventTime(event.startTime, event.endTime)}
+          </div>
+        )}
+        {!compact && event.status && event.status !== 'scheduled' && (
+          <div className={`text-xs ${colors.text} opacity-90 leading-tight font-medium mt-0.5`}>
+            {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
           </div>
         )}
       </div>

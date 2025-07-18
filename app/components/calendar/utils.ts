@@ -70,6 +70,7 @@ export function sessionsToCalendarEvents(
     id: string;
     session_date: string;
     class_id: string;
+    status?: 'scheduled' | 'completed' | 'cancelled';
     start_time?: string;
     end_time?: string;
     classes?: {
@@ -121,6 +122,7 @@ export function sessionsToCalendarEvents(
         title: className,
         date: localDate,
         type: 'session' as const,
+        status: session.status || 'scheduled',
         className,
         sessionId: session.id,
         classId: session.class_id,
@@ -268,5 +270,40 @@ export function getAttendanceStatusVariant(status?: string): 'default' | 'second
       return 'outline';
     default:
       return 'outline';
+  }
+}
+
+/**
+ * Get session status colors for calendar events
+ */
+export function getSessionStatusColors(status?: string): {
+  background: string;
+  border: string;
+  text: string;
+  hover: string;
+} {
+  switch (status) {
+    case 'completed':
+      return {
+        background: 'bg-green-100 dark:bg-green-900/30',
+        border: 'border-green-500 dark:border-green-400',
+        text: 'text-green-900 dark:text-green-100',
+        hover: 'hover:bg-green-200 dark:hover:bg-green-900/50'
+      };
+    case 'cancelled':
+      return {
+        background: 'bg-red-100 dark:bg-red-900/30',
+        border: 'border-red-500 dark:border-red-400',
+        text: 'text-red-900 dark:text-red-100',
+        hover: 'hover:bg-red-200 dark:hover:bg-red-900/50'
+      };
+    case 'scheduled':
+    default:
+      return {
+        background: 'bg-blue-100 dark:bg-blue-900/30',
+        border: 'border-blue-500 dark:border-blue-400',
+        text: 'text-blue-900 dark:text-blue-100',
+        hover: 'hover:bg-blue-200 dark:hover:bg-blue-900/50'
+      };
   }
 }

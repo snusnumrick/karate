@@ -443,7 +443,7 @@ export default function AdminCalendar() {
                 title: event.title,
                 date: event.date,
                 type: event.type,
-                status: undefined, // Calendar expects attendance status, but we'll handle this in the component
+                status: event.status, // Pass the session status for color coding
                 className: event.className,
                 sessionId: event.sessionId,
                 classId: event.classId,

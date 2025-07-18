@@ -251,12 +251,28 @@ export default function FamilyCalendarPage() {
 
   const renderEventDetails = (event: CalendarEvent) => {
     if (event.type === 'session') {
+      const getStatusBadgeVariant = (status?: string) => {
+        switch (status) {
+          case 'completed': return 'default';
+          case 'cancelled': return 'destructive';
+          case 'scheduled': 
+          default: return 'secondary';
+        }
+      };
+
       return (
         <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center justify-between mb-2">
-            <Badge variant="default">
-              Session
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                Session
+              </Badge>
+              {event.status && (
+                <Badge variant={getStatusBadgeVariant(event.status)}>
+                  {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                </Badge>
+              )}
+            </div>
             {event.startTime && event.endTime && (
               <span className="text-sm font-medium">
                 {event.startTime} - {event.endTime}
@@ -338,9 +354,21 @@ export default function FamilyCalendarPage() {
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 text-xs">
           <div className="flex items-center gap-1">
             <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500 dark:border-blue-400 rounded text-xs text-blue-900 dark:text-blue-100 font-medium">
-              Session
+              Scheduled
             </div>
             <span>Scheduled class</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="px-2 py-1 bg-green-100 dark:bg-green-900/30 border-l-2 border-green-500 dark:border-green-400 rounded text-xs text-green-900 dark:text-green-100 font-medium">
+              Completed
+            </div>
+            <span>Completed class</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="px-2 py-1 bg-red-100 dark:bg-red-900/30 border-l-2 border-red-500 dark:border-red-400 rounded text-xs text-red-900 dark:text-red-100 font-medium">
+              Cancelled
+            </div>
+            <span>Cancelled class</span>
           </div>
           <div className="flex items-center gap-1">
             <Badge variant="default" className="text-xs h-4 sm:h-5">Present</Badge>
