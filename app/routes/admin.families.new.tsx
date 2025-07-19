@@ -3,7 +3,7 @@ import {Form, Link, useActionData, useNavigation} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
-import {useState, useRef, useEffect} from "react";
+import {useRef, useEffect} from "react";
 import {isValid, parse} from 'date-fns'; // Import date-fns functions
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
@@ -255,26 +255,6 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 }
 
 
-// Interface for student state
-interface StudentFormEntry {
-    id: number; // Unique key for React list rendering
-    firstName?: string;
-    lastName?: string;
-    dob?: string;
-    gender?: string;
-    school?: string;
-    tShirtSize?: string;
-    cellPhone?: string;
-    email?: string;
-    gradeLevel?: string;
-    allergies?: string;
-    medications?: string;
-    specialNeeds?: string;
-    immunizationsUpToDate?: string;
-    immunizationNotes?: string;
-    // Removed notes, replaced by specific fields
-}
-
 export default function AdminNewFamilyPage() {
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
@@ -283,25 +263,12 @@ export default function AdminNewFamilyPage() {
     // Ref for the Family Last Name field to enable focus
     const familyNameRef = useRef<HTMLInputElement>(null);
 
-    // State for dynamic student forms
-    const [students, setStudents] = useState<StudentFormEntry[]>([{id: Date.now()}]); // Start with one student form
-
     // Focus on Family Last Name field when component mounts
     useEffect(() => {
         if (familyNameRef.current) {
             familyNameRef.current.focus();
         }
     }, []);
-
-    // Function to add a new student form entry
-    const addStudent = () => {
-        setStudents([...students, {id: Date.now()}]); // Add new entry with unique id
-    };
-
-    // Function to remove a student form entry by id
-    const removeStudent = (idToRemove: number) => {
-        setStudents(students.filter(student => student.id !== idToRemove));
-    };
 
 
     return (
@@ -328,49 +295,79 @@ export default function AdminNewFamilyPage() {
 
             <Form method="post" className="space-y-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
 
-                {/* Family Information Section */}
+                {/* Referral Information Section */}
                 <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Family
-                        Information</h2>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Referral Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <Label htmlFor="familyName">Family Last Name <span className="text-red-500">*</span></Label>
-                            <Input 
+                            <Label htmlFor="referralSource">How did they hear about us? <span className="text-red-500">*</span></Label>
+                            <Select name="referralSource" required>
+                                <SelectTrigger id="referralSource" className="input-custom-styles" tabIndex={1}>
+                                    <SelectValue placeholder="Select an option"/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="friend">Friend</SelectItem>
+                                    <SelectItem value="social">Social Media</SelectItem>
+                                    <SelectItem value="search">Search Engine</SelectItem>
+                                    <SelectItem value="flyer">Flyer</SelectItem>
+                                    <SelectItem value="event">Event</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {actionData?.fieldErrors?.referralSource &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.referralSource}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="referralName">Referral Name</Label>
+                            <Input id="referralName" name="referralName" className="input-custom-styles" tabIndex={2}/>
+                            {actionData?.fieldErrors?.referralName &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.referralName}</p>}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Family Information Section */}
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Family Information</h2>
+                    <div>
+                        <Label htmlFor="familyName">Family Last Name <span className="text-red-500">*</span></Label>
+                        <Input 
                                 id="familyName" 
                                 name="familyName" 
                                 autoComplete="family-name" 
+                                className="input-custom-styles"
                                 required 
-                                tabIndex={1}
+                                tabIndex={3}
                                 ref={familyNameRef}
                             />
-                            {actionData?.fieldErrors?.familyName &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyName}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="familyEmail">Family Email <span className="text-red-500">*</span></Label>
-                            <Input id="familyEmail" name="familyEmail" type="email" autoComplete="email" required tabIndex={2}/>
-                            {actionData?.fieldErrors?.familyEmail &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyEmail}</p>}
-                        </div>
+                        {actionData?.fieldErrors?.familyName &&
+                            <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyName}</p>}
+                    </div>
+                </section>
+
+                {/* Address Information Section */}
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Where Do They Live?</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
                             <Label htmlFor="address">Home Address <span className="text-red-500">*</span></Label>
-                            <Input id="address" name="address" autoComplete="street-address" required tabIndex={3}/>
+                            <Input id="address" name="address" autoComplete="street-address" className="input-custom-styles" required tabIndex={4}/>
                             {actionData?.fieldErrors?.address &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.address}</p>}
                         </div>
                         <div>
                             <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
-                            <Input id="city" name="city" autoComplete="address-level2" required tabIndex={4}/>
+                            <Input id="city" name="city" autoComplete="address-level2" className="input-custom-styles" required tabIndex={5}/>
                             {actionData?.fieldErrors?.city &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.city}</p>}
                         </div>
                         <div>
                             <Label htmlFor="province">Province <span className="text-red-500">*</span></Label>
                             <Select name="province" required>
-                                <SelectTrigger id="province" tabIndex={5}><SelectValue
-                                    placeholder="Select province"/></SelectTrigger>
+                                <SelectTrigger id="province" className="input-custom-styles" tabIndex={6}>
+                                    <SelectValue placeholder="Select province"/>
+                                </SelectTrigger>
                                 <SelectContent>
-                                    {/* Use provinces from siteConfig */}
                                     {siteConfig.provinces.map((prov) => (
                                         <SelectItem key={prov.value} value={prov.value}>
                                             {prov.label}
@@ -383,46 +380,61 @@ export default function AdminNewFamilyPage() {
                         </div>
                         <div>
                             <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
-                            <Input id="postalCode" name="postalCode" autoComplete="postal-code" required tabIndex={6}/>
+                            <Input id="postalCode" name="postalCode" autoComplete="postal-code" className="input-custom-styles" required tabIndex={7}/>
                             {actionData?.fieldErrors?.postalCode &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.postalCode}</p>}
                         </div>
                         <div>
                             <Label htmlFor="primaryPhone">Primary Phone <span className="text-red-500">*</span></Label>
-                            <Input id="primaryPhone" name="primaryPhone" type="tel" autoComplete="tel" required tabIndex={7}/>
+                            <Input id="primaryPhone" name="primaryPhone" type="tel" autoComplete="tel" className="input-custom-styles" required tabIndex={8}/>
                             {actionData?.fieldErrors?.primaryPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.primaryPhone}</p>}
                         </div>
-                        {/* Add optional family fields here if needed (referral, etc.) */}
                     </div>
                 </section>
 
-                {/* Guardian 1 Section */}
+                {/* Additional Information Section */}
                 <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Guardian #1
-                        Information</h2>
-                    <p className="text-sm text-muted-foreground mb-4">Note: The email provided here can be used later to
-                        invite this guardian to create their portal login.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Additional Info</h2>
+                    <div className="space-y-6">
                         <div>
-                            <Label htmlFor="guardian1FirstName">First Name <span
-                                className="text-red-500">*</span></Label>
-                            <Input id="guardian1FirstName" name="guardian1FirstName" autoComplete="given-name" required tabIndex={8}/>
+                            <Label htmlFor="emergencyContact">Emergency Contact Info <span className="text-red-500">*</span></Label>
+                            <Textarea id="emergencyContact" name="emergencyContact" className="input-custom-styles" required rows={3} tabIndex={9}/>
+                            {actionData?.fieldErrors?.emergencyContact &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.emergencyContact}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="healthInfo">Personal Health Number</Label>
+                            <Textarea id="healthInfo" name="healthInfo" className="input-custom-styles" rows={3} tabIndex={10}/>
+                            {actionData?.fieldErrors?.healthInfo &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.healthInfo}</p>}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Primary Guardian Section */}
+                <section>
+                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Primary Guardian</h2>
+                    <p className="text-sm text-muted-foreground mb-4">This is the main contact for the family. You can add additional guardians later via the family portal.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <Label htmlFor="guardian1FirstName">First Name <span className="text-red-500">*</span></Label>
+                            <Input id="guardian1FirstName" name="guardian1FirstName" autoComplete="given-name" className="input-custom-styles" required tabIndex={11}/>
                             {actionData?.fieldErrors?.guardian1FirstName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1FirstName}</p>}
                         </div>
                         <div>
                             <Label htmlFor="guardian1LastName">Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1LastName" name="guardian1LastName" autoComplete="family-name" required tabIndex={9}/>
+                            <Input id="guardian1LastName" name="guardian1LastName" autoComplete="family-name" className="input-custom-styles" required tabIndex={12}/>
                             {actionData?.fieldErrors?.guardian1LastName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1LastName}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian1Relationship">Relationship to Student(s) <span
-                                className="text-red-500">*</span></Label>
+                            <Label htmlFor="guardian1Relationship">Type <span className="text-red-500">*</span></Label>
                             <Select name="guardian1Relationship" required>
-                                <SelectTrigger id="guardian1Relationship" tabIndex={10}><SelectValue
-                                    placeholder="Select relationship"/></SelectTrigger>
+                                <SelectTrigger id="guardian1Relationship" className="input-custom-styles" tabIndex={13}>
+                                    <SelectValue placeholder="Select relationship"/>
+                                </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Mother">Mother</SelectItem>
                                     <SelectItem value="Father">Father</SelectItem>
@@ -433,257 +445,48 @@ export default function AdminNewFamilyPage() {
                             {actionData?.fieldErrors?.guardian1Relationship &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Relationship}</p>}
                         </div>
-                        <div>
-                            <Label htmlFor="guardian1Email">Email (for Portal Invite) <span
-                                className="text-red-500">*</span></Label>
-                            <Input id="guardian1Email" name="guardian1Email" type="email" autoComplete="email" required tabIndex={11}/>
-                            {actionData?.fieldErrors?.guardian1Email &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Email}</p>}
-                        </div>
+                    </div>
+
+                    <h3 className="text-lg font-medium text-foreground mt-6 mb-3">How Can We Contact Them?</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <Label htmlFor="guardian1HomePhone">Home Phone</Label>
-                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" autoComplete="home tel" tabIndex={12}/>
+                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" autoComplete="home tel" className="input-custom-styles" tabIndex={14}/>
                             {actionData?.fieldErrors?.guardian1HomePhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1HomePhone}</p>}
                         </div>
                         <div>
-                            <Label htmlFor="guardian1CellPhone">Cell Phone <span
-                                className="text-red-500">*</span></Label>
-                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" autoComplete="mobile tel" required tabIndex={13}/>
+                            <Label htmlFor="guardian1CellPhone">Cell Phone <span className="text-red-500">*</span></Label>
+                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" autoComplete="mobile tel" className="input-custom-styles" required tabIndex={15}/>
                             {actionData?.fieldErrors?.guardian1CellPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1CellPhone}</p>}
                         </div>
-                        {/* Add optional guardian fields here (work phone, employer, etc.) */}
                     </div>
-                </section>
 
-                {/* Guardian 2 Section (Optional) */}
-                <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Guardian #2
-                        Information (Optional)</h2>
-                    <p className="text-sm text-muted-foreground mb-4">Fill this section only if there is a second
-                        guardian.</p>
+                    <h3 className="text-lg font-medium text-foreground mt-6 mb-3">Portal Access (Email is Login)</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <Label htmlFor="guardian2FirstName">First Name <span
-                                className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2FirstName" name="guardian2FirstName" autoComplete="given-name" tabIndex={14}/>
-                            {actionData?.fieldErrors?.guardian2FirstName &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2FirstName}</p>}
+                            <Label htmlFor="guardian1Email">Email <span className="text-red-500">*</span></Label>
+                            <Input id="guardian1Email" name="guardian1Email" type="email" autoComplete="email" className="input-custom-styles" required tabIndex={16}/>
+                            {actionData?.fieldErrors?.guardian1Email &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Email}</p>}
+                            <p className="text-xs text-muted-foreground mt-1">(Emails are kept confidential)</p>
                         </div>
                         <div>
-                            <Label htmlFor="guardian2LastName">Last Name <span
-                                className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2LastName" name="guardian2LastName" autoComplete="family-name" tabIndex={15}/>
-                            {actionData?.fieldErrors?.guardian2LastName &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2LastName}</p>}
+                            <Label htmlFor="familyEmail">Confirm Email <span className="text-red-500">*</span></Label>
+                            <Input id="familyEmail" name="familyEmail" type="email" className="input-custom-styles" required tabIndex={17}/>
+                            {actionData?.fieldErrors?.familyEmail &&
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyEmail}</p>}
                         </div>
-                        <div>
-                            <Label htmlFor="guardian2Relationship">Relationship to Student(s) <span
-                                className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Select name="guardian2Relationship">
-                                <SelectTrigger id="guardian2Relationship" tabIndex={16}><SelectValue
-                                    placeholder="Select relationship"/></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Mother">Mother</SelectItem>
-                                    <SelectItem value="Father">Father</SelectItem>
-                                    <SelectItem value="Guardian">Guardian</SelectItem>
-                                    <SelectItem value="Other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {actionData?.fieldErrors?.guardian2Relationship &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Relationship}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="guardian2Email">Email <span
-                                className="text-red-500">*</span></Label> {/* Add indicator */}
-                            <Input id="guardian2Email" name="guardian2Email" type="email" autoComplete="email" tabIndex={17}/>
-                            {actionData?.fieldErrors?.guardian2Email &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2Email}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="guardian2HomePhone">Home Phone</Label>
-                            <Input id="guardian2HomePhone" name="guardian2HomePhone" type="tel" autoComplete="home tel" tabIndex={18}/>
-                            {actionData?.fieldErrors?.guardian2HomePhone &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2HomePhone}</p>}
-                        </div>
-                        <div>
-                            {/* Add required indicator - server validation enforces the rule */}
-                            <Label htmlFor="guardian2CellPhone">Cell Phone <span
-                                className="text-red-500">*</span></Label>
-                            <Input id="guardian2CellPhone" name="guardian2CellPhone"
-                                   type="tel" autoComplete="mobile tel" tabIndex={19}/> {/* Removed non-functional required attribute */}
-                            {actionData?.fieldErrors?.guardian2CellPhone &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian2CellPhone}</p>}
-                        </div>
-                        {/* Add optional guardian fields here (work phone, employer, etc.) */}
                     </div>
                 </section>
-
-                {/* Student Section(s) (Dynamic) */}
-                <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Student
-                        Information</h2>
-                    <p className="text-sm text-muted-foreground mb-4">Add one or more students associated with this
-                        family.</p>
-
-                    {students.map((student, index) => (
-                        <div key={student.id} className="mb-6 p-4 border border-dashed border-border rounded relative">
-                            {students.length > 1 && ( // Show remove button only if more than one student
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute top-2 right-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900"
-                                    onClick={() => removeStudent(student.id)}
-                                    aria-label={`Remove Student ${index + 1}`}
-                                >
-                                    &times; Remove
-                                </Button>
-                            )}
-                            <h3 className="text-lg font-medium mb-3">Student #{index + 1}</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    {/* Use indexed names like studentFirstName[] */}
-                                    <Label htmlFor={`studentFirstName-${student.id}`}>First Name <span
-                                        className="text-red-500">*</span></Label>
-                                    <Input id={`studentFirstName-${student.id}`} name="studentFirstName[]" autoComplete="given-name" required tabIndex={23 + index * 15}/>
-                                    {actionData?.fieldErrors?.[`studentFirstName[${index}]`] &&
-                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentFirstName[${index}]`]}</p>}
-                                </div>
-                                <div>
-                                    <Label htmlFor={`studentLastName-${student.id}`}>Last Name <span
-                                        className="text-red-500">*</span></Label>
-                                    <Input id={`studentLastName-${student.id}`} name="studentLastName[]" autoComplete="family-name" required tabIndex={24 + index * 15}/>
-                                    {actionData?.fieldErrors?.[`studentLastName[${index}]`] &&
-                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentLastName[${index}]`]}</p>}
-                                </div>
-                                <div>
-                                    <Label htmlFor={`studentDob-${student.id}`}>Date of Birth (YYYY-MM-DD) <span
-                                        className="text-red-500">*</span></Label>
-                                    <Input id={`studentDob-${student.id}`} name="studentDob[]" type="date" required
-                                           placeholder="YYYY-MM-DD" tabIndex={25 + index * 15}/>
-                                    {actionData?.fieldErrors?.[`studentDob[${index}]`] &&
-                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentDob[${index}]`]}</p>}
-                                </div>
-                                <div>
-                                    <Label htmlFor={`studentGender-${student.id}`}>Gender <span
-                                        className="text-red-500">*</span></Label>
-                                    <Select name="studentGender[]" required>
-                                        <SelectTrigger id={`studentGender-${student.id}`} tabIndex={26 + index * 15}><SelectValue
-                                            placeholder="Select gender"/></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Male">Male</SelectItem>
-                                            <SelectItem value="Female">Female</SelectItem>
-                                            <SelectItem value="Non-binary">Non-binary</SelectItem>
-                                            <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                                            <SelectItem value="Other">Other</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    {actionData?.fieldErrors?.[`studentGender[${index}]`] &&
-                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentGender[${index}]`]}</p>}
-                                </div>
-                                <div>
-                                    <Label htmlFor={`studentSchool-${student.id}`}>School <span
-                                        className="text-red-500">*</span></Label>
-                                    <Input id={`studentSchool-${student.id}`} name="studentSchool[]" required tabIndex={27 + index * 15}/>
-                                    {actionData?.fieldErrors?.[`studentSchool[${index}]`] &&
-                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentSchool[${index}]`]}</p>}
-                                </div>
-                                <div>
-                                    <Label htmlFor={`studentGradeLevel-${student.id}`}>Grade Level</Label>
-                                    <Input id={`studentGradeLevel-${student.id}`} name="studentGradeLevel[]" tabIndex={28 + index * 15}/>
-                                    {/* Optional field, no error display unless specific validation added */}
-                                </div>
-                                <div>
-                                    <Label htmlFor={`studentTShirtSize-${student.id}`}>T-Shirt Size <span
-                                        className="text-red-500">*</span></Label>
-                                    <Select name="studentTShirtSize[]" required>
-                                        <SelectTrigger id={`studentTShirtSize-${student.id}`} tabIndex={29 + index * 15}><SelectValue
-                                            placeholder="Select size"/></SelectTrigger>
-                                        <SelectContent>
-                                            {/* Add appropriate sizes */}
-                                            <SelectItem value="Youth S">Youth S</SelectItem>
-                                            <SelectItem value="Youth M">Youth M</SelectItem>
-                                            <SelectItem value="Youth L">Youth L</SelectItem>
-                                            <SelectItem value="Youth XL">Youth XL</SelectItem>
-                                            <SelectItem value="Adult S">Adult S</SelectItem>
-                                            <SelectItem value="Adult M">Adult M</SelectItem>
-                                            <SelectItem value="Adult L">Adult L</SelectItem>
-                                            <SelectItem value="Adult XL">Adult XL</SelectItem>
-                                            <SelectItem value="Adult XXL">Adult XXL</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    {actionData?.fieldErrors?.[`studentTShirtSize[${index}]`] &&
-                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors[`studentTShirtSize[${index}]`]}</p>}
-                                </div>
-                                <div>
-                                    <Label htmlFor={`studentCellPhone-${student.id}`}>Cell Phone</Label>
-                                    <Input id={`studentCellPhone-${student.id}`} name="studentCellPhone[]" type="tel" autoComplete="mobile tel" tabIndex={30 + index * 15}/>
-                                </div>
-                                <div>
-                                    <Label htmlFor={`studentEmail-${student.id}`}>Email</Label>
-                                    <Input id={`studentEmail-${student.id}`} name="studentEmail[]" type="email" autoComplete="email" tabIndex={31 + index * 15}/>
-                                </div>
-                            </div>
-                            {/* Health Information Sub-section */}
-                            <div className="mt-4 pt-4 border-t border-dashed">
-                                <h4 className="text-md font-medium mb-3">Health Information (Optional)</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="md:col-span-2">
-                                        <Label htmlFor={`studentAllergies-${student.id}`}>Allergies</Label>
-                                        <Textarea id={`studentAllergies-${student.id}`} name="studentAllergies[]"
-                                                  placeholder="List any known allergies" tabIndex={32 + index * 15}/>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <Label htmlFor={`studentMedications-${student.id}`}>Medications</Label>
-                                        <Textarea id={`studentMedications-${student.id}`} name="studentMedications[]"
-                                                  placeholder="List any medications the student takes" tabIndex={33 + index * 15}/>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <Label htmlFor={`studentSpecialNeeds-${student.id}`}>Special Needs /
-                                            Considerations</Label>
-                                        <Textarea id={`studentSpecialNeeds-${student.id}`} name="studentSpecialNeeds[]"
-                                                  placeholder="Any special needs, learning considerations, or other relevant info" tabIndex={34 + index * 15}/>
-                                    </div>
-                                    <div>
-                                        <Label htmlFor={`studentImmunizationsUpToDate-${student.id}`}>Immunizations
-                                            Up-to-Date?</Label>
-                                        <Select name="studentImmunizationsUpToDate[]">
-                                            <SelectTrigger
-                                                id={`studentImmunizationsUpToDate-${student.id}`} tabIndex={35 + index * 15}><SelectValue
-                                                placeholder="Select status"/></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Yes">Yes</SelectItem>
-                                                <SelectItem value="No">No</SelectItem>
-                                                <SelectItem value="Unknown">Unknown</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <Label htmlFor={`studentImmunizationNotes-${student.id}`}>Immunization
-                                            Notes</Label>
-                                        <Textarea id={`studentImmunizationNotes-${student.id}`}
-                                                  name="studentImmunizationNotes[]"
-                                                  placeholder="Any notes regarding immunizations" tabIndex={36 + index * 15}/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-
-                    <Button type="button" variant="outline" onClick={addStudent} className="mt-2" tabIndex={20}>
-                        + Add Another Student
-                    </Button>
-                </section>
-
 
                 {/* Submit Button */}
                 <div className="flex justify-end gap-4 pt-4 border-t border-border">
-                    <Button type="button" variant="outline" asChild tabIndex={21}>
+                    <Button type="button" variant="outline" asChild tabIndex={19}>
                         <Link to="/admin/families">Cancel</Link>
                     </Button>
-                    <Button type="submit" disabled={isSubmitting} tabIndex={22}>
+                    <Button type="submit" disabled={isSubmitting} tabIndex={20}>
                         {isSubmitting ? 'Creating Family...' : 'Create Family'}
                     </Button>
                 </div>
