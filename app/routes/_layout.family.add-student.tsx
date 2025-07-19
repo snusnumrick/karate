@@ -1,5 +1,6 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
+import {useEffect, useRef} from "react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 
 import {Button} from "~/components/ui/button";
@@ -145,6 +146,16 @@ export default function AddStudentPage() {
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
+    
+    // Ref for the first input field to enable focus
+    const firstInputRef = useRef<HTMLInputElement>(null);
+    
+    // Focus on the first input field when the component mounts
+    useEffect(() => {
+        if (firstInputRef.current) {
+            firstInputRef.current.focus();
+        }
+    }, []);
 
     // State for family name (if needed for pre-filling last name)
     // const [studentLastName, setStudentLastName] = useState(familyName.split(' ').pop() || ''); // Basic attempt to get last name
@@ -170,6 +181,7 @@ export default function AddStudentPage() {
                                 First Name<span className="text-red-500">*</span>
                             </Label>
                             <Input type="text" id="firstName" name="firstName" required
+                                   ref={firstInputRef}
                                    autoComplete="given-name"
                                    className="input-custom-styles focus:ring-green-500" tabIndex={1}/>
                         </div>
