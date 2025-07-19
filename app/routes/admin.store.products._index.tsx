@@ -7,6 +7,7 @@ import { Badge } from "~/components/ui/badge";
 import { formatDate } from "~/utils/misc"; // Import formatDate utility
 import type { Tables } from "~/types/database.types"; // Removed unused Database import
 import { PlusCircle, Edit } from "lucide-react"; // Import icons
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type ProductRow = Tables<'products'>;
 
@@ -36,6 +37,9 @@ export default function AdminProductListPage() {
 
     return (
         <div className="space-y-6">
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.adminStoreProducts()}
+            />
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Manage Products</h1>
                 <Button asChild>

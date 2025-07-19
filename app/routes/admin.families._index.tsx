@@ -4,6 +4,7 @@ import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table"; // Assuming you have Table components
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 type FamilyWithGuardians = {
     id: string;
@@ -67,6 +68,7 @@ export default function FamiliesAdminPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminFamilies()} className="mb-6" />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Manage Families</h1>
                 <Button asChild>

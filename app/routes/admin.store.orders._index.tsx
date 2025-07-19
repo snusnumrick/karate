@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { formatDate, formatCurrency } from "~/utils/misc";
 import { Constants, type Tables, type Enums, type Database } from "~/types/database.types"; // Import Database type
 import { Eye } from "lucide-react"; // Import icon
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type OrderRow = Tables<'orders'>;
 type FamilyRow = Tables<'families'>;
@@ -101,6 +102,7 @@ export default function AdminOrderListPage() {
 
     return (
         <div className="space-y-6">
+            <AppBreadcrumb items={breadcrumbPatterns.adminStoreOrders()} className="mb-6" />
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Manage Orders</h1>
                 {/* Filter Dropdown */}

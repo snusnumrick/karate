@@ -19,6 +19,7 @@ import {
 } from '~/components/ui/alert-dialog';
 import { Plus } from 'lucide-react';
 import { formatCurrency, formatDate } from '~/utils/misc';
+import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { supabaseServer } = getSupabaseServerClient(request);
@@ -169,6 +170,8 @@ export default function AdminDiscountCodes() {
 
   return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <AppBreadcrumb items={breadcrumbPatterns.adminDiscountCodes()} className="mb-6" />
+        
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-2">Discount Codes</h1>
           <p className="text-muted-foreground">Manage discount codes for families and students.</p>

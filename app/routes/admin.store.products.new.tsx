@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import type { Database, TablesInsert } from "~/types/database.types";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@supabase/supabase-js"; // Import Supabase client for storage
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define constants at module scope
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -140,9 +141,11 @@ export default function AddProductPage() {
 
     return (
         <div className="space-y-6 max-w-2xl mx-auto">
-            <Link to="/admin/store/products" className="inline-flex items-center text-sm text-blue-600 hover:underline">
-                <ArrowLeft className="mr-1 h-4 w-4" /> Back to Products
-            </Link>
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.adminStoreProductNew()} 
+                className="mb-6"
+            />
+            
             <h1 className="text-2xl font-bold">Add New Product</h1>
 
             {actionData?.error && !actionData.fieldErrors && (

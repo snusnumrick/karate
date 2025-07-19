@@ -32,6 +32,7 @@ import { getClassSessions, deleteClassSession, bulkDeleteClassSessions, getClass
 import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { ClassSession, Class, CreateSessionData } from "~/types/multi-class";
 import { useState } from "react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type ActionData = {
   error?: string;
@@ -329,6 +330,9 @@ export default function AdminSessions() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <AppBreadcrumb
+          items={breadcrumbPatterns.adminSessions()}
+          className="mb-6" />
       <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Session Management</h1>

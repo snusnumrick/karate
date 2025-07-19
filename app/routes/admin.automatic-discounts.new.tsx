@@ -11,6 +11,7 @@ import { AutoDiscountService } from "~/services/auto-discount.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
 import { requireAdminUser } from "~/utils/auth.server";
 import type { Json } from "~/types/database.types";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 import { useState } from "react";
 import { Badge } from "~/components/ui/badge";
@@ -122,13 +123,11 @@ export default function NewAutomationRule() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link to="/admin/automatic-discounts">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </Link>
+      <div className="space-y-4">
+        <AppBreadcrumb 
+          items={breadcrumbPatterns.adminAutomaticDiscountNew()} 
+          className="mb-4"
+        />
         <div>
           <h1 className="text-3xl font-bold tracking-tight">New Automation Rule</h1>
           <p className="text-muted-foreground">

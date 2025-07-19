@@ -8,6 +8,7 @@ import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge";
 import {beltColorMap} from "~/utils/constants"; // Import belt color map
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Define types for loader data
 type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_rank'>; // Omit removed column
@@ -184,6 +185,10 @@ export default function StudentsAdminPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.adminStudents()}
+                className="mb-8"
+            />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Manage Students</h1>
                 <Button asChild>

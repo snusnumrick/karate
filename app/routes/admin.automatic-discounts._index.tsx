@@ -18,6 +18,7 @@ import { AutoDiscountService } from "~/services/auto-discount.server";
 import { requireAdminUser } from "~/utils/auth.server";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 // Type definitions for assignment data with joins
 type AssignmentWithJoins = {
   id: string;
@@ -75,6 +76,8 @@ export default function AutomaticDiscountsIndex() {
 
   return (
     <div className="space-y-6">
+      <AppBreadcrumb items={breadcrumbPatterns.adminAutomaticDiscounts()} className="mb-6" />
+      
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

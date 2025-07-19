@@ -8,6 +8,7 @@ import { Badge } from "~/components/ui/badge";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Plus, Edit, Users, Calendar, DollarSign, Archive } from "lucide-react";
 import type { Program } from "~/types/multi-class";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -34,6 +35,7 @@ export default function ProgramsIndex() {
 
   return (
     <div className="space-y-6">
+      <AppBreadcrumb items={breadcrumbPatterns.adminPrograms()} className="mb-6" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Programs</h1>

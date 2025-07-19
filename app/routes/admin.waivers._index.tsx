@@ -5,6 +5,7 @@ import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // For displaying 'Required' status
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Define type for loader data
 type WaiverRow = Database['public']['Tables']['waivers']['Row'];
@@ -54,6 +55,7 @@ export default function WaiversAdminPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminWaivers()} className="mb-6" />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Manage Waivers</h1>
                 <Button asChild>

@@ -13,6 +13,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"; // Import ArrowLeft
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define the schema for form validation using Zod
 const messageSchema = z.object({
@@ -188,14 +189,12 @@ export default function AdminNewMessage() {
     return (
         // Apply standard admin background colors and container padding
         <div className="container mx-auto px-4 py-8 max-w-2xl bg-amber-50 dark:bg-gray-800 rounded-lg shadow">
-             <div className="flex items-center mb-6">
-                 <Button variant="ghost" size="icon" asChild className="mr-2">
-                    <Link to="/admin/messages" aria-label="Back to admin messages">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <h1 className="text-2xl font-semibold text-foreground">New Message</h1>
-            </div>
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.adminMessageNew()} 
+                className="mb-6"
+            />
+            
+            <h1 className="text-2xl font-semibold text-foreground mb-6">New Message</h1>
 
             {actionData?.error && (
                 <Alert variant="destructive" className="mb-4">

@@ -9,6 +9,7 @@ import {Label} from "~/components/ui/label";
 import {Textarea} from "~/components/ui/textarea";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For displaying errors
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Loader to fetch a single waiver
 export async function loader({params}: LoaderFunctionArgs) {
@@ -255,9 +256,7 @@ export default function EditWaiverPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/admin/waivers" className="text-green-600 hover:underline mb-4 inline-block">
-                &larr; Back to Waivers List
-            </Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminWaiverDetail(waiver.id)} className="mb-6" />
             <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Edit Waiver</h1>
 
             <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">

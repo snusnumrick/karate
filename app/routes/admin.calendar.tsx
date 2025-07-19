@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Calendar } from "~/components/calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { Calendar as CalendarIcon, Users, DollarSign, Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter } from "lucide-react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Enhanced admin calendar event interface
 interface AdminCalendarEvent {
@@ -367,6 +368,8 @@ export default function AdminCalendar() {
 
   return (
     <div className="sm:container sm:mx-auto px-2 sm:px-4 py-2 sm:py-4 space-y-3 sm:space-y-4">
+      <AppBreadcrumb items={breadcrumbPatterns.adminCalendar()} className="mb-6" />
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>

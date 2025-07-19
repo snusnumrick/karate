@@ -8,6 +8,7 @@ import {AlertCircle, MessageSquarePlus} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import AdminConversationList, {AdminConversationSummary} from "~/components/AdminConversationList";
 import { Button } from "~/components/ui/button"; // Import Button
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 interface LoaderData {
     conversations: AdminConversationSummary[];
@@ -247,6 +248,10 @@ export default function AdminMessagesIndex() {
 
     return (
         <div className="container mx-auto px-4 py-8 bg-amber-50 dark:bg-gray-800"> {/* Add background */}
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.adminMessages()}
+                className="mb-6"
+            />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-semibold text-foreground">Admin Messages</h1> {/* Add text color */}
                 {/* Add button for admins to start new conversations - Use default variant */}

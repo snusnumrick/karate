@@ -11,6 +11,7 @@ import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import { siteConfig } from "~/config/site"; // Import siteConfig
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 // Define potential action data structure
@@ -295,9 +296,11 @@ export default function AdminNewFamilyPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-3xl">
-            <Link to="/admin/families" className="text-blue-600 hover:underline mb-4 inline-block">
-                &larr; Back to Families List
-            </Link>
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.adminFamilyNew()} 
+                className="mb-6"
+            />
+            
             <h1 className="text-3xl font-bold mb-6">Register New Family (Admin)</h1>
 
             {actionData?.error && !actionData.fieldErrors && (

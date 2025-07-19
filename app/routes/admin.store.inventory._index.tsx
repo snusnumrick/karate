@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import type { Database, Tables } from "~/types/database.types"; // Removed TablesUpdate
 import { Save } from "lucide-react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type ProductRow = Tables<'products'>;
 type ProductVariantRow = Tables<'product_variants'>;
@@ -123,6 +124,7 @@ export default function AdminInventoryPage() {
 
     return (
         <div className="space-y-6">
+            <AppBreadcrumb items={breadcrumbPatterns.adminStoreInventory()} className="mb-6" />
             <h1 className="text-2xl font-bold">Inventory Management</h1>
             <p className="text-gray-600 dark:text-gray-400">View and update stock levels for all active product variants.</p>
 

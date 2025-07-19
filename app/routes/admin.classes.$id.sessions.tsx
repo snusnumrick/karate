@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { ArrowLeft, Calendar, Clock, Plus, Edit2, Trash2, ExternalLink } from "lucide-react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClassById, getClassSessions, generateClassSessions, updateClassSession, deleteClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
@@ -190,13 +191,12 @@ export default function ClassSessions() {
   
   return (
     <div className="container mx-auto py-6">
+      <AppBreadcrumb 
+        items={breadcrumbPatterns.adminClassSessions(classData.name, classData.id)} 
+        className="mb-6"
+      />
+      
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/classes">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Classes
-          </Link>
-        </Button>
         <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">Class Sessions</h1>
           <p className="text-muted-foreground">

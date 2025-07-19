@@ -157,10 +157,10 @@ export const breadcrumbPatterns = {
     { label: className, current: true },
   ],
   
-  adminClassSessions: (className: string) => [
+  adminClassSessions: (className: string, classId: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Classes", href: "/admin/classes" },
-    { label: className, href: `/admin/classes/${className.toLowerCase()}` },
+    { label: className, href: `/admin/classes/${classId}` },
     { label: "Sessions", current: true },
   ],
   
@@ -231,6 +231,12 @@ export const breadcrumbPatterns = {
     { label: `Order ${orderId}`, current: true },
   ],
   
+  adminStoreInventory: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Store", href: "/admin/store" },
+    { label: "Inventory", current: true },
+  ],
+  
   adminDiscountCodes: () => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Discount Codes", current: true },
@@ -292,6 +298,21 @@ export const breadcrumbPatterns = {
     { label: `Edit ${programName}`, current: true },
   ],
   
+  adminSessions: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Session Management", current: true },
+  ],
+  
+  adminDbChat: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Database Assistant", current: true },
+  ],
+  
+  adminCalendar: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Calendar", current: true },
+  ],
+  
   adminEnrollments: () => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Enrollments", current: true },
@@ -333,5 +354,142 @@ export const breadcrumbPatterns = {
     { label: studentName, href: `/admin/students/${studentName.toLowerCase()}` },
     { label: "Belt Awards", href: `/admin/student-belts/${studentName.toLowerCase()}` },
     { label: `Edit ${beltLevel}`, current: true },
+  ],
+
+  // Additional admin breadcrumb patterns
+  adminProgramNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Programs", href: "/admin/programs" },
+    { label: "New Program", current: true },
+  ],
+
+  adminClassNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Classes", href: "/admin/classes" },
+    { label: "New Class", current: true },
+  ],
+
+  adminClassEdit: (className: string, classId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Classes", href: "/admin/classes" },
+    { label: className, href: `/admin/classes/${classId}` },
+    { label: "Edit", current: true },
+  ],
+
+  adminDiscountCodeNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Discount Codes", href: "/admin/discount-codes" },
+    { label: "New Discount Code", current: true },
+  ],
+
+  adminDiscountTemplateNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Discount Templates", href: "/admin/discount-templates" },
+    { label: "New Template", current: true },
+  ],
+
+  adminDiscountTemplateEdit: (templateName: string, templateId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Discount Templates", href: "/admin/discount-templates" },
+    { label: `Edit ${templateName}`, current: true },
+  ],
+
+  adminEnrollmentNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Enrollments", href: "/admin/enrollments" },
+    { label: "New Enrollment", current: true },
+  ],
+
+  adminFamilyNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Families", href: "/admin/families" },
+    { label: "New Family", current: true },
+  ],
+
+  adminFamilyEdit: (familyName: string, familyId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Families", href: "/admin/families" },
+    { label: familyName, href: `/admin/families/${familyId}` },
+    { label: "Edit", current: true },
+  ],
+
+  adminFamilyGuardianEdit: (familyName: string, familyId: string, guardianName: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Families", href: "/admin/families" },
+    { label: familyName, href: `/admin/families/${familyId}` },
+    { label: `Edit ${guardianName}`, current: true },
+  ],
+
+  adminFamilyStudentNew: (familyName: string, familyId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Families", href: "/admin/families" },
+    { label: familyName, href: `/admin/families/${familyId}` },
+    { label: "Add Student", current: true },
+  ],
+
+  adminStudentNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Students", href: "/admin/students" },
+    { label: "New Student", current: true },
+  ],
+
+  adminStudentBeltNew: (studentName: string, studentId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Students", href: "/admin/students" },
+    { label: studentName, href: `/admin/students/${studentId}` },
+    { label: "Belt Awards", href: `/admin/student-belts/${studentId}` },
+    { label: "New Belt Award", current: true },
+  ],
+
+  adminStoreProductNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Store", href: "/admin/store" },
+    { label: "Products", href: "/admin/store/products" },
+    { label: "New Product", current: true },
+  ],
+
+  adminStoreProductEdit: (productName: string, productId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Store", href: "/admin/store" },
+    { label: "Products", href: "/admin/store/products" },
+    { label: productName, href: `/admin/store/products/${productId}` },
+    { label: "Edit", current: true },
+  ],
+
+  adminStoreProductVariantNew: (productName: string, productId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Store", href: "/admin/store" },
+    { label: "Products", href: "/admin/store/products" },
+    { label: productName, href: `/admin/store/products/${productId}` },
+    { label: "Variants", href: `/admin/store/products/${productId}/variants` },
+    { label: "New Variant", current: true },
+  ],
+
+  adminStoreProductVariantEdit: (productName: string, productId: string, variantName: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Store", href: "/admin/store" },
+    { label: "Products", href: "/admin/store/products" },
+    { label: productName, href: `/admin/store/products/${productId}` },
+    { label: "Variants", href: `/admin/store/products/${productId}/variants` },
+    { label: `Edit ${variantName}`, current: true },
+  ],
+
+  adminMessageNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Messages", href: "/admin/messages" },
+    { label: "New Message", current: true },
+  ],
+
+  adminAutomaticDiscountNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Automatic Discounts", href: "/admin/automatic-discounts" },
+    { label: "New Rule", current: true },
+  ],
+
+  // Family portal breadcrumb patterns for pages with back links
+  familyMessageNew: () => [
+    { label: "Family Portal", href: "/family" },
+    { label: "Messages", href: "/family/messages" },
+    { label: "New Message", current: true },
   ],
 };

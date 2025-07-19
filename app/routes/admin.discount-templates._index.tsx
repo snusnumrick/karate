@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Badge } from "~/components/ui/badge";
 import { Plus, Edit, FileText } from "lucide-react";
 import type { DiscountTemplate } from "~/types/discount";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -19,6 +20,7 @@ export default function DiscountTemplatesIndex() {
 
   return (
     <div className="space-y-6">
+      <AppBreadcrumb items={breadcrumbPatterns.adminDiscountTemplates()} className="mb-6" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Discount Templates</h1>

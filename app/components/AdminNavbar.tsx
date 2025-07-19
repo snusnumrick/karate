@@ -234,7 +234,7 @@ export default function AdminNavbar() {
                                                             className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
                                                         >
                                                             <Users className="h-5 w-5 mr-2"/>
-                                                            <span className="font-medium">People Management</span>
+                                                            <span className="font-medium">Family Management</span>
                                                             <span className="ml-auto">
                                                                 {isPeopleMobileOpen ?
                                                                     <ChevronDown className="h-4 w-4"/> :
@@ -266,7 +266,7 @@ export default function AdminNavbar() {
                                                             className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
                                                         >
                                                             <GraduationCap className="h-5 w-5 mr-2"/>
-                                                            <span className="font-medium">Programs & Classes</span>
+                                                            <span className="font-medium">Curriculum</span>
                                                             <span className="ml-auto">
                                                                 {isProgramsClassesMobileOpen ?
                                                                     <ChevronDown className="h-4 w-4"/> :
@@ -644,7 +644,7 @@ function AdminProgramsClassesDropdown() {
             </DropdownMenu>
             {showTooltip && !isOpen && canShowTooltip && (
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
-                    Programs & Classes
+                    Curriculum
                 </div>
             )}
         </div>

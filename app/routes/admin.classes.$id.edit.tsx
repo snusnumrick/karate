@@ -24,6 +24,7 @@ import { getClassById, updateClass, deleteClass, getInstructors, getClassSchedul
 import { getPrograms } from "~/services/program.server";
 import type { UpdateClassData, Program } from "~/types/multi-class";
 import { useState } from "react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -155,13 +156,9 @@ export default function EditClass() {
   
   return (
     <div className="container mx-auto py-8 max-w-4xl">
+      <AppBreadcrumb items={breadcrumbPatterns.adminClassEdit(classData.name, classData.id)} className="mb-6" />
+      
       <div className="flex items-center gap-4 mb-8">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/classes">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Classes
-          </Link>
-        </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Edit Class</h1>
           <p className="text-muted-foreground">

@@ -9,6 +9,7 @@ import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {formatDate} from "~/utils/misc"; // For formatting date
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Define types for loader data
 type AttendanceRow = Database['public']['Tables']['attendance']['Row'];
@@ -148,6 +149,8 @@ export default function AttendanceHistoryPage() { // Renamed component
 
     return (
         <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminAttendance()} className="mb-6" />
+            
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{title}</h1>
                 <div className="flex gap-2">

@@ -12,6 +12,7 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { createClient } from '@supabase/supabase-js';
 import { DiscountService } from "~/services/discount.server";
 import { getDiscountTemplateById } from "~/services/discount-template.server";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { PaymentTypeEnum, DiscountTemplate } from "~/types/discount";
 import type { Database } from "~/types/database.types";
 import { FileText, X } from "lucide-react";
@@ -291,9 +292,10 @@ export default function AdminNewDiscountCodePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <Link to="/admin/discount-codes" className="text-blue-600 hover:underline mb-4 inline-block">
-        &larr; Back to Discount Codes
-      </Link>
+      <AppBreadcrumb 
+        items={breadcrumbPatterns.adminDiscountCodeNew()} 
+        className="mb-6"
+      />
       
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">Create New Discount Code</h1>

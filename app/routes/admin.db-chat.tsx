@@ -24,6 +24,7 @@ import {cn} from "~/lib/utils";
 import retrieveDatabaseStructure, {DatabaseSchema, formatSchemaAsMarkdown} from "~/utils/retrieve.db.strructure"; // Import cn utility
 import { formatCurrency as formatCurrencyUtil } from "~/utils/misc"; // Import the utility function
 import { siteConfig } from "~/config/site";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // --- Cache for Database Schema Description ---
 let cachedSchemaDescription: string | null = null;
@@ -795,6 +796,7 @@ export default function AdminDbChat() {
     return (
         // Use flexbox for robust height management
         <div className="flex flex-col h-full">
+            <AppBreadcrumb items={breadcrumbPatterns.adminDbChat()} className="mb-6" />
             <h1 className="text-2xl font-bold mb-2">Database Assistant</h1>
             <p className="text-muted-foreground mb-4">
                 Ask questions about the karate school&apos;s database in natural language.
