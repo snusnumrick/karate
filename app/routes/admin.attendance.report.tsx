@@ -9,6 +9,7 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/
 import {Card, CardContent, CardHeader, CardTitle} from "~/components/ui/card";
 import {endOfMonth, format, isValid, parse, startOfMonth, subMonths} from 'date-fns'; // format is used by getDefaultDateRange
 import {formatDate} from "~/utils/misc";
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Define types
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
@@ -165,15 +166,17 @@ export default function AttendanceReportPage() {
     return (
         // Updated container class for consistency
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminAttendanceReport()} className="mb-6" />
+            
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                 <div>
-                    <Link to="/admin/attendance" className="text-green-600 hover:underline mb-2 inline-block">
-                        &larr; Back to Attendance History
-                    </Link>
                     {/* Updated header classes for consistency */}
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 sm:text-4xl">
-                        Attendance Report ({formattedStartDate} - {formattedEndDate})
+                        Attendance Report
                     </h1>
+                    <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">
+                        {formattedStartDate} - {formattedEndDate}
+                    </p>
                 </div>
                 {/* Removed variant="outline" for consistency with other primary action buttons */}
                 <Button asChild>
@@ -273,6 +276,7 @@ export function ErrorBoundary() {
 
     return (
         <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            <AppBreadcrumb items={breadcrumbPatterns.adminAttendanceReport()} className="mb-4" />
             <h2 className="text-xl font-bold mb-2">Error Generating Report</h2>
             <p>{errorMessage}</p>
             {process.env.NODE_ENV === "development" && errorStack && (
@@ -285,11 +289,6 @@ export function ErrorBoundary() {
            Status: {error.status} {error.statusText}
          </pre>
             )}
-            <div className="mt-4">
-                <Link to="/admin/attendance" className="text-blue-600 hover:underline">
-                    &larr; Go back to Attendance History
-                </Link>
-            </div>
         </div>
     );
 }
