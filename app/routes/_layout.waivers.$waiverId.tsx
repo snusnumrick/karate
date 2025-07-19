@@ -57,37 +57,42 @@ export default function WaiverDetailsPage() {
     const params = useParams(); // To get waiverId for the sign link
 
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4">
-            <AppBreadcrumb items={breadcrumbPatterns.waiverDetail(waiver.title)} className="mb-6" />
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
+                    <AppBreadcrumb items={breadcrumbPatterns.waiverDetail(waiver.title)} className="mb-6" />
 
-            <h1 className="text-3xl font-bold mb-2">{waiver.title}</h1>
-            <p className="text-gray-600 mb-6">{waiver.description}</p>
+                    <h1 className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">{waiver.title}</h1>
+                    <p className="text-muted-foreground mb-6">{waiver.description}</p>
 
-            {waiver.required && (
-                <span className="inline-block mb-4 px-2 py-1 text-xs bg-red-100 text-red-800 rounded">
-          Required
-        </span>
-            )}
+                    {waiver.required && (
+                        <span className="inline-block mb-4 px-2 py-1 text-xs bg-red-100 text-red-800 rounded">
+                            Required
+                        </span>
+                    )}
 
-            {/* Render waiver content - potentially use a markdown renderer if content is markdown */}
-            <div
-                className="prose dark:prose-invert max-w-none border rounded-lg p-6 bg-gray-50 dark:bg-gray-800 whitespace-pre-wrap">
-                {waiver.content}
-            </div>
+                    {/* Render waiver content - potentially use a markdown renderer if content is markdown */}
+                    <div className="mb-8 p-6 border rounded bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
+                        <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
+                            {waiver.content}
+                        </div>
+                    </div>
 
-            <div className="mt-8 flex justify-end">
-                {hasSigned ? (
-                    <span
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 dark:bg-green-900 dark:text-green-200">
-                        ✓ Signed
-                    </span>
-                ) : (
-                    <Button asChild>
-                        <Link to={`/waivers/${params.waiverId}/sign`}>
-                            Sign Now
-                        </Link>
-                    </Button>
-                )}
+                    <div className="mt-8 flex justify-end">
+                        {hasSigned ? (
+                            <span
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 dark:bg-green-900 dark:text-green-200">
+                                ✓ Signed
+                            </span>
+                        ) : (
+                            <Button asChild className="bg-green-600 hover:bg-green-700">
+                                <Link to={`/waivers/${params.waiverId}/sign`}>
+                                    Sign Now
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -103,26 +108,34 @@ export function ErrorBoundary() {
     // Check if it's a response error (like our 404)
     if (isRouteErrorResponse(error)) {
         return (
-            <div className="max-w-4xl mx-auto py-8 px-4 text-center">
-                <h1 className="text-2xl font-bold text-red-600 mb-4">
-                    {error.status} {error.statusText}
-                </h1>
-                <p>{error.data}</p>
-                <Link to="/waivers" className="text-blue-600 hover:underline mt-4 inline-block">
-                    &larr; Back to Waivers List
-                </Link>
+            <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700 text-center">
+                        <h1 className="text-2xl font-bold text-red-600 mb-4">
+                            {error.status} {error.statusText}
+                        </h1>
+                        <p>{error.data}</p>
+                        <Link to="/waivers" className="text-green-600 dark:text-green-400 hover:underline mt-4 inline-block">
+                            &larr; Back to Waivers List
+                        </Link>
+                    </div>
+                </div>
             </div>
         );
     }
 
     // Generic error for unexpected issues
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4 text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">An Unexpected Error Occurred</h1>
-            <p>We&apos;re sorry, something went wrong.</p>
-            <Link to="/waivers" className="text-blue-600 hover:underline mt-4 inline-block">
-                &larr; Back to Waivers List
-            </Link>
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700 text-center">
+                    <h1 className="text-2xl font-bold text-red-600 mb-4">An Unexpected Error Occurred</h1>
+                    <p>We&apos;re sorry, something went wrong.</p>
+                    <Link to="/waivers" className="text-green-600 dark:text-green-400 hover:underline mt-4 inline-block">
+                        &larr; Back to Waivers List
+                    </Link>
+                </div>
+            </div>
         </div>
     );
 }

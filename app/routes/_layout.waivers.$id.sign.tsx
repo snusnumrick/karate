@@ -301,16 +301,18 @@ export default function SignWaiver() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4 dark:text-gray-100">
-            <AppBreadcrumb items={breadcrumbPatterns.waiverSign(waiver.title, waiver.id)} className="mb-6" />
-            
-            <h1 className="text-3xl font-bold mb-6">Sign: {waiver.title}</h1>
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
+                    <AppBreadcrumb items={breadcrumbPatterns.waiverSign(waiver.title, waiver.id)} className="mb-6" />
+                    
+                    <h1 className="text-3xl font-bold text-green-600 dark:text-green-400 mb-6">Sign: {waiver.title}</h1>
 
-            <div className="mb-8 p-6 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
-                <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
-                    {waiver.content}
-                </div>
-            </div>
+                    <div className="mb-8 p-6 border rounded bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
+                        <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
+                            {waiver.content}
+                        </div>
+                    </div>
 
             <Form method="post" onSubmit={handleSubmit}>
                 <div className="mb-6">
@@ -371,18 +373,20 @@ export default function SignWaiver() {
                     </Alert>
                 )}
 
-                <div className="flex justify-end space-x-4">
-                    <Button asChild variant="outline">
-                        <a href="/waivers">Cancel</a>
-                    </Button>
-                    <Button
-                        type="submit"
-                        disabled={!isAgreed || !signatureData}
-                    >
-                        Submit Signature
-                    </Button>
-                </div>
-            </Form>
+                    <div className="flex justify-end space-x-4">
+                        <Button asChild variant="outline">
+                            <a href="/waivers">Cancel</a>
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={!isAgreed || !signatureData}
+                        >
+                            Submit Signature
+                        </Button>
+                    </div>
+                </Form>
+            </div>
         </div>
+    </div>
     );
 }
