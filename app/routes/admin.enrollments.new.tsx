@@ -10,6 +10,7 @@ import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Badge } from "~/components/ui/badge";
 import { Alert, AlertDescription } from "~/components/ui/alert";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 import { getClasses } from "~/services/class.server";
 import { enrollStudent, getEnrollments } from "~/services/enrollment.server";
@@ -193,13 +194,12 @@ export default function NewEnrollmentPage() {
   
   return (
     <div className="container mx-auto py-6 max-w-4xl">
+      <AppBreadcrumb 
+        items={breadcrumbPatterns.adminEnrollmentNew()} 
+        className="mb-6"
+      />
+      
       <div className="flex items-center gap-4 mb-8">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/enrollments">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Enrollments
-          </Link>
-        </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <GraduationCap className="h-8 w-8 text-primary" />

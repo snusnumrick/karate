@@ -10,6 +10,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
 import { ArrowLeft, Plus } from "lucide-react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { CreateProgramData } from "~/types/multi-class";
 
 type ActionData = {
@@ -152,13 +153,12 @@ export default function NewProgram() {
 
   return (
     <div className="space-y-6">
+      <AppBreadcrumb 
+        items={breadcrumbPatterns.adminProgramNew()} 
+        className="mb-6"
+      />
+      
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/programs">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Programs
-          </Link>
-        </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create Program</h1>
           <p className="text-muted-foreground">

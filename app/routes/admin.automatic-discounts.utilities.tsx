@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { ArrowLeft, Play, TestTube, BookOpen, AlertTriangle } from "lucide-react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 
@@ -91,6 +92,8 @@ export default function AutoDiscountUtilities() {
 
   return (
     <div className="space-y-6">
+      <AppBreadcrumb items={breadcrumbPatterns.adminAutomaticDiscountUtilities()} className="mb-6" />
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Checkbox } from "~/components/ui/checkbox";
 import { ArrowLeft, Save } from "lucide-react";
 import type { DiscountType, UsageType, PaymentTypeEnum, DiscountScope } from "~/types/discount";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type ActionData = {
   errors?: {
@@ -111,13 +112,11 @@ export default function NewDiscountTemplate() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/discount-templates">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Templates
-          </Link>
-        </Button>
+      <div className="space-y-4">
+        <AppBreadcrumb 
+          items={breadcrumbPatterns.adminDiscountTemplateNew()} 
+          className="mb-6"
+        />
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create Discount Template</h1>
           <p className="text-muted-foreground">

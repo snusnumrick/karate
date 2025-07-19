@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { formatDate, formatCurrency } from "~/utils/misc";
 import { Constants, type Database, type Tables, type Enums } from "~/types/database.types"; // Added Database type back
 import { ArrowLeft, CheckCircle, XCircle, Clock, PackageCheck, ShoppingCart } from "lucide-react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define types for related data
 type OrderRow = Tables<'orders'>;
@@ -202,9 +203,7 @@ export default function AdminOrderDetailPage() {
 
     return (
         <div className="space-y-6">
-            <Link to="/admin/store/orders" className="inline-flex items-center text-sm text-blue-600 hover:underline">
-                <ArrowLeft className="mr-1 h-4 w-4" /> Back to Orders
-            </Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminStoreOrderDetail(order.id)} className="mb-6" />
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                  <h1 className="text-2xl font-bold">Order Details</h1>

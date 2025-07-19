@@ -8,6 +8,7 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/
 import {Badge} from "~/components/ui/badge"; // For status display
 import {formatDate} from "~/utils/misc"; // For date formatting
 import {PaymentStatus} from "~/types/models"; // Import the enum
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Define the shape of data returned by the loader, including the family name
 type PaymentWithFamily = Database['public']['Tables']['payments']['Row'] & {
@@ -84,6 +85,7 @@ export default function AdminPaymentsPage() {
 
     return (
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminPayments()} className="mb-6" />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                     Payment History

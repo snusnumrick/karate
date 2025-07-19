@@ -25,6 +25,7 @@ import { getEnrollments, updateEnrollment, dropStudent } from "~/services/enroll
 import { getClasses } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import type { ClassEnrollment } from "~/types/multi-class";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -142,6 +143,10 @@ export default function AdminEnrollments() {
   
   return (
     <div className="container mx-auto py-6">
+      <AppBreadcrumb 
+        items={breadcrumbPatterns.adminEnrollments()}
+        className="mb-6"
+      />
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Enrollments</h1>

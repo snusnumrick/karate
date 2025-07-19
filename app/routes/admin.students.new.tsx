@@ -12,6 +12,7 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {BELT_RANKS} from "~/utils/constants";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Loader to get all families for the dropdown
 export async function loader(_: LoaderFunctionArgs) {
@@ -160,6 +161,11 @@ export default function AdminAddStudentPage() {
 
     return (
         <div className="space-y-6">
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.adminStudentNew()} 
+                className="mb-6"
+            />
+            
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Add New Student</h1>
                 <Button asChild variant="outline" size="sm">

@@ -10,6 +10,7 @@ import { getClasses, getClassById } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import { getEnrollmentStats } from "~/services/enrollment.server";
 import type { Program, EnrollmentStats, ClassWithDetails } from "~/types/multi-class";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type ClassWithStats = ClassWithDetails & {
   enrollmentStats: EnrollmentStats;
@@ -60,6 +61,8 @@ export default function AdminClassesIndex() {
   
   return (
     <div className="container mx-auto py-6">
+      <AppBreadcrumb items={breadcrumbPatterns.adminClasses()} className="mb-6" />
+      
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Classes</h1>

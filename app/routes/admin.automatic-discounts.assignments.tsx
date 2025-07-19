@@ -10,6 +10,7 @@ import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { ArrowLeft, Search, Filter, Users, CheckCircle, Clock, XCircle } from "lucide-react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 const supabaseUrl = process.env.SUPABASE_URL!;
@@ -190,6 +191,8 @@ export default function DiscountAssignments() {
 
   return (
     <div className="space-y-6">
+      <AppBreadcrumb items={breadcrumbPatterns.adminAutomaticDiscountAssignments()} className="mb-6" />
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

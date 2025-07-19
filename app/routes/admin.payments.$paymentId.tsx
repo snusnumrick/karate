@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import type { Database } from "~/types/database.types";
 import { PaymentStatus } from "~/types/models"; // Import the enum
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define the detailed payment type expected by the loader
 type PaymentColumns = Database['public']['Tables']['payments']['Row'];
@@ -189,6 +190,7 @@ export default function AdminPaymentDetailPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminPaymentDetail(payment.id)} className="mb-6" />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                     Payment Details
@@ -215,9 +217,6 @@ export default function AdminPaymentDetailPage() {
                             )}
                         </>
                     )}
-                    <Button variant="outline" asChild>
-                        <Link to="/admin/payments">Back to Payments List</Link>
-                    </Button>
                  </div>
             </div>
 

@@ -13,6 +13,7 @@ import { ArrowLeft, Plus, X } from "lucide-react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { createClass, getInstructors, createClassSchedule } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { CreateClassData, Program } from "~/types/multi-class";
 
 
@@ -138,13 +139,12 @@ export default function NewClass() {
   
   return (
     <div className="container mx-auto py-6">
+      <AppBreadcrumb 
+        items={breadcrumbPatterns.adminClassNew()} 
+        className="mb-6"
+      />
+      
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/classes">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Classes
-          </Link>
-        </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create New Class</h1>
           <p className="text-muted-foreground">
