@@ -12,6 +12,7 @@ import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For displaying errors
 import {format} from 'date-fns'; // For default date
 import { siteConfig } from '~/config/site'; // Import siteConfig
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 type FamilyInfo = Pick<Database['public']['Tables']['families']['Row'], 'id' | 'name'>;
 type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name' | 'family_id'>;
@@ -446,13 +447,12 @@ export default function AdminNewPaymentPage() {
 
     return (
         <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminPaymentNew()} className="mb-6" />
+            
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                     Record New Payment
                 </h1>
-                <Button variant="outline" asChild>
-                    <Link to="/admin/payments">Cancel</Link>
-                </Button>
             </div>
 
             {actionData?.error && !actionData.fieldErrors && (

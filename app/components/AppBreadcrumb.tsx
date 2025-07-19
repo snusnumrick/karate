@@ -479,6 +479,12 @@ export const breadcrumbPatterns = {
     { label: "New Message", current: true },
   ],
 
+  adminPaymentNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Payments", href: "/admin/payments" },
+    { label: "Record New Payment", current: true },
+  ],
+
   adminAutomaticDiscountNew: () => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Automatic Discounts", href: "/admin/automatic-discounts" },
