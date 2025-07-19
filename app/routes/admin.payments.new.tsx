@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, type TypedResponse,} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useRouteError} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
@@ -372,6 +372,9 @@ export default function AdminNewPaymentPage() {
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
 
+    // Ref for family field to enable focus
+    const familySelectRef = useRef<HTMLButtonElement>(null);
+
     // State for controlled Select components
     const [selectedFamily, setSelectedFamily] = useState<string | undefined>(undefined);
     const [familyStudents, setFamilyStudents] = useState<StudentInfo[]>([]);
@@ -380,6 +383,13 @@ export default function AdminNewPaymentPage() {
     // selectedStatus state removed
     const [selectedType, setSelectedType] = useState<string>('monthly_group'); // Use selectedType state
     const [subtotalStr, setSubtotalStr] = useState<string>(''); // State for subtotal input string
+
+    // Focus on family field when component mounts
+    useEffect(() => {
+        if (familySelectRef.current) {
+            familySelectRef.current.focus();
+        }
+    }, []);
 
     useEffect(() => {
         if (selectedFamily) {
@@ -474,7 +484,7 @@ export default function AdminNewPaymentPage() {
                                 onValueChange={setSelectedFamily}
                                 required
                             >
-                                <SelectTrigger id="familyId" tabIndex={1}>
+                                <SelectTrigger id="familyId" tabIndex={1} ref={familySelectRef}>
                                     <SelectValue placeholder="Select a family"/>
                                 </SelectTrigger>
                                 <SelectContent>
