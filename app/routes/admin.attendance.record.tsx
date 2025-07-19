@@ -29,7 +29,6 @@ import {formatDate} from "~/utils/misc";
 import React from "react";
 import {Textarea} from "~/components/ui/textarea";
 import {Button} from "~/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "~/components/ui/card";
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Define types
@@ -454,17 +453,10 @@ export default function RecordAttendancePage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.adminAttendanceRecord()} className="mb-6" />
+            <AppBreadcrumb items={breadcrumbPatterns.adminAttendanceRecord()} className="mb-4" />
             
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-                        Record Attendance
-                    </h1>
-                    <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">
-                        {formattedDateForDisplay}
-                    </p>
-                </div>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Record Attendance</h1>
                 <div className="flex items-center gap-2">
                     <Label htmlFor="attendance-date-picker" className="text-sm font-medium whitespace-nowrap">Select Date:</Label>
                     <Input
@@ -472,65 +464,66 @@ export default function RecordAttendancePage() {
                         id="attendance-date-picker"
                         value={attendanceDate}
                         onChange={handleDateChange}
-                        className="w-auto"
+                        className="w-auto input-custom-styles"
                         tabIndex={1}
                     />
                 </div>
             </div>
 
+            {/* Date Display Section */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Selected Date</h2>
+                <p className="text-lg text-gray-600 dark:text-gray-400">
+                    {formattedDateForDisplay}
+                </p>
+            </div>
+
             {/* Session Selection */}
-            <Card className="mb-6">
-                <CardHeader>
-                    <CardTitle>Select Class Session</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {sessions.length === 0 ? (
-                        <p className="text-gray-600 dark:text-gray-400">
-                            No class sessions found for {formattedDateForDisplay}.
-                        </p>
-                    ) : (
-                        <div className="space-y-4">
-                            <Select
-                                value={selectedSession?.id || ''}
-                                onValueChange={handleSessionChange}
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Choose a class session to record attendance" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {sessions.map((session) => (
-                                        <SelectItem key={session.id} value={session.id}>
-                                            {session.class?.name} ({session.class?.program?.name}) - {session.start_time} to {session.end_time}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            
-                            {selectedSession && (
-                                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                    <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                                        {selectedSession.class?.name}
-                                    </h3>
-                                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                                        {selectedSession.class?.program?.name} • {selectedSession.start_time} - {selectedSession.end_time}
-                                    </p>
-                                    <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                                        {enrolledStudents.length} enrolled student{enrolledStudents.length !== 1 ? 's' : ''}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
+                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Select Class Session</h2>
+                {sessions.length === 0 ? (
+                    <p className="text-gray-600 dark:text-gray-400">
+                        No class sessions found for {formattedDateForDisplay}.
+                    </p>
+                ) : (
+                    <div className="space-y-4">
+                        <Select
+                            value={selectedSession?.id || ''}
+                            onValueChange={handleSessionChange}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Choose a class session to record attendance" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {sessions.map((session) => (
+                                    <SelectItem key={session.id} value={session.id}>
+                                        {session.class?.name} ({session.class?.program?.name}) - {session.start_time} to {session.end_time}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        
+                        {selectedSession && (
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                                    {selectedSession.class?.name}
+                                </h3>
+                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                    {selectedSession.class?.program?.name} • {selectedSession.start_time} - {selectedSession.end_time}
+                                </p>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                                    {enrolledStudents.length} enrolled student{enrolledStudents.length !== 1 ? 's' : ''}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* Attendance Recording Form */}
             {selectedSession && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Record Attendance</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold mb-4 border-b pb-2">Record Attendance</h2>
                         <Form method="post">
                             <input type="hidden" name="sessionId" value={selectedSession.id} />
                     <input type="hidden" name="classDate" value={attendanceDate} />
@@ -671,8 +664,7 @@ export default function RecordAttendancePage() {
                                 </div>
                             )}
                         </Form>
-                    </CardContent>
-                </Card>
+                </div>
             )}
         </div>
     );
