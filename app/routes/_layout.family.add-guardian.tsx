@@ -1,4 +1,4 @@
-// Removed unused useEffect import
+import {useEffect, useRef} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
@@ -158,6 +158,9 @@ export default function AddGuardianPage() {
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
 
+    // Ref for the first input field to enable focus
+    const firstNameRef = useRef<HTMLInputElement>(null);
+
     // Guardian Form setup
     const guardianForm = useForm<AddGuardianFormData>({
         resolver: zodResolver(addGuardianSchema),
@@ -174,6 +177,17 @@ export default function AddGuardianPage() {
             employer_notes: '',
         },
     });
+
+    // Focus on first input field when component mounts, with delay for ClientOnly
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (firstNameRef.current) {
+                firstNameRef.current.focus();
+            }
+        }, 100); // Small delay to ensure ClientOnly has rendered
+
+        return () => clearTimeout(timer);
+    }, []);
 
     // Display loader error if any
     if (loaderError) {
@@ -192,7 +206,7 @@ export default function AddGuardianPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyAddGuardian()} />
+            <AppBreadcrumb items={breadcrumbPatterns.familyAddGuardian()} className="mb-6"  />
 
             <h1 className="text-3xl font-bold mb-6">Add New Guardian</h1>
 
@@ -206,9 +220,10 @@ export default function AddGuardianPage() {
             {/* Success message handled by redirect */}
 
             <ClientOnly fallback={<div className="text-center p-8">Loading form...</div>}>
-                {() => (
-                    <UIForm {...guardianForm}>
-                        <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                {() => {
+                    return (
+                        <UIForm {...guardianForm}>
+                            <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                             {/* Display field-specific errors */}
                             {actionData?.errors && (
                                 <Alert variant="destructive" className="mb-4">
@@ -229,7 +244,7 @@ export default function AddGuardianPage() {
                                     render={({field}) => (
                                         <FormItem>
                                             <FormLabel>First Name</FormLabel>
-                                            <FormControl><Input {...field} autoComplete="given-name" className="input-custom-styles" tabIndex={1}/></FormControl>
+                                            <FormControl><Input {...field} ref={firstNameRef} autoComplete="given-name" className="input-custom-styles" tabIndex={1}/></FormControl>
                                             <FormMessage className="dark:text-red-400"/>
                                         </FormItem>
                                     )}
@@ -364,7 +379,8 @@ export default function AddGuardianPage() {
                             </div>
                         </Form>
                     </UIForm>
-                )}
+                    );
+                }}
             </ClientOnly>
         </div>
     );

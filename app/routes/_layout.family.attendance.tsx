@@ -123,7 +123,7 @@ export default function FamilyAttendancePage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyAttendance()} />
+            <AppBreadcrumb items={breadcrumbPatterns.familyAttendance()}  className="mb-6" />
             
             <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
                 Attendance History {familyName ? `for ${familyName}` : ''}
