@@ -30,6 +30,7 @@ import React from "react";
 import {Textarea} from "~/components/ui/textarea";
 import {Button} from "~/components/ui/button";
 import {Card, CardContent, CardHeader, CardTitle} from "~/components/ui/card";
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Define types
 type SessionWithClass = ClassSession & {
@@ -453,22 +454,25 @@ export default function RecordAttendancePage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <Link to="/admin/attendance" className="text-green-600 hover:underline mb-4 inline-block">
-                &larr; Back to Attendance List
-            </Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminAttendanceRecord()} className="mb-6" />
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-                    Record Attendance for {formattedDateForDisplay}
-                </h1>
                 <div>
-                    <Label htmlFor="attendance-date-picker" className="mr-2 text-sm font-medium">Select Date:</Label>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+                        Record Attendance
+                    </h1>
+                    <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">
+                        {formattedDateForDisplay}
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="attendance-date-picker" className="text-sm font-medium whitespace-nowrap">Select Date:</Label>
                     <Input
                         type="date"
                         id="attendance-date-picker"
                         value={attendanceDate}
                         onChange={handleDateChange}
-                        className="w-auto inline-block"
+                        className="w-auto"
                         tabIndex={1}
                     />
                 </div>
