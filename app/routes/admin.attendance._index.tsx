@@ -157,8 +157,8 @@ export default function AttendanceHistoryPage() { // Renamed component
                     <Button asChild variant="secondary">
                         <Link to="/admin/attendance/report">View Reports</Link>
                     </Button>
-                    <Button asChild variant="outline">
-                        {/* Link to record attendance page - still relevant */}
+                    <Button asChild>
+                        {/* Link to record attendance page - primary action */}
                         <Link to="/admin/attendance/record">Record Today&apos;s Attendance</Link>
                     </Button>
                 </div>
@@ -200,7 +200,7 @@ export default function AttendanceHistoryPage() { // Renamed component
                 <Button type="submit">Filter</Button>
                 {/* Optional: Clear filters button */}
                 {(filterParams.startDate || filterParams.endDate || filterParams.studentId) && (
-                    <Button type="button" variant="ghost" onClick={() => window.location.href = '/admin/attendance'}>
+                    <Button type="button" variant="outline" onClick={() => window.location.href = '/admin/attendance'}>
                         Clear Filters
                     </Button>
                 )}
