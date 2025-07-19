@@ -204,7 +204,7 @@ export default function ClassSessions() {
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/sessions">
+          <Link to={`/admin/sessions?class_id=${classData.id}`}>
             <ExternalLink className="h-4 w-4 mr-2" />
             All Sessions
           </Link>

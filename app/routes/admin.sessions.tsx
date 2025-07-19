@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useFetcher, Link } from "@remix-run/react";
+import { useLoaderData, useFetcher, Link, useSearchParams } from "@remix-run/react";
 import { format, parseISO, addDays } from "date-fns";
 import { Trash2, Calendar, Clock, Users, AlertTriangle, Edit2, Plus } from "lucide-react";
 import { Button } from "~/components/ui/button";
@@ -31,7 +31,7 @@ import {
 import { getClassSessions, deleteClassSession, bulkDeleteClassSessions, getClasses, createClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { ClassSession, Class, CreateSessionData } from "~/types/multi-class";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type ActionData = {
@@ -185,12 +185,29 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function AdminSessions() {
   const { sessions, classes } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<ActionData>();
+  const [searchParams] = useSearchParams();
+  
   const [filters, setFilters] = useState({
     class_id: "all",
     status: "all",
     date_from: "",
     date_to: "",
   });
+
+  // Initialize filters from URL parameters
+  useEffect(() => {
+    const classId = searchParams.get("class_id");
+    const status = searchParams.get("status");
+    const dateFrom = searchParams.get("date_from");
+    const dateTo = searchParams.get("date_to");
+
+    setFilters({
+      class_id: classId || "all",
+      status: status || "all",
+      date_from: dateFrom || "",
+      date_to: dateTo || "",
+    });
+  }, [searchParams]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<SessionWithClass | null>(null);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
