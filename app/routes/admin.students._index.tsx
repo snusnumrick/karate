@@ -187,7 +187,7 @@ export default function StudentsAdminPage() {
         <div className="container mx-auto px-4 py-8">
             <AppBreadcrumb 
                 items={breadcrumbPatterns.adminStudents()}
-                className="mb-8"
+                className="mb-6"
             />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Manage Students</h1>
@@ -233,10 +233,10 @@ export default function StudentsAdminPage() {
                                         <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)}
                                                className="text-xs">
                                             + {(student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly') ? 'Active' : student.eligibility.reason}
-                                            {/* Optionally show last payment date for Paid/Expired */}
-                                            {student.eligibility.lastPaymentDate && (student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly' || student.eligibility.reason
+                                            {/* Optionally show paid until date for Paid/Expired */}
+                                            {student.eligibility.paidUntil && (student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly' || student.eligibility.reason
                                                     === 'Expired') &&
-                                                ` (Last: ${formatDate(student.eligibility.lastPaymentDate, { formatString: 'yyyy-MM-dd' })})` // Keep date format for admin view
+                                                ` (Paid until: ${formatDate(student.eligibility.paidUntil, { formatString: 'yyyy-MM-dd' })})` // Display paid until date from enrollment
                                             }
                                         </Badge>
                                     </TableCell>
