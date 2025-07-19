@@ -2,6 +2,7 @@ import {json, type LoaderFunctionArgs} from "@remix-run/node";
 import {Link, useLoaderData} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import { formatDate } from "~/utils/misc"; // Import formatDate utility
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({request}: LoaderFunctionArgs) {
     const {supabaseServer} = getSupabaseServerClient(request);
@@ -52,6 +53,8 @@ export default function WaiversIndex() {
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4">
+            <AppBreadcrumb items={breadcrumbPatterns.waivers()} className="mb-6" />
+            
             <h1 className="text-3xl font-bold mb-6">Waivers & Agreements</h1>
 
             <p className="mb-6">

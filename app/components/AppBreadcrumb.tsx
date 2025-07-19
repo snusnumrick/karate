@@ -519,4 +519,23 @@ export const breadcrumbPatterns = {
     { label: "Messages", href: "/family/messages" },
     { label: "New Message", current: true },
   ],
+
+  // Public waiver pages
+  waivers: () => [
+    { label: "Home", href: "/" },
+    { label: "Waivers & Agreements", current: true },
+  ],
+  
+  waiverDetail: (waiverTitle: string) => [
+    { label: "Home", href: "/" },
+    { label: "Waivers & Agreements", href: "/waivers" },
+    { label: waiverTitle, current: true },
+  ],
+  
+  waiverSign: (waiverTitle: string, waiverId: string) => [
+    { label: "Home", href: "/" },
+    { label: "Waivers & Agreements", href: "/waivers" },
+    { label: waiverTitle, href: `/waivers/${waiverId}` },
+    { label: "Sign", current: true },
+  ],
 };

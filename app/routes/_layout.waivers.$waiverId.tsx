@@ -2,6 +2,7 @@ import {json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {isRouteErrorResponse, Link, useLoaderData, useParams, useRouteError} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button"; // Assuming Button component exists
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({request, params}: LoaderFunctionArgs) {
     const {waiverId} = params;
@@ -57,9 +58,7 @@ export default function WaiverDetailsPage() {
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4">
-            <Link to="/waivers" className="text-blue-600 hover:underline mb-4 inline-block">
-                &larr; Back to Waivers List
-            </Link>
+            <AppBreadcrumb items={breadcrumbPatterns.waiverDetail(waiver.title)} className="mb-6" />
 
             <h1 className="text-3xl font-bold mb-2">{waiver.title}</h1>
             <p className="text-gray-600 mb-6">{waiver.description}</p>

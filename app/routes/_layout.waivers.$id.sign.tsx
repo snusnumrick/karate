@@ -6,6 +6,7 @@ import {Button} from "~/components/ui/button";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Label} from "~/components/ui/label";
 import {Alert, AlertDescription} from "~/components/ui/alert";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({request, params}: LoaderFunctionArgs) {
     const waiverId = params.id!;
@@ -301,6 +302,8 @@ export default function SignWaiver() {
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4 dark:text-gray-100">
+            <AppBreadcrumb items={breadcrumbPatterns.waiverSign(waiver.title, waiver.id)} className="mb-6" />
+            
             <h1 className="text-3xl font-bold mb-6">Sign: {waiver.title}</h1>
 
             <div className="mb-8 p-6 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
