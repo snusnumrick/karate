@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 // Response is globally available or comes from web fetch API, not @remix-run/node
 import { type ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation, useRouteError, isRouteErrorResponse } from "@remix-run/react"; // Added isRouteErrorResponse
@@ -199,6 +199,7 @@ export default function AdminStudentDetailPage() {
     const navigation = useNavigation();
     const navigate = useNavigate(); // Get navigate function
     const [isEditing, setIsEditing] = useState(false); // State for edit mode
+    const firstNameRef = useRef<HTMLInputElement>(null);
 
     const isSubmitting = navigation.state === "submitting";
 
@@ -208,6 +209,13 @@ export default function AdminStudentDetailPage() {
             setIsEditing(false);
         }
     }, [actionData, isEditing, navigation.state]);
+
+    // Focus first name field when entering edit mode
+    useEffect(() => {
+        if (isEditing && firstNameRef.current) {
+            firstNameRef.current.focus();
+        }
+    }, [isEditing]);
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -255,25 +263,25 @@ export default function AdminStudentDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="first_name">First Name <span className="text-red-500">*</span></Label>
-                                <Input id="first_name" name="first_name" autoComplete="given-name" defaultValue={student.first_name} required tabIndex={1}/>
+                                <Input ref={firstNameRef} id="first_name" name="first_name" autoComplete="given-name" defaultValue={student.first_name} required tabIndex={1} className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.first_name &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.first_name}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="last_name">Last Name <span className="text-red-500">*</span></Label>
-                                <Input id="last_name" name="last_name" autoComplete="family-name" defaultValue={student.last_name} required tabIndex={2}/>
+                                <Input id="last_name" name="last_name" autoComplete="family-name" defaultValue={student.last_name} required tabIndex={2} className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.last_name &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.last_name}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="gender">Gender <span className="text-red-500">*</span></Label>
                                 <Select name="gender" defaultValue={student.gender} required>
-                                    <SelectTrigger id="gender" tabIndex={3}><SelectValue
+                                    <SelectTrigger id="gender" tabIndex={3} className="input-custom-styles"><SelectValue
                                         placeholder="Select gender"/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Male">Male</SelectItem>
-                                        <SelectItem value="Female">Female</SelectItem>
-                                        <SelectItem value="Other">Other</SelectItem>
+                                        <SelectItem value="male">Male</SelectItem>
+                                        <SelectItem value="female">Female</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 {actionData?.fieldErrors?.gender &&
@@ -282,7 +290,7 @@ export default function AdminStudentDetailPage() {
                             <div>
                                 <Label htmlFor="birth_date">Birth Date <span className="text-red-500">*</span></Label>
                                 <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date}
-                                       required tabIndex={4}/>
+                                       required tabIndex={4} className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.birth_date &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.birth_date}</p>}
                             </div>
@@ -291,7 +299,7 @@ export default function AdminStudentDetailPage() {
                                 <Label htmlFor="t_shirt_size">T-Shirt Size <span
                                     className="text-red-500">*</span></Label>
                                 <Select name="t_shirt_size" defaultValue={student.t_shirt_size} required>
-                                    <SelectTrigger id="t_shirt_size" tabIndex={5}><SelectValue
+                                    <SelectTrigger id="t_shirt_size" tabIndex={5} className="input-custom-styles"><SelectValue
                                         placeholder="Select size"/></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="YXS">Youth XS</SelectItem>
@@ -311,14 +319,14 @@ export default function AdminStudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="school">School <span className="text-red-500">*</span></Label>
-                                <Input id="school" name="school" defaultValue={student.school} required tabIndex={6}/>
+                                <Input id="school" name="school" defaultValue={student.school} required tabIndex={6} className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.school &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.school}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="grade_level">Grade Level</Label>
                                 <Select name="grade_level" defaultValue={student.grade_level || ''}>
-                                    <SelectTrigger id="grade_level" tabIndex={7}><SelectValue
+                                    <SelectTrigger id="grade_level" tabIndex={7} className="input-custom-styles"><SelectValue
                                         placeholder="Select grade"/></SelectTrigger>
                                     <SelectContent>
                                         {/* Removed SelectItem with value="" */}
@@ -341,11 +349,11 @@ export default function AdminStudentDetailPage() {
                             <div>
                                 <Label htmlFor="cell_phone">Cell Phone</Label>
                                 <Input id="cell_phone" name="cell_phone" type="tel" autoComplete="mobile tel"
-                                       defaultValue={student.cell_phone || ''} tabIndex={8}/>
+                                       defaultValue={student.cell_phone || ''} tabIndex={8} className="input-custom-styles"/>
                             </div>
                             <div>
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" name="email" type="email" autoComplete="email" defaultValue={student.email || ''} tabIndex={9}/>
+                                <Input id="email" name="email" type="email" autoComplete="email" defaultValue={student.email || ''} tabIndex={9} className="input-custom-styles"/>
                             </div>
                         </div>
                     </div>
@@ -366,22 +374,22 @@ export default function AdminStudentDetailPage() {
                             <div className="md:col-span-2">
                                 <Label htmlFor="immunization_notes">Immunization Notes</Label>
                                 <Textarea id="immunization_notes" name="immunization_notes"
-                                          defaultValue={student.immunization_notes || ''} rows={2} tabIndex={11}/>
+                                          defaultValue={student.immunization_notes || ''} rows={2} tabIndex={11} className="input-custom-styles"/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="allergies">Allergies</Label>
                                 <Textarea id="allergies" name="allergies" defaultValue={student.allergies || ''}
-                                          rows={2} tabIndex={12}/>
+                                          rows={2} tabIndex={12} className="input-custom-styles"/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="medications">Medications</Label>
                                 <Textarea id="medications" name="medications" defaultValue={student.medications || ''}
-                                          rows={2} tabIndex={13}/>
+                                          rows={2} tabIndex={13} className="input-custom-styles"/>
                             </div>
                             <div className="md:col-span-2">
                                 <Label htmlFor="special_needs">Special Needs</Label>
                                 <Textarea id="special_needs" name="special_needs"
-                                          defaultValue={student.special_needs || ''} rows={2} tabIndex={14}/>
+                                          defaultValue={student.special_needs || ''} rows={2} tabIndex={14} className="input-custom-styles"/>
                             </div>
                         </div>
                     </div>
@@ -500,7 +508,7 @@ export default function AdminStudentDetailPage() {
                                 </div>
                                 <div>
                                     <Label htmlFor="usageDate">Usage Date</Label>
-                                    <Input id="usageDate" name="usageDate" type="date" defaultValue={format(new Date(), 'yyyy-MM-dd')} required />
+                                    <Input id="usageDate" name="usageDate" type="date" defaultValue={format(new Date(), 'yyyy-MM-dd')} required className="input-custom-styles" />
                                 </div>
                                 <div>
                                     <Label htmlFor="notes">Notes (Optional)</Label>

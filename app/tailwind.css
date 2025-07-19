@@ -6,6 +6,25 @@
   .input-custom-styles {
     @apply focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400;
   }
+  
+  /* Fix calendar icon visibility in dark mode */
+  input[type="date"].input-custom-styles {
+    color-scheme: light;
+  }
+  
+  .dark input[type="date"].input-custom-styles {
+    color-scheme: dark;
+  }
+  
+  /* Make calendar icon light/white in dark mode */
+  input[type="date"].input-custom-styles::-webkit-calendar-picker-indicator {
+    @apply cursor-pointer;
+  }
+  
+  .dark input[type="date"].input-custom-styles::-webkit-calendar-picker-indicator {
+    filter: brightness(0) invert(1);
+    opacity: 0.8;
+  }
 }
 
 @layer base {
