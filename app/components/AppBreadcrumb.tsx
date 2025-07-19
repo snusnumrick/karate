@@ -160,7 +160,7 @@ export const breadcrumbPatterns = {
   adminClassSessions: (className: string, classId: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Classes", href: "/admin/classes" },
-    { label: className, href: `/admin/classes/${classId}` },
+    { label: className, href: `/admin/classes/${classId}/edit` },
     { label: "Sessions", current: true },
   ],
   
