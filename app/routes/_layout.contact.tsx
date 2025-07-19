@@ -2,6 +2,12 @@ import { siteConfig } from "~/config/site"; // Import site config
 import { Phone, Mail, MapPin } from 'lucide-react'; // Import icons
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
+// Import shadcn components
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
+import { Button } from "~/components/ui/button";
+import { Label } from "~/components/ui/label";
 
 // Helper function to merge meta tags, giving precedence to child tags
 // (Same helper function as in about.tsx - could be extracted to a util file)
@@ -88,177 +94,170 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
 export default function ContactPage() {
     return (
-        <div className="min-h-screen bg-green-50 dark:bg-gray-900 py-12">
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Added text-center div and updated header styles to match About page */}
-                <div className="text-center mb-10"> {/* Added margin-bottom */}
-                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
-                        Contact Sensei Negin
-                    </h1>
-                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
-                        Get in touch for class info, registration, or questions
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
+                    {/* Header section matching registration page style */}
+                    <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                        <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Contact Us</h1>
+                        <a href="/register" className="text-sm text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300 sm:text-base">
+                            Ready to start? Click here to register.
+                        </a>
+                    </div>
+
+                    <p className="mb-6 text-muted-foreground">
+                        Get in touch for class info, registration, or questions. We're here to help you start your karate journey!
                     </p>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md dark:text-gray-100">
-                    {/* Removed original h1 */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                        <div>
-                            <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
-                            <ul className="space-y-4">
-                                <li className="flex items-start">
-                                    <Phone className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
-                                    <div>
-                                        <p className="font-medium">Phone</p>
-                                        <a href={`tel:${siteConfig.contact.phone.replace(/\D/g, '')}`} className="hover:underline hover:text-green-700 dark:hover:text-green-400">
-                                            {siteConfig.contact.phone}
-                                        </a>
-                                    </div>
-                                </li>
-                                <li className="flex items-start">
-                                    <Mail className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-sky-500 dark:text-sky-400" aria-hidden="true" />
-                                    <div>
-                                        <p className="font-medium">Email</p>
-                                        <a href={`mailto:${siteConfig.contact.email}`} className="hover:underline hover:text-green-700 dark:hover:text-green-400">
-                                            {siteConfig.contact.email}
-                                        </a>
-                                    </div>
-                                </li>
-                                <li className="flex items-start">
-                                    <MapPin className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400" aria-hidden="true" />
-                                    <div>
-                                        <p className="font-medium">Location</p>
-                                        {/* Use the address from siteConfig and make it a link */}
-                                        <a
-                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="hover:underline hover:text-green-700 dark:hover:text-green-400"
-                                        >
-                                            {siteConfig.location.address}
-                                        </a>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h2 className="text-xl font-semibold mb-4">
-                                <a href="/classes" className="hover:underline hover:text-green-700 dark:hover:text-green-400">
-                                    Class Schedule
-                                </a>
-                            </h2>
-                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-md">
-                                <p className="font-medium mb-2">Children&apos;s Classes (Ages {siteConfig.classes.ageRange})</p>
-                                <ul className="space-y-2">
-                                    <li className="flex items-center">
-                                        <span className="text-green-600 mr-2">•</span>
-                                        {/* Use siteConfig for days and time */}
-                                        <span>{siteConfig.classes.days}: {siteConfig.classes.timeLong}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                            <div>
+                                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CONTACT INFORMATION</h2>
+                                <ul className="space-y-4">
+                                    <li className="flex items-start">
+                                        <Phone className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
+                                        <div>
+                                            <p className="font-medium">Phone</p>
+                                            <a href={`tel:${siteConfig.contact.phone.replace(/\D/g, '')}`} className="hover:underline hover:text-green-700 dark:hover:text-green-400">
+                                                {siteConfig.contact.phone}
+                                            </a>
+                                        </div>
                                     </li>
-                                    {/* Remove hardcoded second list item if siteConfig.classes.days covers all days */}
+                                    <li className="flex items-start">
+                                        <Mail className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-sky-500 dark:text-sky-400" aria-hidden="true" />
+                                        <div>
+                                            <p className="font-medium">Email</p>
+                                            <a href={`mailto:${siteConfig.contact.email}`} className="hover:underline hover:text-green-700 dark:hover:text-green-400">
+                                                {siteConfig.contact.email}
+                                            </a>
+                                        </div>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <MapPin className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400" aria-hidden="true" />
+                                        <div>
+                                            <p className="font-medium">Location</p>
+                                            {/* Use the address from siteConfig and make it a link */}
+                                            <a
+                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="hover:underline hover:text-green-700 dark:hover:text-green-400"
+                                            >
+                                                {siteConfig.location.address}
+                                            </a>
+                                        </div>
+                                    </li>
                                 </ul>
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Quick Answers Section */}
-                    <div className="my-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Quick Answers</h2>
-                        <div className="space-y-4">
-                            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                <p className="text-gray-700 dark:text-gray-200">
-                                    <span className="font-semibold">Q: What’s the class schedule?</span>
-                                    <br />
-                                    A: Classes are on {siteConfig.classes.days}, {siteConfig.classes.timeLong}.
-                                </p>
-                            </div>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                <p className="text-gray-700 dark:text-gray-200">
-                                    <span className="font-semibold">Q: Where are the classes held?</span>
-                                    <br />
-                                    A: Classes are held at {siteConfig.location.address}, {siteConfig.location.locality}, {siteConfig.location.region}.
-                                </p>
-                            </div>
-                             <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                <p className="text-gray-700 dark:text-gray-200">
-                                    <span className="font-semibold">Q: What ages are the classes for?</span>
-                                    <br />
-                                    A: Our karate classes are designed for children aged {siteConfig.classes.ageRange}.
-                                </p>
+                            <div>
+                                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">
+                                    <a href="/classes" className="hover:underline hover:text-green-700 dark:hover:text-green-400">
+                                        CLASS SCHEDULE
+                                    </a>
+                                </h2>
+                                <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                                    <CardContent className="p-4">
+                                        <p className="font-medium mb-2">Children&apos;s Classes (Ages {siteConfig.classes.ageRange})</p>
+                                        <ul className="space-y-2">
+                                            <li className="flex items-center">
+                                                <span className="text-green-600 mr-2">•</span>
+                                                {/* Use siteConfig for days and time */}
+                                                <span>{siteConfig.classes.days}: {siteConfig.classes.timeLong}</span>
+                                            </li>
+                                            {/* Remove hardcoded second list item if siteConfig.classes.days covers all days */}
+                                        </ul>
+                                    </CardContent>
+                                </Card>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
-                        <h2 className="text-xl font-semibold mb-4">Send a Message</h2>
-                        <form className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="name"
-                                           className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Your Name
-                                    </label>
-                                    <input
+                        {/* Quick Answers Section */}
+                        <div className="my-8 pt-8 border-t border-border">
+                            <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">QUICK ANSWERS</h2>
+                            <div className="space-y-4">
+                                <Card className="bg-muted/50">
+                                    <CardContent className="p-4">
+                                        <p className="text-foreground">
+                                            <span className="font-semibold">Q: What's the class schedule?</span>
+                                            <br />
+                                            A: Classes are on {siteConfig.classes.days}, {siteConfig.classes.timeLong}.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="bg-muted/50">
+                                    <CardContent className="p-4">
+                                        <p className="text-foreground">
+                                            <span className="font-semibold">Q: Where are the classes held?</span>
+                                            <br />
+                                            A: Classes are held at {siteConfig.location.address}, {siteConfig.location.locality}, {siteConfig.location.region}.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="bg-muted/50">
+                                    <CardContent className="p-4">
+                                        <p className="text-foreground">
+                                            <span className="font-semibold">Q: What ages are the classes for?</span>
+                                            <br />
+                                            A: Our karate classes are designed for children aged {siteConfig.classes.ageRange}.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-border pt-8">
+                            <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">SEND A MESSAGE</h2>
+                            <form className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name" className="text-sm font-medium mb-1">Your Name</Label>
+                                        <Input
+                                            type="text"
+                                            id="name"
+                                            autoComplete="name"
+                                            placeholder="Enter your name"
+                                            className="input-custom-styles"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email" className="text-sm font-medium mb-1">Email Address</Label>
+                                        <Input
+                                            type="email"
+                                            id="email"
+                                            autoComplete="email"
+                                            placeholder="Enter your email"
+                                            className="input-custom-styles"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="subject" className="text-sm font-medium mb-1">Subject</Label>
+                                    <Input
                                         type="text"
-                                        id="name"
-                                        autoComplete="name"
-                                        className="input-custom-styles w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
-                                        placeholder="Enter your name"
+                                        id="subject"
+                                        placeholder="Enter subject"
+                                        className="input-custom-styles"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="message" className="text-sm font-medium mb-1">Message</Label>
+                                    <Textarea
+                                        id="message"
+                                        rows={4}
+                                        placeholder="Enter your message"
+                                        className="input-custom-styles"
                                     />
                                 </div>
 
                                 <div>
-                                    <label htmlFor="email"
-                                           className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Email Address
-                                    </label>
-                                    <input
-                                        type="email"
-                                        id="email"
-                                        autoComplete="email"
-                                        className="input-custom-styles w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
-                                        placeholder="Enter your email"
-                                    />
+                                    <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                                        Send Message
+                                    </Button>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label htmlFor="subject"
-                                       className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Subject
-                                </label>
-                                <input
-                                    type="text"
-                                    id="subject"
-                                    className="input-custom-styles w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
-                                    placeholder="Enter subject"
-                                />
-                            </div>
-
-                            <div>
-                                <label htmlFor="message"
-                                       className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Message
-                                </label>
-                                <textarea
-                                    id="message"
-                                    rows={4}
-                                    className="input-custom-styles w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-gray-100"
-                                    placeholder="Enter your message"
-                                ></textarea>
-                            </div>
-
-                            <div>
-                                <button
-                                    type="submit"
-                                    className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 transition"
-                                >
-                                    Send Message
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                            </form>
+                        </div>
                 </div>
             </div>
         </div>
