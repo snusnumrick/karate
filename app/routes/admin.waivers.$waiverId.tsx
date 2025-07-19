@@ -1,5 +1,6 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useRouteError,} from "@remix-run/react";
+import {useEffect, useRef} from "react";
 import {createClient, type SupabaseClient} from '@supabase/supabase-js'; // Import SupabaseClient
 import type {Database} from "~/types/database.types";
 import {sendEmail} from '~/utils/email.server'; // Import email utility
@@ -253,10 +254,18 @@ export default function EditWaiverPage() {
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
+    const titleInputRef = useRef<HTMLInputElement>(null);
+
+    // Auto-focus the title field when the page loads
+    useEffect(() => {
+        if (titleInputRef.current) {
+            titleInputRef.current.focus();
+        }
+    }, []);
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.adminWaiverDetail(waiver.id)} className="mb-6" />
+            <AppBreadcrumb items={breadcrumbPatterns.adminWaiverDetail(waiver.title)} className="mb-6" />
             <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Edit Waiver</h1>
 
             <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
@@ -268,59 +277,69 @@ export default function EditWaiverPage() {
                         </Alert>
                     )}
 
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <div>
-                            <Label htmlFor="title">Title</Label>
+                            <Label htmlFor="title" className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                Title *
+                            </Label>
                             <Input
+                                ref={titleInputRef}
                                 id="title"
                                 name="title"
                                 type="text"
                                 defaultValue={waiver.title}
                                 required
-                                className="mt-1"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                                 tabIndex={1}
                             />
                         </div>
 
                         <div>
-                            <Label htmlFor="description">Description</Label>
+                            <Label htmlFor="description" className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                Description *
+                            </Label>
                             <Input
                                 id="description"
                                 name="description"
                                 type="text"
                                 defaultValue={waiver.description}
                                 required
-                                className="mt-1"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                                 tabIndex={2}
                             />
                         </div>
 
                         <div>
-                            <Label htmlFor="content">Content (Markdown supported)</Label>
+                            <Label htmlFor="content" className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                Content (Markdown supported) *
+                            </Label>
                             <Textarea
                                 id="content"
                                 name="content"
                                 defaultValue={waiver.content}
                                 required
                                 rows={10}
-                                className="mt-1 font-mono" // Use mono font for markdown editing
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm"
                                 tabIndex={3}
                             />
                         </div>
 
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-3">
                             <Checkbox
                                 id="required"
                                 name="required"
                                 defaultChecked={waiver.required}
                                 tabIndex={4}
+                                className="h-4 w-4"
                             />
-                            <Label htmlFor="required">Required for Registration</Label>
+                            <Label htmlFor="required" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                                Required for Registration
+                            </Label>
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end">
-                        <Button type="submit" disabled={isSubmitting} tabIndex={5}>
+                    <div className="mt-8 flex justify-end">
+                        <Button type="submit" disabled={isSubmitting} tabIndex={5} className="px-6 py-2">
                             {isSubmitting ? "Saving..." : "Save Changes"}
                         </Button>
                     </div>

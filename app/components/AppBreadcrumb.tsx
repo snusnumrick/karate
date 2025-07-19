@@ -275,10 +275,10 @@ export const breadcrumbPatterns = {
     { label: "Waivers", current: true },
   ],
   
-  adminWaiverDetail: (waiverId: string) => [
+  adminWaiverDetail: (waiverTitle: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Waivers", href: "/admin/waivers" },
-    { label: `Waiver ${waiverId}`, current: true },
+    { label: waiverTitle, current: true },
   ],
   
   adminWaiversMissing: () => [
@@ -489,6 +489,12 @@ export const breadcrumbPatterns = {
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Automatic Discounts", href: "/admin/automatic-discounts" },
     { label: "New Rule", current: true },
+  ],
+
+  adminWaiverNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Waivers", href: "/admin/waivers" },
+    { label: "New Waiver", current: true },
   ],
 
   // Family portal breadcrumb patterns for pages with back links
