@@ -261,6 +261,7 @@ export default function ClassSessions() {
                     type="date"
                     defaultValue={getTodayLocalDateString()}
                     required
+                    className="input-custom-styles"
                   />
                 </div>
                 
@@ -272,6 +273,7 @@ export default function ClassSessions() {
                     type="date"
                     defaultValue={formatLocalDate(new Date(new Date().setFullYear(new Date().getFullYear() + 1)))}
                     required
+                    className="input-custom-styles"
                   />
                 </div>
                 
@@ -281,6 +283,7 @@ export default function ClassSessions() {
                     id="instructor_override"
                     name="instructor_override"
                     placeholder="Override default instructor"
+                    className="input-custom-styles"
                   />
                 </div>
                 
@@ -290,6 +293,7 @@ export default function ClassSessions() {
                     id="excluded_dates"
                     name="excluded_dates"
                     placeholder="2024-12-25, 2024-01-01"
+                    className="input-custom-styles"
                   />
                   <p className="text-xs text-muted-foreground">
                     Comma-separated dates to exclude (YYYY-MM-DD format)
@@ -430,7 +434,7 @@ export default function ClassSessions() {
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select name="status" defaultValue={editingSession.status}>
-                    <SelectTrigger>
+                    <SelectTrigger className="input-custom-styles">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -449,6 +453,7 @@ export default function ClassSessions() {
                     defaultValue={editingSession.notes || ''}
                     placeholder="Session notes..."
                     rows={3}
+                    className="input-custom-styles"
                   />
                 </div>
                 

@@ -192,9 +192,9 @@ export default function AdminAddStudentPage() {
                         <div className="space-y-2">
                             <Label htmlFor="familyId">Family *</Label>
                             <Select name="familyId" defaultValue={getFormData("familyId")}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a family" />
-                                </SelectTrigger>
+                                <SelectTrigger className="input-custom-styles">
+                    <SelectValue placeholder="Select a family" />
+                </SelectTrigger>
                                 <SelectContent>
                                     {families.map((family) => (
                                         <SelectItem key={family.id} value={family.id}>
@@ -218,6 +218,7 @@ export default function AdminAddStudentPage() {
                                     type="text"
                                     defaultValue={getFormData("firstName")}
                                     required
+                                    className="input-custom-styles"
                                 />
                                 {getFieldError("firstName") && (
                                     <p className="text-sm text-red-600">{getFieldError("firstName")}</p>
@@ -232,6 +233,7 @@ export default function AdminAddStudentPage() {
                                     type="text"
                                     defaultValue={getFormData("lastName")}
                                     required
+                                    className="input-custom-styles"
                                 />
                                 {getFieldError("lastName") && (
                                     <p className="text-sm text-red-600">{getFieldError("lastName")}</p>
@@ -248,6 +250,7 @@ export default function AdminAddStudentPage() {
                                     type="date"
                                     defaultValue={getFormData("birthDate")}
                                     required
+                                    className="input-custom-styles"
                                 />
                                 {getFieldError("birthDate") && (
                                     <p className="text-sm text-red-600">{getFieldError("birthDate")}</p>
@@ -257,9 +260,9 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="gender">Gender *</Label>
                                 <Select name="gender" defaultValue={getFormData("gender")}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select gender" />
-                                    </SelectTrigger>
+                                    <SelectTrigger className="input-custom-styles">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Male">Male</SelectItem>
                                         <SelectItem value="Female">Female</SelectItem>
@@ -281,6 +284,7 @@ export default function AdminAddStudentPage() {
                                     type="text"
                                     defaultValue={getFormData("school")}
                                     required
+                                    className="input-custom-styles"
                                 />
                                 {getFieldError("school") && (
                                     <p className="text-sm text-red-600">{getFieldError("school")}</p>
@@ -295,6 +299,7 @@ export default function AdminAddStudentPage() {
                                     type="text"
                                     defaultValue={getFormData("gradeLevel")}
                                     required
+                                    className="input-custom-styles"
                                 />
                                 {getFieldError("gradeLevel") && (
                                     <p className="text-sm text-red-600">{getFieldError("gradeLevel")}</p>
@@ -306,9 +311,9 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="tShirtSize">T-Shirt Size *</Label>
                                 <Select name="tShirtSize" defaultValue={getFormData("tShirtSize")}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select size" />
-                                    </SelectTrigger>
+                                    <SelectTrigger className="input-custom-styles">
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="XS">XS</SelectItem>
                                         <SelectItem value="S">S</SelectItem>
@@ -326,7 +331,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="beltRank">Current Belt Rank</Label>
                                 <Select name="beltRank" defaultValue={getFormData("beltRank")}>
-                                    <SelectTrigger>
+                                    <SelectTrigger className="input-custom-styles">
                                         <SelectValue placeholder="Select belt rank" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -349,6 +354,7 @@ export default function AdminAddStudentPage() {
                                     name="email"
                                     type="email"
                                     defaultValue={getFormData("email")}
+                                    className="input-custom-styles"
                                 />
                             </div>
 
@@ -359,6 +365,7 @@ export default function AdminAddStudentPage() {
                                     name="cellPhone"
                                     type="tel"
                                     defaultValue={getFormData("cellPhone")}
+                                    className="input-custom-styles"
                                 />
                             </div>
                         </div>
@@ -374,6 +381,7 @@ export default function AdminAddStudentPage() {
                                     name="specialNeeds"
                                     defaultValue={getFormData("specialNeeds")}
                                     rows={3}
+                                    className="input-custom-styles"
                                 />
                             </div>
 
@@ -384,6 +392,7 @@ export default function AdminAddStudentPage() {
                                     name="allergies"
                                     defaultValue={getFormData("allergies")}
                                     rows={3}
+                                    className="input-custom-styles"
                                 />
                             </div>
 
@@ -394,13 +403,14 @@ export default function AdminAddStudentPage() {
                                     name="medications"
                                     defaultValue={getFormData("medications")}
                                     rows={3}
+                                    className="input-custom-styles"
                                 />
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="immunizationsUpToDate">Immunizations Up to Date</Label>
                                 <Select name="immunizationsUpToDate" defaultValue={getFormData("immunizationsUpToDate")}>
-                                    <SelectTrigger>
+                                    <SelectTrigger className="input-custom-styles">
                                         <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -418,6 +428,7 @@ export default function AdminAddStudentPage() {
                                     name="immunizationNotes"
                                     defaultValue={getFormData("immunizationNotes")}
                                     rows={3}
+                                    className="input-custom-styles"
                                 />
                             </div>
                         </div>

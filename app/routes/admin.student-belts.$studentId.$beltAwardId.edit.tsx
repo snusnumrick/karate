@@ -157,7 +157,7 @@ export default function EditAchievementPage() { // Function name can stay for no
                 <div>
                     <Label htmlFor="type">Belt Awarded</Label>
                     <Select name="type" required defaultValue={beltAward.type}>
-                        <SelectTrigger id="type" tabIndex={1}>
+                        <SelectTrigger id="type" className="input-custom-styles" tabIndex={1}>
                             <SelectValue placeholder="Select belt rank"/>
                         </SelectTrigger>
                         <SelectContent>
@@ -180,7 +180,7 @@ export default function EditAchievementPage() { // Function name can stay for no
                 </div>
                 <div>
                     <Label htmlFor="awarded_date">Awarded Date</Label>
-                    <Input id="awarded_date" name="awarded_date" type="date" required
+                    <Input id="awarded_date" name="awarded_date" type="date" required className="input-custom-styles"
                            defaultValue={beltAward.awarded_date} tabIndex={3}/>
                     {actionData?.fieldErrors?.awarded_date &&
                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.awarded_date}</p>}

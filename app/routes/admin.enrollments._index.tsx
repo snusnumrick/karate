@@ -226,7 +226,7 @@ export default function AdminEnrollments() {
             <div className="space-y-2">
               <Label>Program</Label>
               <Select value={filters.programId || "all"} onValueChange={(value) => handleFilterChange("program", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="input-custom-styles">
                   <SelectValue placeholder="All programs" />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,8 +243,8 @@ export default function AdminEnrollments() {
             <div className="space-y-2">
               <Label>Class</Label>
               <Select value={filters.classId || "all"} onValueChange={(value) => handleFilterChange("class", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All classes" />
+                <SelectTrigger className="input-custom-styles">
+                    <SelectValue placeholder="All classes" />
                 </SelectTrigger>
                 <SelectContent className="w-full min-w-[300px]">
                   <SelectItem value="all">All Classes</SelectItem>
@@ -260,8 +260,8 @@ export default function AdminEnrollments() {
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={filters.status || "all"} onValueChange={(value) => handleFilterChange("status", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
+                <SelectTrigger className="input-custom-styles">
+                    <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
@@ -396,7 +396,7 @@ export default function AdminEnrollments() {
               <div className="space-y-2">
                 <Label htmlFor="edit-status">Status</Label>
                 <Select name="status" defaultValue={selectedEnrollment.status}>
-                  <SelectTrigger>
+                  <SelectTrigger className="input-custom-styles">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -412,6 +412,7 @@ export default function AdminEnrollments() {
                 <Input
                   id="edit-notes"
                   name="notes"
+                  className="input-custom-styles"
                   defaultValue={selectedEnrollment.notes || ""}
                   placeholder="Enrollment notes..."
                 />

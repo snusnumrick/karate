@@ -298,7 +298,7 @@ export default function AdminEditDiscountCodePage() {
             <div>
               <Label htmlFor="discountType">Discount Type <span className="text-red-500">*</span></Label>
               <Select name="discountType" defaultValue={discountCode.discount_type} required>
-                <SelectTrigger tabIndex={5}>
+                <SelectTrigger className="input-custom-styles" tabIndex={5}>
                   <SelectValue placeholder="Select discount type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -331,7 +331,7 @@ export default function AdminEditDiscountCodePage() {
             <div>
               <Label htmlFor="usageType">Usage Type <span className="text-red-500">*</span></Label>
               <Select name="usageType" defaultValue={discountCode.usage_type} required>
-                <SelectTrigger tabIndex={7}>
+                <SelectTrigger className="input-custom-styles" tabIndex={7}>
                   <SelectValue placeholder="Select usage type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -434,7 +434,7 @@ export default function AdminEditDiscountCodePage() {
             <div>
               <Label htmlFor="scope">Scope <span className="text-red-500">*</span></Label>
               <Select name="scope" value={selectedScope} onValueChange={(value) => setSelectedScope(value as 'per_student' | 'per_family')} required>
-                <SelectTrigger tabIndex={14}>
+                <SelectTrigger className="input-custom-styles" tabIndex={14}>
                   <SelectValue placeholder="Select scope" />
                 </SelectTrigger>
                 <SelectContent>
@@ -458,7 +458,7 @@ export default function AdminEditDiscountCodePage() {
             <div className="mb-4">
               <Label htmlFor="familyId">Family Selection <span className="text-red-500">*</span></Label>
               <Select name="familyId" value={selectedFamily} onValueChange={setSelectedFamily} required>
-                <SelectTrigger tabIndex={15}>
+                <SelectTrigger className="input-custom-styles" tabIndex={15}>
                   <SelectValue placeholder="Select family" />
                 </SelectTrigger>
                 <SelectContent>
@@ -478,7 +478,7 @@ export default function AdminEditDiscountCodePage() {
               <div className="mb-4">
                 <Label htmlFor="studentId">Student Selection <span className="text-red-500">*</span></Label>
                 <Select name="studentId" value={selectedStudent} onValueChange={setSelectedStudent} required>
-                  <SelectTrigger tabIndex={16}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={16}>
                     <SelectValue placeholder="Select student" />
                   </SelectTrigger>
                   <SelectContent>

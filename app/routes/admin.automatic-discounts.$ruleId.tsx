@@ -203,6 +203,7 @@ export default function EditAutomationRule() {
                   name="name"
                   defaultValue={rule.name}
                   required
+                  className="input-custom-styles"
                 />
               </div>
 
@@ -214,7 +215,7 @@ export default function EditAutomationRule() {
                   name="event_type"
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="input-custom-styles">
                     <SelectValue placeholder="Select event type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -237,7 +238,7 @@ export default function EditAutomationRule() {
                   name="discount_template_id"
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="input-custom-styles">
                     <SelectValue placeholder="Select a discount template" />
                   </SelectTrigger>
                   <SelectContent>
@@ -258,7 +259,7 @@ export default function EditAutomationRule() {
                     defaultValue={(rule.conditions as Record<string, string | number>)?.belt_rank as string || ""}
                     name="belt_rank"
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="input-custom-styles">
                       <SelectValue placeholder="Any belt rank" />
                     </SelectTrigger>
                     <SelectContent>
@@ -285,6 +286,7 @@ export default function EditAutomationRule() {
                     name="min_attendance"
                     defaultValue={(rule.conditions as Record<string, string | number>)?.min_attendance as string || ""}
                     min="1"
+                    className="input-custom-styles"
                   />
                 </div>
               )}
@@ -299,6 +301,7 @@ export default function EditAutomationRule() {
                       name="min_age"
                       defaultValue={(rule.conditions as Record<string, string | number>)?.min_age as string || ""}
                       min="0"
+                      className="input-custom-styles"
                     />
                   </div>
                   <div className="space-y-2">
@@ -309,6 +312,7 @@ export default function EditAutomationRule() {
                       name="max_age"
                       defaultValue={(rule.conditions as Record<string, string | number>)?.max_age as string || ""}
                       min="0"
+                      className="input-custom-styles"
                     />
                   </div>
                 </div>
@@ -353,6 +357,7 @@ export default function EditAutomationRule() {
                     name="validity_days"
                     defaultValue=""
                     min="1"
+                    className="input-custom-styles"
                   />
                 </div>
                 <div className="space-y-2">
@@ -363,6 +368,7 @@ export default function EditAutomationRule() {
                     name="max_uses_per_family"
                     defaultValue=""
                     min="1"
+                    className="input-custom-styles"
                   />
                 </div>
               </div>

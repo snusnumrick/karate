@@ -478,7 +478,17 @@ export default function StudentDetailPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl student-payment-page">
-            <AppBreadcrumb items={breadcrumbPatterns.familyStudentDetail(student.first_name, student.last_name)} className="mb-6" />
+            <AppBreadcrumb 
+                items={isEditing 
+                    ? [
+                        { label: "Family Portal", href: "/family" },
+                        { label: `${student.first_name} ${student.last_name}`, onClick: () => setIsEditing(false) },
+                        { label: "Edit", current: true },
+                      ]
+                    : breadcrumbPatterns.familyStudentDetail(student.first_name, student.last_name)
+                } 
+                className="mb-6" 
+            />
 
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
@@ -526,7 +536,7 @@ export default function StudentDetailPage() {
                             <div>
                                 <Label htmlFor="gender">Gender</Label>
                                 <Select name="gender" defaultValue={student.gender} required>
-                                    <SelectTrigger id="gender"><SelectValue
+                                    <SelectTrigger id="gender" className="input-custom-styles"><SelectValue
                                         placeholder="Select gender"/></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Male">Male</SelectItem>
@@ -544,7 +554,7 @@ export default function StudentDetailPage() {
                             <div>
                                 <Label htmlFor="t_shirt_size">T-Shirt Size</Label>
                                 <Select name="t_shirt_size" defaultValue={student.t_shirt_size} required>
-                                    <SelectTrigger id="t_shirt_size"><SelectValue
+                                    <SelectTrigger id="t_shirt_size" className="input-custom-styles"><SelectValue
                                         placeholder="Select size"/></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="YXS">Youth XS</SelectItem>
@@ -567,7 +577,7 @@ export default function StudentDetailPage() {
                             <div>
                                 <Label htmlFor="grade_level">Grade Level</Label>
                                 <Select name="grade_level" defaultValue={student.grade_level || undefined} required>
-                                    <SelectTrigger id="grade_level"><SelectValue
+                                    <SelectTrigger id="grade_level" className="input-custom-styles"><SelectValue
                                         placeholder="Select grade"/></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="K">Kindergarten</SelectItem>

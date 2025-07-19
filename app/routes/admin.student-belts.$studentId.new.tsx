@@ -145,7 +145,7 @@ export default function AddAchievementPage() { // Function name can stay for now
                 <div>
                     <Label htmlFor="type">Belt Awarded</Label>
                     <Select name="type" required>
-                        <SelectTrigger id="type" tabIndex={1}>
+                        <SelectTrigger id="type" className="input-custom-styles" tabIndex={1}>
                             <SelectValue placeholder="Select belt rank"/>
                         </SelectTrigger>
                         <SelectContent>
@@ -168,7 +168,7 @@ export default function AddAchievementPage() { // Function name can stay for now
                 </div>
                 <div>
                     <Label htmlFor="awarded_date">Awarded Date</Label>
-                    <Input id="awarded_date" name="awarded_date" type="date" required defaultValue={today} tabIndex={3}/>
+                    <Input id="awarded_date" name="awarded_date" type="date" required defaultValue={today} tabIndex={3} className="input-custom-styles"/>
                     {actionData?.fieldErrors?.awarded_date &&
                         <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.awarded_date}</p>}
                 </div>

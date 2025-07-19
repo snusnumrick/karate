@@ -387,7 +387,7 @@ export default function AdminCalendar() {
                 <span className="text-xs font-medium">Program</span>
               </div>
               <Select value={filters.program || 'all'} onValueChange={(value) => handleFilterChange('program', value)}>
-                <SelectTrigger className="h-8">
+                <SelectTrigger className="h-8 input-custom-styles">
                   <SelectValue placeholder="All Programs" />
                 </SelectTrigger>
                 <SelectContent>
@@ -405,7 +405,7 @@ export default function AdminCalendar() {
                 <span className="text-xs font-medium">Instructor</span>
               </div>
               <Select value={filters.instructor || 'all'} onValueChange={(value) => handleFilterChange('instructor', value)}>
-                <SelectTrigger className="h-8">
+                <SelectTrigger className="h-8 input-custom-styles">
                   <SelectValue placeholder="All Instructors" />
                 </SelectTrigger>
                 <SelectContent>
@@ -423,7 +423,7 @@ export default function AdminCalendar() {
                 <span className="text-xs font-medium">Status</span>
               </div>
               <Select value={filters.status || 'all'} onValueChange={(value) => handleFilterChange('status', value)}>
-                <SelectTrigger className="h-8">
+                <SelectTrigger className="h-8 input-custom-styles">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>

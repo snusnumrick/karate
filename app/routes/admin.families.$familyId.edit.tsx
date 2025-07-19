@@ -328,11 +328,11 @@ export default function EditFamilyPage() {
                                             <SelectTrigger
                                                 id="province" // Keep id for label association
                                                 className="input-custom-styles w-full"
+                                                tabIndex={6}
                                                 aria-invalid={!!actionData?.fieldErrors?.province}
                                                 aria-describedby="province-error"
-                                                tabIndex={6}
                                             >
-                                                <SelectValue placeholder="Select a province"/>
+                                                <SelectValue placeholder="Select province" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {/* Use provinces from siteConfig */}
@@ -454,7 +454,7 @@ export default function EditFamilyPage() {
                                             aria-describedby="referral_source-error"
                                             tabIndex={11}
                                         >
-                                            <SelectValue placeholder="Select a source"/>
+                                            <SelectValue placeholder="Select referral source"/>
                                         </SelectTrigger>
                                         <SelectContent>
                                             {referralSources.map((source) => (

@@ -217,7 +217,7 @@ export default function AdminNewMessage() {
                         <SelectTrigger
                             ref={familySelectRef} // Attach ref
                             id="familyId"
-                            className={cn("w-full", "mt-1", familyIdError ? "border-red-500" : "")} // Use w-full for width, remove input-custom-styles
+                            className={cn("w-full", "mt-1", "input-custom-styles", familyIdError ? "border-red-500" : "")} // Use w-full for width, add input-custom-styles
                             tabIndex={1}
                         >
                             <SelectValue placeholder="Select a family..." />

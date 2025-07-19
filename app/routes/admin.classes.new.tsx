@@ -170,7 +170,7 @@ export default function NewClass() {
               <div className="space-y-2">
                 <Label htmlFor="program_id">Program *</Label>
                 <Select name="program_id" required>
-                  <SelectTrigger>
+                  <SelectTrigger className="input-custom-styles">
                     <SelectValue placeholder="Select program" />
                   </SelectTrigger>
                   <SelectContent>
@@ -195,7 +195,7 @@ export default function NewClass() {
               <div className="space-y-2">
                 <Label htmlFor="instructor_id">Instructor</Label>
                 <Select name="instructor_id">
-                  <SelectTrigger>
+                  <SelectTrigger className="input-custom-styles">
                     <SelectValue placeholder="Select instructor (optional)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -252,7 +252,7 @@ export default function NewClass() {
                         <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
                             <Select name={`schedules[${index}][day_of_week]`}>
-                              <SelectTrigger>
+                              <SelectTrigger className="input-custom-styles">
                                 <SelectValue placeholder="Select day" />
                               </SelectTrigger>
                               <SelectContent>

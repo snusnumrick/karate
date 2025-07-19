@@ -73,7 +73,7 @@ export default function AdminClassesIndex() {
         
         <div className="flex gap-2">
           <Select value={selectedProgramId || "all"} onValueChange={handleProgramFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-48 input-custom-styles">
               <SelectValue placeholder="Filter by program" />
             </SelectTrigger>
             <SelectContent>

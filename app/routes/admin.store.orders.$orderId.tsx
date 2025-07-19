@@ -279,7 +279,7 @@ export default function AdminOrderDetailPage() {
                                 <div>
                                     <Label htmlFor="status">Order Status</Label>
                                     <Select name="status" defaultValue={order.status} required>
-                                        <SelectTrigger id="status" aria-invalid={!!actionData?.fieldErrors?.status} aria-describedby="status-error" tabIndex={1}>
+                                        <SelectTrigger id="status" aria-invalid={!!actionData?.fieldErrors?.status} aria-describedby="status-error" tabIndex={1} className="input-custom-styles">
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
                                         <SelectContent>

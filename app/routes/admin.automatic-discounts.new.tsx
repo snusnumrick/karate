@@ -159,14 +159,15 @@ export default function NewAutomationRule() {
                 placeholder="e.g., Welcome Discount for New Students"
                 required
                 tabIndex={1}
+                className="input-custom-styles"
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="event_type">Trigger Event</Label>
               <Select name="event_type" onValueChange={setSelectedEventType} required>
-                <SelectTrigger tabIndex={2}>
-                  <SelectValue placeholder="Select an event type" />
+                <SelectTrigger className="input-custom-styles" tabIndex={2}>
+                    <SelectValue placeholder="Select an event type" />
                 </SelectTrigger>
                 <SelectContent>
                   {eventTypes.map((type) => (
@@ -197,7 +198,7 @@ export default function NewAutomationRule() {
               <div className="space-y-2">
                 <Label htmlFor="discount_template_id">Discount Template</Label>
                 <Select name="discount_template_id" required={!usesMultipleTemplates}>
-                  <SelectTrigger tabIndex={3}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={3}>
                     <SelectValue placeholder="Select a discount template" />
                   </SelectTrigger>
                   <SelectContent>
@@ -317,6 +318,7 @@ export default function NewAutomationRule() {
                       type="number"
                       placeholder="e.g., 5"
                       tabIndex={4}
+                      className="input-custom-styles"
                     />
                   </div>
                   <div className="space-y-2">
@@ -327,6 +329,7 @@ export default function NewAutomationRule() {
                       type="number"
                       placeholder="e.g., 2"
                       tabIndex={5}
+                      className="input-custom-styles"
                     />
                   </div>
                 </>
@@ -336,7 +339,7 @@ export default function NewAutomationRule() {
                 <div className="space-y-2">
                   <Label htmlFor="condition_belt_rank">Belt Rank</Label>
                   <Select name="condition_belt_rank">
-                    <SelectTrigger tabIndex={4}>
+                    <SelectTrigger className="input-custom-styles" tabIndex={4}>
                       <SelectValue placeholder="Select belt rank" />
                     </SelectTrigger>
                     <SelectContent>
@@ -359,6 +362,7 @@ export default function NewAutomationRule() {
                     type="number"
                     placeholder="e.g., 10"
                     tabIndex={4}
+                    className="input-custom-styles"
                   />
                 </div>
               )}
@@ -390,6 +394,7 @@ export default function NewAutomationRule() {
                   type="datetime-local"
                   defaultValue={new Date().toISOString().slice(0, 16)}
                   tabIndex={6}
+                  className="input-custom-styles"
                 />
               </div>
               <div className="space-y-2">
@@ -399,6 +404,7 @@ export default function NewAutomationRule() {
                   name="valid_until"
                   type="datetime-local"
                   tabIndex={7}
+                  className="input-custom-styles"
                 />
               </div>
             </div>

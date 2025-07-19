@@ -240,7 +240,9 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="gradeLevel" required>
                                 <SelectTrigger id="gradeLevel"
-                                               className="input-custom-styles w-full" tabIndex={7}> {/* Applied custom style, removed redundant */}
+                                               className="input-custom-styles"
+                                               aria-describedby="gradeLevel-error"
+                                               tabIndex={7}>
                                     <SelectValue placeholder="Select grade"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -305,8 +307,10 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="immunizationsUpToDate">
                                 <SelectTrigger id="immunizationsUpToDate"
-                                               className="input-custom-styles w-full" tabIndex={13}> {/* Applied custom style, removed redundant */}
-                                    <SelectValue placeholder="Select option"/>
+                                               className="input-custom-styles"
+                                               aria-describedby="immunizationsUpToDate-error"
+                                               tabIndex={13}>
+                                    <SelectValue placeholder="Select status"/>
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Yes">Yes</SelectItem>

@@ -237,7 +237,7 @@ export default function NewEnrollmentPage() {
                     }}
                     required
                   >
-                    <SelectTrigger className="h-11 w-full [&>span]:line-clamp-none">
+                    <SelectTrigger className="input-custom-styles h-11 w-full [&>span]:line-clamp-none">
                       <SelectValue placeholder="Choose a family to get started" />
                     </SelectTrigger>
                     <SelectContent>
@@ -270,7 +270,7 @@ export default function NewEnrollmentPage() {
                     disabled={!selectedFamilyId} 
                     required
                   >
-                    <SelectTrigger className={`h-11 ${!selectedFamilyId ? 'opacity-50' : ''}`}>
+                    <SelectTrigger className={`input-custom-styles h-11 ${!selectedFamilyId ? 'opacity-50' : ''}`}>
                       <SelectValue placeholder={selectedFamilyId ? "Select student" : "Select family first"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -306,7 +306,7 @@ export default function NewEnrollmentPage() {
                     disabled={!selectedStudentId} 
                     required
                   >
-                    <SelectTrigger className={`h-11 w-full [&>span]:line-clamp-none ${!selectedStudentId ? 'opacity-50' : ''}`}>
+                    <SelectTrigger className={`input-custom-styles h-11 w-full [&>span]:line-clamp-none ${!selectedStudentId ? 'opacity-50' : ''}`}>
                       <SelectValue placeholder={
                         !selectedStudentId 
                           ? "Select student first" 

@@ -207,7 +207,7 @@ export default function EditDiscountTemplate() {
               <div className="space-y-2">
                 <Label htmlFor="discount_type">Discount Type *</Label>
                 <Select name="discount_type" defaultValue={template.discount_type}>
-                  <SelectTrigger className={actionData?.errors?.discount_type ? "border-red-500" : ""} tabIndex={2}>
+                  <SelectTrigger className={`input-custom-styles ${actionData?.errors?.discount_type ? "border-red-500" : ""}`} tabIndex={2}>
                     <SelectValue placeholder="Select discount type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -255,7 +255,7 @@ export default function EditDiscountTemplate() {
               <div className="space-y-2">
                 <Label htmlFor="usage_type">Usage Type *</Label>
                 <Select name="usage_type" defaultValue={template.usage_type}>
-                  <SelectTrigger className={actionData?.errors?.usage_type ? "border-red-500" : ""} tabIndex={5}>
+                  <SelectTrigger className={`input-custom-styles ${actionData?.errors?.usage_type ? "border-red-500" : ""}`} tabIndex={5}>
                     <SelectValue placeholder="Select usage type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -286,7 +286,7 @@ export default function EditDiscountTemplate() {
               <div className="space-y-2">
                 <Label htmlFor="scope">Scope *</Label>
                 <Select name="scope" defaultValue={template.scope}>
-                  <SelectTrigger className={actionData?.errors?.scope ? "border-red-500" : ""} tabIndex={7}>
+                  <SelectTrigger className={`input-custom-styles ${actionData?.errors?.scope ? "border-red-500" : ""}`} tabIndex={7}>
                     <SelectValue placeholder="Select scope" />
                   </SelectTrigger>
                   <SelectContent>

@@ -403,7 +403,7 @@ export default function AdminSessions() {
                 value={filters.class_id}
                 onValueChange={(value) => setFilters(prev => ({ ...prev, class_id: value === "all" ? "" : value }))}
               >
-                <SelectTrigger tabIndex={0}>
+                <SelectTrigger className="input-custom-styles" tabIndex={0}>
                   <SelectValue placeholder="All classes" />
                 </SelectTrigger>
                 <SelectContent>
@@ -423,7 +423,7 @@ export default function AdminSessions() {
                 value={filters.status}
                 onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === "all" ? "" : value }))}
               >
-                <SelectTrigger tabIndex={0}>
+                <SelectTrigger className="input-custom-styles" tabIndex={0}>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -632,7 +632,7 @@ export default function AdminSessions() {
                 value={bulkDeleteForm.classId} 
                 onValueChange={(value) => setBulkDeleteForm(prev => ({ ...prev, classId: value }))}
               >
-                <SelectTrigger tabIndex={0}>
+                <SelectTrigger className="input-custom-styles" tabIndex={0}>
                   <SelectValue placeholder="All classes" />
                 </SelectTrigger>
                 <SelectContent>
@@ -652,7 +652,7 @@ export default function AdminSessions() {
                 value={bulkDeleteForm.status} 
                 onValueChange={(value) => setBulkDeleteForm(prev => ({ ...prev, status: value }))}
               >
-                <SelectTrigger tabIndex={0}>
+                <SelectTrigger className="input-custom-styles" tabIndex={0}>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -697,7 +697,7 @@ export default function AdminSessions() {
                 onValueChange={(value) => setMakeupSessionForm(prev => ({ ...prev, classId: value }))}
                 required
               >
-                <SelectTrigger tabIndex={0}>
+                <SelectTrigger className="input-custom-styles" tabIndex={0}>
                   <SelectValue placeholder="Select a class" />
                 </SelectTrigger>
                 <SelectContent>
@@ -719,6 +719,7 @@ export default function AdminSessions() {
                 onChange={(e) => setMakeupSessionForm(prev => ({ ...prev, sessionDate: e.target.value }))}
                 required
                 tabIndex={0}
+                className="input-custom-styles"
               />
             </div>
             
@@ -756,6 +757,7 @@ export default function AdminSessions() {
                 onChange={(e) => setMakeupSessionForm(prev => ({ ...prev, notes: e.target.value }))}
                 rows={3}
                 tabIndex={0}
+                className="input-custom-styles"
               />
             </div>
           </div>

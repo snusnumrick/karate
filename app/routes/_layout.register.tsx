@@ -199,9 +199,11 @@ export default function RegisterPage() {
                                         </Label>
                                         <Select name="referralSource" required>
                                             <SelectTrigger id="referralSource"
-                                                           className={`input-custom-styles w-full ${errors?.referralSource ? 'border-red-500' : ''}`}
-                                                           tabIndex={1}> {/* Applied custom style, removed redundant */}
-                                                <SelectValue placeholder="Select an option"/>
+                                           className="input-custom-styles"
+                                           aria-invalid={!!errors?.referralSource}
+                                           aria-describedby="referralSource-error"
+                                           tabIndex={1}>
+                                <SelectValue placeholder="How did you hear about us?" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="friend">Friend</SelectItem>
@@ -293,9 +295,9 @@ export default function RegisterPage() {
                                         </Label>
                                         <Select name="province" required>
                                             <SelectTrigger id="province"
-                                                           className={`input-custom-styles w-full ${errors?.province ? 'border-red-500' : ''}`}
-                                                           tabIndex={6}> {/* Applied custom style, removed redundant */}
-                                                <SelectValue placeholder="Select a province"/>
+                                           className="input-custom-styles"
+                                           aria-describedby="province-error">
+                                <SelectValue placeholder="Select province" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {/* Use provinces from siteConfig */}

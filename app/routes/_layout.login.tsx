@@ -187,25 +187,31 @@ export default function LoginPage() {
                                 <div className="grid gap-2">
                                     <Label htmlFor="email" className="dark:text-gray-200">Email address</Label>
                                     <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        required
-                                        tabIndex={1}
-                                    />
-                                </div>
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    autoComplete="email"
+                                    required
+                                    placeholder="Enter your email"
+                                    disabled={isSubmitting}
+                                    className="input-custom-styles"
+                                    tabIndex={1}
+                                />
+                            </div>
 
-                                <div className="grid gap-2">
-                                    <Label htmlFor="password" className="dark:text-gray-200">Password</Label>
-                                    <Input
-                                        id="password"
-                                        name="password"
-                                        type="password"
-                                        autoComplete="current-password"
-                                        required
-                                        tabIndex={2}
-                                    />
+                            <div className="grid gap-2">
+                                <Label htmlFor="password" className="dark:text-gray-200">Password</Label>
+                                <Input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    autoComplete="current-password"
+                                    required
+                                    placeholder="Enter your password"
+                                    disabled={isSubmitting}
+                                    className="input-custom-styles"
+                                    tabIndex={2}
+                                />
                                 </div>
 
                                 <div className="flex items-center justify-between">

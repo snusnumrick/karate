@@ -273,8 +273,8 @@ export default function AutoDiscountUtilities() {
                     />
                   </div>
                   <Select name="belt_rank" required>
-                    <SelectTrigger className="text-xs" tabIndex={9}>
-                      <SelectValue placeholder="Select belt rank" />
+                    <SelectTrigger className="input-custom-styles text-xs" tabIndex={9}>
+                    <SelectValue placeholder="Select belt rank" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="white">White Belt</SelectItem>

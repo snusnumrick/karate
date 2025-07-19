@@ -286,7 +286,7 @@ export default function DiscountAssignments() {
                   placeholder="Student name, family, or code..."
                   defaultValue={filters.search}
                   onChange={(e) => updateFilter('search', e.target.value)}
-                  className="pl-10"
+                  className="input-custom-styles pl-10"
                 />
               </div>
             </div>
@@ -296,7 +296,7 @@ export default function DiscountAssignments() {
                 Automation Rule
               </label>
               <Select value={filters.ruleId || 'all'} onValueChange={(value) => updateFilter('rule', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="input-custom-styles">
                   <SelectValue placeholder="All rules" />
                 </SelectTrigger>
                 <SelectContent>
@@ -315,7 +315,7 @@ export default function DiscountAssignments() {
                 Status
               </label>
               <Select value={filters.status || 'all'} onValueChange={(value) => updateFilter('status', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="input-custom-styles">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>

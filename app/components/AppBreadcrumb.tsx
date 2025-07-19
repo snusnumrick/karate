@@ -12,6 +12,7 @@ export interface BreadcrumbItem {
   label: string;
   href?: string;
   current?: boolean;
+  onClick?: () => void; // Add onClick handler for custom actions
 }
 
 interface AppBreadcrumbProps {
@@ -26,11 +27,20 @@ export function AppBreadcrumb({ items, className }: AppBreadcrumbProps) {
         {items.map((item, index) => (
           <div key={index} className="flex items-center">
             <BreadcrumbItem>
-              {item.current || !item.href ? (
+              {item.current || (!item.href && !item.onClick) ? (
                 <BreadcrumbPage>{item.label}</BreadcrumbPage>
+              ) : item.onClick ? (
+                <BreadcrumbLink asChild>
+                  <button 
+                    onClick={item.onClick}
+                    className="hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit text-inherit"
+                  >
+                    {item.label}
+                  </button>
+                </BreadcrumbLink>
               ) : (
                 <BreadcrumbLink asChild>
-                  <Link to={item.href}>{item.label}</Link>
+                  <Link to={item.href!}>{item.label}</Link>
                 </BreadcrumbLink>
               )}
             </BreadcrumbItem>
@@ -115,6 +125,12 @@ export const breadcrumbPatterns = {
   familyStudentDetail: (firstName: string, lastName: string) => [
     { label: "Family Portal", href: "/family" },
     { label: `${firstName} ${lastName}`, current: true },
+  ],
+  
+  familyStudentEdit: (firstName: string, lastName: string, studentId: string) => [
+    { label: "Family Portal", href: "/family" },
+    { label: `${firstName} ${lastName}`, href: `/family/student/${studentId}` },
+    { label: "Edit", current: true },
   ],
   
   familyStudentAttendance: (firstName: string, lastName: string, studentId: string) => [

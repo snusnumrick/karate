@@ -484,7 +484,7 @@ export default function AdminNewPaymentPage() {
                                 onValueChange={setSelectedFamily}
                                 required
                             >
-                                <SelectTrigger id="familyId" tabIndex={1} ref={familySelectRef}>
+                                <SelectTrigger id="familyId" tabIndex={1} ref={familySelectRef} className="input-custom-styles">
                                     <SelectValue placeholder="Select a family"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -509,7 +509,7 @@ export default function AdminNewPaymentPage() {
                                 onValueChange={setSelectedType} // Update handler
                                 required
                             >
-                                <SelectTrigger id="type" tabIndex={2}> {/* Update id */}
+                                <SelectTrigger id="type" tabIndex={2} className="input-custom-styles"> {/* Update id */}
                                     <SelectValue placeholder="Select payment type"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -645,7 +645,7 @@ export default function AdminNewPaymentPage() {
                                 onValueChange={setSelectedMethod}
                                 required
                             >
-                                <SelectTrigger id="paymentMethod" tabIndex={6}>
+                                <SelectTrigger id="paymentMethod" tabIndex={6} className="input-custom-styles">
                                     <SelectValue placeholder="Select payment method"/>
                                 </SelectTrigger>
                                 <SelectContent>

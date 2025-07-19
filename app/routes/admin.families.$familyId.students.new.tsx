@@ -215,6 +215,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1">
                                 <Label htmlFor="firstName">First Name<span className="text-destructive">*</span></Label>
                                 <Input type="text" id="firstName" name="firstName" autoComplete="given-name" required
+                                       className="input-custom-styles"
                                        defaultValue={getFormData('firstName')}
                                        aria-invalid={!!getFieldError('firstName')} aria-describedby="firstName-error"
                                        tabIndex={1}/>
@@ -225,6 +226,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1">
                                 <Label htmlFor="lastName">Last Name<span className="text-destructive">*</span></Label>
                                 <Input type="text" id="lastName" name="lastName" autoComplete="family-name" required
+                                       className="input-custom-styles"
                                        defaultValue={getFormData('lastName')} aria-invalid={!!getFieldError('lastName')}
                                        aria-describedby="lastName-error" tabIndex={2}/>
                                 {getFieldError('lastName') && <p id="lastName-error"
@@ -234,9 +236,10 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1">
                                 <Label htmlFor="birthDate">Birth Date<span className="text-destructive">*</span></Label>
                                 <Input type="date" id="birthDate" name="birthDate" required
+                                       className="input-custom-styles dark:[color-scheme:dark]"
                                        defaultValue={getFormData('birthDate')}
                                        aria-invalid={!!getFieldError('birthDate')} aria-describedby="birthDate-error"
-                                       className="dark:[color-scheme:dark]" tabIndex={3}/>
+                                       tabIndex={3}/>
                                 {getFieldError('birthDate') && <p id="birthDate-error"
                                                                   className="text-sm text-destructive">{getFieldError('birthDate')}</p>}
                             </div>
@@ -244,7 +247,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1">
                                 <Label htmlFor="gender">Gender<span className="text-destructive">*</span></Label>
                                 <Select name="gender" required defaultValue={getFormData('gender')}>
-                                    <SelectTrigger id="gender" aria-invalid={!!getFieldError('gender')}
+                                    <SelectTrigger id="gender" className="input-custom-styles" aria-invalid={!!getFieldError('gender')}
                                                    aria-describedby="gender-error" tabIndex={4}>
                                         <SelectValue placeholder="Select gender"/>
                                     </SelectTrigger>
@@ -263,7 +266,7 @@ export default function AdminAddStudentPage() {
                                 <Label htmlFor="tShirtSize">T-Shirt Size<span
                                     className="text-destructive">*</span></Label>
                                 <Select name="tShirtSize" required defaultValue={getFormData('tShirtSize')}>
-                                    <SelectTrigger id="tShirtSize" aria-invalid={!!getFieldError('tShirtSize')}
+                                    <SelectTrigger id="tShirtSize" className="input-custom-styles" aria-invalid={!!getFieldError('tShirtSize')}
                                                    aria-describedby="tShirtSize-error" tabIndex={5}>
                                         <SelectValue placeholder="Select size"/>
                                     </SelectTrigger>
@@ -287,6 +290,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1">
                                 <Label htmlFor="school">School<span className="text-destructive">*</span></Label>
                                 <Input type="text" id="school" name="school" required
+                                       className="input-custom-styles"
                                        defaultValue={getFormData('school')} aria-invalid={!!getFieldError('school')}
                                        aria-describedby="school-error" tabIndex={6}/>
                                 {getFieldError('school') && <p id="school-error"
@@ -297,7 +301,7 @@ export default function AdminAddStudentPage() {
                                 <Label htmlFor="gradeLevel">Grade Level<span
                                     className="text-destructive">*</span></Label>
                                 <Select name="gradeLevel" required defaultValue={getFormData('gradeLevel')}>
-                                    <SelectTrigger id="gradeLevel" aria-invalid={!!getFieldError('gradeLevel')}
+                                    <SelectTrigger id="gradeLevel" className="input-custom-styles" aria-invalid={!!getFieldError('gradeLevel')}
                                                    aria-describedby="gradeLevel-error" tabIndex={7}>
                                         <SelectValue placeholder="Select grade"/>
                                     </SelectTrigger>
@@ -332,7 +336,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1">
                                 <Label htmlFor="beltRank">Starting Belt Rank</Label>
                                 <Select name="beltRank" defaultValue={getFormData('beltRank')}>
-                                    <SelectTrigger id="beltRank" tabIndex={8}>
+                                    <SelectTrigger id="beltRank" className="input-custom-styles" tabIndex={8}>
                                         <SelectValue placeholder="Select belt rank (usually White)"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -347,30 +351,34 @@ export default function AdminAddStudentPage() {
                             {/* Student Email */}
                             <div className="space-y-1">
                                 <Label htmlFor="email">Student Email</Label>
-                                <Input type="email" id="email" name="email" autoComplete="email" defaultValue={getFormData('email')} tabIndex={9}/>
+                                <Input type="email" id="email" name="email" autoComplete="email" className="input-custom-styles" defaultValue={getFormData('email')} tabIndex={9}/>
                             </div>
                             {/* Student Cell Phone */}
                             <div className="space-y-1">
                                 <Label htmlFor="cellPhone">Student Cell #</Label>
                                 <Input type="tel" id="cellPhone" name="cellPhone" autoComplete="mobile tel"
+                                       className="input-custom-styles"
                                        defaultValue={getFormData('cellPhone')} tabIndex={10}/>
                             </div>
                             {/* Special Needs */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="specialNeeds">Special Needs (Leave blank if NONE)</Label>
                                 <Input type="text" id="specialNeeds" name="specialNeeds"
+                                       className="input-custom-styles"
                                        defaultValue={getFormData('specialNeeds')} tabIndex={11}/>
                             </div>
                             {/* Allergies */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="allergies">Allergies (Leave blank if NONE)</Label>
                                 <Textarea id="allergies" name="allergies" rows={3}
+                                          className="input-custom-styles"
                                           defaultValue={getFormData('allergies')} tabIndex={12}/>
                             </div>
                             {/* Medications */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="medications">Medications (Leave blank if NONE)</Label>
                                 <Textarea id="medications" name="medications" rows={3}
+                                          className="input-custom-styles"
                                           defaultValue={getFormData('medications')} tabIndex={13}/>
                             </div>
                             {/* Immunizations Up To Date */}
@@ -378,7 +386,7 @@ export default function AdminAddStudentPage() {
                                 <Label htmlFor="immunizationsUpToDate">Immunizations Up To Date?</Label>
                                 <Select name="immunizationsUpToDate"
                                         defaultValue={getFormData('immunizationsUpToDate')}>
-                                    <SelectTrigger id="immunizationsUpToDate" tabIndex={14}>
+                                    <SelectTrigger id="immunizationsUpToDate" className="input-custom-styles" tabIndex={14}>
                                         <SelectValue placeholder="Select option"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -392,6 +400,7 @@ export default function AdminAddStudentPage() {
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="immunizationNotes">Immunization Notes</Label>
                                 <Textarea id="immunizationNotes" name="immunizationNotes" rows={3}
+                                          className="input-custom-styles"
                                           defaultValue={getFormData('immunizationNotes')} tabIndex={15}/>
                             </div>
                         </div>

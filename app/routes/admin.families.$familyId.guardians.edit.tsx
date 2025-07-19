@@ -261,6 +261,7 @@ export default function EditGuardiansPage() {
                                                 <Input
                                                     id={`guardian_${guardianId}_first_name`}
                                                     name={`guardian_${guardianId}_first_name`}
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.first_name ?? ''}
                                                     required
                                                     aria-invalid={!!errors?.first_name}
@@ -281,6 +282,7 @@ export default function EditGuardiansPage() {
                                                 <Input
                                                     id={`guardian_${guardianId}_last_name`}
                                                     name={`guardian_${guardianId}_last_name`}
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.last_name ?? ''}
                                                     required
                                                     aria-invalid={!!errors?.last_name}
@@ -336,6 +338,7 @@ export default function EditGuardiansPage() {
                                                     id={`guardian_${guardianId}_cell_phone`}
                                                     name={`guardian_${guardianId}_cell_phone`}
                                                     type="tel"
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.cell_phone ?? ''} // Use cell_phone
                                                     required // Added required
                                                     autoComplete="mobile tel"
@@ -358,6 +361,7 @@ export default function EditGuardiansPage() {
                                                     id={`guardian_${guardianId}_home_phone`}
                                                     name={`guardian_${guardianId}_home_phone`}
                                                     type="tel"
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.home_phone ?? ''}
                                                     autoComplete="home tel"
                                                     aria-invalid={!!errors?.home_phone}
@@ -379,6 +383,7 @@ export default function EditGuardiansPage() {
                                                     id={`guardian_${guardianId}_work_phone`}
                                                     name={`guardian_${guardianId}_work_phone`}
                                                     type="tel"
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.work_phone ?? ''}
                                                     autoComplete="work tel"
                                                     aria-invalid={!!errors?.work_phone}
@@ -400,6 +405,7 @@ export default function EditGuardiansPage() {
                                                     id={`guardian_${guardianId}_email`}
                                                     name={`guardian_${guardianId}_email`}
                                                     type="email"
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.email ?? ''}
                                                     required // Added required
                                                     autoComplete="email"
@@ -421,6 +427,7 @@ export default function EditGuardiansPage() {
                                                 <Input
                                                     id={`guardian_${guardianId}_employer`}
                                                     name={`guardian_${guardianId}_employer`}
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.employer ?? ''}
                                                     aria-invalid={!!errors?.employer}
                                                     aria-describedby={`guardian_${guardianId}_employer-error`}
@@ -442,6 +449,7 @@ export default function EditGuardiansPage() {
                                                     id={`guardian_${guardianId}_employer_phone`}
                                                     name={`guardian_${guardianId}_employer_phone`}
                                                     type="tel"
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.employer_phone ?? ''}
                                                     autoComplete="work tel"
                                                     aria-invalid={!!errors?.employer_phone}
@@ -463,6 +471,7 @@ export default function EditGuardiansPage() {
                                                 <Input // Consider using Textarea if notes can be long
                                                     id={`guardian_${guardianId}_employer_notes`}
                                                     name={`guardian_${guardianId}_employer_notes`}
+                                                    className="input-custom-styles"
                                                     defaultValue={guardian.employer_notes ?? ''}
                                                     aria-invalid={!!errors?.employer_notes}
                                                     aria-describedby={`guardian_${guardianId}_employer_notes-error`}

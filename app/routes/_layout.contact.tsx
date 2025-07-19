@@ -211,44 +211,62 @@ export default function ContactPage() {
                                     <div className="space-y-2">
                                         <Label htmlFor="name" className="text-sm font-medium mb-1">Your Name</Label>
                                         <Input
-                                            type="text"
-                                            id="name"
-                                            autoComplete="name"
-                                            placeholder="Enter your name"
-                                            className="input-custom-styles"
-                                        />
+                            type="text"
+                            id="name"
+                            name="name"
+                            required
+                            autoComplete="name"
+                            placeholder="Your full name"
+                            className="input-custom-styles"
+                        />
                                     </div>
 
                                     <div className="space-y-2">
                                         <Label htmlFor="email" className="text-sm font-medium mb-1">Email Address</Label>
                                         <Input
-                                            type="email"
-                                            id="email"
-                                            autoComplete="email"
-                                            placeholder="Enter your email"
-                                            className="input-custom-styles"
-                                        />
+                            type="email"
+                            id="email"
+                            name="email"
+                            required
+                            autoComplete="email"
+                            placeholder="your.email@example.com"
+                            className="input-custom-styles"
+                        />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="subject" className="text-sm font-medium mb-1">Subject</Label>
-                                    <Input
-                                        type="text"
-                                        id="subject"
-                                        placeholder="Enter subject"
-                                        className="input-custom-styles"
-                                    />
-                                </div>
+                    <Label htmlFor="phone">Phone (optional)</Label>
+                    <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="(555) 123-4567"
+                        className="input-custom-styles"
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="subject" className="text-sm font-medium mb-1">Subject</Label>
+                    <Input
+                        type="text"
+                        id="subject"
+                        name="subject"
+                        placeholder="Enter subject"
+                        className="input-custom-styles"
+                    />
+                </div>
 
                                 <div className="space-y-2">
                                     <Label htmlFor="message" className="text-sm font-medium mb-1">Message</Label>
                                     <Textarea
-                                        id="message"
-                                        rows={4}
-                                        placeholder="Enter your message"
-                                        className="input-custom-styles"
-                                    />
+                                         id="message"
+                                         name="message"
+                                         rows={4}
+                                         required
+                                         placeholder="Enter your message"
+                                         className="input-custom-styles"
+                                     />
                                 </div>
 
                                 <div>

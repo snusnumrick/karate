@@ -108,7 +108,7 @@ export default function AdminOrderListPage() {
                 {/* Filter Dropdown */}
                 <div className="w-48">
                      <Select onValueChange={handleStatusChange} defaultValue={currentStatusFilter ?? 'all'}>
-                        <SelectTrigger id="status-filter">
+                        <SelectTrigger id="status-filter" className="input-custom-styles">
                             <SelectValue placeholder="Filter by status..." />
                         </SelectTrigger>
                         <SelectContent>

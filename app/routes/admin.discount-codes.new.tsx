@@ -415,7 +415,7 @@ export default function AdminNewDiscountCodePage() {
             <div>
               <Label htmlFor="discountType">Discount Type <span className="text-red-500">*</span></Label>
               <Select name="discountType" value={discountType} onValueChange={setDiscountType} required>
-                <SelectTrigger tabIndex={5}>
+                <SelectTrigger tabIndex={5} className="input-custom-styles">
                   <SelectValue placeholder="Select discount type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -449,7 +449,7 @@ export default function AdminNewDiscountCodePage() {
             <div>
               <Label htmlFor="usageType">Usage Type <span className="text-red-500">*</span></Label>
               <Select name="usageType" value={usageType} onValueChange={setUsageType} required>
-                <SelectTrigger tabIndex={7}>
+                <SelectTrigger tabIndex={7} className="input-custom-styles">
                   <SelectValue placeholder="Select usage type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -559,7 +559,7 @@ export default function AdminNewDiscountCodePage() {
             <div>
               <Label htmlFor="scope">Scope <span className="text-red-500">*</span></Label>
               <Select name="scope" value={selectedScope} onValueChange={setSelectedScope} required>
-                <SelectTrigger tabIndex={14}>
+                <SelectTrigger className="input-custom-styles" tabIndex={14}>
                   <SelectValue placeholder="Select scope" />
                 </SelectTrigger>
                 <SelectContent>
@@ -583,7 +583,7 @@ export default function AdminNewDiscountCodePage() {
             <div className="mb-4">
               <Label htmlFor="familyId">Family Selection <span className="text-red-500">*</span></Label>
               <Select name="familyId" value={selectedFamily} onValueChange={setSelectedFamily} required>
-                <SelectTrigger tabIndex={15}>
+                <SelectTrigger className="input-custom-styles" tabIndex={15}>
                   <SelectValue placeholder="Select family" />
                 </SelectTrigger>
                 <SelectContent>
@@ -603,8 +603,8 @@ export default function AdminNewDiscountCodePage() {
               <div className="mb-4">
                 <Label htmlFor="studentId">Student Selection <span className="text-red-500">*</span></Label>
                 <Select name="studentId" value={selectedStudent} onValueChange={setSelectedStudent} required>
-                  <SelectTrigger tabIndex={16}>
-                    <SelectValue placeholder="Select student" />
+                <SelectTrigger className="input-custom-styles" tabIndex={16}>
+                  <SelectValue placeholder="Select student" />
                   </SelectTrigger>
                   <SelectContent>
                     {familyStudents.map((student) => (

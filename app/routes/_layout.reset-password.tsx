@@ -164,6 +164,7 @@ export default function ResetPasswordPage() {
                                         minLength={6}
                                         placeholder="Enter your new password"
                                         disabled={isSubmitting}
+                                        className="input-custom-styles"
                                     />
                                 </div>
 
@@ -178,6 +179,7 @@ export default function ResetPasswordPage() {
                                         minLength={6}
                                         placeholder="Confirm your new password"
                                         disabled={isSubmitting}
+                                        className="input-custom-styles"
                                     />
                                 </div>
 

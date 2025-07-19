@@ -490,7 +490,7 @@ export default function AdminStudentDetailPage() {
                                 <div>
                                     <Label htmlFor="sessionPurchaseId">Session Batch</Label>
                                     <Select name="sessionPurchaseId" required>
-                                        <SelectTrigger id="sessionPurchaseId">
+                                        <SelectTrigger id="sessionPurchaseId" className="input-custom-styles">
                                             <SelectValue placeholder="Select session batch to use"/>
                                         </SelectTrigger>
                                         <SelectContent>

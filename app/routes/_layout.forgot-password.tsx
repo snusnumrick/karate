@@ -83,14 +83,15 @@ export default function ForgotPasswordPage() {
                                 <div className="grid gap-2">
                                     <Label htmlFor="email" className="dark:text-gray-200">Email address</Label>
                                     <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        required
-                                        placeholder="Enter your email address"
-                                        disabled={isSubmitting || !!actionData?.message}
-                                    />
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    autoComplete="email"
+                                    required
+                                    placeholder="Enter your email address"
+                                    disabled={isSubmitting || !!actionData?.message}
+                                    className="input-custom-styles"
+                                />
                                 </div>
 
                                 <Button

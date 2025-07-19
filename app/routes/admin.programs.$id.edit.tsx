@@ -374,7 +374,7 @@ export default function EditProgram() {
               <div className="space-y-2">
                 <Label htmlFor="min_belt_rank" className="text-sm font-medium">Minimum Belt Rank</Label>
                 <Select name="min_belt_rank" defaultValue={program.min_belt_rank || "none"}>
-                  <SelectTrigger tabIndex={9}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={9}>
                     <SelectValue placeholder="Select minimum belt" />
                   </SelectTrigger>
                   <SelectContent>
@@ -396,7 +396,7 @@ export default function EditProgram() {
               <div className="space-y-2">
                 <Label htmlFor="max_belt_rank" className="text-sm font-medium">Maximum Belt Rank</Label>
                 <Select name="max_belt_rank" defaultValue={program.max_belt_rank || "none"}>
-                  <SelectTrigger tabIndex={10}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={10}>
                     <SelectValue placeholder="Select maximum belt" />
                   </SelectTrigger>
                   <SelectContent>
@@ -490,7 +490,7 @@ export default function EditProgram() {
               <div className="space-y-2">
                 <Label htmlFor="gender_restriction" className="text-sm font-medium">Gender Restriction</Label>
                 <Select name="gender_restriction" defaultValue={program.gender_restriction || "none"}>
-                  <SelectTrigger tabIndex={14}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={9}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

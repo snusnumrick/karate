@@ -189,7 +189,7 @@ export default function EditClass() {
                 <div className="space-y-2">
                   <Label htmlFor="program_id" className="text-sm font-medium">Program *</Label>
                   <Select name="program_id" defaultValue={classData.program_id} required>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 input-custom-styles">
                       <SelectValue placeholder="Select program" />
                     </SelectTrigger>
                     <SelectContent>
@@ -209,7 +209,7 @@ export default function EditClass() {
                     name="name"
                     defaultValue={classData.name}
                     placeholder="Leave empty to use program name"
-                    className="h-10"
+                    className="h-10 input-custom-styles"
                   />
                 </div>
                 
@@ -222,14 +222,14 @@ export default function EditClass() {
                     min="1"
                     defaultValue={classData.max_capacity || ''}
                     placeholder="e.g., 20"
-                    className="h-10"
+                    className="h-10 input-custom-styles"
                   />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="instructor_id" className="text-sm font-medium">Instructor</Label>
                   <Select name="instructor_id" defaultValue={classData.instructor_id || 'none'}>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 input-custom-styles">
                       <SelectValue placeholder="Select instructor" />
                     </SelectTrigger>
                     <SelectContent>
@@ -252,7 +252,7 @@ export default function EditClass() {
                   defaultValue={classData.description || ''}
                   placeholder="Leave empty to use program description"
                   rows={3}
-                  className="resize-none"
+                  className="resize-none input-custom-styles"
                 />
               </div>
               
@@ -314,7 +314,7 @@ export default function EditClass() {
                           value={schedule.day}
                           onValueChange={(value) => updateSchedule(index, 'day', value)}
                         >
-                          <SelectTrigger className="h-10">
+                          <SelectTrigger className="h-10 input-custom-styles">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -337,7 +337,7 @@ export default function EditClass() {
                           value={schedule.time}
                           onChange={(e) => updateSchedule(index, 'time', e.target.value)}
                           required
-                          className="h-10"
+                          className="h-10 input-custom-styles"
                         />
                       </div>
                       

@@ -324,7 +324,7 @@ export default function NewProgram() {
               <div className="space-y-3">
                 <Label htmlFor="gender_restriction" className="text-sm font-medium">Gender Restriction</Label>
                 <Select name="gender_restriction" defaultValue="none">
-                  <SelectTrigger className="h-11" tabIndex={7}>
+                  <SelectTrigger className="h-11 input-custom-styles" tabIndex={7}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -441,7 +441,7 @@ export default function NewProgram() {
                 <div className="space-y-3">
                   <Label htmlFor="min_belt_rank" className="text-sm font-medium">Minimum Belt Rank</Label>
                   <Select name="min_belt_rank">
-                    <SelectTrigger className="h-11">
+                    <SelectTrigger className="h-11 input-custom-styles">
                       <SelectValue placeholder="Select minimum belt" />
                     </SelectTrigger>
                     <SelectContent>
@@ -461,7 +461,7 @@ export default function NewProgram() {
                 <div className="space-y-3">
                   <Label htmlFor="max_belt_rank" className="text-sm font-medium">Maximum Belt Rank</Label>
                   <Select name="max_belt_rank">
-                    <SelectTrigger className="h-11">
+                    <SelectTrigger className="h-11 input-custom-styles">
                       <SelectValue placeholder="Select maximum belt" />
                     </SelectTrigger>
                     <SelectContent>

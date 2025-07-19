@@ -491,8 +491,8 @@ export default function RecordAttendancePage() {
                             value={selectedSession?.id || ''}
                             onValueChange={handleSessionChange}
                         >
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Choose a class session to record attendance" />
+                            <SelectTrigger className="input-custom-styles w-full">
+                            <SelectValue placeholder="Choose a class session to record attendance" />
                             </SelectTrigger>
                             <SelectContent>
                                 {sessions.map((session) => (
