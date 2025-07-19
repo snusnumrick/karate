@@ -3,7 +3,7 @@ import {Form, Link, useActionData, useNavigation} from "@remix-run/react";
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
-import {useState} from "react";
+import {useState, useRef, useEffect} from "react";
 import {isValid, parse} from 'date-fns'; // Import date-fns functions
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
@@ -280,8 +280,18 @@ export default function AdminNewFamilyPage() {
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
 
+    // Ref for the Family Last Name field to enable focus
+    const familyNameRef = useRef<HTMLInputElement>(null);
+
     // State for dynamic student forms
     const [students, setStudents] = useState<StudentFormEntry[]>([{id: Date.now()}]); // Start with one student form
+
+    // Focus on Family Last Name field when component mounts
+    useEffect(() => {
+        if (familyNameRef.current) {
+            familyNameRef.current.focus();
+        }
+    }, []);
 
     // Function to add a new student form entry
     const addStudent = () => {
@@ -325,7 +335,14 @@ export default function AdminNewFamilyPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <Label htmlFor="familyName">Family Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="familyName" name="familyName" autoComplete="family-name" required tabIndex={1}/>
+                            <Input 
+                                id="familyName" 
+                                name="familyName" 
+                                autoComplete="family-name" 
+                                required 
+                                tabIndex={1}
+                                ref={familyNameRef}
+                            />
                             {actionData?.fieldErrors?.familyName &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyName}</p>}
                         </div>
