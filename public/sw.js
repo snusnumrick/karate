@@ -195,49 +195,106 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-// Handle push notifications (if needed in the future)
+// Handle push notifications
 self.addEventListener('push', (event) => {
   console.log('Service Worker: Push received', event);
   
-  const options = {
-    body: event.data ? event.data.text() : 'New notification from Greenegin Karate',
+  let notificationData = {
+    title: 'New Message',
+    body: 'You have received a new message',
     icon: '/android-chrome-192x192.png',
     badge: '/android-chrome-192x192.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    },
+    tag: 'message-notification',
+    data: {}
+  };
+
+  // Parse push data if available
+  if (event.data) {
+    try {
+      const pushData = event.data.json();
+      notificationData = {
+        title: pushData.title || notificationData.title,
+        body: pushData.body || notificationData.body,
+        icon: pushData.icon || notificationData.icon,
+        badge: pushData.badge || notificationData.badge,
+        tag: pushData.tag || notificationData.tag,
+        data: pushData.data || notificationData.data
+      };
+    } catch (error) {
+      console.error('Service Worker: Error parsing push data', error);
+    }
+  }
+
+  const options = {
+    body: notificationData.body,
+    icon: notificationData.icon,
+    badge: notificationData.badge,
+    tag: notificationData.tag,
+    data: notificationData.data,
+    requireInteraction: true,
     actions: [
       {
-        action: 'explore',
-        title: 'View Details',
+        action: 'view',
+        title: 'View Message',
         icon: '/android-chrome-192x192.png'
       },
       {
-        action: 'close',
-        title: 'Close',
+        action: 'dismiss',
+        title: 'Dismiss',
         icon: '/android-chrome-192x192.png'
       }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification('Greenegin Karate', options)
+    self.registration.showNotification(notificationData.title, options)
   );
 });
 
-// Handle notification clicks
+// Handle notification click events
 self.addEventListener('notificationclick', (event) => {
   console.log('Service Worker: Notification clicked', event);
   
   event.notification.close();
 
-  if (event.action === 'explore') {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
+  if (event.action === 'dismiss') {
+    return;
   }
+
+  // Handle notification click (view action or general click)
+  const notificationData = event.notification.data;
+  let targetUrl = '/';
+
+  if (notificationData && notificationData.conversationId) {
+    // Determine the correct path based on the notification data
+    const isAdmin = notificationData.isAdmin || false;
+    targetUrl = isAdmin 
+      ? `/admin/messages/${notificationData.conversationId}`
+      : `/family/messages/${notificationData.conversationId}`;
+  }
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Check if there's already a window/tab open with the target URL
+        for (const client of clientList) {
+          if (client.url.includes(targetUrl) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        
+        // If no existing window/tab, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
+  );
+});
+
+// Handle notification close events
+self.addEventListener('notificationclose', (event) => {
+  console.log('Service Worker: Notification closed', event);
+  // You can track notification dismissals here if needed
 });
 
 // Handle messages from the main thread

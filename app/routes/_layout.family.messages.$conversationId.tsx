@@ -8,6 +8,7 @@ import MessageInput from "~/components/MessageInput"; // We will create this com
 import {Button} from "~/components/ui/button";
 import {ArrowLeft} from "lucide-react";
 import {createClient, REALTIME_SUBSCRIBE_STATES, type SupabaseClient} from "@supabase/supabase-js"; // Import createClient
+import { notificationService } from "~/utils/notifications.client";
 
 // Add TypeScript declaration for the global window.__SUPABASE_SINGLETON_CLIENT property
 declare global {
@@ -498,6 +499,21 @@ export default function ConversationView() {
                         };
                         console.log("[Family] Adding new message to state:", newMessage);
                         setMessages(currentMessages => [...currentMessages, newMessage]);
+
+                        // --- Show notification for incoming messages (only if not from current user) ---
+                        if (rawNewMessage.sender_id !== userId && typeof window !== 'undefined') {
+                            const senderName = fetchedProfile 
+                                ? `${fetchedProfile.first_name || ''} ${fetchedProfile.last_name || ''}`.trim() || 'Someone'
+                                : 'Someone';
+                            
+                            notificationService.showMessageNotification({
+                                conversationId: conversation.id,
+                                senderId: rawNewMessage.sender_id,
+                                senderName: senderName,
+                                messageContent: rawNewMessage.content || 'New message',
+                                timestamp: rawNewMessage.created_at || new Date().toISOString()
+                            });
+                        }
 
                         // --- Mark conversation as read immediately since user is viewing it ---
                         if (supabase && userId && conversation?.id && !isCleaningUpRef.current) {

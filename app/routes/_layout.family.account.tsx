@@ -16,6 +16,7 @@ import {useEffect} from "react";
 import {Checkbox} from "~/components/ui/checkbox"; // Import Checkbox for preferences
 import { siteConfig } from "~/config/site"; // Import siteConfig
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb"; // Import breadcrumb component
+import { NotificationSettings } from "~/components/NotificationSettings"; // Import notification settings
 
 // Define a type for serialized Zod issues (plain objects)
 type SerializedZodIssue = {
@@ -683,6 +684,12 @@ export default function AccountSettingsPage() {
                                 </Button>
                             </Form>
                         </UIForm>
+
+                        {/* --- Notification Settings --- */}
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+                            <h2 className="text-xl font-semibold mb-4">Notification Settings</h2>
+                            <NotificationSettings />
+                        </div>
                     </>
                 )}
             </ClientOnly>

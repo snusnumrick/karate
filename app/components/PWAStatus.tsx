@@ -141,7 +141,7 @@ export function PWAStatus() {
             <li>• Offline access to cached content</li>
             <li>• Fast loading with service worker</li>
             <li>• App-like experience</li>
-            <li>• Push notifications (coming soon)</li>
+            <li>• Push notifications for messages</li>
           </ul>
         </div>
       </CardContent>

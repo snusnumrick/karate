@@ -52,7 +52,7 @@ export default function PWAInfo() {
     {
       icon: <Bell className="h-6 w-6" />,
       title: "Push Notifications",
-      description: "Stay updated with class reminders and important announcements (coming soon)."
+      description: "Stay updated with new messages and important announcements instantly."
     },
     {
       icon: <Download className="h-6 w-6" />,
@@ -192,7 +192,8 @@ export default function PWAInfo() {
                 <li>• Quick access to your family dashboard</li>
                 <li>• View class schedules offline</li>
                 <li>• Check attendance records anytime</li>
-                <li>• Receive important notifications</li>
+                <li>• Receive instant message notifications</li>
+                <li>• Customize notification preferences</li>
               </ul>
             </div>
             <div className="space-y-2">
@@ -202,6 +203,38 @@ export default function PWAInfo() {
                 <li>• View upcoming classes</li>
                 <li>• Access belt requirements</li>
                 <li>• Stay connected with the dojo</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Features */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle>Smart Notifications</CardTitle>
+          <CardDescription>
+            Stay connected with instant messaging notifications
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <h4 className="font-medium">Message Notifications</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Instant alerts for new messages</li>
+                <li>• Works even when the app is closed</li>
+                <li>• See sender name and message preview</li>
+                <li>• Click to open conversation directly</li>
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-medium">Customizable Settings</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Enable or disable notifications</li>
+                <li>• Control notification sounds</li>
+                <li>• Manage in your account settings</li>
+                <li>• Respect browser notification preferences</li>
               </ul>
             </div>
           </div>

@@ -40,6 +40,8 @@ for communication between families and administrators.
         - Initiate new conversations with Admins/Instructors (`/family/messages/new`).
         - Receive class-specific announcements and program updates.
         - Receive real-time updates for new messages.
+          requestPermission(        - **Push Notifications:** Browser-based push notifications for new messages with customizable settings.
+        - **Notification Settings:** Configure notification preferences in account settings (`/family/account`).
 - **Student Management (Family View):**
     - View detailed student information (`/family/student/:studentId`).
     - Edit student details.
@@ -128,6 +130,7 @@ for communication between families and administrators.
     - Class-based messaging system for program announcements.
     - Bulk messaging capabilities for class and program communications.
     - Receive real-time updates for new messages and conversation changes.
+    - **Push Notifications:** Browser-based push notifications for new messages from families.
 - **Discount Code Management:**
         - Create and manage discount codes with flexible rules (`/admin/discount-codes`).
         - Support for fixed amount and percentage discounts.
@@ -177,7 +180,7 @@ for communication between families and administrators.
 - Mobile-optimized responsive design.
 - Production-ready security headers (CSP, HSTS).
 - SEO enhancements: Meta tags, `robots.txt`, dynamic `sitemap.xml`, JSON-LD structured data, canonical URLs.
-- **Progressive Web App (PWA):** Full PWA implementation with offline support, installable on mobile and desktop devices, service worker for caching, custom app icons and splash screens, and app-like experience. Includes PWA status indicators and installation prompts.
+- **Progressive Web App (PWA):** Full PWA implementation with offline support, installable on mobile and desktop devices, service worker for caching, custom app icons and splash screens, and app-like experience. Includes PWA status indicators, installation prompts, and push notification support for messaging.
 
 ## Technology Stack
 

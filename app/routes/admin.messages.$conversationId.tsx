@@ -9,6 +9,7 @@ import {Button} from "~/components/ui/button";
 import {AlertCircle, ArrowLeft} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {createClient, type SupabaseClient} from "@supabase/supabase-js";
+import { notificationService } from "~/utils/notifications.client";
 
 // Add global type declaration for the Supabase singleton client
 declare global {
@@ -566,6 +567,19 @@ export default function AdminConversationView() {
                             console.log(`[Admin Subscription Callback] Appending message ID ${newMessage.id} to state.`);
                             return [...currentMessages, newMessage];
                         });
+
+                        // --- Show notification for incoming messages (only if not from current user) ---
+                        if (rawNewMessage.sender_id !== userId && typeof window !== 'undefined') {
+                            const senderName = 'Family Member'; // For admin route, we'll use a generic name
+                            
+                            notificationService.showMessageNotification({
+                                conversationId: conversation.id,
+                                senderId: rawNewMessage.sender_id,
+                                senderName: senderName,
+                                messageContent: rawNewMessage.content || 'New message',
+                                timestamp: rawNewMessage.created_at || new Date().toISOString()
+                            });
+                        }
 
                         // --- Mark conversation as read immediately since admin is viewing it ---
                         if (supabase && userId && conversation?.id && !isCleaningUpRef.current) {
