@@ -2,6 +2,8 @@ import {Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError,} from "@
 import type {LinksFunction, MetaFunction} from "@remix-run/node"; // Import MetaFunction
 import {ThemeProvider} from "~/components/theme-provider";
 import {siteConfig} from "~/config/site"; // Import site config
+import {ServiceWorkerRegistration} from "~/components/ServiceWorkerRegistration";
+import {PWAInstallPrompt} from "~/components/PWAInstallPrompt";
 
 import "./tailwind.css";
 
@@ -73,6 +75,15 @@ export const links: LinksFunction = () => [
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
     },
+    // PWA manifest
+    {rel: "manifest", href: "/manifest.webmanifest"},
+    // PWA theme color
+    {rel: "theme-color", href: "#2E7D32"},
+    // Apple touch icon
+    {rel: "apple-touch-icon", href: "/apple-touch-icon.png"},
+    // Favicon
+    {rel: "icon", href: "/favicon.ico", sizes: "any"},
+    {rel: "icon", href: "/icon.svg", type: "image/svg+xml"},
 ];
 
 // Define default meta tags for the entire site
@@ -80,12 +91,26 @@ export const meta: MetaFunction = () => {
     return [
         {title: siteConfig.name},
         {name: "description", content: siteConfig.description},
+        // PWA meta tags
+        {name: "theme-color", content: "#2E7D32"},
+        {name: "mobile-web-app-capable", content: "yes"},
+        {name: "apple-mobile-web-app-capable", content: "yes"},
+        {name: "apple-mobile-web-app-status-bar-style", content: "default"},
+        {name: "apple-mobile-web-app-title", content: siteConfig.name},
+        {name: "application-name", content: siteConfig.name},
+        {name: "msapplication-TileColor", content: "#2E7D32"},
+        {name: "msapplication-config", content: "/browserconfig.xml"},
         // Add Open Graph tags for better social sharing
         {property: "og:title", content: siteConfig.name},
         {property: "og:description", content: siteConfig.description},
         {property: "og:type", content: "website"},
         { property: "og:url", content: siteConfig.url }, // Use siteConfig
-        // { property: "og:image", content: "YOUR_IMAGE_URL" }, // Optional: Add a preview image URL
+        {property: "og:image", content: `${siteConfig.url}/android-chrome-512x512.png`},
+        // Twitter Card tags
+        {name: "twitter:card", content: "summary_large_image"},
+        {name: "twitter:title", content: siteConfig.name},
+        {name: "twitter:description", content: siteConfig.description},
+        {name: "twitter:image", content: `${siteConfig.url}/android-chrome-512x512.png`},
         // Add default canonical link
         { tagName: "link", rel: "canonical", href: siteConfig.url }, // Use siteConfig
     ];
@@ -195,6 +220,7 @@ export function Layout() {
         </head>
         {/* Removed contentEditable attributes as suppressHydrationWarning on <html> handles extension issues */}
         <body className="h-full bg-background text-foreground">
+        <ServiceWorkerRegistration />
         <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -202,6 +228,7 @@ export function Layout() {
             disableTransitionOnChange
         >
             <Outlet/> {/* Render the matched route component directly */}
+            <PWAInstallPrompt />
         </ThemeProvider>
         <ScrollRestoration/>
         <Scripts/>

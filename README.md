@@ -177,6 +177,7 @@ for communication between families and administrators.
 - Mobile-optimized responsive design.
 - Production-ready security headers (CSP, HSTS).
 - SEO enhancements: Meta tags, `robots.txt`, dynamic `sitemap.xml`, JSON-LD structured data, canonical URLs.
+- **Progressive Web App (PWA):** Full PWA implementation with offline support, installable on mobile and desktop devices, service worker for caching, custom app icons and splash screens, and app-like experience. Includes PWA status indicators and installation prompts.
 
 ## Technology Stack
 
@@ -379,6 +380,7 @@ for communication between families and administrators.
         - `app/routes/admin.classes.tsx`: Admin class management interface.
         - `app/routes/admin.enrollments.tsx`: Admin enrollment management interface.
     - `app/components/`: Shared React components (UI elements, layout parts).
+        - **PWA Components:** `ServiceWorkerRegistration.tsx` (service worker management), `PWAInstallPrompt.tsx` (installation prompts), `PWAStatus.tsx` (PWA status indicators and installation button).
     - `app/utils/`: Utility functions (database interactions, email sending, helpers).
     - `app/config/`: Site-wide configuration.
     - `app/types/`: TypeScript type definitions (including `database.types.ts`, `multi-class.ts`).
@@ -404,6 +406,7 @@ for communication between families and administrators.
     - **Note:** While dedicated API routes exist for specific tasks, much of the core backend logic (data fetching, mutations) is handled within the `loader` and `action` functions of the standard Remix routes (`app/routes/`), serving as endpoints for the web UI itself rather than standalone APIs.
     - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
+    - **PWA Assets:** `public/manifest.json` (web app manifest), `public/sw.js` (service worker), `public/offline.html` (offline fallback page), `public/browserconfig.xml` (Windows tile configuration), and various app icons in `public/` directory.
 - **UI:** Built with [Shadcn](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn@latest add <component>` to add new components consistently.
 - **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`, `discount_events`, `discount_automation_rules`, `discount_assignments`, `programs`, `classes`, `class_sessions`, `enrollments`, `enrollment_history`).
     - **Hybrid JSONB + Explicit Columns Architecture:** The system uses a performance-optimized hybrid approach combining explicit columns for commonly used fields with JSONB for additional/custom data. Migration `002_add_explicit_columns.sql` added explicit pricing columns (`monthly_fee`, `registration_fee`, `payment_frequency`, `family_discount`) and eligibility columns (`min_age`, `max_age`, `gender_restriction`, `special_needs_support`) to `programs` table, plus schedule columns (`days_of_week[]`, `start_time`, `end_time`, `timezone`) to `classes` table. This provides better performance through targeted indexing while maintaining flexibility.

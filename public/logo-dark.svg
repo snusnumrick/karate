@@ -1,3 +1,77 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="200">
-    <path fill="#4ade80" d="M185 78c-38 11-73 34-99 64-35 40-53 92-51 145 2 48 19 95 50 132 27 32 65 56 105 68v-170h-66v15c0 8 6 14 14 14h19v89c-14-8-27-17-38-29-30-31-47-75-45-119 1-37 14-73 36-102 14-18 31-34 50-45v111h28V78zm91-7v29c16 0 32 3 47 7v325h1v40c10-3 19-6 28-10V117c19 11 36 27 50 45 22 29 35 65 36 102h1v102c19-30 29-65 29-100-1-53-18-105-53-145-34-39-84-65-137-70h-23z"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1603.66 300">
+  <defs>
+    <style>
+      .cls-1 {
+        letter-spacing: .31em;
+      }
+
+      .cls-2 {
+        letter-spacing: .3em;
+      }
+
+      .cls-3 {
+        letter-spacing: .35em;
+      }
+
+      .cls-4 {
+        letter-spacing: .26em;
+      }
+
+      .cls-5 {
+        letter-spacing: .28em;
+      }
+
+      .cls-6 {
+        letter-spacing: .28em;
+      }
+
+      .cls-7 {
+        letter-spacing: .28em;
+      }
+
+      .cls-8 {
+        letter-spacing: .27em;
+      }
+
+      .cls-9 {
+        letter-spacing: .27em;
+      }
+
+      .cls-10 {
+        letter-spacing: .28em;
+      }
+
+      .cls-11 {
+        letter-spacing: .29em;
+      }
+
+      .cls-12 {
+        letter-spacing: .29em;
+      }
+
+      .cls-13 {
+        fill-rule: evenodd;
+      }
+
+      .cls-13, .cls-14 {
+        fill: #fff3c7;
+      }
+
+      .cls-14 {
+        font-family: Keno-Regular, Keno;
+        font-size: 140.52px;
+      }
+
+      .cls-15 {
+        letter-spacing: .13em;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g id="logo_H" data-name="logo H">
+      <text class="cls-14" transform="translate(361.79 119.44)"><tspan class="cls-12" x="0" y="0">G</tspan><tspan class="cls-8" x="149.37" y="0">R</tspan><tspan class="cls-6" x="296.48" y="0">E</tspan><tspan class="cls-10" x="438.12" y="0">E</tspan><tspan class="cls-5" x="580.46" y="0">N</tspan><tspan class="cls-9" x="740.09" y="0">E</tspan><tspan class="cls-11" x="880.75" y="0">G</tspan><tspan class="cls-2" x="1030.11" y="0">I</tspan><tspan class="cls-5" x="1121.59" y="0">N</tspan><tspan class="cls-3" x="0" y="168.62">K</tspan><tspan class="cls-7" x="146.7" y="168.62">A</tspan><tspan class="cls-1" x="301.27" y="168.62">R</tspan><tspan class="cls-15" x="453.58" y="168.62">A</tspan><tspan class="cls-4" x="587.07" y="168.62">T</tspan><tspan class="cls-6" x="719.72" y="168.62">E</tspan></text>
+      <path id="GN" class="cls-13" d="M87.81,172.64h-27.04v11.53c0,6.34,5.19,11.53,11.53,11.53h15.51v66.46c-10.32-5.71-19.76-12.84-28.03-21.12-22.7-22.7-36.75-54.07-36.75-88.71s14.04-66.01,36.75-88.71c8.28-8.28,17.71-15.4,28.03-21.12v87.54h23.03V24.45h-.06v-15.77c-25.85,6.77-48.96,20.32-67.29,38.66C16.62,74.21,0,111.33,0,152.33s16.62,78.12,43.49,104.99c18.33,18.33,41.44,31.89,67.29,38.66v-15.93h.06v-107.41h-23.03ZM148.48,3.85c41,0,78.12,16.62,104.99,43.49,26.87,26.87,43.49,63.99,43.49,104.99,0,29.22-8.45,56.48-23.03,79.45v-79.27h0v-.18c0-34.65-14.04-66.01-36.74-88.71-8.45-8.45-18.11-15.71-28.69-21.48v220.39l.09-.05v25.67c-7.39,3.28-15.09,5.97-23.06,8.01v-15.94h-.05V32.42c-11.7-3.6-24.12-5.54-36.99-5.54h-.81s0-23.02,0-23.02h.81Z"/>
+    </g>
+  </g>
 </svg>

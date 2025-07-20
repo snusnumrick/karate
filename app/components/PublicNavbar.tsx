@@ -25,12 +25,12 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
                             <Link to="/" className="flex items-center">
                                 <div className="relative h-10 w-43 mr-4">
                                     <img
-                                        src="/images/karate-logo-light.png"
+                                        src="/logo-light.svg"
                                         alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC"
                                         className="h-10 w-43 dark:hidden"
                                     />
                                     <img
-                                        src="/images/karate-logo-dark.png"
+                                        src="/logo-dark.svg"
                                         alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC, Dark Mode"
                                         className="h-10 w-43 hidden dark:block"
                                     />
@@ -46,6 +46,7 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
                                 <NavLink to="/register">Register</NavLink>
                             )}
                             <NavLink to="/contact">Contact</NavLink>
+                            <NavLink to="/pwa">PWA</NavLink>
                             {user && !isAdmin && (
                                 <NavLink to="/family">Family Portal</NavLink>
                             )}
@@ -132,6 +133,9 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
                                             </MobileNavLink>
                                             <MobileNavLink to="/contact" onClick={() => setIsOpen(false)}>
                                                 Contact
+                                            </MobileNavLink>
+                                            <MobileNavLink to="/pwa" onClick={() => setIsOpen(false)}>
+                                                PWA
                                             </MobileNavLink>
 
                                             {/* Mobile Auth Links */}

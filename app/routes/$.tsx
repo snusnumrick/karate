@@ -5,12 +5,12 @@ export default function SplatRoute() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] text-center px-4">
         <img
-            src="/images/karate-logo-light.png" // Or your preferred logo
+            src="/logo-light.svg" // Or your preferred logo
             alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC"
             className="h-20 w-87 mb-8 dark:hidden"
         />
         <img
-            src="/images/karate-logo-dark.png" // Or your preferred logo
+            src="/logo-dark.svg" // Or your preferred logo
             alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC, Dark Mode"
             className="h-20 w-87 mb-8 hidden dark:block"
         />

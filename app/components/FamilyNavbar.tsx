@@ -48,12 +48,12 @@ export default function FamilyNavbar() {
                             <Link to="/" className="flex items-center">
                                 <div className="relative h-10 w-43 mr-4">
                                     <img
-                                        src="/images/karate-logo-light.png"
+                                        src="/logo-light.svg"
                                         alt="Karate Greenegin Logo"
                                         className="h-10 w-43 dark:hidden"
                                     />
                                     <img
-                                        src="/images/karate-logo-dark.png"
+                                        src="/logo-dark.svg"
                                         alt="Karate Greenegin Logo"
                                         className="h-10 w-43 hidden dark:block"
                                     />
