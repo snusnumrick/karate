@@ -379,10 +379,10 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         });
     }
 
-    // Step 2: Check if user has admin or instructor role
+    // Step 2: Check if user has admin or instructor role and get profile info
     const {data: profileCheck, error: profileError} = await supabaseServer
         .from('profiles')
-        .select('role')
+        .select('role, first_name, last_name')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -395,17 +395,95 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     }
 
     // Insert the new message
-    const {error: insertError} = await supabaseServer
+    const {data: newMessage, error: insertError} = await supabaseServer
         .from('messages')
         .insert({
             conversation_id: conversationId,
             sender_id: user.id, // Sender is the admin/instructor user
             content: content.trim(),
-        });
+        })
+        .select()
+        .single();
 
     if (insertError) {
         console.error("Error sending admin message:", insertError.message);
         return json({error: "Failed to send message."}, {status: 500, headers});
+    }
+
+    // Send push notifications to other participants (families)
+    try {
+        // Get other participants in the conversation (excluding the sender)
+        const {data: otherParticipants} = await supabaseServer
+            .from('conversation_participants')
+            .select('user_id')
+            .eq('conversation_id', conversationId)
+            .neq('user_id', user.id);
+
+        if (otherParticipants && otherParticipants.length > 0) {
+            console.log('Profile check data:', profileCheck);
+            
+            // Create a more descriptive sender name based on role
+            let senderName = profileCheck?.role === 'admin' ? 'Admin' : 'Instructor'; // Role-based fallback
+            
+            if (profileCheck) {
+                const firstName = profileCheck.first_name?.trim();
+                const lastName = profileCheck.last_name?.trim();
+                
+                if (firstName && lastName) {
+                    senderName = `${firstName} ${lastName}`;
+                } else if (firstName) {
+                    senderName = firstName;
+                } else if (lastName) {
+                    senderName = lastName;
+                }
+                // If both names are null/empty, use role-based fallback
+            }
+
+            console.log('Computed sender name:', senderName);
+
+            // Import push notification utilities
+            const { 
+                sendPushNotificationToMultiple, 
+                createMessageNotificationPayload 
+            } = await import('~/utils/push-notifications.server');
+
+            // Get push subscriptions for all other participants
+            const recipientIds = otherParticipants.map(p => p.user_id);
+            const {data: pushSubscriptions} = await supabaseServer
+                .from('push_subscriptions')
+                .select('endpoint, p256dh, auth')
+                .in('user_id', recipientIds);
+
+            if (pushSubscriptions && pushSubscriptions.length > 0) {
+                const payload = createMessageNotificationPayload(
+                    senderName,
+                    content.trim(),
+                    conversationId,
+                    newMessage.id,
+                    `/admin/messages/${conversationId}`
+                );
+
+                const subscriptions = pushSubscriptions.map(sub => ({
+                    endpoint: sub.endpoint,
+                    keys: {
+                        p256dh: sub.p256dh,
+                        auth: sub.auth
+                    }
+                }));
+
+                const result = await sendPushNotificationToMultiple(subscriptions, payload);
+                console.log(`Push notifications sent to ${result.successCount} family devices`);
+                
+                if (result.expiredCount > 0) {
+                    console.log(`Cleaned up ${result.expiredCount} expired push subscriptions`);
+                }
+            } else {
+                console.log('No push subscriptions found for family participants');
+            }
+        }
+    } catch (error) {
+        console.error('Error sending push notifications:', error);
+        // Don't fail the message send if push notifications fail
     }
 
     return json({success: true}, {headers});

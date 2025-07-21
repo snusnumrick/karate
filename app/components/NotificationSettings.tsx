@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/com
 import { Switch } from '~/components/ui/switch';
 import { Label } from '~/components/ui/label';
 import { Alert, AlertDescription } from '~/components/ui/alert';
-import { Bell, BellOff, Settings, AlertCircle, CheckCircle } from 'lucide-react';
+import { Bell, BellOff, Settings, AlertCircle, CheckCircle, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { ClientOnly } from '~/components/client-only';
 
 interface NotificationSettingsProps {
@@ -13,14 +13,20 @@ interface NotificationSettingsProps {
 
 function NotificationSettingsContent({ className }: NotificationSettingsProps) {
   const [isSupported, setIsSupported] = useState(false);
+  const [isPushSupported, setIsPushSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [userEnabled, setUserEnabled] = useState(true);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestingPush, setIsTestingPush] = useState(false);
 
   useEffect(() => {
     // Check if notifications are supported
     const supported = 'Notification' in window;
+    const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window;
+    
     setIsSupported(supported);
+    setIsPushSupported(pushSupported);
     
     if (supported) {
       setPermission(Notification.permission);
@@ -29,7 +35,24 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       const preference = localStorage.getItem('notifications-enabled');
       setUserEnabled(preference !== 'false');
     }
+
+    // Check push subscription status
+    if (pushSupported) {
+      checkPushSubscription();
+    }
   }, []);
+
+  const checkPushSubscription = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        setPushSubscribed(subscription !== null);
+      }
+    } catch (error) {
+      console.error('Error checking push subscription:', error);
+    }
+  };
 
   const handleRequestPermission = async () => {
     if (!isSupported) return;
@@ -43,8 +66,13 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
         // Show a test notification
         new Notification('Notifications Enabled!', {
           body: 'You will now receive notifications for new messages.',
-          icon: '/android-chrome-192x192.png',
+          icon: '/icon.svg',
         });
+
+        // Try to subscribe to push notifications if user has enabled them
+        if (userEnabled && isPushSupported) {
+          await handleSubscribeToPush();
+        }
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
@@ -53,7 +81,79 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
     }
   };
 
-  const handleToggleUserPreference = (enabled: boolean) => {
+  const handleSubscribeToPush = async () => {
+    if (!isPushSupported || permission !== 'granted') return;
+
+    setIsLoading(true);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      
+      // For now, we'll use a placeholder VAPID key
+      // In production, this should come from your server
+      const vapidPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa40HI80NM9f8HtLlVLVWjSrWrTlYhk3ByL1kKSBdHKVxaahvAKd-dQQvfYSAY';
+      
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      });
+
+      // Send subscription to server (you'll need to implement this endpoint)
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: arrayBufferToBase64(subscription.getKey('p256dh')!),
+            auth: arrayBufferToBase64(subscription.getKey('auth')!)
+          }
+        })
+      });
+
+      setPushSubscribed(true);
+      console.log('Successfully subscribed to push notifications');
+    } catch (error) {
+      console.error('Error subscribing to push notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnsubscribeFromPush = async () => {
+    if (!isPushSupported) return;
+
+    setIsLoading(true);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      
+      if (subscription) {
+        await subscription.unsubscribe();
+        
+        // Remove subscription from server
+        await fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            endpoint: subscription.endpoint
+          })
+        });
+      }
+
+      setPushSubscribed(false);
+      console.log('Successfully unsubscribed from push notifications');
+    } catch (error) {
+      console.error('Error unsubscribing from push notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleUserPreference = async (enabled: boolean) => {
     setUserEnabled(enabled);
     localStorage.setItem('notifications-enabled', enabled.toString());
     
@@ -61,9 +161,66 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       // Show a test notification when enabling
       new Notification('Notifications Enabled!', {
         body: 'You will receive notifications for new messages.',
-        icon: '/android-chrome-192x192.png',
+        icon: '/icon.svg',
       });
+
+      // Subscribe to push notifications if supported
+      if (isPushSupported && !pushSubscribed) {
+        await handleSubscribeToPush();
+      }
+    } else if (!enabled && pushSubscribed) {
+      // Unsubscribe from push notifications when disabling
+      await handleUnsubscribeFromPush();
     }
+  };
+
+  const handleTestPushNotification = async () => {
+    if (!pushSubscribed) return;
+
+    setIsTestingPush(true);
+    try {
+      const response = await fetch('/api/push/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        console.log('Test push notification sent');
+      } else {
+        console.error('Failed to send test push notification');
+      }
+    } catch (error) {
+      console.error('Error sending test push notification:', error);
+    } finally {
+      setIsTestingPush(false);
+    }
+  };
+
+  // Helper functions for VAPID key conversion
+  const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
   };
 
   const getStatusInfo = () => {
@@ -116,7 +273,32 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
     };
   };
 
+  const getPushStatusInfo = () => {
+    if (!isPushSupported) {
+      return {
+        icon: <WifiOff className="h-4 w-4 text-gray-500" />,
+        title: 'Push notifications not supported',
+        description: 'Your browser or device does not support push notifications.',
+      };
+    }
+
+    if (pushSubscribed) {
+      return {
+        icon: <Wifi className="h-4 w-4 text-green-500" />,
+        title: 'Push notifications active',
+        description: 'You will receive notifications even when the app is closed.',
+      };
+    }
+
+    return {
+      icon: <Smartphone className="h-4 w-4 text-orange-500" />,
+      title: 'Push notifications available',
+      description: 'Enable to receive notifications when the app is closed.',
+    };
+  };
+
   const statusInfo = getStatusInfo();
+  const pushStatusInfo = getPushStatusInfo();
 
   return (
     <Card className={className}>
@@ -162,7 +344,54 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
               id="notification-toggle"
               checked={userEnabled}
               onCheckedChange={handleToggleUserPreference}
+              disabled={isLoading}
             />
+          </div>
+        )}
+
+        {/* Push Notification Status */}
+        {isPushSupported && permission === 'granted' && userEnabled && (
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              {pushStatusInfo.icon}
+              <div>
+                <div className="text-sm font-medium">{pushStatusInfo.title}</div>
+                <div className="text-xs text-muted-foreground">{pushStatusInfo.description}</div>
+              </div>
+            </div>
+            
+            {/* Push notification controls */}
+            <div className="flex gap-2 mt-3">
+              {!pushSubscribed ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSubscribeToPush}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Subscribing...' : 'Enable Push Notifications'}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleTestPushNotification}
+                    disabled={isTestingPush}
+                  >
+                    {isTestingPush ? 'Testing...' : 'Test Push'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleUnsubscribeFromPush}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Unsubscribing...' : 'Disable Push'}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -182,6 +411,7 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
         <div className="text-xs text-muted-foreground">
           <p>
             Notifications will only appear when you're not actively viewing the page.
+            {isPushSupported && ' Push notifications work even when the app is closed.'}
             You can change these settings at any time.
           </p>
         </div>

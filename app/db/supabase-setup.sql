@@ -1104,9 +1104,7 @@ CREATE POLICY "Profiles viewable by user, admin, or instructor" ON public.profil
     FOR SELECT USING (
     auth.uid() = id -- Can view own profile
         OR
-    role = 'admin' -- Can view admin profiles
-        OR
-    role = 'instructor' -- Can view instructor profiles (needed for recipient list)
+    EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('admin', 'instructor')) -- Admins and instructors can view all profiles
     );
 END IF;
 
@@ -1999,6 +1997,9 @@ CREATE OR REPLACE TRIGGER messages_update_sender_read_ts
     FOR EACH ROW
 EXECUTE FUNCTION public.update_sender_last_read_at();
 
+-- Drop existing function first to allow return type change
+DROP FUNCTION IF EXISTS public.create_admin_initiated_conversation(uuid, uuid, text, text);
+
 -- Function for Admin/Instructor to initiate a conversation with a specific family
 CREATE OR REPLACE FUNCTION public.create_admin_initiated_conversation(
     p_sender_id uuid, -- The admin/instructor initiating
@@ -2006,52 +2007,57 @@ CREATE OR REPLACE FUNCTION public.create_admin_initiated_conversation(
     p_subject text,
     p_message_body text
 )
-    RETURNS uuid -- Returns the new conversation_id
+    RETURNS jsonb -- Returns both conversation_id and message_id
     LANGUAGE plpgsql
     SECURITY DEFINER -- Executes with elevated privileges to add participants across families
 AS
 $$
 DECLARE
     new_conversation_id uuid;
-family_member_id    uuid;
+    new_message_id uuid;
+    family_member_id    uuid;
 BEGIN
     -- Set search_path for safety within SECURITY DEFINER
-SET LOCAL search_path = public, extensions;
+    SET LOCAL search_path = public, extensions;
 
--- 1. Create the conversation
-INSERT INTO public.conversations (subject)
-VALUES (p_subject)
-RETURNING id
-INTO new_conversation_id;
+    -- 1. Create the conversation
+    INSERT INTO public.conversations (subject)
+    VALUES (p_subject)
+    RETURNING id
+    INTO new_conversation_id;
 
--- 2. Add the sender (admin/instructor) as a participant
-INSERT INTO public.conversation_participants (conversation_id, user_id)
-VALUES (new_conversation_id, p_sender_id);
+    -- 2. Add the sender (admin/instructor) as a participant
+    INSERT INTO public.conversation_participants (conversation_id, user_id)
+    VALUES (new_conversation_id, p_sender_id);
 
--- 3. Find all users associated with the target family and add them as participants
-FOR family_member_id IN
-SELECT id
-FROM public.profiles
-WHERE family_id = p_target_family_id
-    LOOP
--- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user somehow exists twice or overlaps
--- Explicitly set last_read_at to -infinity for new family participants
-INSERT INTO public.conversation_participants (conversation_id, user_id, last_read_at)
-VALUES (new_conversation_id, family_member_id, '-infinity'::timestamptz)
-ON CONFLICT (conversation_id, user_id) DO NOTHING;
-END LOOP;
+    -- 3. Find all users associated with the target family and add them as participants
+    FOR family_member_id IN
+        SELECT id
+        FROM public.profiles
+        WHERE family_id = p_target_family_id
+        LOOP
+            -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user somehow exists twice or overlaps
+            -- Explicitly set last_read_at to -infinity for new family participants
+            INSERT INTO public.conversation_participants (conversation_id, user_id, last_read_at)
+            VALUES (new_conversation_id, family_member_id, '-infinity'::timestamptz)
+            ON CONFLICT (conversation_id, user_id) DO NOTHING;
+        END LOOP;
 
--- 4. Add the initial message from the sender
-INSERT INTO public.messages (conversation_id, sender_id, content)
-VALUES (new_conversation_id, p_sender_id, p_message_body);
+    -- 4. Add the initial message from the sender
+    INSERT INTO public.messages (conversation_id, sender_id, content)
+    VALUES (new_conversation_id, p_sender_id, p_message_body)
+    RETURNING id INTO new_message_id;
 
--- 5. Return the new conversation ID
-RETURN new_conversation_id;
+    -- 5. Return both conversation ID and message ID
+    RETURN jsonb_build_object(
+        'conversation_id', new_conversation_id,
+        'message_id', new_message_id
+    );
 
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'Error in create_admin_initiated_conversation: SQLSTATE: %, MESSAGE: %', SQLSTATE, SQLERRM;
-RAISE;
+        RAISE;
 END;
 $$;
 
@@ -4359,4 +4365,57 @@ END
 $$;
 
 -- --- End Multi-Class System ---
+
+-- Push Notifications Table
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id SERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Index for efficient user lookups
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);
+
+-- Enable RLS for push_subscriptions
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for push_subscriptions
+DO
+$$
+BEGIN
+    -- Allow users to manage their own push subscriptions
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can manage their own push subscriptions' AND tablename = 'push_subscriptions') THEN
+        CREATE POLICY "Users can manage their own push subscriptions" ON public.push_subscriptions
+            FOR ALL USING (auth.uid() = user_id)
+            WITH CHECK (auth.uid() = user_id);
+    END IF;
+
+    -- Allow admins to manage all push subscriptions
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage push subscriptions' AND tablename = 'push_subscriptions') THEN
+        CREATE POLICY "Allow admins to manage push subscriptions" ON public.push_subscriptions
+            FOR ALL USING (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+            ) WITH CHECK (
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+            );
+    END IF;
+END
+$$;
+
+-- Add update timestamp trigger for push_subscriptions table
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'push_subscriptions_updated') THEN
+        CREATE TRIGGER push_subscriptions_updated
+            BEFORE UPDATE ON public.push_subscriptions
+            FOR EACH ROW
+            EXECUTE FUNCTION update_modified_column();
+    END IF;
+END
+$$;
 

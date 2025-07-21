@@ -40,7 +40,11 @@ for communication between families and administrators.
         - Initiate new conversations with Admins/Instructors (`/family/messages/new`).
         - Receive class-specific announcements and program updates.
         - Receive real-time updates for new messages.
-          requestPermission(        - **Push Notifications:** Browser-based push notifications for new messages with customizable settings.
+        - **Push Notifications:** Browser-based push notifications for new messages with customizable settings including:
+            - Enable/disable push notifications
+            - Configure notification frequency (immediate, hourly digest, daily digest)
+            - Set quiet hours to avoid notifications during specific times
+            - Customize notification sound preferences
         - **Notification Settings:** Configure notification preferences in account settings (`/family/account`).
 - **Student Management (Family View):**
     - View detailed student information (`/family/student/:studentId`).
@@ -130,7 +134,12 @@ for communication between families and administrators.
     - Class-based messaging system for program announcements.
     - Bulk messaging capabilities for class and program communications.
     - Receive real-time updates for new messages and conversation changes.
-    - **Push Notifications:** Browser-based push notifications for new messages from families.
+    - **Push Notifications:** Browser-based push notifications for new messages from families with customizable settings including:
+        - Enable/disable push notifications
+        - Configure notification frequency (immediate, hourly digest, daily digest)
+        - Set quiet hours to avoid notifications during specific times
+        - Customize notification sound preferences
+    - **Notification Settings:** Configure notification preferences in admin account settings (`/admin/account`).
 - **Discount Code Management:**
         - Create and manage discount codes with flexible rules (`/admin/discount-codes`).
         - Support for fixed amount and percentage discounts.
@@ -180,7 +189,7 @@ for communication between families and administrators.
 - Mobile-optimized responsive design.
 - Production-ready security headers (CSP, HSTS).
 - SEO enhancements: Meta tags, `robots.txt`, dynamic `sitemap.xml`, JSON-LD structured data, canonical URLs.
-- **Progressive Web App (PWA):** Full PWA implementation with offline support, installable on mobile and desktop devices, service worker for caching, custom app icons and splash screens, and app-like experience. Includes PWA status indicators, installation prompts, and push notification support for messaging.
+- **Progressive Web App (PWA):** Full PWA implementation with offline support, installable on mobile and desktop devices, service worker for caching, custom app icons and splash screens, and app-like experience. Includes PWA status indicators, installation prompts, and comprehensive push notification support for messaging with customizable notification settings.
 
 ## Technology Stack
 
@@ -212,11 +221,21 @@ for communication between families and administrators.
     ```
 3.  **Environment Variables:**
     - Copy `.env.example` to `.env`.
-    - Fill in the required values for Supabase, Stripe (optional for local testing, required for payments), Resend (for email sending), and Google Gemini API (`GEMINI_API_KEY` - required for Admin DB Chat).
+    - Fill in the required values for Supabase, Stripe (optional for local testing, required for payments), Resend (for email sending), Google Gemini API (`GEMINI_API_KEY` - required for Admin DB Chat), and push notifications.
     - **Supabase Variables:** Get these from your Supabase project dashboard (Project Settings -> API):
         - `SUPABASE_URL`: Your project URL (e.g., `https://yourprojectref.supabase.co`)
         - `SUPABASE_ANON_KEY`: Your project's anon/public key
         - `SUPABASE_SERVICE_ROLE_KEY`: Your project's service role key (keep this secret)
+    - **Push Notification Variables (Required for push notifications):**
+        - `VAPID_PUBLIC_KEY`: VAPID public key for push notifications
+        - `VAPID_PRIVATE_KEY`: VAPID private key for push notifications  
+        - `VAPID_SUBJECT`: Contact email or URL for VAPID (e.g., `mailto:admin@yourdomain.com`)
+        - **Setup Steps:**
+            1. Install the web-push package: `npm install web-push`
+            2. Generate VAPID keys: `npx web-push generate-vapid-keys`
+            3. Copy the generated keys to your `.env` file
+            4. Set `VAPID_SUBJECT` to your contact email (e.g., `mailto:admin@yourdomain.com`)
+        - **Note:** For detailed push notification setup and configuration, see `PUSH_NOTIFICATIONS.md`
     - **Direct Database Connection Variables:** The Admin DB Chat feature (`/admin/db-chat`) requires direct PostgreSQL connection to fetch the database schema. Get these from your Supabase project dashboard:
         1. Click the **"Connect"** button at the top of your Supabase dashboard
         2. In the connection dialog, look for the **Session pooler** connection string (it will look like: `postgres://postgres.yourproject:[PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres`)
@@ -247,6 +266,7 @@ for communication between families and administrators.
             3. Under "Source", click on the number link next to `supabase_realtime`.
             4. Find the `conversations` and `messages` tables in the list.
             5. For **both** the `conversations` and `messages` tables, click the corresponding toggle switch in the "Realtime" column to enable realtime updates.
+        - **Push Notification Setup:** The database setup script (`app/db/supabase-setup.sql`) includes tables for push notification subscriptions (`push_subscriptions`) and user notification preferences (`user_notification_preferences`). These are automatically created when you run the setup script. After setting up the database, make sure to configure your VAPID keys in the `.env` file (see Environment Variables section above).
     - Obtain your Supabase Project URL, Anon Key, and Service Role Key (Project Settings -> API) and add them to your `.env` file (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY).
 5.  **Stripe Setup (Optional for Local):**
     - Create a Stripe account at [stripe.com](https://stripe.com).
@@ -291,6 +311,10 @@ for communication between families and administrators.
     - `FROM_EMAIL`
     - `GEMINI_API_KEY` (Required for Admin DB Chat feature)
     - `VITE_SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com` - **Required** for generating correct absolute receipt URLs and for frontend config)
+    - **Push Notification Variables:**
+        - `VAPID_PUBLIC_KEY` (VAPID public key for push notifications)
+        - `VAPID_PRIVATE_KEY` (VAPID private key for push notifications)
+        - `VAPID_SUBJECT` (Contact email or URL for VAPID, e.g., `mailto:admin@yourdomain.com`)
 5.  **Tax Configuration:** Ensure the `tax_rates` table in your production Supabase database contains the correct tax rates (e.g., GST, PST_BC) and that they are marked `is_active = true`. Verify `applicableTaxNames` in `app/config/site.ts` matches the desired active taxes for your site. Stripe Tax configuration in the dashboard is **not** used for calculation.
 6.  **Deploy:** Trigger a deployment in Vercel.
 7.  **Vercel Configuration:**
@@ -379,12 +403,15 @@ for communication between families and administrators.
 - **Project Structure:**
     - `app/routes/`: Contains all Remix route modules (UI and server logic). Includes `$.tsx` for 404 handling.
         - `app/routes/admin.tsx`: Admin dashboard route (path `/admin`, uses `admin.tsx` layout).
+        - `app/routes/admin.account.tsx`: Admin account settings page with notification preferences.
         - `app/routes/admin.programs.tsx`: Admin program management interface.
         - `app/routes/admin.classes.tsx`: Admin class management interface.
         - `app/routes/admin.enrollments.tsx`: Admin enrollment management interface.
     - `app/components/`: Shared React components (UI elements, layout parts).
         - **PWA Components:** `ServiceWorkerRegistration.tsx` (service worker management), `PWAInstallPrompt.tsx` (installation prompts), `PWAStatus.tsx` (PWA status indicators and installation button).
+        - **Notification Components:** `NotificationSettings.tsx` (notification preferences management with customizable settings for frequency, quiet hours, and sound preferences).
     - `app/utils/`: Utility functions (database interactions, email sending, helpers).
+        - **Push Notification Utilities:** `push-notifications.client.ts` (client-side push notification management), `push-notifications.server.ts` (server-side push notification sending), `notifications.client.ts` (notification permission and subscription management).
     - `app/config/`: Site-wide configuration.
     - `app/types/`: TypeScript type definitions (including `database.types.ts`, `multi-class.ts`).
     - `app/services/`: Server-side business logic and data access layer.
@@ -393,6 +420,7 @@ for communication between families and administrators.
         - `app/services/enrollment.server.ts`: Enrollment processing logic (validation, waitlists, status tracking).
     - `app/routes/api.create-payment-intent.ts`: Backend endpoint for Stripe Payment Intent creation (handles regular payments, store purchases, and program enrollments).
     - `app/routes/api.webhooks.stripe.ts`: Handles incoming Stripe webhook events (updates payment status, order status, stock levels).
+    - **Push Notification API Routes:** `api.push.subscribe.ts` (push subscription management), `api.push.unsubscribe.ts` (push unsubscription), `api.push.test.ts` (push notification testing).
     - `app/routes/_layout.family.store...`: Family-facing store routes.
     - `app/routes/admin.store...`: Admin-facing store management routes.
     - `app/routes/_layout.family.messages...`: Family-facing messaging routes.
@@ -411,11 +439,12 @@ for communication between families and administrators.
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
     - **PWA Assets:** `public/manifest.json` (web app manifest), `public/sw.js` (service worker), `public/offline.html` (offline fallback page), `public/browserconfig.xml` (Windows tile configuration), and various app icons in `public/` directory.
 - **UI:** Built with [Shadcn](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn@latest add <component>` to add new components consistently.
-- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`, `discount_events`, `discount_automation_rules`, `discount_assignments`, `programs`, `classes`, `class_sessions`, `enrollments`, `enrollment_history`).
+- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`, `discount_events`, `discount_automation_rules`, `discount_assignments`, `programs`, `classes`, `class_sessions`, `enrollments`, `enrollment_history`, `push_subscriptions`, `user_notification_preferences`).
     - **Hybrid JSONB + Explicit Columns Architecture:** The system uses a performance-optimized hybrid approach combining explicit columns for commonly used fields with JSONB for additional/custom data. Migration `002_add_explicit_columns.sql` added explicit pricing columns (`monthly_fee`, `registration_fee`, `payment_frequency`, `family_discount`) and eligibility columns (`min_age`, `max_age`, `gender_restriction`, `special_needs_support`) to `programs` table, plus schedule columns (`days_of_week[]`, `start_time`, `end_time`, `timezone`) to `classes` table. This provides better performance through targeted indexing while maintaining flexibility.
     - **Multi-Class System:** Comprehensive program and class management with tables for `programs` (training program definitions with curricula and requirements), `classes` (specific class instances with scheduling and capacity), `class_sessions` (individual session occurrences), `enrollments` (student program registrations with status tracking), and `enrollment_history` (audit trail of enrollment changes). Includes automated session generation, capacity management, waitlist handling, and family discount calculations.
     - **Discount System:** Comprehensive discount code system with tables for `discount_codes` (code definitions, rules, validity) and `discount_code_usage` (usage tracking, audit trail). Supports fixed amount and percentage discounts with flexible applicability rules (training, store, both) and scope (per-student, per-family). Includes usage restrictions (one-time, ongoing) and automatic discount generation capabilities.
     - **Automatic Discount System:** Event-driven automatic discount assignment with tables for `discount_events` (student/family events), `discount_automation_rules` (rule definitions linking events to discount templates), and `discount_assignments` (tracking of automatically assigned discounts). Supports complex rule conditions, duplicate prevention, and comprehensive audit trails.
+    - **Push Notification System:** Comprehensive push notification system with tables for `push_subscriptions` (device subscription management) and `user_notification_preferences` (user-specific notification settings including frequency, quiet hours, and sound preferences). Supports browser-based push notifications with customizable delivery options.
 - **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.
 - **Environment Variables:** Managed via `.env` locally and platform environment variables in production (see Deployment). Use `.env.example` as a template.
 - **Email:** Uses Resend for transactional emails. See `app/utils/email.server.ts` and function-specific email logic.

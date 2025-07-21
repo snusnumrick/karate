@@ -20,6 +20,7 @@ import {
     Menu,
     MessageSquare,
     Package,
+    Settings,
     ShoppingBag,
     Sun,
     Tag,
@@ -133,6 +134,11 @@ export default function AdminNavbar() {
                         </nav>
 
                         <div className="flex items-center space-x-4">
+                            {/* Account Settings Link */}
+                            <AdminNavLink to="/admin/account" label="Account Settings">
+                                <Settings className="h-5 w-5"/>
+                            </AdminNavLink>
+                            
                             {/* Wrap ModeToggle in ClientOnly */}
                             <ClientOnly
                                 fallback={
@@ -358,6 +364,14 @@ export default function AdminNavbar() {
                                                     </React.Fragment>
 
                                                     {/* Mobile Logout */}
+                                                    <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
+                                                    <div className="px-4 mb-4">
+                                                        <AdminMobileNavLink to="/admin/account" onClick={() => setIsOpen(false)}>
+                                                            <Settings className="h-5 w-5 mr-2 inline-block"/>
+                                                            Account Settings
+                                                        </AdminMobileNavLink>
+                                                    </div>
+                                                    
                                                     <Form action="/logout" method="post"
                                                           className="mt-auto pt-4 px-4"> {/* Use mt-auto to push logout down */}
                                                         <Button

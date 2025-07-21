@@ -93,6 +93,10 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
 export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
     const { supabaseServer, response: { headers } } = getSupabaseServerClient(request);
+    
+    // Create admin client for push notification queries that need to bypass RLS
+    const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
     const { data: { session }, error: sessionError } = await supabaseServer.auth.getSession();
 
     if (sessionError || !session?.user) {
@@ -132,7 +136,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     // --- Call the RPC function ---
     // IMPORTANT: Assumes a function `create_admin_initiated_conversation` exists
     // that takes (sender_id, target_family_id, subject, message_body)
-    // and returns the new conversation_id (UUID).
+    // and returns a conversation_id.
     // You MUST create this SQL function in your Supabase project.
     console.log(`Admin New Message Action: Calling RPC create_admin_initiated_conversation for family ${familyId}`);
     const { data: newConversationId, error: rpcError } = await supabaseServer.rpc(
@@ -150,9 +154,118 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         return json({ error: `Failed to create conversation: ${rpcError?.message || 'Unknown RPC error'}` }, { status: 500, headers });
     }
 
-    console.log(`Admin New Message Action: Conversation ${newConversationId} created successfully.`);
+    console.log(`Admin New Message Action: Conversation ${newConversationId.conversation_id} created successfully.`);
+
+    // Send push notifications to family members
+    try {
+        // Get sender profile info for notification (including role)
+        const { data: senderProfile, error: senderProfileError } = await supabaseServer
+            .from('profiles')
+            .select('first_name, last_name, role')
+            .eq('id', senderId)
+            .single();
+
+        if (senderProfileError) {
+            console.error('Error fetching sender profile for push notification:', senderProfileError);
+        }
+
+        console.log('Sender profile data:', senderProfile);
+
+        // Create a more descriptive sender name based on role
+        let senderName = senderProfile?.role === 'admin' ? 'Admin' : 'Instructor'; // Role-based fallback
+        
+        if (senderProfile) {
+            const firstName = senderProfile.first_name?.trim();
+            const lastName = senderProfile.last_name?.trim();
+            
+            if (firstName && lastName) {
+                senderName = `${firstName} ${lastName}`;
+            } else if (firstName) {
+                senderName = firstName;
+            } else if (lastName) {
+                senderName = lastName;
+            }
+            // If both names are null/empty, use role-based fallback
+        }
+
+        console.log('Computed sender name:', senderName);
+
+        // Get all family members for the target family using admin client
+        console.log(`Getting family members for family ID: ${familyId}`);
+        const { data: familyMembers, error: familyMembersError } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('family_id', familyId);
+
+        if (familyMembersError) {
+            console.error('Error fetching family members:', familyMembersError);
+        }
+
+        console.log(`Found ${familyMembers?.length || 0} family members:`, familyMembers);
+
+        if (familyMembers && familyMembers.length > 0) {
+            // Import push notification utilities
+            const { 
+                sendPushNotificationToMultiple, 
+                createMessageNotificationPayload 
+            } = await import('~/utils/push-notifications.server');
+
+            // Get push subscriptions for all family members using admin client
+            const familyMemberIds = familyMembers.map(member => member.id);
+            console.log(`Looking for push subscriptions for family member IDs:`, familyMemberIds);
+            
+            const { data: pushSubscriptions, error: pushSubscriptionsError } = await supabaseAdmin
+                .from('push_subscriptions')
+                .select('endpoint, p256dh, auth, user_id')
+                .in('user_id', familyMemberIds);
+
+            if (pushSubscriptionsError) {
+                console.error('Error fetching push subscriptions:', pushSubscriptionsError);
+            }
+
+            console.log(`Found ${pushSubscriptions?.length || 0} push subscriptions:`, pushSubscriptions);
+
+            if (pushSubscriptions && pushSubscriptions.length > 0) {
+                // Use the message_id directly from the RPC response
+                console.log(`Creating notification payload with message_id: ${newConversationId.message_id}`);
+                const payload = createMessageNotificationPayload(
+                    senderName,
+                    message,
+                    newConversationId.conversation_id,
+                    newConversationId.message_id,
+                    `/admin/messages/${newConversationId.conversation_id}`
+                );
+
+                console.log(`Notification payload:`, payload);
+
+                const subscriptions = pushSubscriptions.map(sub => ({
+                    endpoint: sub.endpoint,
+                    keys: {
+                        p256dh: sub.p256dh,
+                        auth: sub.auth
+                    }
+                }));
+
+                console.log(`Sending push notifications to ${subscriptions.length} subscriptions`);
+                const result = await sendPushNotificationToMultiple(subscriptions, payload);
+                console.log(`Push notifications sent to ${result.successCount} family devices for new conversation`);
+                
+                if (result.expiredCount > 0) {
+                    console.log(`Cleaned up ${result.expiredCount} expired push subscriptions`);
+                }
+            } else {
+                console.log('No push subscriptions found for family members');
+            }
+        } else {
+            console.log('No family members found for the target family');
+        }
+    } catch (error) {
+        console.error('Error sending push notifications for new conversation:', error);
+        // Don't fail the conversation creation if push notifications fail
+    }
+
     // Redirect to the newly created conversation
-    return redirect(`/admin/messages/${newConversationId}`, { headers });
+    return redirect(`/admin/messages/${newConversationId.conversation_id}`, { headers });
 }
 
 

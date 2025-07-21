@@ -16,29 +16,23 @@ export type Database = {
     Tables: {
       attendance: {
         Row: {
-          class_date: string
           class_session_id: string | null
           id: string
           notes: string | null
-          present: boolean
           status: string
           student_id: string
         }
         Insert: {
-          class_date: string
           class_session_id?: string | null
           id?: string
           notes?: string | null
-          present: boolean
           status?: string
           student_id: string
         }
         Update: {
-          class_date?: string
           class_session_id?: string | null
           id?: string
           notes?: string | null
-          present?: boolean
           status?: string
           student_id?: string
         }
@@ -1509,6 +1503,44 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: number
+          p256dh: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: number
+          p256dh: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: number
+          p256dh?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           allergies: string | null
@@ -1818,7 +1850,7 @@ export type Database = {
           p_subject: string
           p_message_body: string
         }
-        Returns: string
+        Returns: Json
       }
       create_new_conversation: {
         Args:
