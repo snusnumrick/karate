@@ -2,6 +2,7 @@
 // This file provides functions to send push notifications from the server
 
 import webpush from 'web-push';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // Configure VAPID keys
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT) {
@@ -32,12 +33,14 @@ export interface NotificationPayload {
     messageId?: string;
     userId?: string;
     timestamp?: number;
-    [key: string]: any;
+    [key: string]: string | number | boolean | undefined;
   };
   actions?: Array<{
     action: string;
     title: string;
     icon?: string;
+    type?: 'button' | 'text';
+    placeholder?: string;
   }>;
   requireInteraction?: boolean;
   silent?: boolean;
@@ -60,7 +63,7 @@ export async function sendPushNotification(
       return { success: false, error: 'VAPID keys not configured' };
     }
 
-    const result = await webpush.sendNotification(
+    await webpush.sendNotification(
       subscription,
       JSON.stringify(payload),
       {
@@ -70,9 +73,9 @@ export async function sendPushNotification(
     );
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Check if this is an expired subscription error
-    if (error.statusCode === 410) {
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 410) {
       console.log('Push subscription expired or unsubscribed:', subscription.endpoint);
       return { 
         success: false, 
@@ -80,9 +83,23 @@ export async function sendPushNotification(
         isExpired: true
       };
     }
-    
+
+    // Check for VAPID credentials mismatch (403 error)
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 403) {
+      console.error('VAPID credentials mismatch detected:', {
+        endpoint: subscription.endpoint,
+        error: error,
+        currentVapidPublicKey: process.env.VAPID_PUBLIC_KEY?.substring(0, 20) + '...'
+      });
+      return { 
+        success: false, 
+        error: 'VAPID credentials mismatch - subscription created with different keys',
+        isExpired: true // Mark as expired to trigger cleanup
+      };
+    }
+
     // Check for other common FCM errors
-    if (error.statusCode === 400) {
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 400) {
       console.warn('Invalid push subscription format:', subscription.endpoint);
       return { 
         success: false, 
@@ -140,7 +157,7 @@ export async function sendPushNotificationToMultiple(
  */
 export async function cleanupExpiredSubscriptions(
   expiredEndpoints: string[],
-  supabaseServer: any
+  supabaseServer: SupabaseClient
 ): Promise<{ success: boolean; cleanedCount: number; error?: string }> {
   try {
     if (expiredEndpoints.length === 0) {
@@ -176,7 +193,7 @@ export async function cleanupExpiredSubscriptions(
 export async function sendPushNotificationToUser(
   userId: string,
   payload: NotificationPayload,
-  supabaseServer: any
+  supabaseServer: SupabaseClient
 ): Promise<{ success: boolean; error?: string; successCount?: number; expiredCount?: number }> {
   try {
     // Get push subscriptions for the user
@@ -206,19 +223,19 @@ export async function sendPushNotificationToUser(
 
     // Send notifications to all user's devices
     const result = await sendPushNotificationToMultiple(subscriptions, payload);
-    
+
     // Clean up expired subscriptions
     if (result.expiredCount > 0) {
       const expiredEndpoints = result.results
         .filter(r => r.isExpired)
         .map(r => r.subscription.endpoint);
-      
+
       const cleanupResult = await cleanupExpiredSubscriptions(expiredEndpoints, supabaseServer);
       if (cleanupResult.success) {
         console.log(`Cleaned up ${cleanupResult.cleanedCount} expired subscriptions for user ${userId}`);
       }
     }
-    
+
     return { 
       success: true, 
       successCount: result.successCount,
@@ -241,10 +258,11 @@ export function createMessageNotificationPayload(
   messageText: string,
   conversationId: string,
   messageId: string,
-  customUrl?: string
+  customUrl?: string,
+  recipientUserId?: string
 ): NotificationPayload {
   const url = customUrl || `/conversations/${conversationId}`;
-  
+
   return {
     type: 'message',
     title: `New message from ${senderName}`,
@@ -255,6 +273,7 @@ export function createMessageNotificationPayload(
       url,
       conversationId,
       messageId,
+      userId: recipientUserId, // Include recipient user ID for quick replies
       timestamp: Date.now()
     },
     actions: [
@@ -374,14 +393,19 @@ export function createAnnouncementNotificationPayload(
 /**
  * Validate a push subscription object
  */
-export function validatePushSubscription(subscription: any): subscription is PushSubscription {
-  return (
-    subscription &&
-    typeof subscription.endpoint === 'string' &&
-    subscription.keys &&
-    typeof subscription.keys.p256dh === 'string' &&
-    typeof subscription.keys.auth === 'string'
-  );
+export function validatePushSubscription(subscription: unknown): subscription is PushSubscription {
+  if (!subscription || typeof subscription !== 'object') {
+    return false;
+  }
+  const sub = subscription as Record<string, unknown>;
+  if (typeof sub.endpoint !== 'string') {
+    return false;
+  }
+  if (!sub.keys || typeof sub.keys !== 'object') {
+    return false;
+  }
+  const keys = sub.keys as Record<string, unknown>;
+  return typeof keys.p256dh === 'string' && typeof keys.auth === 'string';
 }
 
 /**
@@ -389,13 +413,79 @@ export function validatePushSubscription(subscription: any): subscription is Pus
  * Note: In production, generate these once and store them securely
  */
 export function generateVAPIDKeys(): { publicKey: string; privateKey: string } {
-  // TODO: Implement VAPID key generation
-  console.log('VAPID key generation not implemented. Use web-push library:');
-  console.log('const webpush = require("web-push");');
-  console.log('const vapidKeys = webpush.generateVAPIDKeys();');
+  const vapidKeys = webpush.generateVAPIDKeys();
+  return { publicKey: vapidKeys.publicKey, privateKey: vapidKeys.privateKey };
+}
+
+/**
+ * Clear all push subscriptions from the database
+ * Use this when VAPID keys have been changed and all subscriptions need to be recreated
+ */
+export async function clearAllPushSubscriptions(
+  supabaseServer: SupabaseClient
+): Promise<{ success: boolean; clearedCount: number; error?: string }> {
+  try {
+    // First get the count of existing subscriptions
+    const { count: existingCount } = await supabaseServer
+      .from('push_subscriptions')
+      .select('*', { count: 'exact', head: true });
+
+    // Delete all records using gt(id, 0) to match all positive integer IDs
+    const { error, count } = await supabaseServer
+      .from('push_subscriptions')
+      .delete()
+      .gt('id', 0); // Delete all records with id > 0 (which should be all records)
+
+    if (error) {
+      console.error('Error clearing all push subscriptions:', error);
+      return { success: false, clearedCount: 0, error: error.message };
+    }
+
+    const clearedCount = count || existingCount || 0;
+    console.log(`Cleared ${clearedCount} push subscriptions from database`);
+    return { success: true, clearedCount };
+  } catch (error) {
+    console.error('Error clearing all push subscriptions:', error);
+    return { 
+      success: false, 
+      clearedCount: 0, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+/**
+ * Validate current VAPID configuration
+ */
+export function validateVAPIDConfiguration(): { 
+  isValid: boolean; 
+  issues: string[]; 
+  publicKey?: string;
+  subject?: string;
+} {
+  const issues: string[] = [];
+  
+  if (!process.env.VAPID_PUBLIC_KEY) {
+    issues.push('VAPID_PUBLIC_KEY environment variable is missing');
+  }
+  
+  if (!process.env.VAPID_PRIVATE_KEY) {
+    issues.push('VAPID_PRIVATE_KEY environment variable is missing');
+  }
+  
+  if (!process.env.VAPID_SUBJECT) {
+    issues.push('VAPID_SUBJECT environment variable is missing');
+  }
+  
+  // Validate VAPID_SUBJECT format
+  if (process.env.VAPID_SUBJECT && !process.env.VAPID_SUBJECT.startsWith('mailto:') && !process.env.VAPID_SUBJECT.startsWith('https://')) {
+    issues.push('VAPID_SUBJECT must be a mailto: or https: URL');
+  }
   
   return {
-    publicKey: 'BEl62iUYgUivxIkv69yViEuiBIa40HI80NM9f8HtLlVLVWjSrWrTlYhk3ByL1kKSBdHKVxaahvAKd-dQQvfYSAY',
-    privateKey: 'placeholder-private-key'
+    isValid: issues.length === 0,
+    issues,
+    publicKey: process.env.VAPID_PUBLIC_KEY,
+    subject: process.env.VAPID_SUBJECT
   };
 }

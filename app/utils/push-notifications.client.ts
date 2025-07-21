@@ -22,7 +22,7 @@ export interface PushNotificationPayload {
     paymentId?: string;
     studentId?: string;
     isAdmin?: boolean;
-    [key: string]: any;
+    [key: string]: string | number | boolean | undefined;
   };
   icon?: string;
   badge?: string;
@@ -91,8 +91,6 @@ class PushNotificationService {
       this.vapidPublicKey = data.publicKey;
     } catch (error) {
       console.error('Error fetching VAPID key:', error);
-      // Fallback to environment variable or default
-      this.vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || null;
     }
   }
 

@@ -1,4 +1,3 @@
-const CACHE_NAME = 'greenegin-karate-v1';
 const STATIC_CACHE_NAME = 'greenegin-karate-static-v1';
 const DYNAMIC_CACHE_NAME = 'greenegin-karate-dynamic-v1';
 
@@ -15,26 +14,9 @@ const STATIC_ASSETS = [
   '/logo.svg',
   '/logo-dark.svg',
   '/logo-light.svg',
-  '/images/karate-logo-dark.png',
-  '/images/karate-logo-light.png',
-  '/images/family-logo-dark.png',
-  '/images/family-logo-light.png',
-  '/images/admin-logo-dark.png',
-  '/images/admin-logo-light.png',
-  '/images/karate-pose.svg'
 ];
 
 // Routes to cache dynamically
-const CACHE_ROUTES = [
-  '/',
-  '/about',
-  '/classes',
-  '/contact',
-  '/family',
-  '/login',
-  '/register'
-];
-
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('Service Worker: Installing...');
@@ -199,15 +181,19 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('push', (event) => {
   console.log('Service Worker: Push received', event);
   console.log('Service Worker: Push event data:', event.data);
-  
+
+  const defaultIcon = new URL('/icon.svg', self.location.origin).href;
+  const defaultBadge = new URL('/icon.svg', self.location.origin).href;
+
   let notificationData = {
     title: 'New Message',
     body: 'You have received a new message',
-    icon: '/android-chrome-512x512.png',
-    badge: '/android-chrome-512x512.png',
+    icon: defaultIcon,
+    badge: defaultBadge,
     tag: 'message-notification',
     data: {},
-    type: 'message'
+    type: 'message',
+    actions: []
   };
 
   // Parse push data if available
@@ -218,12 +204,15 @@ self.addEventListener('push', (event) => {
       notificationData = {
         title: pushData.title || notificationData.title,
         body: pushData.body || notificationData.body,
-        icon: pushData.icon || notificationData.icon,
-        badge: pushData.badge || notificationData.badge,
+        icon: new URL(pushData.icon || '/icon.svg', self.location.origin).href,
+        badge: new URL(pushData.badge || '/icon.svg', self.location.origin).href,
         tag: pushData.tag || notificationData.tag,
         data: pushData.data || notificationData.data,
         type: pushData.type || notificationData.type,
-        actions: pushData.actions || [] // Use actions from server payload
+        actions: (pushData.actions || []).map(action => ({
+          ...action,
+          icon: new URL(action.icon || '/icon.svg', self.location.origin).href
+        }))
       };
     } catch (error) {
       console.error('Service Worker: Error parsing push data', error);
@@ -246,39 +235,45 @@ self.addEventListener('push', (event) => {
   let actions = notificationData.actions || [];
   let requireInteraction = true;
 
+  console.log('Service Worker: Actions from payload:', actions);
+  console.log('Service Worker: Notification type:', notificationData.type);
+
+  const actionIcon = new URL('/icon.svg', self.location.origin).href;
+
   // If no actions provided by server, use default actions based on type
   if (!actions || actions.length === 0) {
     switch (notificationData.type) {
       case 'message':
-        actions = [
-          {
-            action: 'view',
-            title: 'View Message',
-            icon: '/android-chrome-512x512.png'
-          },
-          {
-            action: 'reply',
-            title: 'Quick Reply',
-            icon: '/android-chrome-512x512.png'
-          },
-          {
-            action: 'dismiss',
-            title: 'Dismiss',
-            icon: '/android-chrome-512x512.png'
-          }
-        ];
+          actions = [
+            {
+              action: 'view',
+              title: 'View',
+              icon: actionIcon
+            },
+            {
+              action: 'reply',
+              title: 'Quick Reply',
+              icon: actionIcon
+            },
+            {
+              action: 'dismiss',
+              title: 'Dismiss',
+              icon: actionIcon
+            }
+          ];
+        requireInteraction = false;
         break;
       case 'payment':
         actions = [
           {
             action: 'view',
             title: 'View Payment',
-            icon: '/android-chrome-512x512.png'
+            icon: actionIcon
           },
           {
             action: 'dismiss',
             title: 'Dismiss',
-            icon: '/android-chrome-512x512.png'
+            icon: actionIcon
           }
         ];
         break;
@@ -287,12 +282,12 @@ self.addEventListener('push', (event) => {
           {
             action: 'view',
             title: 'View Details',
-            icon: '/android-chrome-512x512.png'
+            icon: actionIcon
           },
           {
             action: 'dismiss',
             title: 'Dismiss',
-            icon: '/android-chrome-512x512.png'
+            icon: actionIcon
           }
         ];
         requireInteraction = false; // Less critical notifications
@@ -302,12 +297,12 @@ self.addEventListener('push', (event) => {
           {
             action: 'view',
             title: 'Read More',
-            icon: '/android-chrome-512x512.png'
+            icon: actionIcon
           },
           {
             action: 'dismiss',
             title: 'Dismiss',
-            icon: '/android-chrome-512x512.png'
+            icon: actionIcon
           }
         ];
         requireInteraction = false;
@@ -317,15 +312,17 @@ self.addEventListener('push', (event) => {
           {
             action: 'view',
             title: 'View',
-            icon: '/android-chrome-512x512.png'
+            icon: actionIcon
           },
           {
             action: 'dismiss',
             title: 'Dismiss',
-            icon: '/android-chrome-512x512.png'
+            icon: actionIcon
           }
         ];
     }
+  } else {
+    console.log('Service Worker: Using actions from payload:', actions);
   }
 
   // Check if actions are supported on this platform
@@ -337,7 +334,7 @@ self.addEventListener('push', (event) => {
     badge: notificationData.badge,
     tag: notificationData.tag,
     data: notificationData.data,
-    requireInteraction: false, // Set to false for better UX
+    requireInteraction: requireInteraction,
     actions: supportsActions ? actions : [], // Enable actions on supported platforms
     vibrate: [200, 100, 200], // Vibration pattern for mobile devices
     timestamp: Date.now(),
@@ -388,11 +385,32 @@ self.addEventListener('notificationclick', (event) => {
 
   // Handle different notification types and actions
   if (event.action === 'reply' && notificationData && notificationData.conversationId) {
-    // For quick reply, we'll open the conversation with a focus on the message input
-    const isAdmin = notificationData.isAdmin || false;
-    targetUrl = isAdmin 
-      ? `/admin/messages/${notificationData.conversationId}?action=reply`
-      : `/family/messages/${notificationData.conversationId}?action=reply`;
+    const replyText = event.reply;
+    if (replyText) {
+      event.waitUntil(
+        fetch('/api/push/reply', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            conversationId: notificationData.conversationId,
+            message: replyText,
+            userId: notificationData.userId, // Assuming userId is sent in the push data
+            timestamp: new Date().toISOString(),
+          }),
+        })
+        .then(response => {
+          if (!response.ok) {
+            console.error('Failed to send quick reply');
+          }
+        })
+        .catch(error => {
+          console.error('Error sending quick reply:', error);
+        })
+      );
+    }
+    return;
   } else if (notificationData) {
     // Determine target URL based on notification type and data
     switch (notificationData.type) {
@@ -439,7 +457,7 @@ self.addEventListener('notificationclick', (event) => {
   }
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
         // Check if there's already a window/tab open with the target URL
         for (const client of clientList) {
@@ -460,8 +478,8 @@ self.addEventListener('notificationclick', (event) => {
         }
         
         // If no existing window/tab, open a new one
-        if (clients.openWindow) {
-          return clients.openWindow(targetUrl);
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
         }
       })
       .catch((error) => {

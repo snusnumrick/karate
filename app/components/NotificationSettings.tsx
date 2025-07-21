@@ -3,8 +3,8 @@ import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Switch } from '~/components/ui/switch';
 import { Label } from '~/components/ui/label';
-import { Alert, AlertDescription } from '~/components/ui/alert';
-import { Bell, BellOff, Settings, AlertCircle, CheckCircle, Smartphone, Wifi, WifiOff } from 'lucide-react';
+import { Alert } from '~/components/ui/alert';
+import { Bell, BellOff, AlertCircle, CheckCircle, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { ClientOnly } from '~/components/client-only';
 
 interface NotificationSettingsProps {
@@ -88,9 +88,12 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
     try {
       const registration = await navigator.serviceWorker.ready;
       
-      // For now, we'll use a placeholder VAPID key
-      // In production, this should come from your server
-      const vapidPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa40HI80NM9f8HtLlVLVWjSrWrTlYhk3ByL1kKSBdHKVxaahvAKd-dQQvfYSAY';
+      const response = await fetch('/api/push/vapid-key');
+      if (!response.ok) {
+        throw new Error('Failed to fetch VAPID key');
+      }
+      const data = await response.json();
+      const vapidPublicKey = data.publicKey;
       
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -400,8 +403,8 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
           <div className="text-sm text-muted-foreground space-y-2">
             <p className="font-medium">To enable notifications:</p>
             <ol className="list-decimal list-inside space-y-1 ml-2">
-              <li>Click the lock icon in your browser's address bar</li>
-              <li>Set "Notifications" to "Allow"</li>
+              <li>Click the lock icon in your browser&apos;s address bar</li>
+              <li>Set &quot;Notifications&quot; to &quot;Allow&quot;</li>
               <li>Refresh this page</li>
             </ol>
           </div>
@@ -410,7 +413,7 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
         {/* Additional Info */}
         <div className="text-xs text-muted-foreground">
           <p>
-            Notifications will only appear when you're not actively viewing the page.
+            Notifications will only appear when you&apos;re not actively viewing the page.
             {isPushSupported && ' Push notifications work even when the app is closed.'}
             You can change these settings at any time.
           </p>
