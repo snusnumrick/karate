@@ -21,7 +21,7 @@ function NotificationTestContent() {
   const handleTestNotification = async () => {
     setIsLoading(true);
     setTestResult(null);
-    
+
     try {
       const response = await fetch('/api/push/test', {
         method: 'POST',
@@ -29,9 +29,9 @@ function NotificationTestContent() {
           'Content-Type': 'application/json',
         },
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         setTestResult(`✅ ${result.message}`);
       } else {
@@ -91,12 +91,12 @@ function NotificationTestContent() {
                 </Badge>
               )}
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span>Permission Status:</span>
               {getPermissionBadge()}
             </div>
-            
+
             <div className="flex justify-between items-center">
               <span>Subscription Status:</span>
               {isSubscribed ? (
@@ -131,7 +131,7 @@ function NotificationTestContent() {
                 </p>
               </div>
             )}
-            
+
             {isSupported && permission === 'denied' && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800">
@@ -139,7 +139,7 @@ function NotificationTestContent() {
                 </p>
               </div>
             )}
-            
+
             {isSupported && !isSubscribed && permission !== 'denied' && (
               <Button 
                 onClick={subscribe} 
@@ -149,7 +149,7 @@ function NotificationTestContent() {
                 {pushLoading ? 'Subscribing...' : 'Subscribe to Notifications'}
               </Button>
             )}
-            
+
             {isSupported && isSubscribed && (
               <>
                 <Button 
@@ -160,7 +160,7 @@ function NotificationTestContent() {
                 >
                   {isLoading ? 'Sending...' : 'Send Test Notification'}
                 </Button>
-                
+
                 <Button 
                   onClick={unsubscribe} 
                   disabled={pushLoading}
@@ -201,21 +201,21 @@ function NotificationTestContent() {
               Ensure your browser supports push notifications. Modern Chrome, Firefox, Safari, and Edge all support them.
             </p>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-2">2. Grant Permission</h4>
             <p className="text-sm text-muted-foreground">
-              Click "Subscribe to Notifications" and allow notifications when prompted by your browser.
+              Click &quot;Subscribe to Notifications&quot; and allow notifications when prompted by your browser.
             </p>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-2">3. Send Test Notification</h4>
             <p className="text-sm text-muted-foreground">
-              Once subscribed, click "Send Test Notification" to test the complete flow.
+              Once subscribed, click &quot;Send Test Notification&quot; to test the complete flow.
             </p>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-2">4. Check Developer Tools</h4>
             <p className="text-sm text-muted-foreground">

@@ -56,7 +56,7 @@ export function StudentPaymentSection({ familyId, enrollmentId, appearance = 'de
       pastPaymentCount: 0,
       individualSessions: eligibilityData?.studentPaymentDetails?.[0]?.individualSessions
     }];
-  }, [selectedEnrollment, eligibilityData]);
+  }, [selectedEnrollment, eligibilityData, eligibilityStatus]);
 
   // Memoize enrollmentPricing to prevent infinite re-renders (must be at top level)
   const memoizedEnrollmentPricing = useMemo(() => {

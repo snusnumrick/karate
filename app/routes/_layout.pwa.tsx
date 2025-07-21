@@ -72,7 +72,7 @@ export default function PWAInfo() {
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Home
         </Link>
-        
+
         <div className="text-center">
           <h1 className="text-4xl font-bold text-green-600 mb-4">
             Progressive Web App
@@ -152,8 +152,8 @@ export default function PWAInfo() {
                 Desktop (Chrome, Edge, Safari)
               </h3>
               <ol className="space-y-2 text-sm text-muted-foreground">
-                <li>1. Click the install button above or look for the install icon in your browser's address bar</li>
-                <li>2. Click "Install" in the popup dialog</li>
+                <li>1. Click the install button above or look for the install icon in your browser&apos;s address bar</li>
+                <li>2. Click &quot;Install&quot; in the popup dialog</li>
                 <li>3. The app will be added to your desktop and start menu</li>
                 <li>4. Launch it like any other app!</li>
               </ol>
@@ -168,7 +168,7 @@ export default function PWAInfo() {
               <ol className="space-y-2 text-sm text-muted-foreground">
                 <li>1. Open this site in your mobile browser</li>
                 <li>2. Tap the share button (iOS) or menu (Android)</li>
-                <li>3. Select "Add to Home Screen"</li>
+                <li>3. Select &quot;Add to Home Screen&quot;</li>
                 <li>4. Confirm the installation</li>
               </ol>
             </div>

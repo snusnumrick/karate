@@ -219,3 +219,11 @@ export interface Enrollment {
     class?: Class;
     program?: Program;
 }
+
+export interface PushSubscription {
+  id: number;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}

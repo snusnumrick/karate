@@ -1,5 +1,5 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
-import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
+import {Form, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {useEffect, useRef} from "react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 

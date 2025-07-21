@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {Form, Link, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
+import {Form, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import { createClient } from '@supabase/supabase-js'; // Import createClient
 import {Button} from "~/components/ui/button";

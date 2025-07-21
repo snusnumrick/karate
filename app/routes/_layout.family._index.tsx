@@ -8,7 +8,7 @@ import {Badge} from "~/components/ui/badge"; // Import Badge
 import {Database} from "~/types/database.types";
 import {formatDate} from "~/utils/misc"; // For formatting dates
 import {beltColorMap} from "~/utils/constants"; // Import belt color mapping
-import { parseLocalDate, getTodayLocalDateString } from "~/components/calendar/utils";
+import { getTodayLocalDateString } from "~/components/calendar/utils";
 
 // Define Guardian type
 type GuardianRow = Database["public"]["Tables"]["guardians"]["Row"];

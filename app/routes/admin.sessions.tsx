@@ -30,7 +30,7 @@ import {
 } from "~/components/ui/dialog";
 import { getClassSessions, deleteClassSession, bulkDeleteClassSessions, getClasses, createClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
-import type { ClassSession, Class, CreateSessionData } from "~/types/multi-class";
+import type { Class, CreateSessionData } from "~/types/multi-class";
 import { useState, useEffect } from "react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
@@ -186,7 +186,7 @@ export default function AdminSessions() {
   const { sessions, classes } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<ActionData>();
   const [searchParams] = useSearchParams();
-  
+
   const [filters, setFilters] = useState({
     class_id: "all",
     status: "all",
@@ -326,7 +326,7 @@ export default function AdminSessions() {
     if (filters.status && filters.status !== "all") searchParams.set("status", filters.status);
     if (filters.date_from) searchParams.set("date_from", filters.date_from);
     if (filters.date_to) searchParams.set("date_to", filters.date_to);
-    
+
     window.location.search = searchParams.toString();
   };
 
@@ -487,7 +487,7 @@ export default function AdminSessions() {
                         {session.status}
                       </Badge>
                     </div>
-                    
+
                     <div className="flex items-center gap-6 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
@@ -524,7 +524,7 @@ export default function AdminSessions() {
                         Edit Session
                       </Link>
                     </Button>
-                    
+
                     <Button
                       asChild
                       variant="outline"
@@ -535,7 +535,7 @@ export default function AdminSessions() {
                         View Class Sessions
                       </Link>
                     </Button>
-                    
+
                     <Button
                       variant="destructive"
                       size="sm"
@@ -599,7 +599,7 @@ export default function AdminSessions() {
               Delete multiple sessions based on date range and filters. Sessions with attendance records will be skipped.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -625,7 +625,7 @@ export default function AdminSessions() {
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="bulk-class">Class (Optional)</Label>
               <Select 
@@ -645,7 +645,7 @@ export default function AdminSessions() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="bulk-status">Status (Optional)</Label>
               <Select 
@@ -688,7 +688,7 @@ export default function AdminSessions() {
               Create a makeup session outside of the regular class schedule. This session will be available for attendance tracking.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="makeup-class">Class *</Label>
@@ -709,7 +709,7 @@ export default function AdminSessions() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="makeup-date">Session Date *</Label>
               <Input
@@ -722,7 +722,7 @@ export default function AdminSessions() {
                 className="input-custom-styles"
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="makeup-start-time">Start Time *</Label>
@@ -747,7 +747,7 @@ export default function AdminSessions() {
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="makeup-notes">Notes (Optional)</Label>
               <Textarea

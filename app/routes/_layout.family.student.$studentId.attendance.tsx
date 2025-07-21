@@ -88,12 +88,12 @@ export async function loader({request, params}: LoaderFunctionArgs) {
             .order('class_sessions(session_date)', {ascending: false}); // Order by session_date from class_sessions
 
         if (attendanceError) throw attendanceError;
-        
+
         // Ensure students relation is at least null and filter out records without class_sessions
         const attendanceRecords = (attendanceData ?? [])
             .filter(r => r.class_sessions !== null) // Filter out any records without class sessions
             .map(r => ({...r, students: r.students ?? null}));
-        
+
         console.log(`Fetched ${attendanceRecords.length} attendance records for student ${studentData.first_name} ${studentData.last_name}.`);
 
         return json({
@@ -111,12 +111,12 @@ export async function loader({request, params}: LoaderFunctionArgs) {
 }
 
 export default function StudentAttendancePage() {
-    const {student, attendanceRecords, familyName} = useLoaderData<LoaderData>();
+    const {student, attendanceRecords} = useLoaderData<LoaderData>();
 
     return (
         <div className="container mx-auto px-4 py-8">
             <AppBreadcrumb items={breadcrumbPatterns.familyStudentAttendance(student.first_name, student.last_name, student.id)} className="mb-6" />
-            
+
             <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
                 Attendance History for {student.first_name} {student.last_name}
             </h1>
@@ -165,7 +165,7 @@ export default function StudentAttendancePage() {
                             ))}
                         </TableBody>
                     </Table>
-                    
+
                     <div className="p-6 bg-gray-50 dark:bg-gray-700 border-t">
                         <div className="flex justify-between items-center">
                             <Link 

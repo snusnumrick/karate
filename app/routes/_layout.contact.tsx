@@ -3,7 +3,7 @@ import { Phone, Mail, MapPin } from 'lucide-react'; // Import icons
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 // Import shadcn components
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Button } from "~/components/ui/button";
@@ -106,7 +106,7 @@ export default function ContactPage() {
                     </div>
 
                     <p className="mb-6 text-muted-foreground">
-                        Get in touch for class info, registration, or questions. We're here to help you start your karate journey!
+                        Get in touch for class info, registration, or questions. We&apos;re here to help you start your karate journey!
                     </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                             <div>
@@ -177,7 +177,7 @@ export default function ContactPage() {
                                 <Card className="bg-muted/50">
                                     <CardContent className="p-4">
                                         <p className="text-foreground">
-                                            <span className="font-semibold">Q: What's the class schedule?</span>
+                                            <span className="font-semibold">Q: What&apos;s the class schedule?</span>
                                             <br />
                                             A: Classes are on {siteConfig.classes.days}, {siteConfig.classes.timeLong}.
                                         </p>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { BeforeInstallPromptEvent, NavigatorWithStandalone } from './PWAInstallPrompt';
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
@@ -51,7 +52,7 @@ export function ServiceWorkerRegistration() {
 
 // Hook for PWA installation
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [canInstall, setCanInstall] = useState(false);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export function usePWAInstall() {
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Stash the event so it can be triggered later
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setCanInstall(true);
     };
 
@@ -106,11 +107,7 @@ export function usePWAInstall() {
 export function isPWA(): boolean {
   if (typeof window === 'undefined') return false;
   
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true ||
-    document.referrer.includes('android-app://')
-  );
+  return (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as NavigatorWithStandalone).standalone || document.referrer.includes('android-app://'));
 }
 
 // Utility function to check if device supports PWA installation

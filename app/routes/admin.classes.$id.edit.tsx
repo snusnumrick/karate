@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { ArrowLeft, Trash2, Plus, X } from "lucide-react";
+import { Trash2, Plus, X } from "lucide-react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClassById, updateClass, deleteClass, getInstructors, getClassSchedules, updateClassSchedules } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
@@ -29,63 +29,63 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   await requireAdminUser(request);
-  
+
   const classId = params.id;
   if (!classId) {
     throw new Response("Class ID is required", { status: 400 });
   }
-  
+
   const [classData, programs, instructors, schedules] = await Promise.all([
     getClassById(classId),
     getPrograms(),
     getInstructors(),
     getClassSchedules(classId)
   ]);
-  
+
   if (!classData) {
     throw new Response("Class not found", { status: 404 });
   }
-  
+
   return json({ classData, programs, instructors, schedules });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
   await requireAdminUser(request);
-  
+
   const classId = params.id;
   if (!classId) {
     throw new Response("Class ID is required", { status: 400 });
   }
-  
+
   try {
     const formData = await request.formData();
     const intent = formData.get("intent") as string;
-    
+
     if (intent === "delete") {
       await deleteClass(classId);
       return redirect("/admin/classes");
     }
-    
+
     if (intent === "update") {
       const programId = formData.get("program_id") as string;
       const className = formData.get("name") as string;
-      
+
       // Get program data to use program name as default if class name is empty
       const [programs] = await Promise.all([getPrograms()]);
       const selectedProgram = programs.find(p => p.id === programId);
-      
+
       const classDescription = formData.get("description") as string;
-      
+
       const instructorId = formData.get("instructor_id") as string;
-      
+
       // Handle schedules
       const scheduleCount = parseInt(formData.get("schedule_count") as string) || 0;
       const schedules = [];
-      
+
       for (let i = 0; i < scheduleCount; i++) {
         const dayOfWeek = formData.get(`schedule_${i}_day`) as string;
         const startTime = formData.get(`schedule_${i}_time`) as string;
-        
+
         if (dayOfWeek && startTime) {
           schedules.push({
             day_of_week: dayOfWeek,
@@ -93,7 +93,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
           });
         }
       }
-      
+
       const updateData: Omit<UpdateClassData, 'id'> = {
         program_id: programId,
         name: className || selectedProgram?.name || "Unnamed Class",
@@ -102,16 +102,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
         max_capacity: formData.get("max_capacity") ? parseInt(formData.get("max_capacity") as string, 10) : undefined,
         instructor_id: instructorId === "none" ? undefined : instructorId || undefined,
       };
-      
+
       // Update class and schedules
       await Promise.all([
         updateClass(classId, updateData),
         updateClassSchedules(classId, schedules)
       ]);
-      
+
       return redirect("/admin/classes");
     }
-    
+
     return json({ error: "Invalid intent" }, { status: 400 });
   } catch (error) {
     return json(
@@ -125,7 +125,7 @@ export default function EditClass() {
   const { classData, programs, instructors, schedules } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
+
   // Initialize schedules state with existing schedules
   const [classSchedules, setClassSchedules] = useState(
     schedules.map(schedule => ({
@@ -133,15 +133,15 @@ export default function EditClass() {
       time: schedule.start_time
     }))
   );
-  
+
   const addSchedule = () => {
     setClassSchedules([...classSchedules, { day: 'monday', time: '09:00' }]);
   };
-  
+
   const removeSchedule = (index: number) => {
     setClassSchedules(classSchedules.filter((_, i) => i !== index));
   };
-  
+
   const updateSchedule = (index: number, field: 'day' | 'time', value: string) => {
     const updated = [...classSchedules];
     updated[index][field] = value;
@@ -149,15 +149,15 @@ export default function EditClass() {
   };
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
-  
-  const isSubmitting = navigation.state === "submitting";
-  
 
-  
+  const isSubmitting = navigation.state === "submitting";
+
+
+
   return (
     <div className="container mx-auto py-8 max-w-4xl">
-      <AppBreadcrumb items={breadcrumbPatterns.adminClassEdit(classData.name, classData.id)} className="mb-6" />
-      
+      <AppBreadcrumb items={breadcrumbPatterns.adminClassEdit(classData.name)} className="mb-6" />
+
       <div className="flex items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Edit Class</h1>
@@ -166,13 +166,13 @@ export default function EditClass() {
           </p>
         </div>
       </div>
-      
+
       {actionData?.error && (
         <Alert className="mb-6 border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive">
           <AlertDescription>{actionData.error}</AlertDescription>
         </Alert>
       )}
-      
+
       <div className="space-y-6">
         <Card className="shadow-sm">
           <CardHeader className="pb-4">
@@ -181,7 +181,7 @@ export default function EditClass() {
           <CardContent className="space-y-6">
           <Form method="post" className="space-y-8">
             <input type="hidden" name="intent" value="update" />
-            
+
             {/* Basic Information Section */}
             <div className="space-y-6">
               <h3 className="text-lg font-medium text-foreground border-b pb-2">Basic Information</h3>
@@ -201,7 +201,7 @@ export default function EditClass() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-sm font-medium">Class Name</Label>
                   <Input
@@ -212,7 +212,7 @@ export default function EditClass() {
                     className="h-10 input-custom-styles"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity</Label>
                   <Input
@@ -225,7 +225,7 @@ export default function EditClass() {
                     className="h-10 input-custom-styles"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="instructor_id" className="text-sm font-medium">Instructor</Label>
                   <Select name="instructor_id" defaultValue={classData.instructor_id || 'none'}>
@@ -243,7 +243,7 @@ export default function EditClass() {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-sm font-medium">Description</Label>
                 <Textarea
@@ -255,7 +255,7 @@ export default function EditClass() {
                   className="resize-none input-custom-styles"
                 />
               </div>
-              
+
               <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
                 <Checkbox id="is_active" name="is_active" defaultChecked={classData.is_active} className="h-4 w-4" />
                 <div className="space-y-1">
@@ -264,7 +264,7 @@ export default function EditClass() {
                 </div>
               </div>
             </div>
-            
+
             {/* Class Schedule Section */}
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b pb-2">
@@ -284,7 +284,7 @@ export default function EditClass() {
                   Add Schedule
                 </Button>
               </div>
-              
+
               {classSchedules.length === 0 && (
                 <div className="text-center py-8 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25">
                   <p className="text-sm text-muted-foreground mb-2">
@@ -295,7 +295,7 @@ export default function EditClass() {
                   </p>
                 </div>
               )}
-              
+
               {classSchedules.length > 0 && (
                 <div className="space-y-3">
                   {/* Header row */}
@@ -304,7 +304,7 @@ export default function EditClass() {
                     <div className="col-span-5">Start Time</div>
                     <div className="col-span-2 text-center">Action</div>
                   </div>
-                  
+
                   {/* Schedule rows */}
                   {classSchedules.map((schedule, index) => (
                     <div key={index} className="grid grid-cols-12 gap-4 p-4 border border-border rounded-lg bg-card hover:bg-muted/30 transition-colors items-center">
@@ -328,7 +328,7 @@ export default function EditClass() {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div className="col-span-5">
                         <Input
                           id={`schedule_${index}_time`}
@@ -340,7 +340,7 @@ export default function EditClass() {
                           className="h-10 input-custom-styles"
                         />
                       </div>
-                      
+
                       <div className="col-span-2 flex justify-center">
                         <Button
                           type="button"
@@ -357,7 +357,7 @@ export default function EditClass() {
                   ))}
                 </div>
               )}
-              
+
               {/* Hidden input to track schedule count */}
               <input type="hidden" name="schedule_count" value={classSchedules.length} />
             </div>
@@ -384,12 +384,12 @@ export default function EditClass() {
                 </Button>
               </div>
             </div>
-            
+
 
           </Form>
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-sm border-destructive/20">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl text-destructive">Danger Zone</CardTitle>
@@ -410,7 +410,7 @@ export default function EditClass() {
             </Button>
           </CardContent>
         </Card>
-        
+
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>

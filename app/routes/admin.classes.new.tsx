@@ -9,7 +9,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { createClass, getInstructors, createClassSchedule } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
@@ -19,33 +19,33 @@ import type { CreateClassData, Program } from "~/types/multi-class";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
-  
+
   const [programs, instructors] = await Promise.all([
     getPrograms(),
     getInstructors()
   ]);
-  
+
   return json({ programs, instructors });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
-  
+
   try {
     const formData = await request.formData();
-    
+
     const maxCapacityValue = formData.get("max_capacity") as string;
     const instructorIdValue = formData.get("instructor_id") as string;
-    
+
     const programId = formData.get("program_id") as string;
     const className = formData.get("name") as string;
-    
+
     // Get program data to use program name as default if class name is empty
     const [programs] = await Promise.all([getPrograms()]);
     const selectedProgram = programs.find(p => p.id === programId);
-    
+
     const classDescription = formData.get("description") as string;
-    
+
     const classData: CreateClassData = {
       program_id: programId,
       name: className || selectedProgram?.name || "Unnamed Class",
@@ -54,29 +54,29 @@ export async function action({ request }: ActionFunctionArgs) {
       instructor_id: instructorIdValue || undefined,
       is_active: formData.get("is_active") === "on", // Checkbox sends "on" when checked
     };
-    
+
     const newClass = await createClass(classData);
-    
+
     // Create class schedules if provided
     const schedules: Array<{day_of_week: string, start_time: string}> = [];
-    
+
     // Parse multiple schedules from form data
     for (const [key, value] of formData.entries()) {
       const scheduleMatch = key.match(/^schedules\[(\d+)\]\[(\w+)\]$/);
       if (scheduleMatch) {
         const [, index, field] = scheduleMatch;
         const scheduleIndex = parseInt(index, 10);
-        
+
         if (!schedules[scheduleIndex]) {
           schedules[scheduleIndex] = { day_of_week: '', start_time: '' };
         }
-        
+
         if (field === 'day_of_week' || field === 'start_time') {
           schedules[scheduleIndex][field] = value as string;
         }
       }
     }
-    
+
     // Create schedule entries for valid schedules
      for (const schedule of schedules) {
        if (schedule.day_of_week && schedule.start_time) {
@@ -87,7 +87,7 @@ export async function action({ request }: ActionFunctionArgs) {
          );
        }
      }
-    
+
     return redirect("/admin/classes");
   } catch (error) {
     return json(
@@ -102,16 +102,16 @@ export default function NewClass() {
   const navigation = useNavigation();
   const actionData = useActionData<typeof action>();
   const isSubmitting = navigation.state === "submitting";
-  
+
   const [schedules, setSchedules] = useState([{ id: 0, startTime: '' }]);
   const [scheduleTimes, setScheduleTimes] = useState<{[key: number]: string}>({0: ''});
-  
+
   const addSchedule = () => {
     const newId = schedules.length;
     setSchedules(prev => [...prev, { id: newId, startTime: '' }]);
     setScheduleTimes(prev => ({...prev, [newId]: ''}));
   };
-  
+
   const removeSchedule = (id: number) => {
     setSchedules(prev => prev.filter(schedule => schedule.id !== id));
     setScheduleTimes(prev => {
@@ -120,30 +120,30 @@ export default function NewClass() {
       return newTimes;
     });
   };
-  
+
   const handleTimeChange = (scheduleId: number, time: string) => {
     setScheduleTimes(prev => ({...prev, [scheduleId]: time}));
   };
-  
+
   const validateTimeFormat = (time: string): boolean => {
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     return timeRegex.test(time);
   };
-  
+
   const isTimeValid = (scheduleId: number): boolean => {
     const time = scheduleTimes[scheduleId];
     return !time || validateTimeFormat(time);
   };
-  
 
-  
+
+
   return (
     <div className="container mx-auto py-6">
       <AppBreadcrumb 
         items={breadcrumbPatterns.adminClassNew()} 
         className="mb-6"
       />
-      
+
       <div className="flex items-center gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create New Class</h1>
@@ -152,13 +152,13 @@ export default function NewClass() {
           </p>
         </div>
       </div>
-      
+
       {actionData?.error && (
         <Alert className="mb-6">
           <AlertDescription>{actionData.error}</AlertDescription>
         </Alert>
       )}
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Class Details</CardTitle>
@@ -182,7 +182,7 @@ export default function NewClass() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="name">Class Name (Optional)</Label>
                 <Input
@@ -191,7 +191,7 @@ export default function NewClass() {
                   placeholder="Leave empty to use program name"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="instructor_id">Instructor</Label>
                 <Select name="instructor_id">
@@ -207,7 +207,7 @@ export default function NewClass() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="max_capacity">Max Capacity</Label>
                 <Input
@@ -219,7 +219,7 @@ export default function NewClass() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="description">Description (Optional)</Label>
               <Textarea
@@ -229,7 +229,7 @@ export default function NewClass() {
                 rows={2}
               />
             </div>
-            
+
             {/* Class Schedule Section */}
             <div className="space-y-4">
               <div className="border-t pt-4">
@@ -237,14 +237,14 @@ export default function NewClass() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Add one or more weekly schedule slots for this class. Duration is taken from the program.
                 </p>
-                
+
                 <div className="space-y-3">
                   {/* Headers */}
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 px-4">
                     <Label>Day of Week</Label>
                     <Label>Start Time</Label>
                   </div>
-                  
+
                   {/* Schedule rows */}
                   <div className="space-y-2">
                     {schedules.map((schedule, index) => (
@@ -266,7 +266,7 @@ export default function NewClass() {
                               </SelectContent>
                             </Select>
                           </div>
-                          
+
                           <div className="space-y-2">
                             <Input
                               id={`start_time_${schedule.id}`}
@@ -283,7 +283,7 @@ export default function NewClass() {
                             )}
                           </div>
                         </div>
-                        
+
                         {schedules.length > 1 && (
                           <Button
                             type="button"
@@ -298,7 +298,7 @@ export default function NewClass() {
                       </div>
                     ))}
                   </div>
-                  
+
                   {/* Plus button at bottom */}
                   <div className="flex justify-center pt-2">
                     <Button
@@ -312,21 +312,21 @@ export default function NewClass() {
                       Add Schedule
                     </Button>
                   </div>
-                  
+
                   {/* Helper text */}
                   <p className="text-xs text-muted-foreground text-center">Use 24-hour format (e.g., 17:45 for 5:45 PM)</p>
                 </div>
-                
+
 
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Checkbox id="is_active" name="is_active" defaultChecked={true} />
                 <Label htmlFor="is_active">Active</Label>
               </div>
-              
+
               <div className="flex gap-3">
                 <Button type="button" variant="outline" asChild>
                   <Link to="/admin/classes">Cancel</Link>
@@ -339,7 +339,7 @@ export default function NewClass() {
                 </Button>
               </div>
             </div>
-            
+
 
           </Form>
         </CardContent>

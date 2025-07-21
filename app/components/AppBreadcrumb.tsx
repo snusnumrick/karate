@@ -385,7 +385,7 @@ export const breadcrumbPatterns = {
     { label: "New Class", current: true },
   ],
 
-  adminClassEdit: (className: string, classId: string) => [
+  adminClassEdit: (className: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Classes", href: "/admin/classes" },
     { label: `Edit ${className}`, current: true },
@@ -403,7 +403,7 @@ export const breadcrumbPatterns = {
     { label: "New Template", current: true },
   ],
 
-  adminDiscountTemplateEdit: (templateName: string, templateId: string) => [
+  adminDiscountTemplateEdit: (templateName: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Discount Templates", href: "/admin/discount-templates" },
     { label: `Edit ${templateName}`, current: true },

@@ -1,5 +1,5 @@
 import {json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
-import {Link, useLoaderData, useRouteError} from "@remix-run/react";
+import {useLoaderData, useRouteError} from "@remix-run/react";
 import type {Database} from "~/types/database.types";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Badge} from "~/components/ui/badge";

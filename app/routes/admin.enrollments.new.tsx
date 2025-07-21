@@ -1,7 +1,7 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, Link, useLoaderData, useNavigation } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Users, GraduationCap, Calendar, FileText, CheckCircle, AlertCircle, User } from "lucide-react";
+import { Users, GraduationCap, Calendar, FileText, CheckCircle, AlertCircle, User } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -34,9 +34,9 @@ type FamilyWithStudents = {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
-  
+
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  
+
   const [classes, programs, familiesResult, enrollments] = await Promise.all([
     getClasses(),
     getPrograms(),
@@ -57,13 +57,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
       .order('name', { ascending: true }),
     getEnrollments({ status: 'active' })
   ]);
-  
+
   if (familiesResult.error) {
     throw new Response("Failed to load families", { status: 500 });
   }
-  
+
   const families = familiesResult.data as FamilyWithStudents[];
-  
+
   return json({ 
     classes: classes.filter(c => c.is_active), 
     programs, 
@@ -74,16 +74,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
-  
+
   const formData = await request.formData();
   const classId = formData.get("class_id") as string;
   const studentId = formData.get("student_id") as string;
   const notes = formData.get("notes") as string;
-  
+
   if (!classId || !studentId) {
     return json({ error: "Class and student are required" }, { status: 400 });
   }
-  
+
   try {
     // Get class data to find program_id
     const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -92,18 +92,18 @@ export async function action({ request }: ActionFunctionArgs) {
       .select('program_id')
       .eq('id', classId)
       .single();
-    
+
     if (classError || !classData) {
       return json({ error: "Class not found" }, { status: 400 });
     }
-    
+
     const enrollmentData: CreateEnrollmentData = {
       student_id: studentId,
       class_id: classId,
       program_id: classData.program_id,
       notes: notes || undefined,
     };
-    
+
     await enrollStudent(enrollmentData);
     return redirect("/admin/enrollments");
   } catch (error) {
@@ -121,16 +121,16 @@ export default function NewEnrollmentPage() {
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [eligibleClasses, setEligibleClasses] = useState<typeof classes>([]);
-  
+
   const isSubmitting = navigation.state === "submitting";
-  
+
   const selectedFamily = families.find(f => f.id === selectedFamilyId);
   const availableStudents = useMemo(() => selectedFamily?.students || [], [selectedFamily]);
   const selectedStudent = availableStudents.find((s: { id: string }) => s.id === selectedStudentId);
-  
+
   // Get enrolled student IDs for quick lookup
   const enrolledStudentIds = useMemo(() => new Set(enrollments.map(e => e.student_id)), [enrollments]);
-  
+
   const getClassInfo = (classId: string) => {
     const classItem = classes.find(c => c.id === classId);
     const program = classItem ? programs.find(p => p.id === classItem.program_id) : null;
@@ -166,7 +166,7 @@ export default function NewEnrollmentPage() {
 
     filterEligibleClasses();
   }, [selectedStudent, classes]);
-  
+
   // Auto-select student when family changes
   useEffect(() => {
     if (selectedFamilyId && availableStudents.length > 0) {
@@ -182,7 +182,7 @@ export default function NewEnrollmentPage() {
       }
     }
   }, [selectedFamilyId, availableStudents, enrolledStudentIds]);
-  
+
   // Auto-select first eligible class when student changes
   useEffect(() => {
     if (selectedStudentId && eligibleClasses.length > 0) {
@@ -191,14 +191,14 @@ export default function NewEnrollmentPage() {
       setSelectedClassId("");
     }
   }, [selectedStudentId, eligibleClasses]);
-  
+
   return (
     <div className="container mx-auto py-6 max-w-4xl">
       <AppBreadcrumb 
         items={breadcrumbPatterns.adminEnrollmentNew()} 
         className="mb-6"
       />
-      
+
       <div className="flex items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
@@ -210,7 +210,7 @@ export default function NewEnrollmentPage() {
           </p>
         </div>
       </div>
-      
+
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Form */}
         <div className="lg:col-span-2">
@@ -254,7 +254,7 @@ export default function NewEnrollmentPage() {
                     </SelectContent>
                   </Select>
                 </div>
-            
+
                 <div className="space-y-3">
                   <Label htmlFor="student_id" className="text-sm font-medium flex items-center gap-2">
                     <User className="h-4 w-4" />
@@ -292,7 +292,7 @@ export default function NewEnrollmentPage() {
                     </SelectContent>
                   </Select>
                 </div>
-            
+
                 <div className="space-y-3">
                   <Label htmlFor="class_id" className="text-sm font-medium flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -338,7 +338,7 @@ export default function NewEnrollmentPage() {
                     </Alert>
                   )}
                 </div>
-            
+
                 <div className="space-y-3">
                   <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2">
                     <FileText className="h-4 w-4" />
@@ -352,7 +352,7 @@ export default function NewEnrollmentPage() {
                     className="h-11"
                   />
                 </div>
-            
+
                 <div className="flex gap-4 pt-6 border-t">
                   <Button type="button" variant="outline" asChild className="flex-1">
                     <Link to="/admin/enrollments">Cancel</Link>
@@ -379,7 +379,7 @@ export default function NewEnrollmentPage() {
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Sidebar with enrollment summary */}
         <div className="space-y-6">
           {selectedStudent && (
@@ -408,7 +408,7 @@ export default function NewEnrollmentPage() {
               </CardContent>
             </Card>
           )}
-          
+
           {selectedClassId && (() => {
             const { class: classItem, program } = getClassInfo(selectedClassId);
             return (
@@ -444,7 +444,7 @@ export default function NewEnrollmentPage() {
               </Card>
             );
           })()}
-          
+
           <Card className="shadow-md border-primary/20">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">

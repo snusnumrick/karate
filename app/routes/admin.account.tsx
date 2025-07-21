@@ -12,7 +12,7 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ClientOnly} from "~/components/client-only";
 import {useEffect} from "react";
 import {Checkbox} from "~/components/ui/checkbox";
-import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import {AppBreadcrumb} from "~/components/AppBreadcrumb";
 import {NotificationSettings} from "~/components/NotificationSettings";
 
 // Define a type for serialized Zod issues (plain objects)

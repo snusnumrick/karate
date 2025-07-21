@@ -9,7 +9,7 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
-import { ArrowLeft, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { CreateProgramData } from "~/types/multi-class";
 
@@ -33,30 +33,30 @@ export async function action({ request }: ActionFunctionArgs) {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   const durationMinutes = formData.get("duration_minutes") ? parseInt(formData.get("duration_minutes") as string) : undefined;
-  
+
   // Capacity and frequency fields
   const maxCapacity = formData.get("max_capacity") ? parseInt(formData.get("max_capacity") as string) : undefined;
   const sessionsPerWeek = formData.get("sessions_per_week") ? parseInt(formData.get("sessions_per_week") as string) : undefined;
   const minSessionsPerWeek = formData.get("min_sessions_per_week") ? parseInt(formData.get("min_sessions_per_week") as string) : undefined;
   const maxSessionsPerWeek = formData.get("max_sessions_per_week") ? parseInt(formData.get("max_sessions_per_week") as string) : undefined;
-  
+
   // Belt requirements
   const beltRankRequired = formData.get("belt_rank_required") === "on";
   const minBeltRank = formData.get("min_belt_rank") as string || undefined;
   const maxBeltRank = formData.get("max_belt_rank") as string || undefined;
-  
+
   // Age and demographic constraints
   const minAge = formData.get("min_age") ? parseInt(formData.get("min_age") as string) : undefined;
   const maxAge = formData.get("max_age") ? parseInt(formData.get("max_age") as string) : undefined;
   const genderRestriction = formData.get("gender_restriction") as string || "none";
   const specialNeedsSupport = formData.get("special_needs_support") === "on";
-  
+
   // Pricing
   const monthlyFee = formData.get("monthly_fee") ? parseFloat(formData.get("monthly_fee") as string) : undefined;
   const registrationFee = formData.get("registration_fee") ? parseFloat(formData.get("registration_fee") as string) : undefined;
   const yearlyFee = formData.get("yearly_fee") ? parseFloat(formData.get("yearly_fee") as string) : undefined;
   const individualSessionFee = formData.get("individual_session_fee") ? parseFloat(formData.get("individual_session_fee") as string) : undefined;
-  
+
   const isActive = formData.get("is_active") === "on";
 
   // Validation
@@ -157,7 +157,7 @@ export default function NewProgram() {
         items={breadcrumbPatterns.adminProgramNew()} 
         className="mb-6"
       />
-      
+
       <div className="flex items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create Program</h1>
@@ -195,7 +195,7 @@ export default function NewProgram() {
                 <h3 className="text-lg font-semibold text-foreground">Program Details</h3>
                 <p className="text-sm text-muted-foreground mt-1">Define the program properties and configuration</p>
               </div>
-              
+
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-3">
                   <Label htmlFor="name" className="text-sm font-medium">Program Name *</Label>
@@ -255,7 +255,7 @@ export default function NewProgram() {
                 <h3 className="text-lg font-semibold text-foreground">Program Configuration</h3>
                 <p className="text-sm text-muted-foreground mt-1">Set duration, age requirements, and special accommodations</p>
               </div>
-              
+
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-3">
                   <Label htmlFor="duration_minutes" className="text-sm font-medium flex items-center gap-2">
@@ -361,7 +361,7 @@ export default function NewProgram() {
                 <h3 className="text-lg font-semibold text-foreground">Capacity & Frequency</h3>
                 <p className="text-sm text-muted-foreground mt-1">Set capacity limits and training frequency requirements</p>
               </div>
-              
+
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-3">
                   <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity</Label>
@@ -418,7 +418,7 @@ export default function NewProgram() {
                 <h3 className="text-lg font-semibold text-foreground">Belt Requirements</h3>
                 <p className="text-sm text-muted-foreground mt-1">Set belt rank eligibility requirements</p>
               </div>
-              
+
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-3">
                   <div className="flex items-start space-x-3 p-4 border rounded-lg bg-muted/30">
@@ -486,7 +486,7 @@ export default function NewProgram() {
                 <h3 className="text-lg font-semibold text-foreground">Pricing Structure</h3>
                 <p className="text-sm text-muted-foreground mt-1">Set up the fee structure for this program</p>
               </div>
-              
+
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-3">
                   <Label htmlFor="monthly_fee" className="text-sm font-medium flex items-center gap-2">

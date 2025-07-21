@@ -17,7 +17,7 @@ import {
 } from "date-fns";
 import { Calendar } from "~/components/calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
-import { sessionsToCalendarEvents, attendanceToCalendarEvents, parseLocalDate, formatLocalDate } from "~/components/calendar/utils";
+import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate } from "~/components/calendar/utils";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
@@ -321,7 +321,7 @@ export default function FamilyCalendarPage() {
     <div className="sm:container sm:mx-auto px-2 sm:px-4 py-4">
       <div className="px-2 sm:px-0">
         <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} className="mb-4" />
-        
+
         <div className="mb-3 sm:mb-4">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">
             <CalendarIcon className="inline-block mr-2 h-5 w-5 sm:h-6 sm:w-6" />

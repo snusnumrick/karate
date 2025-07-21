@@ -2,6 +2,7 @@ import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { requireUserId } from '~/utils/auth.server';
 import { createClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
+import type { PushSubscription } from '~/types/models';
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -30,7 +31,7 @@ export async function action({ request }: ActionFunctionArgs) {
     // Store the subscription in the database
     // Use upsert to handle duplicate endpoints (same device re-subscribing)
     const { data, error } = await supabase
-      .from('push_subscriptions' as any)
+      .from('push_subscriptions')
       .upsert({
         user_id: userId,
         endpoint,
@@ -48,16 +49,18 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({ error: 'Failed to save subscription to database' }, { status: 500 });
     }
 
+    const subscription = data?.[0] as PushSubscription;
+
     console.log('Push subscription saved successfully:', {
       userId,
-      endpoint: endpoint.substring(0, 50) + '...', // Log truncated endpoint for privacy
-      subscriptionId: (data as any)?.[0]?.id
+      endpoint: endpoint.substring(0, 50) + '...',
+      subscriptionId: subscription?.id
     });
 
     return json({ 
       success: true, 
       message: 'Subscription saved successfully',
-      subscriptionId: (data as any)?.[0]?.id 
+      subscriptionId: subscription?.id 
     });
   } catch (error) {
     console.error('Error saving push subscription:', error);

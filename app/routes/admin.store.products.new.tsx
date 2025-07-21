@@ -1,5 +1,5 @@
 import { type ActionFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
-import { Form, Link, useActionData, useNavigation } from "@remix-run/react";
+import { Form, useActionData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -8,7 +8,6 @@ import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import type { Database, TablesInsert } from "~/types/database.types";
-import { ArrowLeft } from "lucide-react";
 import { createClient } from "@supabase/supabase-js"; // Import Supabase client for storage
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
@@ -145,7 +144,7 @@ export default function AddProductPage() {
                 items={breadcrumbPatterns.adminStoreProductNew()} 
                 className="mb-6"
             />
-            
+
             <h1 className="text-2xl font-bold">Add New Product</h1>
 
             {actionData?.error && !actionData.fieldErrors && (

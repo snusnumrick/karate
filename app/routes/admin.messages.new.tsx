@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type TypedResponse } from "@remix-run/node";
-import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { z } from "zod";
 import { createClient } from '@supabase/supabase-js'; // Import createClient
 import { getSupabaseServerClient } from "~/utils/supabase.server";
@@ -12,7 +12,7 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"; // Import ArrowLeft
+import { AlertCircle, Loader2 } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define the schema for form validation using Zod
@@ -93,7 +93,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 
 export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
     const { supabaseServer, response: { headers } } = getSupabaseServerClient(request);
-    
+
     // Create admin client for push notification queries that need to bypass RLS
     const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -175,11 +175,11 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
         // Create a more descriptive sender name based on role
         let senderName = senderProfile?.role === 'admin' ? 'Admin' : 'Instructor'; // Role-based fallback
-        
+
         if (senderProfile) {
             const firstName = senderProfile.first_name?.trim();
             const lastName = senderProfile.last_name?.trim();
-            
+
             if (firstName && lastName) {
                 senderName = `${firstName} ${lastName}`;
             } else if (firstName) {
@@ -215,7 +215,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             // Get push subscriptions for all family members using admin client
             const familyMemberIds = familyMembers.map(member => member.id);
             console.log(`Looking for push subscriptions for family member IDs:`, familyMemberIds);
-            
+
             const { data: pushSubscriptions, error: pushSubscriptionsError } = await supabaseAdmin
                 .from('push_subscriptions')
                 .select('endpoint, p256dh, auth, user_id')
@@ -251,7 +251,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 console.log(`Sending push notifications to ${subscriptions.length} subscriptions`);
                 const result = await sendPushNotificationToMultiple(subscriptions, payload);
                 console.log(`Push notifications sent to ${result.successCount} family devices for new conversation`);
-                
+
                 if (result.expiredCount > 0) {
                     console.log(`Cleaned up ${result.expiredCount} expired push subscriptions`);
                 }
@@ -308,7 +308,7 @@ export default function AdminNewMessage() {
                 items={breadcrumbPatterns.adminMessageNew()} 
                 className="mb-6"
             />
-            
+
             <h1 className="text-2xl font-semibold text-foreground mb-6">New Message</h1>
 
             {actionData?.error && (

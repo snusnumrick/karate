@@ -6,7 +6,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { ArrowLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { AutoDiscountService } from "~/services/auto-discount.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
 import { requireAdminUser } from "~/utils/auth.server";
@@ -18,7 +18,7 @@ import { Badge } from "~/components/ui/badge";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
-  
+
   try {
     const [templates, programs] = await Promise.all([
       DiscountTemplateService.getActiveTemplates(),
@@ -33,7 +33,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
   const formData = await request.formData();
-  
+
   const name = formData.get('name') as string;
   const eventType = formData.get('event_type') as string;
   const discountTemplateId = formData.get('discount_template_id') as string;
@@ -41,40 +41,40 @@ export async function action({ request }: ActionFunctionArgs) {
   const validFrom = formData.get('valid_from') as string;
   const validUntil = formData.get('valid_until') as string;
   const isActive = formData.get('is_active') === 'on';
-  
+
   // Handle applicable programs
   const applicablePrograms = formData.getAll('applicable_programs') as string[];
   const filteredPrograms = applicablePrograms.filter(id => id && id.trim() !== '');
-  
+
   // Handle multiple discount templates
   let discountTemplateIds: string[] = [];
   if (usesMultipleTemplates) {
     const templateIds = formData.getAll('discount_template_ids') as string[];
     discountTemplateIds = templateIds.filter(id => id && id.trim() !== '');
   }
-  
+
   // Parse conditions from form
   const conditions: Record<string, Json> = {};
-  
+
   // Handle different condition types based on event type
   if (eventType === 'belt_promotion') {
     const beltRank = formData.get('condition_belt_rank') as string;
     if (beltRank) conditions.belt_rank = beltRank;
   }
-  
+
   if (eventType === 'attendance_milestone') {
     const attendanceCount = formData.get('condition_attendance_count') as string;
     if (attendanceCount) conditions.attendance_count = parseInt(attendanceCount);
   }
-  
+
   if (eventType === 'student_enrollment') {
     const minAge = formData.get('condition_min_age') as string;
     if (minAge) conditions.min_age = parseInt(minAge);
-    
+
     const minFamilySize = formData.get('condition_min_family_size') as string;
     if (minFamilySize) conditions.min_family_size = parseInt(minFamilySize);
   }
-  
+
   try {
     await AutoDiscountService.createAutomationRule({
       name,
@@ -88,7 +88,7 @@ export async function action({ request }: ActionFunctionArgs) {
       applicable_programs: filteredPrograms.length > 0 ? filteredPrograms : undefined,
       is_active: isActive,
     });
-    
+
     return redirect('/admin/automatic-discounts');
   } catch (error) {
     console.error('Error creating automation rule:', error);
@@ -115,11 +115,11 @@ export default function NewAutomationRule() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
-  
+
   const [selectedEventType, setSelectedEventType] = useState<string>('');
   const [usesMultipleTemplates, setUsesMultipleTemplates] = useState<boolean>(false);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -162,7 +162,7 @@ export default function NewAutomationRule() {
                 className="input-custom-styles"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="event_type">Trigger Event</Label>
               <Select name="event_type" onValueChange={setSelectedEventType} required>
@@ -178,7 +178,7 @@ export default function NewAutomationRule() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -334,7 +334,7 @@ export default function NewAutomationRule() {
                   </div>
                 </>
               )}
-              
+
               {selectedEventType === 'belt_promotion' && (
                 <div className="space-y-2">
                   <Label htmlFor="condition_belt_rank">Belt Rank</Label>
@@ -352,7 +352,7 @@ export default function NewAutomationRule() {
                   </Select>
                 </div>
               )}
-              
+
               {selectedEventType === 'attendance_milestone' && (
                 <div className="space-y-2">
                   <Label htmlFor="condition_attendance_count">Attendance Count</Label>
@@ -366,7 +366,7 @@ export default function NewAutomationRule() {
                   />
                 </div>
               )}
-              
+
               {!['student_enrollment', 'belt_promotion', 'attendance_milestone'].includes(selectedEventType) && (
                 <p className="text-sm text-muted-foreground">
                   No additional conditions available for this event type.
@@ -408,7 +408,7 @@ export default function NewAutomationRule() {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Checkbox id="is_active" name="is_active" defaultChecked tabIndex={8} />
               <Label htmlFor="is_active">Rule is active</Label>

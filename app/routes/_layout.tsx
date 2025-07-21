@@ -86,7 +86,7 @@ export default function Layout() {
             subscription?.unsubscribe();
         };
         // Rerun effect if serverSession or supabase client changes
-    }, [serverSession, supabase, revalidator]);
+    }, [serverSession, supabase, revalidator, navigate]);
 
 
     const user = serverSession?.user;

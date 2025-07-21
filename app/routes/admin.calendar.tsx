@@ -2,7 +2,7 @@ import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
-import { parseLocalDate, formatLocalDate } from "~/components/calendar/utils";
+import { parseLocalDate } from "~/components/calendar/utils";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -28,27 +28,27 @@ interface AdminCalendarEvent {
   programName?: string;
   startTime?: string;
   endTime?: string;
-  
+
   // Admin-specific properties
   programId: string;
   programColor?: string;
-  
+
   // Enrollment Information
   enrollmentStats: {
     enrolled: number;
     capacity: number;
     waitlist: number;
   };
-  
+
   // Instructor Details
   instructorId?: string;
   instructorName?: string;
-  
+
   // Administrative Metadata
   paymentStatus: 'pending' | 'partial' | 'complete';
   attendanceRecorded: boolean;
   sessionGenerated: boolean;
-  
+
   // Quick Actions
   adminActions: {
     canEditSession: boolean;
@@ -108,8 +108,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const monthEnd = endOfMonth(monthStart);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
-    const startDate = formatLocalDate(monthStart);
-    const endDate = formatLocalDate(monthEnd);
 
     // Fetch programs for filtering
     const { data: programsData } = await supabaseServer
@@ -212,12 +210,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const events: AdminCalendarEvent[] = sessions
       .filter(session => {
         if (!session.classes) return false;
-        
+
         // Apply filters
         if (programFilter && session.classes.program_id !== programFilter) return false;
         if (instructorFilter && session.classes.instructor_id !== instructorFilter) return false;
         if (statusFilter && session.status !== statusFilter) return false;
-        
+
         return true;
       })
       .map(session => {
@@ -225,7 +223,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         const programData = classData.programs!;
         const instructorData = classData.instructor;
         const enrollmentData = enrollmentCounts[session.class_id] || { enrolled: 0, waitlist: 0 };
-        
+
         return {
           id: session.id,
           title: classData.name,
@@ -238,24 +236,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
           programName: programData.name,
           startTime: session.start_time,
           endTime: session.end_time,
-          
+
           // Admin-specific properties
           programId: classData.program_id,
           programColor: undefined, // Could be added to programs table
-          
+
           enrollmentStats: {
             enrolled: enrollmentData.enrolled,
             capacity: classData.max_capacity || 0,
             waitlist: enrollmentData.waitlist
           },
-          
+
           instructorId: instructorData?.id,
           instructorName: instructorData ? instructorData.first_name + ' ' + instructorData.last_name : undefined,
-          
+
           paymentStatus: 'complete' as const, // Would need payment integration
           attendanceRecorded: !!attendanceRecords[session.id],
           sessionGenerated: true,
-          
+
           adminActions: {
             canEditSession: true,
             canRecordAttendance: session.status === 'completed',
@@ -270,7 +268,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       const capacity = Math.max(e.enrollmentStats.capacity, 1);
       return e.enrollmentStats.enrolled / capacity;
     });
-    
+
     const avgCapacityPercentage = totalCapacityPercentages.length > 0 
       ? totalCapacityPercentages.reduce((sum, percentage) => sum + percentage, 0) / totalCapacityPercentages.length
       : 0;
@@ -369,7 +367,7 @@ export default function AdminCalendar() {
   return (
     <div className="sm:container sm:mx-auto px-2 sm:px-4 py-2 sm:py-4 space-y-3 sm:space-y-4">
       <AppBreadcrumb items={breadcrumbPatterns.adminCalendar()} className="mb-6" />
-      
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
@@ -398,7 +396,7 @@ export default function AdminCalendar() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <User className="h-4 w-4 text-muted-foreground" />
@@ -416,7 +414,7 @@ export default function AdminCalendar() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Filter className="h-4 w-4 text-muted-foreground" />
@@ -483,7 +481,7 @@ export default function AdminCalendar() {
             <div className="text-xl font-bold">{stats.totalSessions}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
             <CardTitle className="text-xs font-medium">Completed</CardTitle>
@@ -496,7 +494,7 @@ export default function AdminCalendar() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
             <CardTitle className="text-xs font-medium">Enrollments</CardTitle>
@@ -506,7 +504,7 @@ export default function AdminCalendar() {
             <div className="text-xl font-bold">{stats.totalEnrollments}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
             <CardTitle className="text-xs font-medium">Avg Capacity</CardTitle>
@@ -537,7 +535,7 @@ export default function AdminCalendar() {
                     <div>Status: {getStatusBadge(selectedEvent.status || 'scheduled')}</div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-semibold mb-2">Enrollment</h4>
                   <div className="space-y-2 text-sm">
@@ -548,7 +546,7 @@ export default function AdminCalendar() {
                   </div>
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-semibold mb-2">Administrative Status</h4>
                 <div className="space-y-2 text-sm">
@@ -556,7 +554,7 @@ export default function AdminCalendar() {
                   <div>Session Generated: {selectedEvent.sessionGenerated ? '✅ Yes' : '❌ No'}</div>
                 </div>
               </div>
-              
+
               <div className="flex flex-wrap gap-2 pt-4 border-t">
                 <Button asChild size="sm">
                   <Link to={"/admin/classes/" + selectedEvent.classId + "/sessions"}>Manage Sessions</Link>

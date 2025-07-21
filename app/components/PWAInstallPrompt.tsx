@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react';
 import { Button } from '~/components/ui/button';
 import { X, Download, Smartphone } from 'lucide-react';
 
-interface BeforeInstallPromptEvent extends Event {
+export interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
   readonly userChoice: Promise<{
     outcome: 'accepted' | 'dismissed';
     platform: string;
   }>;
   prompt(): Promise<void>;
+}
+
+export interface NavigatorWithStandalone extends Navigator {
+  standalone?: boolean;
 }
 
 export function PWAInstallPrompt() {
@@ -28,9 +32,9 @@ export function PWAInstallPrompt() {
         setIsInstalled(true);
         return;
       }
-      
+
       // Check for iOS standalone mode
-      if ((window.navigator as any).standalone === true) {
+      if ((window.navigator as NavigatorWithStandalone).standalone) {
         setIsInstalled(true);
         return;
       }
@@ -42,7 +46,7 @@ export function PWAInstallPrompt() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      
+
       // Show install prompt after a delay (don't be too aggressive)
       setTimeout(() => {
         if (!isInstalled) {
@@ -76,13 +80,13 @@ export function PWAInstallPrompt() {
     try {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      
+
       if (outcome === 'accepted') {
         console.log('User accepted the install prompt');
       } else {
         console.log('User dismissed the install prompt');
       }
-      
+
       setDeferredPrompt(null);
       setShowInstallPrompt(false);
     } catch (error) {
@@ -130,7 +134,7 @@ export function PWAInstallPrompt() {
             <X className="h-4 w-4" />
           </button>
         </div>
-        
+
         <div className="mt-3 flex space-x-2">
           <Button
             onClick={handleInstallClick}
@@ -172,12 +176,12 @@ export function usePWAInstall() {
         setIsInstalled(true);
         return true;
       }
-      
-      if ((window.navigator as any).standalone === true) {
+
+      if ((window.navigator as Navigator & { standalone?: boolean }).standalone) {
         setIsInstalled(true);
         return true;
       }
-      
+
       return false;
     };
 
@@ -214,10 +218,10 @@ export function usePWAInstall() {
     try {
       await deferredPrompt.prompt();
       const result = await deferredPrompt.userChoice;
-      
+
       setDeferredPrompt(null);
       setIsInstallable(false);
-      
+
       return result;
     } catch (error) {
       console.error('Error during installation:', error);

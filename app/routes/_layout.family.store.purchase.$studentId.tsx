@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
-import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
+import { Form, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
 import { getSupabaseServerClient, createInitialPaymentRecord } from "~/utils/supabase.server";
 import { createClient } from '@supabase/supabase-js'; // Import createClient for admin
 import { Button } from "~/components/ui/button";
@@ -12,7 +12,7 @@ import { Separator } from "~/components/ui/separator";
 import type { Database, Tables, TablesInsert } from "~/types/database.types";
 import { formatCurrency } from "~/utils/misc"; // Assuming you have a currency formatter
 import { siteConfig } from "~/config/site"; // For tax calculation consistency
-import { ArrowLeft, Info } from 'lucide-react'; // Added Info icon
+import { Info } from 'lucide-react'; // Added Info icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // --- Helper Function for Size Recommendation ---

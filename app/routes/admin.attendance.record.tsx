@@ -15,7 +15,6 @@ import type {ClassSession} from "~/types/multi-class";
 import {getClassSessions} from "~/services/class.server";
 import {getEnrollmentsByClass} from "~/services/enrollment.server";
 import {getAttendanceBySession, recordSessionAttendance} from "~/services/attendance.server";
-import {getFamilyPaymentEligibilityData} from "~/services/payment-eligibility.server";
 import {checkStudentEligibility} from "~/utils/supabase.server";
 import {sendEmail} from '~/utils/email.server';
 import {Badge} from "~/components/ui/badge";
@@ -134,28 +133,28 @@ export async function loader({request}: LoaderFunctionArgs) {
         // If a specific session is selected, get enrolled students and existing attendance
         if (sessionParam && sessions.length > 0) {
             selectedSession = sessions.find(s => s.id === sessionParam) || null;
-            
+
             if (selectedSession) {
                 // Get enrolled students for this class
                 const enrollments = await getEnrollmentsByClass(selectedSession.class_id, supabaseAdmin);
-                
+
                 const activeEnrollments = enrollments.filter(enrollment => enrollment.status === 'active' || enrollment.status === 'trial');
-                
+
                 // Get payment eligibility data for each student
                 enrolledStudents = await Promise.all(
                     activeEnrollments.map(async (enrollment) => {
                         const student = enrollment.student!;
-                        
+
                         // Get student eligibility status
                         const eligibility = await checkStudentEligibility(student.id, supabaseAdmin);
-                        
+
                         // Get family individual sessions
                         const { data: sessionsData } = await supabaseAdmin
                             .from('one_on_one_sessions')
                             .select('id, quantity_remaining')
                             .eq('family_id', student.family_id)
                             .gt('quantity_remaining', 0);
-                        
+
                         const individualSessions = {
                             totalRemaining: sessionsData?.reduce((sum, s) => sum + s.quantity_remaining, 0) || 0,
                             purchases: sessionsData?.map(s => ({
@@ -163,7 +162,7 @@ export async function loader({request}: LoaderFunctionArgs) {
                                 quantityRemaining: s.quantity_remaining
                             })) || []
                         };
-                        
+
                         return {
                             id: student.id,
                             first_name: student.first_name,
@@ -253,7 +252,7 @@ export async function action({request}: ActionFunctionArgs) {
 
     try {
         console.log(`Upserting ${recordsToUpsert.length} attendance records for session: ${sessionId}`);
-        
+
         // Record attendance using the new service function
         await recordSessionAttendance(
             sessionId,
@@ -269,7 +268,7 @@ export async function action({request}: ActionFunctionArgs) {
         for (const studentId of studentIds) {
             const status = formData.get(`status-${studentId}`) as string;
             const useIndividualSession = formData.get(`useIndividualSession_${studentId}`) === 'on';
-            
+
             if ((status === 'present' || status === 'late') && useIndividualSession) {
                 // Get student's family_id
                 const { data: student } = await supabaseAdmin
@@ -277,13 +276,13 @@ export async function action({request}: ActionFunctionArgs) {
                     .select('family_id')
                     .eq('id', studentId)
                     .single();
-                
+
                 if (student) {
                     // Check if student has active monthly/yearly payments
                     const eligibility = await checkStudentEligibility(studentId, supabaseAdmin);
                     const hasActivePayment = eligibility?.eligible && 
                         (eligibility.reason === 'Paid - Monthly' || eligibility.reason === 'Paid - Yearly');
-                    
+
                     // Only decrement individual sessions if no active monthly/yearly payment
                     if (!hasActivePayment) {
                         // Find and decrement one individual session
@@ -294,7 +293,7 @@ export async function action({request}: ActionFunctionArgs) {
                             .gt('quantity_remaining', 0)
                             .order('created_at', { ascending: true })
                             .limit(1);
-                        
+
                         if (sessions && sessions.length > 0) {
                             const session = sessions[0];
                             await supabaseAdmin
@@ -332,7 +331,7 @@ async function sendAbsenceNotifications(
     // Get absent students from the attendance records
     const attendanceRecords = await getAttendanceBySession(sessionId, supabaseAdmin);
     const absentStudents = attendanceRecords.filter(record => record.status === 'absent');
-    
+
     if (absentStudents.length === 0) {
         console.log("No absent students found, skipping notifications.");
         return;
@@ -452,7 +451,7 @@ export default function RecordAttendancePage() {
     return (
         <div className="container mx-auto px-4 py-8">
             <AppBreadcrumb items={breadcrumbPatterns.adminAttendanceRecord()} className="mb-4" />
-            
+
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">Record Attendance</h1>
                 <div className="flex items-center gap-2">
@@ -500,7 +499,7 @@ export default function RecordAttendancePage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        
+
                         {selectedSession && (
                             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                                 <h3 className="font-semibold text-blue-900 dark:text-blue-100">
@@ -550,14 +549,14 @@ export default function RecordAttendancePage() {
                                         (student.eligibility.reason === 'Paid - Monthly' || student.eligibility.reason === 'Paid - Yearly');
                                     const hasIndividualSessions = (student.individualSessions?.totalRemaining || 0) > 0;
                                     const isPaid = hasActivePayment;
-                                    
+
                                     let paymentStatus = 'Not Paid';
                                     if (isPaid) {
                                         paymentStatus = student.eligibility?.reason === 'Paid - Monthly' ? 'Paid (Monthly)' : 'Paid (Yearly)';
                                     } else if (hasIndividualSessions) {
                                         paymentStatus = `Individual Sessions (${student.individualSessions?.totalRemaining})`;
                                     }
-                                    
+
                                     // Determine if student should be highlighted in red
                                     const shouldHighlight = !isPaid && !hasIndividualSessions;
 
@@ -702,7 +701,7 @@ export function ErrorBoundary() {
                     &larr; Go back to Attendance List
                 </Link>
             </div>
-            
+
             <script dangerouslySetInnerHTML={{
                 __html: `
                     // Handle dynamic highlighting based on checkbox state
@@ -711,12 +710,12 @@ export function ErrorBoundary() {
                             const studentId = e.target.name.replace('useIndividualSession_', '');
                             const container = e.target.closest('.border-b, .border');
                             const paymentStatusSpan = container.querySelector('span[class*="text-"]');
-                            
+
                             if (container && paymentStatusSpan) {
                                 const isChecked = e.target.checked;
                                 const hasIndividualSessions = paymentStatusSpan.textContent.includes('Individual Sessions');
                                 const isPaid = paymentStatusSpan.textContent.includes('Paid (');
-                                
+
                                 // Update highlighting
                                 if (!isPaid && hasIndividualSessions) {
                                     if (isChecked) {
@@ -728,18 +727,18 @@ export function ErrorBoundary() {
                             }
                         }
                     });
-                    
+
                     // Initial highlighting on page load
                     document.addEventListener('DOMContentLoaded', function() {
                         const checkboxes = document.querySelectorAll('input[name^="useIndividualSession_"]');
                         checkboxes.forEach(checkbox => {
                             const container = checkbox.closest('.border-b, .border');
                             const paymentStatusSpan = container.querySelector('span[class*="text-"]');
-                            
+
                             if (container && paymentStatusSpan) {
                                 const hasIndividualSessions = paymentStatusSpan.textContent.includes('Individual Sessions');
                                 const isPaid = paymentStatusSpan.textContent.includes('Paid (');
-                                
+
                                 if (!isPaid && hasIndividualSessions && !checkbox.checked) {
                                     container.classList.add('border-red-500', 'bg-red-50', 'dark:bg-red-900/20');
                                 }

@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, type TypedResponse,} from "@remix-run/node";
-import {Form, Link, useActionData, useLoaderData, useNavigation, useRouteError} from "@remix-run/react";
+import {Form, useActionData, useLoaderData, useNavigation, useRouteError} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
@@ -458,7 +458,7 @@ export default function AdminNewPaymentPage() {
     return (
         <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <AppBreadcrumb items={breadcrumbPatterns.adminPaymentNew()} className="mb-6" />
-            
+
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                     Record New Payment

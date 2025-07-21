@@ -1,7 +1,7 @@
 // Client-side notification utilities for incoming messages
 // This file handles browser notifications and permission management
 
-import { pushNotificationService, type PushNotificationPayload } from './push-notifications.client';
+import { pushNotificationService } from './push-notifications.client';
 
 export interface NotificationOptions {
   title: string;
@@ -9,7 +9,7 @@ export interface NotificationOptions {
   icon?: string;
   badge?: string;
   tag?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   requireInteraction?: boolean;
   silent?: boolean;
 }
