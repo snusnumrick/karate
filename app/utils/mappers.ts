@@ -166,8 +166,9 @@ export function mapAttendanceFromSupabase(row: Database['public']['Tables']['att
         classSessionId: row.class_session_id,
         status: row.status as 'present' | 'absent' | 'excused' | 'late',
         notes: row.notes || undefined,
-        classDate: row.class_date,
-        present: row.present
+        // Note: class_date and present fields are derived from class_sessions and status
+        classDate: '', // This should be populated from class_sessions.session_date
+        present: row.status === 'present' || row.status === 'late'
     };
 }
 
@@ -176,9 +177,8 @@ export function mapAttendanceToSupabase(record: Omit<AttendanceRecord, 'id'>): D
         student_id: record.studentId,
         class_session_id: record.classSessionId,
         status: record.status,
-        notes: record.notes,
-        class_date: record.classDate,
-        present: record.present
+        notes: record.notes
+        // Note: class_date and present are not stored in the current attendance table
     };
 }
 

@@ -145,7 +145,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             p_sender_id: senderId,
             p_target_family_id: familyId,
             p_subject: subject,
-            p_message_body: message,
+            p_message_body: message
         }
     );
 
@@ -154,7 +154,9 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         return json({ error: `Failed to create conversation: ${rpcError?.message || 'Unknown RPC error'}` }, { status: 500, headers });
     }
 
-    console.log(`Admin New Message Action: Conversation ${newConversationId.conversation_id} created successfully.`);
+    // Type assertion for the RPC response
+    const conversationData = newConversationId as { conversation_id: string; message_id: string };
+    console.log(`Admin New Message Action: Conversation ${conversationData.conversation_id} created successfully.`);
 
     // Send push notifications to family members
     try {
@@ -227,13 +229,13 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
             if (pushSubscriptions && pushSubscriptions.length > 0) {
                 // Use the message_id directly from the RPC response
-                console.log(`Creating notification payload with message_id: ${newConversationId.message_id}`);
+                console.log(`Creating notification payload with message_id: ${conversationData.message_id}`);
                 const payload = createMessageNotificationPayload(
                     senderName,
                     message,
-                    newConversationId.conversation_id,
-                    newConversationId.message_id,
-                    `/admin/messages/${newConversationId.conversation_id}`
+                    conversationData.conversation_id,
+                    conversationData.message_id,
+                    `/admin/messages/${conversationData.conversation_id}`
                 );
 
                 console.log(`Notification payload:`, payload);
@@ -265,7 +267,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     }
 
     // Redirect to the newly created conversation
-    return redirect(`/admin/messages/${newConversationId.conversation_id}`, { headers });
+    return redirect(`/admin/messages/${conversationData.conversation_id}`, { headers });
 }
 
 

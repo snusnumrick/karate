@@ -220,7 +220,6 @@ export async function action({request}: ActionFunctionArgs) {
     }
 
     const recordsToUpsert: Database['public']['Tables']['attendance']['Insert'][] = [];
-    const classDate = formData.get('classDate') as string;
 
     for (const studentId of studentIds) {
         const status = formData.get(`status-${studentId}`) as 'present' | 'absent' | 'excused' | 'late';
@@ -231,9 +230,8 @@ export async function action({request}: ActionFunctionArgs) {
                 student_id: studentId,
                 class_session_id: sessionId,
                 status: status,
-                notes: notes || null,
-                class_date: classDate,
-                present: status === 'present' || status === 'late',
+                notes: notes || null
+                // Note: class_date and present are not stored in the current attendance table schema
             });
         }
     }

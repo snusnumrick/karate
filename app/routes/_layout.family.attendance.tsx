@@ -83,7 +83,7 @@ export async function loader({request}: LoaderFunctionArgs) {
         `)
                 .in('student_id', studentIds)
                 .not('class_session_id', 'is', null) // Only get records with valid class sessions
-                .order('class_date', {ascending: false}); // Order by class_date instead
+                .order('class_sessions(session_date)', {ascending: false}); // Order by session_date from class_sessions
 
             if (attendanceError) throw attendanceError;
             // Ensure students relation is at least null and filter out records without class_sessions
@@ -147,7 +147,7 @@ export default function FamilyAttendancePage() {
                         <TableBody>
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
-                                    <TableCell>{formatDate(record.class_sessions?.session_date || record.class_date, { formatString: 'MMM d, yyyy' })}</TableCell>
+                                    <TableCell>{formatDate(record.class_sessions?.session_date || '', { formatString: 'MMM d, yyyy' })}</TableCell>
                                     <TableCell className="font-medium">
                                         {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
                                     </TableCell>

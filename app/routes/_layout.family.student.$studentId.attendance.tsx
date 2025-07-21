@@ -85,7 +85,7 @@ export async function loader({request, params}: LoaderFunctionArgs) {
             `)
             .eq('student_id', studentId)
             .not('class_session_id', 'is', null) // Only get records with valid class sessions
-            .order('class_date', {ascending: false}); // Order by class_date instead
+            .order('class_sessions(session_date)', {ascending: false}); // Order by session_date from class_sessions
 
         if (attendanceError) throw attendanceError;
         
@@ -145,7 +145,7 @@ export default function StudentAttendancePage() {
                             {attendanceRecords.map((record) => (
                                 <TableRow key={record.id}>
                                     <TableCell className="font-medium">
-                                        {formatDate(record.class_sessions?.session_date || record.class_date, { formatString: 'MMM d, yyyy' })}
+                                        {formatDate(record.class_sessions?.session_date || '', { formatString: 'MMM d, yyyy' })}
                                     </TableCell>
                                     <TableCell>
                                         {record.status === 'present' ? (
