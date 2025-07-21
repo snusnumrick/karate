@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2025-07-21
+
+### Added
+- **Progressive Web App (PWA):**
+    - Complete PWA implementation with offline support and installable experience on mobile and desktop devices
+    - Service worker for intelligent caching and offline functionality
+    - Custom app icons, splash screens, and native app-like experience
+    - PWA status indicators, installation prompts, and installation buttons for capable devices
+- **Push Notification System:**
+    - Browser-based push notifications for messaging with real-time delivery
+    - Basic notification preferences with enable/disable toggle
+    - VAPID key management and subscription handling
+    - Real-time notifications for new messages
+    - Push notifications work even when app is closed or in background
+    - Infrastructure ready for class reminders (notification payloads and delivery system implemented)
+    - Foundation for future enhancements (frequency control, quiet hours, sound customization, announcement management)
+- **Comprehensive Breadcrumb Navigation System:**
+    - New `AppBreadcrumb` component with consistent navigation patterns across admin and family portals
+    - Centralized breadcrumb patterns in `breadcrumbPatterns` for maintainable navigation structure
+    - Support for clickable breadcrumb items with custom onClick handlers
+    - Breadcrumb navigation implemented across all major admin pages (students, families, classes, sessions, store, waivers, etc.)
+    - Enhanced user experience with clear navigation context and "Back to" link replacements
+- **Admin Session Management:**
+    - New comprehensive session management route (`/admin/sessions`) with filtering, creation, and bulk deletion capabilities
+    - Session filtering by class, status, and date range for efficient session organization
+    - Makeup session creation functionality with proper validation and conflict detection
+    - Bulk session deletion with confirmation dialogs for administrative efficiency
+    - Visual session status indicators and enhanced session detail views
+- **Enhanced Payment Processing System:**
+    - Improved Stripe payment integration with enhanced payment intent creation and processing
+    - Enhanced payment status tracking with webhook support for real-time updates
+    - Expanded support for multiple payment types (monthly, yearly, individual session)
+    - Improved payment method handling and receipt URL management
+    - Enhanced payment forms with upgraded Stripe Elements integration
+- **Attendance Tracking System:**
+    - Session-based attendance recording with manual entry interface
+    - Four-state attendance status tracking (present, absent, excused, late)
+    - Attendance statistics and reporting capabilities
+    - Multi-class support with proper session association
+    - Enhanced attendance service with validation and filtering
+- **Multi-Class Enrollment System:**
+    - Comprehensive enrollment validation with eligibility checking
+    - Automated waitlist management with priority processing
+    - Belt rank requirements validation and age verification
+    - Prerequisite program checking and capacity management
+    - Enhanced enrollment workflow with conflict detection
+- **Enhanced Waiver Management:**
+    - New waiver creation page (`/admin/waivers/new`) with comprehensive form validation
+    - Improved waiver detail pages with auto-focus behavior and enhanced user experience
+    - Email notifications for waiver creation and updates
+    - Better breadcrumb navigation for waiver management workflows
+- **Improved Admin Navigation:**
+    - Organized admin navbar items into logical dropdown groups for better usability
+    - Enhanced mobile navigation with improved scrolling and accessibility
+    - Consistent navbar design with unified Karate branding across admin and family portals
+- **Territory Acknowledgement:**
+    - Added Territory Acknowledgement section to About page with configurable site content
+    - Enhanced site configuration to support community acknowledgements
+
+### Changed
+- **Navigation Experience:** Replaced "Back to" links with comprehensive breadcrumb navigation across admin and family pages for improved user orientation
+- **Session Display:** Fixed timezone issues causing sessions to display on incorrect days with proper date handling
+- **Calendar Events:** Added visual status indicators to calendar events for better event recognition
+- **Logo Consistency:** Updated navbar logos to use unified Karate branding across all portal types
+- **Password Recovery:** Enhanced password recovery event handling in layout routes for better user experience
+- **Database Alignment:** Aligned `supabase-setup.sql` with migrations and normalized attendance data structure
+- **Student Management:** Enhanced admin student creation with improved form validation and Supabase integration
+- **Payment Logic:** Refined payment options display to show only for students with active or trial enrollments
+- **Re-enrollment Handling:** Improved re-enrollment process by updating dropped/completed enrollments, validating conflicts, and processing waitlist
+- **UI Text Clarity:** Updated "Back to Class" link text to "Back to Classes" for improved clarity in admin sessions UI
+- **Form Validation:** Enhanced form validation across registration, admin, and contact pages with better error handling
+- **Attendance Service:** Enhanced attendance service with session date retrieval and filtering to valid class sessions only
+
+### Fixed
+- **Timezone Issues:** Resolved critical timezone problems causing incorrect session date displays
+- **TypeScript Compliance:** Addressed TypeScript errors and improved type safety across the application
+- **User Experience:** Multiple UX improvements including better focus management and form interactions
+- **Code Organization:** Cleaned up code organization and removed unnecessary comments for better maintainability
+- **Calendar Utilities:** Improved calendar date parsing functions for more reliable date handling
+- **Attendance Tracking:** Enhanced attendance record filtering to ensure only valid class sessions are processed
+
+### Technical Improvements
+- **Enhanced Attendance Service:** Improved session date retrieval and validation logic
+- **Form Optimization:** Better form handling with improved validation and user feedback
+- **Code Quality:** Removed redundant code and improved overall code organization
+- **Component Architecture:** Enhanced component reusability with better prop handling and state management
+
+### Future Enhancements
+- **QR Code Attendance:** Planned implementation of QR code generation and camera-based scanning for streamlined check-in/check-out
+- **Automated Class Reminders:** Implementation of scheduled class reminder notifications with configurable timing (e.g., 1 hour before class) and automated delivery to enrolled students
+- **Automated Recurring Billing:** Development of true subscription management with automatic payment scheduling and billing cycles
+- **Advanced Notification Customization:** Enhanced notification settings including frequency control, quiet hours, and custom sound options
+- **Enhanced Payment Automation:** Automatic payment reminders, failed payment retry logic, and subscription lifecycle management
+- **Announcement System:** Complete announcement management with admin creation interface, family viewing portal, and targeted delivery options
+
+## [2.3.0] - 2025-01-10
+
 ### Added
 - **Comprehensive Automatic Discount System:**
     - New automatic discount engine with rule-based assignment capabilities
