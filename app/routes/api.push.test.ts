@@ -35,7 +35,10 @@ export async function action({ request }: ActionFunctionArgs) {
           },
           {
             action: 'reply',
-            title: 'Quick Reply'
+            title: 'Quick Reply',
+            type: 'text',
+            icon: '/icon.svg',
+            placeholder: 'Type your reply...'
           },
           {
             action: 'dismiss',
@@ -49,11 +52,11 @@ export async function action({ request }: ActionFunctionArgs) {
       let message = result.successCount === 0 
         ? 'No push subscriptions found for your account' 
         : `Test notification sent to ${result.successCount} device(s)`;
-      
+
       if (result.expiredCount && result.expiredCount > 0) {
         message += ` (cleaned up ${result.expiredCount} expired subscription(s))`;
       }
-      
+
       return json({
         success: true,
         message,

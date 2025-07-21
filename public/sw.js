@@ -168,7 +168,7 @@ self.addEventListener('fetch', (event) => {
 // Handle background sync for offline actions
 self.addEventListener('sync', (event) => {
   console.log('Service Worker: Background sync', event.tag);
-  
+
   if (event.tag === 'background-sync') {
     event.waitUntil(
       // Handle any queued offline actions here
@@ -253,7 +253,9 @@ self.addEventListener('push', (event) => {
             {
               action: 'reply',
               title: 'Quick Reply',
-              icon: actionIcon
+              type: 'text',
+              icon: actionIcon,
+              placeholder: 'Type your reply...'
             },
             {
               action: 'dismiss',
@@ -327,7 +329,7 @@ self.addEventListener('push', (event) => {
 
   // Check if actions are supported on this platform
   const supportsActions = 'actions' in Notification.prototype;
-  
+
   const options = {
     body: notificationData.body,
     icon: notificationData.icon,
@@ -373,7 +375,7 @@ self.addEventListener('push', (event) => {
 // Handle notification click events
 self.addEventListener('notificationclick', (event) => {
   console.log('Service Worker: Notification clicked', event);
-  
+
   event.notification.close();
 
   if (event.action === 'dismiss') {
@@ -463,7 +465,7 @@ self.addEventListener('notificationclick', (event) => {
         for (const client of clientList) {
           const clientUrl = new URL(client.url);
           const targetUrlObj = new URL(targetUrl, client.url);
-          
+
           // Check if the client is on the same page (ignoring query parameters for basic match)
           if (clientUrl.pathname === targetUrlObj.pathname && 'focus' in client) {
             // If it's a reply action, send a message to focus the input
@@ -476,7 +478,7 @@ self.addEventListener('notificationclick', (event) => {
             return client.focus();
           }
         }
-        
+
         // If no existing window/tab, open a new one
         if (self.clients.openWindow) {
           return self.clients.openWindow(targetUrl);
@@ -497,7 +499,7 @@ self.addEventListener('notificationclose', (event) => {
 // Handle messages from the main thread
 self.addEventListener('message', (event) => {
   console.log('Service Worker: Message received', event.data);
-  
+
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }

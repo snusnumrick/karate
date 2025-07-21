@@ -285,7 +285,9 @@ export function createMessageNotificationPayload(
       {
         action: 'reply',
         title: 'Quick Reply',
-        icon: '/icon.svg'
+        type: 'text',
+        icon: '/icon.svg',
+        placeholder: 'Type your reply...'
       }
     ],
     requireInteraction: true,
@@ -464,24 +466,24 @@ export function validateVAPIDConfiguration(): {
   subject?: string;
 } {
   const issues: string[] = [];
-  
+
   if (!process.env.VAPID_PUBLIC_KEY) {
     issues.push('VAPID_PUBLIC_KEY environment variable is missing');
   }
-  
+
   if (!process.env.VAPID_PRIVATE_KEY) {
     issues.push('VAPID_PRIVATE_KEY environment variable is missing');
   }
-  
+
   if (!process.env.VAPID_SUBJECT) {
     issues.push('VAPID_SUBJECT environment variable is missing');
   }
-  
+
   // Validate VAPID_SUBJECT format
   if (process.env.VAPID_SUBJECT && !process.env.VAPID_SUBJECT.startsWith('mailto:') && !process.env.VAPID_SUBJECT.startsWith('https://')) {
     issues.push('VAPID_SUBJECT must be a mailto: or https: URL');
   }
-  
+
   return {
     isValid: issues.length === 0,
     issues,
