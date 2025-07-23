@@ -240,22 +240,31 @@ self.addEventListener('notificationclick', (event) => {
   const notificationData = event.notification.data;
   const action = event.action;
 
-  // Always close the notification first
-  event.notification.close();
-
   if (action === 'dismiss') {
+    event.notification.close();
     return;
   }
 
   // Handle quick reply action using Background Sync
   if (action === 'reply' && event.reply && notificationData) {
-    console.log('--- Quick Reply Debug START ---');
-    console.log('Full notification data received:', JSON.stringify(notificationData, null, 2));
-    console.log('Action:', action);
-    console.log('Reply text:', event.reply);
-    console.log('Extracted conversationId:', notificationData.conversationId);
-    console.log('Extracted userId:', notificationData.userId);
-    console.log('--- Quick Reply Debug END ---');
+    // Close the notification immediately for quick replies
+    event.notification.close();
+    
+    // Also close any other notifications with the same tag to prevent duplication
+    const notificationTag = event.notification.tag;
+    if (notificationTag) {
+      self.registration.getNotifications({ tag: notificationTag }).then(notifications => {
+        notifications.forEach(notification => notification.close());
+      });
+    }
+    
+    // console.log('--- Quick Reply Debug START ---');
+    // console.log('Full notification data received:', JSON.stringify(notificationData, null, 2));
+    // console.log('Action:', action);
+    // console.log('Reply text:', event.reply);
+    // console.log('Extracted conversationId:', notificationData.conversationId);
+    // console.log('Extracted userId:', notificationData.userId);
+    // console.log('--- Quick Reply Debug END ---');
 
     // Send debug info to main thread
     self.clients.matchAll().then(clients => {
@@ -280,10 +289,10 @@ self.addEventListener('notificationclick', (event) => {
       timestamp: new Date().toISOString(),
     };
 
-    console.log('--- Quick Reply Payload Debug ---');
-    console.log('Payload object being sent:', replyData);
-    console.log('Stringified body:', JSON.stringify(replyData));
-    console.log('-------------------------');
+    // console.log('--- Quick Reply Payload Debug ---');
+    // console.log('Payload object being sent:', replyData);
+    // console.log('Stringified body:', JSON.stringify(replyData));
+    // console.log('-------------------------');
 
     event.waitUntil(
         fetch('/api/push/reply', {
@@ -302,15 +311,9 @@ self.addEventListener('notificationclick', (event) => {
               requireInteraction: false
             });
           } else {
-            console.log('Quick reply sent successfully');
-            // Optionally show a success notification (brief)
-            return self.registration.showNotification('Reply Sent', {
-              body: 'Your reply was sent successfully.',
-              icon: '/icon.svg',
-              tag: 'reply-success',
-              requireInteraction: false,
-              silent: true
-            });
+            // console.log('Quick reply sent successfully');
+            // Don't show any success notification to avoid clutter
+            return Promise.resolve();
           }
         })
         .catch((error) => {
@@ -331,6 +334,9 @@ self.addEventListener('notificationclick', (event) => {
     );
     return;
   }
+
+  // For all other actions (including default click), close notification and handle normally
+  event.notification.close();
 
   // Handle default click action (open a URL)
   event.waitUntil(
