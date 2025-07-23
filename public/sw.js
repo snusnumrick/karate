@@ -272,7 +272,7 @@ self.addEventListener('notificationclick', (event) => {
             console.error('Quick reply failed:', response.status, response.statusText);
             // Show a failure notification
             return self.registration.showNotification('Reply Failed', {
-              body: 'Your reply could not be sent. Please try again.',
+              body: `Your reply could not be sent. Please try again. ${response.statusText}`,
               icon: '/icon.svg',
               tag: 'reply-failed',
               requireInteraction: false
