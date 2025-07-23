@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
-import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
+import { Link, useLoaderData, useSearchParams, useRouteError } from "@remix-run/react";
 import { useState } from "react";
 import type { Database } from "~/types/database.types";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
@@ -23,8 +23,23 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define types
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
-type AttendanceRow = Database['public']['Tables']['attendance']['Row'] & {
+type AttendanceRow = {
+  id: string;
+  student_id: string;
+  class_session_id: string;
+  status: 'present' | 'absent' | 'excused' | 'late';
   students: Pick<StudentRow, 'first_name' | 'last_name'> | null;
+  class_sessions: {
+    id: string;
+    session_date: string;
+    start_time: string;
+    end_time: string;
+    class_id: string;
+    classes: {
+      id: string;
+      name: string;
+    } | null;
+  } | null;
 };
 
 type ClassSession = {
@@ -72,40 +87,60 @@ type LoaderData = {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer, response } = getSupabaseServerClient(request);
-  const headers = response.headers;
-  const { data: { user } } = await supabaseServer.auth.getUser();
-
-  if (!user) {
-    return redirect("/login?redirectTo=/family/calendar", { headers });
-  }
-
-  // Get user's profile to find their family ID
-  const { data: profile, error: profileError } = await supabaseServer
-    .from('profiles')
-    .select('family_id')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile || !profile.family_id) {
-    return redirect("/family", { headers });
-  }
-
-  const familyId = profile.family_id;
-  const url = new URL(request.url);
-  const monthParam = url.searchParams.get('month');
-  const currentMonth = monthParam || format(new Date(), 'yyyy-MM');
-
   try {
+    console.log('Family Calendar Loader: Starting...');
+    
+    const { supabaseServer, response } = getSupabaseServerClient(request);
+    const headers = response.headers;
+    const { data: { user } } = await supabaseServer.auth.getUser();
+
+    if (!user) {
+      console.log('Family Calendar Loader: No authenticated user, redirecting to login');
+      return redirect("/login?redirectTo=/family/calendar", { headers });
+    }
+    console.log('Family Calendar Loader: User authenticated:', user.id);
+
+    // Get user's profile to find their family ID
+    console.log('Family Calendar Loader: Fetching user profile...');
+    const { data: profile, error: profileError } = await supabaseServer
+      .from('profiles')
+      .select('family_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Family Calendar Loader: Profile query error:', profileError);
+      throw new Error(`Failed to fetch user profile: ${profileError.message}`);
+    }
+
+    if (!profile || !profile.family_id) {
+      console.error('Family Calendar Loader: No family found for user');
+      return redirect("/family", { headers });
+    }
+    console.log('Family Calendar Loader: Family ID found:', profile.family_id);
+
+    const familyId = profile.family_id;
+    const url = new URL(request.url);
+    const monthParam = url.searchParams.get('month');
+    const currentMonth = monthParam || format(new Date(), 'yyyy-MM');
+    console.log('Family Calendar Loader: Current month:', currentMonth);
+
     // Fetch family name
-    const { data: familyData } = await supabaseServer
+    console.log('Family Calendar Loader: Fetching family data...');
+    const { data: familyData, error: familyError } = await supabaseServer
       .from('families')
       .select('name')
       .eq('id', familyId)
       .single();
+    
+    if (familyError) {
+      console.error('Family Calendar Loader: Family query error:', familyError);
+    }
     const familyName = familyData?.name ?? null;
+    console.log('Family Calendar Loader: Family name:', familyName);
 
     // Fetch students in the family
+    console.log('Family Calendar Loader: Fetching students...');
     const { data: studentsData, error: studentsError } = await supabaseServer
       .from('students')
       .select('id, first_name, last_name')
@@ -113,11 +148,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       .order('last_name', { ascending: true })
       .order('first_name', { ascending: true });
 
-    if (studentsError) throw studentsError;
+    if (studentsError) {
+      console.error('Family Calendar Loader: Students query error:', studentsError);
+      throw new Error(`Failed to fetch students: ${studentsError.message}`);
+    }
     const students = studentsData ?? [];
     const studentIds = students.map(s => s.id);
+    console.log('Family Calendar Loader: Students found:', students.length);
 
     if (studentIds.length === 0) {
+      console.log('Family Calendar Loader: No students found, returning empty data');
       return json({ students, sessions: [], attendance: [], enrollments: [], familyName, currentMonth }, { headers });
     }
 
@@ -126,8 +166,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const monthEnd = endOfMonth(monthStart);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
+    console.log('Family Calendar Loader: Date range:', formatLocalDate(calendarStart), 'to', formatLocalDate(calendarEnd));
 
     // Fetch enrollments for students to get their classes
+    console.log('Family Calendar Loader: Fetching enrollments...');
     const { data: enrollmentsData, error: enrollmentsError } = await supabaseServer
       .from('enrollments')
       .select(`
@@ -147,13 +189,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
       .in('student_id', studentIds)
       .eq('status', 'active');
 
-    if (enrollmentsError) throw enrollmentsError;
+    if (enrollmentsError) {
+      console.error('Family Calendar Loader: Enrollments query error:', enrollmentsError);
+      throw new Error(`Failed to fetch enrollments: ${enrollmentsError.message}`);
+    }
     const enrollments = enrollmentsData as EnrollmentWithClass[] ?? [];
     const classIds = enrollments.map(e => e.class_id);
+    console.log('Family Calendar Loader: Enrollments found:', enrollments.length, 'Class IDs:', classIds);
 
     // Fetch upcoming class sessions for enrolled classes
     let upcomingSessions: ClassSession[] = [];
     if (classIds.length > 0) {
+      console.log('Family Calendar Loader: Fetching class sessions...');
       const { data: sessionsData, error: sessionsError } = await supabaseServer
         .from('class_sessions')
         .select(`
@@ -181,37 +228,81 @@ export async function loader({ request }: LoaderFunctionArgs) {
         .order('session_date', { ascending: true })
         .order('start_time', { ascending: true });
 
-      if (sessionsError) throw sessionsError;
+      if (sessionsError) {
+        console.error('Family Calendar Loader: Sessions query error:', sessionsError);
+        throw new Error(`Failed to fetch class sessions: ${sessionsError.message}`);
+      }
       upcomingSessions = sessionsData as ClassSession[] ?? [];
+      console.log('Family Calendar Loader: Sessions found:', upcomingSessions.length);
+    } else {
+      console.log('Family Calendar Loader: No class IDs, skipping sessions fetch');
     }
 
     // Fetch attendance records for the date range
+    console.log('Family Calendar Loader: Fetching attendance records...');
     const { data: attendanceData, error: attendanceError } = await supabaseServer
       .from('attendance')
       .select(`
-        *,
-        students ( first_name, last_name )
+        id,
+        student_id,
+        class_session_id,
+        status,
+        students ( 
+          first_name, 
+          last_name 
+        ),
+        class_sessions (
+          id,
+          session_date,
+          start_time,
+          end_time,
+          class_id,
+          classes (
+            id,
+            name
+          )
+        )
       `)
       .in('student_id', studentIds)
-      .gte('class_date', formatLocalDate(calendarStart))
-      .lte('class_date', formatLocalDate(calendarEnd))
-      .order('class_date', { ascending: true });
+      .not('class_sessions', 'is', null)
+      .gte('class_sessions.session_date', formatLocalDate(calendarStart))
+      .lte('class_sessions.session_date', formatLocalDate(calendarEnd));
 
-    if (attendanceError) throw attendanceError;
+    if (attendanceError) {
+      console.error('Family Calendar Loader: Attendance query error:', attendanceError);
+      throw new Error(`Failed to fetch attendance records: ${attendanceError.message}`);
+    }
     const attendanceRecords = attendanceData as AttendanceRow[] ?? [];
+    console.log('Family Calendar Loader: Attendance records found:', attendanceRecords.length);
 
-    return json({ 
+    const result = {
       students, 
       sessions: upcomingSessions, 
       attendance: attendanceRecords, 
       enrollments, 
       familyName, 
       currentMonth 
-    }, { headers });
+    };
+    
+    console.log('Family Calendar Loader: Success, returning data');
+    return json(result, { headers });
 
   } catch (error) {
+    console.error('Family Calendar Loader: Caught error:', error);
+    
+    if (error instanceof Response) {
+      // Re-throw redirect responses
+      throw error;
+    }
+    
     const message = error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error("Error in /family/calendar loader:", message);
+    console.error('Family Calendar Loader: Error message:', message);
+    
+    // Log the full error for debugging
+    if (error instanceof Error) {
+      console.error('Family Calendar Loader: Error stack:', error.stack);
+    }
+    
     throw new Response(`Failed to load calendar data: ${message}`, { status: 500 });
   }
 }
@@ -226,8 +317,18 @@ export default function FamilyCalendarPage() {
   // Convert raw data to calendar events
   const studentList = students.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` }));
   const sessionEvents = sessionsToCalendarEvents(sessions, enrollments, studentList);
+  
+  // Transform attendance data to match the expected format for the utility function
+  const transformedAttendance = attendance.map(a => ({
+    id: a.id,
+    student_id: a.student_id,
+    session_id: a.class_session_id, // Map class_session_id to session_id
+    class_date: a.class_sessions?.session_date, // Get date from related session
+    status: a.status as 'present' | 'absent' | 'excused' | 'late'
+  }));
+  
   const attendanceEvents = attendanceToCalendarEvents(
-    attendance.map(a => ({...a, status: a.status as 'present' | 'absent' | 'excused' | 'late'})),
+    transformedAttendance,
     sessions, 
     enrollments, 
     studentList
@@ -409,6 +510,55 @@ export default function FamilyCalendarPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  
+  console.error('Family Calendar Error:', error);
+  
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h1 className="text-xl font-bold text-red-800 mb-4">
+          Error Loading Family Calendar
+        </h1>
+        <div className="text-red-700">
+          {error instanceof Error ? (
+            <div>
+              <p className="font-semibold">Error Message:</p>
+              <p className="mb-2">{error.message}</p>
+              <p className="font-semibold">Stack Trace:</p>
+              <pre className="text-sm bg-red-100 p-2 rounded overflow-auto">
+                {error.stack}
+              </pre>
+            </div>
+          ) : error instanceof Response ? (
+            <div>
+              <p className="font-semibold">HTTP Error:</p>
+              <p>Status: {error.status}</p>
+              <p>Status Text: {error.statusText}</p>
+            </div>
+          ) : (
+            <div>
+              <p className="font-semibold">Unknown Error:</p>
+              <pre className="text-sm bg-red-100 p-2 rounded overflow-auto">
+                {JSON.stringify(error, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+        <div className="mt-4">
+          <Link 
+            to="/family" 
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            ← Back to Family Dashboard
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
