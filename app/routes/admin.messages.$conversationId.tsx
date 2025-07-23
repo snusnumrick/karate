@@ -460,7 +460,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                     content.trim(),
                     conversationId,
                     newMessage.id,
-                    `/admin/messages/${conversationId}`
+                    `/family/messages/${conversationId}`
                 );
 
                 const subscriptions = pushSubscriptions.map(sub => ({
@@ -472,7 +472,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                 }));
 
                 const result = await sendPushNotificationToMultiple(subscriptions, payload);
-                console.log(`Push notifications sent to ${result.successCount} family devices`);
+                console.log(`Push notifications sent to ${result.successCount} family devices with payload: ${JSON.stringify(payload)}`);
                 
                 if (result.expiredCount > 0) {
                     console.log(`Cleaned up ${result.expiredCount} expired push subscriptions`);

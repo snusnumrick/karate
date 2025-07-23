@@ -1,7 +1,7 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { requireUserId } from '~/utils/auth.server';
 import { sendPushNotificationToUser } from '~/utils/push-notifications.server';
-import { getSupabaseServerClient } from '~/utils/supabase.server';
+import { getSupabaseServerClient, isUserAdmin } from '~/utils/supabase.server';
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -14,6 +14,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
     console.log('Test push notification requested for user:', userId);
 
+    // Determine the appropriate URL based on user role
+    const userIsAdmin = await isUserAdmin(userId);
+    const testUrl = userIsAdmin ? '/admin/messages' : '/conversations';
+
     // Send a test notification using our push notification service
     const result = await sendPushNotificationToUser(userId, {
       type: 'test',
@@ -22,7 +26,7 @@ export async function action({ request }: ActionFunctionArgs) {
       icon: '/icon.svg',
       badge: '/icon.svg',
       data: {
-        url: '/admin/account',
+        url: testUrl,
         timestamp: Date.now(),
         userId: userId,
         conversationId: 'test-conversation'

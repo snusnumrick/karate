@@ -254,6 +254,11 @@ self.addEventListener('notificationclick', (event) => {
       timestamp: new Date().toISOString(),
     };
 
+    console.log('--- Quick Reply Debug ---');
+    console.log('Payload object being sent:', replyData);
+    console.log('Stringified body:', JSON.stringify(replyData));
+    console.log('-------------------------');
+
     event.waitUntil(
         fetch('/api/push/reply', {
           method: 'POST',

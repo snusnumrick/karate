@@ -198,6 +198,7 @@ export async function sendPushNotificationToUser(
   payload: NotificationPayload,
   supabaseServer: SupabaseClient
 ): Promise<{ success: boolean; error?: string; successCount?: number; expiredCount?: number }> {
+  console.log(`Sending push notification to user ${userId} with payload ${JSON.stringify(payload)}`);
   try {
     // Get push subscriptions for the user
     const { data: pushSubscriptions, error } = await supabaseServer

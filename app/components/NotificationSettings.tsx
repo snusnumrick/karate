@@ -3,7 +3,7 @@ import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Switch } from '~/components/ui/switch';
 import { Label } from '~/components/ui/label';
-import { Alert } from '~/components/ui/alert';
+import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Bell, BellOff, AlertCircle, CheckCircle, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { ClientOnly } from '~/components/client-only';
 
@@ -182,6 +182,24 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
 
     setIsTestingPush(true);
     try {
+      // First, try a basic browser notification to test if notifications work at all
+      if (permission === 'granted') {
+        const basicNotification = new Notification('🧪 Basic Test', {
+          body: 'If you see this, browser notifications work!',
+          icon: '/icon.svg',
+          tag: 'basic-test',
+          requireInteraction: false
+        });
+
+        // Auto-close after 3 seconds
+        setTimeout(() => {
+          basicNotification.close();
+        }, 3000);
+
+        console.log('✅ Basic notification created');
+      }
+
+      // Then send the push notification
       const response = await fetch('/api/push/test', {
         method: 'POST',
         headers: {
@@ -190,12 +208,35 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       });
 
       if (response.ok) {
-        console.log('Test push notification sent');
+        console.log('✅ Test push notification sent successfully');
+        
+        // Show helpful message if on macOS
+        const isMacOS = navigator.userAgent.includes('Mac');
+        if (isMacOS) {
+          console.log('📱 macOS detected: If you don\'t see the push notification, check:');
+          console.log('   • System Settings → Notifications & Focus → [Your Browser] → Allow notifications');
+          console.log('   • Turn off Do Not Disturb or Focus mode');
+          console.log('   • Set notification style to "Alerts" or "Banners" (not "None")');
+        }
+        
+        // Wait a moment then show a follow-up message
+        setTimeout(() => {
+          if (permission === 'granted') {
+            new Notification('📱 Push Test Complete', {
+              body: 'Check if you received the push notification. If not, check your system notification settings.',
+              icon: '/icon.svg',
+              tag: 'test-complete'
+            });
+          }
+        }, 2000);
+        
       } else {
-        console.error('Failed to send test push notification');
+        console.error('❌ Failed to send test push notification');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error details:', errorData);
       }
     } catch (error) {
-      console.error('Error sending test push notification:', error);
+      console.error('❌ Error sending test push notification:', error);
     } finally {
       setIsTestingPush(false);
     }
@@ -362,6 +403,19 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
                 <div className="text-xs text-muted-foreground">{pushStatusInfo.description}</div>
               </div>
             </div>
+            
+            {/* macOS-specific guidance */}
+            {typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') && pushSubscribed && (
+              <Alert className="mb-3">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>macOS Users:</strong> If test notifications don't appear, check:
+                  <br />• System Settings → Notifications & Focus → {navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Your Browser'}
+                  <br />• Turn off Do Not Disturb mode
+                  <br />• Set notification style to "Alerts" or "Banners"
+                </AlertDescription>
+              </Alert>
+            )}
             
             {/* Push notification controls */}
             <div className="flex gap-2 mt-3">
