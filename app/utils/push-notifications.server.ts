@@ -63,12 +63,15 @@ export async function sendPushNotification(
       return { success: false, error: 'VAPID keys not configured' };
     }
 
+    // Determine urgency based on the payload
+    const urgency = payload.requireInteraction ? 'high' : 'normal';
+
     await webpush.sendNotification(
       subscription,
       JSON.stringify(payload),
       {
         TTL: 60 * 60 * 24, // 24 hours
-        urgency: 'normal'
+        urgency: urgency
       }
     );
 
