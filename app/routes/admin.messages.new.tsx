@@ -235,7 +235,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                     message,
                     conversationData.conversation_id,
                     conversationData.message_id,
-                    `/admin/messages/${conversationData.conversation_id}`
+                    `/family/messages/${conversationData.conversation_id}` // Use correct family URL for family recipients
                 );
 
                 console.log(`Notification payload:`, payload);

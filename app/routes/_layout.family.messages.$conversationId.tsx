@@ -286,11 +286,16 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     // Send push notifications to other participants
     try {
         // Get other participants in the conversation (excluding the sender)
-        const {data: otherParticipants} = await supabaseServer
+        const {data: otherParticipants, error: participantsError} = await supabaseServer
             .from('conversation_participants')
             .select('user_id')
             .eq('conversation_id', conversationId)
             .neq('user_id', user.id);
+
+        console.log('Family member sending message. Sender ID:', user.id);
+        console.log('Conversation ID:', conversationId);
+        console.log('Other participants query result:', otherParticipants);
+        console.log('Participants query error:', participantsError);
 
         if (otherParticipants && otherParticipants.length > 0) {
             const senderName = senderProfile 
@@ -307,6 +312,15 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             const recipientIds = otherParticipants.map(p => p.user_id);
             console.log('Looking for push subscriptions for participant IDs:', recipientIds);
             
+            // Debug: Get user profiles for these participant IDs to see who they are
+            const {data: participantProfiles, error: profilesError} = await supabaseServer
+                .from('profiles')
+                .select('id, first_name, last_name, role')
+                .in('id', recipientIds);
+            
+            console.log('Participant profiles:', participantProfiles);
+            console.log('Profiles query error:', profilesError);
+            
             const {data: pushSubscriptions, error: pushSubscriptionsError} = await supabaseServer
                 .from('push_subscriptions')
                 .select('endpoint, p256dh, auth, user_id')
@@ -317,6 +331,23 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             }
 
             console.log(`Found ${pushSubscriptions?.length || 0} push subscriptions for family messaging`);
+            
+            // Debug: Show which users have push subscriptions
+            if (pushSubscriptions && pushSubscriptions.length > 0) {
+                console.log('Push subscriptions by user:');
+                pushSubscriptions.forEach(sub => {
+                    const profile = participantProfiles?.find(p => p.id === sub.user_id);
+                    console.log(`- User ${sub.user_id} (${profile?.first_name} ${profile?.last_name}, role: ${profile?.role}): ${sub.endpoint.substring(0, 50)}...`);
+                });
+            } else {
+                console.log('No push subscriptions found. Checking if participants have any subscriptions at all...');
+                // Check if any of the participants have push subscriptions (debugging)
+                const {data: allUserSubs} = await supabaseServer
+                    .from('push_subscriptions')
+                    .select('user_id, endpoint')
+                    .in('user_id', recipientIds);
+                console.log('All subscriptions for these users:', allUserSubs);
+            }
 
             if (pushSubscriptions && pushSubscriptions.length > 0) {
                 console.log(`Sending push notifications to ${pushSubscriptions.length} family devices`);
@@ -328,7 +359,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                         content.trim(),
                         conversationId,
                         newMessage.id,
-                        undefined, // Use default URL
+                        `/admin/messages/${conversationId}`, // Use correct admin URL
                         subscription.user_id // Pass the specific recipient's user ID for quick reply
                     );
 

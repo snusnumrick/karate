@@ -211,14 +211,20 @@ self.addEventListener('sync', (event) => {
 
 // Handle push notifications
 self.addEventListener('push', (event) => {
+  console.log('🔔 Push event received in service worker');
+  
   let notificationData = { title: 'New Message', body: 'You have a new message.' };
 
   if (event.data) {
     try {
       notificationData = event.data.json();
+      console.log('📨 Push notification data:', JSON.stringify(notificationData, null, 2));
     } catch (e) {
+      console.warn('⚠️ Failed to parse push data as JSON, using text:', e);
       notificationData.body = event.data.text();
     }
+  } else {
+    console.warn('⚠️ Push event received with no data');
   }
 
   const options = {
@@ -232,7 +238,17 @@ self.addEventListener('push', (event) => {
     actions: ('actions' in Notification.prototype) ? notificationData.actions || [] : [],
   };
 
-  event.waitUntil(self.registration.showNotification(notificationData.title, options));
+  console.log('🎯 About to show notification with options:', JSON.stringify(options, null, 2));
+
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title, options)
+      .then(() => {
+        console.log('✅ Notification displayed successfully');
+      })
+      .catch((error) => {
+        console.error('❌ Failed to display notification:', error);
+      })
+  );
 });
 
 // Handle notification click events
