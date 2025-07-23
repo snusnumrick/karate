@@ -1,77 +1,68 @@
 import { ActionFunctionArgs, json } from '@remix-run/node';
-import { createClient } from '~/utils/supabase.server';
-import type { Database } from '~/types/database.types';
+import { getSupabaseServerClient } from '~/utils/supabase.server';
 
-export const action = async ({ request }: ActionFunctionArgs) => {
+export async function action({ request }: ActionFunctionArgs) {
+  if (request.method !== 'POST') {
+    return json({ error: 'Method not allowed' }, { status: 405 });
+  }
+
   try {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const { supabaseServer } = getSupabaseServerClient(request);
+    const { data: { user } } = await supabaseServer.auth.getUser();
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing Supabase configuration');
-      return json({ error: 'Server configuration error' }, { status: 500 });
+    if (!user) {
+      return json({ error: 'User not authenticated' }, { status: 401 });
     }
 
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
-    
-    let requestData;
-    try {
-      requestData = await request.json();
-    } catch (parseError) {
-      console.error('Failed to parse request JSON:', parseError);
-      return json({ error: 'Invalid JSON in request body' }, { status: 400 });
-    }
+    const { conversationId, message, userId } = await request.json();
 
-    const { conversationId, message, userId } = requestData;
-    console.log('api/push/reply received:', { conversationId, message: message?.substring(0, 50) + '...', userId });
+    console.log('Quick reply received:', { conversationId, message, userId });
 
     // Validate required fields
     if (!conversationId || !message || !userId) {
-      console.error('Missing required fields:', { conversationId: !!conversationId, message: !!message, userId: !!userId });
-      return json({ error: 'Missing required fields: conversationId, message, and userId are required' }, { status: 400 });
+      return json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Validate message length
-    if (typeof message !== 'string' || message.trim().length === 0) {
-      console.error('Invalid message:', typeof message, message?.length);
-      return json({ error: 'Message must be a non-empty string' }, { status: 400 });
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(conversationId) || !uuidRegex.test(userId)) {
+      return json({ error: 'Invalid UUID format' }, { status: 400 });
     }
 
-    if (message.length > 1000) {
-      console.error('Message too long:', message.length);
-      return json({ error: 'Message too long (max 1000 characters)' }, { status: 400 });
+    // Verify the user is a participant in the conversation
+    const { data: participant, error: participantError } = await supabaseServer
+      .from('conversation_participants')
+      .select('id')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+      .single();
+
+    if (participantError || !participant) {
+      console.error('User not authorized for conversation:', participantError);
+      return json({ error: 'Not authorized for this conversation' }, { status: 403 });
     }
 
-    // Insert the message into the database
-    const { data, error } = await supabaseAdmin.from('messages').insert([
-      {
+    // Insert the reply message
+    const { data: newMessage, error: insertError } = await supabaseServer
+      .from('messages')
+      .insert({
         conversation_id: conversationId,
         sender_id: userId,
-        content: message.trim(),
-        created_at: new Date().toISOString(),
-      },
-    ]).select('id, created_at');
+        content: message.trim()
+      })
+      .select()
+      .single();
 
-    if (error) {
-      console.error('Database error inserting message:', error);
-      return json({ 
-        error: 'Failed to save reply', 
-        details: error.message 
-      }, { status: 500 });
+    if (insertError) {
+      console.error('Error inserting quick reply:', insertError);
+      return json({ error: 'Failed to send reply' }, { status: 500 });
     }
 
-    console.log('Quick reply saved successfully:', data?.[0]?.id);
-    return json({ 
-      success: true, 
-      messageId: data?.[0]?.id,
-      timestamp: data?.[0]?.created_at 
-    });
+    console.log('Quick reply sent successfully:', newMessage);
+    return json({ success: true, messageId: newMessage.id });
 
   } catch (error) {
-    console.error('Unexpected error in push reply API:', error);
-    return json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 });
+    console.error('Error processing quick reply:', error);
+    return json({ error: 'Internal server error' }, { status: 500 });
   }
-};
+}

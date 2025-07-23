@@ -297,55 +297,61 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                 ? `${senderProfile.first_name} ${senderProfile.last_name}`.trim()
                 : 'Someone';
 
-            // TODO: Get push subscriptions for other participants and send notifications
-            // This would require implementing the push subscription database storage
-            console.log('Would send push notifications to participants:', {
-                recipients: otherParticipants.map(p => p.user_id),
-                senderName,
-                messageContent: content.trim(),
-                conversationId,
-                messageId: newMessage.id
-            });
-
-            /*
-            Example implementation once push subscriptions are stored:
-            
-            import { 
+            // Import push notification utilities
+            const { 
                 sendPushNotificationToMultiple, 
                 createMessageNotificationPayload 
-            } from '~/utils/push-notifications.server';
+            } = await import('~/utils/push-notifications.server');
 
             // Get push subscriptions for all other participants
             const recipientIds = otherParticipants.map(p => p.user_id);
-            const {data: pushSubscriptions} = await supabaseServer
+            console.log('Looking for push subscriptions for participant IDs:', recipientIds);
+            
+            const {data: pushSubscriptions, error: pushSubscriptionsError} = await supabaseServer
                 .from('push_subscriptions')
-                .select('endpoint, p256dh, auth')
+                .select('endpoint, p256dh, auth, user_id')
                 .in('user_id', recipientIds);
 
-            if (pushSubscriptions && pushSubscriptions.length > 0) {
-                const payload = createMessageNotificationPayload(
-                    senderName,
-                    content.trim(),
-                    conversationId,
-                    newMessage.id
-                );
-
-                const subscriptions = pushSubscriptions.map(sub => ({
-                    endpoint: sub.endpoint,
-                    keys: {
-                        p256dh: sub.p256dh,
-                        auth: sub.auth
-                    }
-                }));
-
-                const result = await sendPushNotificationToMultiple(subscriptions, payload);
-                console.log(`Push notifications sent to ${result.successCount} devices`);
-                
-                if (result.expiredCount > 0) {
-                    console.log(`Cleaned up ${result.expiredCount} expired push subscriptions`);
-                }
+            if (pushSubscriptionsError) {
+                console.error('Error fetching push subscriptions:', pushSubscriptionsError);
             }
-            */
+
+            console.log(`Found ${pushSubscriptions?.length || 0} push subscriptions for family messaging`);
+
+            if (pushSubscriptions && pushSubscriptions.length > 0) {
+                console.log(`Sending push notifications to ${pushSubscriptions.length} family devices`);
+                
+                // Send notifications to each subscription with the correct recipient user ID
+                for (const subscription of pushSubscriptions) {
+                    const payload = createMessageNotificationPayload(
+                        senderName,
+                        content.trim(),
+                        conversationId,
+                        newMessage.id,
+                        undefined, // Use default URL
+                        subscription.user_id // Pass the specific recipient's user ID for quick reply
+                    );
+
+                    console.log(`Creating push notification payload for user ${subscription.user_id}:`, payload);
+
+                    const subscriptionData = {
+                        endpoint: subscription.endpoint,
+                        keys: {
+                            p256dh: subscription.p256dh,
+                            auth: subscription.auth
+                        }
+                    };
+
+                    const result = await sendPushNotificationToMultiple([subscriptionData], payload);
+                    console.log(`Push notification sent to user ${subscription.user_id}: ${result.successCount} success, ${result.failureCount} failures`);
+                    
+                    if (result.expiredCount > 0) {
+                        console.log(`Cleaned up ${result.expiredCount} expired push subscriptions for user ${subscription.user_id}`);
+                    }
+                }
+            } else {
+                console.log('No push subscriptions found for conversation participants');
+            }
         }
     } catch (error) {
         console.error('Error sending push notifications:', error);
