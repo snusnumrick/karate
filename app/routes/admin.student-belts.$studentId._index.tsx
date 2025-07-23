@@ -1,6 +1,6 @@
 import {useState} from "react"; // Import useState
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
-import {Link, useLoaderData, useNavigate, useNavigation, useParams, useSubmit} from "@remix-run/react"; // Import useNavigate
+import {useLoaderData, useNavigate, useNavigation, useSubmit} from "@remix-run/react"; // Import useNavigate
 import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
@@ -133,7 +133,6 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 export default function AdminStudentAchievementsPage() { // Function name can stay for now, or rename later
     const {student, beltAwards, error} = useLoaderData<LoaderData>(); // Renamed variable
     const navigation = useNavigation();
-    const params = useParams(); // Get studentId from URL params
     const submit = useSubmit();
     const navigate = useNavigate(); // Get navigate function
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null); // State for delete target

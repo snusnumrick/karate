@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- **Invoice System Design:**
+  - Comprehensive design document for invoice generation and payment recording functionality
+  - Support for institutional clients (schools, government agencies, corporate programs)
+  - Professional PDF invoice generation with customizable templates
+  - Invoice entity management for third-party payers
+  - Payment recording against invoices with multiple payment methods
+  - Integration with existing payment system while maintaining family-focused workflows
+  - Email automation for invoice delivery and payment reminders
+  - Family portal integration for invoice viewing and payment history
+  - Comprehensive reporting and analytics for invoice management
+  - 12-week implementation plan with detailed phase breakdown
+
 ## [2.4.0] - 2025-07-21
 
 ### Added
@@ -101,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Advanced Notification Customization:** Enhanced notification settings including frequency control, quiet hours, and custom sound options
 - **Enhanced Payment Automation:** Automatic payment reminders, failed payment retry logic, and subscription lifecycle management
 - **Announcement System:** Complete announcement management with admin creation interface, family viewing portal, and targeted delivery options
+
 
 ## [2.3.0] - 2025-01-10
 

@@ -5,7 +5,6 @@ import {Sheet, SheetContent, SheetTitle, SheetTrigger} from "./ui/sheet";
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/tooltip"; // Import Tooltip components
 // Note: MessageSquare was already added in the provided file content, no change needed here.
 import {
-    Boxes,
     Calendar,
     CalendarCheck,
     ChevronDown,
@@ -13,6 +12,7 @@ import {
     CreditCard,
     Database,
     FileText,
+    ClipboardPaste,
     GraduationCap,
     LayoutDashboard,
     ListOrdered,
@@ -20,6 +20,8 @@ import {
     Menu,
     MessageSquare,
     Package,
+    Boxes,
+    Receipt,
     Settings,
     ShoppingBag,
     Sun,
@@ -37,13 +39,21 @@ import {Button} from "~/components/ui/button"; // Import cn utility
 // Define navigation items for reuse
 const adminNavItems = [
     {to: "/admin", label: "Dashboard", icon: LayoutDashboard},
-    {to: "/admin/payments", label: "Payments", icon: CreditCard},
     {to: "/admin/waivers", label: "Waivers", icon: FileText},
     {to: "/admin/messages", label: "Messages", icon: MessageSquare},
     {to: "/admin/db-chat", label: "DB Chat", icon: Database},
     // Calendar, Attendance, Families, Students, Enrollments, Programs, Classes, Sessions will be handled by dropdowns
     // Discount items will be handled by the Dropdown below
     // Store items will be handled by the Dropdown below
+    // Billing items (Payments, Invoices, Invoice Entities) will be handled by the Billing dropdown
+];
+
+// Define Billing navigation items (Payments, Invoices, Invoice Entities, Invoice Templates)
+const billingNavItems = [
+    {to: "/admin/payments", label: "Payments", icon: CreditCard},
+    {to: "/admin/invoices", label: "Invoices", icon: FileText},
+    {to: "/admin/invoice-entities", label: "Invoice Entities", icon: Receipt},
+    {to: "/admin/invoice-templates", label: "Invoice Templates", icon: ClipboardPaste},
 ];
 
 // Define Calendar & Attendance navigation items
@@ -84,6 +94,7 @@ const storeNavItems = [
 export default function AdminNavbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [isStoreMobileOpen, setIsStoreMobileOpen] = useState(false);
+    const [isBillingMobileOpen, setIsBillingMobileOpen] = useState(false);
     const [isDiscountMobileOpen, setIsDiscountMobileOpen] = useState(false);
     const [isProgramsClassesMobileOpen, setIsProgramsClassesMobileOpen] = useState(false);
     const [isCalendarAttendanceMobileOpen, setIsCalendarAttendanceMobileOpen] = useState(false);
@@ -131,6 +142,8 @@ export default function AdminNavbar() {
                             <AdminDiscountDropdown/>
                             {/* Store Dropdown */}
                             <AdminStoreDropdown/>
+                            {/* Billing Dropdown */}
+                            <AdminBillingDropdown/>
                         </nav>
 
                         <div className="flex items-center space-x-4">
@@ -353,6 +366,41 @@ export default function AdminNavbar() {
                                                         {isStoreMobileOpen && (
                                                             <div className="pl-6 space-y-1 mb-2">
                                                                 {storeNavItems.map((item) => (
+                                                                    <AdminMobileNavLink key={item.to} to={item.to}
+                                                                                        onClick={() => setIsOpen(false)}>
+                                                                        <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                                        {item.label}
+                                                                    </AdminMobileNavLink>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </React.Fragment>
+                                                    
+                                                    {/* Billing Mobile Links */}
+                                                    <React.Fragment>
+                                                        <div className="border-t border-gray-200 dark:border-gray-700 my-2 mx-4"></div>
+                                                        <div className="px-4 py-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    setIsBillingMobileOpen(!isBillingMobileOpen);
+                                                                }}
+                                                                className="flex items-center w-full text-base text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
+                                                            >
+                                                                <CreditCard className="h-5 w-5 mr-2"/>
+                                                                <span className="font-medium">Billing & Finance</span>
+                                                                <span className="ml-auto">
+                                                                    {isBillingMobileOpen ? (
+                                                                        <ChevronDown className="h-4 w-4"/>
+                                                                    ) : (
+                                                                        <ChevronRight className="h-4 w-4"/>
+                                                                    )}
+                                                                </span>
+                                                            </button>
+                                                        </div>
+                                                        {isBillingMobileOpen && (
+                                                            <div className="pl-6 space-y-1 mb-2">
+                                                                {billingNavItems.map((item) => (
                                                                     <AdminMobileNavLink key={item.to} to={item.to}
                                                                                         onClick={() => setIsOpen(false)}>
                                                                         <item.icon className="h-5 w-5 mr-2 inline-block"/>
@@ -821,6 +869,86 @@ function AdminStoreDropdown() {
             {showTooltip && !isOpen && canShowTooltip && (
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
                     Store
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Billing Dropdown Component for Desktop (Icon Trigger + Tooltip)
+function AdminBillingDropdown() {
+    const location = useLocation();
+    const isBillingActive = location.pathname.startsWith('/admin/payment') || 
+                           location.pathname.startsWith('/admin/invoice') || 
+                           location.pathname.startsWith('/admin/billing');
+    const [isOpen, setIsOpen] = useState(false);
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [canShowTooltip, setCanShowTooltip] = useState(true);
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (open) {
+            setShowTooltip(false);
+            setCanShowTooltip(false);
+        } else {
+            // Delay allowing tooltip to show again after dropdown closes
+            setTimeout(() => setCanShowTooltip(true), 300);
+        }
+    };
+
+    return (
+        <div className="relative">
+            <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:ring-0 focus-visible:ring-offset-0",
+                            isBillingActive && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30"
+                        )}
+                        aria-label="Billing & Finance Management"
+                        onMouseEnter={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onMouseLeave={() => {
+                            setShowTooltip(false);
+                        }}
+                        onFocus={() => {
+                            if (!isOpen && canShowTooltip) {
+                                setShowTooltip(true);
+                            }
+                        }}
+                        onBlur={() => {
+                            setShowTooltip(false);
+                        }}
+                        onClick={() => {
+                            setShowTooltip(false);
+                        }}
+                    >
+                        <CreditCard className="h-5 w-5"/>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
+                    {billingNavItems.map((item) => (
+                        <DropdownMenuItem key={item.to} className="p-0">
+                            <Link
+                                to={item.to}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                            >
+                                <item.icon className="h-4 w-4 mr-2"/>
+                                {item.label}
+                            </Link>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {showTooltip && !isOpen && canShowTooltip && (
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 text-xs text-primary-foreground bg-primary rounded-md whitespace-nowrap z-50 animate-in fade-in-0 zoom-in-95">
+                    Billing & Finance
                 </div>
             )}
         </div>

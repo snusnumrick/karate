@@ -140,11 +140,11 @@ export default function PushDiagnostics() {
                 </tr>
               </thead>
               <tbody>
-                {subscriptions.slice(0, 10).map((sub: any) => (
+                {subscriptions.slice(0, 10).map((sub) => (
                   <tr key={sub.id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-2 text-sm text-gray-900">{sub.user_id.substring(0, 8)}...</td>
                     <td className="px-4 py-2 text-sm text-gray-700">{sub.endpoint.substring(0, 50)}...</td>
-                    <td className="px-4 py-2 text-sm text-gray-600">{new Date(sub.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-2 text-sm text-gray-600">{sub.created_at ? new Date(sub.created_at).toLocaleDateString() : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -230,7 +230,7 @@ export default function PushDiagnostics() {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
         <h2 className="text-xl font-semibold mb-4">How to Fix VAPID Credential Mismatch</h2>
         <ol className="list-decimal list-inside space-y-2 text-sm">
-          <li>If you're seeing VAPID credential mismatch errors, generate new VAPID keys using the button above.</li>
+          <li>If you&apos;re seeing VAPID credential mismatch errors, generate new VAPID keys using the button above.</li>
           <li>Update your <code className="bg-gray-200 px-1 rounded">.env</code> file with the new keys.</li>
           <li>Restart your application to load the new environment variables.</li>
           <li>Clear all existing push subscriptions using the button above.</li>

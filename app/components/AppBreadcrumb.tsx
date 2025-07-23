@@ -513,6 +513,83 @@ export const breadcrumbPatterns = {
     { label: "New Waiver", current: true },
   ],
 
+  // Invoice breadcrumb patterns
+  adminInvoices: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoices", current: true },
+  ],
+
+  adminInvoiceNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoices", href: "/admin/invoices" },
+    { label: "New Invoice", current: true },
+  ],
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  adminInvoiceDetail: (invoiceNumber: string, _invoiceId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoices", href: "/admin/invoices" },
+    { label: `Invoice #${invoiceNumber}`, current: true },
+  ],
+
+  adminInvoiceEdit: (invoiceNumber: string, invoiceId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoices", href: "/admin/invoices" },
+    { label: `Invoice #${invoiceNumber}`, href: `/admin/invoices/${invoiceId}` },
+    { label: "Edit", current: true },
+  ],
+
+  adminInvoiceRecordPayment: (invoiceNumber: string, invoiceId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoices", href: "/admin/invoices" },
+    { label: `Invoice #${invoiceNumber}`, href: `/admin/invoices/${invoiceId}` },
+    { label: "Record Payment", current: true },
+  ],
+
+  // Invoice entity breadcrumb patterns
+  adminInvoiceEntities: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoice Entities", current: true },
+  ],
+
+  adminInvoiceEntityNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoice Entities", href: "/admin/invoice-entities" },
+    { label: "New Entity", current: true },
+  ],
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  adminInvoiceEntityDetail: (entityName: string, _entityId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoice Entities", href: "/admin/invoice-entities" },
+    { label: entityName, current: true },
+  ],
+
+  adminInvoiceEntityEdit: (entityName: string, entityId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoice Entities", href: "/admin/invoice-entities" },
+    { label: entityName, href: `/admin/invoice-entities/${entityId}` },
+    { label: "Edit", current: true },
+  ],
+
+  // Invoice template breadcrumb patterns
+  adminInvoiceTemplates: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoice Templates", current: true },
+  ],
+
+  adminInvoiceTemplatesNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoice Templates", href: "/admin/invoice-templates" },
+    { label: "New Template", current: true },
+  ],
+
+  adminInvoiceTemplatesEdit: (templateId: string, templateName: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Invoice Templates", href: "/admin/invoice-templates" },
+    { label: `Edit ${templateName}`, current: true },
+  ],
+
   // Family portal breadcrumb patterns for pages with back links
   familyMessageNew: () => [
     { label: "Family Portal", href: "/family" },

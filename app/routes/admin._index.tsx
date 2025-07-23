@@ -4,6 +4,8 @@ import { Link, useLoaderData } from "@remix-run/react"; // Remove useRouteError
 import { createClient } from '@supabase/supabase-js'; // Import createClient
 import { PaymentStatus } from "~/types/models"; // Import the enum
 import { getTodayLocalDateString } from "~/components/calendar/utils";
+import { getInvoiceStats } from "~/services/invoice.server";
+import { getInvoiceEntities } from "~/services/invoice-entity.server";
 
 
 // Loader now only fetches data, assumes auth handled by parent layout (_admin.tsx)
@@ -100,7 +102,9 @@ export async function loader(_: LoaderFunctionArgs) {
             // This is a bit complex, might need a dedicated function/view later
             // Simplified approach: Count users missing *at least one* required waiver
             {error: usersSignaturesError}, // Fetch users who signed *any* required waiver
-            {data: discountUsageData, error: discountUsageError} // Fetch discount usage stats
+            {data: discountUsageData, error: discountUsageError}, // Fetch discount usage stats
+            invoiceStats,
+            invoiceEntitiesResult
         ] = await Promise.all([
             supabaseAdmin.from('families').select('id', {count: 'exact', head: true}), // Use admin client
             supabaseAdmin.from('students').select('id', {count: 'exact', head: true}), // Use admin client
@@ -119,8 +123,14 @@ export async function loader(_: LoaderFunctionArgs) {
             // Fetch discount usage stats for this month
             supabaseAdmin.from('discount_code_usage')
                 .select('discount_amount')
-                .gte('used_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+                .gte('used_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
+            // Fetch invoice statistics
+            getInvoiceStats(supabaseAdmin),
+            getInvoiceEntities({}, 1, 1000, supabaseAdmin)
         ]);
+
+        // Extract invoice entities from the result
+        const invoiceEntities = invoiceEntitiesResult?.entities || [];
 
         // --- Error Handling ---
         // Combine error checks for brevity
@@ -316,6 +326,15 @@ export async function loader(_: LoaderFunctionArgs) {
             inProgressSessions,
             upcomingSessions,
             todaysSessions: todaysSessions || [],
+            // Invoice statistics
+            invoiceStats: invoiceStats || {
+                total_invoices: 0,
+                total_amount: 0,
+                paid_amount: 0,
+                outstanding_amount: 0,
+                overdue_count: 0,
+            },
+            totalInvoiceEntities: invoiceEntities.length || 0,
         }); // Remove headers object
 
     } catch (error) {
@@ -435,6 +454,45 @@ export default function AdminDashboard() {
                     </Link>
                 </div>
 
+                {/* Invoice Entities Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-purple-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Invoice Entities</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.totalInvoiceEntities}</p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Billing entities configured
+                    </div>
+                    <Link to="/admin/invoice-entities"
+                          className="text-purple-600 dark:text-purple-400 text-sm hover:underline mt-2 inline-block">
+                        Manage entities →
+                    </Link>
+                </div>
+
+                {/* Total Invoices Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-blue-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Invoices</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.invoiceStats.total_invoices}</p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        ${(data.invoiceStats.total_amount / 100).toFixed(2)} total value
+                    </div>
+                    <Link to="/admin/invoices"
+                          className="text-blue-600 dark:text-blue-400 text-sm hover:underline mt-2 inline-block">
+                        View all invoices →
+                    </Link>
+                </div>
+
+                {/* Outstanding Invoices Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-orange-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Outstanding Amount</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">${(data.invoiceStats.outstanding_amount / 100).toFixed(2)}</p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {data.invoiceStats.overdue_count} overdue invoices
+                    </div>
+                    <Link to="/admin/invoices?status=sent,overdue"
+                          className="text-orange-600 dark:text-orange-400 text-sm hover:underline mt-2 inline-block">
+                        View outstanding →
+                    </Link>
+                </div>
+
 
             </div>
 
@@ -479,6 +537,18 @@ export default function AdminDashboard() {
                             className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                         >
                             Create Discount Code
+                        </Link>
+                        <Link
+                            to="/admin/invoice-entities/new"
+                            className="block p-3 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
+                        >
+                            Create Invoice Entity
+                        </Link>
+                        <Link
+                            to="/admin/invoices/new"
+                            className="block p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                        >
+                            Create Invoice
                         </Link>
                     </div>
                 </div>
@@ -528,6 +598,17 @@ export default function AdminDashboard() {
                             <Link to="/admin/payments/pending"
                                   className="text-green-600 dark:text-green-400 text-sm hover:underline">
                                 View details →
+                            </Link>
+                        </div>
+
+                        <div>
+                            <h3 className="font-medium text-gray-700 dark:text-gray-300">Invoice Status</h3>
+                            <p className="text-gray-600 dark:text-gray-400">
+                                ${(data.invoiceStats.paid_amount / 100).toFixed(2)} collected, ${(data.invoiceStats.outstanding_amount / 100).toFixed(2)} outstanding
+                            </p>
+                            <Link to="/admin/invoices"
+                                  className="text-green-600 dark:text-green-400 text-sm hover:underline">
+                                Manage invoices →
                             </Link>
                         </div>
 

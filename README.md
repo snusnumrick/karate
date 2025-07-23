@@ -182,6 +182,61 @@ for communication between families and administrators.
 - **Smart Duplicate Prevention:** Prevents multiple assignments of the same discount to ensure fair usage.
 - **Flexible Conditions:** Support for age ranges, belt rank requirements, attendance thresholds, and payment history criteria.
 
+### Invoice System
+- **Comprehensive Invoice Management:** Full-featured invoicing system for managing billing across all school operations including enrollments, fees, products, and custom services.
+- **Invoice Entities:** Support for multiple billing entities (e.g., main school, satellite locations) with customizable business information, logos, and contact details.
+- **Dynamic Invoice Templates:** Database-driven template system for creating reusable invoice structures:
+    - **System Templates:** 10 pre-configured templates for common scenarios (monthly enrollment, registration packages, belt testing, tournaments, equipment, private lessons, family discounts, makeup classes, summer camps, annual memberships)
+    - **Custom Templates:** User-created templates for organization-specific billing needs
+    - **Template Categories:** Organized by enrollment, fees, products, and custom scenarios
+    - **Line Item Management:** Predefined line items with descriptions, quantities, pricing, tax rates, and discounts
+- **Flexible Invoice Creation:** Create invoices from templates or build custom invoices with:
+    - Multiple line items with individual pricing and tax settings
+    - Automatic tax calculations based on configurable tax rates
+    - Discount code integration with real-time validation
+    - Custom terms, notes, and footer text
+    - Due date management and payment terms
+- **Invoice Status Tracking:** Complete lifecycle management with statuses:
+    - Draft, Sent, Viewed, Paid, Overdue, Cancelled
+    - Automatic status updates based on payment activity
+    - Status history tracking with timestamps
+- **Payment Integration:** Seamless integration with the existing payment system:
+    - Direct payment links for online payments via Stripe
+    - Manual payment recording for cash/check transactions
+    - Payment history tracking with detailed records
+    - Automatic invoice status updates upon payment
+- **Professional Invoice Generation:** 
+    - PDF generation with customizable layouts and branding
+    - Print-friendly formatting with proper page breaks
+    - Tax breakdown display with applicable rates
+    - Discount details and calculations
+    - Payment instructions and terms
+- **Administrative Interface:** Comprehensive admin tools for invoice management:
+    - Invoice list with filtering by status, date, entity, and amount
+    - Bulk operations for common tasks
+    - Invoice preview and editing capabilities
+    - Payment recording and status management
+    - Template management with CRUD operations
+- **Family Portal Integration:** Family-facing invoice features:
+    - View outstanding and paid invoices
+    - Online payment processing with secure Stripe integration
+    - Invoice history and receipt access
+    - Automatic email notifications for new invoices
+- **Reporting and Analytics:** Invoice system reporting capabilities:
+    - Revenue tracking by period, entity, and category
+    - Outstanding balance monitoring
+    - Payment collection analytics
+    - Tax reporting with detailed breakdowns
+- **Database Architecture:** Robust database design with:
+    - `invoice_entities`: Business entity information and branding
+    - `invoices`: Core invoice data with status and payment tracking
+    - `invoice_line_items`: Detailed line item information with pricing
+    - `invoice_payments`: Payment history and transaction records
+    - `invoice_status_history`: Complete audit trail of status changes
+    - `invoice_templates`: Reusable template definitions
+    - `invoice_template_line_items`: Template line item configurations
+- **Migration Support:** Seamless transition from static template data to database storage with full backward compatibility.
+
 ### Technical & SEO
 - Built with Remix for SSR and performance.
 - Uses Supabase for backend (database, auth, edge functions).
@@ -428,22 +483,34 @@ for communication between families and administrators.
     - `app/components/ConversationList.tsx`, `app/components/AdminConversationList.tsx`, `app/components/MessageView.tsx`, `app/components/MessageInput.tsx`: Core UI components for messaging.
     - `app/routes/admin.discount-codes...`: Admin-facing discount code management routes.
     - `app/routes/admin.automatic-discounts...`: Admin-facing automatic discount management routes.
+    - `app/routes/admin.invoice-entities...`: Admin-facing invoice entity management routes.
+    - `app/routes/admin.invoice-templates...`: Admin-facing invoice template management routes.
+    - `app/routes/admin.invoices...`: Admin-facing invoice management routes.
     - `app/routes/api.discount-codes.validate.tsx`, `app/routes/api.available-discounts.$familyId.tsx`: API endpoints for discount code validation and retrieval.
+    - `app/routes/api.invoices.$id.pdf.ts`: API endpoint for generating invoice PDFs.
     - `app/services/discount.server.ts`: Server-side discount code logic (validation, application, usage tracking).
     - `app/services/auto-discount.server.ts`: Server-side automatic discount logic (event processing, rule evaluation, assignment).
+    - `app/services/invoice-template.server.ts`: Server-side invoice template logic (CRUD operations, template management).
     - `app/utils/auto-discount-events.server.ts`: Event integration utilities for automatic discount triggers.
     - `app/components/DiscountCodeSelector.tsx`: User-facing component for discount code input and validation.
+    - `app/components/InvoiceEntitySelector.tsx`: Component for selecting invoice entities.
+    - `app/components/InvoiceForm.tsx`: Main invoice creation and editing form.
+    - `app/components/InvoiceLineItemBuilder.tsx`: Component for managing invoice line items.
+    - `app/components/InvoicePaymentHistory.tsx`: Component for displaying payment history.
+    - `app/components/InvoicePreview.tsx`: Component for previewing invoices before generation.
+    - `app/components/InvoiceTemplates.tsx`: Component for template selection and management.
     - `app/types/discount.ts`, `app/types/multi-class.ts`, `app/types/supabase-extensions.d.ts`: TypeScript definitions for discount system, multi-class system, and extended Supabase types.
     - **Note:** While dedicated API routes exist for specific tasks, much of the core backend logic (data fetching, mutations) is handled within the `loader` and `action` functions of the standard Remix routes (`app/routes/`), serving as endpoints for the web UI itself rather than standalone APIs.
     - `supabase/functions/`: Serverless edge functions (e.g., for scheduled tasks).
         - `supabase/functions/_shared/`: Code shared between edge functions (like database types, email client).
     - **PWA Assets:** `public/manifest.json` (web app manifest), `public/sw.js` (service worker), `public/offline.html` (offline fallback page), `public/browserconfig.xml` (Windows tile configuration), and various app icons in `public/` directory.
 - **UI:** Built with [Shadcn](https://ui.shadcn.com/) on top of Tailwind CSS. Use `npx shadcn@latest add <component>` to add new components consistently.
-- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`, `discount_events`, `discount_automation_rules`, `discount_assignments`, `programs`, `classes`, `class_sessions`, `enrollments`, `enrollment_history`, `push_subscriptions`, `user_notification_preferences`).
+- **Database:** Supabase PostgreSQL. Schema definitions can be inferred from `app/types/database.types.ts` or Supabase Studio. See `app/db/supabase-setup.sql` for idempotent setup script (includes tables like `products`, `product_variants`, `orders`, `order_items`, `discount_codes`, `discount_code_usage`, `discount_events`, `discount_automation_rules`, `discount_assignments`, `programs`, `classes`, `class_sessions`, `enrollments`, `enrollment_history`, `push_subscriptions`, `user_notification_preferences`, `invoice_entities`, `invoices`, `invoice_line_items`, `invoice_payments`, `invoice_status_history`, `invoice_templates`, `invoice_template_line_items`).
     - **Hybrid JSONB + Explicit Columns Architecture:** The system uses a performance-optimized hybrid approach combining explicit columns for commonly used fields with JSONB for additional/custom data. Migration `002_add_explicit_columns.sql` added explicit pricing columns (`monthly_fee`, `registration_fee`, `payment_frequency`, `family_discount`) and eligibility columns (`min_age`, `max_age`, `gender_restriction`, `special_needs_support`) to `programs` table, plus schedule columns (`days_of_week[]`, `start_time`, `end_time`, `timezone`) to `classes` table. This provides better performance through targeted indexing while maintaining flexibility.
     - **Multi-Class System:** Comprehensive program and class management with tables for `programs` (training program definitions with curricula and requirements), `classes` (specific class instances with scheduling and capacity), `class_sessions` (individual session occurrences), `enrollments` (student program registrations with status tracking), and `enrollment_history` (audit trail of enrollment changes). Includes automated session generation, capacity management, waitlist handling, and family discount calculations.
     - **Discount System:** Comprehensive discount code system with tables for `discount_codes` (code definitions, rules, validity) and `discount_code_usage` (usage tracking, audit trail). Supports fixed amount and percentage discounts with flexible applicability rules (training, store, both) and scope (per-student, per-family). Includes usage restrictions (one-time, ongoing) and automatic discount generation capabilities.
     - **Automatic Discount System:** Event-driven automatic discount assignment with tables for `discount_events` (student/family events), `discount_automation_rules` (rule definitions linking events to discount templates), and `discount_assignments` (tracking of automatically assigned discounts). Supports complex rule conditions, duplicate prevention, and comprehensive audit trails.
+    - **Invoice System:** Comprehensive invoicing system with tables for `invoice_entities` (business entity information and branding), `invoices` (core invoice data with status tracking), `invoice_line_items` (detailed line item information), `invoice_payments` (payment history and transaction records), `invoice_status_history` (complete audit trail of status changes), `invoice_templates` (reusable template definitions), and `invoice_template_line_items` (template line item configurations). Supports multiple billing entities, dynamic templates, flexible invoice creation, status tracking, payment integration, and professional PDF generation.
     - **Push Notification System:** Comprehensive push notification system with tables for `push_subscriptions` (device subscription management) and `user_notification_preferences` (user-specific notification settings including frequency, quiet hours, and sound preferences). Supports browser-based push notifications with customizable delivery options.
 - **Types:** Database types are generated using the Supabase CLI (see Setup). Ensure `supabase/functions/_shared/database.types.ts` and `app/types/database.types.ts` are kept in sync.
 - **Environment Variables:** Managed via `.env` locally and platform environment variables in production (see Deployment). Use `.env.example` as a template.

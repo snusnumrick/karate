@@ -4419,3 +4419,716 @@ BEGIN
 END
 $$;
 
+-- --- Invoice System ---
+
+-- Create invoice_status enum
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_status') THEN
+            CREATE TYPE invoice_status AS ENUM ('draft', 'sent', 'viewed', 'paid', 'partially_paid', 'overdue', 'cancelled');
+        END IF;
+    END
+$$;
+
+-- Create invoice_payment_method enum  
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_payment_method') THEN
+            CREATE TYPE invoice_payment_method AS ENUM ('cash', 'check', 'bank_transfer', 'credit_card', 'ach', 'other');
+        END IF;
+    END
+$$;
+
+-- Create invoice_item_type enum
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_item_type') THEN
+            CREATE TYPE invoice_item_type AS ENUM ('class_enrollment', 'individual_session', 'product', 'fee', 'discount', 'other');
+        END IF;
+    END
+$$;
+
+-- Create invoice_entities table
+CREATE TABLE IF NOT EXISTS invoice_entities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR NOT NULL,
+    entity_type VARCHAR NOT NULL CHECK (entity_type IN ('family', 'school', 'government', 'corporate', 'other')),
+    contact_person VARCHAR,
+    email VARCHAR,
+    phone VARCHAR,
+    address_line1 VARCHAR,
+    address_line2 VARCHAR,
+    city VARCHAR,
+    state VARCHAR,
+    postal_code VARCHAR,
+    country VARCHAR DEFAULT 'US',
+    tax_id VARCHAR,
+    payment_terms VARCHAR DEFAULT 'Net 30' CHECK (payment_terms IN ('Due on Receipt', 'Net 15', 'Net 30', 'Net 60', 'Net 90')),
+    credit_limit DECIMAL(10,2),
+    is_active BOOLEAN DEFAULT true,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create invoices table
+CREATE TABLE IF NOT EXISTS invoices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_number VARCHAR UNIQUE NOT NULL,
+    entity_id UUID NOT NULL REFERENCES invoice_entities(id),
+    family_id UUID REFERENCES families(id),
+    status invoice_status DEFAULT 'draft',
+    issue_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    due_date DATE NOT NULL,
+    service_period_start DATE,
+    service_period_end DATE,
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+    tax_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0,
+    amount_due DECIMAL(10,2) NOT NULL DEFAULT 0,
+    currency VARCHAR(3) DEFAULT 'USD',
+    notes TEXT,
+    terms TEXT,
+    footer_text TEXT,
+    sent_at TIMESTAMP WITH TIME ZONE,
+    viewed_at TIMESTAMP WITH TIME ZONE,
+    paid_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create invoice_line_items table
+CREATE TABLE IF NOT EXISTS invoice_line_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    item_type invoice_item_type NOT NULL,
+    description TEXT NOT NULL,
+    quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
+    unit_price DECIMAL(10,2) NOT NULL,
+    line_total DECIMAL(10,2) NOT NULL,
+    tax_rate DECIMAL(5,4) DEFAULT 0,
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    discount_rate DECIMAL(5,4) DEFAULT 0,
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    enrollment_id UUID REFERENCES enrollments(id),
+    product_id UUID,
+    service_period_start DATE,
+    service_period_end DATE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create invoice_payments table
+CREATE TABLE IF NOT EXISTS invoice_payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID NOT NULL REFERENCES invoices(id),
+    payment_method invoice_payment_method NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    reference_number VARCHAR,
+    notes TEXT,
+    stripe_payment_intent_id VARCHAR,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create invoice_status_history table
+CREATE TABLE IF NOT EXISTS invoice_status_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    old_status invoice_status,
+    new_status invoice_status NOT NULL,
+    changed_by UUID,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for performance
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_entities_entity_type') THEN
+        CREATE INDEX idx_invoice_entities_entity_type ON invoice_entities(entity_type);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_entities_is_active') THEN
+        CREATE INDEX idx_invoice_entities_is_active ON invoice_entities(is_active);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoices_entity_id') THEN
+        CREATE INDEX idx_invoices_entity_id ON invoices(entity_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoices_family_id') THEN
+        CREATE INDEX idx_invoices_family_id ON invoices(family_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoices_status') THEN
+        CREATE INDEX idx_invoices_status ON invoices(status);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoices_issue_date') THEN
+        CREATE INDEX idx_invoices_issue_date ON invoices(issue_date);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoices_due_date') THEN
+        CREATE INDEX idx_invoices_due_date ON invoices(due_date);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoices_invoice_number') THEN
+        CREATE INDEX idx_invoices_invoice_number ON invoices(invoice_number);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_line_items_invoice_id') THEN
+        CREATE INDEX idx_invoice_line_items_invoice_id ON invoice_line_items(invoice_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_line_items_enrollment_id') THEN
+        CREATE INDEX idx_invoice_line_items_enrollment_id ON invoice_line_items(enrollment_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_payments_invoice_id') THEN
+        CREATE INDEX idx_invoice_payments_invoice_id ON invoice_payments(invoice_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_payments_payment_date') THEN
+        CREATE INDEX idx_invoice_payments_payment_date ON invoice_payments(payment_date);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_status_history_invoice_id') THEN
+        CREATE INDEX idx_invoice_status_history_invoice_id ON invoice_status_history(invoice_id);
+    END IF;
+END
+$$;
+
+-- Create function for generating invoice numbers
+CREATE OR REPLACE FUNCTION generate_invoice_number()
+RETURNS VARCHAR AS $$
+DECLARE
+    current_year VARCHAR(4);
+    next_number INTEGER;
+    invoice_number VARCHAR;
+BEGIN
+    current_year := EXTRACT(YEAR FROM CURRENT_DATE)::VARCHAR;
+    
+    -- Get the next sequential number for this year
+    SELECT COALESCE(MAX(
+        CASE 
+            WHEN invoice_number ~ ('^INV-' || current_year || '-[0-9]+$')
+            THEN CAST(SUBSTRING(invoice_number FROM LENGTH('INV-' || current_year || '-') + 1) AS INTEGER)
+            ELSE 0
+        END
+    ), 0) + 1
+    INTO next_number
+    FROM invoices;
+    
+    -- Format: INV-YYYY-NNNN (e.g., INV-2025-0001)
+    invoice_number := 'INV-' || current_year || '-' || LPAD(next_number::VARCHAR, 4, '0');
+    
+    RETURN invoice_number;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger to auto-generate invoice numbers
+CREATE OR REPLACE FUNCTION set_invoice_number()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.invoice_number IS NULL OR NEW.invoice_number = '' THEN
+        NEW.invoice_number := generate_invoice_number();
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_set_invoice_number') THEN
+        CREATE TRIGGER trigger_set_invoice_number
+            BEFORE INSERT ON invoices
+            FOR EACH ROW
+            EXECUTE FUNCTION set_invoice_number();
+    END IF;
+END
+$$;
+
+-- Create trigger to update invoice totals when line items change
+CREATE OR REPLACE FUNCTION update_invoice_totals()
+RETURNS TRIGGER AS $$
+DECLARE
+    invoice_subtotal DECIMAL(10,2);
+    invoice_tax_amount DECIMAL(10,2);
+    invoice_discount_amount DECIMAL(10,2);
+    invoice_total DECIMAL(10,2);
+    invoice_amount_paid DECIMAL(10,2);
+BEGIN
+    -- Calculate totals from line items
+    SELECT 
+        COALESCE(SUM(line_total), 0),
+        COALESCE(SUM(tax_amount), 0),
+        COALESCE(SUM(discount_amount), 0)
+    INTO invoice_subtotal, invoice_tax_amount, invoice_discount_amount
+    FROM invoice_line_items 
+    WHERE invoice_id = COALESCE(NEW.invoice_id, OLD.invoice_id);
+    
+    -- Calculate total amount
+    invoice_total := invoice_subtotal + invoice_tax_amount - invoice_discount_amount;
+    
+    -- Get amount paid
+    SELECT COALESCE(SUM(amount), 0)
+    INTO invoice_amount_paid
+    FROM invoice_payments
+    WHERE invoice_id = COALESCE(NEW.invoice_id, OLD.invoice_id);
+    
+    -- Update invoice totals
+    UPDATE invoices SET
+        subtotal = invoice_subtotal,
+        tax_amount = invoice_tax_amount,
+        discount_amount = invoice_discount_amount,
+        total_amount = invoice_total,
+        amount_paid = invoice_amount_paid,
+        amount_due = invoice_total - invoice_amount_paid,
+        updated_at = NOW()
+    WHERE id = COALESCE(NEW.invoice_id, OLD.invoice_id);
+    
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_update_invoice_totals_on_line_items') THEN
+        CREATE TRIGGER trigger_update_invoice_totals_on_line_items
+            AFTER INSERT OR UPDATE OR DELETE ON invoice_line_items
+            FOR EACH ROW
+            EXECUTE FUNCTION update_invoice_totals();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_update_invoice_totals_on_payments') THEN
+        CREATE TRIGGER trigger_update_invoice_totals_on_payments
+            AFTER INSERT OR UPDATE OR DELETE ON invoice_payments
+            FOR EACH ROW
+            EXECUTE FUNCTION update_invoice_totals();
+    END IF;
+END
+$$;
+
+-- Create trigger to track status changes
+CREATE OR REPLACE FUNCTION track_invoice_status_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.status IS DISTINCT FROM NEW.status THEN
+        INSERT INTO invoice_status_history (invoice_id, old_status, new_status, notes)
+        VALUES (NEW.id, OLD.status, NEW.status, 'Status changed automatically');
+        
+        -- Update timestamp fields based on status
+        IF NEW.status = 'sent' AND OLD.status = 'draft' THEN
+            NEW.sent_at := NOW();
+        ELSIF NEW.status = 'viewed' AND NEW.viewed_at IS NULL THEN
+            NEW.viewed_at := NOW();
+        ELSIF NEW.status = 'paid' THEN
+            NEW.paid_at := NOW();
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_track_invoice_status_change') THEN
+        CREATE TRIGGER trigger_track_invoice_status_change
+            BEFORE UPDATE ON invoices
+            FOR EACH ROW
+            EXECUTE FUNCTION track_invoice_status_change();
+    END IF;
+END
+$$;
+
+-- Create updated_at triggers for invoice tables
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_invoices_updated_at') THEN
+        CREATE TRIGGER trigger_invoices_updated_at
+            BEFORE UPDATE ON invoices
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_invoice_entities_updated_at') THEN
+        CREATE TRIGGER trigger_invoice_entities_updated_at
+            BEFORE UPDATE ON invoice_entities
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_invoice_payments_updated_at') THEN
+        CREATE TRIGGER trigger_invoice_payments_updated_at
+            BEFORE UPDATE ON invoice_payments
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;
+
+-- Add RLS (Row Level Security) policies
+ALTER TABLE invoice_entities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoice_line_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoice_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoice_status_history ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for invoice_entities
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view all invoice entities' AND tablename = 'invoice_entities') THEN
+        CREATE POLICY "Users can view all invoice entities" ON invoice_entities
+            FOR SELECT USING (true);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can insert invoice entities' AND tablename = 'invoice_entities') THEN
+        CREATE POLICY "Authenticated users can insert invoice entities" ON invoice_entities
+            FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can update invoice entities' AND tablename = 'invoice_entities') THEN
+        CREATE POLICY "Authenticated users can update invoice entities" ON invoice_entities
+            FOR UPDATE USING (auth.role() = 'authenticated');
+    END IF;
+END
+$$;
+
+-- RLS Policies for invoices
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view invoices for their families' AND tablename = 'invoices') THEN
+        CREATE POLICY "Users can view invoices for their families" ON invoices
+            FOR SELECT USING (
+                family_id IN (
+                    SELECT family_id FROM profiles WHERE id = auth.uid()
+                ) OR auth.role() = 'service_role'
+            );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can insert invoices' AND tablename = 'invoices') THEN
+        CREATE POLICY "Authenticated users can insert invoices" ON invoices
+            FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can update invoices' AND tablename = 'invoices') THEN
+        CREATE POLICY "Authenticated users can update invoices" ON invoices
+            FOR UPDATE USING (auth.role() = 'authenticated');
+    END IF;
+END
+$$;
+
+-- RLS Policies for invoice_line_items
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view line items for accessible invoices' AND tablename = 'invoice_line_items') THEN
+        CREATE POLICY "Users can view line items for accessible invoices" ON invoice_line_items
+            FOR SELECT USING (
+                invoice_id IN (
+                    SELECT id FROM invoices WHERE 
+                        family_id IN (
+                            SELECT family_id FROM profiles WHERE id = auth.uid()
+                        ) OR auth.role() = 'service_role'
+                )
+            );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can manage line items' AND tablename = 'invoice_line_items') THEN
+        CREATE POLICY "Authenticated users can manage line items" ON invoice_line_items
+            FOR ALL USING (auth.role() = 'authenticated');
+    END IF;
+END
+$$;
+
+-- RLS Policies for invoice_payments
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view payments for accessible invoices' AND tablename = 'invoice_payments') THEN
+        CREATE POLICY "Users can view payments for accessible invoices" ON invoice_payments
+            FOR SELECT USING (
+                invoice_id IN (
+                    SELECT id FROM invoices WHERE 
+                        family_id IN (
+                            SELECT family_id FROM profiles WHERE id = auth.uid()
+                        ) OR auth.role() = 'service_role'
+                )
+            );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can manage payments' AND tablename = 'invoice_payments') THEN
+        CREATE POLICY "Authenticated users can manage payments" ON invoice_payments
+            FOR ALL USING (auth.role() = 'authenticated');
+    END IF;
+END
+$$;
+
+-- RLS Policies for invoice_status_history
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view status history for accessible invoices' AND tablename = 'invoice_status_history') THEN
+        CREATE POLICY "Users can view status history for accessible invoices" ON invoice_status_history
+            FOR SELECT USING (
+                invoice_id IN (
+                    SELECT id FROM invoices WHERE 
+                        family_id IN (
+                            SELECT family_id FROM profiles WHERE id = auth.uid()
+                        ) OR auth.role() = 'service_role'
+                )
+            );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can manage status history' AND tablename = 'invoice_status_history') THEN
+        CREATE POLICY "Authenticated users can manage status history" ON invoice_status_history
+            FOR ALL USING (auth.role() = 'authenticated');
+    END IF;
+END
+$$;
+
+-- Create default invoice entity for the school
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM invoice_entities WHERE name = 'Karate School' AND entity_type = 'school') THEN
+        INSERT INTO invoice_entities (
+            name,
+            entity_type,
+            contact_person,
+            email,
+            phone,
+            address_line1,
+            city,
+            state,
+            postal_code,
+            country,
+            payment_terms,
+            is_active,
+            notes
+        ) VALUES (
+            'Karate School',
+            'school',
+            'School Administrator',
+            'admin@karateschool.com',
+            '(555) 123-4567',
+            '123 Martial Arts Way',
+            'Anytown',
+            'CA',
+            '12345',
+            'US',
+            'Net 30',
+            true,
+            'Default school entity for invoice generation'
+        );
+    END IF;
+END
+$$;
+
+-- --- Invoice Templates System ---
+
+-- Create invoice_templates table
+CREATE TABLE IF NOT EXISTS invoice_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR NOT NULL,
+    description TEXT,
+    category VARCHAR NOT NULL CHECK (category IN ('enrollment', 'fees', 'products', 'custom')),
+    is_active BOOLEAN DEFAULT true,
+    is_system_template BOOLEAN DEFAULT false, -- For built-in vs custom templates
+    created_by UUID REFERENCES profiles(id),
+    default_terms TEXT,
+    default_notes TEXT,
+    default_footer TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create invoice_template_line_items table
+CREATE TABLE IF NOT EXISTS invoice_template_line_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    template_id UUID NOT NULL REFERENCES invoice_templates(id) ON DELETE CASCADE,
+    item_type invoice_item_type NOT NULL,
+    description TEXT NOT NULL,
+    quantity DECIMAL(10,2) DEFAULT 1,
+    unit_price DECIMAL(10,2) DEFAULT 0,
+    tax_rate DECIMAL(6,4) DEFAULT 0,
+    discount_rate DECIMAL(6,4) DEFAULT 0,
+    service_period_start DATE,
+    service_period_end DATE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for performance
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_templates_category') THEN
+        CREATE INDEX idx_invoice_templates_category ON invoice_templates(category);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_templates_is_active') THEN
+        CREATE INDEX idx_invoice_templates_is_active ON invoice_templates(is_active);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_templates_is_system') THEN
+        CREATE INDEX idx_invoice_templates_is_system ON invoice_templates(is_system_template);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_template_line_items_template_id') THEN
+        CREATE INDEX idx_invoice_template_line_items_template_id ON invoice_template_line_items(template_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_template_line_items_sort_order') THEN
+        CREATE INDEX idx_invoice_template_line_items_sort_order ON invoice_template_line_items(sort_order);
+    END IF;
+END
+$$;
+
+-- Create trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_invoice_template_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_update_invoice_template_updated_at') THEN
+        CREATE TRIGGER trigger_update_invoice_template_updated_at
+            BEFORE UPDATE ON invoice_templates
+            FOR EACH ROW
+            EXECUTE FUNCTION update_invoice_template_updated_at();
+    END IF;
+END
+$$;
+
+-- Enable RLS for invoice templates
+ALTER TABLE invoice_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoice_template_line_items ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for invoice_templates
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view all invoice templates' AND tablename = 'invoice_templates') THEN
+        CREATE POLICY "Users can view all invoice templates" ON invoice_templates
+            FOR SELECT USING (true);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can manage invoice templates' AND tablename = 'invoice_templates') THEN
+        CREATE POLICY "Authenticated users can manage invoice templates" ON invoice_templates
+            FOR ALL USING (auth.role() = 'authenticated');
+    END IF;
+END
+$$;
+
+-- RLS Policies for invoice_template_line_items
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view all template line items' AND tablename = 'invoice_template_line_items') THEN
+        CREATE POLICY "Users can view all template line items" ON invoice_template_line_items
+            FOR SELECT USING (true);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can manage template line items' AND tablename = 'invoice_template_line_items') THEN
+        CREATE POLICY "Authenticated users can manage template line items" ON invoice_template_line_items
+            FOR ALL USING (auth.role() = 'authenticated');
+    END IF;
+END
+$$;
+
+-- Insert system templates (migrated from static data)
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM invoice_templates WHERE id = '550e8400-e29b-41d4-a716-446655440001') THEN
+        INSERT INTO invoice_templates (id, name, description, category, is_system_template, default_terms, default_notes) VALUES
+        ('550e8400-e29b-41d4-a716-446655440001', 'Monthly Class Enrollment', 'Standard monthly enrollment fee for regular classes', 'enrollment', true, 'Payment is due by the 1st of each month. Late fees may apply after the 5th.', 'Thank you for your continued participation in our martial arts program.'),
+        ('550e8400-e29b-41d4-a716-446655440002', 'New Student Registration', 'Complete package for new student registration including fees and equipment', 'enrollment', true, 'Registration fee is non-refundable. Monthly fees are due by the 1st of each month.', 'Welcome to our martial arts family! We look forward to your training journey.'),
+        ('550e8400-e29b-41d4-a716-446655440003', 'Belt Testing Fees', 'Fees for belt promotion testing', 'fees', true, 'Testing fees are due before the testing date.', 'Congratulations on your progress! Good luck with your testing.'),
+        ('550e8400-e29b-41d4-a716-446655440004', 'Tournament Registration', 'Registration fees for tournament participation', 'fees', true, 'Tournament fees are non-refundable and must be paid before the registration deadline.', 'We wish you the best of luck in the tournament!'),
+        ('550e8400-e29b-41d4-a716-446655440005', 'Sparring Equipment Package', 'Complete sparring gear package for competition students', 'products', true, 'Equipment sales are final. Please ensure proper fit before purchase.', 'This equipment meets tournament standards and regulations.'),
+        ('550e8400-e29b-41d4-a716-446655440006', 'Private Lesson Package', 'Package of private one-on-one lessons', 'enrollment', true, 'Private lessons must be scheduled in advance and are subject to instructor availability.', 'Private lessons provide personalized instruction to accelerate your progress.'),
+        ('550e8400-e29b-41d4-a716-446655440007', 'Family Enrollment with Discount', 'Multiple family members with family discount applied', 'enrollment', true, 'Family discount applies to additional family members. Payment is due by the 1st of each month.', 'Thank you for bringing your family to train with us!'),
+        ('550e8400-e29b-41d4-a716-446655440008', 'Makeup Class Fees', 'Fees for makeup classes due to absences', 'fees', true, 'Makeup classes must be scheduled within 30 days of the missed class.', 'Makeup classes help ensure you stay on track with your training.'),
+        ('550e8400-e29b-41d4-a716-446655440009', 'Summer Camp Program', 'Week-long summer martial arts camp', 'enrollment', true, 'Camp fees are due one week before the camp start date. Cancellations must be made 48 hours in advance.', 'Our summer camp provides intensive training and fun activities for all skill levels.'),
+        ('550e8400-e29b-41d4-a716-446655440010', 'Annual Membership Discount', 'Full year membership with discount for upfront payment', 'enrollment', true, 'Annual membership is non-refundable but transferable. Membership includes all regular classes.', 'Thank you for your commitment to training with us for the full year!');
+    END IF;
+END
+$$;
+
+-- Insert template line items
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM invoice_template_line_items WHERE template_id = '550e8400-e29b-41d4-a716-446655440001') THEN
+        INSERT INTO invoice_template_line_items (template_id, item_type, description, quantity, unit_price, tax_rate, discount_rate, sort_order) VALUES
+        -- Monthly enrollment
+        ('550e8400-e29b-41d4-a716-446655440001', 'class_enrollment', 'Monthly Class Fee', 1, 0, 0, 0, 0),
+
+        -- Registration package
+        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Registration Fee', 1, 50, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Uniform (Gi)', 1, 75, 0, 0, 1),
+        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Belt', 1, 15, 0, 0, 2),
+        ('550e8400-e29b-41d4-a716-446655440002', 'class_enrollment', 'First Month Class Fee', 1, 0, 0, 0, 3),
+
+        -- Testing fees
+        ('550e8400-e29b-41d4-a716-446655440003', 'fee', 'Belt Testing Fee', 1, 40, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440003', 'fee', 'New Belt', 1, 20, 0, 0, 1),
+
+        -- Tournament fees
+        ('550e8400-e29b-41d4-a716-446655440004', 'fee', 'Tournament Entry Fee', 1, 60, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440004', 'fee', 'USANKF Membership (if required)', 1, 35, 0, 0, 1),
+
+        -- Equipment package
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Sparring Gloves', 1, 45, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Foot Pads', 1, 35, 0, 0, 1),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Shin Guards', 1, 40, 0, 0, 2),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Headgear', 1, 65, 0, 0, 3),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Mouthguard', 1, 15, 0, 0, 4),
+
+        -- Private lessons
+        ('550e8400-e29b-41d4-a716-446655440006', 'individual_session', 'Private Lesson (1 hour)', 4, 75, 0, 0, 0),
+
+        -- Family discount
+        ('550e8400-e29b-41d4-a716-446655440007', 'class_enrollment', 'First Family Member - Monthly Fee', 1, 0, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440007', 'class_enrollment', 'Additional Family Member - Monthly Fee', 1, 0, 0, 0.10, 1),
+
+        -- Makeup classes
+        ('550e8400-e29b-41d4-a716-446655440008', 'fee', 'Makeup Class Fee', 1, 25, 0, 0, 0),
+
+        -- Summer camp
+        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Summer Camp Week 1', 1, 150, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Camp T-Shirt', 1, 20, 0, 0, 1),
+        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Lunch (5 days)', 1, 50, 0, 0, 2),
+
+        -- Annual membership
+        ('550e8400-e29b-41d4-a716-446655440010', 'class_enrollment', 'Annual Membership (12 months)', 12, 0, 0, 0.15, 0);
+    END IF;
+END
+$$;
+
+-- --- End Invoice Templates System ---
+
+-- --- End Invoice System ---
+

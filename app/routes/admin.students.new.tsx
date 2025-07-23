@@ -1,4 +1,4 @@
-import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction, redirect} from "@remix-run/node";
+import {type ActionFunctionArgs, json, type MetaFunction, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {createClient} from "@supabase/supabase-js";
 import {Database} from "~/types/database.types";
@@ -15,7 +15,7 @@ import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Loader to get all families for the dropdown
-export async function loader(_: LoaderFunctionArgs) {
+export async function loader() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

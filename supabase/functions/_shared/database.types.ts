@@ -16,29 +16,23 @@ export type Database = {
     Tables: {
       attendance: {
         Row: {
-          class_date: string
           class_session_id: string | null
           id: string
           notes: string | null
-          present: boolean
           status: string
           student_id: string
         }
         Insert: {
-          class_date: string
           class_session_id?: string | null
           id?: string
           notes?: string | null
-          present: boolean
           status?: string
           student_id: string
         }
         Update: {
-          class_date?: string
           class_session_id?: string | null
           id?: string
           notes?: string | null
-          present?: boolean
           status?: string
           student_id?: string
         }
@@ -897,6 +891,328 @@ export type Database = {
           },
         ]
       }
+      invoice_entities: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          contact_person: string | null
+          country: string | null
+          created_at: string | null
+          credit_limit: number | null
+          email: string | null
+          entity_type: string
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          tax_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          email?: string | null
+          entity_type: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          email?: string | null
+          entity_type?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      invoice_line_items: {
+        Row: {
+          created_at: string | null
+          description: string
+          discount_amount: number | null
+          discount_rate: number | null
+          enrollment_id: string | null
+          id: string
+          invoice_id: string
+          item_type: Database["public"]["Enums"]["invoice_item_type"]
+          line_total: number
+          product_id: string | null
+          quantity: number
+          service_period_end: string | null
+          service_period_start: string | null
+          sort_order: number | null
+          tax_amount: number | null
+          tax_rate: number | null
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          discount_amount?: number | null
+          discount_rate?: number | null
+          enrollment_id?: string | null
+          id?: string
+          invoice_id: string
+          item_type: Database["public"]["Enums"]["invoice_item_type"]
+          line_total: number
+          product_id?: string | null
+          quantity?: number
+          service_period_end?: string | null
+          service_period_start?: string | null
+          sort_order?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          unit_price: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          discount_amount?: number | null
+          discount_rate?: number | null
+          enrollment_id?: string | null
+          id?: string
+          invoice_id?: string
+          item_type?: Database["public"]["Enums"]["invoice_item_type"]
+          line_total?: number
+          product_id?: string | null
+          quantity?: number
+          service_period_end?: string | null
+          service_period_start?: string | null
+          sort_order?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["invoice_payment_method"]
+          reference_number: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          payment_date?: string
+          payment_method: Database["public"]["Enums"]["invoice_payment_method"]
+          reference_number?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: Database["public"]["Enums"]["invoice_payment_method"]
+          reference_number?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string | null
+          id: string
+          invoice_id: string
+          new_status: Database["public"]["Enums"]["invoice_status"]
+          notes: string | null
+          old_status: Database["public"]["Enums"]["invoice_status"] | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          invoice_id: string
+          new_status: Database["public"]["Enums"]["invoice_status"]
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["invoice_status"] | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          invoice_id?: string
+          new_status?: Database["public"]["Enums"]["invoice_status"]
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["invoice_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_status_history_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          amount_due: number
+          amount_paid: number
+          created_at: string | null
+          currency: string | null
+          discount_amount: number
+          due_date: string
+          entity_id: string
+          family_id: string | null
+          footer_text: string | null
+          id: string
+          invoice_number: string
+          issue_date: string
+          notes: string | null
+          paid_at: string | null
+          sent_at: string | null
+          service_period_end: string | null
+          service_period_start: string | null
+          status: Database["public"]["Enums"]["invoice_status"] | null
+          subtotal: number
+          tax_amount: number
+          terms: string | null
+          total_amount: number
+          updated_at: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          amount_due?: number
+          amount_paid?: number
+          created_at?: string | null
+          currency?: string | null
+          discount_amount?: number
+          due_date: string
+          entity_id: string
+          family_id?: string | null
+          footer_text?: string | null
+          id?: string
+          invoice_number: string
+          issue_date?: string
+          notes?: string | null
+          paid_at?: string | null
+          sent_at?: string | null
+          service_period_end?: string | null
+          service_period_start?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"] | null
+          subtotal?: number
+          tax_amount?: number
+          terms?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          amount_due?: number
+          amount_paid?: number
+          created_at?: string | null
+          currency?: string | null
+          discount_amount?: number
+          due_date?: string
+          entity_id?: string
+          family_id?: string | null
+          footer_text?: string | null
+          id?: string
+          invoice_number?: string
+          issue_date?: string
+          notes?: string | null
+          paid_at?: string | null
+          sent_at?: string | null
+          service_period_end?: string | null
+          service_period_start?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"] | null
+          subtotal?: number
+          tax_amount?: number
+          terms?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -1509,6 +1825,44 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: number
+          p256dh: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: number
+          p256dh: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: number
+          p256dh?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           allergies: string | null
@@ -1818,7 +2172,7 @@ export type Database = {
           p_subject: string
           p_message_body: string
         }
-        Returns: string
+        Returns: Json
       }
       create_new_conversation: {
         Args:
@@ -1846,6 +2200,10 @@ export type Database = {
       generate_class_sessions: {
         Args: { p_class_id: string; p_start_date: string; p_end_date: string }
         Returns: number
+      }
+      generate_invoice_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_admin_conversation_summaries: {
         Args: Record<PropertyKey, never>
@@ -1959,6 +2317,28 @@ export type Database = {
         | "dropped"
         | "waitlist"
         | "trial"
+      invoice_item_type:
+        | "class_enrollment"
+        | "individual_session"
+        | "product"
+        | "fee"
+        | "discount"
+        | "other"
+      invoice_payment_method:
+        | "cash"
+        | "check"
+        | "bank_transfer"
+        | "credit_card"
+        | "ach"
+        | "other"
+      invoice_status:
+        | "draft"
+        | "sent"
+        | "viewed"
+        | "paid"
+        | "partially_paid"
+        | "overdue"
+        | "cancelled"
       order_status:
         | "pending_payment"
         | "paid_pending_pickup"
@@ -2134,6 +2514,31 @@ export const Constants = {
         "dropped",
         "waitlist",
         "trial",
+      ],
+      invoice_item_type: [
+        "class_enrollment",
+        "individual_session",
+        "product",
+        "fee",
+        "discount",
+        "other",
+      ],
+      invoice_payment_method: [
+        "cash",
+        "check",
+        "bank_transfer",
+        "credit_card",
+        "ach",
+        "other",
+      ],
+      invoice_status: [
+        "draft",
+        "sent",
+        "viewed",
+        "paid",
+        "partially_paid",
+        "overdue",
+        "cancelled",
       ],
       order_status: [
         "pending_payment",
