@@ -237,9 +237,11 @@ self.addEventListener('push', (event) => {
 
 // Handle notification click events
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
   const notificationData = event.notification.data;
   const action = event.action;
+
+  // Always close the notification first
+  event.notification.close();
 
   if (action === 'dismiss') {
     return;
@@ -264,9 +266,43 @@ self.addEventListener('notificationclick', (event) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(replyData),
-        }).catch(() => {
+        })
+        .then(response => {
+          if (!response.ok) {
+            console.error('Quick reply failed:', response.status, response.statusText);
+            // Show a failure notification
+            return self.registration.showNotification('Reply Failed', {
+              body: 'Your reply could not be sent. Please try again.',
+              icon: '/icon.svg',
+              tag: 'reply-failed',
+              requireInteraction: false
+            });
+          } else {
+            console.log('Quick reply sent successfully');
+            // Optionally show a success notification (brief)
+            return self.registration.showNotification('Reply Sent', {
+              body: 'Your reply was sent successfully.',
+              icon: '/icon.svg',
+              tag: 'reply-success',
+              requireInteraction: false,
+              silent: true
+            });
+          }
+        })
+        .catch((error) => {
+          console.error('Quick reply network error:', error);
           // If fetch fails (offline), queue for background sync
-          return addQueuedReply(replyData).then(() => self.registration.sync.register('sync-queued-replies'));
+          return addQueuedReply(replyData)
+            .then(() => self.registration.sync.register('sync-queued-replies'))
+            .then(() => {
+              // Show queued notification
+              return self.registration.showNotification('Reply Queued', {
+                body: 'Your reply will be sent when you\'re back online.',
+                icon: '/icon.svg',
+                tag: 'reply-queued',
+                requireInteraction: false
+              });
+            });
         })
     );
     return;
