@@ -267,8 +267,8 @@ export function createMessageNotificationPayload(
 ): NotificationPayload {
   const url = customUrl || `/conversations/${conversationId}`;
 
-  return {
-    type: 'message',
+  const payload = {
+    type: 'message' as const,
     title: `New message from ${senderName}`,
     body: messageText.length > 100 ? `${messageText.substring(0, 100)}...` : messageText,
     icon: '/icon.svg',
@@ -289,7 +289,7 @@ export function createMessageNotificationPayload(
       {
         action: 'reply',
         title: 'Quick Reply',
-        type: 'text',
+        type: 'text' as const,
         icon: '/icon.svg',
         placeholder: 'Type your reply...'
       }
@@ -298,6 +298,13 @@ export function createMessageNotificationPayload(
     vibrate: [200, 100, 200],
     tag: `message-${conversationId}`
   };
+
+  console.log('--- Push Notification Payload Debug ---');
+  console.log('Creating notification for recipient:', recipientUserId);
+  console.log('Full payload:', JSON.stringify(payload, null, 2));
+  console.log('--- End Push Notification Payload Debug ---');
+
+  return payload;
 }
 
 /**

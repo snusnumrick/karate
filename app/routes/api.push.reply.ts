@@ -14,18 +14,22 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({ error: 'User not authenticated' }, { status: 401 });
     }
 
+    console.log(user);
+
     const { conversationId, message, userId } = await request.json();
 
     console.log('Quick reply received:', { conversationId, message, userId });
 
+    const userIdCorrected  = userId || user.id;
+
     // Validate required fields
-    if (!conversationId || !message || !userId) {
+    if (!conversationId || !message || !userIdCorrected) {
       return json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(conversationId) || !uuidRegex.test(userId)) {
+    if (!uuidRegex.test(conversationId) || !uuidRegex.test(userIdCorrected)) {
       return json({ error: 'Invalid UUID format' }, { status: 400 });
     }
 
@@ -34,7 +38,7 @@ export async function action({ request }: ActionFunctionArgs) {
       .from('conversation_participants')
       .select('id')
       .eq('conversation_id', conversationId)
-      .eq('user_id', userId)
+      .eq('user_id', userIdCorrected)
       .single();
 
     if (participantError || !participant) {
@@ -47,7 +51,7 @@ export async function action({ request }: ActionFunctionArgs) {
       .from('messages')
       .insert({
         conversation_id: conversationId,
-        sender_id: userId,
+        sender_id: userIdCorrected,
         content: message.trim()
       })
       .select()

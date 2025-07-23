@@ -249,6 +249,30 @@ self.addEventListener('notificationclick', (event) => {
 
   // Handle quick reply action using Background Sync
   if (action === 'reply' && event.reply && notificationData) {
+    console.log('--- Quick Reply Debug START ---');
+    console.log('Full notification data received:', JSON.stringify(notificationData, null, 2));
+    console.log('Action:', action);
+    console.log('Reply text:', event.reply);
+    console.log('Extracted conversationId:', notificationData.conversationId);
+    console.log('Extracted userId:', notificationData.userId);
+    console.log('--- Quick Reply Debug END ---');
+
+    // Send debug info to main thread
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'QUICK_REPLY_DEBUG',
+          data: {
+            notificationData: notificationData,
+            action: action,
+            reply: event.reply,
+            conversationId: notificationData.conversationId,
+            userId: notificationData.userId
+          }
+        });
+      });
+    });
+
     const replyData = {
       conversationId: notificationData.conversationId,
       message: event.reply,
@@ -256,7 +280,7 @@ self.addEventListener('notificationclick', (event) => {
       timestamp: new Date().toISOString(),
     };
 
-    console.log('--- Quick Reply Debug ---');
+    console.log('--- Quick Reply Payload Debug ---');
     console.log('Payload object being sent:', replyData);
     console.log('Stringified body:', JSON.stringify(replyData));
     console.log('-------------------------');
