@@ -227,28 +227,105 @@ self.addEventListener('push', (event) => {
     console.warn('⚠️ Push event received with no data');
   }
 
+  // Check if this is a test notification BEFORE setting up options
+  console.log('🔍 Raw notification data structure:', {
+    hasType: 'type' in notificationData,
+    typeValue: notificationData.type,
+    typeType: typeof notificationData.type,
+    title: notificationData.title,
+    body: notificationData.body,
+    allKeys: Object.keys(notificationData),
+    dataKeys: notificationData.data ? Object.keys(notificationData.data) : 'no data object',
+    actions: notificationData.actions ? notificationData.actions.length : 'no actions'
+  });
+  
+  const isTestNotification = notificationData.type === 'test' || 
+                           (notificationData.data && notificationData.data.type === 'test') ||
+                           (notificationData.title && notificationData.title.toLowerCase().includes('test'));
+  console.log('🔍 Notification type check:', notificationData.type, 'isTest:', isTestNotification);
+
+  // Ensure actions are properly formatted and available
+  let actions = [];
+  if ('actions' in Notification.prototype && notificationData.actions && Array.isArray(notificationData.actions)) {
+    actions = notificationData.actions.map(action => ({
+      action: action.action,
+      title: action.title,
+      icon: action.icon ? new URL(action.icon, self.location.origin).href : undefined
+    }));
+    console.log('🎬 Processed actions:', actions);
+  } else {
+    console.log('⚠️ No actions available or actions not supported');
+  }
+
   const options = {
     body: notificationData.body,
     icon: new URL(notificationData.icon || '/icon.svg', self.location.origin).href,
     badge: new URL(notificationData.badge || '/icon.svg', self.location.origin).href,
-    tag: notificationData.tag || 'default-tag',
+    tag: notificationData.tag || (isTestNotification ? 'test-notification' : `message-${notificationData.data?.conversationId || 'default'}`),
     data: notificationData.data || {},
     requireInteraction: notificationData.requireInteraction || false,
     vibrate: notificationData.vibrate || [200, 100, 200],
-    actions: ('actions' in Notification.prototype) ? notificationData.actions || [] : [],
+    actions: actions,
+    // Force show notification even when page is active (for test notifications)
+    silent: false,
+    renotify: true,
   };
 
-  console.log('🎯 About to show notification with options:', JSON.stringify(options, null, 2));
+  // Modify options for test notifications
+  if (isTestNotification) {
+    console.log('🧪 Test notification detected - applying special settings');
+    options.body = `[TEST] ${options.body}`;
+    options.tag = 'test-notification';
+    options.requireInteraction = true; // Make test notifications persistent
+    options.silent = false; // Ensure sound/vibration
+    options.renotify = true; // Force renotification
+    // Try to make it more visible
+    options.vibrate = [300, 200, 300, 200, 300];
+  }
 
-  event.waitUntil(
-    self.registration.showNotification(notificationData.title, options)
-      .then(() => {
-        console.log('✅ Notification displayed successfully');
-      })
-      .catch((error) => {
-        console.error('❌ Failed to display notification:', error);
-      })
-  );
+  console.log('🎯 About to show notification with title:', notificationData.title);
+  console.log('🎯 About to show notification with options:', JSON.stringify(options, null, 2));
+  console.log('🎯 Notification type:', notificationData.type);
+  console.log('🎯 Original title from payload:', notificationData.title);
+  console.log('🎯 Actions count:', options.actions.length);
+
+  // Check if any clients (tabs) are currently focused
+  const showNotificationPromise = self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then((clients) => {
+      const hasVisibleClient = clients.some(client => client.visibilityState === 'visible');
+      
+      console.log(`📱 Found ${clients.length} client(s), visible clients: ${hasVisibleClient}`);
+      
+      if (isTestNotification) {
+        console.log('🧪 Test notification - forcing display regardless of page visibility');
+        console.log('🧪 Test notification will use tag:', options.tag);
+      }
+      
+      // Always show the notification (browsers may still suppress if page is active)
+      return self.registration.showNotification(notificationData.title, options);
+    })
+    .then(() => {
+      console.log('✅ Notification displayed successfully');
+      
+      // Additional debugging: Check if notification was actually created
+      return self.registration.getNotifications();
+    })
+    .then((notifications) => {
+      console.log(`📋 Active notifications after creation: ${notifications.length}`);
+      notifications.forEach((notification, index) => {
+        console.log(`   ${index + 1}. "${notification.title}" (tag: ${notification.tag})`);
+      });
+    })
+    .catch((error) => {
+      console.error('❌ Failed to display notification:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+    });
+
+  event.waitUntil(showNotificationPromise);
 });
 
 // Handle notification click events

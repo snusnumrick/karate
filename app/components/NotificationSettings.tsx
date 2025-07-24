@@ -182,21 +182,52 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
 
     setIsTestingPush(true);
     try {
-      // First, try a basic browser notification to test if notifications work at all
+      // First try a basic browser notification to see if those work
       if (permission === 'granted') {
-        const basicNotification = new Notification('🧪 Basic Test', {
-          body: 'If you see this, browser notifications work!',
+        console.log('🧪 Testing basic browser notification first...');
+        const basicNotification = new Notification('Basic Test', {
+          body: 'If you see this, basic notifications work!',
           icon: '/icon.svg',
-          tag: 'basic-test',
-          requireInteraction: false
+          tag: 'basic-test'
         });
-
-        // Auto-close after 3 seconds
-        setTimeout(() => {
+        
+        basicNotification.onclick = () => {
+          console.log('✅ Basic notification clicked');
           basicNotification.close();
-        }, 3000);
+        };
+        
+        // Wait a moment then test service worker notification
+        setTimeout(async () => {
+          console.log('🧪 Now testing service worker notification...');
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification('SW Direct Test', {
+               body: 'This is a direct service worker notification test',
+               icon: '/icon.svg',
+               tag: 'sw-direct-test',
+               requireInteraction: true
+             });
+            console.log('✅ Service worker notification created');
+          } catch (swError) {
+            console.error('❌ Service worker notification failed:', swError);
+          }
+        }, 2000);
+      }
 
-        console.log('✅ Basic notification created');
+      console.log('🧪 Starting test push notification...');
+      console.log('💡 To see the notification:');
+      console.log('   1. Click this button');
+      console.log('   2. IMMEDIATELY switch to another tab or minimize this window');
+      console.log('   3. The notification should appear within 1-2 seconds');
+      console.log('💡 On macOS: Check System Preferences > Notifications > [Your Browser] if you don\'t see it');
+
+      // Also create a browser notification with instructions
+      if (permission === 'granted') {
+        new Notification('Test Instructions', {
+          body: 'Switch tabs NOW to see the push notification test!',
+          icon: '/icon.svg',
+          tag: 'test-instructions'
+        });
       }
 
       // Then send the push notification
@@ -209,27 +240,10 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
 
       if (response.ok) {
         console.log('✅ Test push notification sent successfully');
-        
-        // Show helpful message if on macOS
-        const isMacOS = navigator.userAgent.includes('Mac');
-        if (isMacOS) {
-          console.log('📱 macOS detected: If you don\'t see the push notification, check:');
-          console.log('   • System Settings → Notifications & Focus → [Your Browser] → Allow notifications');
-          console.log('   • Turn off Do Not Disturb or Focus mode');
-          console.log('   • Set notification style to "Alerts" or "Banners" (not "None")');
-        }
-        
-        // Wait a moment then show a follow-up message
-        setTimeout(() => {
-          if (permission === 'granted') {
-            new Notification('📱 Push Test Complete', {
-              body: 'Check if you received the push notification. If not, check your system notification settings.',
-              icon: '/icon.svg',
-              tag: 'test-complete'
-            });
-          }
-        }, 2000);
-        
+        console.log('🔍 If you don\'t see a notification, check:');
+        console.log('   - Browser notification settings');
+        console.log('   - System notification settings');
+        console.log('   - Make sure you switched tabs/minimized window');
       } else {
         console.error('❌ Failed to send test push notification');
         const errorData = await response.json().catch(() => ({}));
@@ -413,6 +427,19 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
                   <br />• System Settings → Notifications & Focus → {navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Your Browser'}
                   <br />• Turn off Do Not Disturb mode
                   <br />• Set notification style to "Alerts" or "Banners"
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {/* Push notification testing guidance */}
+            {pushSubscribed && (
+              <Alert className="mb-3">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Testing Push Notifications:</strong> Push notifications won't appear while you're actively viewing this page.
+                  <br />• Click "Test Push" then immediately switch to another tab or minimize your browser
+                  <br />• Wait a few seconds for the notification to appear in your system notification area
+                  <br />• This is normal browser behavior to prevent notification spam
                 </AlertDescription>
               </Alert>
             )}

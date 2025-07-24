@@ -216,6 +216,7 @@ class NotificationService {
       },
       requireInteraction: true,
     };
+    console.log('[showMessageNotification] options:', options);
 
     const notification = await this.showNotification(options);
 

@@ -4,6 +4,8 @@ import { sendPushNotificationToUser } from '~/utils/push-notifications.server';
 import { getSupabaseServerClient, isUserAdmin } from '~/utils/supabase.server';
 
 export async function action({ request }: ActionFunctionArgs) {
+  console.log(`Test push notification action called ${request}`);
+
   if (request.method !== 'POST') {
     return json({ error: 'Method not allowed' }, { status: 405 });
   }

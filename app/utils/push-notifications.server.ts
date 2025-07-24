@@ -57,29 +57,71 @@ export async function sendPushNotification(
   payload: NotificationPayload
 ): Promise<{ success: boolean; error?: string; isExpired?: boolean }> {
   try {
+    console.log('🚀 Attempting to send push notification...');
+    console.log('📱 Subscription endpoint:', subscription.endpoint.substring(0, 50) + '...');
+    console.log('📦 Payload type:', payload.type);
+    console.log('📦 Payload title:', payload.title);
+    
     // Check if VAPID keys are configured
     if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY || !process.env.VAPID_SUBJECT) {
-      console.warn('VAPID keys not configured, skipping push notification');
+      console.warn('❌ VAPID keys not configured, skipping push notification');
       return { success: false, error: 'VAPID keys not configured' };
     }
 
-    // Determine urgency based on the payload
-    const urgency = payload.requireInteraction ? 'high' : 'normal';
+    console.log('✅ VAPID keys are configured');
 
-    await webpush.sendNotification(
+    // Determine urgency based on the payload
+    let urgency: 'very-low' | 'low' | 'normal' | 'high' = 'normal';
+    if (payload.type === 'test') {
+      urgency = 'high'; // Test notifications should be high priority
+    } else if (payload.type === 'message') {
+      urgency = 'high'; // Messages are important
+    } else if (payload.type === 'payment') {
+      urgency = 'high'; // Payment notifications are important
+    } else if (payload.type === 'attendance') {
+      urgency = 'normal'; // Class reminders are normal priority
+    } else if (payload.type === 'announcement') {
+      urgency = 'low'; // Announcements are lower priority
+    }
+
+    console.log('📊 Notification urgency:', urgency);
+
+    // Set VAPID details
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+
+    console.log('🔑 VAPID details set successfully');
+
+    // Send the notification
+    console.log('📤 Sending notification via webpush...');
+    const result = await webpush.sendNotification(
       subscription,
       JSON.stringify(payload),
       {
-        TTL: 60 * 60 * 24, // 24 hours
-        urgency: urgency
+        urgency,
+        TTL: 24 * 60 * 60, // 24 hours
       }
     );
 
+    console.log('✅ Push notification sent successfully');
+    console.log('📊 Webpush result:', result);
     return { success: true };
   } catch (error: unknown) {
+    console.error('❌ Error sending push notification:', error);
+    console.error('❌ Error details:', {
+      name: error && typeof error === 'object' && 'name' in error ? error.name : 'unknown',
+      message: error && typeof error === 'object' && 'message' in error ? error.message : 'unknown',
+      statusCode: error && typeof error === 'object' && 'statusCode' in error ? error.statusCode : 'unknown',
+      headers: error && typeof error === 'object' && 'headers' in error ? error.headers : 'unknown',
+      body: error && typeof error === 'object' && 'body' in error ? error.body : 'unknown'
+    });
+    
     // Check if this is an expired subscription error
     if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 410) {
-      console.log('Push subscription expired or unsubscribed:', subscription.endpoint);
+      console.log('🗑️ Push subscription expired or unsubscribed:', subscription.endpoint);
       return { 
         success: false, 
         error: 'Subscription expired or unsubscribed',

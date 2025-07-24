@@ -28,6 +28,8 @@ interface LoaderData {
     messages: MessageWithSender[];
     error?: string;
     userId: string | null; // Pass current user ID for message alignment
+    userFirstName: string | null;
+    userLastName: string | null;
     ENV: { // Pass environment variables needed by client
         SUPABASE_URL: string;
         SUPABASE_ANON_KEY: string;
@@ -58,6 +60,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             messages: [],
             error: "User not authenticated",
             userId: null,
+            userFirstName: null,
+            userLastName: null,
             ENV,
             accessToken: null,
             refreshToken: null
@@ -69,6 +73,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             messages: [],
             error: "Conversation ID missing",
             userId: user.id,
+            userFirstName: null,
+            userLastName: null,
             ENV,
             accessToken,
             refreshToken
@@ -89,6 +95,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             messages: [],
             error: "Access Denied: You do not have permission to view this page.",
             userId: user.id,
+            userFirstName: null,
+            userLastName: null,
             ENV,
             accessToken,
             refreshToken
@@ -112,6 +120,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             messages: [],
             error: "Access denied or conversation not found.",
             userId: user.id,
+            userFirstName: null,
+            userLastName: null,
             ENV,
             accessToken,
             refreshToken
@@ -149,6 +159,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             messages: [],
             error: "Failed to load conversation details.",
             userId: user.id,
+            userFirstName: null,
+            userLastName: null,
             ENV,
             accessToken,
             refreshToken
@@ -168,6 +180,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             messages: [],
             error: "Failed to load conversation participants.",
             userId: user.id,
+            userFirstName: null,
+            userLastName: null,
             ENV,
             accessToken,
             refreshToken
@@ -195,6 +209,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             messages: [],
             error: "Failed to load user profiles.",
             userId: user.id,
+            userFirstName: null,
+            userLastName: null,
             ENV,
             accessToken,
             refreshToken
@@ -267,6 +283,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             messages: [],
             error: "Failed to load messages.",
             userId: user.id,
+            userFirstName: null,
+            userLastName: null,
             ENV,
             accessToken,
             refreshToken
@@ -333,10 +351,19 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     // Remove conversation_participants from the final conversation object sent to client if not needed directly
     // delete (processedConversation as any).conversation_participants;
 
+    const {data: userName} = await supabaseServer
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+    console.log("[AdminConversationView Loader] User name:", userName);
+
     return json({
         conversation: processedConversation, // Pass processed conversation
         messages: messages,
         userId: user.id,
+        userFirstName: userName?.first_name ?? null,
+        userLastName: userName?.last_name ?? null,
         ENV,
         accessToken, // Pass token to client
         refreshToken
@@ -350,6 +377,8 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     const conversationId = params.conversationId;
     const formData = await request.formData();
     const content = formData.get("content") as string;
+
+    console.log("[AdminConversationView Action] Conversation ID:", conversationId);
 
     if (!user) {
         return json({error: "User not authenticated"}, {status: 401, headers});
@@ -410,7 +439,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         return json({error: "Failed to send message."}, {status: 500, headers});
     }
 
-    // Send push notifications to other participants (families)
+    // --- Start of Corrected Push Notification Logic ---
     try {
         // Get other participants in the conversation (excluding the sender)
         const {data: otherParticipants} = await supabaseServer
@@ -420,15 +449,10 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             .neq('user_id', user.id);
 
         if (otherParticipants && otherParticipants.length > 0) {
-            console.log('Profile check data:', profileCheck);
-            
-            // Create a more descriptive sender name based on role
             let senderName = profileCheck?.role === 'admin' ? 'Admin' : 'Instructor'; // Role-based fallback
-            
             if (profileCheck) {
                 const firstName = profileCheck.first_name?.trim();
                 const lastName = profileCheck.last_name?.trim();
-                
                 if (firstName && lastName) {
                     senderName = `${firstName} ${lastName}`;
                 } else if (firstName) {
@@ -436,46 +460,48 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                 } else if (lastName) {
                     senderName = lastName;
                 }
-                // If both names are null/empty, use role-based fallback
             }
 
-            console.log('Computed sender name:', senderName);
-
-            // Import push notification utilities
-            const { 
-                sendPushNotificationToMultiple, 
-                createMessageNotificationPayload 
+            const {
+                sendPushNotificationToMultiple,
+                createMessageNotificationPayload
             } = await import('~/utils/push-notifications.server');
 
-            // Get push subscriptions for all other participants
             const recipientIds = otherParticipants.map(p => p.user_id);
+
+            // 1. MODIFICATION: Select 'user_id' along with subscription details
             const {data: pushSubscriptions} = await supabaseServer
                 .from('push_subscriptions')
-                .select('endpoint, p256dh, auth')
+                .select('endpoint, p256dh, auth, user_id') // Added user_id
                 .in('user_id', recipientIds);
 
             if (pushSubscriptions && pushSubscriptions.length > 0) {
-                const payload = createMessageNotificationPayload(
-                    senderName,
-                    content.trim(),
-                    conversationId,
-                    newMessage.id,
-                    `/family/messages/${conversationId}`
-                );
+                // 2. MODIFICATION: Loop through each subscription to create a specific payload
+                for (const subscription of pushSubscriptions) {
+                    const payload = createMessageNotificationPayload(
+                        senderName,
+                        content.trim(),
+                        conversationId,
+                        newMessage.id,
+                        `/family/messages/${conversationId}`,
+                        subscription.user_id // Pass the recipient's user_id
+                    );
 
-                const subscriptions = pushSubscriptions.map(sub => ({
-                    endpoint: sub.endpoint,
-                    keys: {
-                        p256dh: sub.p256dh,
-                        auth: sub.auth
+                    const subscriptionData = {
+                        endpoint: subscription.endpoint,
+                        keys: {
+                            p256dh: subscription.p256dh,
+                            auth: subscription.auth
+                        }
+                    };
+
+                    // Send notification to this specific subscription
+                    const result = await sendPushNotificationToMultiple([subscriptionData], payload);
+                    console.log(`Push notification sent to user ${subscription.user_id}: ${result.successCount} success, ${result.failureCount} failures`);
+
+                    if (result.expiredCount > 0) {
+                        console.log(`Cleaned up ${result.expiredCount} expired push subscriptions for user ${subscription.user_id}`);
                     }
-                }));
-
-                const result = await sendPushNotificationToMultiple(subscriptions, payload);
-                console.log(`Push notifications sent to ${result.successCount} family devices with payload: ${JSON.stringify(payload)}`);
-                
-                if (result.expiredCount > 0) {
-                    console.log(`Cleaned up ${result.expiredCount} expired push subscriptions`);
                 }
             } else {
                 console.log('No push subscriptions found for family participants');
@@ -485,13 +511,14 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         console.error('Error sending push notifications:', error);
         // Don't fail the message send if push notifications fail
     }
+    // --- End of Corrected Push Notification Logic ---
 
     return json({success: true}, {headers});
 }
 
 // --- Component ---
 export default function AdminConversationView() {
-    const {conversation, messages: initialMessages, userId, error, ENV, accessToken, refreshToken} = useLoaderData<typeof loader>();
+    const {conversation, messages: initialMessages, userId, userFirstName, userLastName, error, ENV, accessToken, refreshToken} = useLoaderData<typeof loader>();
     const fetcher = useFetcher<ActionData>();
     const [messages, setMessages] = useState<MessageWithSender[]>(initialMessages);
     const messageInputRef = useRef<HTMLTextAreaElement>(null); // Ref for the message input
@@ -648,12 +675,34 @@ export default function AdminConversationView() {
 
                         // --- Show notification for incoming messages (only if not from current user) ---
                         if (rawNewMessage.sender_id !== userId && typeof window !== 'undefined') {
-                            const senderName = 'Family Member'; // For admin route, we'll use a generic name
-                            
-                            notificationService.showMessageNotification({
+
+                            // Find the sender's profile from the existing messages list to get their name.
+                            let senderName = 'Family Member'; // Default name
+
+                            // The 'messages' state variable contains the profiles from the initial load.
+                            const messageWithProfile = messages.find(msg =>
+                                msg.sender_id === rawNewMessage.sender_id && msg.senderProfile
+                            );
+
+                            if (messageWithProfile && messageWithProfile.senderProfile) {
+                                const profile = messageWithProfile.senderProfile;
+                                const firstName = profile.first_name;
+                                const lastName = profile.last_name;
+
+                                if (firstName && lastName) {
+                                    senderName = `${firstName} ${lastName}`;
+                                } else if (firstName) {
+                                    senderName = firstName;
+                                } else if (lastName) {
+                                    senderName = lastName;
+                                }
+                                // If no name, it will default to 'Family Member'
+                            }
+
+                            await notificationService.showMessageNotification({
                                 conversationId: conversation.id,
                                 senderId: rawNewMessage.sender_id,
-                                senderName: senderName,
+                                senderName: senderName, // Use the dynamically found name
                                 messageContent: rawNewMessage.content || 'New message',
                                 timestamp: rawNewMessage.created_at || new Date().toISOString()
                             });

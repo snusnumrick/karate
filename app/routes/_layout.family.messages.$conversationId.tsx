@@ -261,11 +261,15 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     }
 
     // Get sender profile for notification
-    const {data: senderProfile} = await supabaseServer
+    const {data: senderProfile, error: senderProfileError} = await supabaseServer
         .from('profiles')
         .select('first_name, last_name')
         .eq('id', user.id)
         .single();
+
+    console.log('Sender profile query result:', senderProfile);
+    console.log('Sender profile query error:', senderProfileError);
+    console.log('Sender user ID:', user.id);
 
     // Insert the new message
     const {data: newMessage, error: insertError} = await supabaseServer
@@ -285,8 +289,11 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
     // Send push notifications to other participants
     try {
+        // Create an admin client to bypass RLS ---
+        const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
         // Get other participants in the conversation (excluding the sender)
-        const {data: otherParticipants, error: participantsError} = await supabaseServer
+        const {data: otherParticipants, error: participantsError} = await supabaseAdmin
             .from('conversation_participants')
             .select('user_id')
             .eq('conversation_id', conversationId)
@@ -302,7 +309,14 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                 ? `${senderProfile.first_name} ${senderProfile.last_name}`.trim()
                 : 'Someone';
 
-            // Import push notification utilities
+            console.log('Constructed sender name:', senderName);
+            console.log('Sender profile data:', {
+                first_name: senderProfile?.first_name,
+                last_name: senderProfile?.last_name,
+                full_constructed: senderName
+            });
+
+             // Import push notification utilities
             const { 
                 sendPushNotificationToMultiple, 
                 createMessageNotificationPayload 
@@ -313,7 +327,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             console.log('Looking for push subscriptions for participant IDs:', recipientIds);
             
             // Debug: Get user profiles for these participant IDs to see who they are
-            const {data: participantProfiles, error: profilesError} = await supabaseServer
+            const {data: participantProfiles, error: profilesError} = await supabaseAdmin
                 .from('profiles')
                 .select('id, first_name, last_name, role')
                 .in('id', recipientIds);
@@ -321,7 +335,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             console.log('Participant profiles:', participantProfiles);
             console.log('Profiles query error:', profilesError);
             
-            const {data: pushSubscriptions, error: pushSubscriptionsError} = await supabaseServer
+            const {data: pushSubscriptions, error: pushSubscriptionsError} = await supabaseAdmin
                 .from('push_subscriptions')
                 .select('endpoint, p256dh, auth, user_id')
                 .in('user_id', recipientIds);
@@ -342,7 +356,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             } else {
                 console.log('No push subscriptions found. Checking if participants have any subscriptions at all...');
                 // Check if any of the participants have push subscriptions (debugging)
-                const {data: allUserSubs} = await supabaseServer
+                const {data: allUserSubs} = await supabaseAdmin
                     .from('push_subscriptions')
                     .select('user_id, endpoint')
                     .in('user_id', recipientIds);
@@ -621,7 +635,7 @@ export default function ConversationView() {
                                 ? `${fetchedProfile.first_name || ''} ${fetchedProfile.last_name || ''}`.trim() || 'Someone'
                                 : 'Someone';
                             
-                            notificationService.showMessageNotification({
+                            await notificationService.showMessageNotification({
                                 conversationId: conversation.id,
                                 senderId: rawNewMessage.sender_id,
                                 senderName: senderName,
