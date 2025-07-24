@@ -1,12 +1,15 @@
-import {Outlet, useRouteError} from "@remix-run/react";
+import {Outlet, useRouteError, useLoaderData} from "@remix-run/react";
 import {json, type LoaderFunctionArgs, redirect} from "@vercel/remix";
 import {getSupabaseServerClient, isUserAdmin} from "~/utils/supabase.server";
 import AdminNavbar from "~/components/AdminNavbar";
 import AdminFooter from "~/components/AdminFooter";
+import * as React from "react";
+import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix";
+import type { Database } from "~/types/database.types";
 
 // This is a pathless layout route that will wrap all routes in the admin directory
 export async function loader({request}: LoaderFunctionArgs) {
-    const {supabaseServer, response} = getSupabaseServerClient(request);
+    const {supabaseServer, response, ENV} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
     const headers = response.headers;
 
@@ -22,14 +25,66 @@ export async function loader({request}: LoaderFunctionArgs) {
         return redirect('/family', {headers});
     }
 
-    // Return necessary data for the layout, or just null/{} if none needed yet
+    // Return necessary data for the layout, including ENV for Supabase client
     // Convert headers to plain object for Response
     const headersObj = Object.fromEntries(headers);
-    return json({isAdmin: true}, {headers: headersObj});
+    return json({isAdmin: true, ENV}, {headers: headersObj});
+}
+
+// AuthTokenSender component for admin routes
+function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> }) {
+    console.log(`Admin AuthTokenSender render ${supabase}`);
+    React.useEffect(() => {
+        console.log(`Admin AuthTokenSender useEffect ${supabase}`);
+        const sendTokenToSw = (token: string | null) => {
+            console.log(`Admin AuthTokenSender sendTokenToSw ${token}`);
+            if (window.navigator.serviceWorker) {
+                console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker ${token}`);
+                navigator.serviceWorker.ready.then((registration) => {
+                    console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker.ready ${token}`);
+                    if (registration.active) {
+                        console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker.ready.active ${token}`);
+                        registration.active.postMessage({
+                            type: token ? 'SET_AUTH_TOKEN' : 'CLEAR_AUTH_TOKEN',
+                            token: token,
+                        });
+                    }
+                });
+            }
+        };
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                sendTokenToSw(session?.access_token ?? null);
+            }
+        );
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            sendTokenToSw(session?.access_token ?? null);
+        });
+
+        return () => {
+            subscription?.unsubscribe();
+        };
+    }, [supabase]);
+
+    return null;
 }
 
 // The actual layout component
 export default function AdminLayout() {
+    const { ENV } = useLoaderData<typeof loader>();
+    const [supabase, setSupabase] = React.useState<SupabaseClient<Database> | null>(null);
+
+    React.useEffect(() => {
+        const client = createBrowserClient<Database>(
+            ENV.SUPABASE_URL!,
+            ENV.SUPABASE_ANON_KEY!
+        );
+        setSupabase(client);
+    }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
+
+    console.log("Entering AdminLayout...");
     return (
         <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
             <AdminNavbar/> {/* Add the Admin Navbar */}
@@ -38,6 +93,9 @@ export default function AdminLayout() {
                 <Outlet/>
             </main>
             <AdminFooter/> {/* Add the Admin Footer */}
+            
+            {/* AuthTokenSender for admin routes */}
+            {supabase && <AuthTokenSender supabase={supabase} />}
         </div>
     );
 }

@@ -5,6 +5,7 @@ let authToken = null; // Global variable to store the auth token
 
 // Listen for messages from the main application to receive the token
 self.addEventListener('message', (event) => {
+   console.log(`mesage from main app ${event.data.type}`);
     if (event.data && event.data.type === 'SET_AUTH_TOKEN') {
         authToken = event.data.token;
     }
@@ -198,7 +199,8 @@ self.addEventListener('fetch', (event) => {
  * Handles processing the queue of replies when the network is available.
  */
 async function processQueuedReplies() {
-    const queuedReplies = await getAndClearQueuedReplies();
+  console.log('--- Background Sync: Processing queued replies ---');
+  const queuedReplies = await getAndClearQueuedReplies();
     for (const reply of queuedReplies) {
         try {
             // --- MODIFIED: Use the payload and token from the queued object ---
@@ -328,7 +330,7 @@ self.addEventListener('push', (event) => {
             return self.registration.showNotification(notificationData.title, options);
         })
         .then(() => {
-            console.log('✅ Notification displayed successfully');
+            console.log(`✅ Notification displayed successfully ${self.registration.getNotifications()}`);
 
             // Additional debugging: Check if notification was actually created
             return self.registration.getNotifications();
@@ -352,9 +354,11 @@ self.addEventListener('push', (event) => {
 });
 
 // Handle notification click events
+console.log('sw addEventListener');
 self.addEventListener('notificationclick', (event) => {
     const notificationData = event.notification.data;
     const action = event.action;
+    console.log(`fw event ${action} ${JSON.stringify(notificationData, null, 2)}`);
 
     // The 'dismiss' action was not in your original file but is good practice.
     // We can close the specific notification clicked first.
@@ -366,6 +370,7 @@ self.addEventListener('notificationclick', (event) => {
 
     // Handle quick reply action using Background Sync
     if (action === 'reply' && event.reply && notificationData) {
+      console.log('--- Quick Reply Debug START ---');
         // Close any other notifications with the same tag to prevent duplication
         const notificationTag = event.notification.tag;
         if (notificationTag) {

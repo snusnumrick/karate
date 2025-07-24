@@ -2,6 +2,7 @@ import { ActionFunctionArgs, json } from '@remix-run/node';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 
 export async function action({ request }: ActionFunctionArgs) {
+  console.log(`Received quick reply request... ${request.method}`);
   if (request.method !== 'POST') {
     return json({ error: 'Method not allowed' }, { status: 405 });
   }
