@@ -312,7 +312,7 @@ export async function getInvoices(
   }
   
   if (filters.search) {
-    query = query.or(`invoice_number.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`);
+    query = query.or(`invoices.invoice_number.ilike.%${filters.search}%,invoices.notes.ilike.%${filters.search}%`);
   }
 
   // Apply pagination

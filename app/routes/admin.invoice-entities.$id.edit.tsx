@@ -150,6 +150,7 @@ export default function EditInvoiceEntityPage() {
                   defaultValue={entity.name}
                   placeholder="e.g., ABC School District"
                   required
+                  className="input-custom-styles"
                 />
                 {actionData?.errors?.name && (
                   <p className="text-sm text-red-600">{actionData.errors.name}</p>
@@ -159,7 +160,7 @@ export default function EditInvoiceEntityPage() {
               <div className="space-y-2">
                 <Label htmlFor="entity_type">Entity Type *</Label>
                 <Select name="entity_type" defaultValue={entity.entity_type} required>
-                  <SelectTrigger>
+                  <SelectTrigger className="input-custom-styles">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -184,6 +185,7 @@ export default function EditInvoiceEntityPage() {
                   name="contact_person"
                   defaultValue={entity.contact_person || ""}
                   placeholder="e.g., John Smith"
+                  className="input-custom-styles"
                 />
               </div>
 
@@ -194,6 +196,7 @@ export default function EditInvoiceEntityPage() {
                   name="tax_id"
                   defaultValue={entity.tax_id || ""}
                   placeholder="e.g., 12-3456789"
+                  className="input-custom-styles"
                 />
               </div>
             </div>
@@ -226,6 +229,7 @@ export default function EditInvoiceEntityPage() {
                   type="email"
                   defaultValue={entity.email || ""}
                   placeholder="billing@example.com"
+                  className="input-custom-styles"
                 />
                 {actionData?.errors?.email && (
                   <p className="text-sm text-red-600">{actionData.errors.email}</p>
@@ -239,6 +243,7 @@ export default function EditInvoiceEntityPage() {
                   name="phone"
                   defaultValue={entity.phone || ""}
                   placeholder="(555) 123-4567"
+                  className="input-custom-styles"
                 />
               </div>
             </div>
@@ -254,22 +259,13 @@ export default function EditInvoiceEntityPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="address_line1">Address Line 1</Label>
+              <Label htmlFor="address_line1">Street Address</Label>
               <Input
                 id="address_line1"
                 name="address_line1"
                 defaultValue={entity.address_line1 || ""}
                 placeholder="123 Main Street"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address_line2">Address Line 2</Label>
-              <Input
-                id="address_line2"
-                name="address_line2"
-                defaultValue={entity.address_line2 || ""}
-                placeholder="Suite 100"
+                className="input-custom-styles"
               />
             </div>
 
@@ -280,18 +276,33 @@ export default function EditInvoiceEntityPage() {
                   id="city"
                   name="city"
                   defaultValue={entity.city || ""}
-                  placeholder="Anytown"
+                  placeholder="Toronto"
+                  className="input-custom-styles"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  name="state"
-                  defaultValue={entity.state || ""}
-                  placeholder="CA"
-                />
+                <Label htmlFor="state">Province</Label>
+                <Select name="state" defaultValue={entity.state || ""}>
+                  <SelectTrigger className="input-custom-styles">
+                    <SelectValue placeholder="Select province" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AB">Alberta</SelectItem>
+                    <SelectItem value="BC">British Columbia</SelectItem>
+                    <SelectItem value="MB">Manitoba</SelectItem>
+                    <SelectItem value="NB">New Brunswick</SelectItem>
+                    <SelectItem value="NL">Newfoundland and Labrador</SelectItem>
+                    <SelectItem value="NS">Nova Scotia</SelectItem>
+                    <SelectItem value="ON">Ontario</SelectItem>
+                    <SelectItem value="PE">Prince Edward Island</SelectItem>
+                    <SelectItem value="QC">Quebec</SelectItem>
+                    <SelectItem value="SK">Saskatchewan</SelectItem>
+                    <SelectItem value="NT">Northwest Territories</SelectItem>
+                    <SelectItem value="NU">Nunavut</SelectItem>
+                    <SelectItem value="YT">Yukon</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -300,19 +311,10 @@ export default function EditInvoiceEntityPage() {
                   id="postal_code"
                   name="postal_code"
                   defaultValue={entity.postal_code || ""}
-                  placeholder="12345"
+                  placeholder="M5V 3A8"
+                  className="input-custom-styles"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                name="country"
-                defaultValue={entity.country}
-                placeholder="US"
-              />
             </div>
           </CardContent>
         </Card>
@@ -329,7 +331,7 @@ export default function EditInvoiceEntityPage() {
               <div className="space-y-2">
                 <Label htmlFor="payment_terms">Payment Terms</Label>
                 <Select name="payment_terms" defaultValue={entity.payment_terms}>
-                  <SelectTrigger>
+                  <SelectTrigger className="input-custom-styles">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -352,6 +354,7 @@ export default function EditInvoiceEntityPage() {
                   min="0"
                   defaultValue={entity.credit_limit || ""}
                   placeholder="0.00"
+                  className="input-custom-styles"
                 />
               </div>
             </div>
@@ -364,6 +367,7 @@ export default function EditInvoiceEntityPage() {
                 defaultValue={entity.notes || ""}
                 placeholder="Additional notes about this entity..."
                 rows={3}
+                className="input-custom-styles"
               />
             </div>
           </CardContent>

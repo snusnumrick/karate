@@ -15,7 +15,7 @@ import type { InvoiceEntity, CreateInvoiceData, CreateInvoiceLineItemData , Invo
 import { useInvoiceCalculations, formatCurrency } from "~/hooks/use-invoice-calculations";
 import { createEmptyLineItem } from "~/utils/line-item-helpers";
 import { calculateDueDate } from "~/utils/entity-helpers";
-import { Calendar, FileText, Eye, Save, Send } from "lucide-react";
+import { Calendar, FileText, Eye, Save, Send, CheckCircle, AlertCircle, XCircle } from "lucide-react";
 
 interface InvoiceFormProps {
   entities?: InvoiceEntity[];
@@ -112,6 +112,50 @@ export function InvoiceForm({ initialData, mode = 'create' }: InvoiceFormProps) 
     );
   };
 
+  // Validation status helpers
+  const getValidationStatus = () => {
+    const hasEntity = !!selectedEntity;
+    const hasIssueDate = !!invoiceData.issue_date;
+    const hasDueDate = !!invoiceData.due_date;
+    const hasValidLineItems = invoiceData.line_items.length > 0 && 
+      invoiceData.line_items.every(item => 
+        item.description.trim() && 
+        item.quantity > 0 && 
+        item.unit_price >= 0
+      );
+
+    return {
+      entity: hasEntity,
+      dates: hasIssueDate && hasDueDate,
+      lineItems: hasValidLineItems,
+      overall: hasEntity && hasIssueDate && hasDueDate && hasValidLineItems
+    };
+  };
+
+  const getValidationIcon = (isValid: boolean) => {
+    if (isValid) {
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
+    }
+    return <XCircle className="h-4 w-4 text-red-500" />;
+  };
+
+  const getValidationMessage = () => {
+    const status = getValidationStatus();
+    const missing = [];
+    
+    if (!status.entity) missing.push("billing entity");
+    if (!status.dates) missing.push("issue and due dates");
+    if (!status.lineItems) missing.push("valid line items");
+    
+    if (missing.length === 0) {
+      return "All required fields completed. Ready to create invoice!";
+    }
+    
+    return `Please complete: ${missing.join(", ")}`;
+  };
+
+  const validationStatus = getValidationStatus();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -154,9 +198,18 @@ export function InvoiceForm({ initialData, mode = 'create' }: InvoiceFormProps) 
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="entity">Entity</TabsTrigger>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="line-items">Items</TabsTrigger>
+                <TabsTrigger value="entity" className="flex items-center gap-2">
+                  {getValidationIcon(validationStatus.entity)}
+                  Entity
+                </TabsTrigger>
+                <TabsTrigger value="details" className="flex items-center gap-2">
+                  {getValidationIcon(validationStatus.dates)}
+                  Details
+                </TabsTrigger>
+                <TabsTrigger value="line-items" className="flex items-center gap-2">
+                  {getValidationIcon(validationStatus.lineItems)}
+                  Items
+                </TabsTrigger>
                 <TabsTrigger value="templates">Templates</TabsTrigger>
               </TabsList>
 
@@ -167,7 +220,13 @@ export function InvoiceForm({ initialData, mode = 'create' }: InvoiceFormProps) 
                     <CardTitle className="flex items-center gap-2 dark:text-white">
                       <FileText className="h-5 w-5" />
                       Select Billing Entity
+                      {getValidationIcon(validationStatus.entity)}
                     </CardTitle>
+                    {!validationStatus.entity && (
+                      <p className="text-sm text-amber-600 dark:text-amber-400">
+                        Please select a billing entity to continue
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <InvoiceEntitySelector
@@ -185,7 +244,13 @@ export function InvoiceForm({ initialData, mode = 'create' }: InvoiceFormProps) 
                     <CardTitle className="flex items-center gap-2 dark:text-white">
                       <Calendar className="h-5 w-5" />
                       Invoice Details
+                      {getValidationIcon(validationStatus.dates)}
                     </CardTitle>
+                    {!validationStatus.dates && (
+                      <p className="text-sm text-amber-600 dark:text-amber-400">
+                        Please fill in the required issue date and due date
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -299,7 +364,15 @@ export function InvoiceForm({ initialData, mode = 'create' }: InvoiceFormProps) 
               <TabsContent value="line-items" className="space-y-4">
                 <Card className="dark:bg-gray-700 dark:border-gray-600">
                   <CardHeader>
-                    <CardTitle className="dark:text-white">Invoice Line Items</CardTitle>
+                    <CardTitle className="flex items-center gap-2 dark:text-white">
+                      Invoice Line Items
+                      {getValidationIcon(validationStatus.lineItems)}
+                    </CardTitle>
+                    {!validationStatus.lineItems && (
+                      <p className="text-sm text-amber-600 dark:text-amber-400">
+                        Please add at least one line item with description, quantity &gt; 0, and unit price ≥ 0
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <InvoiceLineItemBuilder
@@ -356,12 +429,26 @@ export function InvoiceForm({ initialData, mode = 'create' }: InvoiceFormProps) 
 
             {/* Action Buttons */}
             <div className="mt-8 space-y-4">
+              {/* Validation Status Alert */}
+              <Alert className={validationStatus.overall ? "border-green-200 bg-green-50 dark:bg-green-900/20" : "border-amber-200 bg-amber-50 dark:bg-amber-900/20"}>
+                <div className="flex items-center gap-2">
+                  {validationStatus.overall ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                  )}
+                  <AlertDescription className={validationStatus.overall ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}>
+                    {getValidationMessage()}
+                  </AlertDescription>
+                </div>
+              </Alert>
+
               <Button
                 type="submit"
                 name="action"
                 value="create_invoice"
                 disabled={!isFormValid() || isSubmitting}
-                className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 flex items-center justify-center gap-2"
+                className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Send className="h-4 w-4" />
                 {isSubmitting ? 'Creating...' : 'CREATE INVOICE'}
@@ -372,7 +459,7 @@ export function InvoiceForm({ initialData, mode = 'create' }: InvoiceFormProps) 
                 value="save_draft"
                 variant="outline"
                 disabled={!isFormValid() || isSubmitting}
-                className="w-full font-bold py-3 px-6 flex items-center justify-center gap-2"
+                className="w-full font-bold py-3 px-6 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Save className="h-4 w-4" />
                 SAVE AS DRAFT
