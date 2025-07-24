@@ -275,7 +275,9 @@ self.addEventListener('push', (event) => {
         actions = notificationData.actions.map(action => ({
             action: action.action,
             title: action.title,
-            icon: action.icon ? new URL(action.icon, self.location.origin).href : undefined
+            icon: action.icon ? new URL(action.icon, self.location.origin).href : undefined,
+            type: action.type, // Preserve type for text input fields
+            placeholder: action.placeholder // Preserve placeholder for text input fields
         }));
         console.log('🎬 Processed actions:', actions);
     } else {
