@@ -1,13 +1,20 @@
 import { json, type LoaderFunctionArgs } from "@vercel/remix";
-import {Outlet, useLoaderData, useLocation, useNavigate, useRevalidator} from "@remix-run/react"; // Import useLoaderData, useRevalidator
+import {Outlet, useLoaderData, useLocation, useNavigate, useRevalidator} from "@remix-run/react";
 import * as React from "react";
-import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix"; // Import client helper
+import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix";
 import PublicNavbar from "~/components/PublicNavbar";
 import FamilyNavbar from "~/components/FamilyNavbar";
 import AdminNavbar from "~/components/AdminNavbar";
 import Footer from "~/components/Footer";
 import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
-import type { Database } from "~/types/database.types"; // Import Database type
+import type { Database } from "~/types/database.types";
+
+// Add TypeScript declaration for the global window.__SUPABASE_SINGLETON_CLIENT property
+declare global {
+    interface Window {
+        __SUPABASE_SINGLETON_CLIENT?: SupabaseClient<Database>;
+    }
+}
 
 
 // Loader to get the session state AND environment variables for the client
@@ -24,6 +31,47 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // Return session, ENV, isAdmin status, and headers (important for setting/clearing cookies)
     return json({ session, ENV, isAdmin }, { headers });
+}
+
+// --- 1. AuthTokenSender component added here ---
+// This component listens for auth changes and sends the token to the service worker.
+function AuthTokenSender() {
+    React.useEffect(() => {
+        if (typeof window === 'undefined' || !window.navigator.serviceWorker) {
+            return;
+        }
+
+        // Use the singleton client created in the layout
+        const supabase = window.__SUPABASE_SINGLETON_CLIENT;
+        if (!supabase) return;
+
+        const sendTokenToSw = (token: string | null) => {
+            navigator.serviceWorker.ready.then((registration) => {
+                if (registration.active) {
+                    registration.active.postMessage({
+                        type: token ? 'SET_AUTH_TOKEN' : 'CLEAR_AUTH_TOKEN',
+                        token: token,
+                    });
+                }
+            });
+        };
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                sendTokenToSw(session?.access_token ?? null);
+            }
+        );
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            sendTokenToSw(session?.access_token ?? null);
+        });
+
+        return () => {
+            subscription?.unsubscribe();
+        };
+    }, []);
+
+    return null; // This component does not render any UI
 }
 
 
@@ -47,6 +95,10 @@ export default function Layout() {
             ENV.SUPABASE_URL!,
             ENV.SUPABASE_ANON_KEY!
         );
+
+        // --- 2. Create a global singleton instance for other components to use ---
+        window.__SUPABASE_SINGLETON_CLIENT = client;
+
         setSupabase(client);
     }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
 
@@ -116,6 +168,9 @@ export default function Layout() {
             <div className={isReceiptPage ? 'print:hidden' : ''}>
                 <Footer user={user}/>
             </div>
+
+            {/* --- 3. Render the AuthTokenSender component --- */}
+            <AuthTokenSender />
         </div>
     );
 }
