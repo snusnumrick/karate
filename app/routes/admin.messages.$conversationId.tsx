@@ -375,10 +375,20 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
     const conversationId = params.conversationId;
-    const formData = await request.formData();
-    const content = formData.get("content") as string;
 
-    console.log("[AdminConversationView Action] Conversation ID:", conversationId);
+    // --- START: MODIFIED LOGIC ---
+    // Handle both JSON (from quick reply) and FormData (from web form)
+    let content: string | null = null;
+    const contentType = request.headers.get("Content-Type");
+
+    if (contentType && contentType.includes("application/json")) {
+        const jsonPayload = await request.json();
+        content = jsonPayload.content;
+    } else {
+        const formData = await request.formData();
+        content = formData.get("content") as string;
+    }
+    // --- END: MODIFIED LOGIC ---
 
     if (!user) {
         return json({error: "User not authenticated"}, {status: 401, headers});
@@ -390,9 +400,9 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         return json({error: "Message content cannot be empty"}, {status: 400, headers});
     }
 
-    // Verify user is admin/instructor AND a participant before allowing send
+    // --- The rest of your action function remains the same ---
 
-    // Step 1: Check if user is a participant in the conversation
+    // Verify user is admin/instructor AND a participant before allowing send
     const {data: participantCheck, error: participantError} = await supabaseServer
         .from('conversation_participants')
         .select('user_id')
@@ -408,7 +418,6 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         });
     }
 
-    // Step 2: Check if user has admin or instructor role and get profile info
     const {data: profileCheck, error: profileError} = await supabaseServer
         .from('profiles')
         .select('role, first_name, last_name')
@@ -428,7 +437,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         .from('messages')
         .insert({
             conversation_id: conversationId,
-            sender_id: user.id, // Sender is the admin/instructor user
+            sender_id: user.id,
             content: content.trim(),
         })
         .select()
@@ -439,9 +448,8 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         return json({error: "Failed to send message."}, {status: 500, headers});
     }
 
-    // --- Start of Corrected Push Notification Logic ---
+    // The push notification logic for notifying families...
     try {
-        // Get other participants in the conversation (excluding the sender)
         const {data: otherParticipants} = await supabaseServer
             .from('conversation_participants')
             .select('user_id')
@@ -449,17 +457,9 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             .neq('user_id', user.id);
 
         if (otherParticipants && otherParticipants.length > 0) {
-            let senderName = profileCheck?.role === 'admin' ? 'Admin' : 'Instructor'; // Role-based fallback
-            if (profileCheck) {
-                const firstName = profileCheck.first_name?.trim();
-                const lastName = profileCheck.last_name?.trim();
-                if (firstName && lastName) {
-                    senderName = `${firstName} ${lastName}`;
-                } else if (firstName) {
-                    senderName = firstName;
-                } else if (lastName) {
-                    senderName = lastName;
-                }
+            let senderName = profileCheck?.role === 'admin' ? 'Admin' : 'Instructor';
+            if (profileCheck?.first_name) {
+                senderName = `${profileCheck.first_name} ${profileCheck.last_name || ''}`.trim();
             }
 
             const {
@@ -468,15 +468,12 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             } = await import('~/utils/push-notifications.server');
 
             const recipientIds = otherParticipants.map(p => p.user_id);
-
-            // 1. MODIFICATION: Select 'user_id' along with subscription details
             const {data: pushSubscriptions} = await supabaseServer
                 .from('push_subscriptions')
-                .select('endpoint, p256dh, auth, user_id') // Added user_id
+                .select('endpoint, p256dh, auth, user_id')
                 .in('user_id', recipientIds);
 
             if (pushSubscriptions && pushSubscriptions.length > 0) {
-                // 2. MODIFICATION: Loop through each subscription to create a specific payload
                 for (const subscription of pushSubscriptions) {
                     const payload = createMessageNotificationPayload(
                         senderName,
@@ -484,34 +481,22 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                         conversationId,
                         newMessage.id,
                         `/family/messages/${conversationId}`,
-                        subscription.user_id // Pass the recipient's user_id
+                        subscription.user_id
                     );
 
                     const subscriptionData = {
                         endpoint: subscription.endpoint,
-                        keys: {
-                            p256dh: subscription.p256dh,
-                            auth: subscription.auth
-                        }
+                        keys: { p256dh: subscription.p256dh, auth: subscription.auth }
                     };
 
-                    // Send notification to this specific subscription
-                    const result = await sendPushNotificationToMultiple([subscriptionData], payload);
-                    console.log(`Push notification sent to user ${subscription.user_id}: ${result.successCount} success, ${result.failureCount} failures`);
-
-                    if (result.expiredCount > 0) {
-                        console.log(`Cleaned up ${result.expiredCount} expired push subscriptions for user ${subscription.user_id}`);
-                    }
+                    await sendPushNotificationToMultiple([subscriptionData], payload);
                 }
-            } else {
-                console.log('No push subscriptions found for family participants');
             }
         }
     } catch (error) {
         console.error('Error sending push notifications:', error);
-        // Don't fail the message send if push notifications fail
     }
-    // --- End of Corrected Push Notification Logic ---
+
 
     return json({success: true}, {headers});
 }

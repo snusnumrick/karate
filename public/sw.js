@@ -360,7 +360,7 @@ self.addEventListener('notificationclick', (event) => {
     // console.log('--- Quick Reply Debug END ---');
 
     // Send debug info to main thread
-    self.clients.matchAll().then(clients => {
+/*    self.clients.matchAll().then(clients => {
       clients.forEach(client => {
         client.postMessage({
           type: 'QUICK_REPLY_DEBUG',
@@ -373,7 +373,7 @@ self.addEventListener('notificationclick', (event) => {
           }
         });
       });
-    });
+    });*/
 
     const replyData = {
       conversationId: notificationData.conversationId,
