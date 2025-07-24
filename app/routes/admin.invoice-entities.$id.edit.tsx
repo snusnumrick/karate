@@ -10,7 +10,7 @@ import { Switch } from "~/components/ui/switch";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntityById, updateInvoiceEntity } from "~/services/invoice-entity.server";
 import type { EntityType, PaymentTerms } from "~/types/invoice";
-import { ArrowLeft, Save, CheckCircle } from "lucide-react";
+import { Save, CheckCircle } from "lucide-react";
 
 interface ActionData {
   errors?: {
@@ -103,18 +103,14 @@ export default function EditInvoiceEntityPage() {
   const showCreatedSuccess = searchParams.get("success") === "created";
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <AppBreadcrumb items={breadcrumbPatterns.adminInvoiceEntityEdit(entity.name, entity.id)} className="mb-6" />
-      
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/admin/invoice-entities">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Entities
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Edit Invoice Entity</h1>
-      </div>
+    <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
+          <AppBreadcrumb items={breadcrumbPatterns.adminInvoiceEntityEdit(entity.name, entity.id)} className="mb-6" />
+          
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Edit Invoice Entity</h1>
+          </div>
 
       {showCreatedSuccess && (
         <div className="bg-green-100 dark:bg-green-900/20 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded mb-6 flex items-center">
@@ -192,7 +188,7 @@ export default function EditInvoiceEntityPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tax_id">Tax ID / EIN</Label>
+                <Label htmlFor="tax_id">Tax ID</Label>
                 <Input
                   id="tax_id"
                   name="tax_id"
@@ -389,6 +385,8 @@ export default function EditInvoiceEntityPage() {
           </Button>
         </div>
       </Form>
+        </div>
+      </div>
     </div>
   );
 }

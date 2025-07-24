@@ -84,7 +84,7 @@ export default function InvoiceEntitiesIndexPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Invoice Entities</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Manage billing entities including customers, vendors, contractors, and partners. 
+            Manage billing entities including families, schools, government agencies, and corporate clients. 
             These entities are used for creating invoices and tracking financial relationships.
           </p>
         </div>

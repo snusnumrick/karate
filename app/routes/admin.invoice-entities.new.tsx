@@ -131,15 +131,16 @@ export default function NewInvoiceEntityPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="entity_type">Entity Type *</Label>
-                <Select name="entity_type" defaultValue="customer" required>
+                <Select name="entity_type" defaultValue="family" required>
                   <SelectTrigger className="input-custom-styles" tabIndex={0}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="customer">Customer</SelectItem>
-                    <SelectItem value="vendor">Vendor</SelectItem>
-                    <SelectItem value="contractor">Contractor</SelectItem>
-                    <SelectItem value="partner">Partner</SelectItem>
+                    <SelectItem value="family">Family</SelectItem>
+                    <SelectItem value="school">School</SelectItem>
+                    <SelectItem value="government">Government</SelectItem>
+                    <SelectItem value="corporate">Corporate</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
                 {actionData?.errors?.entity_type && (
@@ -161,7 +162,7 @@ export default function NewInvoiceEntityPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tax_id">Tax ID / EIN</Label>
+                <Label htmlFor="tax_id">Tax ID</Label>
                 <Input
                   id="tax_id"
                   name="tax_id"
@@ -282,8 +283,8 @@ export default function NewInvoiceEntityPage() {
               <Input
                 id="country"
                 name="country"
-                defaultValue="US"
-                placeholder="US"
+                defaultValue="CA"
+                placeholder="CA"
                 className="input-custom-styles"
                 tabIndex={0}
               />
