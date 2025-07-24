@@ -4761,21 +4761,21 @@ BEGIN
         CREATE TRIGGER trigger_invoices_updated_at
             BEFORE UPDATE ON invoices
             FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column();
+            EXECUTE FUNCTION update_modified_column();
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_invoice_entities_updated_at') THEN
         CREATE TRIGGER trigger_invoice_entities_updated_at
             BEFORE UPDATE ON invoice_entities
             FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column();
+            EXECUTE FUNCTION update_modified_column();
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_invoice_payments_updated_at') THEN
         CREATE TRIGGER trigger_invoice_payments_updated_at
             BEFORE UPDATE ON invoice_payments
             FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column();
+            EXECUTE FUNCTION update_modified_column();
     END IF;
 END
 $$;
