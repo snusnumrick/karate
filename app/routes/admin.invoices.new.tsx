@@ -48,6 +48,7 @@ export async function action({ request }: ActionFunctionArgs) {
   await requireUserId(request);
   
   const formData = await request.formData();
+  const action = formData.get("action") as string;
   
   try {
     // Parse form data
@@ -64,35 +65,52 @@ export async function action({ request }: ActionFunctionArgs) {
       due_date: due_date || ''
     };
 
-    if (!entity_id) {
+    // For save_draft, we have more relaxed validation
+    const isDraft = action === "save_draft";
+
+    if (!entity_id && !isDraft) {
       errors.entity_id = "Please select a billing entity";
     }
 
-    if (!issue_date) {
+    if (!issue_date && !isDraft) {
       errors.issue_date = "Issue date is required";
     }
 
-    if (!due_date) {
+    if (!due_date && !isDraft) {
       errors.due_date = "Due date is required";
     }
 
     let line_items: CreateInvoiceLineItemData[] = [];
     try {
       line_items = JSON.parse(line_items_json);
-      if (!line_items || line_items.length === 0) {
-        errors.line_items = "At least one line item is required";
+      if (!isDraft) {
+        if (!line_items || line_items.length === 0) {
+          errors.line_items = "At least one line item is required";
+        } else {
+          // Validate line items for non-draft invoices
+          for (const item of line_items) {
+            if (!item.description?.trim()) {
+              errors.line_items = "All line items must have a description";
+              break;
+            }
+            if (item.quantity <= 0) {
+              errors.line_items = "All line items must have a positive quantity";
+              break;
+            }
+            if (item.unit_price < 0) {
+              errors.line_items = "Line item prices cannot be negative";
+              break;
+            }
+          }
+        }
       } else {
-        // Validate line items
+        // For drafts, just validate that line items with data are valid
         for (const item of line_items) {
-          if (!item.description?.trim()) {
-            errors.line_items = "All line items must have a description";
+          if (item.description?.trim() && item.quantity <= 0) {
+            errors.line_items = "Line items with descriptions must have a positive quantity";
             break;
           }
-          if (item.quantity <= 0) {
-            errors.line_items = "All line items must have a positive quantity";
-            break;
-          }
-          if (item.unit_price < 0) {
+          if (item.description?.trim() && item.unit_price < 0) {
             errors.line_items = "Line item prices cannot be negative";
             break;
           }
@@ -107,15 +125,22 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     const invoiceData: CreateInvoiceData = {
-      entity_id,
-      issue_date,
-      due_date,
+      entity_id: entity_id || '',
+      issue_date: issue_date || new Date().toISOString().split('T')[0],
+      due_date: due_date || new Date().toISOString().split('T')[0],
       service_period_start: formData.get("service_period_start") as string || undefined,
       service_period_end: formData.get("service_period_end") as string || undefined,
       terms: formData.get("terms") as string || undefined,
       notes: formData.get("notes") as string || undefined,
       footer_text: formData.get("footer_text") as string || undefined,
-      line_items
+      line_items: line_items.length > 0 ? line_items : [{ 
+        item_type: 'fee', 
+        description: '', 
+        quantity: 1, 
+        unit_price: 0, 
+        tax_rate: 0, 
+        sort_order: 0 
+      }]
     };
 
     // Create the invoice (status is managed by the database)

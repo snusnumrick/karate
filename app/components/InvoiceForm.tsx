@@ -507,11 +507,11 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                 name="action"
                 value="save_draft"
                 variant="outline"
-                disabled={!isFormValid() || isSubmitting}
+                disabled={isSubmitting}
                 className="w-full font-bold py-3 px-6 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Save className="h-4 w-4" />
-                SAVE AS DRAFT
+                {isSubmitting ? 'Saving...' : 'SAVE AS DRAFT'}
               </Button>
             </div>
           </Form>
