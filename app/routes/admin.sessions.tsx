@@ -581,7 +581,7 @@ export default function AdminSessions() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={fetcher.state === "submitting"}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-600 hover:bg-red-700 text-white"
               tabIndex={0}
             >
               {fetcher.state === "submitting" ? 'Deleting...' : 'Delete Session'}
@@ -670,7 +670,7 @@ export default function AdminSessions() {
             <AlertDialogAction
               onClick={confirmBulkDelete}
               disabled={!bulkDeleteForm.dateFrom || !bulkDeleteForm.dateTo}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-600 hover:bg-red-700 text-white"
               tabIndex={0}
             >
               Bulk Delete

@@ -385,7 +385,7 @@ export default function InvoiceEntityDetail() {
             <AlertDialogAction
               onClick={handleDeactivate}
               disabled={isSubmitting}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {isSubmitting ? "Deactivating..." : "Deactivate"}
             </AlertDialogAction>
