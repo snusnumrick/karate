@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { Link } from "@remix-run/react";
 import { InvoiceEntity } from "~/types/invoice";
@@ -29,11 +29,20 @@ export function InvoiceEntitySelector({
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<InvoiceEntity[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Filter entities based on search term (local filtering)
-  const getFilteredEntities = () => {
+  // Filter entities for display (show active entities first, then inactive) - memoized
+  const sortedEntities = useMemo(() => {
+    return [...entities].sort((a, b) => {
+      if (a.is_active && !b.is_active) return -1;
+      if (!a.is_active && b.is_active) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [entities]);
+
+  // Filter entities based on search term (local filtering) - memoized
+  const filteredEntities = useMemo(() => {
     if (!searchTerm.trim()) {
       return sortedEntities;
     }
@@ -44,17 +53,7 @@ export function InvoiceEntitySelector({
       entity.entity_type.toLowerCase().includes(term) ||
       (entity.email && entity.email.toLowerCase().includes(term))
     );
-  };
-
-  // Filter entities for display (show active entities first, then inactive)
-  const sortedEntities = [...entities].sort((a, b) => {
-    if (a.is_active && !b.is_active) return -1;
-    if (!a.is_active && b.is_active) return 1;
-    return a.name.localeCompare(b.name);
-  });
-
-  // Get filtered entities for display
-  const filteredEntities = getFilteredEntities();
+  }, [searchTerm, sortedEntities]);
 
   // Auto-focus search input on mount
   useEffect(() => {
@@ -65,8 +64,8 @@ export function InvoiceEntitySelector({
 
   // Debounced search function for additional API search (when local results are insufficient)
   useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
 
     // Only do API search if we have a search term and local results are limited
@@ -92,18 +91,18 @@ export function InvoiceEntitySelector({
           setLoading(false);
         }
       }, 300);
-      setSearchTimeout(timeout);
+      searchTimeoutRef.current = timeout;
     } else {
       setSearchResults(filteredEntities);
       setLoading(false);
     }
 
     return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchTerm, filteredEntities, searchTimeout]);
+  }, [searchTerm, filteredEntities]);
 
   const handleEntitySelect = (entity: InvoiceEntity) => {
     onEntitySelect(entity);
