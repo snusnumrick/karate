@@ -21,17 +21,18 @@ interface InvoiceFormProps {
   entities?: InvoiceEntity[];
   initialData?: Partial<CreateInvoiceData>;
   mode?: 'create' | 'edit';
+  preSelectedEntity?: InvoiceEntity | null;
 }
 
-export function InvoiceForm({ initialData, mode = 'create' }: InvoiceFormProps) {
+export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity }: InvoiceFormProps) {
   const actionData = useActionData<{ error?: string; success?: boolean }>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   // Form state
-  const [selectedEntity, setSelectedEntity] = useState<InvoiceEntity | null>(null);
+  const [selectedEntity, setSelectedEntity] = useState<InvoiceEntity | null>(preSelectedEntity || null);
   const [invoiceData, setInvoiceData] = useState<CreateInvoiceData>({
-    entity_id: "",
+    entity_id: preSelectedEntity?.id || "",
     issue_date: new Date().toISOString().split('T')[0],
     due_date: "",
     service_period_start: "",

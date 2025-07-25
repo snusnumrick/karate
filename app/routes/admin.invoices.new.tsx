@@ -11,13 +11,21 @@ import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoi
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserId(request);
   
+  // Get entity_id from URL parameters if provided
+  const url = new URL(request.url);
+  const entityId = url.searchParams.get("entity_id");
+  
   try {
     const result = await getInvoiceEntities();
     const entities = result?.entities || [];
-    return json({ entities });
+    
+    // Find the pre-selected entity if entity_id is provided
+    const preSelectedEntity = entityId ? entities.find(e => e.id === entityId) : null;
+    
+    return json({ entities, preSelectedEntityId: entityId, preSelectedEntity });
   } catch (error) {
     console.error("Error loading invoice entities:", error);
-    return json({ entities: [] });
+    return json({ entities: [], preSelectedEntityId: null, preSelectedEntity: null });
   }
 }
 
@@ -82,7 +90,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function NewInvoicePage() {
-  const { entities } = useLoaderData<typeof loader>();
+  const { entities, preSelectedEntity } = useLoaderData<typeof loader>();
 
   return (
     <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
@@ -91,7 +99,11 @@ export default function NewInvoicePage() {
         <AppBreadcrumb items={breadcrumbPatterns.adminInvoiceNew()}  className="mb-6" />
 
         {/* Invoice Form */}
-        <InvoiceForm entities={entities} />
+        <InvoiceForm 
+          entities={entities} 
+          initialData={preSelectedEntity ? { entity_id: preSelectedEntity.id } : undefined}
+          preSelectedEntity={preSelectedEntity}
+        />
       </div>
     </div>
   );

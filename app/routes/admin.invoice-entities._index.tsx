@@ -8,7 +8,7 @@ import { Badge } from "~/components/ui/badge";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntitiesWithStats } from "~/services/invoice-entity.server";
 import type { EntityType } from "~/types/invoice";
-import { Search, Plus, Building2, Users, Landmark, Briefcase, HelpCircle } from "lucide-react";
+import { Search, Plus, Building2, Users, Landmark, Briefcase, HelpCircle, Eye, FileText, Trash2 } from "lucide-react";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -211,7 +211,12 @@ export default function InvoiceEntitiesIndexPage() {
                       <div className="flex items-center space-x-3">
                         <IconComponent className="w-5 h-5 text-gray-500" />
                         <div>
-                          <div className="font-medium">{entity.name}</div>
+                          <Link 
+                            to={`/admin/invoice-entities/${entity.id}`}
+                            className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                          >
+                            {entity.name}
+                          </Link>
                           {entity.contact_person && (
                             <div className="text-sm text-gray-500">{entity.contact_person}</div>
                           )}
@@ -251,12 +256,36 @@ export default function InvoiceEntitiesIndexPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" asChild tabIndex={0}>
+                      <div className="flex space-x-1">
+                        <Button variant="outline" size="sm" asChild tabIndex={0} title="View entity details">
+                          <Link to={`/admin/invoice-entities/${entity.id}`}>
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild tabIndex={0} title="Create new invoice for this entity">
+                          <Link to={`/admin/invoices/new?entity_id=${entity.id}`}>
+                            <FileText className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild tabIndex={0} title="Edit entity">
                           <Link to={`/admin/invoice-entities/${entity.id}/edit`}>
                             Edit
                           </Link>
                         </Button>
+                        {entity.is_active && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            asChild 
+                            tabIndex={0} 
+                            title="Deactivate entity (soft delete)"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                          >
+                            <Link to={`/admin/invoice-entities/${entity.id}`}>
+                              <Trash2 className="w-4 h-4" />
+                            </Link>
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
