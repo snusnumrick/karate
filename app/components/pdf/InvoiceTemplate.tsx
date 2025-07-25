@@ -4,24 +4,14 @@ import {
   Text,
   View,
   StyleSheet,
-  Font,
   Image,
 } from '@react-pdf/renderer';
 import { siteConfig } from '~/config/site';
 import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
 
-// Register fonts for better typography
-Font.register({
-  family: 'Inter',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2' },
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hiA.woff2', fontWeight: 'bold' },
-  ],
-});
-
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'Inter',
+    fontFamily: 'Helvetica',
     fontSize: 10,
     paddingTop: 35,
     paddingBottom: 65,
@@ -254,15 +244,20 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
     return new Intl.NumberFormat(siteConfig.localization.locale, {
       style: 'currency',
       currency: siteConfig.localization.currency,
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {
+    if (!date) return 'N/A';
     return new Date(date).toLocaleDateString(siteConfig.localization.locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const safeText = (text: string | null | undefined) => {
+    return text || '';
   };
 
   const getStatusBadgeStyle = () => {
@@ -276,7 +271,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
     }
   };
 
-  const subtotal = invoice.line_items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+  const subtotal = invoice.line_items?.reduce((sum, item) => sum + ((item.quantity || 0) * (item.unit_price || 0)), 0) || 0;
   const taxAmount = invoice.tax_amount || 0;
   const discountAmount = invoice.discount_amount || 0;
   const total = subtotal + taxAmount - discountAmount;
@@ -286,7 +281,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
       <Page size="A4" style={styles.page}>
         {/* Status Badge */}
         <View style={getStatusBadgeStyle()}>
-          <Text>{invoice.status.toUpperCase()}</Text>
+          <Text>{safeText(invoice.status).toUpperCase()}</Text>
         </View>
 
         {/* Header */}
@@ -298,24 +293,24 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
           </View>
           <View style={styles.companyInfo}>
             <Text style={styles.companyName}>
-              {companyInfo?.name || 'Your Company Name'}
+              {safeText(companyInfo?.name) || 'Your Company Name'}
             </Text>
             <Text style={styles.companyDetails}>
-              {companyInfo?.address || 'Company Address'}
+              {safeText(companyInfo?.address) || 'Company Address'}
             </Text>
             {companyInfo?.phone && (
               <Text style={styles.companyDetails}>
-                Phone: {companyInfo.phone}
+                Phone: {safeText(companyInfo.phone)}
               </Text>
             )}
             {companyInfo?.email && (
               <Text style={styles.companyDetails}>
-                Email: {companyInfo.email}
+                Email: {safeText(companyInfo.email)}
               </Text>
             )}
             {companyInfo?.website && (
               <Text style={styles.companyDetails}>
-                Website: {companyInfo.website}
+                Website: {safeText(companyInfo.website)}
               </Text>
             )}
           </View>
@@ -330,7 +325,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
             <Text style={styles.sectionTitle}>Invoice Details</Text>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Invoice #:</Text>
-              <Text style={styles.detailValue}>{invoice.invoice_number}</Text>
+              <Text style={styles.detailValue}>{safeText(invoice.invoice_number)}</Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Issue Date:</Text>
@@ -345,28 +340,28 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
 
           <View style={styles.billingInfo}>
             <Text style={styles.sectionTitle}>Bill To</Text>
-            <Text style={styles.detailValue}>{invoice.entity.name}</Text>
-            {invoice.entity.contact_person && (
+            <Text style={styles.detailValue}>{safeText(invoice.entity?.name)}</Text>
+            {invoice.entity?.contact_person && (
               <Text style={styles.detailValue}>
-                Attn: {invoice.entity.contact_person}
+                Attn: {safeText(invoice.entity.contact_person)}
               </Text>
             )}
-            {invoice.entity.address_line1 && (
-              <Text style={styles.detailValue}>{invoice.entity.address_line1}</Text>
+            {invoice.entity?.address_line1 && (
+              <Text style={styles.detailValue}>{safeText(invoice.entity.address_line1)}</Text>
             )}
-            {invoice.entity.address_line2 && (
-              <Text style={styles.detailValue}>{invoice.entity.address_line2}</Text>
+            {invoice.entity?.address_line2 && (
+              <Text style={styles.detailValue}>{safeText(invoice.entity.address_line2)}</Text>
             )}
-            {invoice.entity.city && invoice.entity.state && (
+            {invoice.entity?.city && invoice.entity?.state && (
               <Text style={styles.detailValue}>
-                {invoice.entity.city}, {invoice.entity.state} {invoice.entity.postal_code}
+                {safeText(invoice.entity.city)}, {safeText(invoice.entity.state)} {safeText(invoice.entity.postal_code)}
               </Text>
             )}
-            {invoice.entity.email && (
-              <Text style={styles.detailValue}>{invoice.entity.email}</Text>
+            {invoice.entity?.email && (
+              <Text style={styles.detailValue}>{safeText(invoice.entity.email)}</Text>
             )}
-            {invoice.entity.phone && (
-              <Text style={styles.detailValue}>{invoice.entity.phone}</Text>
+            {invoice.entity?.phone && (
+              <Text style={styles.detailValue}>{safeText(invoice.entity.phone)}</Text>
             )}
           </View>
         </View>
@@ -388,22 +383,22 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
             </Text>
           </View>
 
-          {invoice.line_items.map((item, index) => (
+          {invoice.line_items?.map((item, index) => (
             <View key={index} style={styles.tableRow}>
               <View style={styles.descriptionColumn}>
-                <Text style={styles.tableCell}>{item.description}</Text>
+                <Text style={styles.tableCell}>{safeText(item.description)}</Text>
               </View>
               <Text style={[styles.tableCell, styles.quantityColumn]}>
-                {item.quantity}
+                {item.quantity || 0}
               </Text>
               <Text style={[styles.tableCell, styles.priceColumn]}>
                 {formatCurrency(item.unit_price)}
               </Text>
               <Text style={[styles.tableCell, styles.amountColumn]}>
-                {formatCurrency(item.quantity * item.unit_price)}
+                {formatCurrency((item.quantity || 0) * (item.unit_price || 0))}
               </Text>
             </View>
-          ))}
+          )) || []}
         </View>
 
         {/* Totals */}
@@ -439,14 +434,14 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
         {invoice.notes && (
           <View style={styles.notesSection}>
             <Text style={styles.notesTitle}>Notes</Text>
-            <Text style={styles.notesText}>{invoice.notes}</Text>
+            <Text style={styles.notesText}>{safeText(invoice.notes)}</Text>
           </View>
         )}
 
         {/* Footer */}
         <Text style={styles.footer}>
           Thank you for your business! Payment is due by {formatDate(invoice.due_date)}.
-          {companyInfo?.email && ` For questions, contact us at ${companyInfo.email}.`}
+          {companyInfo?.email && ` For questions, contact us at ${safeText(companyInfo.email)}.`}
         </Text>
       </Page>
     </Document>

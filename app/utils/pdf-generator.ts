@@ -21,15 +21,80 @@ interface GeneratePDFOptions {
 
 export async function generateInvoicePDF({ invoice, companyInfo }: GeneratePDFOptions): Promise<Buffer> {
   try {
+    // Validate required data
+    if (!invoice) {
+      throw new Error('Invoice data is required');
+    }
+    
+    if (!invoice.entity) {
+      throw new Error('Invoice entity is required');
+    }
+    
+    if (!invoice.line_items || invoice.line_items.length === 0) {
+      throw new Error('Invoice must have at least one line item');
+    }
+
+    // Sanitize text data to prevent font rendering issues
+    const sanitizedInvoice = {
+      ...invoice,
+      entity: {
+        ...invoice.entity,
+        name: sanitizeText(invoice.entity.name),
+        contact_person: sanitizeText(invoice.entity.contact_person),
+        address_line1: sanitizeText(invoice.entity.address_line1),
+        address_line2: sanitizeText(invoice.entity.address_line2),
+        city: sanitizeText(invoice.entity.city),
+        state: sanitizeText(invoice.entity.state),
+        email: sanitizeText(invoice.entity.email),
+        phone: sanitizeText(invoice.entity.phone),
+      },
+      line_items: invoice.line_items.map(item => ({
+        ...item,
+        description: sanitizeText(item.description),
+      })),
+      notes: sanitizeText(invoice.notes),
+    };
+
+    const sanitizedCompanyInfo = companyInfo ? {
+      ...companyInfo,
+      name: sanitizeText(companyInfo.name),
+      address: sanitizeText(companyInfo.address),
+      phone: sanitizeText(companyInfo.phone),
+      email: sanitizeText(companyInfo.email),
+      website: sanitizeText(companyInfo.website),
+    } : undefined;
+    
     const pdfBuffer = await renderToBuffer(
-      InvoiceTemplate({ invoice, companyInfo })
+      InvoiceTemplate({ invoice: sanitizedInvoice, companyInfo: sanitizedCompanyInfo })
     );
     
     return pdfBuffer;
   } catch (error) {
     console.error('Error generating PDF:', error);
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('fontkit') || error.message.includes('DataView')) {
+        throw new Error('Font rendering error - please try again or contact support');
+      }
+      if (error.message.includes('Invalid character')) {
+        throw new Error('Invalid characters in invoice data - please check text fields');
+      }
+    }
+    
     throw new Error('Failed to generate invoice PDF');
   }
+}
+
+// Helper function to sanitize text and remove problematic characters
+function sanitizeText(text: string | null | undefined): string {
+  if (!text) return '';
+  
+  // Remove or replace problematic characters that might cause font issues
+  return text
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+    .replace(/[\uFFFD]/g, '') // Remove replacement characters
+    .trim();
 }
 
 export function getDefaultCompanyInfo(): CompanyInfo {
