@@ -1,10 +1,21 @@
+import { useState } from "react";
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link, Outlet } from "@remix-run/react";
-import { ArrowLeftIcon, PencilIcon, ArchiveBoxIcon, ArchiveBoxXMarkIcon } from "@heroicons/react/24/outline";
+import { useLoaderData, Link, Outlet, useSubmit, useNavigation } from "@remix-run/react";
+import { PencilIcon, ArchiveBoxIcon, ArchiveBoxXMarkIcon } from "@heroicons/react/24/outline";
 import { FileText, Eye, Edit } from "lucide-react";
 import { getInvoiceEntityById, deactivateInvoiceEntity, reactivateInvoiceEntity } from "~/services/invoice-entity.server";
 import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const { id } = params;
@@ -54,6 +65,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function InvoiceEntityDetail() {
   const { entity } = useLoaderData<typeof loader>();
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+
+  const isSubmitting = navigation.state === "submitting";
+
+  const handleDeactivate = () => {
+    const formData = new FormData();
+    formData.append("action", "deactivate");
+    submit(formData, { method: "post" });
+    setIsDeactivateDialogOpen(false);
+  };
+
+  const handleReactivate = () => {
+    const formData = new FormData();
+    formData.append("action", "reactivate");
+    submit(formData, { method: "post" });
+  };
 
   const breadcrumbs = [
     { label: "Admin Dashboard", href: "/admin" },
@@ -68,78 +97,68 @@ export default function InvoiceEntityDetail() {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Link
-                to="/admin/invoice-entities"
-                className="mr-4 flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              >
-                <ArrowLeftIcon className="mr-1 h-4 w-4" />
-                Back to Entities
-              </Link>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Link
-                to={`/admin/invoice-entities/${entity.id}/edit`}
-                className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:hover:bg-indigo-400"
-              >
-                <PencilIcon className="mr-1.5 h-4 w-4" />
-                Edit
-              </Link>
-              <form method="post" className="inline">
-                <input
-                  type="hidden"
-                  name="action"
-                  value={entity.is_active ? "deactivate" : "reactivate"}
-                />
+          {/* Title and Status */}
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-6 border border-indigo-100 dark:border-indigo-800">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold leading-tight text-gray-900 dark:text-white sm:text-4xl">
+                  {entity.name}
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <span
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ring-1 ring-inset ${
+                      entity.is_active
+                        ? "bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-900/20 dark:text-green-300 dark:ring-green-500/30"
+                        : "bg-gray-50 text-gray-700 ring-gray-600/20 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-500/30"
+                    }`}
+                  >
+                    <div className={`mr-1.5 h-2 w-2 rounded-full ${entity.is_active ? "bg-green-500" : "bg-gray-400"}`} />
+                    {entity.is_active ? "Active" : "Inactive"}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-500/30">
+                    {entity.entity_type}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="mt-4 sm:mt-0 sm:ml-6 flex items-center space-x-3">
+                <Link
+                  to={`/admin/invoice-entities/${entity.id}/edit`}
+                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:hover:bg-indigo-400 transition-colors duration-200"
+                >
+                  <PencilIcon className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
                 <button
-                  type="submit"
-                  className={`inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  type="button"
+                  disabled={isSubmitting}
+                  className={`inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition-colors duration-200 ${
                     entity.is_active
                       ? "bg-red-600 text-white hover:bg-red-500 focus-visible:outline-red-600 dark:bg-red-500 dark:hover:bg-red-400"
                       : "bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600 dark:bg-green-500 dark:hover:bg-green-400"
-                  }`}
-                  onClick={(e) => {
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  onClick={() => {
                     if (entity.is_active) {
-                      if (!confirm("Are you sure you want to deactivate this entity?")) {
-                        e.preventDefault();
-                      }
+                      setIsDeactivateDialogOpen(true);
+                    } else {
+                      handleReactivate();
                     }
                   }}
                 >
                   {entity.is_active ? (
                     <>
-                      <ArchiveBoxIcon className="mr-1.5 h-4 w-4" />
+                      <ArchiveBoxIcon className="mr-2 h-4 w-4" />
                       Deactivate
                     </>
                   ) : (
                     <>
-                      <ArchiveBoxXMarkIcon className="mr-1.5 h-4 w-4" />
+                      <ArchiveBoxXMarkIcon className="mr-2 h-4 w-4" />
                       Reactivate
                     </>
                   )}
                 </button>
-              </form>
-            </div>
-          </div>
-          
-          <div className="mt-4">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold leading-7 text-gray-900 dark:text-white sm:truncate sm:text-3xl sm:tracking-tight">
-                {entity.name}
-              </h1>
-              <span
-                className={`ml-3 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  entity.is_active
-                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                    : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                }`}
-              >
-                {entity.is_active ? "Active" : "Inactive"}
-              </span>
-              <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                {entity.entity_type}
-              </span>
+              </div>
             </div>
           </div>
         </div>
@@ -149,64 +168,74 @@ export default function InvoiceEntityDetail() {
           {/* Main Information */}
           <div className="lg:col-span-2">
             {/* Quick Actions */}
-            <div className="mb-6 overflow-hidden bg-white dark:bg-gray-800 shadow sm:rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+            <div className="mb-6 overflow-hidden bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
                   Quick Actions
                 </h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                  Common actions for this entity.
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Common actions for this entity
                 </p>
               </div>
-              <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:px-6">
-                <div className="flex flex-wrap gap-3">
+              <div className="px-6 py-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Link
                     to={`/admin/invoices/new?entity_id=${entity.id}`}
-                    className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                    className="group relative inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:from-indigo-500 hover:to-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all duration-200 transform hover:scale-105"
                   >
-                    <FileText className="mr-2 h-4 w-4" />
+                    <FileText className="mr-2 h-5 w-5" />
                     Create New Invoice
                   </Link>
                   <Link
                     to={`/admin/invoices?entity_id=${entity.id}`}
-                    className="inline-flex items-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                    className="group relative inline-flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white shadow-lg ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500 transition-all duration-200 transform hover:scale-105"
                   >
-                    <Eye className="mr-2 h-4 w-4" />
+                    <Eye className="mr-2 h-5 w-5" />
                     View All Invoices
                   </Link>
                   <Link
                     to={`/admin/invoice-entities/${entity.id}/edit`}
-                    className="inline-flex items-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                    className="group relative inline-flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white shadow-lg ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500 transition-all duration-200 transform hover:scale-105"
                   >
-                    <Edit className="mr-2 h-4 w-4" />
+                    <Edit className="mr-2 h-5 w-5" />
                     Edit Entity
                   </Link>
                 </div>
               </div>
             </div>
 
-            <div className="overflow-hidden bg-white dark:bg-gray-800 shadow sm:rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+            <div className="overflow-hidden bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
                   Entity Information
                 </h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                  Basic details and contact information.
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Basic details and contact information
                 </p>
               </div>
-              <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:px-6">
-                <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">{entity.name}</dd>
+              <div className="px-6 py-5">
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                  <div className="group">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Name
+                    </dt>
+                    <dd className="text-sm text-gray-900 dark:text-white font-semibold bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
+                      {entity.name}
+                    </dd>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Type</dt>
-                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">{entity.entity_type}</dd>
+                  <div className="group">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Type
+                    </dt>
+                    <dd className="text-sm text-gray-900 dark:text-white font-semibold bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg capitalize">
+                      {entity.entity_type}
+                    </dd>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
-                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <div className="group">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Email
+                    </dt>
+                    <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
                       {entity.email ? (
                         <a
                           href={`mailto:${entity.email}`}
@@ -215,13 +244,17 @@ export default function InvoiceEntityDetail() {
                           {entity.email}
                         </a>
                       ) : (
-                        <span className="text-gray-400 dark:text-gray-500">No email provided</span>
+                        <span className="text-gray-400 dark:text-gray-500 italic">
+                          No email provided
+                        </span>
                       )}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</dt>
-                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <div className="group">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Phone
+                    </dt>
+                    <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
                       {entity.phone ? (
                         <a
                           href={`tel:${entity.phone}`}
@@ -230,14 +263,18 @@ export default function InvoiceEntityDetail() {
                           {entity.phone}
                         </a>
                       ) : (
-                        <span className="text-gray-400 dark:text-gray-500">No phone provided</span>
+                        <span className="text-gray-400 dark:text-gray-500 italic">
+                          No phone provided
+                        </span>
                       )}
                     </dd>
                   </div>
                   {(entity.address_line1 || entity.address_line2 || entity.city || entity.state || entity.postal_code) && (
-                    <div className="sm:col-span-2">
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</dt>
-                      <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                    <div className="group sm:col-span-2">
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Address
+                      </dt>
+                      <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
                         <div className="whitespace-pre-line">
                           {[
                             entity.address_line1,
@@ -249,9 +286,11 @@ export default function InvoiceEntityDetail() {
                     </div>
                   )}
                   {entity.notes && (
-                    <div className="sm:col-span-2">
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Notes</dt>
-                      <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                    <div className="group sm:col-span-2">
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Notes
+                      </dt>
+                      <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
                         <div className="whitespace-pre-line">{entity.notes}</div>
                       </dd>
                     </div>
@@ -264,18 +303,24 @@ export default function InvoiceEntityDetail() {
           {/* Payment Terms & Metadata */}
           <div className="space-y-6">
             {/* Payment Terms */}
-            <div className="overflow-hidden bg-white dark:bg-gray-800 shadow sm:rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+            <div className="overflow-hidden bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
                   Payment Terms
                 </h3>
               </div>
-              <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:px-6">
+              <div className="px-6 py-5">
                 <dl className="space-y-4">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Payment Terms</dt>
-                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                      {entity.payment_terms || "Not specified"}
+                  <div className="group">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Payment Terms
+                    </dt>
+                    <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
+                      {entity.payment_terms || (
+                        <span className="text-gray-400 dark:text-gray-500 italic">
+                          Not specified
+                        </span>
+                      )}
                     </dd>
                   </div>
                 </dl>
@@ -283,17 +328,19 @@ export default function InvoiceEntityDetail() {
             </div>
 
             {/* Metadata */}
-            <div className="overflow-hidden bg-white dark:bg-gray-800 shadow sm:rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+            <div className="overflow-hidden bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-white">
                   Metadata
                 </h3>
               </div>
-              <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:px-6">
+              <div className="px-6 py-5">
                 <dl className="space-y-4">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
-                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <div className="group">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Created
+                    </dt>
+                    <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
                       {new Date(entity.created_at).toLocaleDateString(siteConfig.localization.locale, {
                         year: "numeric",
                         month: "long",
@@ -303,9 +350,11 @@ export default function InvoiceEntityDetail() {
                       })}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
-                    <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                  <div className="group">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Last Updated
+                    </dt>
+                    <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
                       {new Date(entity.updated_at).toLocaleDateString(siteConfig.localization.locale, {
                         year: "numeric",
                         month: "long",
@@ -321,6 +370,28 @@ export default function InvoiceEntityDetail() {
           </div>
         </div>
       </div>
+
+      {/* Deactivate Confirmation Dialog */}
+      <AlertDialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will deactivate the entity "{entity.name}". You can reactivate it later if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeactivate}
+              disabled={isSubmitting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isSubmitting ? "Deactivating..." : "Deactivate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Outlet />
     </div>
