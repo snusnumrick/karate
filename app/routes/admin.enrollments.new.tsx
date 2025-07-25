@@ -194,35 +194,37 @@ export default function NewEnrollmentPage() {
   }, [selectedStudentId, eligibleClasses]);
 
   return (
-    <div className="container mx-auto py-6 max-w-4xl">
-      <AppBreadcrumb 
-        items={breadcrumbPatterns.adminEnrollmentNew()} 
-        className="mb-6"
-      />
+    <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="p-8">
+          <AppBreadcrumb 
+            items={breadcrumbPatterns.adminEnrollmentNew()} 
+            className="mb-6"
+          />
 
-      <div className="flex items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <GraduationCap className="h-8 w-8 text-primary" />
-            Enroll Student
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Add a student to a class. The system will check eligibility and capacity.
-          </p>
-        </div>
-      </div>
+          <div className="flex items-center gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 text-green-600 dark:text-green-400">
+                <GraduationCap className="h-8 w-8 text-primary" />
+                Enroll Student
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Add a student to a class. The system will check eligibility and capacity.
+              </p>
+            </div>
+          </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Form */}
         <div className="lg:col-span-2">
-          <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
-              <CardTitle className="flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary/5 to-primary/10">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Student Enrollment Form
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+              </h3>
+            </div>
+            <div className="p-6">
               <Form method="post" className="space-y-6">
                 <div className="space-y-3">
                   <Label htmlFor="family_id" className="text-sm font-medium flex items-center gap-2">
@@ -377,21 +379,21 @@ export default function NewEnrollmentPage() {
                   </Button>
                 </div>
               </Form>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Sidebar with enrollment summary */}
         <div className="space-y-6">
           {selectedStudent && (
-            <Card className="shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                   <User className="h-5 w-5" />
                   Student Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+                </h3>
+              </div>
+              <div className="p-6 space-y-3">
                 <div>
                   <p className="font-medium">{selectedStudent.first_name} {selectedStudent.last_name}</p>
                   <p className="text-sm text-muted-foreground">
@@ -406,21 +408,21 @@ export default function NewEnrollmentPage() {
                     </Badge>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                </div>
+              </div>
+            )}
 
           {selectedClassId && (() => {
             const { class: classItem, program } = getClassInfo(selectedClassId);
             return (
-              <Card className="shadow-md">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                     <Calendar className="h-5 w-5" />
                     Class Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                  </h3>
+                </div>
+                <div className="p-6 space-y-3">
                   <div>
                     <p className="font-medium">{program?.name}</p>
                     <p className="text-sm text-muted-foreground">{classItem?.name}</p>
@@ -441,19 +443,19 @@ export default function NewEnrollmentPage() {
                       <Badge variant="outline">Capacity: {classItem.max_capacity}</Badge>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })()}
 
-          <Card className="shadow-md border-primary/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border-primary/20">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 Enrollment Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div className="p-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
@@ -486,8 +488,10 @@ export default function NewEnrollmentPage() {
                   </span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>

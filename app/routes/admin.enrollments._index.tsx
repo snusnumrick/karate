@@ -168,146 +168,117 @@ export default function AdminEnrollments() {
   };
   
   return (
-    <div className="container mx-auto py-6">
-      <AppBreadcrumb 
-        items={breadcrumbPatterns.adminEnrollments()}
-        className="mb-6"
-      />
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Enrollments</h1>
-          <p className="text-muted-foreground">
-            Manage student enrollments across all classes and programs.
-          </p>
-        </div>
-        
-        <Button asChild>
-          <Link to="/admin/enrollments/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Enroll Student
-          </Link>
-        </Button>
-      </div>
+    <div className="min-h-screen py-12 text-foreground">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
+          <AppBreadcrumb 
+            items={breadcrumbPatterns.adminEnrollments()}
+            className="mb-6"
+          />
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Enrollments</h1>
+              <p className="text-muted-foreground">
+                Manage student enrollments across all classes and programs.
+              </p>
+            </div>
+            
+            <Button asChild>
+              <Link to="/admin/enrollments/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Enroll Student
+              </Link>
+            </Button>
+          </div>
       
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-5 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Enrollments</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Trial</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.trial}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Waitlisted</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.waitlisted}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Dropped</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.dropped}</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
+          <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Enrollments</h3>
+          <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.total}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
+          <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Active</h3>
+          <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.active}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-blue-600">
+          <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Trial</h3>
+          <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.trial}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-yellow-600">
+          <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Waitlisted</h3>
+          <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.waitlisted}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-red-600">
+          <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Dropped</h3>
+          <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.dropped}</p>
+        </div>
       </div>
       
       {/* Filters */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Program</Label>
-              <Select value={filters.programId || "all"} onValueChange={(value) => handleFilterChange("program", value)}>
-                <SelectTrigger className="input-custom-styles">
-                  <SelectValue placeholder="All programs" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Programs</SelectItem>
-                  {programs.map((program) => (
-                    <SelectItem key={program.id} value={program.id}>
-                      {program.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Class</Label>
-              <Select value={filters.classId || "all"} onValueChange={(value) => handleFilterChange("class", value)}>
-                <SelectTrigger className="input-custom-styles">
-                    <SelectValue placeholder="All classes" />
-                </SelectTrigger>
-                <SelectContent className="w-full min-w-[300px]">
-                  <SelectItem value="all">All Classes</SelectItem>
-                  {classes.map((classItem) => (
-                    <SelectItem key={classItem.id} value={classItem.id} className="whitespace-normal">
-                      {classItem.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={filters.status || "all"} onValueChange={(value) => handleFilterChange("status", value)}>
-                <SelectTrigger className="input-custom-styles">
-                    <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="trial">Trial</SelectItem>
-                  <SelectItem value="waitlist">Waitlisted</SelectItem>
-                  <SelectItem value="dropped">Dropped</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Filters</h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label>Program</Label>
+            <Select value={filters.programId || "all"} onValueChange={(value) => handleFilterChange("program", value)}>
+              <SelectTrigger className="input-custom-styles">
+                <SelectValue placeholder="All programs" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Programs</SelectItem>
+                {programs.map((program) => (
+                  <SelectItem key={program.id} value={program.id}>
+                    {program.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+          
+          <div className="space-y-2">
+            <Label>Class</Label>
+            <Select value={filters.classId || "all"} onValueChange={(value) => handleFilterChange("class", value)}>
+              <SelectTrigger className="input-custom-styles">
+                  <SelectValue placeholder="All classes" />
+              </SelectTrigger>
+              <SelectContent className="w-full min-w-[300px]">
+                <SelectItem value="all">All Classes</SelectItem>
+                {classes.map((classItem) => (
+                  <SelectItem key={classItem.id} value={classItem.id} className="whitespace-normal">
+                    {classItem.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={filters.status || "all"} onValueChange={(value) => handleFilterChange("status", value)}>
+              <SelectTrigger className="input-custom-styles">
+                  <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="waitlist">Waitlisted</SelectItem>
+                <SelectItem value="dropped">Dropped</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
       
       {/* Enrollments Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Enrollments ({enrollments.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            Enrollments ({enrollments.length})
+          </h3>
+        </div>
+        <div className="p-6">
           <Table>
             <TableHeader>
                   <TableRow>
@@ -384,8 +355,8 @@ export default function AdminEnrollments() {
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
       
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -488,6 +459,8 @@ export default function AdminEnrollments() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </div>
+      </div>
     </div>
   );
 }
