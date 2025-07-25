@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
+import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
 import type {
   InvoiceEntity,
@@ -48,7 +49,7 @@ export async function createInvoiceEntity(
       city: entityData.city,
       state: entityData.state,
       postal_code: entityData.postal_code,
-      country: entityData.country || 'US',
+      country: entityData.country || siteConfig.localization.country,
       tax_id: entityData.tax_id,
       payment_terms: entityData.payment_terms || 'Net 30',
       credit_limit: entityData.credit_limit,

@@ -677,9 +677,9 @@ function renderQueryResults(summary: string | undefined | null, data: Json | nul
                                                         const isAlreadyInDollars = value % 1 !== 0 || value < 100;
                                                         if (isAlreadyInDollars) {
                                                             // Value is already in dollars, format directly
-                                                            return new Intl.NumberFormat('en-CA', {
+                                                            return new Intl.NumberFormat(siteConfig.localization.locale, {
                                                                 style: 'currency',
-                                                                currency: 'CAD',
+                                                                currency: siteConfig.localization.currency,
                                                                 minimumFractionDigits: 2,
                                                                 maximumFractionDigits: 2,
                                                             }).format(value);

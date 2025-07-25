@@ -9,6 +9,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntitiesWithStats } from "~/services/invoice-entity.server";
 import type { EntityType } from "~/types/invoice";
 import { Search, Plus, Building2, Users, Landmark, Briefcase, HelpCircle, Eye, FileText, Trash2 } from "lucide-react";
+import { siteConfig } from "~/config/site";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -70,9 +71,9 @@ export default function InvoiceEntitiesIndexPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(siteConfig.localization.locale, {
       style: 'currency',
-      currency: 'USD',
+      currency: siteConfig.localization.currency,
     }).format(amount);
   };
 

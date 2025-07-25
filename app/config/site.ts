@@ -6,13 +6,20 @@ export const siteConfig = {
     name: "GREENEGIN KARATE", // Added site name
     description: "Kids Karate Classes in Langford, BC. Learn discipline, respect, and self-defense with Sensei Negin. Free trial available!", // Added default description
     url: siteUrl, // Use the environment variable
-    locale: 'en-CA', // Default locale for the site
+    // Localization settings
+    localization: {
+        locale: 'en-CA', // Primary locale
+        currency: 'CAD', // Currency code
+        country: 'CA', // Country code for formatting/display logic (dates, numbers, etc.)
+        // Alternative locales for fallback or specific use cases
+        fallbackLocale: 'en-US',
+    },
     location: {
         address: "650 Allandale Rd Suite A101",
         locality: "Victoria",
         region: "BC",
         postalCode: "V9C 0S2", // Add postal code
-        country: "CA",
+        country: "CA", // Physical location country for address/contact purposes
         description: " our Colwood studio",
         // Add other location details if needed, e.g., map link
     },

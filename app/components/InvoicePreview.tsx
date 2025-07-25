@@ -1,4 +1,5 @@
 import type { InvoiceEntity, CreateInvoiceData } from "~/types/invoice";
+import { siteConfig } from "~/config/site";
 import { useInvoiceCalculations, formatCurrency } from "~/hooks/use-invoice-calculations";
 import { formatEntityAddress, getPaymentTermsLabel } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod } from "~/utils/line-item-helpers";
@@ -15,7 +16,7 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
   });
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString(siteConfig.localization.locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric'

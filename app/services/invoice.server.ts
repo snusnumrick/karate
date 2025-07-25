@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
+import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
 import type {
   Invoice,
@@ -203,7 +204,7 @@ export async function getInvoiceById(
     ...invoice,
     service_period_start: invoice.service_period_start || undefined,
     service_period_end: invoice.service_period_end || undefined,
-    currency: invoice.currency || 'USD',
+    currency: invoice.currency || siteConfig.localization.currency,
     notes: invoice.notes || undefined,
     terms: invoice.terms || undefined,
     footer_text: invoice.footer_text || undefined,
@@ -223,7 +224,7 @@ export async function getInvoiceById(
       city: invoice.invoice_entities.city || undefined,
       state: invoice.invoice_entities.state || undefined,
       postal_code: invoice.invoice_entities.postal_code || undefined,
-      country: invoice.invoice_entities.country || 'US',
+      country: invoice.invoice_entities.country || siteConfig.localization.country,
       tax_id: invoice.invoice_entities.tax_id || undefined,
       payment_terms: (invoice.invoice_entities.payment_terms as PaymentTerms) || 'Net 30',
       credit_limit: invoice.invoice_entities.credit_limit || undefined,
@@ -337,7 +338,7 @@ export async function getInvoices(
     status: (invoice.status as InvoiceStatus) || 'draft',
     service_period_start: invoice.service_period_start || undefined,
     service_period_end: invoice.service_period_end || undefined,
-    currency: invoice.currency || 'USD',
+    currency: invoice.currency || siteConfig.localization.currency,
     notes: invoice.notes || undefined,
     terms: invoice.terms || undefined,
     footer_text: invoice.footer_text || undefined,
@@ -357,7 +358,7 @@ export async function getInvoices(
       city: invoice.invoice_entities.city || undefined,
       state: invoice.invoice_entities.state || undefined,
       postal_code: invoice.invoice_entities.postal_code || undefined,
-      country: invoice.invoice_entities.country || 'US',
+      country: invoice.invoice_entities.country || siteConfig.localization.country,
       tax_id: invoice.invoice_entities.tax_id || undefined,
       payment_terms: (invoice.invoice_entities.payment_terms as PaymentTerms) || 'Net 30',
       credit_limit: invoice.invoice_entities.credit_limit || undefined,

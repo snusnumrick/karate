@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { siteConfig } from '~/config/site';
 
 // Enum schemas
 export const InvoiceStatusSchema = z.enum(['draft', 'sent', 'viewed', 'paid', 'partially_paid', 'overdue', 'cancelled']);
@@ -24,7 +25,7 @@ export const InvoiceEntitySchema = z.object({
   city: z.string().max(100).optional(),
   state: z.string().max(50).optional(),
   postal_code: z.string().max(20).optional(),
-  country: z.string().max(2).default('US'),
+  country: z.string().max(2).default(siteConfig.localization.country),
   tax_id: z.string().max(50).optional(),
   payment_terms: PaymentTermsSchema.default('Net 30'),
   credit_limit: z.number().min(0).optional(),
@@ -70,7 +71,7 @@ export const InvoiceSchema = z.object({
   total_amount: z.number().min(0).default(0),
   amount_paid: z.number().min(0).default(0),
   amount_due: z.number().default(0),
-  currency: z.string().length(3).default('USD'),
+  currency: z.string().length(3).default(siteConfig.localization.currency),
   notes: z.string().optional(),
   terms: z.string().optional(),
   footer_text: z.string().optional(),
@@ -106,7 +107,7 @@ export const CreateInvoiceEntitySchema = z.object({
   city: z.string().max(100).optional(),
   state: z.string().max(50).optional(),
   postal_code: z.string().max(20).optional(),
-  country: z.string().max(2).default('US'),
+  country: z.string().max(2).default(siteConfig.localization.country),
   tax_id: z.string().max(50).optional(),
   payment_terms: PaymentTermsSchema.default('Net 30'),
   credit_limit: z.number().min(0).optional(),

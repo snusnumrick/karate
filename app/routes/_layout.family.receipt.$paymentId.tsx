@@ -254,7 +254,7 @@ export default function PaymentReceiptPage() {
                         <thead>
                             <tr className="border-b border-gray-300 dark:border-gray-600 print:border-black">
                                 <th className="py-2 pr-2 font-semibold text-gray-700 dark:text-gray-300 print:text-black">Description</th>
-                                <th className="py-2 px-2 font-semibold text-gray-700 dark:text-gray-300 print:text-black text-right">Amount (CAD)</th>
+                                <th className="py-2 px-2 font-semibold text-gray-700 dark:text-gray-300 print:text-black text-right">Amount ({siteConfig.localization.currency})</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -293,7 +293,7 @@ export default function PaymentReceiptPage() {
                             {/* Total Row */}
                             <tr className="border-t-2 border-gray-400 dark:border-gray-500 print:border-black">
                                 <td className="pt-3 pr-2 text-right font-bold text-gray-800 dark:text-gray-100 print:text-black">Total Paid:</td>
-                                <td className="pt-3 px-2 text-right font-bold text-gray-800 dark:text-gray-100 print:text-black">${(payment.total_amount / 100).toFixed(2)} CAD</td>
+                                <td className="pt-3 px-2 text-right font-bold text-gray-800 dark:text-gray-100 print:text-black">${(payment.total_amount / 100).toFixed(2)} {siteConfig.localization.currency}</td>
                             </tr>
                         </tfoot>
                     </table>

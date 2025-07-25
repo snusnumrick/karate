@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Switch } from "~/components/ui/switch";
+import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntityById, updateInvoiceEntity } from "~/services/invoice-entity.server";
 import type { EntityType, PaymentTerms } from "~/types/invoice";
@@ -56,7 +57,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     city: formData.get("city") as string || undefined,
     state: formData.get("state") as string || undefined,
     postal_code: formData.get("postal_code") as string || undefined,
-    country: formData.get("country") as string || "US",
+    country: formData.get("country") as string || siteConfig.localization.country,
     tax_id: formData.get("tax_id") as string || undefined,
     payment_terms: formData.get("payment_terms") as PaymentTerms,
     credit_limit: formData.get("credit_limit") ? parseFloat(formData.get("credit_limit") as string) : undefined,

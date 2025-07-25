@@ -1,4 +1,5 @@
 import type { InvoiceEntity, EntityType, PaymentTerms } from "~/types/invoice";
+import { siteConfig } from "~/config/site";
 
 /**
  * Format entity display name with type
@@ -17,7 +18,7 @@ export function formatEntityAddress(entity: InvoiceEntity): string {
     entity.city,
     entity.state,
     entity.postal_code,
-    entity.country !== 'US' ? entity.country : undefined
+    entity.country !== siteConfig.localization.country ? entity.country : undefined
   ].filter(Boolean);
   
   return parts.join(', ');

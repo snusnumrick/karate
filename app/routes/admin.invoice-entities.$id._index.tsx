@@ -3,6 +3,7 @@ import { useLoaderData, Link, Outlet } from "@remix-run/react";
 import { ArrowLeftIcon, PencilIcon, ArchiveBoxIcon, ArchiveBoxXMarkIcon } from "@heroicons/react/24/outline";
 import { FileText, Eye, Edit } from "lucide-react";
 import { getInvoiceEntityById, deactivateInvoiceEntity, reactivateInvoiceEntity } from "~/services/invoice-entity.server";
+import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({ params }: LoaderFunctionArgs) {
@@ -293,7 +294,7 @@ export default function InvoiceEntityDetail() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
                     <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                      {new Date(entity.created_at).toLocaleDateString("en-US", {
+                      {new Date(entity.created_at).toLocaleDateString(siteConfig.localization.locale, {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -305,7 +306,7 @@ export default function InvoiceEntityDetail() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
                     <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                      {new Date(entity.updated_at).toLocaleDateString("en-US", {
+                      {new Date(entity.updated_at).toLocaleDateString(siteConfig.localization.locale, {
                         year: "numeric",
                         month: "long",
                         day: "numeric",

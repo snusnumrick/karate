@@ -6,6 +6,7 @@ import { Label } from '~/components/ui/label';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { CheckCircledIcon, ExclamationTriangleIcon, ReloadIcon } from '@radix-ui/react-icons';
 import { RadioGroup, RadioGroupItem } from '~/components/ui/radio-group';
+import { siteConfig } from '~/config/site';
 import type { DiscountValidationResult, PaymentTypeEnum } from '~/types/discount';
 import type { AvailableDiscountCode, AvailableDiscountsResponse } from '~/routes/api.available-discounts.$familyId';
 
@@ -115,9 +116,9 @@ export function DiscountCodeSelector({
   // Validation response is now handled directly in handleValidateDiscount
 
   const formatCurrency = (cents: number) => {
-    return new Intl.NumberFormat('en-CA', {
+    return new Intl.NumberFormat(siteConfig.localization.locale, {
       style: 'currency',
-      currency: 'CAD'
+      currency: siteConfig.localization.currency
     }).format(cents / 100);
   };
 

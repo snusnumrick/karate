@@ -13,6 +13,7 @@ import { formatCurrency } from "~/hooks/use-invoice-calculations";
 import { requireUserId } from "~/utils/auth.server";
 import { Plus, Search, FileText, Calendar, DollarSign, Users } from "lucide-react";
 import type { InvoiceWithDetails, InvoiceStatus } from "~/types/invoice";
+import { siteConfig } from "~/config/site";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserId(request);
@@ -68,7 +69,7 @@ const getStatusColor = (status: string) => {
 };
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString(siteConfig.localization.locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric'

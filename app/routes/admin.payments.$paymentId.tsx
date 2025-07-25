@@ -6,6 +6,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
 import { PaymentStatus } from "~/types/models"; // Import the enum
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -259,7 +260,7 @@ export default function AdminPaymentDetailPage() {
                                     </p>
                                 ))
                             )}
-                            <p className="font-bold text-lg border-t pt-2 mt-2 dark:border-gray-600"><span className="font-semibold">Total Amount:</span> ${(payment.total_amount / 100).toFixed(2)} CAD</p>
+                            <p className="font-bold text-lg border-t pt-2 mt-2 dark:border-gray-600"><span className="font-semibold">Total Amount:</span> ${(payment.total_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
                         </div>
                     </div>
 

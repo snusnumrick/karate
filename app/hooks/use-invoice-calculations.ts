@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { siteConfig } from "~/config/site";
 import type { CreateInvoiceLineItemData } from "~/types/invoice";
 
 export interface InvoiceCalculations {
@@ -70,9 +71,9 @@ export function calculateLineItemTotal(item: CreateInvoiceLineItemData): number 
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(siteConfig.localization.locale, {
     style: 'currency',
-    currency: 'USD',
+    currency: siteConfig.localization.currency,
   }).format(amount);
 }
 

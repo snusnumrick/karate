@@ -1,17 +1,16 @@
 import { json, type LoaderFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
-import { Link, useFetcher, useLoaderData, useRouteError } from "@remix-run/react"; // Removed useNavigate
-import { useEffect, useMemo, useState } from "react"; // Ensure useMemo is imported
+import { Link, useFetcher, useLoaderData, useRouteError } from "@remix-run/react";
+import { useEffect, useMemo, useState } from "react";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
-// Import PaymentElement and LinkAuthenticationElement
 import {PaymentElement, LinkAuthenticationElement, Elements, useElements, useStripe} from "@stripe/react-stripe-js";
-import { createClient } from "@supabase/supabase-js"; // Import standard client for admin tasks
-import Stripe from "stripe"; // Import Stripe SDK for server-side API calls
+import { createClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {siteConfig} from "~/config/site"; // Assuming price IDs might be needed indirectly or for display
+import {siteConfig} from "~/config/site";
 import type {Database} from "~/types/database.types";
-import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
+import { ClientOnly } from "~/components/client-only";
 
 // Import types for payment table columns
 type PaymentColumns = Database['public']['Tables']['payments']['Row'];
@@ -345,7 +344,7 @@ function CheckoutForm({payment, defaultEmail, defaultPostalCode}: CheckoutFormPr
                 email: defaultEmail ?? undefined, // Use fetched email or undefined
                 address: {
                     postal_code: defaultPostalCode ?? undefined, // Use fetched postal code or undefined
-                    country: 'CA', // Set country to Canada
+                    country: siteConfig.localization.country, // Set country from site config
                 },
             },
         },
@@ -781,7 +780,7 @@ export default function PaymentPage() {
                 )}
                 <p className="text-lg font-bold text-gray-800 dark:text-gray-100 mt-2 border-t pt-2 dark:border-gray-600">
                     {/* Display the final total amount */}
-                    <span className="font-semibold">Total Amount:</span> ${(payment.total_amount / 100).toFixed(2)} CAD
+                    <span className="font-semibold">Total Amount:</span> ${(payment.total_amount / 100).toFixed(2)} {siteConfig.localization.currency}
                 </p>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span

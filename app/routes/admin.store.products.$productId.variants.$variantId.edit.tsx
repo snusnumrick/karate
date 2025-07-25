@@ -1,6 +1,7 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { siteConfig } from "~/config/site";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -301,7 +302,7 @@ export default function EditProductVariantPage() {
 
                 {/* Price */}
                 <div>
-                    <Label htmlFor="price">Price (CAD) <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="price">Price ({siteConfig.localization.currency}) <span className="text-destructive">*</span></Label>
                     <Input
                         id="price"
                         name="price"

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from '@remix-run/react';
 import { Edit, Trash2, Download, Plus, DollarSign } from 'lucide-react';
+import { siteConfig } from '~/config/site';
 import { InvoicePaymentMethod } from '~/types/invoice';
 
 interface InvoicePayment {
@@ -64,7 +65,7 @@ export default function InvoicePaymentHistory({
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString(siteConfig.localization.locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

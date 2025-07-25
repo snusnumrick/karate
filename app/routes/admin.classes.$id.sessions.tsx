@@ -20,6 +20,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Calendar, Clock, Plus, Edit2, Trash2, ExternalLink } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { siteConfig } from "~/config/site";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClassById, getClassSessions, generateClassSessions, updateClassSession, deleteClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
@@ -159,7 +160,7 @@ export default function ClassSessions() {
 
 
   const formatTime = (timeString: string) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString(siteConfig.localization.locale, {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true

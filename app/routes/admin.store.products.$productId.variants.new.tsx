@@ -6,6 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { siteConfig } from "~/config/site";
 import type { Tables, TablesInsert } from "~/types/database.types"; // Removed unused Database
 import { ArrowLeft } from "lucide-react";
 // import { formatCurrency } from "~/utils/misc"; // Removed unused formatCurrency import
@@ -163,7 +164,7 @@ export default function AddProductVariantPage() {
 
                 {/* Price */}
                 <div>
-                    <Label htmlFor="price">Price (CAD) <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="price">Price ({siteConfig.localization.currency}) <span className="text-destructive">*</span></Label>
                     <Input
                         id="price"
                         name="price"

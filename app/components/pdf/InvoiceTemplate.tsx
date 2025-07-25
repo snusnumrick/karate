@@ -7,6 +7,7 @@ import {
   Font,
   Image,
 } from '@react-pdf/renderer';
+import { siteConfig } from '~/config/site';
 import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
 
 // Register fonts for better typography
@@ -250,14 +251,14 @@ interface InvoiceTemplateProps {
 
 export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(siteConfig.localization.locale, {
       style: 'currency',
-      currency: 'USD',
+      currency: siteConfig.localization.currency,
     }).format(amount);
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString(siteConfig.localization.locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

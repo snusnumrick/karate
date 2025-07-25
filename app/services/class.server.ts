@@ -1,4 +1,5 @@
 import { createClient } from '~/utils/supabase.server';
+import { siteConfig } from '~/config/site';
 import type {
   Class,
   CreateClassData,
@@ -787,7 +788,7 @@ export async function getWeeklySchedule(
   };
 
   events.forEach(event => {
-    const dayName = event.start.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklySchedule;
+    const dayName = event.start.toLocaleDateString(siteConfig.localization.locale, { weekday: 'long' }).toLowerCase() as keyof WeeklySchedule;
     if (schedule[dayName]) {
       schedule[dayName].push(event);
     }

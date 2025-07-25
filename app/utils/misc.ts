@@ -11,8 +11,8 @@ import { siteConfig } from '~/config/site'; // Import siteConfig
  */
 export function formatCurrency(
     amountInCents: number | null | undefined,
-    currencyCode: string = 'CAD',
-    locale: string = siteConfig.locale // Use locale from siteConfig
+    currencyCode: string = siteConfig.localization.currency,
+    locale: string = siteConfig.localization.locale // Use locale from siteConfig
 ): string {
     if (amountInCents === null || amountInCents === undefined || isNaN(amountInCents)) {
         // console.warn('formatCurrency received invalid input:', amountInCents);
@@ -64,7 +64,7 @@ export function formatDate(
         return 'N/A';
     }
 
-    const currentLocale = options?.locale || siteConfig.locale;
+    const currentLocale = options?.locale || siteConfig.localization.locale;
     const formatType = options?.type || 'date'; // Default to 'date'
 
     try {

@@ -7,6 +7,7 @@ import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { createInvoiceEntity } from "~/services/invoice-entity.server";
 import type { CreateInvoiceEntityData, EntityType, PaymentTerms } from "~/types/invoice";
@@ -36,7 +37,7 @@ export async function action({ request }: ActionFunctionArgs) {
     city: formData.get("city") as string || undefined,
     state: formData.get("state") as string || undefined,
     postal_code: formData.get("postal_code") as string || undefined,
-    country: formData.get("country") as string || "US",
+    country: formData.get("country") as string || siteConfig.localization.country,
     tax_id: formData.get("tax_id") as string || undefined,
     payment_terms: formData.get("payment_terms") as PaymentTerms || "Net 30",
     credit_limit: formData.get("credit_limit") ? parseFloat(formData.get("credit_limit") as string) : undefined,
@@ -260,7 +261,7 @@ export default function NewInvoiceEntityPage() {
                 <Input
                   id="state"
                   name="state"
-                  placeholder="CA"
+                  placeholder={siteConfig.localization.country}
                   className="input-custom-styles"
                   tabIndex={0}
                 />
@@ -283,8 +284,8 @@ export default function NewInvoiceEntityPage() {
               <Input
                 id="country"
                 name="country"
-                defaultValue="CA"
-                placeholder="CA"
+                defaultValue={siteConfig.localization.country}
+                placeholder={siteConfig.localization.country}
                 className="input-custom-styles"
                 tabIndex={0}
               />

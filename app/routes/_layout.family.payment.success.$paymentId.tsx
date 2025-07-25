@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { CheckCircle } from "lucide-react"; // Use lucide-react icon for consistency
 import type { Database, Tables } from "~/types/database.types"; // Import Tables
+import { siteConfig } from "~/config/site";
 
 // Define types for related tables needed for store purchases
 type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row'];
@@ -298,14 +299,14 @@ export default function PaymentSuccessPage() {
                                 <p><span className="font-semibold">Product:</span> {getPaymentProductDescription(payment.type, quantity)}</p>
                             )}
                             {/* Display amount breakdown */}
-                            <p><span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)} CAD</p>
+                            <p><span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
                             {/* Display Tax Breakdown */}
                             {payment.payment_taxes && payment.payment_taxes.length > 0 && (
                                 payment.payment_taxes.map((tax, index) => (
-                                    <p key={index}><span className="font-semibold">{tax.tax_name_snapshot}:</span> ${(tax.tax_amount / 100).toFixed(2)} CAD</p>
+                                    <p key={index}><span className="font-semibold">{tax.tax_name_snapshot}:</span> ${(tax.tax_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
                                 ))
                             )}
-                            <p className="font-bold border-t pt-2 mt-2 dark:border-gray-600"><span className="font-semibold">Total Amount Paid:</span> ${(payment.total_amount / 100).toFixed(2)} CAD</p>
+                            <p className="font-bold border-t pt-2 mt-2 dark:border-gray-600"><span className="font-semibold">Total Amount Paid:</span> ${(payment.total_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
                             {payment.payment_method && <p><span className="font-semibold">Payment Method:</span> {payment.payment_method.replace('_', ' ').toUpperCase()}</p>}
                             {payment.receipt_url && (
                                     <p className="mt-2"> {/* Add margin top for spacing */}
