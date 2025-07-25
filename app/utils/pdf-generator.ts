@@ -1,6 +1,7 @@
 import { renderToBuffer } from '@react-pdf/renderer';
 import { InvoiceTemplate } from '~/components/pdf/InvoiceTemplate';
 import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
+import { siteConfig } from '~/config/site';
 
 interface CompanyInfo {
   name: string;
@@ -98,12 +99,21 @@ function sanitizeText(text: string | null | undefined): string {
 }
 
 export function getDefaultCompanyInfo(): CompanyInfo {
+  const { name, location, contact } = siteConfig;
+  
+  // Format the address from site config
+  const formattedAddress = [
+    location.address,
+    `${location.locality}, ${location.region} ${location.postalCode}`,
+    location.country === 'CA' ? 'Canada' : location.country
+  ].join('\n');
+
   return {
-    name: process.env.COMPANY_NAME || 'Your Karate School',
-    address: process.env.COMPANY_ADDRESS || '123 Main Street\nYour City, State 12345',
-    phone: process.env.COMPANY_PHONE || '(555) 123-4567',
-    email: process.env.COMPANY_EMAIL || 'info@yourkarateschool.com',
-    website: process.env.COMPANY_WEBSITE || 'www.yourkarateschool.com',
+    name: name,
+    address: formattedAddress,
+    phone: contact.phone,
+    email: contact.email,
+    website: siteConfig.url,
     // logo: process.env.COMPANY_LOGO_URL, // Optional logo URL
   };
 }
