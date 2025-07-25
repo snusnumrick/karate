@@ -11,27 +11,31 @@ import { siteConfig } from '~/config/site'; // Import siteConfig
  */
 export function formatCurrency(
     amountInCents: number | null | undefined,
-    currencyCode: string = siteConfig.localization.currency,
-    locale: string = siteConfig.localization.locale // Use locale from siteConfig
+    currencyCode?: string,
+    locale?: string
 ): string {
     if (amountInCents === null || amountInCents === undefined || isNaN(amountInCents)) {
         // console.warn('formatCurrency received invalid input:', amountInCents);
         return ''; // Or return a default like '$0.00' or 'N/A'
     }
 
+    // Use safe defaults and fallback to siteConfig if available
+    const safeCurrencyCode = currencyCode || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.currency) || 'CAD';
+    const safeLocale = locale || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.locale) || 'en-CA';
+
     const amountInDollars = amountInCents / 100;
 
     try {
-        return new Intl.NumberFormat(locale, {
+        return new Intl.NumberFormat(safeLocale, {
             style: 'currency',
-            currency: currencyCode,
+            currency: safeCurrencyCode,
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         }).format(amountInDollars);
     } catch (error) {
         console.error('Error formatting currency:', error);
         // Fallback to simple formatting if Intl fails
-        return `${currencyCode} ${(amountInDollars).toFixed(2)}`;
+        return `${safeCurrencyCode} ${(amountInDollars).toFixed(2)}`;
     }
 }
 
@@ -64,7 +68,7 @@ export function formatDate(
         return 'N/A';
     }
 
-    const currentLocale = options?.locale || siteConfig.localization.locale;
+    const currentLocale = options?.locale || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.locale) || 'en-CA';
     const formatType = options?.type || 'date'; // Default to 'date'
 
     try {

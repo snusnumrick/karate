@@ -15,7 +15,7 @@ import type { InvoiceEntity, CreateInvoiceData, CreateInvoiceLineItemData , Invo
 import { useInvoiceCalculations, formatCurrency } from "~/hooks/use-invoice-calculations";
 import { createEmptyLineItem } from "~/utils/line-item-helpers";
 import { calculateDueDate } from "~/utils/entity-helpers";
-import { Calendar, FileText, Eye, Save, Send, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import { Calendar, FileText, Eye, Save, Send, CheckCircle, AlertCircle, XCircle, Settings } from "lucide-react";
 
 interface InvoiceFormProps {
   entities?: InvoiceEntity[];
@@ -55,7 +55,7 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, e
     line_items: [createEmptyLineItem()]
   });
 
-  const [activeTab, setActiveTab] = useState("entity");
+  const [activeTab, setActiveTab] = useState("essentials");
   const [showPreview, setShowPreview] = useState(false);
 
   // Calculate totals
@@ -85,10 +85,6 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, e
   const handleEntitySelect = (entity: InvoiceEntity | null) => {
     setSelectedEntity(entity);
     setInvoiceData(prev => ({ ...prev, entity_id: entity?.id || "" }));
-    // Auto-advance to details tab when entity is selected
-    if (entity && activeTab === "entity") {
-      setActiveTab("details");
-    }
   };
 
   const handleInputChange = (field: keyof CreateInvoiceData, value: string) => {
@@ -210,60 +206,48 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, e
             <input type="hidden" name="line_items" value={JSON.stringify(invoiceData.line_items)} />
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="entity" className="flex items-center gap-2">
-                  {getValidationIcon(validationStatus.entity)}
-                  Entity
-                </TabsTrigger>
-                <TabsTrigger value="details" className="flex items-center gap-2">
-                  {getValidationIcon(validationStatus.dates)}
-                  Details
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="essentials" className="flex items-center gap-2">
+                  {getValidationIcon(validationStatus.entity && validationStatus.dates)}
+                  Essentials
                 </TabsTrigger>
                 <TabsTrigger value="line-items" className="flex items-center gap-2">
                   {getValidationIcon(validationStatus.lineItems)}
-                  Items
+                  Line Items
                 </TabsTrigger>
-                <TabsTrigger value="templates">Templates</TabsTrigger>
+                <TabsTrigger value="optional">Optional</TabsTrigger>
               </TabsList>
 
-              {/* Entity Selection Tab */}
-              <TabsContent value="entity" className="space-y-4">
+              {/* Essentials Tab - Contains all required fields */}
+              <TabsContent value="essentials" className="space-y-4">
+                {/* Entity Selection */}
                 <Card className="dark:bg-gray-700 dark:border-gray-600">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 dark:text-white">
                       <FileText className="h-5 w-5" />
-                      Select Billing Entity
+                      Billing Entity
                       {getValidationIcon(validationStatus.entity)}
                     </CardTitle>
-                    {!validationStatus.entity && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400">
-                        Please select a billing entity to continue
-                      </p>
-                    )}
                   </CardHeader>
                   <CardContent>
                     <InvoiceEntitySelector
                       selectedEntity={selectedEntity}
                       onEntitySelect={handleEntitySelect}
                     />
+                    {errors?.entity_id && (
+                      <p className="text-red-500 text-sm mt-1">{errors.entity_id}</p>
+                    )}
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              {/* Invoice Details Tab */}
-              <TabsContent value="details" className="space-y-4">
+                {/* Invoice Dates */}
                 <Card className="dark:bg-gray-700 dark:border-gray-600">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 dark:text-white">
                       <Calendar className="h-5 w-5" />
-                      Invoice Details
+                      Invoice Dates
                       {getValidationIcon(validationStatus.dates)}
                     </CardTitle>
-                    {!validationStatus.dates && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400">
-                        Please fill in the required issue date and due date
-                      </p>
-                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -278,8 +262,11 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, e
                           value={invoiceData.issue_date}
                           onChange={(e) => handleInputChange('issue_date', e.target.value)}
                           required
-                          className="input-custom-styles"
+                          className={`input-custom-styles ${errors?.issue_date ? 'border-red-500' : ''}`}
                         />
+                        {errors?.issue_date && (
+                          <p className="text-red-500 text-sm mt-1">{errors.issue_date}</p>
+                        )}
                       </div>
                       <div>
                         <Label htmlFor="due_date" className="block text-sm font-medium mb-1">
@@ -292,8 +279,11 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, e
                           value={invoiceData.due_date}
                           onChange={(e) => handleInputChange('due_date', e.target.value)}
                           required
-                          className="input-custom-styles"
+                          className={`input-custom-styles ${errors?.due_date ? 'border-red-500' : ''}`}
                         />
+                        {errors?.due_date && (
+                          <p className="text-red-500 text-sm mt-1">{errors.due_date}</p>
+                        )}
                       </div>
                     </div>
 
@@ -325,7 +315,115 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, e
                         />
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
 
+                {/* Quick Actions */}
+                {validationStatus.entity && validationStatus.dates && (
+                  <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="text-green-800 dark:text-green-200 font-medium">
+                            Essential information completed!
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => setActiveTab("line-items")}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Add Line Items →
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Line Items Tab */}
+              <TabsContent value="line-items" className="space-y-4">
+                <Card className="dark:bg-gray-700 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 dark:text-white">
+                      Invoice Line Items
+                      {getValidationIcon(validationStatus.lineItems)}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <InvoiceLineItemBuilder
+                      lineItems={invoiceData.line_items}
+                      onChange={handleLineItemsChange}
+                    />
+                    {errors?.line_items && (
+                      <p className="text-red-500 text-sm mt-1">{errors.line_items}</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Totals Summary */}
+                <Card className="dark:bg-gray-700 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="dark:text-white">Invoice Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between dark:text-gray-200">
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(subtotal)}</span>
+                      </div>
+                      {totalDiscount > 0 && (
+                        <div className="flex justify-between text-green-600 dark:text-green-400">
+                          <span>Total Discount:</span>
+                          <span>-{formatCurrency(totalDiscount)}</span>
+                        </div>
+                      )}
+                      {totalTax > 0 && (
+                        <div className="flex justify-between dark:text-gray-200">
+                          <span>Total Tax:</span>
+                          <span>{formatCurrency(totalTax)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-semibold text-lg border-t pt-2 dark:text-white dark:border-gray-600">
+                        <span>Total:</span>
+                        <span>{formatCurrency(total)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Optional Tab - Contains templates and optional fields */}
+              <TabsContent value="optional" className="space-y-4">
+                {/* Templates Section */}
+                <Card className="dark:bg-gray-700 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 dark:text-white">
+                      <FileText className="h-5 w-5" />
+                      Invoice Templates
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Apply a template to quickly populate invoice fields
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <InvoiceTemplates onSelectTemplate={handleTemplateApply} />
+                  </CardContent>
+                </Card>
+
+                {/* Optional Fields */}
+                <Card className="dark:bg-gray-700 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 dark:text-white">
+                      <Settings className="h-5 w-5" />
+                      Additional Information
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Optional fields to customize your invoice
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div>
                       <Label htmlFor="terms" className="block text-sm font-medium mb-1">
                         Payment Terms
@@ -372,89 +470,28 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, e
                   </CardContent>
                 </Card>
               </TabsContent>
-
-              {/* Line Items Tab */}
-              <TabsContent value="line-items" className="space-y-4">
-                <Card className="dark:bg-gray-700 dark:border-gray-600">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 dark:text-white">
-                      Invoice Line Items
-                      {getValidationIcon(validationStatus.lineItems)}
-                    </CardTitle>
-                    {!validationStatus.lineItems && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400">
-                        Please add at least one line item with description, quantity &gt; 0, and unit price ≥ 0
-                      </p>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <InvoiceLineItemBuilder
-                      lineItems={invoiceData.line_items}
-                      onChange={handleLineItemsChange}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Totals Summary */}
-                <Card className="dark:bg-gray-700 dark:border-gray-600">
-                  <CardHeader>
-                    <CardTitle className="dark:text-white">Invoice Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between dark:text-gray-200">
-                        <span>Subtotal:</span>
-                        <span>{formatCurrency(subtotal)}</span>
-                      </div>
-                      {totalDiscount > 0 && (
-                        <div className="flex justify-between text-green-600 dark:text-green-400">
-                          <span>Total Discount:</span>
-                          <span>-{formatCurrency(totalDiscount)}</span>
-                        </div>
-                      )}
-                      {totalTax > 0 && (
-                        <div className="flex justify-between dark:text-gray-200">
-                          <span>Total Tax:</span>
-                          <span>{formatCurrency(totalTax)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-semibold text-lg border-t pt-2 dark:text-white dark:border-gray-600">
-                        <span>Total:</span>
-                        <span>{formatCurrency(total)}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Templates Tab */}
-              <TabsContent value="templates" className="space-y-4">
-                <Card className="dark:bg-gray-700 dark:border-gray-600">
-                  <CardHeader>
-                    <CardTitle className="dark:text-white">Invoice Templates</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <InvoiceTemplates onSelectTemplate={handleTemplateApply} />
-                  </CardContent>
-                </Card>
-              </TabsContent>
             </Tabs>
 
             {/* Action Buttons */}
             <div className="mt-8 space-y-4">
               {/* Validation Status Alert */}
-              <Alert className={validationStatus.overall ? "border-green-200 bg-green-50 dark:bg-green-900/20" : "border-amber-200 bg-amber-50 dark:bg-amber-900/20"}>
-                <div className="flex items-center gap-2">
-                  {validationStatus.overall ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                  )}
-                  <AlertDescription className={validationStatus.overall ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}>
-                    {getValidationMessage()}
-                  </AlertDescription>
-                </div>
-              </Alert>
+              {!validationStatus.overall && (
+                <Alert className="border-red-200 bg-red-50 dark:bg-red-900/20">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800 dark:text-red-200">
+                      {getValidationMessage()}
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              )}
+
+              {/* Display general errors */}
+              {actionData?.error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{actionData.error}</AlertDescription>
+                </Alert>
+              )}
 
               <Button
                 type="submit"

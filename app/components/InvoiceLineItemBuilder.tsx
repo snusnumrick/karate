@@ -221,7 +221,9 @@ export function InvoiceLineItemBuilder({
                       id={`item-type-${index}`}
                       value={item.item_type}
                       onChange={(e) => handleUpdateLineItem(index, 'item_type', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400 ${
+                        itemErrors.length > 0 ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                       tabIndex={0}
                     >
                       {itemTypes.map((type) => (
@@ -243,7 +245,9 @@ export function InvoiceLineItemBuilder({
                       value={item.description}
                       onChange={(e) => handleUpdateLineItem(index, 'description', e.target.value)}
                       placeholder="Enter item description"
-                      className="input-custom-styles"
+                      className={`input-custom-styles ${
+                        itemErrors.length > 0 ? 'border-red-500' : ''
+                      }`}
                       tabIndex={0}
                     />
                   </div>
@@ -260,7 +264,9 @@ export function InvoiceLineItemBuilder({
                       step="0.01"
                       value={item.quantity}
                       onChange={(e) => handleUpdateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
-                      className="input-custom-styles"
+                      className={`input-custom-styles ${
+                        itemErrors.length > 0 ? 'border-red-500' : ''
+                      }`}
                       tabIndex={0}
                     />
                   </div>
@@ -277,7 +283,9 @@ export function InvoiceLineItemBuilder({
                       step="0.01"
                       value={item.unit_price}
                       onChange={(e) => handleUpdateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                      className="input-custom-styles"
+                      className={`input-custom-styles ${
+                        itemErrors.length > 0 ? 'border-red-500' : ''
+                      }`}
                       tabIndex={0}
                     />
                   </div>
@@ -295,7 +303,9 @@ export function InvoiceLineItemBuilder({
                       step="0.01"
                       value={item.tax_rate || 0}
                       onChange={(e) => handleUpdateLineItem(index, 'tax_rate', parseFloat(e.target.value) || 0)}
-                      className="input-custom-styles"
+                      className={`input-custom-styles ${
+                        itemErrors.length > 0 ? 'border-red-500' : ''
+                      }`}
                       tabIndex={0}
                     />
                   </div>
@@ -313,7 +323,9 @@ export function InvoiceLineItemBuilder({
                       step="0.01"
                       value={item.discount_rate || 0}
                       onChange={(e) => handleUpdateLineItem(index, 'discount_rate', parseFloat(e.target.value) || 0)}
-                      className="input-custom-styles"
+                      className={`input-custom-styles ${
+                        itemErrors.length > 0 ? 'border-red-500' : ''
+                      }`}
                       tabIndex={0}
                     />
                   </div>
@@ -330,7 +342,9 @@ export function InvoiceLineItemBuilder({
                           type="date"
                           value={item.service_period_start || ''}
                           onChange={(e) => handleUpdateLineItem(index, 'service_period_start', e.target.value)}
-                          className="input-custom-styles"
+                          className={`input-custom-styles ${
+                            itemErrors.length > 0 ? 'border-red-500' : ''
+                          }`}
                           tabIndex={0}
                         />
                       </div>
@@ -343,7 +357,9 @@ export function InvoiceLineItemBuilder({
                           type="date"
                           value={item.service_period_end || ''}
                           onChange={(e) => handleUpdateLineItem(index, 'service_period_end', e.target.value)}
-                          className="input-custom-styles"
+                          className={`input-custom-styles ${
+                            itemErrors.length > 0 ? 'border-red-500' : ''
+                          }`}
                           tabIndex={0}
                         />
                       </div>

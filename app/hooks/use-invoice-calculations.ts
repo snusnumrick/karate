@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { siteConfig } from "~/config/site";
 import type { CreateInvoiceLineItemData } from "~/types/invoice";
 
 export interface InvoiceCalculations {
@@ -71,10 +70,26 @@ export function calculateLineItemTotal(item: CreateInvoiceLineItemData): number 
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat(siteConfig.localization.locale, {
-    style: 'currency',
-    currency: siteConfig.localization.currency,
-  }).format(amount);
+  // Ensure we have a valid number
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    return '$0.00';
+  }
+  
+  // Use a simple, safe approach that works in both SSR and client environments
+  try {
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined' && typeof Intl !== 'undefined') {
+      return new Intl.NumberFormat('en-CA', {
+        style: 'currency',
+        currency: 'CAD',
+      }).format(amount);
+    }
+  } catch (error) {
+    // Fallback if Intl.NumberFormat fails
+  }
+  
+  // Fallback formatting that works consistently in SSR and client
+  return `$${amount.toFixed(2)}`;
 }
 
 export function formatPercentage(rate: number): string {
