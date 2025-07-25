@@ -1,21 +1,10 @@
-import { useState } from "react";
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link, Outlet, useSubmit, useNavigation } from "@remix-run/react";
-import { PencilIcon, ArchiveBoxIcon, ArchiveBoxXMarkIcon } from "@heroicons/react/24/outline";
+import { useLoaderData, Link, Outlet, useNavigation } from "@remix-run/react";
+
 import { FileText, Eye, Edit } from "lucide-react";
 import { getInvoiceEntityById, deactivateInvoiceEntity, reactivateInvoiceEntity } from "~/services/invoice-entity.server";
 import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const { id } = params;
@@ -65,24 +54,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function InvoiceEntityDetail() {
   const { entity } = useLoaderData<typeof loader>();
-  const submit = useSubmit();
   const navigation = useNavigation();
-  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
 
   const isSubmitting = navigation.state === "submitting";
-
-  const handleDeactivate = () => {
-    const formData = new FormData();
-    formData.append("action", "deactivate");
-    submit(formData, { method: "post" });
-    setIsDeactivateDialogOpen(false);
-  };
-
-  const handleReactivate = () => {
-    const formData = new FormData();
-    formData.append("action", "reactivate");
-    submit(formData, { method: "post" });
-  };
 
   const breadcrumbs = [
     { label: "Admin Dashboard", href: "/admin" },
@@ -121,44 +95,7 @@ export default function InvoiceEntityDetail() {
                 </div>
               </div>
               
-              {/* Action Buttons */}
-              <div className="mt-4 sm:mt-0 sm:ml-6 flex items-center space-x-3">
-                <Link
-                  to={`/admin/invoice-entities/${entity.id}/edit`}
-                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:hover:bg-indigo-400 transition-colors duration-200"
-                >
-                  <PencilIcon className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  className={`inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition-colors duration-200 ${
-                    entity.is_active
-                      ? "bg-red-600 text-white hover:bg-red-500 focus-visible:outline-red-600 dark:bg-red-500 dark:hover:bg-red-400"
-                      : "bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600 dark:bg-green-500 dark:hover:bg-green-400"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  onClick={() => {
-                    if (entity.is_active) {
-                      setIsDeactivateDialogOpen(true);
-                    } else {
-                      handleReactivate();
-                    }
-                  }}
-                >
-                  {entity.is_active ? (
-                    <>
-                      <ArchiveBoxIcon className="mr-2 h-4 w-4" />
-                      Deactivate
-                    </>
-                  ) : (
-                    <>
-                      <ArchiveBoxXMarkIcon className="mr-2 h-4 w-4" />
-                      Reactivate
-                    </>
-                  )}
-                </button>
-              </div>
+
             </div>
           </div>
         </div>
@@ -370,28 +307,6 @@ export default function InvoiceEntityDetail() {
           </div>
         </div>
       </div>
-
-      {/* Deactivate Confirmation Dialog */}
-      <AlertDialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will deactivate the entity "{entity.name}". You can reactivate it later if needed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeactivate}
-              disabled={isSubmitting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isSubmitting ? "Deactivating..." : "Deactivate"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <Outlet />
     </div>
