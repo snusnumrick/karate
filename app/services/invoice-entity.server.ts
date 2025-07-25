@@ -299,6 +299,49 @@ export async function updateInvoiceEntity(
 }
 
 /**
+ * Delete invoice entity (hard delete - only allowed if no invoices exist)
+ */
+export async function deleteInvoiceEntity(
+  entityId: string,
+  supabaseAdmin?: SupabaseClient<Database>
+): Promise<void> {
+  invariant(entityId, "Missing entityId parameter");
+  
+  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  
+  console.log(`[Service/deleteInvoiceEntity] Attempting to delete entity ${entityId}`);
+
+  // Check if entity has any invoices (including cancelled ones)
+  const { data: invoices, error: invoiceCheckError } = await client
+    .from('invoices')
+    .select('id')
+    .eq('entity_id', entityId)
+    .limit(1);
+
+  if (invoiceCheckError) {
+    console.error(`[Service/deleteInvoiceEntity] Error checking invoices:`, invoiceCheckError);
+    throw new Response(`Error checking entity invoices: ${invoiceCheckError.message}`, { status: 500 });
+  }
+
+  if (invoices && invoices.length > 0) {
+    throw new Response("Cannot delete entity with existing invoices. Use deactivate instead.", { status: 400 });
+  }
+
+  // Proceed with deletion
+  const { error } = await client
+    .from('invoice_entities')
+    .delete()
+    .eq('id', entityId);
+
+  if (error) {
+    console.error(`[Service/deleteInvoiceEntity] Error deleting entity:`, error);
+    throw new Response(`Error deleting invoice entity: ${error.message}`, { status: 500 });
+  }
+
+  console.log(`[Service/deleteInvoiceEntity] Successfully deleted entity ${entityId}`);
+}
+
+/**
  * Deactivate invoice entity (soft delete)
  */
 export async function deactivateInvoiceEntity(

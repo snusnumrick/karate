@@ -1,19 +1,43 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError, useSearchParams, useFetcher } from "@remix-run/react";
+import { useState, useEffect } from "react";
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import { useLoaderData, Link, useSearchParams, useFetcher, useRouteError } from "@remix-run/react";
+import { Building2, Eye, FileText, Trash2, Search, Plus, Users, Landmark, Briefcase, HelpCircle, CheckCircle, AlertCircle } from "lucide-react";
+import { getInvoiceEntitiesWithStats, deleteInvoiceEntity } from "~/services/invoice-entity.server";
+import type { EntityType, InvoiceEntityWithStats } from "~/types/invoice";
+import { formatCurrency } from "~/utils/misc";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { Badge } from "~/components/ui/badge";
-import { Switch } from "~/components/ui/switch";
 import { Label } from "~/components/ui/label";
-import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { getInvoiceEntitiesWithStats } from "~/services/invoice-entity.server";
-import type { EntityType, InvoiceEntity } from "~/types/invoice";
+import { Switch } from "~/components/ui/switch";
+import { Badge } from "~/components/ui/badge";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Search, Plus, Building2, Users, Landmark, Briefcase, HelpCircle, Eye, FileText, Trash2, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { siteConfig } from "~/config/site";
-import { useState, useEffect } from "react";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -33,6 +57,41 @@ export async function loader({ request }: LoaderFunctionArgs) {
   } catch (error) {
     console.error("Error loading invoice entities:", error);
     throw new Response("Failed to load invoice entities", { status: 500 });
+  }
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const action = formData.get("action");
+  const entityId = formData.get("entityId");
+
+  if (!entityId || typeof entityId !== "string") {
+    return json({ error: "Entity ID is required" }, { status: 400 });
+  }
+
+  try {
+    if (action === "delete") {
+      await deleteInvoiceEntity(entityId);
+      return json({ 
+        success: true, 
+        message: "Entity deleted successfully" 
+      });
+    }
+
+    return json({ error: "Invalid action" }, { status: 400 });
+  } catch (error) {
+    console.error("Error in action:", error);
+    
+    if (error instanceof Response) {
+      const errorText = await error.text();
+      return json({ 
+        error: errorText || "An error occurred" 
+      }, { status: error.status });
+    }
+    
+    return json({ 
+      error: "An unexpected error occurred" 
+    }, { status: 500 });
   }
 }
 
@@ -69,6 +128,14 @@ export default function InvoiceEntitiesIndexPage() {
     type: 'success' | 'error' | null;
     message: string;
   }>({ type: null, message: '' });
+  const [entityToDeactivate, setEntityToDeactivate] = useState<string | null>(null);
+  const [entityToDelete, setEntityToDelete] = useState<{id: string, name: string} | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Handle hydration
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const handleFilterChange = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
@@ -97,8 +164,40 @@ export default function InvoiceEntitiesIndexPage() {
     });
   };
 
+  const handleDeactivateEntity = (entityId: string) => {
+    setEntityToDeactivate(entityId);
+  };
+
+  const handleDeleteEntity = (entityId: string, entityName: string) => {
+    setEntityToDelete({ id: entityId, name: entityName });
+  };
+
+  const confirmDeactivation = () => {
+    if (entityToDeactivate) {
+      handleStatusToggle(entityToDeactivate, false);
+      setEntityToDeactivate(null);
+    }
+  };
+
+  const confirmDeletion = () => {
+    if (entityToDelete) {
+      // Clear any existing feedback
+      setFeedback({ type: null, message: '' });
+      
+      const formData = new FormData();
+      formData.append("action", "delete");
+      formData.append("entityId", entityToDelete.id);
+      
+      fetcher.submit(formData, {
+        method: "POST",
+      });
+      
+      setEntityToDelete(null);
+    }
+  };
+
   // Get the current status for an entity (optimistic or actual)
-  const getEntityStatus = (entity: InvoiceEntity) => {
+  const getEntityStatus = (entity: InvoiceEntityWithStats) => {
     return optimisticUpdates[entity.id] !== undefined 
       ? optimisticUpdates[entity.id] 
       : entity.is_active;
@@ -107,7 +206,13 @@ export default function InvoiceEntitiesIndexPage() {
   // Check if an entity is being updated
   const isEntityUpdating = (entityId: string) => {
     return fetcher.state === "submitting" && 
-           fetcher.formAction === `/admin/invoice-entities/${entityId}/toggle-status`;
+           (fetcher.formAction === `/admin/invoice-entities/${entityId}/toggle-status` ||
+            (fetcher.formData?.get("entityId") === entityId && fetcher.formData?.get("action") === "delete"));
+  };
+
+  // Check if entity can be deleted (has no invoices)
+  const canDeleteEntity = (entity: InvoiceEntityWithStats) => {
+    return typeof entity.total_invoices === 'number' && entity.total_invoices === 0;
   };
 
   // Handle fetcher completion
@@ -122,7 +227,7 @@ export default function InvoiceEntitiesIndexPage() {
       if (data.success) {
         setFeedback({
           type: 'success',
-          message: data.message || 'Status updated successfully'
+          message: data.message || 'Operation completed successfully'
         });
         // Clear success message after 3 seconds
         setTimeout(() => setFeedback({ type: null, message: '' }), 3000);
@@ -134,13 +239,6 @@ export default function InvoiceEntitiesIndexPage() {
       }
     }
   }, [fetcher.state, fetcher.data, optimisticUpdates]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(siteConfig.localization.locale, {
-      style: 'currency',
-      currency: siteConfig.localization.currency,
-    }).format(amount);
-  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -368,20 +466,41 @@ export default function InvoiceEntitiesIndexPage() {
                             Edit
                           </Link>
                         </Button>
-                        {entity.is_active && (
+                        {isHydrated && canDeleteEntity(entity) ? (
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            asChild 
+                            onClick={() => handleDeleteEntity(entity.id, entity.name)}
+                            tabIndex={0} 
+                            title="Delete entity permanently"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                            disabled={isEntityUpdating(entity.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        ) : isHydrated && entity.is_active ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDeactivateEntity(entity.id)}
                             tabIndex={0} 
                             title="Deactivate entity (soft delete)"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20"
+                            disabled={isEntityUpdating(entity.id)}
                           >
-                            <Link to={`/admin/invoice-entities/${entity.id}`}>
-                              <Trash2 className="w-4 h-4" />
-                            </Link>
+                            <Trash2 className="w-4 h-4" />
                           </Button>
-                        )}
+                        ) : !isHydrated ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            tabIndex={0} 
+                            disabled
+                            className="opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -391,6 +510,48 @@ export default function InvoiceEntitiesIndexPage() {
           </Table>
         </div>
       )}
+
+      {/* Deactivation Confirmation Dialog */}
+      <AlertDialog open={!!entityToDeactivate} onOpenChange={() => setEntityToDeactivate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Entity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate this entity? This will set the entity as inactive but preserve all historical data. You can reactivate it later if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeactivation}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!entityToDelete} onOpenChange={() => setEntityToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Entity Permanently</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete "{entityToDelete?.name}"? This action cannot be undone and will remove all entity data from the system. This is only allowed because this entity has no associated invoices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeletion}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
