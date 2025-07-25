@@ -27,6 +27,7 @@ interface ActionData {
     category?: string;
     description?: string;
   };
+  success?: boolean;
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -72,8 +73,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const errors: ActionData["errors"] = {};
     const values: ActionData["values"] = {
         name: name || '',
-        category: category || '',
-        description: description || ''
+        category: category || ''
     };
     
     if (!name?.trim()) {
@@ -212,9 +212,10 @@ export default function EditInvoiceTemplate() {
                                     id="name"
                                     name="name"
                                     placeholder="e.g., Monthly Membership Fee"
-                                    value={name}
+                                    value={actionData?.values?.name || name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="input-custom-styles"
+                                    className={`input-custom-styles ${actionData?.errors?.name ? 'border-red-500 focus:border-red-500' : ''}`}
+                                    required
                                     tabIndex={1}
                                 />
                                 {actionData?.errors?.name && (
@@ -224,8 +225,8 @@ export default function EditInvoiceTemplate() {
                             
                             <div className="space-y-2">
                                 <Label htmlFor="category">Category *</Label>
-                                <Select name="category" value={category} onValueChange={(value) => setCategory(value as 'enrollment' | 'fees' | 'products' | 'custom')}>
-                                    <SelectTrigger className="input-custom-styles" tabIndex={2}>
+                                <Select name="category" value={actionData?.values?.category || category} onValueChange={(value) => setCategory(value as 'enrollment' | 'fees' | 'products' | 'custom')} required>
+                                    <SelectTrigger className={`input-custom-styles ${actionData?.errors?.category ? 'border-red-500 focus:border-red-500' : ''}`} tabIndex={2}>
                                         <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -235,6 +236,9 @@ export default function EditInvoiceTemplate() {
                                         <SelectItem value="custom">Custom</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {actionData?.errors?.category && (
+                                    <p className="text-sm text-red-600">{actionData.errors.category}</p>
+                                )}
                             </div>
                         </div>
                         

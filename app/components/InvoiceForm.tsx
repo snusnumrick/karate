@@ -22,9 +22,21 @@ interface InvoiceFormProps {
   initialData?: Partial<CreateInvoiceData>;
   mode?: 'create' | 'edit';
   preSelectedEntity?: InvoiceEntity | null;
+  errors?: {
+    entity_id?: string;
+    issue_date?: string;
+    due_date?: string;
+    line_items?: string;
+    general?: string;
+  };
+  values?: {
+    entity_id?: string;
+    issue_date?: string;
+    due_date?: string;
+  };
 }
 
-export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity }: InvoiceFormProps) {
+export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, errors, values }: InvoiceFormProps) {
   const actionData = useActionData<{ error?: string; success?: boolean }>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -32,9 +44,9 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity }:
   // Form state
   const [selectedEntity, setSelectedEntity] = useState<InvoiceEntity | null>(preSelectedEntity || null);
   const [invoiceData, setInvoiceData] = useState<CreateInvoiceData>({
-    entity_id: preSelectedEntity?.id || "",
-    issue_date: new Date().toISOString().split('T')[0],
-    due_date: "",
+    entity_id: values?.entity_id || preSelectedEntity?.id || "",
+    issue_date: values?.issue_date || new Date().toISOString().split('T')[0],
+    due_date: values?.due_date || "",
     service_period_start: "",
     service_period_end: "",
     terms: "",

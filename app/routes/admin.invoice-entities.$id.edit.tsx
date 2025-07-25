@@ -20,6 +20,11 @@ interface ActionData {
     email?: string;
     general?: string;
   };
+  values?: {
+    name?: string;
+    entity_type?: string;
+    email?: string;
+  };
   success?: boolean;
 }
 
@@ -67,6 +72,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   // Validation
   const errors: ActionData["errors"] = {};
+  const values: ActionData["values"] = {
+    name: updateData.name || '',
+    entity_type: updateData.entity_type || '',
+    email: updateData.email || ''
+  };
   
   if (!updateData.name?.trim()) {
     errors.name = "Entity name is required";
@@ -81,7 +91,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   if (Object.keys(errors).length > 0) {
-    return json<ActionData>({ errors }, { status: 400 });
+    return json<ActionData>({ errors, values }, { status: 400 });
   }
 
   try {
@@ -148,10 +158,10 @@ export default function EditInvoiceEntityPage() {
                 <Input
                   id="name"
                   name="name"
-                  defaultValue={entity.name}
+                  defaultValue={actionData?.values?.name || entity.name}
                   placeholder="e.g., ABC School District"
+                  className={`input-custom-styles ${actionData?.errors?.name ? 'border-red-500 focus:border-red-500' : ''}`}
                   required
-                  className="input-custom-styles"
                 />
                 {actionData?.errors?.name && (
                   <p className="text-sm text-red-600">{actionData.errors.name}</p>
@@ -160,16 +170,15 @@ export default function EditInvoiceEntityPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="entity_type">Entity Type *</Label>
-                <Select name="entity_type" defaultValue={entity.entity_type} required>
-                  <SelectTrigger className="input-custom-styles">
+                <Select name="entity_type" defaultValue={actionData?.values?.entity_type || entity.entity_type} required>
+                  <SelectTrigger className={`input-custom-styles ${actionData?.errors?.entity_type ? 'border-red-500 focus:border-red-500' : ''}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
                     <SelectItem value="family">Family</SelectItem>
-                    <SelectItem value="school">School</SelectItem>
-                    <SelectItem value="government">Government</SelectItem>
-                    <SelectItem value="corporate">Corporate</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="organization">Organization</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
                   </SelectContent>
                 </Select>
                 {actionData?.errors?.entity_type && (
@@ -228,9 +237,9 @@ export default function EditInvoiceEntityPage() {
                   id="email"
                   name="email"
                   type="email"
-                  defaultValue={entity.email || ""}
+                  defaultValue={actionData?.values?.email || entity.email || ""}
                   placeholder="billing@example.com"
-                  className="input-custom-styles"
+                  className={`input-custom-styles ${actionData?.errors?.email ? 'border-red-500 focus:border-red-500' : ''}`}
                 />
                 {actionData?.errors?.email && (
                   <p className="text-sm text-red-600">{actionData.errors.email}</p>

@@ -29,6 +29,7 @@ interface ActionData {
     category?: string;
     description?: string;
   };
+  success?: boolean;
 }
 
 export async function loader() {
@@ -51,8 +52,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const errors: ActionData["errors"] = {};
     const values: ActionData["values"] = {
         name: name || '',
-        category: category || '',
-        description: description || ''
+        category: category || ''
     };
     
     if (!name?.trim()) {
@@ -179,7 +179,8 @@ export default function NewInvoiceTemplate() {
                                     name="name"
                                     placeholder="e.g., Monthly Membership Fee"
                                     defaultValue={actionData?.values?.name}
-                                    className="input-custom-styles"
+                                    className={`input-custom-styles ${actionData?.errors?.name ? 'border-red-500 focus:border-red-500' : ''}`}
+                                    required
                                     tabIndex={1}
                                 />
                                 {actionData?.errors?.name && (
@@ -189,8 +190,8 @@ export default function NewInvoiceTemplate() {
                             
                             <div className="space-y-2">
                                 <Label htmlFor="category">Category *</Label>
-                                <Select name="category" defaultValue={actionData?.values?.category}>
-                                    <SelectTrigger className="input-custom-styles" tabIndex={2}>
+                                <Select name="category" defaultValue={actionData?.values?.category} required>
+                                    <SelectTrigger className={`input-custom-styles ${actionData?.errors?.category ? 'border-red-500 focus:border-red-500' : ''}`} tabIndex={2}>
                                         <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -213,7 +214,7 @@ export default function NewInvoiceTemplate() {
                                 id="description"
                                 name="description"
                                 placeholder="Optional description of when to use this template"
-                                defaultValue={actionData?.values?.description}
+                                defaultValue=""
                                 className="input-custom-styles"
                                 tabIndex={3}
                             />

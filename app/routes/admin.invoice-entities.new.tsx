@@ -20,6 +20,11 @@ interface ActionData {
     email?: string;
     general?: string;
   };
+  values?: {
+    name?: string;
+    entity_type?: string;
+    email?: string;
+  };
   success?: boolean;
 }
 
@@ -46,6 +51,11 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // Validation
   const errors: ActionData["errors"] = {};
+  const values: ActionData["values"] = {
+    name: entityData.name || '',
+    entity_type: entityData.entity_type || '',
+    email: entityData.email || ''
+  };
   
   if (!entityData.name?.trim()) {
     errors.name = "Entity name is required";
@@ -60,7 +70,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   if (Object.keys(errors).length > 0) {
-    return json<ActionData>({ errors }, { status: 400 });
+    return json<ActionData>({ errors, values }, { status: 400 });
   }
 
   try {
@@ -120,10 +130,12 @@ export default function NewInvoiceEntityPage() {
                   ref={firstInputRef}
                   id="name"
                   name="name"
-                  placeholder="e.g., Acme Corporation"
+                  type="text"
+                  placeholder="Enter entity name"
+                  defaultValue={actionData?.values?.name}
+                  className={`input-custom-styles ${actionData?.errors?.name ? 'border-red-500 focus:border-red-500' : ''}`}
+                  tabIndex={1}
                   required
-                  className="input-custom-styles"
-                  tabIndex={0}
                 />
                 {actionData?.errors?.name && (
                   <p className="text-sm text-red-600">{actionData.errors.name}</p>
@@ -132,16 +144,15 @@ export default function NewInvoiceEntityPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="entity_type">Entity Type *</Label>
-                <Select name="entity_type" defaultValue="family" required>
-                  <SelectTrigger className="input-custom-styles" tabIndex={0}>
-                    <SelectValue />
+                <Select name="entity_type" defaultValue={actionData?.values?.entity_type} required>
+                  <SelectTrigger className={`input-custom-styles ${actionData?.errors?.entity_type ? 'border-red-500 focus:border-red-500' : ''}`} tabIndex={2}>
+                    <SelectValue placeholder="Select entity type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
                     <SelectItem value="family">Family</SelectItem>
-                    <SelectItem value="school">School</SelectItem>
-                    <SelectItem value="government">Government</SelectItem>
-                    <SelectItem value="corporate">Corporate</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="organization">Organization</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
                   </SelectContent>
                 </Select>
                 {actionData?.errors?.entity_type && (
@@ -191,9 +202,10 @@ export default function NewInvoiceEntityPage() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="billing@example.com"
-                  className="input-custom-styles"
-                  tabIndex={0}
+                  placeholder="Enter email address"
+                  defaultValue={actionData?.values?.email}
+                  className={`input-custom-styles ${actionData?.errors?.email ? 'border-red-500 focus:border-red-500' : ''}`}
+                  tabIndex={3}
                 />
                 {actionData?.errors?.email && (
                   <p className="text-sm text-red-600">{actionData.errors.email}</p>
