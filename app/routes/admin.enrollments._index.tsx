@@ -26,6 +26,7 @@ import { getClasses } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import type { ClassEnrollment } from "~/types/multi-class";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { formatDate } from "~/utils/misc";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -307,7 +308,7 @@ export default function AdminEnrollments() {
                     <TableCell className="min-w-[200px]">{classItem?.name || "Unknown"}</TableCell>
                     <TableCell>{getStatusBadge(enrollment.status)}</TableCell>
                     <TableCell>
-                      {new Date(enrollment.enrolled_at).toLocaleDateString()}
+                      {formatDate(enrollment.enrolled_at, { formatString: 'MMM d, yyyy' })}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
                       {enrollment.notes || "-"}

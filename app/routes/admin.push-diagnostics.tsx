@@ -7,6 +7,7 @@ import {
   validateVAPIDConfiguration,
   clearAllPushSubscriptions 
 } from '~/utils/push-notifications.server';
+import { formatDate } from '~/utils/misc';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserId(request);
@@ -144,7 +145,7 @@ export default function PushDiagnostics() {
                   <tr key={sub.id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-2 text-sm text-gray-900">{sub.user_id.substring(0, 8)}...</td>
                     <td className="px-4 py-2 text-sm text-gray-700">{sub.endpoint.substring(0, 50)}...</td>
-                    <td className="px-4 py-2 text-sm text-gray-600">{sub.created_at ? new Date(sub.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td className="px-4 py-2 text-sm text-gray-600">{sub.created_at ? formatDate(sub.created_at, { formatString: 'MMM d, yyyy' }) : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>

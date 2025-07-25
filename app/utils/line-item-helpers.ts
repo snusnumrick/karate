@@ -1,4 +1,5 @@
 import type { InvoiceItemType, CreateInvoiceLineItemData } from "~/types/invoice";
+import { formatDate } from "~/utils/misc";
 
 /**
  * Get item type display label
@@ -209,17 +210,17 @@ export function formatServicePeriod(startDate?: string, endDate?: string): strin
   }
   
   if (startDate && endDate) {
-    const start = new Date(startDate).toLocaleDateString();
-    const end = new Date(endDate).toLocaleDateString();
+    const start = formatDate(startDate, { formatString: 'MMM d, yyyy' });
+    const end = formatDate(endDate, { formatString: 'MMM d, yyyy' });
     return `${start} - ${end}`;
   }
   
   if (startDate) {
-    return `From ${new Date(startDate).toLocaleDateString()}`;
+    return `From ${formatDate(startDate, { formatString: 'MMM d, yyyy' })}`;
   }
   
   if (endDate) {
-    return `Until ${new Date(endDate).toLocaleDateString()}`;
+    return `Until ${formatDate(endDate, { formatString: 'MMM d, yyyy' })}`;
   }
   
   return '';

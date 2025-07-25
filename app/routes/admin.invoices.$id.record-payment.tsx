@@ -8,6 +8,7 @@ import RecordPaymentForm from '~/components/RecordPaymentForm';
 import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import type { Database } from '~/types/database.types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { formatDate } from '~/utils/misc';
 
 function createSupabaseAdminClient(): SupabaseClient<Database> {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -265,7 +266,7 @@ export default function RecordPaymentPage() {
                     )}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {new Date(payment.payment_date).toLocaleDateString()}
+                    {formatDate(payment.payment_date, { formatString: 'MMM d, yyyy' })}
                   </div>
                 </div>
               ))}

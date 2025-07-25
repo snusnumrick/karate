@@ -17,6 +17,7 @@ import { enrollStudent, getEnrollments } from "~/services/enrollment.server";
 import { getPrograms } from "~/services/program.server";
 import { requireAdminUser } from "~/utils/auth.server";
 import { createClient } from "~/utils/supabase.server";
+import { formatDate } from "~/utils/misc";
 import type { CreateEnrollmentData } from "~/types/multi-class";
 
 type FamilyWithStudents = {
@@ -394,7 +395,7 @@ export default function NewEnrollmentPage() {
                 <div>
                   <p className="font-medium">{selectedStudent.first_name} {selectedStudent.last_name}</p>
                   <p className="text-sm text-muted-foreground">
-                    Born: {new Date(selectedStudent.birth_date).toLocaleDateString()}
+                    Born: {formatDate(selectedStudent.birth_date, { formatString: 'MMM d, yyyy' })}
                   </p>
                   <p className="text-sm text-muted-foreground capitalize">
                     Gender: {selectedStudent.gender}

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { ArrowLeft, Search, Filter, Users, CheckCircle, Clock, XCircle } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { formatDate } from "~/utils/misc";
 
 
 const supabaseUrl = process.env.SUPABASE_URL!;
@@ -417,12 +418,12 @@ export default function DiscountAssignments() {
                       </TableCell>
                       <TableCell className="font-medium">
                         {assignment.valid_until 
-                          ? new Date(assignment.valid_until).toLocaleDateString()
+                          ? formatDate(assignment.valid_until, { formatString: 'MMM d, yyyy' })
                           : 'No expiration'
                         }
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {new Date(assignment.assigned_at).toLocaleDateString()}
+                        {formatDate(assignment.assigned_at, { formatString: 'MMM d, yyyy' })}
                       </TableCell>
                     </TableRow>
                   ))}
