@@ -1,32 +1,26 @@
 import { json, LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation, useSearchParams, Link, useSubmit } from "@remix-run/react";
+import { useLoaderData, Form, useNavigation, useSearchParams, Link, useSubmit, useNavigate } from "@remix-run/react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { Plus, Edit, Trash2, Users, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Label } from "~/components/ui/label";
+import { Input } from "~/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { CheckCircle, Clock, AlertCircle, Users, Plus, Edit, Trash2 } from "lucide-react";
+import type { Database } from "~/types/database.types";
+import type { EligibilityStatus } from "~/types/payment";
+import { formatDate } from "~/utils/misc";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getEnrollments, updateEnrollment, dropStudent } from "~/services/enrollment.server";
 import { getClasses } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import type { ClassEnrollment } from "~/types/multi-class";
-import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { formatDate } from "~/utils/misc";
+import { checkStudentEligibility, createClient } from "~/utils/supabase.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -41,6 +35,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
     getClasses(),
     getPrograms()
   ]);
+
+  // Create supabase admin client for eligibility checks
+  const supabaseAdmin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+  // Fetch eligibility for each enrolled student
+  const enrollmentsWithEligibility = await Promise.all(
+    enrollments.map(async (enrollment) => {
+      if (enrollment.student) {
+        const eligibility = await checkStudentEligibility(enrollment.student.id, supabaseAdmin);
+        return {
+          ...enrollment,
+          student: {
+            ...enrollment.student,
+            eligibility
+          }
+        };
+      }
+      return enrollment;
+    })
+  );
   
   // Calculate stats from enrollments
   const stats = {
@@ -52,7 +66,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   };
   
   return json({ 
-    enrollments, 
+    enrollments: enrollmentsWithEligibility, 
     classes, 
     programs, 
     stats,
@@ -92,11 +106,31 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
+function getStudentName(enrollment: ClassEnrollment): string {
+  if (!enrollment.student) return "Unknown Student";
+  return `${enrollment.student.first_name} ${enrollment.student.last_name}`;
+}
+
+function getEligibilityBadgeVariant(status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" {
+  switch (status) {
+    case 'Paid - Monthly':
+    case 'Paid - Yearly':
+      return 'default';
+    case 'Trial':
+      return 'secondary';
+    case 'Expired':
+      return 'destructive';
+    default:
+      return 'outline';
+  }
+}
+
 export default function AdminEnrollments() {
   const { enrollments, classes, programs, stats, filters } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
-  const submit = useSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
+  const submit = useSubmit();
+  
   const [selectedEnrollment, setSelectedEnrollment] = useState<ClassEnrollment | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteEnrollmentId, setDeleteEnrollmentId] = useState<string | null>(null);
@@ -131,15 +165,6 @@ export default function AdminEnrollments() {
     const classItem = classes.find(c => c.id === classId);
     const program = classItem ? programs.find(p => p.id === classItem.program_id) : null;
     return { class: classItem, program };
-  };
-  
-  const getStudentName = (enrollment: ClassEnrollment) => {
-    // Access student data from the enrollment object
-    const student = (enrollment as { student?: { first_name?: string; last_name?: string } }).student;
-    if (student && student.first_name && student.last_name) {
-      return `${student.first_name} ${student.last_name}`;
-    }
-    return "Unknown Student";
   };
   
   return (
@@ -285,16 +310,16 @@ export default function AdminEnrollments() {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Program</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Enrolled Date</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Program</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Enrolled Date</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
             <TableBody>
               {enrollments.map((enrollment) => {
                 const { class: classItem, program } = getClassInfo(enrollment.class_id);

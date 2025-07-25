@@ -377,14 +377,14 @@ export async function checkStudentEligibility(
         }
     }
 
-    const mostRecentPaidUntil = activeEnrollments[0]?.paid_until;
+    const paidUntil = activeEnrollments[0]?.paid_until;
 
     return {
         eligible: false,
         reason: 'Expired',
         lastPaymentDate: lastPaymentDate,
         type: paymentType,
-        paidUntil: mostRecentPaidUntil || undefined
+        paidUntil: paidUntil || undefined
     };
 }
 // Helper function to get the base site URL
