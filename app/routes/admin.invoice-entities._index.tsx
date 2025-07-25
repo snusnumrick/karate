@@ -1,15 +1,19 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError, useSearchParams } from "@remix-run/react";
+import { Link, useLoaderData, useRouteError, useSearchParams, useFetcher } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
+import { Switch } from "~/components/ui/switch";
+import { Label } from "~/components/ui/label";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntitiesWithStats } from "~/services/invoice-entity.server";
-import type { EntityType } from "~/types/invoice";
-import { Search, Plus, Building2, Users, Landmark, Briefcase, HelpCircle, Eye, FileText, Trash2 } from "lucide-react";
+import type { EntityType, InvoiceEntity } from "~/types/invoice";
+import { Alert, AlertDescription } from "~/components/ui/alert";
+import { Search, Plus, Building2, Users, Landmark, Briefcase, HelpCircle, Eye, FileText, Trash2, CheckCircle, AlertCircle } from "lucide-react";
 import { siteConfig } from "~/config/site";
+import { useState, useEffect } from "react";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -59,6 +63,12 @@ const entityTypeColors = {
 export default function InvoiceEntitiesIndexPage() {
   const { entities, filters } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const fetcher = useFetcher();
+  const [optimisticUpdates, setOptimisticUpdates] = useState<Record<string, boolean>>({});
+  const [feedback, setFeedback] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
 
   const handleFilterChange = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
@@ -70,6 +80,61 @@ export default function InvoiceEntitiesIndexPage() {
     setSearchParams(newParams);
   };
 
+  const handleStatusToggle = (entityId: string, newStatus: boolean) => {
+    // Clear any existing feedback
+    setFeedback({ type: null, message: '' });
+    
+    // Optimistic update
+    setOptimisticUpdates(prev => ({ ...prev, [entityId]: newStatus }));
+    
+    // Submit the change
+    const formData = new FormData();
+    formData.append("is_active", newStatus.toString());
+    
+    fetcher.submit(formData, {
+      method: "POST",
+      action: `/admin/invoice-entities/${entityId}/toggle-status`,
+    });
+  };
+
+  // Get the current status for an entity (optimistic or actual)
+  const getEntityStatus = (entity: InvoiceEntity) => {
+    return optimisticUpdates[entity.id] !== undefined 
+      ? optimisticUpdates[entity.id] 
+      : entity.is_active;
+  };
+
+  // Check if an entity is being updated
+  const isEntityUpdating = (entityId: string) => {
+    return fetcher.state === "submitting" && 
+           fetcher.formAction === `/admin/invoice-entities/${entityId}/toggle-status`;
+  };
+
+  // Handle fetcher completion
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      if (Object.keys(optimisticUpdates).length > 0) {
+        setOptimisticUpdates({});
+      }
+      
+      const data = fetcher.data as { success?: boolean; message?: string; error?: string };
+      
+      if (data.success) {
+        setFeedback({
+          type: 'success',
+          message: data.message || 'Status updated successfully'
+        });
+        // Clear success message after 3 seconds
+        setTimeout(() => setFeedback({ type: null, message: '' }), 3000);
+      } else if (data.error) {
+        setFeedback({
+          type: 'error',
+          message: data.error
+        });
+      }
+    }
+  }, [fetcher.state, fetcher.data, optimisticUpdates]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat(siteConfig.localization.locale, {
       style: 'currency',
@@ -80,6 +145,20 @@ export default function InvoiceEntitiesIndexPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <AppBreadcrumb items={breadcrumbPatterns.adminInvoiceEntities()} className="mb-6" />
+      
+      {/* Feedback Alert */}
+      {feedback.type && (
+        <Alert className={`mb-6 ${feedback.type === 'success' ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-red-500 bg-red-50 dark:bg-red-900/20'}`}>
+          {feedback.type === 'success' ? (
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          ) : (
+            <AlertCircle className="h-4 w-4 text-red-600" />
+          )}
+          <AlertDescription className={feedback.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}>
+            {feedback.message}
+          </AlertDescription>
+        </Alert>
+      )}
       
       <div className="flex justify-between items-center mb-4">
         <div>
@@ -252,9 +331,25 @@ export default function InvoiceEntitiesIndexPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={entity.is_active ? "default" : "secondary"}>
-                        {entity.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id={`status-${entity.id}`}
+                          checked={getEntityStatus(entity)}
+                          disabled={isEntityUpdating(entity.id)}
+                          onCheckedChange={(checked) => {
+                            handleStatusToggle(entity.id, checked);
+                          }}
+                        />
+                        <Label 
+                          htmlFor={`status-${entity.id}`} 
+                          className={`text-sm ${isEntityUpdating(entity.id) ? 'opacity-50' : ''}`}
+                        >
+                          {getEntityStatus(entity) ? "Active" : "Inactive"}
+                          {isEntityUpdating(entity.id) && (
+                            <span className="ml-1 text-xs text-gray-500">updating...</span>
+                          )}
+                        </Label>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
