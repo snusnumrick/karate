@@ -36,7 +36,7 @@ interface InvoiceFormProps {
   };
 }
 
-export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, errors, values }: InvoiceFormProps) {
+export function InvoiceForm({ entities, initialData, mode = 'create', preSelectedEntity, errors, values }: InvoiceFormProps) {
   const actionData = useActionData<{ error?: string; success?: boolean }>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -231,12 +231,11 @@ export function InvoiceForm({ initialData, mode = 'create', preSelectedEntity, e
                   </CardHeader>
                   <CardContent>
                     <InvoiceEntitySelector
+                      entities={entities}
                       selectedEntity={selectedEntity}
                       onEntitySelect={handleEntitySelect}
+                      error={errors?.entity_id}
                     />
-                    {errors?.entity_id && (
-                      <p className="text-red-500 text-sm mt-1">{errors.entity_id}</p>
-                    )}
                   </CardContent>
                 </Card>
 
