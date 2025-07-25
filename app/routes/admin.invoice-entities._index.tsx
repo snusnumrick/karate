@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link, useSearchParams, useFetcher, useRouteError } from "@remix-run/react";
-import { Building2, Eye, FileText, Trash2, Search, Plus, Users, Landmark, Briefcase, HelpCircle, CheckCircle, AlertCircle } from "lucide-react";
+import { Building2, FileText, Trash2, Search, Plus, Users, Landmark, Briefcase, HelpCircle, CheckCircle, AlertCircle } from "lucide-react";
 import { getInvoiceEntitiesWithStats, deleteInvoiceEntity } from "~/services/invoice-entity.server";
 import type { EntityType, InvoiceEntityWithStats } from "~/types/invoice";
 import { formatCurrency } from "~/utils/misc";
@@ -130,12 +130,6 @@ export default function InvoiceEntitiesIndexPage() {
   }>({ type: null, message: '' });
   const [entityToDeactivate, setEntityToDeactivate] = useState<string | null>(null);
   const [entityToDelete, setEntityToDelete] = useState<{id: string, name: string} | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Handle hydration
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const handleFilterChange = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
@@ -451,22 +445,12 @@ export default function InvoiceEntitiesIndexPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
-                        <Button variant="outline" size="sm" asChild tabIndex={0} title="View entity details">
-                          <Link to={`/admin/invoice-entities/${entity.id}`}>
-                            <Eye className="w-4 h-4" />
-                          </Link>
-                        </Button>
                         <Button variant="outline" size="sm" asChild tabIndex={0} title="Create new invoice for this entity">
                           <Link to={`/admin/invoices/new?entity_id=${entity.id}`}>
                             <FileText className="w-4 h-4" />
                           </Link>
                         </Button>
-                        <Button variant="outline" size="sm" asChild tabIndex={0} title="Edit entity">
-                          <Link to={`/admin/invoice-entities/${entity.id}/edit`}>
-                            Edit
-                          </Link>
-                        </Button>
-                        {isHydrated && canDeleteEntity(entity) ? (
+                        {canDeleteEntity(entity) ? (
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -478,7 +462,7 @@ export default function InvoiceEntitiesIndexPage() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
-                        ) : isHydrated && entity.is_active ? (
+                        ) : entity.is_active ? (
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -487,16 +471,6 @@ export default function InvoiceEntitiesIndexPage() {
                             title="Deactivate entity (soft delete)"
                             className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20"
                             disabled={isEntityUpdating(entity.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        ) : !isHydrated ? (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            tabIndex={0} 
-                            disabled
-                            className="opacity-50"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
