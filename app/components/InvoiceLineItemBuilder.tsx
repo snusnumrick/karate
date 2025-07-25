@@ -95,7 +95,7 @@ export function InvoiceLineItemBuilder({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900">Line Items</h3>
+        <h3 className="text-lg font-medium text-foreground">Line Items</h3>
         <Button
           type="button"
           onClick={handleAddLineItem}
@@ -108,7 +108,7 @@ export function InvoiceLineItemBuilder({
       </div>
 
       {lineItems.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-muted-foreground">
           <p>No line items added yet.</p>
           <p className="text-sm">Click &quot;Add Line Item&quot; to get started.</p>
         </div>
@@ -124,7 +124,7 @@ export function InvoiceLineItemBuilder({
             <div
               key={index}
               className={`border rounded-lg p-4 ${
-                itemErrors.length > 0 ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                itemErrors.length > 0 ? 'border-red-300 bg-red-50 dark:border-red-500 dark:bg-red-900/20' : 'border-border bg-card'
               }`}
             >
               {/* Line Item Header */}
@@ -142,19 +142,19 @@ export function InvoiceLineItemBuilder({
                       <div 
                         id={`line-item-header-${index}`}
                       >
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {item.description || `Line Item ${index + 1}`}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(lineTotal)}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-foreground">
                           {formatCurrency(lineTotal)}
                         </span>
                         <svg
-                          className={`h-5 w-5 text-gray-400 transition-transform ${
+                          className={`h-5 w-5 text-muted-foreground transition-transform ${
                             isExpanded ? 'rotate-180' : ''
                           }`}
                           fill="none"
@@ -218,14 +218,13 @@ export function InvoiceLineItemBuilder({
                       Item Type <span className="text-red-500">*</span>
                     </Label>
                     <select
-                      id={`item-type-${index}`}
-                      value={item.item_type}
-                      onChange={(e) => handleUpdateLineItem(index, 'item_type', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400 ${
-                        itemErrors.length > 0 ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                      tabIndex={0}
-                    >
+                              id={`item-type-${index}`}
+                              value={item.item_type}
+                              onChange={(e) => handleUpdateLineItem(index, 'item_type', e.target.value)}
+                              className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 input-custom-styles ${
+                                itemErrors.length > 0 ? 'border-red-500' : ''
+                              }`}
+                            >
                       {itemTypes.map((type) => (
                         <option key={type.value} value={type.value}>
                           {type.label}
@@ -261,13 +260,14 @@ export function InvoiceLineItemBuilder({
                       id={`quantity-${index}`}
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="1"
                       value={item.quantity}
                       onChange={(e) => handleUpdateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
                       className={`input-custom-styles ${
                         itemErrors.length > 0 ? 'border-red-500' : ''
                       }`}
                       tabIndex={0}
+                      placeholder="0"
                     />
                   </div>
 
@@ -287,6 +287,7 @@ export function InvoiceLineItemBuilder({
                         itemErrors.length > 0 ? 'border-red-500' : ''
                       }`}
                       tabIndex={0}
+                      placeholder="0.00"
                     />
                   </div>
 
@@ -307,6 +308,7 @@ export function InvoiceLineItemBuilder({
                         itemErrors.length > 0 ? 'border-red-500' : ''
                       }`}
                       tabIndex={0}
+                      placeholder="0.00"
                     />
                   </div>
 
@@ -327,6 +329,7 @@ export function InvoiceLineItemBuilder({
                         itemErrors.length > 0 ? 'border-red-500' : ''
                       }`}
                       tabIndex={0}
+                      placeholder="0.00"
                     />
                   </div>
 
@@ -367,17 +370,17 @@ export function InvoiceLineItemBuilder({
                   )}
 
                   {/* Action Buttons */}
-                  <div className="md:col-span-2 flex justify-end space-x-2 pt-4 border-t border-gray-200 dark:border-gray-600">
+                  <div className="md:col-span-2 flex justify-end space-x-2 pt-4 border-t border-border">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => handleDuplicateLineItem(index)}
-                      className="flex items-center"
+                      className="inline-flex items-center"
                       tabIndex={0}
                       aria-label={`Duplicate line item ${index + 1}`}
                     >
-                      <Copy className="h-4 w-4 mr-1" />
+                      <Copy className="mr-1 h-4 w-4" />
                       Duplicate
                     </Button>
                     <Button
@@ -385,11 +388,11 @@ export function InvoiceLineItemBuilder({
                       variant="destructive"
                       size="sm"
                       onClick={() => handleRemoveLineItem(index)}
-                      className="flex items-center"
+                      className="inline-flex items-center"
                       tabIndex={0}
                       aria-label={`Remove line item ${index + 1}`}
                     >
-                      <Trash2 className="h-4 w-4 mr-1" />
+                      <Trash2 className="mr-1 h-4 w-4" />
                       Remove
                     </Button>
                   </div>
