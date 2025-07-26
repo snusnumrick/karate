@@ -144,6 +144,10 @@ export default function NewInvoiceTemplate() {
         setLineItems(updated);
     };
     
+    const handleInputClick = (event: React.MouseEvent<HTMLInputElement>) => {
+        event.currentTarget.select();
+    };
+    
 
     
     const calculateTotal = () => {
@@ -264,6 +268,7 @@ export default function NewInvoiceTemplate() {
                                             placeholder="Item description"
                                             value={item.description}
                                             onChange={(e) => updateLineItem(index, 'description', e.target.value)}
+                                            onClick={handleInputClick}
                                             className="input-custom-styles"
                                             tabIndex={0}
                                         />
@@ -279,6 +284,7 @@ export default function NewInvoiceTemplate() {
                                             step="1"
                                             value={item.quantity}
                                             onChange={(e) => updateLineItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                                            onClick={handleInputClick}
                                             className="input-custom-styles"
                                             tabIndex={0}
                                         />
@@ -294,6 +300,7 @@ export default function NewInvoiceTemplate() {
                                             step="0.01"
                                             value={item.unit_price}
                                             onChange={(e) => updateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                            onClick={handleInputClick}
                                             className="input-custom-styles"
                                             tabIndex={0}
                                         />
@@ -312,6 +319,7 @@ export default function NewInvoiceTemplate() {
                                             step="0.01"
                                             value={item.tax_rate}
                                             onChange={(e) => updateLineItem(index, 'tax_rate', parseFloat(e.target.value) || 0)}
+                                            onClick={handleInputClick}
                                             className="input-custom-styles"
                                             tabIndex={0}
                                         />

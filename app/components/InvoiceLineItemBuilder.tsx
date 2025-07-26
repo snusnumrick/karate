@@ -78,6 +78,10 @@ export function InvoiceLineItemBuilder({
     onChange(newLineItems);
   };
 
+  const handleInputClick = (event: React.MouseEvent<HTMLInputElement>) => {
+    event.currentTarget.select();
+  };
+
   const toggleExpanded = (index: number) => {
     setExpandedItems(prev => {
       const newExpanded = new Set(prev);
@@ -243,6 +247,7 @@ export function InvoiceLineItemBuilder({
                       type="text"
                       value={item.description}
                       onChange={(e) => handleUpdateLineItem(index, 'description', e.target.value)}
+                      onClick={handleInputClick}
                       placeholder="Enter item description"
                       className={`input-custom-styles ${
                         itemErrors.length > 0 ? 'border-red-500' : ''
@@ -263,6 +268,7 @@ export function InvoiceLineItemBuilder({
                       step="1"
                       value={item.quantity}
                       onChange={(e) => handleUpdateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                      onClick={handleInputClick}
                       className={`input-custom-styles ${
                         itemErrors.length > 0 ? 'border-red-500' : ''
                       }`}
@@ -283,6 +289,7 @@ export function InvoiceLineItemBuilder({
                       step="0.01"
                       value={item.unit_price}
                       onChange={(e) => handleUpdateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                      onClick={handleInputClick}
                       className={`input-custom-styles ${
                         itemErrors.length > 0 ? 'border-red-500' : ''
                       }`}
@@ -304,6 +311,7 @@ export function InvoiceLineItemBuilder({
                       step="0.01"
                       value={item.tax_rate || 0}
                       onChange={(e) => handleUpdateLineItem(index, 'tax_rate', parseFloat(e.target.value) || 0)}
+                      onClick={handleInputClick}
                       className={`input-custom-styles ${
                         itemErrors.length > 0 ? 'border-red-500' : ''
                       }`}
@@ -325,6 +333,7 @@ export function InvoiceLineItemBuilder({
                       step="0.01"
                       value={item.discount_rate || 0}
                       onChange={(e) => handleUpdateLineItem(index, 'discount_rate', parseFloat(e.target.value) || 0)}
+                      onClick={handleInputClick}
                       className={`input-custom-styles ${
                         itemErrors.length > 0 ? 'border-red-500' : ''
                       }`}
@@ -345,6 +354,7 @@ export function InvoiceLineItemBuilder({
                           type="date"
                           value={item.service_period_start || ''}
                           onChange={(e) => handleUpdateLineItem(index, 'service_period_start', e.target.value)}
+                          onClick={handleInputClick}
                           className={`input-custom-styles ${
                             itemErrors.length > 0 ? 'border-red-500' : ''
                           }`}
@@ -360,6 +370,7 @@ export function InvoiceLineItemBuilder({
                           type="date"
                           value={item.service_period_end || ''}
                           onChange={(e) => handleUpdateLineItem(index, 'service_period_end', e.target.value)}
+                          onClick={handleInputClick}
                           className={`input-custom-styles ${
                             itemErrors.length > 0 ? 'border-red-500' : ''
                           }`}

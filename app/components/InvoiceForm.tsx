@@ -106,6 +106,10 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
     }));
     setActiveTab("line-items");
   };
+  
+  const handleInputClick = (event: React.MouseEvent<HTMLInputElement>) => {
+    event.currentTarget.select();
+  };
 
   const isFormValid = () => {
     return (
@@ -260,6 +264,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                           type="date"
                           value={invoiceData.issue_date}
                           onChange={(e) => handleInputChange('issue_date', e.target.value)}
+                          onClick={handleInputClick}
                           required
                           className={`input-custom-styles ${errors?.issue_date ? 'border-red-500' : ''}`}
                         />
@@ -277,6 +282,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                           type="date"
                           value={invoiceData.due_date}
                           onChange={(e) => handleInputChange('due_date', e.target.value)}
+                          onClick={handleInputClick}
                           required
                           className={`input-custom-styles ${errors?.due_date ? 'border-red-500' : ''}`}
                         />
@@ -462,6 +468,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                         name="footer_text"
                         value={invoiceData.footer_text}
                         onChange={(e) => handleInputChange('footer_text', e.target.value)}
+                        onClick={handleInputClick}
                         placeholder="Thank you message or additional information..."
                         className="input-custom-styles"
                       />
