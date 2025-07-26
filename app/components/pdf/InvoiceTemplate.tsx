@@ -12,133 +12,146 @@ import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
-    fontSize: 10,
-    paddingTop: 40,
-    paddingBottom: 80,
-    paddingHorizontal: 40,
+    fontSize: 9,
+    paddingTop: 25,
+    paddingBottom: 40,
+    paddingHorizontal: 30,
     backgroundColor: '#ffffff',
-    lineHeight: 1.4,
+    lineHeight: 1.3,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 40,
-    paddingBottom: 25,
-    borderBottom: '3px solid #1e40af',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottom: '2px solid #1e40af',
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 160,
+    height: 30,
   },
   companyInfo: {
     textAlign: 'right',
     maxWidth: 250,
   },
   companyName: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#1e40af',
-    marginBottom: 8,
-    letterSpacing: 0.5,
+    marginBottom: 6,
+    letterSpacing: 0.3,
   },
   companyDetails: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#4b5563',
-    lineHeight: 1.5,
-    marginBottom: 2,
+    lineHeight: 1.4,
+    marginBottom: 3,
+    marginTop: 12,
+  },
+  addressLine: {
+    fontSize: 9,
+    color: '#4b5563',
+    lineHeight: 1.2,
+    marginBottom: 1,
   },
   invoiceTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 30,
+    marginBottom: 18,
     textAlign: 'center',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   invoiceInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 35,
-    gap: 30,
+    marginBottom: 20,
+    gap: 20,
   },
   invoiceDetails: {
     flex: 1,
     backgroundColor: '#f8fafc',
-    padding: 20,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 6,
     border: '1px solid #e2e8f0',
   },
   billingInfo: {
     flex: 1,
     backgroundColor: '#f8fafc',
-    padding: 20,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 6,
     border: '1px solid #e2e8f0',
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#1e40af',
-    marginBottom: 12,
+    marginBottom: 8,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     borderBottom: '1px solid #cbd5e1',
-    paddingBottom: 4,
+    paddingBottom: 3,
   },
   detailRow: {
     flexDirection: 'row',
-    marginBottom: 6,
+    marginBottom: 4,
     alignItems: 'flex-start',
   },
   detailLabel: {
-    width: 90,
-    fontSize: 10,
+    width: 80,
+    fontSize: 9,
     color: '#64748b',
     fontWeight: 'bold',
   },
   detailValue: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#1f2937',
     flex: 1,
+    lineHeight: 1.3,
+  },
+  recipientAddress: {
+    fontSize: 9,
+    color: '#1f2937',
     lineHeight: 1.4,
+    marginBottom: 2,
   },
   table: {
-    marginTop: 25,
-    marginBottom: 25,
+    marginTop: 15,
+    marginBottom: 15,
     border: '1px solid #e2e8f0',
-    borderRadius: 8,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#1e40af',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottom: '1px solid #f1f5f9',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    minHeight: 35,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    minHeight: 28,
     backgroundColor: '#ffffff',
   },
   tableRowAlt: {
     backgroundColor: '#f8fafc',
   },
   tableHeaderCell: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#ffffff',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   tableCell: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#1f2937',
-    paddingRight: 8,
-    lineHeight: 1.4,
+    paddingRight: 6,
+    lineHeight: 1.3,
   },
   descriptionColumn: {
     flex: 3,
@@ -157,118 +170,118 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   totalsSection: {
-    marginTop: 30,
+    marginTop: 15,
     alignItems: 'flex-end',
   },
   totalsTable: {
-    width: 280,
+    width: 250,
     backgroundColor: '#f8fafc',
     border: '1px solid #e2e8f0',
-    borderRadius: 8,
-    padding: 15,
+    borderRadius: 6,
+    padding: 10,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
-    paddingHorizontal: 5,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     borderBottom: '1px solid #e2e8f0',
   },
   totalLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#4b5563',
     fontWeight: 'bold',
   },
   totalValue: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#1f2937',
     fontWeight: 'bold',
   },
   grandTotalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     backgroundColor: '#1e40af',
-    borderRadius: 6,
-    marginTop: 10,
+    borderRadius: 4,
+    marginTop: 6,
   },
   grandTotalLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#ffffff',
   },
   grandTotalValue: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#ffffff',
   },
   notesSection: {
-    marginTop: 35,
+    marginTop: 20,
     backgroundColor: '#fef7cd',
-    padding: 20,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 6,
     border: '1px solid #fbbf24',
   },
   notesTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#92400e',
-    marginBottom: 10,
+    marginBottom: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   notesText: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#78350f',
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   },
   footer: {
     position: 'absolute',
-    bottom: 40,
-    left: 40,
-    right: 40,
+    bottom: 25,
+    left: 30,
+    right: 30,
     textAlign: 'center',
-    fontSize: 9,
+    fontSize: 8,
     color: '#6b7280',
-    borderTop: '2px solid #e5e7eb',
-    paddingTop: 15,
-    lineHeight: 1.4,
+    borderTop: '1px solid #e5e7eb',
+    paddingTop: 8,
+    lineHeight: 1.3,
   },
   statusBadge: {
     position: 'absolute',
-    top: 40,
-    right: 40,
+    top: 25,
+    right: 30,
     backgroundColor: '#fef3c7',
     color: '#92400e',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    fontSize: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    fontSize: 9,
     fontWeight: 'bold',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    border: '2px solid #f59e0b',
+    letterSpacing: 0.4,
+    border: '1px solid #f59e0b',
   },
   paidBadge: {
     backgroundColor: '#d1fae5',
     color: '#065f46',
-    border: '2px solid #10b981',
+    border: '1px solid #10b981',
   },
   overdueBadge: {
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    border: '2px solid #ef4444',
+    border: '1px solid #ef4444',
   },
   draftBadge: {
     backgroundColor: '#f3f4f6',
     color: '#374151',
-    border: '2px solid #6b7280',
+    border: '1px solid #6b7280',
   },
   sentBadge: {
     backgroundColor: '#dbeafe',
     color: '#1e40af',
-    border: '2px solid #3b82f6',
+    border: '1px solid #3b82f6',
   },
 });
 
@@ -336,9 +349,18 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
   const discountAmount = invoice.discount_amount || 0;
   const total = subtotal + taxAmount - discountAmount;
 
+  // Get dynamic origin for logo URL
+  const getLogoUrl = () => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/logo-light.png`;
+    }
+    // Fallback for server-side rendering
+    return siteConfig.url + '/logo-light.png';
+  };
+
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size={siteConfig.localization.pageSize as any} style={styles.page}>
         {/* Status Badge */}
         <View style={getStatusBadgeStyle()}>
           <Text>{safeText(invoice.status, 'DRAFT').toUpperCase()}</Text>
@@ -346,33 +368,21 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
 
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            {companyInfo?.logo ? (
-              <Image style={styles.logo} src={companyInfo.logo} />
-            ) : null}
-          </View>
+          {/* Company Logo and Info */}
           <View style={styles.companyInfo}>
-            <Text style={styles.companyName}>
-              {safeText(companyInfo?.name, 'Your Company Name')}
-            </Text>
-            <Text style={styles.companyDetails}>
-              {safeText(companyInfo?.address, 'Company Address')}
-            </Text>
-            {companyInfo?.phone && companyInfo.phone.trim() ? (
-              <Text style={styles.companyDetails}>
-                Phone: {safeText(companyInfo.phone, 'N/A')}
+            <Image 
+              src={getLogoUrl()} 
+              style={styles.logo}
+            />
+            <View style={styles.companyDetails}>
+              <Text style={styles.addressLine}>{siteConfig.name}</Text>
+              <Text style={styles.addressLine}>{siteConfig.location.address}</Text>
+              <Text style={styles.addressLine}>
+                {siteConfig.location.locality}, {siteConfig.location.region} {siteConfig.location.postalCode}
               </Text>
-            ) : null}
-            {companyInfo?.email && companyInfo.email.trim() ? (
-              <Text style={styles.companyDetails}>
-                Email: {safeText(companyInfo.email, 'N/A')}
-              </Text>
-            ) : null}
-            {companyInfo?.website && companyInfo.website.trim() ? (
-              <Text style={styles.companyDetails}>
-                Website: {safeText(companyInfo.website, 'N/A')}
-              </Text>
-            ) : null}
+              <Text style={styles.addressLine}>{siteConfig.contact.phone}</Text>
+              <Text style={styles.addressLine}>{siteConfig.contact.email}</Text>
+            </View>
           </View>
         </View>
 
@@ -400,20 +410,20 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
 
           <View style={styles.billingInfo}>
             <Text style={styles.sectionTitle}>Bill To</Text>
-            <Text style={styles.detailValue}>{safeText(invoice.entity?.name, 'Customer Name')}</Text>
+            <Text style={styles.recipientAddress}>{safeText(invoice.entity?.name, 'Customer Name')}</Text>
             {invoice.entity?.contact_person && invoice.entity.contact_person.trim() ? (
-              <Text style={styles.detailValue}>
+              <Text style={styles.recipientAddress}>
                 Attn: {safeText(invoice.entity.contact_person, 'N/A')}
               </Text>
             ) : null}
             {invoice.entity?.address_line1 && invoice.entity.address_line1.trim() ? (
-              <Text style={styles.detailValue}>{safeText(invoice.entity.address_line1, 'N/A')}</Text>
+              <Text style={styles.recipientAddress}>{safeText(invoice.entity.address_line1, 'N/A')}</Text>
             ) : null}
             {invoice.entity?.address_line2 && invoice.entity.address_line2.trim() ? (
-              <Text style={styles.detailValue}>{safeText(invoice.entity.address_line2, 'N/A')}</Text>
+              <Text style={styles.recipientAddress}>{safeText(invoice.entity.address_line2, 'N/A')}</Text>
             ) : null}
             {invoice.entity?.city && invoice.entity.city.trim() ? (
-              <Text style={styles.detailValue}>
+              <Text style={styles.recipientAddress}>
                 {[
                   invoice.entity.city.trim(), 
                   invoice.entity?.state && invoice.entity.state.trim() ? invoice.entity.state.trim() : null,
@@ -422,7 +432,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
               </Text>
             ) : null}
             {!invoice.entity?.city?.trim() && invoice.entity?.state && invoice.entity.state.trim() ? (
-              <Text style={styles.detailValue}>
+              <Text style={styles.recipientAddress}>
                 {[
                   invoice.entity.state.trim(),
                   invoice.entity?.postal_code && invoice.entity.postal_code.trim() ? invoice.entity.postal_code.trim() : null
@@ -430,13 +440,13 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
               </Text>
             ) : null}
             {!invoice.entity?.city?.trim() && !invoice.entity?.state?.trim() && invoice.entity?.postal_code && invoice.entity.postal_code.trim() ? (
-              <Text style={styles.detailValue}>{invoice.entity.postal_code.trim()}</Text>
+              <Text style={styles.recipientAddress}>{invoice.entity.postal_code.trim()}</Text>
             ) : null}
             {invoice.entity?.email && invoice.entity.email.trim() ? (
-              <Text style={styles.detailValue}>{safeText(invoice.entity.email, 'N/A')}</Text>
+              <Text style={styles.recipientAddress}>{safeText(invoice.entity.email, 'N/A')}</Text>
             ) : null}
             {invoice.entity?.phone && invoice.entity.phone.trim() ? (
-              <Text style={styles.detailValue}>{safeText(invoice.entity.phone, 'N/A')}</Text>
+              <Text style={styles.recipientAddress}>{safeText(invoice.entity.phone, 'N/A')}</Text>
             ) : null}
           </View>
         </View>

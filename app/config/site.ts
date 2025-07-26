@@ -11,6 +11,7 @@ export const siteConfig = {
         locale: 'en-CA', // Primary locale
         currency: 'CAD', // Currency code
         country: 'CA', // Country code for formatting/display logic (dates, numbers, etc.)
+        pageSize: 'A4', // PDF page size based on region (A4 for Canada/international, LETTER for US)
         // Alternative locales for fallback or specific use cases
         fallbackLocale: 'en-US',
     },
