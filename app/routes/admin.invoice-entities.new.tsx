@@ -207,7 +207,7 @@ export default function NewInvoiceEntityPage() {
                   placeholder="Enter email address"
                   defaultValue={actionData?.values?.email}
                   className={`input-custom-styles ${actionData?.errors?.email ? 'border-red-500 focus:border-red-500' : ''}`}
-                  tabIndex={3}
+                  tabIndex={5}
                 />
                 {actionData?.errors?.email && (
                   <p className="text-sm text-red-600">{actionData.errors.email}</p>
@@ -221,7 +221,7 @@ export default function NewInvoiceEntityPage() {
                   name="phone"
                   placeholder="(555) 123-4567"
                   className="input-custom-styles"
-                  tabIndex={0}
+                  tabIndex={6}
                 />
               </div>
             </div>
@@ -243,7 +243,7 @@ export default function NewInvoiceEntityPage() {
                 name="address_line1"
                 placeholder="123 Main Street"
                 className="input-custom-styles"
-                tabIndex={0}
+                tabIndex={7}
               />
             </div>
 
@@ -254,7 +254,7 @@ export default function NewInvoiceEntityPage() {
                 name="address_line2"
                 placeholder="Suite 100"
                 className="input-custom-styles"
-                tabIndex={0}
+                tabIndex={8}
               />
             </div>
 
@@ -266,7 +266,7 @@ export default function NewInvoiceEntityPage() {
                   name="city"
                   placeholder="Anytown"
                   className="input-custom-styles"
-                  tabIndex={0}
+                  tabIndex={9}
                 />
               </div>
 
@@ -274,7 +274,7 @@ export default function NewInvoiceEntityPage() {
                 <Label htmlFor="state">Province / State</Label>
                 {country === 'CA' ? (
                   <Select name="state" defaultValue={siteConfig.location.region}>
-                    <SelectTrigger className="input-custom-styles" tabIndex={0}>
+                    <SelectTrigger className="input-custom-styles" tabIndex={10}>
                       <SelectValue placeholder={siteConfig.location.region} />
                     </SelectTrigger>
                     <SelectContent>
@@ -291,7 +291,7 @@ export default function NewInvoiceEntityPage() {
                     name="state"
                     placeholder={siteConfig.location.region}
                     className="input-custom-styles"
-                    tabIndex={0}
+                    tabIndex={10}
                   />
                 )}
               </div>
@@ -303,7 +303,7 @@ export default function NewInvoiceEntityPage() {
                   name="postal_code"
                   placeholder="12345"
                   className="input-custom-styles"
-                  tabIndex={0}
+                  tabIndex={11}
                 />
               </div>
             </div>
@@ -316,7 +316,7 @@ export default function NewInvoiceEntityPage() {
                 defaultValue={siteConfig.localization.country}
                 placeholder={siteConfig.localization.country}
                 className="input-custom-styles"
-                tabIndex={0}
+                tabIndex={12}
                 onChange={(e) => setCountry(e.target.value)}
               />
             </div>
@@ -335,7 +335,7 @@ export default function NewInvoiceEntityPage() {
               <div className="space-y-2">
                 <Label htmlFor="payment_terms">Payment Terms</Label>
                 <Select name="payment_terms" defaultValue="Net 30">
-                  <SelectTrigger className="input-custom-styles" tabIndex={0}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={13}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -358,7 +358,7 @@ export default function NewInvoiceEntityPage() {
                   min="0"
                   placeholder="0.00"
                   className="input-custom-styles"
-                  tabIndex={0}
+                  tabIndex={14}
                 />
               </div>
             </div>
@@ -371,17 +371,17 @@ export default function NewInvoiceEntityPage() {
                 placeholder="Additional notes about this entity..."
                 rows={3}
                 className="input-custom-styles"
-                tabIndex={0}
+                tabIndex={15}
               />
             </div>
           </CardContent>
         </Card>
 
         <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" asChild tabIndex={0}>
+          <Button type="button" variant="outline" asChild tabIndex={16}>
             <Link to="/admin/invoice-entities">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={isSubmitting} tabIndex={0}>
+          <Button type="submit" disabled={isSubmitting} tabIndex={17}>
             {isSubmitting ? (
               <>Creating...</>
             ) : (
