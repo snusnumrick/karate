@@ -37,9 +37,13 @@ export function calculateLineItemTotals(
   discountRate: number = 0
 ): LineItemCalculations {
   const subtotal = quantity * unitPrice;
-  const discountAmount = subtotal * discountRate;
+  // Convert percentage rates to decimal values (e.g., 7% -> 0.07)
+  const discountDecimal = discountRate / 100;
+  const taxDecimal = taxRate / 100;
+  
+  const discountAmount = subtotal * discountDecimal;
   const taxableAmount = subtotal - discountAmount;
-  const taxAmount = taxableAmount * taxRate;
+  const taxAmount = taxableAmount * taxDecimal;
   const lineTotal = subtotal - discountAmount + taxAmount;
 
   return {
@@ -138,9 +142,9 @@ export async function createInvoice(
       quantity: item.quantity,
       unit_price: item.unit_price,
       line_total: calculations.line_total,
-      tax_rate: item.tax_rate || 0,
+      tax_rate: (item.tax_rate || 0) / 100, // Convert percentage to decimal for database
       tax_amount: calculations.tax_amount,
-      discount_rate: item.discount_rate || 0,
+      discount_rate: (item.discount_rate || 0) / 100, // Convert percentage to decimal for database
       discount_amount: calculations.discount_amount,
       enrollment_id: item.enrollment_id,
       product_id: item.product_id,
@@ -237,9 +241,9 @@ export async function getInvoiceById(
     family_id: invoice.family_id || undefined,
     line_items: (invoice.invoice_line_items || []).map(item => ({
       ...item,
-      tax_rate: item.tax_rate ?? 0,
+      tax_rate: (item.tax_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
       tax_amount: item.tax_amount ?? 0,
-      discount_rate: item.discount_rate ?? 0,
+      discount_rate: (item.discount_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
       discount_amount: item.discount_amount ?? 0,
       sort_order: item.sort_order ?? 0,
       enrollment_id: item.enrollment_id || undefined,
@@ -371,9 +375,9 @@ export async function getInvoices(
     family_id: invoice.family_id || undefined,
     line_items: (invoice.invoice_line_items || []).map(item => ({
       ...item,
-      tax_rate: item.tax_rate ?? 0,
+      tax_rate: (item.tax_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
       tax_amount: item.tax_amount ?? 0,
-      discount_rate: item.discount_rate ?? 0,
+      discount_rate: (item.discount_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
       discount_amount: item.discount_amount ?? 0,
       sort_order: item.sort_order ?? 0,
       enrollment_id: item.enrollment_id || undefined,
@@ -485,9 +489,9 @@ export async function updateInvoice(
         quantity: item.quantity,
         unit_price: item.unit_price,
         line_total: calculations.line_total,
-        tax_rate: item.tax_rate || 0,
+        tax_rate: (item.tax_rate || 0) / 100, // Convert percentage to decimal for database
         tax_amount: calculations.tax_amount,
-        discount_rate: item.discount_rate || 0,
+        discount_rate: (item.discount_rate || 0) / 100, // Convert percentage to decimal for database
         discount_amount: calculations.discount_amount,
         enrollment_id: item.enrollment_id,
         product_id: item.product_id,
