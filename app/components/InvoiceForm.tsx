@@ -36,17 +36,44 @@ interface InvoiceFormProps {
   };
 }
 
+interface ActionData {
+  errors?: {
+    entity_id?: string;
+    issue_date?: string;
+    due_date?: string;
+    line_items?: string;
+    general?: string;
+  };
+  values?: {
+    entity_id?: string;
+    issue_date?: string;
+    due_date?: string;
+  };
+}
+
 export function InvoiceForm({ entities, initialData, mode = 'create', preSelectedEntity, errors, values }: InvoiceFormProps) {
-  const actionData = useActionData<{ error?: string; success?: boolean }>();
+  const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+
+  // Use actionData errors if available, otherwise fall back to prop errors
+  const formErrors = actionData?.errors || errors;
+  const formValues = actionData?.values || values;
+
+  // Debug logging for actionData
+  useEffect(() => {
+    if (actionData) {
+      console.log("InvoiceForm actionData:", actionData);
+      console.log("InvoiceForm errors:", actionData.errors);
+    }
+  }, [actionData]);
 
   // Form state
   const [selectedEntity, setSelectedEntity] = useState<InvoiceEntity | null>(preSelectedEntity || null);
   const [invoiceData, setInvoiceData] = useState<CreateInvoiceData>({
-    entity_id: values?.entity_id || preSelectedEntity?.id || "",
-    issue_date: values?.issue_date || new Date().toISOString().split('T')[0],
-    due_date: values?.due_date || "",
+    entity_id: formValues?.entity_id || preSelectedEntity?.id || "",
+    issue_date: formValues?.issue_date || new Date().toISOString().split('T')[0],
+    due_date: formValues?.due_date || "",
     service_period_start: "",
     service_period_end: "",
     terms: "",
@@ -195,9 +222,9 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
       </div>
 
       {/* Error Alert */}
-      {actionData?.error && (
+      {actionData?.errors?.general && (
         <Alert variant="destructive">
-          <AlertDescription>{actionData.error}</AlertDescription>
+          <AlertDescription>{actionData.errors.general}</AlertDescription>
         </Alert>
       )}
 
@@ -207,6 +234,13 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
           <Form method="post" className="space-y-6">
             {/* Hidden fields for form submission */}
             <input type="hidden" name="entity_id" value={invoiceData.entity_id} />
+            <input type="hidden" name="issue_date" value={invoiceData.issue_date} />
+            <input type="hidden" name="due_date" value={invoiceData.due_date} />
+            <input type="hidden" name="service_period_start" value={invoiceData.service_period_start || ''} />
+            <input type="hidden" name="service_period_end" value={invoiceData.service_period_end || ''} />
+            <input type="hidden" name="terms" value={invoiceData.terms || ''} />
+            <input type="hidden" name="notes" value={invoiceData.notes || ''} />
+            <input type="hidden" name="footer_text" value={invoiceData.footer_text || ''} />
             <input type="hidden" name="line_items" value={JSON.stringify(invoiceData.line_items)} />
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -238,7 +272,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                       entities={entities}
                       selectedEntity={selectedEntity}
                       onEntitySelect={handleEntitySelect}
-                      error={errors?.entity_id}
+                      error={formErrors?.entity_id}
                     />
                   </CardContent>
                 </Card>
@@ -260,16 +294,15 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                         </Label>
                         <Input
                           id="issue_date"
-                          name="issue_date"
                           type="date"
                           value={invoiceData.issue_date}
                           onChange={(e) => handleInputChange('issue_date', e.target.value)}
                           onClick={handleInputClick}
                           required
-                          className={`input-custom-styles ${errors?.issue_date ? 'border-red-500' : ''}`}
+                          className={`input-custom-styles ${formErrors?.issue_date ? 'border-red-500' : ''}`}
                         />
-                        {errors?.issue_date && (
-                          <p className="text-red-500 text-sm mt-1">{errors.issue_date}</p>
+                        {formErrors?.issue_date && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.issue_date}</p>
                         )}
                       </div>
                       <div>
@@ -278,16 +311,15 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                         </Label>
                         <Input
                           id="due_date"
-                          name="due_date"
                           type="date"
                           value={invoiceData.due_date}
                           onChange={(e) => handleInputChange('due_date', e.target.value)}
                           onClick={handleInputClick}
                           required
-                          className={`input-custom-styles ${errors?.due_date ? 'border-red-500' : ''}`}
+                          className={`input-custom-styles ${formErrors?.due_date ? 'border-red-500' : ''}`}
                         />
-                        {errors?.due_date && (
-                          <p className="text-red-500 text-sm mt-1">{errors.due_date}</p>
+                        {formErrors?.due_date && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.due_date}</p>
                         )}
                       </div>
                     </div>
@@ -299,7 +331,6 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                         </Label>
                         <Input
                           id="service_period_start"
-                          name="service_period_start"
                           type="date"
                           value={invoiceData.service_period_start}
                           onChange={(e) => handleInputChange('service_period_start', e.target.value)}
@@ -312,7 +343,6 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                         </Label>
                         <Input
                           id="service_period_end"
-                          name="service_period_end"
                           type="date"
                           value={invoiceData.service_period_end}
                           onChange={(e) => handleInputChange('service_period_end', e.target.value)}
@@ -361,8 +391,8 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                       lineItems={invoiceData.line_items}
                       onChange={handleLineItemsChange}
                     />
-                    {errors?.line_items && (
-                      <p className="text-red-500 text-sm mt-1">{errors.line_items}</p>
+                    {formErrors?.line_items && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.line_items}</p>
                     )}
                   </CardContent>
                 </Card>
@@ -435,7 +465,6 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                       </Label>
                       <Textarea
                         id="terms"
-                        name="terms"
                         value={invoiceData.terms}
                         onChange={(e) => handleInputChange('terms', e.target.value)}
                         placeholder="Additional payment terms or instructions..."
@@ -450,7 +479,6 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                       </Label>
                       <Textarea
                         id="notes"
-                        name="notes"
                         value={invoiceData.notes}
                         onChange={(e) => handleInputChange('notes', e.target.value)}
                         placeholder="Internal notes or special instructions..."
@@ -465,7 +493,6 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                       </Label>
                       <Input
                         id="footer_text"
-                        name="footer_text"
                         value={invoiceData.footer_text}
                         onChange={(e) => handleInputChange('footer_text', e.target.value)}
                         onClick={handleInputClick}
@@ -493,21 +520,21 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
               )}
 
               {/* Display general errors */}
-              {actionData?.error && (
+              {actionData?.errors?.general && (
                 <Alert variant="destructive">
-                  <AlertDescription>{actionData.error}</AlertDescription>
+                  <AlertDescription>{actionData.errors.general}</AlertDescription>
                 </Alert>
               )}
 
               <Button
                 type="submit"
                 name="action"
-                value="create_invoice"
+                value="save_and_send"
                 disabled={!isFormValid() || isSubmitting}
                 className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Send className="h-4 w-4" />
-                {isSubmitting ? 'Creating...' : 'CREATE INVOICE'}
+                {isSubmitting ? 'Saving and Sending...' : 'SAVE AND SEND EMAIL'}
               </Button>
               <Button
                 type="submit"

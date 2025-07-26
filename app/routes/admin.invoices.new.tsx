@@ -3,8 +3,9 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData } from "@remix-run/react";
 import { InvoiceForm } from "~/components/InvoiceForm";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { createInvoice, getInvoiceById, updateInvoiceStatus } from "~/services/invoice.server";
 import { getInvoiceEntities } from "~/services/invoice-entity.server";
-import { createInvoice } from "~/services/invoice.server";
+import { sendInvoiceEmail } from "~/services/invoice-email.server";
 import { requireUserId } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
 
@@ -57,6 +58,9 @@ export async function action({ request }: ActionFunctionArgs) {
     const due_date = formData.get("due_date") as string;
     const line_items_json = formData.get("line_items") as string;
     
+    console.log("Action received:", action);
+    console.log("Form data:", { entity_id, issue_date, due_date, line_items_json });
+    
     // Validation
     const errors: ActionData["errors"] = {};
     const values: ActionData["values"] = {
@@ -67,27 +71,46 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // For save_draft, we have more relaxed validation
     const isDraft = action === "save_draft";
+    const isSaveAndSend = action === "save_and_send";
+    const requiresFullValidation = isSaveAndSend; // Only save_and_send requires full validation
 
-    if (!entity_id && !isDraft) {
+    if (!entity_id && requiresFullValidation) {
       errors.entity_id = "Please select a billing entity";
     }
 
-    if (!issue_date && !isDraft) {
+    if (!issue_date && requiresFullValidation) {
       errors.issue_date = "Issue date is required";
     }
 
-    if (!due_date && !isDraft) {
+    if (!due_date && requiresFullValidation) {
       errors.due_date = "Due date is required";
+    }
+
+    // For save_and_send, we also need to validate that the entity has an email
+    if (isSaveAndSend && entity_id) {
+      try {
+        const entitiesResult = await getInvoiceEntities();
+        const selectedEntity = entitiesResult?.entities?.find(e => e.id === entity_id);
+        if (!selectedEntity?.email) {
+          errors.entity_id = "Selected entity must have an email address to send invoice";
+        }
+      } catch (error) {
+        console.error("Error validating entity email:", error);
+        errors.entity_id = "Error validating entity information";
+      }
     }
 
     let line_items: CreateInvoiceLineItemData[] = [];
     try {
-      line_items = JSON.parse(line_items_json);
-      if (!isDraft) {
+      if (line_items_json) {
+        line_items = JSON.parse(line_items_json);
+      }
+      
+      if (requiresFullValidation) {
         if (!line_items || line_items.length === 0) {
           errors.line_items = "At least one line item is required";
         } else {
-          // Validate line items for non-draft invoices
+          // Validate line items for save_and_send
           for (const item of line_items) {
             if (!item.description?.trim()) {
               errors.line_items = "All line items must have a description";
@@ -117,11 +140,13 @@ export async function action({ request }: ActionFunctionArgs) {
         }
       }
     } catch (parseError) {
+      console.error("Error parsing line items:", parseError);
       errors.line_items = "Invalid line items data";
     }
 
     if (Object.keys(errors).length > 0) {
-      return json<ActionData>({ errors, values }, { status: 400 });
+      console.log("Validation errors:", errors);
+      return json<ActionData>({ errors, values });
     }
 
     const invoiceData: CreateInvoiceData = {
@@ -143,8 +168,32 @@ export async function action({ request }: ActionFunctionArgs) {
       }]
     };
 
-    // Create the invoice (status is managed by the database)
+    // Create the invoice (always starts as draft)
     const invoice = await createInvoice(invoiceData);
+
+    // If save_and_send, attempt to send the email
+    if (isSaveAndSend) {
+      try {
+        // Fetch the full invoice object with details for email sending
+        const fullInvoice = await getInvoiceById(invoice.id);
+        if (fullInvoice) {
+          const emailSent = await sendInvoiceEmail(fullInvoice);
+          if (emailSent) {
+            // Update invoice status to sent if email was successful
+            await updateInvoiceStatus(invoice.id, "sent");
+            console.log("Invoice email sent successfully and status updated to 'sent' for invoice:", invoice.id);
+          } else {
+            console.error("Failed to send invoice email for invoice:", invoice.id);
+            // Don't fail the entire operation if email fails
+            // The invoice is created, user can send email manually from detail page
+          }
+        }
+      } catch (emailError) {
+        console.error("Error sending invoice email:", emailError);
+        // Don't fail the entire operation if email fails
+        // The invoice is created, user can send email manually from detail page
+      }
+    }
 
     // Redirect to the invoice detail page
     return redirect(`/admin/invoices/${invoice.id}`);
