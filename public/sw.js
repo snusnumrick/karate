@@ -49,7 +49,7 @@ const STATIC_ASSETS = [
 function openDb() {
     return new Promise((resolve, reject) => {
         const request = self.indexedDB.open(DB_NAME, DB_VERSION);
-        request.onerror = (event) => reject('Error opening IndexedDB.');
+        request.onerror = () => reject('Error opening IndexedDB.');
         request.onsuccess = (event) => resolve(event.target.result);
         request.onupgradeneeded = (event) => {
             const db = event.target.result;

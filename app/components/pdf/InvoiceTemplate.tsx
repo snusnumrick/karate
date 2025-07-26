@@ -360,7 +360,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
 
   return (
     <Document>
-      <Page size={siteConfig.localization.pageSize as any} style={styles.page}>
+      <Page size={siteConfig.localization.pageSize as 'A4' | 'LETTER'} style={styles.page}>
         {/* Status Badge - Only show for paid, overdue, or cancelled status */}
         {(invoice.status === 'paid' || invoice.status === 'overdue' || invoice.status === 'cancelled') && (
           <View style={getStatusBadgeStyle()}>

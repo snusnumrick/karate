@@ -33,7 +33,17 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
         console.log(`Attempting to send email to: ${options.to} with subject: "${options.subject}"`);
         
         // Prepare email data
-        const emailData: any = {
+        const emailData: {
+            from: string;
+            to: string | string[];
+            subject: string;
+            html: string;
+            attachments?: Array<{
+                filename: string;
+                content: Buffer;
+                type: string;
+            }>;
+        } = {
             from: fromEmail, // Use the configured FROM_EMAIL
             to: options.to,
             subject: options.subject,

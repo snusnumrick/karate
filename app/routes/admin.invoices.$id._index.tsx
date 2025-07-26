@@ -76,7 +76,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         await deleteInvoice(id);
         return redirect("/admin/invoices");
         
-      case "send_email":
+      case "send_email": {
         const invoice = await getInvoiceById(id);
         if (!invoice) {
           return json({ error: "Invoice not found" }, { status: 404 });
@@ -98,6 +98,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         } else {
           return json({ error: "Failed to send invoice email" }, { status: 500 });
         }
+      }
         
       default:
         return json({ error: "Invalid action" }, { status: 400 });

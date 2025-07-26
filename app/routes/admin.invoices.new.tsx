@@ -70,7 +70,6 @@ export async function action({ request }: ActionFunctionArgs) {
     };
 
     // For save_draft, we have more relaxed validation
-    const isDraft = action === "save_draft";
     const isSaveAndSend = action === "save_and_send";
     const requiresFullValidation = isSaveAndSend; // Only save_and_send requires full validation
 

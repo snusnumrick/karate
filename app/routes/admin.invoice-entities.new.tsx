@@ -74,7 +74,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const entity = await createInvoiceEntity(entityData);
+    await createInvoiceEntity(entityData);
     return redirect(`/admin/invoice-entities?success=created`);
   } catch (error) {
     console.error("Error creating invoice entity:", error);

@@ -1,9 +1,8 @@
 import { json, LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation, useSearchParams, Link, useSubmit, useNavigate } from "@remix-run/react";
+import { useLoaderData, Form, useNavigation, useSearchParams, Link, useSubmit } from "@remix-run/react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Label } from "~/components/ui/label";
@@ -12,8 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { CheckCircle, Clock, AlertCircle, Users, Plus, Edit, Trash2 } from "lucide-react";
-import type { Database } from "~/types/database.types";
-import type { EligibilityStatus } from "~/types/payment";
 import { formatDate } from "~/utils/misc";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getEnrollments, updateEnrollment, dropStudent } from "~/services/enrollment.server";
@@ -109,20 +106,6 @@ export async function action({ request }: ActionFunctionArgs) {
 function getStudentName(enrollment: ClassEnrollment): string {
   if (!enrollment.student) return "Unknown Student";
   return `${enrollment.student.first_name} ${enrollment.student.last_name}`;
-}
-
-function getEligibilityBadgeVariant(status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case 'Paid - Monthly':
-    case 'Paid - Yearly':
-      return 'default';
-    case 'Trial':
-      return 'secondary';
-    case 'Expired':
-      return 'destructive';
-    default:
-      return 'outline';
-  }
 }
 
 export default function AdminEnrollments() {

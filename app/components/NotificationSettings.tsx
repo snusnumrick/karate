@@ -423,10 +423,10 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
               <Alert className="mb-3">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  <strong>macOS Users:</strong> If test notifications don't appear, check:
+                  <strong>macOS Users:</strong> If test notifications don&apos;t appear, check:
                   <br />• System Settings → Notifications & Focus → {navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Your Browser'}
                   <br />• Turn off Do Not Disturb mode
-                  <br />• Set notification style to "Alerts" or "Banners"
+                  <br />• Set notification style to &quot;Alerts&quot; or &quot;Banners&quot;
                 </AlertDescription>
               </Alert>
             )}
@@ -436,8 +436,8 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
               <Alert className="mb-3">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  <strong>Testing Push Notifications:</strong> Push notifications won't appear while you're actively viewing this page.
-                  <br />• Click "Test Push" then immediately switch to another tab or minimize your browser
+                  <strong>Testing Push Notifications:</strong> Push notifications won&apos;t appear while you&apos;re actively viewing this page.
+                  <br />• Click &quot;Test Push&quot; then immediately switch to another tab or minimize your browser
                   <br />• Wait a few seconds for the notification to appear in your system notification area
                   <br />• This is normal browser behavior to prevent notification spam
                 </AlertDescription>

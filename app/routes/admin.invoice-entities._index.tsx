@@ -37,7 +37,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { siteConfig } from "~/config/site";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -512,7 +511,7 @@ export default function InvoiceEntitiesIndexPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Entity Permanently</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete "{entityToDelete?.name}"? This action cannot be undone and will remove all entity data from the system. This is only allowed because this entity has no associated invoices.
+              Are you sure you want to permanently delete &quot;{entityToDelete?.name}&quot;? This action cannot be undone and will remove all entity data from the system. This is only allowed because this entity has no associated invoices.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

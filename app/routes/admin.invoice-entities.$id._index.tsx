@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link, Outlet, useNavigation } from "@remix-run/react";
+import { useLoaderData, Link, Outlet } from "@remix-run/react";
 
 import { FileText, Eye, Edit } from "lucide-react";
 import { getInvoiceEntityById, deactivateInvoiceEntity, reactivateInvoiceEntity } from "~/services/invoice-entity.server";
@@ -54,9 +54,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function InvoiceEntityDetail() {
   const { entity } = useLoaderData<typeof loader>();
-  const navigation = useNavigation();
-
-  const isSubmitting = navigation.state === "submitting";
 
   const breadcrumbs = [
     { label: "Admin Dashboard", href: "/admin" },

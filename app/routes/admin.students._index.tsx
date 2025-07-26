@@ -5,7 +5,7 @@ import type {Database} from "~/types/database.types";
 import type {EligibilityStatus} from "~/types/payment";
 import {formatDate} from "~/utils/misc"; // Import formatDate utility
 import {Button} from "~/components/ui/button";
-import {Badge} from "~/components/ui/badge";
+
 import {beltColorMap} from "~/utils/constants"; // Import belt color map
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
@@ -68,7 +68,7 @@ export async function loader() {
 }
 
 export default function StudentsAdminPage() {
-    const {students} = useLoaderData<{ students: StudentWithFamilyEligibilityAndBelt[] }>(); // Update type
+    const {students} = useLoaderData<{ students: StudentWithFamilyEligibilityAndBelt[] }>();
     const navigate = useNavigate(); // Get navigate function
 
 

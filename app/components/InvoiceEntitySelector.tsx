@@ -9,22 +9,18 @@ interface InvoiceEntitySelectorProps {
   entities?: InvoiceEntity[];
   selectedEntity?: InvoiceEntity | null;
   onEntitySelect: (entity: InvoiceEntity | null) => void;
-  onCreateNew?: () => void;
   placeholder?: string;
   disabled?: boolean;
   error?: string;
-  required?: boolean;
 }
 
 export function InvoiceEntitySelector({
   entities = [],
   selectedEntity,
   onEntitySelect,
-  onCreateNew,
   placeholder = "Search entities by name, type, or email...",
   disabled = false,
   error,
-  required = false,
 }: InvoiceEntitySelectorProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<InvoiceEntity[]>([]);
@@ -172,7 +168,7 @@ export function InvoiceEntitySelector({
         {searchResults.length === 0 && !loading && (
           <div className="px-4 py-2 text-gray-500 dark:text-gray-400">
             {searchTerm.trim() 
-              ? `No entities found for "${searchTerm}"`
+              ? `No entities found for &quot;${searchTerm}&quot;`
               : "Start typing to search entities..."
             }
           </div>
@@ -243,7 +239,7 @@ export function InvoiceEntitySelector({
             >
               <div className="flex items-center">
                 <PlusIcon className="mr-2 h-4 w-4" />
-                Create new entity "{searchTerm}"
+                Create new entity &quot;{searchTerm}&quot;
               </div>
             </Link>
           </>

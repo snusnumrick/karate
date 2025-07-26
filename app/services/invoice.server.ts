@@ -446,7 +446,7 @@ export async function updateInvoice(
   }
 
   // Update the invoice
-  const updateData: any = {};
+  const updateData: Partial<Database['public']['Tables']['invoices']['Update']> = {};
   if (invoiceData.entity_id) updateData.entity_id = invoiceData.entity_id;
   if (invoiceData.family_id) updateData.family_id = invoiceData.family_id;
   if (invoiceData.issue_date) updateData.issue_date = invoiceData.issue_date;

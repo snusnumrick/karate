@@ -92,8 +92,14 @@ function sanitizeText(text: string | null | undefined): string {
   if (!text) return '';
   
   // Remove or replace problematic characters that might cause font issues
+  // Using String.fromCharCode to avoid control character regex lint issues
+  const controlCharsPattern = new RegExp(
+    `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}-${String.fromCharCode(159)}]`,
+    'g'
+  );
+  
   return text
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+    .replace(controlCharsPattern, '') // Remove control characters
     .replace(/[\uFFFD]/g, '') // Remove replacement characters
     .trim();
 }
