@@ -149,10 +149,11 @@ export default function NewInvoiceEntityPage() {
                     <SelectValue placeholder="Select entity type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="individual">Individual</SelectItem>
                     <SelectItem value="family">Family</SelectItem>
-                    <SelectItem value="organization">Organization</SelectItem>
-                    <SelectItem value="business">Business</SelectItem>
+                    <SelectItem value="school">School</SelectItem>
+                    <SelectItem value="government">Government</SelectItem>
+                    <SelectItem value="corporate">Corporate</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
                 {actionData?.errors?.entity_type && (
