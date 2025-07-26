@@ -1117,6 +1117,112 @@ export type Database = {
           },
         ]
       }
+      invoice_template_line_items: {
+        Row: {
+          created_at: string | null
+          description: string
+          discount_rate: number | null
+          id: string
+          item_type: Database["public"]["Enums"]["invoice_item_type"]
+          quantity: number | null
+          service_period_end: string | null
+          service_period_start: string | null
+          sort_order: number | null
+          tax_rate: number | null
+          template_id: string
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          discount_rate?: number | null
+          id?: string
+          item_type: Database["public"]["Enums"]["invoice_item_type"]
+          quantity?: number | null
+          service_period_end?: string | null
+          service_period_start?: string | null
+          sort_order?: number | null
+          tax_rate?: number | null
+          template_id: string
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          discount_rate?: number | null
+          id?: string
+          item_type?: Database["public"]["Enums"]["invoice_item_type"]
+          quantity?: number | null
+          service_period_end?: string | null
+          service_period_start?: string | null
+          sort_order?: number | null
+          tax_rate?: number | null
+          template_id?: string
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_template_line_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          created_by: string | null
+          default_footer: string | null
+          default_notes: string | null
+          default_terms: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_system_template: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          default_footer?: string | null
+          default_notes?: string | null
+          default_terms?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system_template?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          default_footer?: string | null
+          default_notes?: string | null
+          default_terms?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system_template?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_due: number
