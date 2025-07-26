@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, Link, Form, useNavigation } from "@remix-run/react";
+import { useLoaderData, Link, Form, useNavigation, useActionData } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -77,6 +77,29 @@ export async function action({ request, params }: ActionFunctionArgs) {
         await deleteInvoice(id);
         return redirect("/admin/invoices");
         
+      case "send_email":
+        const invoice = await getInvoiceById(id);
+        if (!invoice) {
+          return json({ error: "Invoice not found" }, { status: 404 });
+        }
+        
+        if (!invoice.entity.email) {
+          return json({ error: "No email address found for this invoice entity" }, { status: 400 });
+        }
+        
+        const { sendInvoiceEmail } = await import("~/services/invoice-email.server");
+        const emailSent = await sendInvoiceEmail(invoice);
+        
+        if (emailSent) {
+          // Update invoice status to sent if it was draft
+          if (invoice.status === "draft") {
+            await updateInvoiceStatus(id, "sent");
+          }
+          return json({ success: true, message: "Invoice email sent successfully" });
+        } else {
+          return json({ error: "Failed to send invoice email" }, { status: 500 });
+        }
+        
       default:
         return json({ error: "Invalid action" }, { status: 400 });
     }
@@ -130,6 +153,7 @@ const formatDate = (dateString: string) => {
 
 export default function InvoiceDetailPage() {
   const { invoice } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
@@ -142,6 +166,25 @@ export default function InvoiceDetailPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <AppBreadcrumb items={breadcrumbPatterns.adminInvoiceDetail(invoice.invoice_number, invoice.id)}  className="mb-6"/>
+
+        {/* Success/Error Messages */}
+        {actionData && 'success' in actionData && actionData.success && (
+          <Alert className="mb-6 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <AlertDescription className="text-green-800 dark:text-green-200">
+              {actionData.message}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {actionData && 'error' in actionData && actionData.error && (
+          <Alert className="mb-6 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+            <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <AlertDescription className="text-red-800 dark:text-red-200">
+              {actionData.error}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -190,10 +233,20 @@ export default function InvoiceDetailPage() {
                 Download PDF
               </a>
             </Button>
-            <Button variant="outline" size="sm">
-              <Send className="h-4 w-4 mr-2" />
-              Send Email
-            </Button>
+            <Form method="post" className="inline">
+              <input type="hidden" name="action" value="send_email" />
+              <Button 
+                type="submit" 
+                variant="outline" 
+                size="sm"
+                disabled={isSubmitting || !invoice.entity.email}
+                className="flex items-center gap-2"
+                title={!invoice.entity.email ? "No email address available for this entity" : "Send invoice via email"}
+              >
+                <Send className="h-4 w-4" />
+                {isSubmitting && navigation.formData?.get("action") === "send_email" ? "Sending..." : "Send Email"}
+              </Button>
+            </Form>
           </div>
         </div>
 
