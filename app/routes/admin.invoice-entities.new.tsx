@@ -132,6 +132,7 @@ export default function NewInvoiceEntityPage() {
                   id="name"
                   name="name"
                   type="text"
+                  autoComplete="organization"
                   placeholder="Enter entity name"
                   defaultValue={actionData?.values?.name}
                   className={`input-custom-styles ${actionData?.errors?.name ? 'border-red-500 focus:border-red-500' : ''}`}
@@ -169,6 +170,8 @@ export default function NewInvoiceEntityPage() {
                 <Input
                   id="contact_person"
                   name="contact_person"
+                  type="text"
+                  autoComplete="name"
                   placeholder="e.g., John Smith"
                   className="input-custom-styles"
                   tabIndex={3}
@@ -180,6 +183,8 @@ export default function NewInvoiceEntityPage() {
                 <Input
                   id="tax_id"
                   name="tax_id"
+                  type="text"
+                  autoComplete="off"
                   placeholder="e.g., 12-3456789"
                   className="input-custom-styles"
                   tabIndex={4}
@@ -204,6 +209,7 @@ export default function NewInvoiceEntityPage() {
                   id="email"
                   name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="Enter email address"
                   defaultValue={actionData?.values?.email}
                   className={`input-custom-styles ${actionData?.errors?.email ? 'border-red-500 focus:border-red-500' : ''}`}
@@ -219,6 +225,8 @@ export default function NewInvoiceEntityPage() {
                 <Input
                   id="phone"
                   name="phone"
+                  type="tel"
+                  autoComplete="tel"
                   placeholder="(555) 123-4567"
                   className="input-custom-styles"
                   tabIndex={6}
@@ -241,6 +249,8 @@ export default function NewInvoiceEntityPage() {
               <Input
                 id="address_line1"
                 name="address_line1"
+                type="text"
+                autoComplete="address-line1"
                 placeholder="123 Main Street"
                 className="input-custom-styles"
                 tabIndex={7}
@@ -252,6 +262,8 @@ export default function NewInvoiceEntityPage() {
               <Input
                 id="address_line2"
                 name="address_line2"
+                type="text"
+                autoComplete="address-line2"
                 placeholder="Suite 100"
                 className="input-custom-styles"
                 tabIndex={8}
@@ -264,6 +276,8 @@ export default function NewInvoiceEntityPage() {
                 <Input
                   id="city"
                   name="city"
+                  type="text"
+                  autoComplete="address-level2"
                   placeholder="Anytown"
                   className="input-custom-styles"
                   tabIndex={9}
@@ -289,6 +303,8 @@ export default function NewInvoiceEntityPage() {
                   <Input
                     id="state"
                     name="state"
+                    type="text"
+                    autoComplete="address-level1"
                     placeholder={siteConfig.location.region}
                     className="input-custom-styles"
                     tabIndex={10}
@@ -301,6 +317,8 @@ export default function NewInvoiceEntityPage() {
                 <Input
                   id="postal_code"
                   name="postal_code"
+                  type="text"
+                  autoComplete="postal-code"
                   placeholder="12345"
                   className="input-custom-styles"
                   tabIndex={11}
@@ -313,6 +331,8 @@ export default function NewInvoiceEntityPage() {
               <Input
                 id="country"
                 name="country"
+                type="text"
+                autoComplete="country"
                 defaultValue={siteConfig.localization.country}
                 placeholder={siteConfig.localization.country}
                 className="input-custom-styles"
