@@ -1,8 +1,16 @@
 import { json } from '@remix-run/node';
-import { createServiceRoleClient } from '~/utils/supabase.server';
+import { createClient } from '~/utils/supabase.server';
+import type { Database } from '~/types/database.types';
 
 export async function loader() {
-    const supabase = createServiceRoleClient();
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Missing Supabase environment variables required for debug endpoint.');
+    }
+
+    const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
     
     const { data: subscriptions } = await supabase
         .from('push_subscriptions')
