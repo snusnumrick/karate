@@ -3,6 +3,7 @@ import { formatCurrency } from "~/hooks/use-invoice-calculations";
 import { formatEntityAddress } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod } from "~/utils/line-item-helpers";
 import { siteConfig } from "~/config/site";
+import { generateInvoicePDF, getDefaultCompanyInfo, generateInvoiceFilename } from "~/utils/pdf-generator";
 import type { InvoiceWithDetails } from "~/types/invoice";
 
 const formatDate = (dateString: string) => {
@@ -154,7 +155,6 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
         <div class="header">
             <h1>Invoice #${invoice.invoice_number}</h1>
             <p>From ${siteConfig.name}</p>
-            <span class="status-badge status-${invoice.status}">${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
         </div>
 
         <div class="invoice-info">
@@ -270,10 +270,31 @@ export async function sendInvoiceEmail(invoice: InvoiceWithDetails): Promise<boo
   const html = generateInvoiceEmailHTML(invoice);
 
   try {
+    // Generate PDF with 'sent' status (not draft) for attachment
+    const invoiceForPdf = {
+      ...invoice,
+      status: 'sent' as const // Ensure PDF shows 'sent' status, not 'draft'
+    };
+    
+    const companyInfo = getDefaultCompanyInfo();
+    const pdfBuffer = await generateInvoicePDF({ 
+      invoice: invoiceForPdf, 
+      companyInfo 
+    });
+    
+    const filename = generateInvoiceFilename(invoice);
+
     const success = await sendEmail({
       to: invoice.entity.email,
       subject,
-      html
+      html,
+      attachments: [
+        {
+          filename,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
     });
 
     if (success) {

@@ -7,10 +7,17 @@ invariant(process.env.FROM_EMAIL, 'FROM_EMAIL must be set for sending emails');
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail = process.env.FROM_EMAIL;
 
+interface EmailAttachment {
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+}
+
 interface SendEmailOptions {
     to: string | string[];
     subject: string;
     html: string; // Use HTML for email body
+    attachments?: EmailAttachment[];
     // text?: string; // Optional plain text version
 }
 
@@ -18,19 +25,32 @@ interface SendEmailOptions {
  * Sends an email using the Resend service.
  * Logs success or failure.
  *
- * @param options - Email options including to, subject, and html body.
+ * @param options - Email options including to, subject, html body, and optional attachments.
  * @returns True if the email was sent successfully (or accepted by Resend), false otherwise.
  */
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
     try {
         console.log(`Attempting to send email to: ${options.to} with subject: "${options.subject}"`);
-        const {data, error} = await resend.emails.send({
+        
+        // Prepare email data
+        const emailData: any = {
             from: fromEmail, // Use the configured FROM_EMAIL
             to: options.to,
             subject: options.subject,
             html: options.html,
             // text: options.text, // Include if providing plain text version
-        });
+        };
+
+        // Add attachments if provided
+        if (options.attachments && options.attachments.length > 0) {
+            emailData.attachments = options.attachments.map(attachment => ({
+                filename: attachment.filename,
+                content: attachment.content,
+                type: attachment.contentType || 'application/octet-stream',
+            }));
+        }
+
+        const {data, error} = await resend.emails.send(emailData);
 
         if (error) {
             console.error(`Resend API Error sending email to ${options.to}:`, error);
