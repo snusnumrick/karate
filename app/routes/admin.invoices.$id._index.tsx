@@ -13,11 +13,10 @@ import { getItemTypeLabel, formatServicePeriod } from "~/utils/line-item-helpers
 import { requireUserId } from "~/utils/auth.server";
 import { siteConfig } from "~/config/site";
 import { 
-  ArrowLeft,
-  Edit, 
   Download, 
   Send,
   Trash2, 
+  Edit,
   DollarSign, 
   Calendar, 
   FileText, 
@@ -188,28 +187,20 @@ export default function InvoiceDetailPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/admin/invoices" className="flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Invoices
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Invoice #{invoice.invoice_number}
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge className={getStatusColor(invoice.status)}>
-                  <span className="flex items-center gap-1">
-                    {getStatusIcon(invoice.status)}
-                    {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                  </span>
-                </Badge>
-                <span className="text-sm text-gray-500 dark:text-gray-300">
-                  Created {formatDate(invoice.created_at)}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Invoice #{invoice.invoice_number}
+            </h1>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge className={getStatusColor(invoice.status)}>
+                <span className="flex items-center gap-1">
+                  {getStatusIcon(invoice.status)}
+                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                 </span>
-              </div>
+              </Badge>
+              <span className="text-sm text-gray-500 dark:text-gray-300">
+                Created {formatDate(invoice.created_at)}
+              </span>
             </div>
           </div>
 

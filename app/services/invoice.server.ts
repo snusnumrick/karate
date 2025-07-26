@@ -401,6 +401,117 @@ export async function getInvoices(
 }
 
 /**
+ * Update invoice with new data and line items
+ */
+export async function updateInvoice(
+  invoiceId: string,
+  invoiceData: Partial<CreateInvoiceData>,
+  supabaseAdmin?: SupabaseClient<Database>
+): Promise<InvoiceWithDetails> {
+  invariant(invoiceId, "Missing invoiceId parameter");
+  
+  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  
+  console.log(`[Service/updateInvoice] Updating invoice ${invoiceId} with data:`, invoiceData);
+
+  // First, check if the invoice exists and is editable (only draft invoices can be fully edited)
+  const { data: existingInvoice, error: fetchError } = await client
+    .from('invoices')
+    .select('status')
+    .eq('id', invoiceId)
+    .single();
+
+  if (fetchError) {
+    console.error(`[Service/updateInvoice] Error fetching invoice:`, fetchError);
+    throw new Response(`Error fetching invoice: ${fetchError.message}`, { status: 500 });
+  }
+
+  if (!existingInvoice) {
+    throw new Response("Invoice not found", { status: 404 });
+  }
+
+  if (existingInvoice.status !== 'draft') {
+    throw new Response("Only draft invoices can be edited", { status: 400 });
+  }
+
+  // Update the invoice
+  const updateData: any = {};
+  if (invoiceData.entity_id) updateData.entity_id = invoiceData.entity_id;
+  if (invoiceData.family_id) updateData.family_id = invoiceData.family_id;
+  if (invoiceData.issue_date) updateData.issue_date = invoiceData.issue_date;
+  if (invoiceData.due_date) updateData.due_date = invoiceData.due_date;
+  if (invoiceData.service_period_start !== undefined) updateData.service_period_start = invoiceData.service_period_start;
+  if (invoiceData.service_period_end !== undefined) updateData.service_period_end = invoiceData.service_period_end;
+  if (invoiceData.notes !== undefined) updateData.notes = invoiceData.notes;
+  if (invoiceData.terms !== undefined) updateData.terms = invoiceData.terms;
+  if (invoiceData.footer_text !== undefined) updateData.footer_text = invoiceData.footer_text;
+
+  const { error: updateError } = await client
+    .from('invoices')
+    .update(updateData)
+    .eq('id', invoiceId);
+
+  if (updateError) {
+    console.error(`[Service/updateInvoice] Error updating invoice:`, updateError);
+    throw new Response(`Error updating invoice: ${updateError.message}`, { status: 500 });
+  }
+
+  // Update line items if provided
+  if (invoiceData.line_items) {
+    // Delete existing line items
+    const { error: deleteError } = await client
+      .from('invoice_line_items')
+      .delete()
+      .eq('invoice_id', invoiceId);
+
+    if (deleteError) {
+      console.error(`[Service/updateInvoice] Error deleting existing line items:`, deleteError);
+      throw new Response(`Error updating line items: ${deleteError.message}`, { status: 500 });
+    }
+
+    // Create new line items with calculated totals
+    const lineItemsWithTotals = invoiceData.line_items.map((item, index) => {
+      const calculations = calculateLineItemTotals(
+        item.quantity,
+        item.unit_price,
+        item.tax_rate || 0,
+        item.discount_rate || 0
+      );
+
+      return {
+        invoice_id: invoiceId,
+        item_type: item.item_type,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        line_total: calculations.line_total,
+        tax_rate: item.tax_rate || 0,
+        tax_amount: calculations.tax_amount,
+        discount_rate: item.discount_rate || 0,
+        discount_amount: calculations.discount_amount,
+        enrollment_id: item.enrollment_id,
+        product_id: item.product_id,
+        service_period_start: item.service_period_start,
+        service_period_end: item.service_period_end,
+        sort_order: item.sort_order || index,
+      };
+    });
+
+    const { error: lineItemsError } = await client
+      .from('invoice_line_items')
+      .insert(lineItemsWithTotals);
+
+    if (lineItemsError) {
+      console.error(`[Service/updateInvoice] Error creating new line items:`, lineItemsError);
+      throw new Response(`Error updating line items: ${lineItemsError.message}`, { status: 500 });
+    }
+  }
+
+  // Fetch and return the updated invoice with details
+  return getInvoiceById(invoiceId, client);
+}
+
+/**
  * Update invoice status
  */
 export async function updateInvoiceStatus(
