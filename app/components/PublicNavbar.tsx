@@ -23,16 +23,16 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
                     <div className="flex justify-between h-16">
                         <div className="flex items-center">
                             <Link to="/" className="flex items-center">
-                                <div className="relative h-10 w-43 mr-4">
+                                <div className="relative h-10 w-53 mr-4">
                                     <img
                                         src="/logo-light.svg"
                                         alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC"
-                                        className="h-10 w-43 dark:hidden"
+                                        className="h-10 w-53 dark:hidden"
                                     />
                                     <img
                                         src="/logo-dark.svg"
                                         alt="Karate Greenegin Logo - Kids Martial Arts Victoria BC, Dark Mode"
-                                        className="h-10 w-43 hidden dark:block"
+                                        className="h-10 w-53 hidden dark:block"
                                     />
                                 </div>
                             </Link>
