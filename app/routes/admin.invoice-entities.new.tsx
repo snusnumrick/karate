@@ -1,6 +1,6 @@
 import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useNavigation, useRouteError , Link } from "@remix-run/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -89,6 +89,7 @@ export default function NewInvoiceEntityPage() {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const [country, setCountry] = useState(siteConfig.localization.country);
 
   // Focus the first input field on page load
   useEffect(() => {
@@ -170,7 +171,7 @@ export default function NewInvoiceEntityPage() {
                   name="contact_person"
                   placeholder="e.g., John Smith"
                   className="input-custom-styles"
-                  tabIndex={0}
+                  tabIndex={3}
                 />
               </div>
 
@@ -181,7 +182,7 @@ export default function NewInvoiceEntityPage() {
                   name="tax_id"
                   placeholder="e.g., 12-3456789"
                   className="input-custom-styles"
-                  tabIndex={0}
+                  tabIndex={4}
                 />
               </div>
             </div>
@@ -270,14 +271,29 @@ export default function NewInvoiceEntityPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  name="state"
-                  placeholder={siteConfig.localization.country}
-                  className="input-custom-styles"
-                  tabIndex={0}
-                />
+                <Label htmlFor="state">Province / State</Label>
+                {country === 'CA' ? (
+                  <Select name="state" defaultValue={siteConfig.location.region}>
+                    <SelectTrigger className="input-custom-styles" tabIndex={0}>
+                      <SelectValue placeholder={siteConfig.location.region} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {siteConfig.provinces.map((province) => (
+                        <SelectItem key={province.value} value={province.value}>
+                          {province.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="state"
+                    name="state"
+                    placeholder={siteConfig.location.region}
+                    className="input-custom-styles"
+                    tabIndex={0}
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
@@ -301,6 +317,7 @@ export default function NewInvoiceEntityPage() {
                 placeholder={siteConfig.localization.country}
                 className="input-custom-styles"
                 tabIndex={0}
+                onChange={(e) => setCountry(e.target.value)}
               />
             </div>
           </CardContent>
