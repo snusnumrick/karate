@@ -3,7 +3,7 @@ import { siteConfig } from "~/config/site";
 import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
 import { formatCurrency } from "~/utils/misc";
 import { formatEntityAddress, getPaymentTermsLabel } from "~/utils/entity-helpers";
-import { getItemTypeLabel, formatServicePeriod } from "~/utils/line-item-helpers";
+import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, calculateLineItemTax } from "~/utils/line-item-helpers";
 
 interface InvoicePreviewProps {
   invoiceData: CreateInvoiceData;
@@ -85,89 +85,129 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
 
           {/* Line Items Table */}
           <div className="mb-8">
-            <div className="overflow-hidden border border-gray-200 rounded-lg">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Qty
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Unit Price
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {invoiceData.line_items.map((item, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div>
-                          <p className="font-medium">{item.description}</p>
+            <div className="space-y-4">
+              {invoiceData.line_items.map((item, index) => {
+                const itemSubtotal = calculateLineItemSubtotal(item);
+                const itemDiscount = calculateLineItemDiscount(item);
+                const itemTax = calculateLineItemTax(item);
+                const itemTotal = lineItemTotals[index];
+                
+                return (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    {/* Item Header */}
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{item.description}</h4>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                          <span>{getItemTypeLabel(item.item_type)}</span>
                           {(item.service_period_start || item.service_period_end) && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Service Period: {formatServicePeriod(item.service_period_start, item.service_period_end)}
-                            </p>
-                          )}
-                          {item.discount_rate && item.discount_rate > 0 && (
-                            <p className="text-xs text-green-600 mt-1">
-                              Discount: {item.discount_rate}%
-                            </p>
-                          )}
-                          {item.tax_rate && item.tax_rate > 0 && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Tax: {item.tax_rate}%
-                            </p>
+                            <span>Service Period: {formatServicePeriod(item.service_period_start, item.service_period_end)}</span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {getItemTypeLabel(item.item_type)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 text-right">
-                        {item.quantity}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 text-right">
-                        {formatCurrency(item.unit_price * 100)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">
-                        {formatCurrency(lineItemTotals[index] * 100)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-semibold text-gray-900">
+                          {formatCurrency((itemSubtotal - itemDiscount + itemTax) * 100)}
+                        </div>
+                        <div className="text-xs text-gray-500">Total</div>
+                      </div>
+                    </div>
+                    
+                    {/* Item Details Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider">Quantity</div>
+                        <div className="font-medium text-gray-900">{item.quantity}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider">Unit Price</div>
+                        <div className="font-medium text-gray-900">{formatCurrency(item.unit_price * 100)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider">Subtotal</div>
+                        <div className="font-medium text-gray-900">{formatCurrency(itemSubtotal * 100)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider">After Adjustments</div>
+                        <div className="space-y-1">
+                          {itemDiscount > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-green-600">Discount ({Number(item.discount_rate).toFixed(2)}%):</span>
+                                <span className="text-green-600">-{formatCurrency(itemDiscount * 100)}</span>
+                              </div>
+                            )}
+                            {itemTax > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Tax ({Number(item.tax_rate).toFixed(2)}%):</span>
+                                <span className="text-gray-900">{formatCurrency(itemTax * 100)}</span>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Totals Section */}
           <div className="flex justify-end mb-8">
-            <div className="w-64">
+            <div className="w-80">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal:</span>
                   <span className="text-gray-900">{formatCurrency(subtotal * 100)}</span>
                 </div>
+                
+                {/* Detailed Discount Breakdown */}
                 {totalDiscount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Discount:</span>
-                    <span className="text-green-600">-{formatCurrency(totalDiscount * 100)}</span>
+                  <div className="border-l-2 border-green-200 pl-3 py-1 bg-green-50">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span className="text-gray-700">Total Discounts:</span>
+                      <span className="text-green-600">-{formatCurrency(totalDiscount * 100)}</span>
+                    </div>
+                    <div className="mt-1 space-y-1">
+                      {invoiceData.line_items.map((item, index) => {
+                        const itemDiscount = calculateLineItemDiscount(item);
+                        if (itemDiscount > 0) {
+                          return (
+                            <div key={index} className="flex justify-between text-xs text-gray-600">
+                              <span className="truncate max-w-48">{item.description} ({Number(item.discount_rate).toFixed(2)}%):</span>
+                              <span className="text-green-600 ml-2">-{formatCurrency(itemDiscount * 100)}</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
                   </div>
                 )}
+                
+                {/* Detailed Tax Breakdown */}
                 {totalTax > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tax:</span>
-                    <span className="text-gray-900">{formatCurrency(totalTax * 100)}</span>
+                  <div className="border-l-2 border-blue-200 pl-3 py-1 bg-blue-50">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span className="text-gray-700">Total Tax:</span>
+                      <span className="text-gray-900">{formatCurrency(totalTax * 100)}</span>
+                    </div>
+                    <div className="mt-1 space-y-1">
+                      {invoiceData.line_items.map((item, index) => {
+                        const itemTax = calculateLineItemTax(item);
+                        if (itemTax > 0) {
+                          return (
+                            <div key={index} className="flex justify-between text-xs text-gray-600">
+                              <span className="truncate max-w-48">{item.description} ({Number(item.tax_rate).toFixed(2)}%):</span>
+                              <span className="text-gray-900 ml-2">{formatCurrency(itemTax * 100)}</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
                   </div>
                 )}
+                
                 <div className="border-t border-gray-200 pt-2">
                   <div className="flex justify-between text-lg font-semibold">
                     <span className="text-gray-900">Total:</span>

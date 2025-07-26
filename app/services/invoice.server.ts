@@ -15,7 +15,11 @@ import type {
   PaymentTerms,
   InvoiceStatus,
 } from "~/types/invoice";
-import { calculateLineItemTotal, calculateLineItemTax, calculateLineItemDiscount } from "~/utils/line-item-helpers";
+import {
+  calculateLineItemTax,
+  calculateLineItemDiscount,
+  calculateLineItemSubtotal
+} from "~/utils/line-item-helpers";
 
 // Helper to create admin client
 function createSupabaseAdminClient(): SupabaseClient<Database> {
@@ -49,7 +53,7 @@ export function calculateLineItemTotals(
   };
 
   // Use the centralized calculation functions
-  const lineTotal = calculateLineItemTotal(tempItem);
+  const lineTotal = calculateLineItemSubtotal(tempItem);
   const taxAmount = calculateLineItemTax(tempItem);
   const discountAmount = calculateLineItemDiscount(tempItem);
 

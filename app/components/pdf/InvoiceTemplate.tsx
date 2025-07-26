@@ -8,6 +8,7 @@ import {
 } from '@react-pdf/renderer';
 import { siteConfig } from '~/config/site';
 import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
+import { calculateLineItemSubtotal, calculateLineItemDiscount, calculateLineItemTax } from '~/utils/line-item-helpers';
 
 const styles = StyleSheet.create({
   page: {
@@ -195,6 +196,23 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 10,
     color: '#1f2937',
+    fontWeight: 'bold',
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingLeft: 16,
+  },
+  breakdownLabel: {
+    fontSize: 8,
+    color: '#6b7280',
+    flex: 1,
+  },
+  breakdownValue: {
+    fontSize: 8,
+    color: '#6b7280',
     fontWeight: 'bold',
   },
   grandTotalRow: {
@@ -497,16 +515,50 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
             </View>
             
             {discountAmount > 0 ? (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Discount:</Text>
-                <Text style={styles.totalValue}>-{formatCurrency(discountAmount * 100)}</Text>
+              <View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total Discounts:</Text>
+                  <Text style={styles.totalValue}>-{formatCurrency(discountAmount * 100)}</Text>
+                </View>
+                {invoice.line_items?.map((item, index) => {
+                  const itemDiscount = calculateLineItemDiscount(item);
+                  if (itemDiscount > 0) {
+                    return (
+                      <View key={`discount-${index}`} style={styles.breakdownRow}>
+                        <Text style={styles.breakdownLabel}>
+                          {item.description} ({Number(item.discount_rate).toFixed(2)}%):
+                        </Text>
+                        <Text style={styles.breakdownValue}>-{formatCurrency(itemDiscount * 100)}</Text>
+                      </View>
+                    );
+                  }
+                  return null;
+                })}
               </View>
             ) : null}
             
             {taxAmount > 0 ? (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Tax:</Text>
-                <Text style={styles.totalValue}>{formatCurrency(taxAmount * 100)}</Text>
+              <View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total Tax:</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(taxAmount * 100)}</Text>
+                </View>
+                {invoice.line_items?.map((item, index) => {
+                  const itemTax = calculateLineItemTax(item);
+                  if (itemTax > 0) {
+                    return (
+                      <View key={`tax-${index}`} style={styles.breakdownRow}>
+                        <Text style={styles.breakdownLabel}>
+                          {item.description} ({Number(item.tax_rate).toFixed(2)}%):
+                        </Text>
+                        <Text style={styles.breakdownValue}>
+                          {formatCurrency(itemTax * 100)}
+                        </Text>
+                      </View>
+                    );
+                  }
+                  return null;
+                })}
               </View>
             ) : null}
             

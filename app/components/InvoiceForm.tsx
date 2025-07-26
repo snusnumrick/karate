@@ -411,13 +411,13 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                       </div>
                       {totalDiscount > 0 && (
                         <div className="flex justify-between text-green-600 dark:text-green-400">
-                          <span>Total Discount:</span>
+                          <span>Discount (from line items):</span>
                           <span>-{formatCurrency(totalDiscount * 100)}</span>
                         </div>
                       )}
                       {totalTax > 0 && (
                         <div className="flex justify-between dark:text-gray-200">
-                          <span>Total Tax:</span>
+                          <span>Tax (from line items):</span>
                           <span>{formatCurrency(totalTax * 100)}</span>
                         </div>
                       )}

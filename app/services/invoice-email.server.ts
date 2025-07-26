@@ -1,7 +1,7 @@
 import { sendEmail } from "~/utils/email.server";
 import { formatCurrency } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
-import { getItemTypeLabel, formatServicePeriod } from "~/utils/line-item-helpers";
+import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, calculateLineItemTax } from "~/utils/line-item-helpers";
 import { siteConfig } from "~/config/site";
 import { generateInvoicePDF, getDefaultCompanyInfo, generateInvoiceFilename } from "~/utils/pdf-generator";
 import type { InvoiceWithDetails } from "~/types/invoice";
@@ -148,6 +148,23 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
             color: #6b7280;
             font-size: 12px;
         }
+        .breakdown-section {
+            background-color: #f9fafb;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-left: 3px solid #e5e7eb;
+        }
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #6b7280;
+            margin: 2px 0;
+        }
+        .breakdown-total {
+            font-weight: 600;
+            color: #374151;
+        }
     </style>
 </head>
 <body>
@@ -196,9 +213,9 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                                 ${(item.service_period_start || item.service_period_end) ? 
                                   `<br><small>Service Period: ${formatServicePeriod(item.service_period_start, item.service_period_end)}</small>` : ''}
                                 ${item.discount_rate && item.discount_rate > 0 ? 
-                                  `<br><small class="discount-text">Discount: ${item.discount_rate}%</small>` : ''}
+                                  `<br><small class="discount-text">Discount: ${(Number(item.discount_rate) * 100).toFixed(2)}%</small>` : ''}
                                 ${item.tax_rate && item.tax_rate > 0 ? 
-                                  `<br><small class="tax-text">Tax: ${item.tax_rate}%</small>` : ''}
+                                  `<br><small class="tax-text">Tax: ${(Number(item.tax_rate) * 100).toFixed(2)}%</small>` : ''}
                             </td>
                             <td>${getItemTypeLabel(item.item_type)}</td>
                             <td class="text-right">${item.quantity}</td>
@@ -218,14 +235,48 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                 </tr>
                 ${invoice.discount_amount > 0 ? `
                 <tr>
-                    <td>Discount:</td>
-                    <td class="text-right discount-text">-${formatCurrency(invoice.discount_amount * 100)}</td>
+                    <td colspan="2">
+                        <div class="breakdown-section">
+                            <div class="breakdown-item breakdown-total">
+                                <span>Total Discounts:</span>
+                                <span class="discount-text">-${formatCurrency(invoice.discount_amount * 100)}</span>
+                            </div>
+                            ${invoice.line_items.map(item => {
+                                const itemDiscount = calculateLineItemDiscount(item);
+                                if (itemDiscount > 0) {
+                                    return `
+                                    <div class="breakdown-item">
+                                        <span>${item.description} (${Number(item.discount_rate).toFixed(2)}%):</span>
+                                        <span class="discount-text">-${formatCurrency(itemDiscount * 100)}</span>
+                                    </div>`;
+                                }
+                                return '';
+                            }).join('')}
+                        </div>
+                    </td>
                 </tr>
                 ` : ''}
                 ${invoice.tax_amount > 0 ? `
                 <tr>
-                    <td>Tax:</td>
-                    <td class="text-right">${formatCurrency(invoice.tax_amount * 100)}</td>
+                    <td colspan="2">
+                        <div class="breakdown-section">
+                            <div class="breakdown-item breakdown-total">
+                                <span>Total Tax:</span>
+                                <span>${formatCurrency(invoice.tax_amount * 100)}</span>
+                            </div>
+                            ${invoice.line_items.map(item => {
+                                const itemTax = calculateLineItemTax(item);
+                                if (itemTax > 0) {
+                                    return `
+                                     <div class="breakdown-item">
+                                         <span>${item.description} (${Number(item.tax_rate).toFixed(2)}%):</span>
+                                         <span>${formatCurrency(itemTax * 100)}</span>
+                                     </div>`;
+                                }
+                                return '';
+                            }).join('')}
+                        </div>
+                    </td>
                 </tr>
                 ` : ''}
                 <tr class="total-row">
