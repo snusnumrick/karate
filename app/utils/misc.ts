@@ -39,6 +39,17 @@ export function formatCurrency(
     }
 }
 
+
+/**
+ * Formats a given number as a percentage string with one decimal place.
+ *
+ * @param {number} rate - The numeric value to be formatted as a percentage.
+ * @return {string} A formatted percentage string with one decimal place followed by the '%' sign.
+ */
+export function formatPercentage(rate: number): string {
+    return `${rate.toFixed(1)}%`;
+}
+
 /**
  * Formats a date string or Date object.
  * - If `options.formatString` is provided, it uses `date-fns/format`.

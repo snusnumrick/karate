@@ -10,7 +10,7 @@ import { AppBreadcrumb , breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Plus, Trash2, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { CreateInvoiceLineItemData } from "~/types/invoice";
-import { formatCurrency } from "~/hooks/use-invoice-calculations";
+import { formatCurrency } from "~/utils/misc";
 import { calculateLineItemTotal } from "~/utils/line-item-helpers";
 import { InvoiceTemplateService } from "~/services/invoice-template.server";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
@@ -404,7 +404,7 @@ export default function EditInvoiceTemplate() {
                                     <div className="space-y-2">
                                         <Label>Line Total</Label>
                                         <div className="h-10 px-3 py-2 border rounded-md bg-muted text-muted-foreground flex items-center">
-                                            {formatCurrency(calculateLineItemTotal(item))}
+                                            {formatCurrency(calculateLineItemTotal(item) * 100)}
                                         </div>
                                     </div>
                                 </div>
@@ -418,7 +418,7 @@ export default function EditInvoiceTemplate() {
                         <div className="border-t pt-4">
                             <div className="flex justify-between items-center text-lg font-semibold">
                                 <span>Template Total:</span>
-                                <span>{formatCurrency(calculateTotal())}</span>
+                                <span>{formatCurrency(calculateTotal() * 100)}</span>
                             </div>
                         </div>
                     </CardContent>

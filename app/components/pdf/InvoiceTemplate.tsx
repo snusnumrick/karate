@@ -479,10 +479,10 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
                 {item.quantity || 0}
               </Text>
               <Text style={[styles.tableCell, styles.priceColumn]}>
-                {formatCurrency(item.unit_price)}
+                {formatCurrency(item.unit_price * 100)}
               </Text>
               <Text style={[styles.tableCell, styles.amountColumn]}>
-                {formatCurrency((item.quantity || 0) * (item.unit_price || 0))}
+                {formatCurrency((item.quantity || 0) * (item.unit_price || 0) * 100)}
               </Text>
             </View>
           ))}
@@ -493,26 +493,26 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
           <View style={styles.totalsTable}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal:</Text>
-              <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
+              <Text style={styles.totalValue}>{formatCurrency(subtotal * 100)}</Text>
             </View>
             
             {discountAmount > 0 ? (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Discount:</Text>
-                <Text style={styles.totalValue}>-{formatCurrency(discountAmount)}</Text>
+                <Text style={styles.totalValue}>-{formatCurrency(discountAmount * 100)}</Text>
               </View>
             ) : null}
             
             {taxAmount > 0 ? (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Tax:</Text>
-                <Text style={styles.totalValue}>{formatCurrency(taxAmount)}</Text>
+                <Text style={styles.totalValue}>{formatCurrency(taxAmount * 100)}</Text>
               </View>
             ) : null}
             
             <View style={styles.grandTotalRow}>
               <Text style={styles.grandTotalLabel}>Total:</Text>
-              <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
+              <Text style={styles.grandTotalValue}>{formatCurrency(total * 100)}</Text>
             </View>
           </View>
         </View>

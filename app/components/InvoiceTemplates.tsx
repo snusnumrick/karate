@@ -9,7 +9,7 @@ import {
   searchTemplates
 } from "~/data/invoice-templates";
 import type { InvoiceTemplate, CreateInvoiceLineItemData } from "~/types/invoice";
-import { formatCurrency } from "~/hooks/use-invoice-calculations";
+import { formatCurrency } from "~/utils/misc";
 import { calculateLineItemTotal } from "~/utils/line-item-helpers";
 
 interface InvoiceTemplatesProps {
@@ -147,7 +147,7 @@ export function InvoiceTemplates({ onSelectTemplate, onClose }: InvoiceTemplates
                             {item.description}
                           </span>
                           <span className="text-gray-900 dark:text-white font-medium ml-2">
-                            {formatCurrency(calculateLineItemTotal(item))}
+                            {formatCurrency(calculateLineItemTotal(item) * 100)}
                           </span>
                         </div>
                       ))}
@@ -162,7 +162,7 @@ export function InvoiceTemplates({ onSelectTemplate, onClose }: InvoiceTemplates
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
                         <div className="flex justify-between text-sm font-medium">
                           <span>Template Total:</span>
-                          <span>{formatCurrency(templateTotal)}</span>
+                          <span>{formatCurrency(templateTotal * 100)}</span>
                         </div>
                       </div>
                     )}

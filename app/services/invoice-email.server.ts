@@ -1,5 +1,5 @@
 import { sendEmail } from "~/utils/email.server";
-import { formatCurrency } from "~/hooks/use-invoice-calculations";
+import { formatCurrency } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod } from "~/utils/line-item-helpers";
 import { siteConfig } from "~/config/site";
@@ -202,8 +202,8 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                             </td>
                             <td>${getItemTypeLabel(item.item_type)}</td>
                             <td class="text-right">${item.quantity}</td>
-                            <td class="text-right">${formatCurrency(item.unit_price)}</td>
-                            <td class="text-right"><strong>${formatCurrency(item.line_total)}</strong></td>
+                            <td class="text-right">${formatCurrency(item.unit_price * 100)}</td>
+                            <td class="text-right"><strong>${formatCurrency(item.line_total * 100)}</strong></td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -214,23 +214,23 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
             <table class="totals-table">
                 <tr>
                     <td>Subtotal:</td>
-                    <td class="text-right">${formatCurrency(invoice.subtotal)}</td>
+                    <td class="text-right">${formatCurrency(invoice.subtotal * 100)}</td>
                 </tr>
                 ${invoice.discount_amount > 0 ? `
                 <tr>
                     <td>Discount:</td>
-                    <td class="text-right discount-text">-${formatCurrency(invoice.discount_amount)}</td>
+                    <td class="text-right discount-text">-${formatCurrency(invoice.discount_amount * 100)}</td>
                 </tr>
                 ` : ''}
                 ${invoice.tax_amount > 0 ? `
                 <tr>
                     <td>Tax:</td>
-                    <td class="text-right">${formatCurrency(invoice.tax_amount)}</td>
+                    <td class="text-right">${formatCurrency(invoice.tax_amount * 100)}</td>
                 </tr>
                 ` : ''}
                 <tr class="total-row">
                     <td><strong>Total:</strong></td>
-                    <td class="text-right"><strong>${formatCurrency(invoice.total_amount)}</strong></td>
+                    <td class="text-right"><strong>${formatCurrency(invoice.total_amount * 100)}</strong></td>
                 </tr>
             </table>
         </div>

@@ -339,13 +339,13 @@ export default function InvoiceEntitiesIndexPage() {
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Outstanding</h3>
           <p className="text-2xl font-bold text-orange-600">
-            {formatCurrency(entities.reduce((sum, e) => sum + e.outstanding_amount, 0))}
+            {formatCurrency(entities.reduce((sum, e) => sum + e.outstanding_amount, 0) * 100)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Invoiced</h3>
           <p className="text-2xl font-bold text-blue-600">
-            {formatCurrency(entities.reduce((sum, e) => sum + e.total_amount, 0))}
+            {formatCurrency(entities.reduce((sum, e) => sum + e.total_amount, 0) * 100)}
           </p>
         </div>
       </div>
@@ -411,7 +411,7 @@ export default function InvoiceEntitiesIndexPage() {
                       <div className="text-sm">
                         <div>{entity.total_invoices} invoices</div>
                         <div className="text-gray-500">
-                          {formatCurrency(entity.total_amount)}
+                          {formatCurrency(entity.total_amount * 100)}
                         </div>
                       </div>
                     </TableCell>
@@ -419,7 +419,7 @@ export default function InvoiceEntitiesIndexPage() {
                       <div className={`font-medium ${
                         entity.outstanding_amount > 0 ? 'text-orange-600' : 'text-green-600'
                       }`}>
-                        {formatCurrency(entity.outstanding_amount)}
+                        {formatCurrency(entity.outstanding_amount * 100)}
                       </div>
                     </TableCell>
                     <TableCell>

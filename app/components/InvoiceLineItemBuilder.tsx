@@ -5,7 +5,7 @@ import { Label } from "~/components/ui/label";
 import { Plus, Copy, Trash2 } from "lucide-react";
 import type { CreateInvoiceLineItemData } from "~/types/invoice";
 import { createEmptyLineItem, calculateLineItemTotal, getAvailableItemTypes, duplicateLineItem } from "~/utils/line-item-helpers";
-import { formatCurrency } from "~/hooks/use-invoice-calculations";
+import { formatCurrency } from "~/utils/misc";
 
 interface InvoiceLineItemBuilderProps {
   lineItems: CreateInvoiceLineItemData[];
@@ -150,12 +150,12 @@ export function InvoiceLineItemBuilder({
                           {item.description || `Line Item ${index + 1}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(lineTotal)}
+                          {item.quantity} × {formatCurrency(item.unit_price * 100)} = {formatCurrency(lineTotal * 100)}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium text-foreground">
-                          {formatCurrency(lineTotal)}
+                          {formatCurrency(lineTotal * 100)}
                         </span>
                         <svg
                           className={`h-5 w-5 text-muted-foreground transition-transform ${

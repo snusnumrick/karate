@@ -5,7 +5,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
-import { formatCurrency } from '~/hooks/use-invoice-calculations';
+import { formatCurrency } from '~/utils/misc';
 import { calculateLineItemTotal } from '~/utils/line-item-helpers';
 import { InvoiceTemplateService } from '~/services/invoice-template.server';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
@@ -123,7 +123,7 @@ export default function InvoiceTemplatesIndex() {
                                         {templateTotal > 0 && (
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-muted-foreground">Template Total:</span>
-                                                <span className="font-medium">{formatCurrency(templateTotal)}</span>
+                                                <span className="font-medium">{formatCurrency(templateTotal * 100)}</span>
                                             </div>
                                         )}
 

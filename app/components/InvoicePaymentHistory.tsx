@@ -113,13 +113,13 @@ export default function InvoicePaymentHistory({
           <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
             <div className="text-sm text-gray-600 dark:text-gray-400">Total Amount</div>
             <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-              {formatCurrency(totalAmount)}
+              {formatCurrency(totalAmount * 100)}
             </div>
           </div>
           <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
             <div className="text-sm text-green-600 dark:text-green-400">Amount Paid</div>
             <div className="text-lg font-semibold text-green-800 dark:text-green-100">
-              {formatCurrency(amountPaid)}
+              {formatCurrency(amountPaid * 100)}
             </div>
           </div>
           <div className={`p-3 rounded-lg ${
@@ -139,7 +139,7 @@ export default function InvoicePaymentHistory({
                 ? 'text-green-800 dark:text-green-100' 
                 : 'text-red-800 dark:text-red-100'
             }`}>
-              {isFullyPaid ? '✓ Complete' : formatCurrency(remainingBalance)}
+              {isFullyPaid ? '✓ Complete' : formatCurrency(remainingBalance * 100)}
             </div>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function InvoicePaymentHistory({
                   <div className="flex-1">
                     <div className="flex items-center space-x-4">
                       <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                        {formatCurrency(payment.amount)}
+                        {formatCurrency(payment.amount * 100)}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
                         via {formatPaymentMethod(payment.payment_method)}

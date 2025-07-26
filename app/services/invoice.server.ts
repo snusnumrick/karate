@@ -7,6 +7,7 @@ import type {
   InvoiceLineItem,
   InvoiceWithDetails,
   CreateInvoiceData,
+  CreateInvoiceLineItemData,
   InvoiceFilters,
   InvoiceCalculations,
   LineItemCalculations,
@@ -14,6 +15,7 @@ import type {
   PaymentTerms,
   InvoiceStatus,
 } from "~/types/invoice";
+import { calculateLineItemTotal, calculateLineItemTax, calculateLineItemDiscount } from "~/utils/line-item-helpers";
 
 // Helper to create admin client
 function createSupabaseAdminClient(): SupabaseClient<Database> {
@@ -36,15 +38,20 @@ export function calculateLineItemTotals(
   taxRate: number = 0,
   discountRate: number = 0
 ): LineItemCalculations {
-  const subtotal = quantity * unitPrice;
-  // Convert percentage rates to decimal values (e.g., 7% -> 0.07)
-  const discountDecimal = discountRate / 100;
-  const taxDecimal = taxRate / 100;
-  
-  const discountAmount = subtotal * discountDecimal;
-  const taxableAmount = subtotal - discountAmount;
-  const taxAmount = taxableAmount * taxDecimal;
-  const lineTotal = subtotal - discountAmount + taxAmount;
+  // Create a temporary line item object to use with helper functions
+  const tempItem: CreateInvoiceLineItemData = {
+    item_type: 'other',
+    description: '',
+    quantity,
+    unit_price: unitPrice,
+    tax_rate: taxRate,
+    discount_rate: discountRate
+  };
+
+  // Use the centralized calculation functions
+  const lineTotal = calculateLineItemTotal(tempItem);
+  const taxAmount = calculateLineItemTax(tempItem);
+  const discountAmount = calculateLineItemDiscount(tempItem);
 
   return {
     line_total: Math.round(lineTotal * 100) / 100,

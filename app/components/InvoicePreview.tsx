@@ -1,6 +1,7 @@
 import type { InvoiceEntity, CreateInvoiceData } from "~/types/invoice";
 import { siteConfig } from "~/config/site";
-import { useInvoiceCalculations, formatCurrency } from "~/hooks/use-invoice-calculations";
+import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
+import { formatCurrency } from "~/utils/misc";
 import { formatEntityAddress, getPaymentTermsLabel } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod } from "~/utils/line-item-helpers";
 
@@ -11,9 +12,9 @@ interface InvoicePreviewProps {
 }
 
 export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePreviewProps) {
-  const { subtotal, totalTax, totalDiscount, total, lineItemTotals } = useInvoiceCalculations({
-    lineItems: invoiceData.line_items
-  });
+  const { subtotal, totalTax, totalDiscount, total, lineItemTotals } = useInvoiceCalculations(
+    invoiceData.line_items
+  );
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(siteConfig.localization.locale, {
@@ -135,10 +136,10 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
                         {item.quantity}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 text-right">
-                        {formatCurrency(item.unit_price)}
+                        {formatCurrency(item.unit_price * 100)}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">
-                        {formatCurrency(lineItemTotals[index])}
+                        {formatCurrency(lineItemTotals[index] * 100)}
                       </td>
                     </tr>
                   ))}
@@ -153,24 +154,24 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal:</span>
-                  <span className="text-gray-900">{formatCurrency(subtotal)}</span>
+                  <span className="text-gray-900">{formatCurrency(subtotal * 100)}</span>
                 </div>
                 {totalDiscount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Discount:</span>
-                    <span className="text-green-600">-{formatCurrency(totalDiscount)}</span>
+                    <span className="text-green-600">-{formatCurrency(totalDiscount * 100)}</span>
                   </div>
                 )}
                 {totalTax > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Tax:</span>
-                    <span className="text-gray-900">{formatCurrency(totalTax)}</span>
+                    <span className="text-gray-900">{formatCurrency(totalTax * 100)}</span>
                   </div>
                 )}
                 <div className="border-t border-gray-200 pt-2">
                   <div className="flex justify-between text-lg font-semibold">
                     <span className="text-gray-900">Total:</span>
-                    <span className="text-gray-900">{formatCurrency(total)}</span>
+                    <span className="text-gray-900">{formatCurrency(total * 100)}</span>
                   </div>
                 </div>
               </div>

@@ -10,7 +10,7 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
-import { formatCurrency } from '~/hooks/use-invoice-calculations';
+import { formatCurrency } from '~/utils/misc';
 import { calculateLineItemTotal } from '~/utils/line-item-helpers';
 import { InvoiceTemplateService } from '~/services/invoice-template.server';
 import { getTemplateCategories } from '~/data/invoice-templates';
@@ -328,7 +328,7 @@ export default function NewInvoiceTemplate() {
                                     <div className="space-y-2">
                                         <Label>Line Total</Label>
                                         <div className="h-10 px-3 py-2 border rounded-md bg-muted text-muted-foreground flex items-center">
-                                            {formatCurrency(calculateLineItemTotal(item))}
+                                            {formatCurrency(calculateLineItemTotal(item) * 100)}
                                         </div>
                                     </div>
                                 </div>
@@ -342,7 +342,7 @@ export default function NewInvoiceTemplate() {
                         <div className="border-t pt-4">
                             <div className="flex justify-between items-center text-lg font-semibold">
                                 <span>Template Total:</span>
-                                <span>{formatCurrency(calculateTotal())}</span>
+                                <span>{formatCurrency(calculateTotal() * 100)}</span>
                             </div>
                         </div>
                     </CardContent>

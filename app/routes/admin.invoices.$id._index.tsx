@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceById, updateInvoiceStatus, deleteInvoice } from "~/services/invoice.server";
-import { formatCurrency } from "~/hooks/use-invoice-calculations";
+import { formatCurrency } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod } from "~/utils/line-item-helpers";
 import { requireUserId } from "~/utils/auth.server";
@@ -424,10 +424,10 @@ export default function InvoiceDetailPage() {
                             {item.quantity}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900 dark:text-white text-right">
-                            {formatCurrency(item.unit_price)}
+                            {formatCurrency(item.unit_price * 100)}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900 dark:text-white text-right font-medium">
-                            {formatCurrency(item.line_total)}
+                            {formatCurrency(item.line_total * 100)}
                           </td>
                         </tr>
                       ))}
@@ -492,20 +492,20 @@ export default function InvoiceDetailPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-300">Subtotal:</span>
-                  <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.subtotal)}</span>
+                  <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.subtotal * 100)}</span>
                 </div>
                 
                 {invoice.discount_amount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-300">Discount:</span>
-                    <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoice.discount_amount)}</span>
+                    <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoice.discount_amount * 100)}</span>
                   </div>
                 )}
                 
                 {invoice.tax_amount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-300">Tax:</span>
-                    <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.tax_amount)}</span>
+                    <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.tax_amount * 100)}</span>
                   </div>
                 )}
                 
@@ -513,7 +513,7 @@ export default function InvoiceDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">Total:</span>
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {formatCurrency(invoice.total_amount)}
+                      {formatCurrency(invoice.total_amount * 100)}
                     </span>
                   </div>
                 </div>

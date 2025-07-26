@@ -625,7 +625,7 @@ export function PaymentForm({
                           <AlertDescription className="text-green-800 dark:text-green-200">
                             <strong>Discount Applied: {appliedDiscount.name || appliedDiscount.code}</strong>
                             <div className="text-sm mt-1">
-                              Discount: {formatCurrency(appliedDiscount.discount_amount)}
+                              Discount: {formatCurrency(appliedDiscount.discount_amount * 100)}
                             </div>
                           </AlertDescription>
                         </Alert>

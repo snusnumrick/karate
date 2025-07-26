@@ -240,7 +240,7 @@ export function DiscountCodeSelector({
                 <div>
                   <strong>Discount Applied: {discountCode}</strong>
                   <div className="text-sm mt-1">
-                    Discount: {formatCurrency(appliedDiscount.discount_amount)}
+                    Discount: {formatCurrency(appliedDiscount.discount_amount * 100)}
                   </div>
                 </div>
                 <Button

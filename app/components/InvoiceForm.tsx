@@ -12,7 +12,8 @@ import { InvoiceLineItemBuilder } from "~/components/InvoiceLineItemBuilder";
 import { InvoiceTemplates } from "~/components/InvoiceTemplates";
 import { InvoicePreview } from "~/components/InvoicePreview";
 import type { InvoiceEntity, CreateInvoiceData, CreateInvoiceLineItemData , InvoiceTemplate } from "~/types/invoice";
-import { useInvoiceCalculations, formatCurrency } from "~/hooks/use-invoice-calculations";
+import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
+import { formatCurrency } from "~/utils/misc";
 import { createEmptyLineItem } from "~/utils/line-item-helpers";
 import { calculateDueDate } from "~/utils/entity-helpers";
 import { Calendar, FileText, Eye, Save, Send, CheckCircle, AlertCircle, XCircle, Settings } from "lucide-react";
@@ -86,9 +87,9 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
   const [showPreview, setShowPreview] = useState(false);
 
   // Calculate totals
-  const { subtotal, totalTax, totalDiscount, total } = useInvoiceCalculations({
-    lineItems: invoiceData.line_items
-  });
+  const { subtotal, totalTax, totalDiscount, total } = useInvoiceCalculations(
+    invoiceData.line_items
+  );
 
   // Initialize form with initial data
   useEffect(() => {
@@ -406,23 +407,23 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                     <div className="space-y-2">
                       <div className="flex justify-between dark:text-gray-200">
                         <span>Subtotal:</span>
-                        <span>{formatCurrency(subtotal)}</span>
+                        <span>{formatCurrency(subtotal * 100)}</span>
                       </div>
                       {totalDiscount > 0 && (
                         <div className="flex justify-between text-green-600 dark:text-green-400">
                           <span>Total Discount:</span>
-                          <span>-{formatCurrency(totalDiscount)}</span>
+                          <span>-{formatCurrency(totalDiscount * 100)}</span>
                         </div>
                       )}
                       {totalTax > 0 && (
                         <div className="flex justify-between dark:text-gray-200">
                           <span>Total Tax:</span>
-                          <span>{formatCurrency(totalTax)}</span>
+                          <span>{formatCurrency(totalTax * 100)}</span>
                         </div>
                       )}
                       <div className="flex justify-between font-semibold text-lg border-t pt-2 dark:text-white dark:border-gray-600">
                         <span>Total:</span>
-                        <span>{formatCurrency(total)}</span>
+                        <span>{formatCurrency(total * 100)}</span>
                       </div>
                     </div>
                   </CardContent>

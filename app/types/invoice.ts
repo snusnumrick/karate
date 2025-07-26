@@ -153,6 +153,27 @@ export interface CreateInvoiceData {
   line_items: CreateInvoiceLineItemData[];
 }
 
+
+/**
+ * Represents the data structure for creating an invoice line item.
+ *
+ * This interface defines the properties needed to define a line item in an invoice, including details
+ * such as item type, description, quantity, pricing, and optional attributes related to tax, discounts,
+ * product or enrollment associations, service periods, and sort order.
+ *
+ * Properties:
+ * - item_type: Specifies the type of the invoice item (e.g., product, service, fee).
+ * - description: Provides a description of the line item.
+ * - quantity: Indicates the quantity of the item.
+ * - unit_price: Specifies the price per unit for the item.
+ * - tax_rate: (Optional) The applicable tax rate for the item, represented as a percentage.
+ * - discount_rate: (Optional) The applicable discount rate for the item, represented as a percentage.
+ * - enrollment_id: (Optional) Links the line item to a specific enrollment, if applicable.
+ * - product_id: (Optional) Identifies the associated product, if applicable.
+ * - service_period_start: (Optional) Indicates the start date of the service period for the item, in ISO 8601 format.
+ * - service_period_end: (Optional) Indicates the end date of the service period for the item, in ISO 8601 format.
+ * - sort_order: (Optional) Defines the sort order of the item in the invoice, to control the display sequence.
+ */
 export interface CreateInvoiceLineItemData {
   item_type: InvoiceItemType;
   description: string;

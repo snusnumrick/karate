@@ -9,7 +9,7 @@ import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoices } from "~/services/invoice.server";
-import { formatCurrency } from "~/hooks/use-invoice-calculations";
+import { formatCurrency } from "~/utils/misc";
 import { requireUserId } from "~/utils/auth.server";
 import { Plus, Search, FileText, Calendar, DollarSign, Users } from "lucide-react";
 import type { InvoiceWithDetails, InvoiceStatus } from "~/types/invoice";
@@ -163,7 +163,7 @@ export default function InvoicesIndexPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Amount</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalAmount)}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalAmount * 100)}</p>
                   </div>
                   <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
@@ -175,7 +175,7 @@ export default function InvoicesIndexPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Pending Amount</p>
-                    <p className="text-2xl font-bold text-orange-600">{formatCurrency(stats.pendingAmount)}</p>
+                    <p className="text-2xl font-bold text-orange-600">{formatCurrency(stats.pendingAmount * 100)}</p>
                   </div>
                   <Users className="h-8 w-8 text-orange-600" />
                 </div>
@@ -306,7 +306,7 @@ export default function InvoicesIndexPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatCurrency(invoice.total_amount)}
+                            {formatCurrency(invoice.total_amount * 100)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
