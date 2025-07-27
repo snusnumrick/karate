@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarFilters } from './CalendarFilters';
 import { CalendarGrid } from './CalendarGrid';
@@ -13,10 +12,11 @@ export function Calendar({
   filterOptions,
   className = ''
 }: CalendarProps) {
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(filterOptions?.selectedStudentId || 'all');
+  // Use the selectedStudentId from filterOptions instead of local state
+  const selectedStudentId = filterOptions?.selectedStudentId || 'all';
 
-  // Filter events based on selected student
-  const filteredEvents = filterEventsByStudent(events, selectedStudentId);
+  // Filter events based on selected student, passing students data for proper filtering
+  const filteredEvents = filterEventsByStudent(events, selectedStudentId, filterOptions?.students);
 
   // Generate calendar days and assign events
   const calendarDays = generateCalendarDays(currentDate);
@@ -35,7 +35,6 @@ export function Calendar({
   };
 
   const handleStudentChange = (studentId: string) => {
-    setSelectedStudentId(studentId);
     if (filterOptions?.onStudentChange) {
       filterOptions.onStudentChange(studentId);
     }

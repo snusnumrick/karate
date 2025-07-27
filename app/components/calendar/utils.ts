@@ -270,20 +270,41 @@ export function attendanceToCalendarEvents(
 /**
  * Filter events by student
  */
-export function filterEventsByStudent(events: CalendarEvent[], studentId?: string): CalendarEvent[] {
+export function filterEventsByStudent(
+  events: CalendarEvent[], 
+  studentId?: string, 
+  students?: Array<{ id: string; name: string }>
+): CalendarEvent[] {
   if (!studentId || studentId === 'all') {
     return events;
   }
   
+  // Find the selected student's name
+  const selectedStudent = students?.find(s => s.id === studentId);
+  const selectedStudentName = selectedStudent?.name;
+  
   return events.filter(event => {
-    // For attendance events, filter by the student who attended
-    if (event.type === 'attendance') {
-      // This would need student ID from attendance record
-      return true; // For now, show all attendance events
+    // Birthday events should always be visible regardless of filter
+    if (event.type === 'birthday') {
+      return true;
     }
     
-    // For session events, show all sessions (family can see all their enrolled classes)
-    return true;
+    // For attendance events, filter by the student who attended
+    if (event.type === 'attendance') {
+      return event.studentId === studentId;
+    }
+    
+    // For session events, filter by student enrollment
+    if (event.type === 'session') {
+      // Check if the selected student is enrolled in this class
+      if (event.studentNames && selectedStudentName) {
+        return event.studentNames.includes(selectedStudentName);
+      }
+      // If no studentNames or selectedStudentName, show all sessions (family is enrolled)
+      return true;
+    }
+    
+    return false;
   });
 }
 

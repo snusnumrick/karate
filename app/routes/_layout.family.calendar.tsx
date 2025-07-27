@@ -309,7 +309,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function FamilyCalendarPage() {
   const { students, sessions, attendance, enrollments, familyName, currentMonth } = useLoaderData<LoaderData>();
-  const [, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(() => parseISO(currentMonth + '-01'));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -332,7 +331,10 @@ export default function FamilyCalendarPage() {
     sessions, 
     enrollments, 
     studentList
-  );
+  ).map(event => ({
+    ...event,
+    studentId: transformedAttendance.find(a => a.id === event.attendanceId)?.student_id
+  }));
 
   // Add birthday events
   const currentYear = currentDate.getFullYear();
@@ -340,12 +342,27 @@ export default function FamilyCalendarPage() {
   
   const allEvents = [...sessionEvents, ...attendanceEvents, ...birthdayEvents];
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedStudentId = searchParams.get('student') || 'all';
+
   const handleDateChange = (newDate: Date) => {
     setCurrentDate(newDate);
     const newMonth = format(newDate, 'yyyy-MM');
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('month', newMonth);
+      return newParams;
+    });
+  };
+
+  const handleStudentChange = (studentId: string) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (studentId === 'all') {
+        newParams.delete('student');
+      } else {
+        newParams.set('student', studentId);
+      }
       return newParams;
     });
   };
@@ -441,88 +458,64 @@ export default function FamilyCalendarPage() {
   };
 
   return (
-    <div className="sm:container sm:mx-auto px-2 sm:px-4 py-4">
-      <div className="px-2 sm:px-0">
-        <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} className="mb-4" />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} />
+        </div>
 
-        <div className="mb-3 sm:mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">
-            <CalendarIcon className="inline-block mr-2 h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="hidden sm:inline">Calendar {familyName ? `for ${familyName}` : ''}</span>
-            <span className="sm:hidden">Calendar</span>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+            <CalendarIcon className="inline-block mr-2 h-6 w-6" />
+            Calendar {familyName ? `for ${familyName}` : ''}
           </h1>
         </div>
-      </div>
 
-      {/* Shared Calendar Component */}
-      <div className="-mx-2 sm:mx-0">
-        <Calendar
-          events={allEvents}
-          currentDate={currentDate}
-          onDateChange={handleDateChange}
-          onEventClick={handleEventClick}
-          filterOptions={{
-            students: studentList,
-            selectedStudentId: 'all',
-            onStudentChange: (studentId) => {
-              // Handle student filter change if needed
-              console.log('Student filter changed:', studentId);
-            }
-          }}
-        />
-      </div>
+        {/* Calendar Component in Card */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <Calendar
+            events={allEvents}
+            currentDate={currentDate}
+            onDateChange={handleDateChange}
+            onEventClick={handleEventClick}
+            filterOptions={{
+              students: studentList,
+              selectedStudentId: selectedStudentId,
+              onStudentChange: handleStudentChange
+            }}
+          />
+        </div>
 
-      {/* Legend */}
-      <div className="mt-3 sm:mt-4 px-2 sm:px-0">
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500 dark:border-blue-400 rounded text-xs text-blue-900 dark:text-blue-100 font-medium">
-              Scheduled
+        {/* Legend */}
+        <div className="mt-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Legend</h3>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500 dark:border-blue-400 rounded text-xs text-blue-900 dark:text-blue-100 font-medium">
+                Scheduled
+              </div>
+              <span className="text-gray-600 dark:text-gray-400">Scheduled class</span>
             </div>
-            <span>Scheduled class</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="px-2 py-1 bg-green-100 dark:bg-green-900/30 border-l-2 border-green-500 dark:border-green-400 rounded text-xs text-green-900 dark:text-green-100 font-medium">
-              Completed
+            <div className="flex items-center gap-2">
+              <div className="px-2 py-1 bg-green-100 dark:bg-green-900/30 border-l-2 border-green-500 dark:border-green-400 rounded text-xs text-green-900 dark:text-green-100 font-medium">
+                Completed
+              </div>
+              <span className="text-gray-600 dark:text-gray-400">Completed class</span>
             </div>
-            <span>Completed class</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="px-2 py-1 bg-red-100 dark:bg-red-900/30 border-l-2 border-red-500 dark:border-red-400 rounded text-xs text-red-900 dark:text-red-100 font-medium">
-              Cancelled
+            <div className="flex items-center gap-2">
+              <div className="px-2 py-1 bg-red-100 dark:bg-red-900/30 border-l-2 border-red-500 dark:border-red-400 rounded text-xs text-red-900 dark:text-red-100 font-medium">
+                Cancelled
+              </div>
+              <span className="text-gray-600 dark:text-gray-400">Cancelled class</span>
             </div>
-            <span>Cancelled class</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Badge variant="default" className="text-xs h-4 sm:h-5">Present</Badge>
-            <span>Attended class</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Badge variant="destructive" className="text-xs h-4 sm:h-5">Absent</Badge>
-            <span>Missed class</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Badge variant="secondary" className="text-xs h-4 sm:h-5">Late</Badge>
-            <span>Arrived late</span>
-          </div>
-          <div className="flex items-center gap-1 col-span-2 sm:col-span-1">
-            <Badge variant="outline" className="text-xs h-4 sm:h-5">Excused</Badge>
-            <span>Excused absence</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="px-2 py-1 bg-pink-100 dark:bg-pink-900/30 border-l-2 border-pink-500 dark:border-pink-400 rounded text-xs text-pink-900 dark:text-pink-100 font-medium">
-              🎂 Birthday
+            <div className="flex items-center gap-2">
+              <div className="px-2 py-1 bg-pink-100 dark:bg-pink-900/30 border-l-2 border-pink-500 dark:border-pink-400 rounded text-xs text-pink-900 dark:text-pink-100 font-medium">
+                Birthday
+              </div>
+              <span className="text-gray-600 dark:text-gray-400">Student birthday</span>
             </div>
-            <span>Student birthday</span>
           </div>
         </div>
-      </div>
-
-      {/* Quick Links */}
-      <div className="mt-4 px-2 sm:px-0">
-        <Button asChild>
-          <Link to="/family/attendance">Attendance History</Link>
-        </Button>
       </div>
 
       {/* Event Detail Modal */}
