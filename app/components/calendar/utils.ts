@@ -2,6 +2,40 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInte
 import type { CalendarDay, CalendarEvent } from './types';
 
 /**
+ * Convert student birthdays to calendar events
+ */
+export function birthdaysToCalendarEvents(
+  students: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string;
+  }>,
+  currentYear: number
+): CalendarEvent[] {
+  const events: CalendarEvent[] = [];
+  
+  students.forEach(student => {
+    if (student.birth_date) {
+      // Parse the birth date and create an event for the current year
+      const birthDate = parseLocalDate(student.birth_date);
+      const birthdayThisYear = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
+      
+      events.push({
+        id: `birthday-${student.id}-${currentYear}`,
+        title: `🎂 ${student.first_name} ${student.last_name}`,
+        date: birthdayThisYear,
+        type: 'birthday' as const,
+        studentName: `${student.first_name} ${student.last_name}`,
+        studentId: student.id
+      });
+    }
+  });
+  
+  return events;
+}
+
+/**
  * Generate calendar days for a given month
  */
 export function generateCalendarDays(date: Date): CalendarDay[] {
@@ -290,6 +324,23 @@ export function getAttendanceStatusVariant(status?: string): 'default' | 'second
     default:
       return 'outline';
   }
+}
+
+/**
+ * Get birthday event colors for calendar events
+ */
+export function getBirthdayColors(): {
+  background: string;
+  border: string;
+  text: string;
+  hover: string;
+} {
+  return {
+    background: 'bg-pink-100 dark:bg-pink-900/30',
+    border: 'border-pink-500 dark:border-pink-400',
+    text: 'text-pink-900 dark:text-pink-100',
+    hover: 'hover:bg-pink-200 dark:hover:bg-pink-900/50'
+  };
 }
 
 /**

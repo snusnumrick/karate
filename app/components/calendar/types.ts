@@ -4,7 +4,7 @@ export interface CalendarEvent {
   id: string;
   title: string;
   date: Date;
-  type: 'session' | 'attendance';
+  type: 'session' | 'attendance' | 'birthday';
   status?: 'present' | 'absent' | 'excused' | 'late' | 'scheduled' | 'completed' | 'cancelled';
   className?: string;
   studentName?: string;
@@ -15,6 +15,7 @@ export interface CalendarEvent {
   programName?: string;
   startTime?: string;
   endTime?: string;
+  studentId?: string; // For birthday events
 }
 
 export interface CalendarDay {

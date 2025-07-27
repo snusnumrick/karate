@@ -1,18 +1,19 @@
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
-import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
+import { Link, useLoaderData, useSearchParams, useNavigate } from "@remix-run/react";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
-import { parseLocalDate } from "~/components/calendar/utils";
+import { parseLocalDate, formatLocalDate, birthdaysToCalendarEvents } from "~/components/calendar/utils";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Calendar } from "~/components/calendar";
+import { Calendar } from "~/components/calendar/Calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { Calendar as CalendarIcon, Users, DollarSign, Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import {createClient} from "@supabase/supabase-js";
 
 // Enhanced admin calendar event interface
 interface AdminCalendarEvent {
@@ -60,6 +61,7 @@ interface AdminCalendarEvent {
 
 type LoaderData = {
   events: AdminCalendarEvent[];
+  birthdayEvents: CalendarEvent[];
   programs: Array<{ id: string; name: string; color?: string }>;
   instructors: Array<{ id: string; name: string }>;
   filters: {
@@ -73,9 +75,29 @@ type LoaderData = {
     totalEnrollments: number;
     averageCapacity: number;
   };
+  students: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string;
+  }>;
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
+
+  // Create a service role client directly for admin-level data fetching
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("Admin index loader: Missing Supabase URL or Service Role Key env variables.");
+    // Throw simple response, headers are handled by parent/Remix
+    throw new Response("Server configuration error.", { status: 500 });
+  }
+  // Use service role client for admin data access
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+
+
   const { supabaseServer, response } = getSupabaseServerClient(request);
   const headers = response.headers;
   const { data: { user } } = await supabaseServer.auth.getUser();
@@ -129,6 +151,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
       id: instructor.id,
       name: instructor.first_name + ' ' + instructor.last_name
     }));
+
+    // Fetch all students for birthday events
+    const { data: studentsData } = await supabaseAdmin
+      .from('students')
+      .select('id, first_name, last_name, birth_date')
+      .order('first_name');
+
+    const students = studentsData || [];
 
     // Build query for class sessions with filters
     const sessionsQuery = supabaseServer
@@ -273,6 +303,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
       ? totalCapacityPercentages.reduce((sum, percentage) => sum + percentage, 0) / totalCapacityPercentages.length
       : 0;
 
+    // Convert student birthdays to calendar events
+    const currentYear = new Date().getFullYear();
+    const studentsWithBirthDates = students.filter(s => s.birth_date);
+    const birthdayEvents = birthdaysToCalendarEvents(studentsWithBirthDates, currentYear);
+
     const stats = {
       totalSessions: events.length,
       completedSessions: events.filter(e => e.status === 'completed').length,
@@ -282,6 +317,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     return json({
       events,
+      birthdayEvents,
       programs,
       instructors,
       filters: {
@@ -296,6 +332,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.error('Error loading admin calendar:', error);
     return json({
       events: [],
+      birthdayEvents: [],
       programs: [],
       instructors: [],
       filters: {},
@@ -305,9 +342,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function AdminCalendar() {
-  const { events, programs, instructors, filters, stats } = useLoaderData<LoaderData>();
+  const { events, birthdayEvents, programs, instructors, filters, stats } = useLoaderData<LoaderData>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedEvent, setSelectedEvent] = useState<AdminCalendarEvent | null>(null);
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(() => {
     const month = searchParams.get('month');
     return month ? parseISO(month + '-01') : new Date();
@@ -331,10 +369,15 @@ export default function AdminCalendar() {
   };
 
   const handleEventClick = (event: CalendarEvent) => {
-    // Find the corresponding AdminCalendarEvent
-    const adminEvent = events.find(e => e.id === event.id);
-    if (adminEvent) {
-      setSelectedEvent(adminEvent);
+    if (event.type === 'session') {
+      // Handle session events for the modal
+      const adminEvent = events.find(e => e.id === event.id);
+      if (adminEvent) {
+        setSelectedEvent(adminEvent);
+      }
+    } else if (event.type === 'birthday' && event.studentId) {
+      // Navigate to student page when birthday event is clicked
+      navigate(`/admin/students/${event.studentId}`);
     }
   };
 
@@ -441,19 +484,24 @@ export default function AdminCalendar() {
         <Card>
           <CardContent className="p-0 sm:p-3">
             <Calendar
-              events={events.map(event => ({
-                id: event.id,
-                title: event.title,
-                date: event.date,
-                type: event.type,
-                status: event.status, // Pass the session status for color coding
-                className: event.className,
-                sessionId: event.sessionId,
-                classId: event.classId,
-                programName: event.programName,
-                startTime: event.startTime,
-                endTime: event.endTime
-              }))}
+              events={[
+                // Session events
+                ...events.map(event => ({
+                  id: event.id,
+                  title: event.title,
+                  date: event.date,
+                  type: event.type,
+                  status: event.status, // Pass the session status for color coding
+                  className: event.className,
+                  sessionId: event.sessionId,
+                  classId: event.classId,
+                  programName: event.programName,
+                  startTime: event.startTime,
+                  endTime: event.endTime
+                })),
+                // Birthday events
+                ...birthdayEvents
+              ]}
               currentDate={currentDate}
               onDateChange={handleDateChange}
               onEventClick={handleEventClick}

@@ -1,5 +1,5 @@
 import { Badge } from '~/components/ui/badge';
-import { formatEventTime, getAttendanceStatusVariant, getSessionStatusColors } from './utils';
+import { formatEventTime, getAttendanceStatusVariant, getSessionStatusColors, getBirthdayColors } from './utils';
 import type { CalendarEventProps } from './types';
 
 export function CalendarEvent({ event, onClick, compact = false }: CalendarEventProps) {
@@ -74,6 +74,28 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-tight">
             {event.className}
           </div>
+        )}
+      </div>
+    );
+  }
+
+  if (event.type === 'birthday') {
+    const colors = getBirthdayColors();
+    
+    return (
+      <div
+        className={`p-0.5 sm:p-1 mb-0.5 sm:mb-1 ${colors.background} border-l-2 sm:border-l-4 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`Birthday: ${event.studentName}`}
+      >
+        <div className={`font-medium ${colors.text} text-xs leading-tight`}>
+          {compact ? (event.title && event.title.length > 15 ? event.title.substring(0, 15) + '...' : event.title) : event.title}
+        </div>
+        {!compact && (
+          <div className={`text-xs ${colors.text} opacity-80 leading-tight`}>Birthday</div>
         )}
       </div>
     );

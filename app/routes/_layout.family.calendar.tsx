@@ -17,12 +17,12 @@ import {
 } from "date-fns";
 import { Calendar } from "~/components/calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
-import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate } from "~/components/calendar/utils";
+import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents } from "~/components/calendar/utils";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 // Define types
-type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
+type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name' | 'birth_date'>;
 type AttendanceRow = {
   id: string;
   student_id: string;
@@ -143,7 +143,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.log('Family Calendar Loader: Fetching students...');
     const { data: studentsData, error: studentsError } = await supabaseServer
       .from('students')
-      .select('id, first_name, last_name')
+      .select('id, first_name, last_name, birth_date')
       .eq('family_id', familyId)
       .order('last_name', { ascending: true })
       .order('first_name', { ascending: true });
@@ -333,7 +333,12 @@ export default function FamilyCalendarPage() {
     enrollments, 
     studentList
   );
-  const allEvents = [...sessionEvents, ...attendanceEvents];
+
+  // Add birthday events
+  const currentYear = currentDate.getFullYear();
+  const birthdayEvents = birthdaysToCalendarEvents(students, currentYear);
+  
+  const allEvents = [...sessionEvents, ...attendanceEvents, ...birthdayEvents];
 
   const handleDateChange = (newDate: Date) => {
     setCurrentDate(newDate);
@@ -346,8 +351,11 @@ export default function FamilyCalendarPage() {
   };
 
   const handleEventClick = (event: CalendarEvent) => {
-    setSelectedEvent(event);
-    setIsModalOpen(true);
+    // Only show details for session and attendance events, not birthdays
+    if (event.type === 'session' || event.type === 'attendance') {
+      setSelectedEvent(event);
+      setIsModalOpen(true);
+    }
   };
 
   const renderEventDetails = (event: CalendarEvent) => {
@@ -412,6 +420,20 @@ export default function FamilyCalendarPage() {
           {event.studentName && (
             <p className="text-gray-600 dark:text-gray-400">Student: {event.studentName}</p>
           )}
+        </div>
+      );
+    } else if (event.type === 'birthday') {
+      return (
+        <div className="p-3 border rounded-lg bg-pink-50 dark:bg-pink-900/30">
+          <div className="flex items-center justify-between mb-2">
+            <Badge variant="outline" className="border-pink-500 text-pink-700 dark:text-pink-300">
+              Birthday
+            </Badge>
+          </div>
+          <h4 className="font-semibold text-lg text-pink-900 dark:text-pink-100">
+            {event.studentName}'s Birthday
+          </h4>
+          <p className="text-pink-700 dark:text-pink-300">🎉 Happy Birthday!</p>
         </div>
       );
     }
@@ -486,6 +508,12 @@ export default function FamilyCalendarPage() {
           <div className="flex items-center gap-1 col-span-2 sm:col-span-1">
             <Badge variant="outline" className="text-xs h-4 sm:h-5">Excused</Badge>
             <span>Excused absence</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="px-2 py-1 bg-pink-100 dark:bg-pink-900/30 border-l-2 border-pink-500 dark:border-pink-400 rounded text-xs text-pink-900 dark:text-pink-100 font-medium">
+              🎂 Birthday
+            </div>
+            <span>Student birthday</span>
           </div>
         </div>
       </div>
