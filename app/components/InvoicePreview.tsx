@@ -12,7 +12,7 @@ interface InvoicePreviewProps {
 }
 
 export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePreviewProps) {
-  const { subtotal, totalTax, totalDiscount, total, lineItemTotals } = useInvoiceCalculations(
+  const { subtotal, totalTax, totalDiscount, total } = useInvoiceCalculations(
     invoiceData.line_items
   );
 
@@ -90,7 +90,6 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
                 const itemSubtotal = calculateLineItemSubtotal(item);
                 const itemDiscount = calculateLineItemDiscount(item);
                 const itemTax = calculateLineItemTax(item);
-                const itemTotal = lineItemTotals[index];
                 
                 return (
                   <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">

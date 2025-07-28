@@ -513,6 +513,17 @@ export const breadcrumbPatterns = {
     { label: "New Waiver", current: true },
   ],
 
+  adminEvents: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Events", current: true },
+  ],
+
+  adminEventsNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Events", href: "/admin/events" },
+    { label: "New Event", current: true },
+  ],
+
   // Invoice breadcrumb patterns
   adminInvoices: () => [
     { label: "Admin Dashboard", href: "/admin" },

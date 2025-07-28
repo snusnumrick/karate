@@ -263,7 +263,7 @@ export default function EditAutomationRule() {
                       <SelectValue placeholder="Any belt rank" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any belt rank</SelectItem>
+                      <SelectItem value="any">Any belt rank</SelectItem>
                       <SelectItem value="white">White Belt</SelectItem>
                       <SelectItem value="yellow">Yellow Belt</SelectItem>
                       <SelectItem value="orange">Orange Belt</SelectItem>

@@ -398,3 +398,20 @@ export function getSessionStatusColors(status?: string): {
       };
   }
 }
+
+/**
+ * Get event colors for calendar events from the events table
+ */
+export function getEventColors(): {
+  background: string;
+  border: string;
+  text: string;
+  hover: string;
+} {
+  return {
+    background: 'bg-purple-100 dark:bg-purple-900/30',
+    border: 'border-purple-500 dark:border-purple-400',
+    text: 'text-purple-900 dark:text-purple-100',
+    hover: 'hover:bg-purple-200 dark:hover:bg-purple-900/50'
+  };
+}

@@ -237,6 +237,40 @@ for communication between families and administrators.
     - `invoice_template_line_items`: Template line item configurations
 - **Migration Support:** Seamless transition from static template data to database storage with full backward compatibility.
 
+### Events System
+- **Comprehensive Event Management:** Full-featured events system for managing one-off events like competitions, seminars, tournaments, workshops, and social events that extend beyond regular class schedules.
+- **Event Types and Status Management:** Support for multiple event types (competition, seminar, testing, tournament, workshop, social_event, fundraiser, other) with comprehensive status tracking (draft, published, registration_open, registration_closed, in_progress, completed, cancelled).
+- **Flexible Event Configuration:** 
+    - **Date and Time Management:** Support for single-day and multi-day events with customizable start/end times and timezone handling
+    - **Location Information:** Venue details including location name and full address
+    - **Capacity Management:** Maximum participant limits with automatic registration cutoffs
+    - **Registration Deadlines:** Configurable registration deadlines with automatic enforcement
+    - **Age and Belt Rank Requirements:** Flexible eligibility criteria based on minimum/maximum age and belt rank restrictions
+- **Registration and Payment Processing:**
+    - **Student Registration System:** Family-based registration allowing parents to register their children for events
+    - **Payment Integration:** Seamless integration with existing payment system including registration fees and late registration penalties
+    - **Registration Status Tracking:** Comprehensive status management (pending, confirmed, cancelled, waitlist) with automatic status updates
+    - **Waitlist Management:** Automatic waitlist handling when events reach capacity
+- **Waiver Integration:**
+    - **Event-Specific Waivers:** Link specific waivers to events with required/optional designation
+    - **Waiver Enforcement:** Automatic validation ensuring required waivers are signed before registration completion
+    - **Flexible Waiver Requirements:** Support for multiple waivers per event with individual requirement settings
+- **Administrative Interface:**
+    - **Events Dashboard:** Comprehensive overview with event statistics, upcoming events, and registration summaries (`/admin/events`)
+    - **Event Creation:** Intuitive event creation form with all configuration options (`/admin/events/new`)
+    - **Registration Management:** View and manage all event registrations with filtering and status updates
+    - **Reporting and Analytics:** Event performance metrics including registration counts, revenue tracking, and attendance statistics
+- **Eligibility Validation:**
+    - **Automated Eligibility Checking:** Built-in function to validate student eligibility based on age, belt rank, capacity, and registration deadlines
+    - **Real-Time Validation:** Immediate feedback during registration process with clear eligibility messaging
+    - **Duplicate Prevention:** Automatic prevention of duplicate registrations for the same student
+- **Calendar Integration:** Events seamlessly integrate with existing calendar systems showing alongside regular classes and programs.
+- **Database Architecture:** Robust three-table design:
+    - `events`: Core event information with comprehensive metadata
+    - `event_registrations`: Student registration tracking with payment and status management
+    - `event_waivers`: Junction table linking events to required waivers
+- **Security and Permissions:** Complete Row Level Security (RLS) implementation with role-based access control for admins, instructors, and families.
+
 ### Technical & SEO
 - Built with Remix for SSR and performance.
 - Uses Supabase for backend (database, auth, edge functions).

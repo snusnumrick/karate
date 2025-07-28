@@ -2,7 +2,7 @@ import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams, useNavigate } from "@remix-run/react";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
-import { parseLocalDate, formatLocalDate, birthdaysToCalendarEvents } from "~/components/calendar/utils";
+import { parseLocalDate, birthdaysToCalendarEvents } from "~/components/calendar/utils";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -21,7 +21,7 @@ interface AdminCalendarEvent {
   id: string;
   title: string;
   date: Date;
-  type: 'session' | 'attendance';
+  type: 'session' | 'attendance' | 'event';
   status: 'scheduled' | 'completed' | 'cancelled';
   className?: string;
   sessionId?: string;
@@ -236,8 +236,39 @@ export async function loader({ request }: LoaderFunctionArgs) {
       });
     }
 
+    // Fetch events from the events table
+    const { data: eventsData, error: eventsError } = await supabaseServer
+      .from('events')
+      .select(`
+        id,
+        title,
+        description,
+        event_type,
+        status,
+        start_date,
+        end_date,
+        start_time,
+        end_time,
+        location,
+        max_participants,
+        registration_fee,
+        instructor_id,
+        instructor:profiles!events_instructor_id_fkey (
+          id,
+          first_name,
+          last_name
+        )
+      `)
+      .gte('start_date', format(calendarStart, 'yyyy-MM-dd'))
+      .lte('start_date', format(calendarEnd, 'yyyy-MM-dd'))
+      .order('start_date')
+      .order('start_time');
+
+    if (eventsError) throw eventsError;
+    const eventsList = eventsData || [];
+
     // Transform sessions to admin calendar events
-    const events: AdminCalendarEvent[] = sessions
+    const sessionEvents: AdminCalendarEvent[] = sessions
       .filter(session => {
         if (!session.classes) return false;
 
@@ -292,6 +323,66 @@ export async function loader({ request }: LoaderFunctionArgs) {
           }
         };
       });
+
+    // Transform events from events table to admin calendar events
+    const generalEvents: AdminCalendarEvent[] = eventsList
+      .filter(event => {
+        // Apply instructor filter if set
+        if (instructorFilter && event.instructor_id !== instructorFilter) return false;
+        // Apply status filter if set (map event status to session status)
+        if (statusFilter) {
+          const mappedStatus = event.status === 'completed' ? 'completed' : 
+                              event.status === 'cancelled' ? 'cancelled' : 'scheduled';
+          if (mappedStatus !== statusFilter) return false;
+        }
+        return true;
+      })
+      .map(event => {
+        const instructorData = event.instructor;
+        
+        return {
+          id: `event-${event.id}`,
+          title: event.title,
+          date: parseLocalDate(event.start_date),
+          type: 'event' as const,
+          eventType: event.event_type,
+          status: (event.status === 'completed' ? 'completed' : 
+                   event.status === 'cancelled' ? 'cancelled' : 'scheduled') as 'scheduled' | 'completed' | 'cancelled',
+          className: event.title,
+          sessionId: undefined,
+          classId: undefined,
+          programName: event.event_type.replace('_', ' ').toUpperCase(),
+          startTime: event.start_time || undefined,
+          endTime: event.end_time || undefined,
+
+          // Admin-specific properties
+          programId: 'events', // Special program ID for events
+          programColor: undefined,
+
+          enrollmentStats: {
+            enrolled: 0, // Would need to query event_registrations
+            capacity: event.max_participants || 0,
+            waitlist: 0
+          },
+
+          instructorId: instructorData?.id,
+          instructorName: instructorData ? instructorData.first_name + ' ' + instructorData.last_name : undefined,
+
+          paymentStatus: 'complete' as const,
+          attendanceRecorded: false,
+          sessionGenerated: true,
+
+          adminActions: {
+            canEditSession: true,
+            canRecordAttendance: false,
+            canManageEnrollments: true,
+            canViewPayments: true
+          }
+        };
+      });
+
+    // Combine session events and general events
+    const events: AdminCalendarEvent[] = [...sessionEvents, ...generalEvents];
 
     // Calculate stats
     const totalCapacityPercentages = events.map(e => {

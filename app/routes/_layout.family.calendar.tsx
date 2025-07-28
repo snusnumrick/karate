@@ -2,9 +2,8 @@ import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams, useRouteError } from "@remix-run/react";
 import { useState } from "react";
 import type { Database } from "~/types/database.types";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { createClient, getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { 
@@ -77,11 +76,25 @@ type EnrollmentWithClass = {
   } | null;
 };
 
+type EventRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  event_type: string;
+  start_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
+  status: string;
+  is_public: boolean;
+};
+
 type LoaderData = {
   students: StudentRow[];
   sessions: ClassSession[];
   attendance: AttendanceRow[];
   enrollments: EnrollmentWithClass[];
+  events: EventRow[];
   familyName: string | null;
   currentMonth: string;
 };
@@ -275,11 +288,84 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const attendanceRecords = attendanceData as AttendanceRow[] ?? [];
     console.log('Family Calendar Loader: Attendance records found:', attendanceRecords.length);
 
+    // Fetch events and check eligibility for family students
+    console.log('Family Calendar Loader: Fetching events...');
+    const { data: eventsData, error: eventsError } = await supabaseServer
+      .from('events')
+      .select(`
+        id,
+        title,
+        description,
+        event_type,
+        start_date,
+        start_time,
+        end_time,
+        location,
+        status,
+        is_public
+      `)
+      .gte('start_date', formatLocalDate(calendarStart))
+      .lte('start_date', formatLocalDate(calendarEnd))
+      .in('status', ['published', 'registration_open'])
+      .order('start_date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (eventsError) {
+      console.error('Family Calendar Loader: Events query error:', eventsError);
+      throw new Error(`Failed to fetch events: ${eventsError.message}`);
+    }
+
+    const allEvents = (eventsData || []) as EventRow[];
+    console.log('Family Calendar Loader: All events found:', allEvents.length);
+
+    // Filter events to only include those where at least one family student is eligible
+    const eligibleEvents: EventRow[] = [];
+    
+    // Create service role client for RPC calls
+    const supabaseService = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    
+    for (const event of allEvents) {
+      let hasEligibleStudent = false;
+      
+      // Check eligibility for each student in the family
+      for (const student of students) {
+        try {
+          const { data: eligibilityResult, error: eligibilityError } = await supabaseService
+            .rpc('check_event_registration_eligibility', {
+              p_event_id: event.id,
+              p_student_id: student.id
+            });
+
+          if (eligibilityError) {
+            console.error(`Family Calendar Loader: Eligibility check error for student ${student.id}, event ${event.id}:`, eligibilityError);
+            continue;
+          }
+
+          // Parse the JSON result
+          const result = typeof eligibilityResult === 'string' ? JSON.parse(eligibilityResult) : eligibilityResult;
+          if (result?.eligible === true) {
+            hasEligibleStudent = true;
+            break; // At least one student is eligible, no need to check others
+          }
+        } catch (error) {
+          console.error(`Family Calendar Loader: Error checking eligibility for student ${student.id}, event ${event.id}:`, error);
+          continue;
+        }
+      }
+      
+      if (hasEligibleStudent) {
+        eligibleEvents.push(event);
+      }
+    }
+    
+    console.log('Family Calendar Loader: Eligible events found:', eligibleEvents.length);
+
     const result = {
       students, 
       sessions: upcomingSessions, 
       attendance: attendanceRecords, 
       enrollments, 
+      events: eligibleEvents,
       familyName, 
       currentMonth 
     };
@@ -308,7 +394,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function FamilyCalendarPage() {
-  const { students, sessions, attendance, enrollments, familyName, currentMonth } = useLoaderData<LoaderData>();
+  const { students, sessions, attendance, enrollments, events, familyName, currentMonth } = useLoaderData<LoaderData>();
   const [currentDate, setCurrentDate] = useState(() => parseISO(currentMonth + '-01'));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -340,7 +426,33 @@ export default function FamilyCalendarPage() {
   const currentYear = currentDate.getFullYear();
   const birthdayEvents = birthdaysToCalendarEvents(students, currentYear);
   
-  const allEvents = [...sessionEvents, ...attendanceEvents, ...birthdayEvents];
+  // Transform events into CalendarEvent objects
+  console.log('Family Calendar: Raw events from loader:', events);
+  const eventCalendarEvents: CalendarEvent[] = events.map((event: EventRow) => {
+    const calendarEvent = {
+      id: event.id,
+      title: event.title,
+      date: new Date(event.start_date),
+      type: 'event' as const,
+      eventType: event.event_type,
+      startTime: event.start_time || undefined,
+      endTime: event.end_time || undefined,
+      location: event.location || undefined,
+      description: event.description || undefined,
+      status: event.status === 'completed' ? 'completed' as const : 
+              event.status === 'cancelled' ? 'cancelled' as const : 
+              'scheduled' as const,
+    };
+    console.log('Family Calendar: Transformed event:', calendarEvent);
+    return calendarEvent;
+  });
+  
+  const allEvents = [...sessionEvents, ...attendanceEvents, ...birthdayEvents, ...eventCalendarEvents];
+  console.log('Family Calendar: All events for calendar:', allEvents);
+  console.log('Family Calendar: Session events:', sessionEvents);
+  console.log('Family Calendar: Attendance events:', attendanceEvents);
+  console.log('Family Calendar: Birthday events:', birthdayEvents);
+  console.log('Family Calendar: Event calendar events:', eventCalendarEvents);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedStudentId = searchParams.get('student') || 'all';
@@ -368,8 +480,8 @@ export default function FamilyCalendarPage() {
   };
 
   const handleEventClick = (event: CalendarEvent) => {
-    // Only show details for session and attendance events, not birthdays
-    if (event.type === 'session' || event.type === 'attendance') {
+    // Show details for session, attendance, and event types, not birthdays
+    if (event.type === 'session' || event.type === 'attendance' || event.type === 'event') {
       setSelectedEvent(event);
       setIsModalOpen(true);
     }
@@ -448,9 +560,40 @@ export default function FamilyCalendarPage() {
             </Badge>
           </div>
           <h4 className="font-semibold text-lg text-pink-900 dark:text-pink-100">
-            {event.studentName}'s Birthday
+            {event.studentName}&apos;s Birthday
           </h4>
           <p className="text-pink-700 dark:text-pink-300">🎉 Happy Birthday!</p>
+        </div>
+      );
+    } else if (event.type === 'event') {
+      return (
+        <div className="p-3 border rounded-lg bg-purple-50 dark:bg-purple-900/30">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="border-purple-500 text-purple-700 dark:text-purple-300">
+                Event
+              </Badge>
+              {event.eventType && (
+                <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-200">
+                  {event.eventType.charAt(0).toUpperCase() + event.eventType.slice(1)}
+                </Badge>
+              )}
+            </div>
+            {event.startTime && event.endTime && (
+              <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                {event.startTime} - {event.endTime}
+              </span>
+            )}
+          </div>
+          <h4 className="font-semibold text-lg text-purple-900 dark:text-purple-100">
+            {event.title}
+          </h4>
+          {event.description && (
+            <p className="text-purple-700 dark:text-purple-300 mt-2">{event.description}</p>
+          )}
+          {event.location && (
+            <p className="text-purple-600 dark:text-purple-400 text-sm mt-1">📍 {event.location}</p>
+          )}
         </div>
       );
     }
@@ -513,6 +656,12 @@ export default function FamilyCalendarPage() {
                 Birthday
               </div>
               <span className="text-gray-600 dark:text-gray-400">Student birthday</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 border-l-2 border-purple-500 dark:border-purple-400 rounded text-xs text-purple-900 dark:text-purple-100 font-medium">
+                Event
+              </div>
+              <span className="text-gray-600 dark:text-gray-400">School event</span>
             </div>
           </div>
         </div>

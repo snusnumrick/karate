@@ -8,7 +8,7 @@ import {
 } from '@react-pdf/renderer';
 import { siteConfig } from '~/config/site';
 import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
-import { calculateLineItemSubtotal, calculateLineItemDiscount, calculateLineItemTax } from '~/utils/line-item-helpers';
+import { calculateLineItemDiscount, calculateLineItemTax } from '~/utils/line-item-helpers';
 
 const styles = StyleSheet.create({
   page: {

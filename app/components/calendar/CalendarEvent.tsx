@@ -1,5 +1,6 @@
 import { Badge } from '~/components/ui/badge';
-import { formatEventTime, getAttendanceStatusVariant, getSessionStatusColors, getBirthdayColors } from './utils';
+import { CalendarIcon } from 'lucide-react';
+import { formatEventTime, getAttendanceStatusVariant, getSessionStatusColors, getBirthdayColors, getEventColors } from './utils';
 import type { CalendarEventProps } from './types';
 
 export function CalendarEvent({ event, onClick, compact = false }: CalendarEventProps) {
@@ -96,6 +97,38 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
         </div>
         {!compact && (
           <div className={`text-xs ${colors.text} opacity-80 leading-tight`}>Birthday</div>
+        )}
+      </div>
+    );
+  }
+
+  if (event.type === 'event') {
+    const colors = getEventColors();
+    
+    return (
+      <div
+        className={`p-0.5 sm:p-1 mb-0.5 sm:mb-1 ${colors.background} border-l-2 sm:border-l-4 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`Event: ${event.title}`}
+      >
+        <div className="flex items-center gap-1">
+          <CalendarIcon className="w-3 h-3 flex-shrink-0" />
+          <div className={`font-medium ${colors.text} text-xs leading-tight truncate`}>
+            {compact ? (event.title && event.title.length > 15 ? event.title.substring(0, 15) + '...' : event.title) : event.title}
+          </div>
+        </div>
+        {!compact && event.eventType && (
+          <div className={`text-xs ${colors.text} opacity-80 leading-tight capitalize`}>
+            {event.eventType.replace('_', ' ')}
+          </div>
+        )}
+        {!compact && (event.startTime || event.endTime) && (
+          <div className={`text-xs ${colors.text} opacity-70 leading-tight`}>
+            {formatEventTime(event.startTime, event.endTime)}
+          </div>
         )}
       </div>
     );

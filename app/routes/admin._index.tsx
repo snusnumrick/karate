@@ -95,7 +95,7 @@ export async function loader(_: LoaderFunctionArgs) {
         const [
             {count: familyCount, error: familiesError},
             {count: studentCount, error: studentsError},
-            {data: completedPayments, error: paymentsError}, // Fetch amounts to sum
+            {data: completedPayments, error: paymentsError},
             {count: attendanceToday, error: attendanceError},
             {data: pendingPaymentsFamilies, error: pendingPaymentsError},
             // Fetch users who haven't signed *all* required waivers
@@ -104,7 +104,8 @@ export async function loader(_: LoaderFunctionArgs) {
             {error: usersSignaturesError}, // Fetch users who signed *any* required waiver
             {data: discountUsageData, error: discountUsageError}, // Fetch discount usage stats
             invoiceStats,
-            invoiceEntitiesResult
+            invoiceEntitiesResult,
+            {count: activeEventsCount}
         ] = await Promise.all([
             supabaseAdmin.from('families').select('id', {count: 'exact', head: true}), // Use admin client
             supabaseAdmin.from('students').select('id', {count: 'exact', head: true}), // Use admin client
@@ -126,7 +127,12 @@ export async function loader(_: LoaderFunctionArgs) {
                 .gte('used_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
             // Fetch invoice statistics
             getInvoiceStats(supabaseAdmin),
-            getInvoiceEntities({}, 1, 1000, supabaseAdmin)
+            getInvoiceEntities({}, 1, 1000, supabaseAdmin),
+            // Fetch events statistics
+            supabaseAdmin
+                .from('events')
+                .select('id', {count: 'exact', head: true})
+                .eq('status', 'published')
         ]);
 
         // Extract invoice entities from the result
@@ -335,6 +341,8 @@ export async function loader(_: LoaderFunctionArgs) {
                 overdue_count: 0,
             },
             totalInvoiceEntities: invoiceEntities.length || 0,
+            // Events statistics
+            activeEventsCount: activeEventsCount ?? 0,
         }); // Remove headers object
 
     } catch (error) {
@@ -493,6 +501,19 @@ export default function AdminDashboard() {
                     </Link>
                 </div>
 
+                {/* Active Events Card */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-indigo-600">
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Active Events</h2>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.activeEventsCount}</p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Published events
+                    </div>
+                    <Link to="/admin/events"
+                          className="text-indigo-600 dark:text-indigo-400 text-sm hover:underline mt-2 inline-block">
+                        Manage events →
+                    </Link>
+                </div>
+
 
             </div>
 
@@ -549,6 +570,12 @@ export default function AdminDashboard() {
                             className="block p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                         >
                             Create Invoice
+                        </Link>
+                        <Link
+                            to="/admin/events/new"
+                            className="block p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                        >
+                            Create New Event
                         </Link>
                     </div>
                 </div>

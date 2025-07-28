@@ -60,6 +60,7 @@ const billingNavItems = [
 const calendarAttendanceNavItems = [
     {to: "/admin/calendar", label: "Calendar", icon: Calendar},
     {to: "/admin/attendance", label: "Attendance", icon: CalendarCheck},
+    {to: "/admin/events", label: "Events", icon: Calendar},
 ];
 
 // Define People Management navigation items (Families, Students, Enrollments)
