@@ -9,10 +9,8 @@ import {
   Wifi, 
   Download, 
   Shield, 
-  Bell,
-  ArrowLeft
+  Bell
 } from "lucide-react";
-import { Link } from "@remix-run/react";
 
 export const meta: MetaFunction = () => {
   return [
@@ -62,31 +60,22 @@ export default function PWAInfo() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Header */}
-      <div className="mb-8">
-        <Link 
-          to="/" 
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Home
-        </Link>
-
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-green-600 mb-4">
-            Progressive Web App
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Experience Greenegin Karate like never before with our Progressive Web App. 
-            Get app-like performance with the convenience of the web.
-          </p>
-        </div>
-      </div>
+        <div className="page-background-styles py-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                {/* Header */}
+                <div className="text-center mb-12">
+                    <h1 className="text-4xl font-bold page-header-styles mb-4">
+                        Greenegin Karate PWA
+                    </h1>
+                    <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                        Install our Progressive Web App for the best experience. Get instant access to class schedules,
+                        notifications, and more - even when you&apos;re offline!
+                    </p>
+                </div>
 
       {/* Installation Section */}
       {canInstall && (
-        <Card className="mb-8 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+        <Card className="form-container-styles mb-8 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
           <CardHeader className="text-center">
             <CardTitle className="text-green-700 dark:text-green-300">
               Install Greenegin Karate App
@@ -114,7 +103,7 @@ export default function PWAInfo() {
       {/* Features Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {features.map((feature, index) => (
-          <Card key={index} className="h-full">
+          <Card key={index} className="form-container-styles h-full">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg text-green-600 dark:text-green-400">
@@ -131,12 +120,12 @@ export default function PWAInfo() {
       </div>
 
       {/* PWA Status */}
-      <div className="flex justify-center mb-8">
+      <div className="mb-8">
         <PWAStatus />
       </div>
 
       {/* How to Install */}
-      <Card>
+      <Card className="form-container-styles">
         <CardHeader>
           <CardTitle>How to Install</CardTitle>
           <CardDescription>
@@ -177,7 +166,7 @@ export default function PWAInfo() {
       </Card>
 
       {/* Benefits */}
-      <Card className="mt-8">
+      <Card className="form-container-styles mt-8">
         <CardHeader>
           <CardTitle>Why Use the PWA?</CardTitle>
           <CardDescription>
@@ -210,7 +199,7 @@ export default function PWAInfo() {
       </Card>
 
       {/* Notification Features */}
-      <Card className="mt-8">
+      <Card className="form-container-styles mt-8">
         <CardHeader>
           <CardTitle>Smart Notifications</CardTitle>
           <CardDescription>
@@ -240,6 +229,7 @@ export default function PWAInfo() {
           </div>
         </CardContent>
       </Card>
+    </div>
     </div>
   );
 }

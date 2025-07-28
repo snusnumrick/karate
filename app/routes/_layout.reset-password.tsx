@@ -106,7 +106,7 @@ export default function ResetPasswordPage() {
         return (
             <div className="min-h-screen bg-amber-50 dark:bg-gray-800 flex flex-col justify-center items-center">
                 <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                    <div className="bg-white dark:bg-gray-700 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                    <div className="form-container-styles py-8 px-4 sm:px-10">
                         <Alert variant="destructive">
                             <AlertTitle className="dark:text-red-200">Invalid Reset Link</AlertTitle>
                             <AlertDescription className="dark:text-red-300">
@@ -140,7 +140,7 @@ export default function ResetPasswordPage() {
                 </div>
 
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                    <div className="bg-white dark:bg-gray-700 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                    <div className="form-container-styles py-8 px-4 sm:px-10">
                         <form className="space-y-6" method="post">
                             {/* Display error message */}
                             {actionData?.error && (

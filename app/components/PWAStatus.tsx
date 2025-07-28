@@ -48,7 +48,7 @@ export function PWAStatus() {
   // Don't render until client-side
   if (!isClient) {
     return (
-      <Card className="w-full max-w-md">
+      <Card className="form-container-styles">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Smartphone className="h-5 w-5" />
@@ -70,7 +70,7 @@ export function PWAStatus() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="form-container-styles">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Smartphone className="h-5 w-5" />
@@ -85,41 +85,44 @@ export function PWAStatus() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isOnline ? (
-              <Wifi className="h-4 w-4 text-green-600" />
+              <Wifi className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <WifiOff className="h-4 w-4 text-red-600" />
+              <WifiOff className="h-4 w-4 text-muted-foreground" />
             )}
             <span className="text-sm font-medium">Connection</span>
           </div>
-          <Badge variant={isOnline ? "default" : "destructive"}>
-            {isOnline ? "Online" : "Offline"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{isOnline ? "Online" : "Offline"}</span>
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          </div>
         </div>
 
         {/* Installation Status */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isAppInstalled ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <Globe className="h-4 w-4 text-blue-600" />
+              <Globe className="h-4 w-4 text-muted-foreground" />
             )}
             <span className="text-sm font-medium">Installation</span>
           </div>
-          <Badge variant={isAppInstalled ? "default" : "secondary"}>
-            {isAppInstalled ? "Installed" : "Browser"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{isAppInstalled ? "Installed" : "Browser"}</span>
+            <div className={`w-2 h-2 rounded-full ${isAppInstalled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+          </div>
         </div>
 
         {/* Display Mode */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Smartphone className="h-4 w-4 text-blue-600" />
+            <Smartphone className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Display Mode</span>
           </div>
-          <Badge variant="outline">
-            {displayMode}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <span className="text-sm capitalize">{displayMode}</span>
+            <div className={`w-2 h-2 rounded-full ${displayMode === 'standalone' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+          </div>
         </div>
 
         {/* Install Button */}

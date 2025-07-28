@@ -159,19 +159,29 @@ export default function RegisterPage() {
 
     return (
         <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {isBaseRegisterRoute ? (
-                    // Render the multi-step form only on /register
-                    <div
-                        className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
-                        {/* Stack vertically on mobile, row on sm+, adjust spacing/alignment */}
-                        <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                            <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Registration</h1>
-                            <Link to="/login"
-                                  className="text-sm text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300 sm:text-base">
-                                Already a customer? Click here to login.
-                            </Link>
+                    <>
+                        {/* Page Header */}
+                        <div className="text-center mb-12">
+                            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                                Student Registration
+                            </h1>
+                            <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                                Join our karate family and start your martial arts journey
+                            </p>
                         </div>
+
+                        {/* Registration Form */}
+                        <div className="form-container-styles p-8 backdrop-blur-lg">
+                            {/* Form Header */}
+                            <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                                <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Registration Form</h2>
+                                <Link to="/login"
+                                      className="text-sm text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300 sm:text-base">
+                                    Already a customer? Click here to login.
+                                </Link>
+                            </div>
 
                         <div
                             className="mb-6 p-4 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-md text-center">
@@ -235,27 +245,29 @@ export default function RegisterPage() {
 
                                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">FAMILY
                                     INFORMATION</h2>
-                                <div>
-                                    <Label htmlFor="familyName" className="text-sm font-medium mb-1">
-                                        Family Last Name<span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        type="text"
-                                        id="familyName"
-                                        name="familyName"
-                                        required
-                                        className={`input-custom-styles ${errors?.familyName ? 'border-red-500' : ''}`}
-                                        tabIndex={3}
-                                    />
-                                    {errors?.familyName && (
-                                        <p className="text-red-500 text-sm mt-1">{errors.familyName}</p>
-                                    )}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <Label htmlFor="familyName" className="text-sm font-medium mb-1">
+                                            Family Last Name<span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input
+                                            type="text"
+                                            id="familyName"
+                                            name="familyName"
+                                            required
+                                            className={`input-custom-styles ${errors?.familyName ? 'border-red-500' : ''}`}
+                                            tabIndex={3}
+                                        />
+                                        {errors?.familyName && (
+                                            <p className="text-red-500 text-sm mt-1">{errors.familyName}</p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">WHERE
                                     DO YOU LIVE?</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="md:col-span-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div className="md:col-span-2 lg:col-span-3">
                                         <Label htmlFor="address" className="text-sm font-medium mb-1">
                                             Home Address<span className="text-red-500">*</span>
                                         </Label>
@@ -296,7 +308,8 @@ export default function RegisterPage() {
                                         <Select name="province" required>
                                             <SelectTrigger id="province"
                                            className="input-custom-styles"
-                                           aria-describedby="province-error">
+                                           aria-describedby="province-error"
+                                           tabIndex={6}>
                                 <SelectValue placeholder="Select province" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -329,7 +342,9 @@ export default function RegisterPage() {
                                             <p className="text-red-500 text-sm mt-1">{errors.postalCode}</p>
                                         )}
                                     </div>
+                                </div>
 
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                     <div>
                                         <Label htmlFor="primaryPhone" className="text-sm font-medium mb-1">
                                             Primary Phone<span className="text-red-500">*</span>
@@ -619,7 +634,8 @@ export default function RegisterPage() {
                             )}
 
                         </Form>
-                    </div>
+                        </div>
+                    </>
                 ) : (
                     // Render the Outlet for child routes like /register/success
                     <Outlet/>

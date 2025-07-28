@@ -50,7 +50,7 @@ export async function apiClient<T = unknown>(endpoint: string, options: ApiClien
         try {
             responseBody = await response.json();
             console.error(`[API Client] Response Body: ${JSON.stringify(responseBody)}`); // Ensure this uses console.error
-        } catch (jsonError) {
+        } catch {
             // If JSON parsing fails, read as text (for non-JSON errors)
             const textBody = await response.text();
             console.error(`[API Client] Response Body (non-JSON): ${textBody}`); // Ensure this uses console.error

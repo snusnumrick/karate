@@ -1,8 +1,8 @@
-import { Link } from "@remix-run/react"; // Import Link for the button
-import { siteConfig } from "~/config/site"; // Import site config
+import {Link} from "@remix-run/react"; // Import Link for the button
+import {siteConfig} from "~/config/site"; // Import site config
 // Import types needed for merging parent meta
-import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
-import { Button } from "~/components/ui/button"; // Import Button component
+import type {MetaArgs, MetaDescriptor, MetaFunction} from "@remix-run/node";
+import {Button} from "~/components/ui/button"; // Import Button component
 
 // Helper function to merge meta tags, giving precedence to child tags
 function mergeMeta(
@@ -48,39 +48,42 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
     // Define meta tags specific to this About page
     const aboutMeta: MetaDescriptor[] = [
-        { title: "About Sensei Negin | Greenegin Karate" },
-        { name: "description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor with a Master's in Sport Psychology, teaching kids karate in Colwood." },
-    // You can override OG tags here too if needed
+        {title: "About Sensei Negin | Greenegin Karate"},
+        {
+            name: "description",
+            content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor with a Master's in Sport Psychology, teaching kids karate in Colwood."
+        },
+        // You can override OG tags here too if needed
         // Override specific OG tags
-        { property: "og:title", content: "About Sensei Negin | Greenegin Karate" },
-        { property: "og:description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor." },
-        { property: "og:type", content: "profile" }, // Specific OG type for this page
-        { property: "og:url", content: `${siteConfig.url}/about` }, // Specific OG URL for this page
+        {property: "og:title", content: "About Sensei Negin | Greenegin Karate"},
+        {property: "og:description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor."},
+        {property: "og:type", content: "profile"}, // Specific OG type for this page
+        {property: "og:url", content: `${siteConfig.url}/about`}, // Specific OG URL for this page
 
         // Add Person Schema for Sensei Negin
         {
-      "script:ld+json": {
-        "@context": "https://schema.org",
-        "@type": "Person",
-        "name": "Sensei Negin",
-        "jobTitle": "Karate Instructor",
-        "alumniOf": { // Example if applicable, adjust as needed
-            "@type": "EducationalOrganization",
-            "name": "University/Institution for Sport Psychology" // Replace with actual institution if known
-        },
-        "knowsAbout": ["Karate", "Martial Arts", "Sport Psychology", "Child Development"],
-        "description": "5th Dan Black Belt karate instructor with a Master's in Sport Psychology, specializing in teaching children.",
-        "url": `${siteConfig.url}/about`, // Use siteConfig
-        // "image": "URL_TO_SENSEI_NEGIN_PHOTO.jpg", // Optional: Add a URL to a photo
-        "worksFor": {
-            "@type": "Organization",
-            "name": siteConfig.name,
-            "url": siteConfig.url // Use siteConfig
-        }
-      }
+            "script:ld+json": {
+                "@context": "https://schema.org",
+                "@type": "Person",
+                "name": "Sensei Negin",
+                "jobTitle": "Karate Instructor",
+                "alumniOf": { // Example if applicable, adjust as needed
+                    "@type": "EducationalOrganization",
+                    "name": "University/Institution for Sport Psychology" // Replace with actual institution if known
+                },
+                "knowsAbout": ["Karate", "Martial Arts", "Sport Psychology", "Child Development"],
+                "description": "5th Dan Black Belt karate instructor with a Master's in Sport Psychology, specializing in teaching children.",
+                "url": `${siteConfig.url}/about`, // Use siteConfig
+                // "image": "URL_TO_SENSEI_NEGIN_PHOTO.jpg", // Optional: Add a URL to a photo
+                "worksFor": {
+                    "@type": "Organization",
+                    "name": siteConfig.name,
+                    "url": siteConfig.url // Use siteConfig
+                }
+            }
         },
         // Override canonical link for this page
-        { tagName: "link", rel: "canonical", href: `${siteConfig.url}/about` },
+        {tagName: "link", rel: "canonical", href: `${siteConfig.url}/about`},
     ];
 
     // Merge parent defaults with specific tags for this page
@@ -89,7 +92,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
 export default function AboutPage() {
     return (
-        <div className="bg-amber-50 dark:bg-gray-800 py-12">
+        <div className="page-background-styles py-12">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">
                     <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
@@ -108,7 +111,8 @@ export default function AboutPage() {
                             </h2>
                             <p className="text-gray-600 dark:text-gray-300 mb-6">
                                 Sensei Negin is a highly accomplished karate instructor with over 20 years of experience
-                                in martial arts, including coaching at provincial and national levels and holding leadership roles within karate federations.
+                                in martial arts, including coaching at provincial and national levels and holding
+                                leadership roles within karate federations.
                                 As a 5th Dan Black Belt, she has dedicated her life to mastering the art of karate and
                                 sharing its
                                 principles with the next generation.
@@ -117,7 +121,8 @@ export default function AboutPage() {
                                 With a Master&apos;s degree in Sport Psychology, Sensei Negin brings a unique
                                 perspective to her teaching,
                                 focusing not just on physical techniques but also on mental strength, discipline, and
-                                personal growth. She has applied this expertise directly, serving as a sport psychologist for university athletes.
+                                personal growth. She has applied this expertise directly, serving as a sport
+                                psychologist for university athletes.
                             </p>
                             <p className="text-gray-600 dark:text-gray-300 mb-6">
                                 As a certified Kids Sports Coach and award-winning youth instructor, she specializes in
@@ -145,9 +150,9 @@ export default function AboutPage() {
                             className="bg-green-600 dark:bg-green-700 p-8 md:p-12 text-white flex flex-col justify-center">
                             {/* Haiku - Moved to top right */}
                             <div className="mb-6 text-right italic text-green-100">
-                                <p>Silent dojo waits<br />
-                                Empty hands shape formless air<br />
-                                Warriors emerge</p>
+                                <p>Silent dojo waits<br/>
+                                    Empty hands shape formless air<br/>
+                                    Warriors emerge</p>
                             </div>
                             <h2 className="text-2xl font-bold mb-4">Teaching Philosophy</h2>
                             <p className="mb-6">
@@ -169,8 +174,10 @@ export default function AboutPage() {
                             <div className="mt-6 mb-6 p-4 bg-green-50 dark:bg-green-800 rounded-md">
                                 <p className="text-gray-700 dark:text-green-100">
                                     <span className="font-semibold">Q: What is the main focus of the classes?</span>
-                                    <br />
-                                    A: Classes introduce karate as a sophisticated martial art, emphasizing defense techniques, mental strength, discipline, and personal growth. We aim to nurture champions in all aspects of life!
+                                    <br/>
+                                    A: Classes introduce karate as a sophisticated martial art, emphasizing defense
+                                    techniques, mental strength, discipline, and personal growth. We aim to nurture
+                                    champions in all aspects of life!
                                 </p>
                             </div>
                             {/* Haiku removed from here */}
@@ -181,11 +188,14 @@ export default function AboutPage() {
                                     {siteConfig.location.description}. Classes are designed for children
                                     ages {siteConfig.classes.ageRange} and focus on
                                     building a strong foundation in karate techniques while developing character and
-                                    life skills. Ready to start? <a href="/contact" className="text-green-100 hover:underline font-semibold">Contact us</a> to learn more or sign up for a free trial!
+                                    life skills. Ready to start? <a href="/contact"
+                                                                    className="text-green-100 hover:underline font-semibold">Contact
+                                        us</a> to learn more or sign up for a free trial!
                                 </p>
                                 {/* Add Register Button */}
                                 <div className="mt-6 text-center">
-                                    <Button asChild size="lg" variant="secondary" className="bg-white text-green-700 hover:bg-gray-100 dark:bg-gray-200 dark:text-green-800 dark:hover:bg-gray-300">
+                                    <Button asChild size="lg" variant="secondary"
+                                            className="bg-white text-green-700 hover:bg-gray-100 dark:bg-gray-200 dark:text-green-800 dark:hover:bg-gray-300">
                                         <Link to="/contact">Register Now</Link>
                                     </Button>
                                 </div>
@@ -195,7 +205,8 @@ export default function AboutPage() {
                 </div>
 
                 {/* Territory Acknowledgement Section */}
-                <div className="mt-12 bg-green-600 dark:bg-green-700 rounded-lg shadow-xl p-8 md:p-12 text-white text-center">
+                <div
+                    className="mt-12 bg-green-600 dark:bg-green-700 rounded-lg shadow-xl p-8 md:p-12 text-white text-center">
                     <h2 className="text-2xl font-bold mb-6">{siteConfig.territoryAcknowledgement.title}</h2>
                     <p className="text-green-100 dark:text-green-200 leading-relaxed max-w-4xl mx-auto">
                         {siteConfig.territoryAcknowledgement.text}

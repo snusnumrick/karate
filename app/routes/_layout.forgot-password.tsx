@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                    <div className="bg-white dark:bg-gray-700 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                    <div className="form-container-styles py-8 px-4 sm:px-10">
                         <form className="space-y-6" method="post">
                             {/* Display success message */}
                             {actionData?.message && (

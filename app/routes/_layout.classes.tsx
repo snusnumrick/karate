@@ -3,7 +3,7 @@ import {siteConfig} from "~/config/site"; // Import site config
 
 export default function ClassesPage() {
     return (
-        <div className="bg-amber-50 dark:bg-gray-800 py-12">
+        <div className="page-background-styles py-12">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">
                     <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
@@ -14,7 +14,7 @@ export default function ClassesPage() {
                     </p>
                 </div>
 
-                <div className="mt-12 bg-white dark:bg-gray-700 rounded-lg shadow-xl overflow-hidden">
+                <div className="mt-12 form-container-styles overflow-hidden">
                     <div className="p-8">
                         <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-6">Class Schedule</h2>
                         <div className="bg-green-100 dark:bg-gray-700/30 p-6 rounded-lg mb-8">
