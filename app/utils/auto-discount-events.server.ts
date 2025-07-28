@@ -253,7 +253,7 @@ export async function batchProcessExistingData(): Promise<void> {
             },
           });
         }
-      } catch (error) {
+      } catch {
         // Ignore errors for families without payments
       }
     }

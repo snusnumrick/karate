@@ -327,7 +327,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
         currency: siteConfig.localization.currency,
       }).format(safeAmount);
       return formatted || '$0.00'; // Fallback if formatted is empty
-    } catch (error) {
+    } catch {
       return '$0.00'; // Fallback if formatting fails
     }
   };

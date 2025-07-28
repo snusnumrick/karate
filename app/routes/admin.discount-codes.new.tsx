@@ -255,7 +255,7 @@ export default function AdminNewDiscountCodePage() {
         }
         setCode(result);
       }
-    } catch (error) {
+    } catch {
       // Fallback to client-side generation if API fails
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let result = 'DISC';

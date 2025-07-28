@@ -25,7 +25,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       import('~/services/program.server').then(m => m.getPrograms({ is_active: true }))
     ]);
     return json({ templates, programs });
-  } catch (error) {
+  } catch {
     throw new Response('Failed to load data', { status: 500 });
   }
 }

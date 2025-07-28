@@ -166,7 +166,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
           }
         }
       }
-    } catch (parseError) {
+    } catch {
       errors.line_items = "Invalid line items data";
     }
 

@@ -399,8 +399,7 @@ async function sendAbsenceNotifications(
                 subject: subject,
                 html: htmlBody,
             });
-
-        } catch (emailError) {
+        } catch {
             console.error(`Failed to process or send absence notification for student ID ${record.student_id}.`);
         }
     }

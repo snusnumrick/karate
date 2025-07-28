@@ -244,7 +244,7 @@ export async function action({request}: ActionFunctionArgs) {
                          failedPaymentMethodString = `${failedCardBrand.charAt(0).toUpperCase() + failedCardBrand.slice(1)} card`;
                      }
                  }
-            } catch (retrieveError) {
+            } catch {
                  console.warn(`[Webhook PI Failed] Could not retrieve expanded PI ${paymentIntent.id} to get card details for failed payment.`);
             }
 

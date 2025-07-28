@@ -139,10 +139,10 @@ export async function action({ request }: ActionFunctionArgs) {
     await createProgram(programData);
     return redirect("/admin/programs");
   } catch (error) {
-    return json(
-      { errors: { general: "Failed to create program. Please try again." } },
-      { status: 500 }
-    );
+    console.error("Error creating program:", error);
+    return json<ActionData>({
+      errors: { general: "Failed to create program. Please try again." }
+    }, { status: 500 });
   }
 }
 

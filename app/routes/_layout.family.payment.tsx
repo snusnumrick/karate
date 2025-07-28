@@ -30,7 +30,7 @@ import { getTodayLocalDateString } from "~/components/calendar/utils";
 type PaymentOption = 'monthly' | 'yearly' | 'individual';
 
 // Updated Loader data interface
-export interface LoaderData extends PaymentEligibilityData {}
+export type LoaderData = PaymentEligibilityData;
 
 // Loader function
 export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {

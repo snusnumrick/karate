@@ -168,10 +168,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
     await updateProgram(programId, programData);
     return redirect("/admin/programs");
   } catch (error) {
-    return json(
-      { errors: { general: "Failed to update program. Please try again." } },
-      { status: 500 }
-    );
+    console.error("Error updating program:", error);
+    return json<ActionData>({
+      errors: { general: "Failed to update program. Please try again." }
+    }, { status: 500 });
   }
 }
 

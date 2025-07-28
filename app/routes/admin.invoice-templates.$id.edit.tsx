@@ -93,7 +93,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         if (!lineItems.length) {
             errors.lineItems = "At least one line item is required";
         }
-    } catch (error) {
+    } catch {
         errors.lineItems = 'Invalid line items data';
     }
     

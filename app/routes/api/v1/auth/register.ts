@@ -74,8 +74,8 @@ export async function action({ request }: ActionFunctionArgs) {
     let body: RegisterRequestBody;
     try {
         body = await request.json();
-    } catch (error) {
-        return json({ error: "Invalid JSON body" }, { status: 400 });
+    } catch {
+        return json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
     // --- Input Validation ---
