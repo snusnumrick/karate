@@ -59,7 +59,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
 export default function Index() {
     return (
-        <div className="bg-amber-50 dark:bg-gray-800">
+        <div className="page-background-styles">
             {/* Hero Section with Background Image */}
             <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
                 {/* Background Image */}

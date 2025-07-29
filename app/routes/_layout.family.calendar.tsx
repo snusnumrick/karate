@@ -601,21 +601,28 @@ export default function FamilyCalendarPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} />
         </div>
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-            <CalendarIcon className="inline-block mr-2 h-6 w-6" />
-            Calendar {familyName ? `for ${familyName}` : ''}
+        {/* Page Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+            <CalendarIcon className="inline-block mr-2 h-8 w-8" />
+            Family Calendar
           </h1>
+          <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+            {familyName ? `View ${familyName} family's schedule and events` : 'View your family schedule and events'}
+          </p>
         </div>
 
         {/* Calendar Component in Card */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+        <div className="form-container-styles p-8 backdrop-blur-lg mb-8">
+{/*          <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+            <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Calendar View</h2>
+          </div>*/}
           <Calendar
             events={allEvents}
             currentDate={currentDate}
@@ -630,38 +637,40 @@ export default function FamilyCalendarPage() {
         </div>
 
         {/* Legend */}
-        <div className="mt-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Legend</h3>
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500 dark:border-blue-400 rounded text-xs text-blue-900 dark:text-blue-100 font-medium">
-                Scheduled
+        <div className="form-container-styles p-8 backdrop-blur-lg">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CALENDAR LEGEND</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              <div className="flex items-center gap-3">
+                <div className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 border-l-4 border-blue-500 dark:border-blue-400 rounded text-sm text-blue-900 dark:text-blue-100 font-medium">
+                  Scheduled
+                </div>
+                <span className="text-gray-600 dark:text-gray-400 text-sm">Scheduled class</span>
               </div>
-              <span className="text-gray-600 dark:text-gray-400">Scheduled class</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="px-2 py-1 bg-green-100 dark:bg-green-900/30 border-l-2 border-green-500 dark:border-green-400 rounded text-xs text-green-900 dark:text-green-100 font-medium">
-                Completed
+              <div className="flex items-center gap-3">
+                <div className="px-3 py-2 bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500 dark:border-green-400 rounded text-sm text-green-900 dark:text-green-100 font-medium">
+                  Completed
+                </div>
+                <span className="text-gray-600 dark:text-gray-400 text-sm">Completed class</span>
               </div>
-              <span className="text-gray-600 dark:text-gray-400">Completed class</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="px-2 py-1 bg-red-100 dark:bg-red-900/30 border-l-2 border-red-500 dark:border-red-400 rounded text-xs text-red-900 dark:text-red-100 font-medium">
-                Cancelled
+              <div className="flex items-center gap-3">
+                <div className="px-3 py-2 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-400 rounded text-sm text-red-900 dark:text-red-100 font-medium">
+                  Cancelled
+                </div>
+                <span className="text-gray-600 dark:text-gray-400 text-sm">Cancelled class</span>
               </div>
-              <span className="text-gray-600 dark:text-gray-400">Cancelled class</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="px-2 py-1 bg-pink-100 dark:bg-pink-900/30 border-l-2 border-pink-500 dark:border-pink-400 rounded text-xs text-pink-900 dark:text-pink-100 font-medium">
-                Birthday
+              <div className="flex items-center gap-3">
+                <div className="px-3 py-2 bg-pink-100 dark:bg-pink-900/30 border-l-4 border-pink-500 dark:border-pink-400 rounded text-sm text-pink-900 dark:text-pink-100 font-medium">
+                  Birthday
+                </div>
+                <span className="text-gray-600 dark:text-gray-400 text-sm">Student birthday</span>
               </div>
-              <span className="text-gray-600 dark:text-gray-400">Student birthday</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 border-l-2 border-purple-500 dark:border-purple-400 rounded text-xs text-purple-900 dark:text-purple-100 font-medium">
-                Event
+              <div className="flex items-center gap-3">
+                <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400 rounded text-sm text-purple-900 dark:text-purple-100 font-medium">
+                  Event
+                </div>
+                <span className="text-gray-600 dark:text-gray-400 text-sm">School event</span>
               </div>
-              <span className="text-gray-600 dark:text-gray-400">School event</span>
             </div>
           </div>
         </div>

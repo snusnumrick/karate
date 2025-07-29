@@ -108,69 +108,81 @@ export async function loader({request}: LoaderFunctionArgs) {
 export default function FamilyAttendancePage() {
     const {students, attendanceRecords, familyName} = useLoaderData<LoaderData>();
 
-    // Optional: Group records by student client-side if needed, or rely on sorting
-    // const recordsByStudent = attendanceRecords.reduce((acc, record) => {
-    //   const studentId = record.student_id;
-    //   if (!acc[studentId]) {
-    //     acc[studentId] = {
-    //       name: record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student',
-    //       records: []
-    //     };
-    //   }
-    //   acc[studentId].records.push(record);
-    //   return acc;
-    // }, {} as Record<string, { name: string; records: AttendanceWithStudentName[] }>);
-
     return (
-        <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyAttendance()}  className="mb-6" />
-            
-            <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
-                Attendance History {familyName ? `for ${familyName}` : ''}
-            </h1>
-
-            {students.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400">No students found in this family.</p>
-            ) : attendanceRecords.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400">No attendance records found for your student(s).</p>
-            ) : (
-                <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Student</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Notes</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {attendanceRecords.map((record) => (
-                                <TableRow key={record.id}>
-                                    <TableCell>{formatDate(record.class_sessions?.session_date || '', { formatString: 'MMM d, yyyy' })}</TableCell>
-                                    <TableCell className="font-medium">
-                                        {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {record.status === 'present' ? (
-                                            <Badge variant="default">Present</Badge>
-                                        ) : record.status === 'absent' ? (
-                                            <Badge variant="destructive">Absent</Badge>
-                                        ) : record.status === 'excused' ? (
-                                            <Badge variant="secondary">Excused</Badge>
-                                        ) : record.status === 'late' ? (
-                                            <Badge variant="outline">Late</Badge>
-                                        ) : (
-                                            <Badge variant="outline">Unknown</Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{record.notes || '-'}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="mb-6">
+                    <AppBreadcrumb items={breadcrumbPatterns.familyAttendance()} />
                 </div>
-            )}
+
+                {/* Page Header */}
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                        Attendance History
+                    </h1>
+                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                        {familyName ? `View ${familyName} family's attendance records` : 'View your family attendance records'}
+                    </p>
+                </div>
+
+                {/* Attendance Records */}
+                <div className="form-container-styles p-8 backdrop-blur-lg">
+                    <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                        <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Attendance Records</h2>
+                    </div>
+
+                    {students.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-gray-600 dark:text-gray-400 text-lg">No students found in this family.</p>
+                        </div>
+                    ) : attendanceRecords.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-gray-600 dark:text-gray-400 text-lg">No attendance records found for your student(s).</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-gray-50 dark:bg-gray-700">
+                                        <TableHead className="font-semibold text-gray-900 dark:text-gray-100">Date</TableHead>
+                                        <TableHead className="font-semibold text-gray-900 dark:text-gray-100">Student</TableHead>
+                                        <TableHead className="font-semibold text-gray-900 dark:text-gray-100">Status</TableHead>
+                                        <TableHead className="font-semibold text-gray-900 dark:text-gray-100">Notes</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {attendanceRecords.map((record) => (
+                                        <TableRow key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                            <TableCell className="text-gray-900 dark:text-gray-100">
+                                                {formatDate(record.class_sessions?.session_date || '', { formatString: 'MMM d, yyyy' })}
+                                            </TableCell>
+                                            <TableCell className="font-medium text-gray-900 dark:text-gray-100">
+                                                {record.students ? `${record.students.first_name} ${record.students.last_name}` : 'Unknown Student'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {record.status === 'present' ? (
+                                                    <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Present</Badge>
+                                                ) : record.status === 'absent' ? (
+                                                    <Badge variant="destructive">Absent</Badge>
+                                                ) : record.status === 'excused' ? (
+                                                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Excused</Badge>
+                                                ) : record.status === 'late' ? (
+                                                    <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:text-yellow-400">Late</Badge>
+                                                ) : (
+                                                    <Badge variant="outline">Unknown</Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-gray-600 dark:text-gray-400">
+                                                {record.notes || '-'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

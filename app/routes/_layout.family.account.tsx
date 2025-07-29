@@ -363,18 +363,27 @@ export default function AccountSettingsPage() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 space-y-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyAccount()} className="mb-6" />
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AppBreadcrumb items={breadcrumbPatterns.familyAccount()} className="mb-6" />
 
-            <ClientOnly fallback={<div className="text-center p-8">Loading account settings...</div>}>
-                {() => (
-                    <> {/* Use fragment to avoid adding extra div */}
-                        <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
+                {/* Page Header */}
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                        Account Settings
+                    </h1>
+                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                        Manage your family information and account preferences
+                    </p>
+                </div>
 
+                <ClientOnly fallback={<div className="text-center p-8">Loading account settings...</div>}>
+                    {() => (
+                        <> {/* Use fragment to avoid adding extra div */}
                         {/* General Action Feedback */}
                         {actionData && actionData.status === 'success' && (
                             <Alert variant="default"
-                                   className="bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700">
+                                   className="bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700 mb-6">
                                 <AlertTitle className="text-green-800 dark:text-green-200">Success!</AlertTitle>
                                 <AlertDescription className="text-green-700 dark:text-green-300">
                                     {actionData.message}
@@ -382,7 +391,7 @@ export default function AccountSettingsPage() {
                             </Alert>
                         )}
                         {actionData && actionData.status === 'error' && !actionData.errors && ( // Show general errors only if no field errors
-                            <Alert variant="destructive">
+                            <Alert variant="destructive" className="mb-6">
                                 <AlertTitle className="dark:text-red-200">Error</AlertTitle>
                                 <AlertDescription className="dark:text-red-300">{actionData.message}</AlertDescription>
                             </Alert>
@@ -390,10 +399,12 @@ export default function AccountSettingsPage() {
 
 
                         {/* --- Family Information Form --- */}
-                        <UIForm {...familyForm}>
-                            <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                                <h2 className="text-xl font-semibold mb-4 border-b pb-2">Family Information</h2>
-                                <input type="hidden" name="intent" value="updateFamily"/>
+                        <div className="form-container-styles p-8 backdrop-blur-lg mb-8">
+                            <UIForm {...familyForm}>
+                                <Form method="post" className="space-y-8">
+                                    <div>
+                                        <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">FAMILY INFORMATION</h2>
+                                        <input type="hidden" name="intent" value="updateFamily"/>
 
                                 {/* Display field-specific errors for family form */}
                                 {actionData?.intent === 'updateFamily' && actionData.errors && (
@@ -410,7 +421,7 @@ export default function AccountSettingsPage() {
                                     </Alert>
                                 )}
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
                                         control={familyForm.control}
                                         name="name"
@@ -571,24 +582,28 @@ export default function AccountSettingsPage() {
                                             </FormItem>
                                         )}
                                     />
-                                </div>
+                                        </div>
 
-                                <Button type="submit" disabled={isSubmitting} tabIndex={12}>
-                                    {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
-                                </Button>
-                            </Form>
-                        </UIForm>
+                                        <Button type="submit" disabled={isSubmitting} tabIndex={12} className="w-full sm:w-auto">
+                                            {isSubmitting && navigation.formData?.get('intent') === 'updateFamily' ? 'Saving...' : 'Update Family Info'}
+                                        </Button>
+                                    </div>
+                                </Form>
+                            </UIForm>
+                        </div>
 
                         {/* Policy Agreements section removed */}
 
                         {/* --- Guardian Information Forms (Removed) --- */}
 
 
-                        {/* --- Account Preferences --- */}
-                        <UIForm {...preferencesForm}>
-                            <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                                <h2 className="text-xl font-semibold mb-4">Account Preferences</h2>
-                                <input type="hidden" name="intent" value="updatePreferences"/>
+                        {/* Account Preferences Form */}
+                        <div className="form-container-styles p-8 backdrop-blur-lg mb-8">
+                            <UIForm {...preferencesForm}>
+                                <Form method="post" className="space-y-8">
+                                    <div>
+                                        <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ACCOUNT PREFERENCES</h2>
+                                        <input type="hidden" name="intent" value="updatePreferences"/>
 
                                 {actionData?.intent === 'updatePreferences' && actionData.errors && (
                                     <Alert variant="destructive" className="mb-4">
@@ -603,7 +618,7 @@ export default function AccountSettingsPage() {
                                     </Alert>
                                 )}
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
                                         control={preferencesForm.control}
                                         name="currentPassword"
@@ -671,28 +686,34 @@ export default function AccountSettingsPage() {
                                             </FormItem>
                                         )}
                                     />
-                                </div>
+                                        </div>
 
-                                <Button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    tabIndex={17}
-                                >
-                                    {isSubmitting && navigation.formData?.get('intent') === 'updatePreferences'
-                                        ? 'Saving...'
-                                        : 'Update Preferences'}
-                                </Button>
-                            </Form>
-                        </UIForm>
+                                        <Button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            tabIndex={17}
+                                            className="w-full sm:w-auto"
+                                        >
+                                            {isSubmitting && navigation.formData?.get('intent') === 'updatePreferences'
+                                                ? 'Saving...'
+                                                : 'Update Preferences'}
+                                        </Button>
+                                    </div>
+                                </Form>
+                            </UIForm>
+                        </div>
 
                         {/* --- Notification Settings --- */}
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
-                            <h2 className="text-xl font-semibold mb-4">Notification Settings</h2>
-                            <NotificationSettings />
+                        <div className="form-container-styles p-8 backdrop-blur-lg">
+                            <div>
+                                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">NOTIFICATION SETTINGS</h2>
+                                <NotificationSettings />
+                            </div>
                         </div>
-                    </>
-                )}
-            </ClientOnly>
+                         </>
+                     )}
+                 </ClientOnly>
+            </div>
         </div>
     );
 }

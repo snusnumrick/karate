@@ -1,15 +1,20 @@
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
-import { Link, useLoaderData, useRouteError, useSearchParams } from "@remix-run/react";
-import { createInitialPaymentRecord, getSupabaseServerClient } from "~/utils/supabase.server";
-import { getStudentPaymentOptions } from "~/services/enrollment-payment.server";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "~/types/database.types";
-import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
+import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
+import {createInitialPaymentRecord, getSupabaseServerClient} from "~/utils/supabase.server";
+import {getStudentPaymentOptions} from "~/services/enrollment-payment.server";
+import {createClient} from "@supabase/supabase-js";
+import type {Database} from "~/types/database.types";
 import {siteConfig} from "~/config/site";
-import { PaymentForm } from "~/components/PaymentForm";
-import { getFamilyPaymentEligibilityData, getFamilyIdFromUser, type PaymentEligibilityData } from "~/services/payment-eligibility.server";
-import { getTodayLocalDateString } from "~/components/calendar/utils";
+import {
+    getFamilyIdFromUser,
+    getFamilyPaymentEligibilityData,
+    type PaymentEligibilityData
+} from "~/services/payment-eligibility.server";
+import {getTodayLocalDateString} from "~/components/calendar/utils";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {CreditCardIcon, Link} from "lucide-react";
+import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
+import {useLoaderData, useRouteError, useSearchParams} from "@remix-run/react";
+import {PaymentForm} from "~/components/PaymentForm";
 
 // Payment Calculation (Flat Monthly Rate)
 //
@@ -44,15 +49,15 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     }
 
     // Get family ID from user profile
-    const { familyId, error: familyIdError } = await getFamilyIdFromUser(user.id, supabaseServer);
-    
+    const {familyId, error: familyIdError} = await getFamilyIdFromUser(user.id, supabaseServer);
+
     if (familyIdError || !familyId) {
         throw new Response(familyIdError || "Could not load your family information. Please try again.", {status: 500});
     }
 
     // Get payment eligibility data using the reusable service
-    const paymentData : PaymentEligibilityData = await getFamilyPaymentEligibilityData(familyId, supabaseServer);
-    
+    const paymentData: PaymentEligibilityData = await getFamilyPaymentEligibilityData(familyId, supabaseServer);
+
     if (paymentData.error) {
         // Handle specific errors that should be shown to the user vs thrown
         if (paymentData.error === "No students found in this family.") {
@@ -73,8 +78,11 @@ type ActionResponse = {
 };
 
 // Update return type: Action returns JSON data (success/error)
-export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionResponse & { success?: boolean; paymentId?: string }>> {
-    const { supabaseServer, response } = getSupabaseServerClient(request);
+export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionResponse & {
+    success?: boolean;
+    paymentId?: string
+}>> {
+    const {supabaseServer, response} = getSupabaseServerClient(request);
     const formData = await request.formData();
 
     const familyId = formData.get('familyId') as string;
@@ -108,7 +116,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     }
 
     if (Object.keys(fieldErrors).length > 0) {
-        return json({ error: "Please correct the errors below.", fieldErrors }, { status: 400, headers: response.headers });
+        return json({error: "Please correct the errors below.", fieldErrors}, {status: 400, headers: response.headers});
     }
     // --- End Validation ---
 
@@ -153,16 +161,16 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
         // Parse discount amount
         const discountAmount = discountAmountStr ? parseInt(discountAmountStr, 10) : 0;
-        
+
         // Apply discount to subtotal
         const finalSubtotalInCents = Math.max(0, subtotalAmountInCents - discountAmount);
 
         // Handle zero payment case - create a succeeded payment record directly
         if (finalSubtotalInCents <= 0) {
             console.log("[Action] Zero payment detected. Creating succeeded payment record directly.");
-            
+
             // Create the initial payment record with zero amount
-            const { data: paymentRecord, error: createError } = await createInitialPaymentRecord(
+            const {data: paymentRecord, error: createError} = await createInitialPaymentRecord(
                 familyId,
                 finalSubtotalInCents, // This will be 0
                 studentIds,
@@ -174,22 +182,28 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
             if (createError || !paymentRecord?.id) {
                 console.error("[Action] Error creating zero payment record:", createError);
-                return json({ error: `Failed to initialize payment: ${createError || 'Payment ID missing'}` }, { status: 500, headers: response.headers });
+                return json({error: `Failed to initialize payment: ${createError || 'Payment ID missing'}`}, {
+                    status: 500,
+                    headers: response.headers
+                });
             }
 
             // Update the payment status to succeeded since no actual payment is needed
             console.log(`[Action] Attempting to update payment ${paymentRecord.id} to succeeded status`);
-            
+
             // Use the same client pattern as createInitialPaymentRecord for consistency
             const supabaseUrl = process.env.SUPABASE_URL;
             const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
             if (!supabaseUrl || !supabaseServiceKey) {
                 console.error("[Action] Missing Supabase environment variables for payment update");
-                return json({ error: "Failed to complete zero payment: Missing configuration" }, { status: 500, headers: response.headers });
+                return json({error: "Failed to complete zero payment: Missing configuration"}, {
+                    status: 500,
+                    headers: response.headers
+                });
             }
             const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
-            
-            const { data: updateData, error: updateError } = await supabaseAdmin
+
+            const {data: updateData, error: updateError} = await supabaseAdmin
                 .from('payments')
                 .update({
                     status: 'succeeded',
@@ -201,17 +215,20 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
             if (updateError) {
                 console.error("[Action] Error updating zero payment to succeeded:", updateError);
-                return json({ error: `Failed to complete zero payment: ${updateError.message}` }, { status: 500, headers: response.headers });
+                return json({error: `Failed to complete zero payment: ${updateError.message}`}, {
+                    status: 500,
+                    headers: response.headers
+                });
             }
 
             console.log(`[Action] Zero payment update result:`, updateData);
             console.log(`[Action] Zero payment completed successfully (ID: ${paymentRecord.id}).`);
-            return json({ success: true, paymentId: paymentRecord.id, zeroPayment: true }, { headers: response.headers });
+            return json({success: true, paymentId: paymentRecord.id, zeroPayment: true}, {headers: response.headers});
         }
 
         // Create the initial payment record
         // console.log("[Action] Calling createInitialPaymentRecord with subtotal...");
-        const { data: paymentRecord, error: createError } = await createInitialPaymentRecord(
+        const {data: paymentRecord, error: createError} = await createInitialPaymentRecord(
             familyId,
             finalSubtotalInCents, // Pass the final subtotal after discount
             studentIds, // Pass selected student IDs (empty for individual)
@@ -224,23 +241,25 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
         if (createError || !paymentRecord?.id) {
             console.error("[Action] Error condition met after createInitialPaymentRecord. Returning JSON error.", createError);
-            return json({ error: `Failed to initialize payment: ${createError || 'Payment ID missing'}` }, { status: 500, headers: response.headers });
+            return json({error: `Failed to initialize payment: ${createError || 'Payment ID missing'}`}, {
+                status: 500,
+                headers: response.headers
+            });
         }
 
         // Return full JSON success data including paymentId
         const paymentId = paymentRecord.id;
         // console.log(`[Action] Payment record created successfully (ID: ${paymentId}). Returning success JSON with paymentId...`);
-        return json({ success: true, paymentId: paymentId }, { headers: response.headers }); // Return success and ID
+        return json({success: true, paymentId: paymentId}, {headers: response.headers}); // Return success and ID
 
     } catch (error) {
         // This catch block handles actual errors
         // No need to check for Response instance here anymore
         const message = error instanceof Error ? error.message : "An unexpected error occurred during payment setup.";
         console.error("Action Error (in catch):", message); // Clarify log source
-        return json({ error: message }, { status: 500, headers: response.headers });
+        return json({error: message}, {status: 500, headers: response.headers});
     } // The main try block ends here
 }
-
 
 export default function FamilyPaymentPage() {
     const {
@@ -254,16 +273,30 @@ export default function FamilyPaymentPage() {
     // Handle case where loader found no students
     if (loaderError === "No students found in this family.") {
         return (
-            <div className="container mx-auto px-4 py-8 max-w-md">
-                <Alert variant="destructive">
-                    <ExclamationTriangleIcon className="h-4 w-4"/>
-                    <AlertTitle>No Students Found</AlertTitle>
-                    <AlertDescription>
-                        You must have at least one student registered in your family to make a payment.
-                        Please <Link to="/family/add-student" className="font-medium underline">add a
-                        student</Link> first.
-                    </AlertDescription>
-                </Alert>
+            <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                    {/* Page Header */}
+                    <div className="text-center mb-8">
+                        <div className="flex items-center justify-center gap-3 mb-4">
+                            <CreditCardIcon className="h-8 w-8 text-green-600 dark:text-green-400"/>
+                            <h1 className="text-3xl font-bold text-foreground">Make Payment</h1>
+                        </div>
+                        <p className="text-muted-foreground">Secure payment processing for your family</p>
+                    </div>
+
+                    {/* Content Container */}
+                    <div className="form-container-styles p-8 backdrop-blur-lg max-w-md mx-auto">
+                        <Alert variant="destructive">
+                            <ExclamationTriangleIcon className="h-4 w-4"/>
+                            <AlertTitle>No Students Found</AlertTitle>
+                            <AlertDescription>
+                                You must have at least one student registered in your family to make a payment.
+                                Please <Link to="/family/add-student" className="font-medium underline">add a
+                                student</Link> first.
+                            </AlertDescription>
+                        </Alert>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -271,16 +304,30 @@ export default function FamilyPaymentPage() {
     // Handle other potential loader errors
     if (!familyId || !studentPaymentDetails) {
         return (
-            <div className="container mx-auto px-4 py-8 max-w-md">
-                <Alert variant="destructive" className="mb-4">
-                    <ExclamationTriangleIcon className="h-4 w-4"/>
-                    <AlertTitle>Error Loading Payment Details</AlertTitle>
-                    <AlertDescription>
-                        Could not load necessary payment information. Please return to the
-                        <Link to="/family" className="font-medium underline px-1">Family Portal</Link>
-                        and try again, or contact support if the problem persists.
-                    </AlertDescription>
-                </Alert>
+            <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                    {/* Page Header */}
+                    <div className="text-center mb-8">
+                        <div className="flex items-center justify-center gap-3 mb-4">
+                            <CreditCardIcon className="h-8 w-8 text-green-600 dark:text-green-400"/>
+                            <h1 className="text-3xl font-bold text-foreground">Make Payment</h1>
+                        </div>
+                        <p className="text-muted-foreground">Secure payment processing for your family</p>
+                    </div>
+
+                    {/* Content Container */}
+                    <div className="form-container-styles p-8 backdrop-blur-lg max-w-md mx-auto">
+                        <Alert variant="destructive" className="mb-4">
+                            <ExclamationTriangleIcon className="h-4 w-4"/>
+                            <AlertTitle>Error Loading Payment Details</AlertTitle>
+                            <AlertDescription>
+                                Could not load necessary payment information. Please return to the
+                                <Link to="/family" className="font-medium underline px-1">Family Portal</Link>
+                                and try again, or contact support if the problem persists.
+                            </AlertDescription>
+                        </Alert>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -289,52 +336,77 @@ export default function FamilyPaymentPage() {
     const initialOption = searchParams.get('option') === 'individual' ? 'individual' : 'monthly';
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-lg">
-            <h1 className="text-2xl font-bold mb-6 text-center">Make Payment</h1>
-            
-            <PaymentForm
-                familyId={familyId}
-                studentPaymentDetails={studentPaymentDetails}
-                hasAvailableDiscounts={hasAvailableDiscounts}
-                mode="family"
-                initialPaymentOption={initialOption}
-                actionEndpoint="/family/payment"
-            />
-            
-            <div className="mt-4 text-center">
-                <Link to="/family" className="text-sm text-blue-600 hover:underline dark:text-blue-400">
-                    Cancel and return to Family Portal
-                </Link>
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+            <div className="max-w-7xl mx-auto px-4 py-8">
+                {/* Page Header */}
+                <div className="text-center mb-8">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                        <CreditCardIcon className="h-8 w-8 text-green-600 dark:text-green-400"/>
+                        <h1 className="text-3xl font-bold text-foreground">Make Payment</h1>
+                    </div>
+                    <p className="text-muted-foreground">Secure payment processing for your family</p>
+                </div>
+
+                {/* Content Container */}
+                <div className="form-container-styles p-8 backdrop-blur-lg max-w-lg mx-auto">
+                    <PaymentForm
+                        familyId={familyId}
+                        studentPaymentDetails={studentPaymentDetails}
+                        hasAvailableDiscounts={hasAvailableDiscounts}
+                        mode="family"
+                        initialPaymentOption={initialOption}
+                        actionEndpoint="/family/payment"
+                    />
+
+                    <div className="mt-6 text-center">
+                        <Link to="/family" className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                            Cancel and return to Family Portal
+                        </Link>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
 
-// Error Boundary remains largely the same, but use useRouteError()
+// Error Boundary with consistent styling
 export function ErrorBoundary() {
-    const error = useRouteError(); // Use this hook
+    const error = useRouteError();
 
-    // Basic error display
     return (
-        <div className="container mx-auto px-4 py-8 max-w-lg"> {/* Match container width */}
-            <Alert variant="destructive">
-                <ExclamationTriangleIcon className="h-4 w-4"/>
-                <AlertTitle>Payment Page Error</AlertTitle>
-                <AlertDescription>
-                    {error instanceof Error
-                        ? error.message
-                        : "An unexpected error occurred while loading the payment page."}
-                    Please try returning to the <Link to="/family" className="font-medium underline px-1">Family
-                    Portal</Link>.
-                </AlertDescription>
-                {/* Optional: Display stack trace in development */}
-                {process.env.NODE_ENV === "development" && error instanceof Error && (
-                    <pre
-                        className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs dark:bg-red-900/50 dark:text-red-100">
-                        {error.stack}
-                    </pre>
-                )}
-            </Alert>
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+            <div className="max-w-7xl mx-auto px-4 py-8">
+                {/* Page Header */}
+                <div className="text-center mb-8">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                        <CreditCardIcon className="h-8 w-8 text-green-600 dark:text-green-400"/>
+                        <h1 className="text-3xl font-bold text-foreground">Make Payment</h1>
+                    </div>
+                    <p className="text-muted-foreground">Secure payment processing for your family</p>
+                </div>
+
+                {/* Content Container */}
+                <div className="form-container-styles p-8 backdrop-blur-lg max-w-lg mx-auto">
+                    <Alert variant="destructive">
+                        <ExclamationTriangleIcon className="h-4 w-4"/>
+                        <AlertTitle>Payment Page Error</AlertTitle>
+                        <AlertDescription>
+                            {error instanceof Error
+                                ? error.message
+                                : "An unexpected error occurred while loading the payment page."}
+                            Please try returning to the <Link to="/family" className="font-medium underline px-1">Family
+                            Portal</Link>.
+                        </AlertDescription>
+                        {/* Optional: Display stack trace in development */}
+                        {process.env.NODE_ENV === "development" && error instanceof Error && (
+                            <pre
+                                className="mt-4 p-2 bg-red-50 text-red-900 rounded-md max-w-full overflow-auto text-xs dark:bg-red-900/50 dark:text-red-100">
+                                {error.stack}
+                            </pre>
+                        )}
+                    </Alert>
+                </div>
+            </div>
         </div>
     );
 }

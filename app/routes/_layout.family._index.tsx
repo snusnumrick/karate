@@ -380,7 +380,7 @@ export default function FamilyDashboard() {
     const familyDisplayName = family.name || `Your Family Portal`;
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen page-background-styles">
             <div className="container mx-auto px-4 py-8">
                 {/* Header Section */}
                 <div className="mb-8">
@@ -388,7 +388,7 @@ export default function FamilyDashboard() {
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Users className="h-6 w-6 text-white" />
                         </div>
-                        <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">
+                        <h1 className="text-4xl font-bold page-header-styles">
                             {familyDisplayName}
                         </h1>
                     </div>
@@ -397,7 +397,7 @@ export default function FamilyDashboard() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {/* My Students Section */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Users className="h-5 w-5 text-white" />
@@ -439,7 +439,7 @@ export default function FamilyDashboard() {
                                         </div>
                                         
                                         {/* Eligibility Badge */}
-                                        <div className="text-right bg-white dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm">
+                                        <div className="text-right px-3 py-2 rounded-lg shadow-sm">
                                             <Badge variant={getEligibilityBadgeVariant(student.eligibility.reason)}
                                                    className="text-sm font-medium px-2 py-1">
                                                 {student.eligibility.reason.startsWith('Paid') ? 'Active' : student.eligibility.reason}
@@ -506,7 +506,7 @@ export default function FamilyDashboard() {
                 </div>
 
                 {/* Next Classes Section */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles form-container p-6 hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Calendar className="h-5 w-5 text-white" />
@@ -572,7 +572,7 @@ export default function FamilyDashboard() {
                 </div>
 
                 {/* Attendance Panel */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <CheckCircle className="h-5 w-5 text-white" />
@@ -644,7 +644,7 @@ export default function FamilyDashboard() {
                 </div>
 
                 {/* Guardians Section */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Users className="h-5 w-5 text-white" />
@@ -708,10 +708,8 @@ export default function FamilyDashboard() {
                     )}
                 </div>
 
-
-
                 {/* Waivers Section */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Shield className="h-5 w-5 text-white" />
@@ -746,10 +744,8 @@ export default function FamilyDashboard() {
                     </Button>
                 </div>
 
-
-
                 {/* Account Settings Section */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-gray-500 rounded-lg">
                             <Settings className="h-5 w-5 text-white" />

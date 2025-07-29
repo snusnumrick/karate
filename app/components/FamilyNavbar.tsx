@@ -27,7 +27,7 @@ const familyNavItems = [
     {to: "/family/calendar", label: "Calendar", icon: Calendar},
     {to: "/family/account", label: "Account", icon: User},
     {to: "/family/attendance", label: "Attendance", icon: CalendarCheck},
-    {to: "/family/payment", label: "Payment", icon: CreditCard},
+    // {to: "/family/payment", label: "Payment", icon: CreditCard},
     {to: "/family/payment-history", label: "Payment History", icon: FileText},
     {to: "/family/orders", label: "Orders", icon: ShoppingBag},
     {to: "/family/messages", label: "Messages", icon: MessageSquare},

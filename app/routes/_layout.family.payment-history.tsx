@@ -51,100 +51,113 @@ export default function PaymentHistoryPage() {
     const {payments} = useLoaderData<typeof loader>();
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyPaymentHistory()} className="mb-6" />
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AppBreadcrumb items={breadcrumbPatterns.familyPaymentHistory()} className="mb-6" />
 
-            <h1 className="text-3xl font-bold mb-6">Full Payment History</h1>
+                {/* Page Header */}
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                        Full Payment History
+                    </h1>
+                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                        View all your payment transactions and receipts
+                    </p>
+                </div>
 
-            {payments && payments.length > 0 ? (
-                <div className="overflow-x-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                            <th scope="col"
-                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date
-                            </th>
-                            <th scope="col"
-                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount
-                            </th>
-                            <th scope="col"
-                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type {/* Added Type */}
-                            </th>
-                            <th scope="col"
-                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status
-                            </th>
-                            <th scope="col"
-                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Method
-                            </th>
-                            <th scope="col"
-                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Receipt
-                            </th>
-                            <th scope="col"
-                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions {/* New Actions Header */}
-                            </th>
-                        </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {payments.map((payment) => (
-                            <tr key={payment.id}>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                    {payment.payment_date ? formatDate(payment.payment_date, { formatString: 'P' }) : 'N/A'}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                    {/* Use total_amount */}
-                                    ${(payment.total_amount / 100).toFixed(2)}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize"> {/* Added Type Cell */}
-                                    {payment.type?.replace(/_/g, ' ') ?? 'N/A'} {/* Use global replace */}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                         payment.status === 'succeeded' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                             payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                                 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                     }`}>
-                       {payment.status}
-                     </span>
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">
-                                    {payment.payment_method || 'N/A'}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {payment.receipt_url ? (
-                                        <a
-                                            href={payment.receipt_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
-                                        >
-                                            View
-                                        </a>
-                                    ) : (
-                                        'N/A'
-                                    )}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"> {/* New Actions Cell */}
-                                    {(payment.status === 'pending' || payment.status === 'failed') ? (
-                                        <Link
-                                            to={`/pay/${payment.id}`}
-                                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
-                                        >
-                                            {payment.status === 'pending' ? 'Complete Payment' : 'Retry Payment'}
-                                        </Link>
-                                    ) : (
-                                        'N/A' // Or leave empty: ''
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
+                {/* Payment History Content */}
+                <div className="form-container-styles p-8 backdrop-blur-lg">
+                    {payments && payments.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead className="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th scope="col"
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date
+                                    </th>
+                                    <th scope="col"
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount
+                                    </th>
+                                    <th scope="col"
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type
+                                    </th>
+                                    <th scope="col"
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status
+                                    </th>
+                                    <th scope="col"
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Method
+                                    </th>
+                                    <th scope="col"
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Receipt
+                                    </th>
+                                    <th scope="col"
+                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody className="bg-white dark:bg-gray-700 divide-y divide-gray-200 dark:divide-gray-600">
+                                {payments.map((payment) => (
+                                    <tr key={payment.id}>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            {payment.payment_date ? formatDate(payment.payment_date, { formatString: 'P' }) : 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            ${(payment.total_amount / 100).toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">
+                                            {payment.type?.replace(/_/g, ' ') ?? 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                 payment.status === 'succeeded' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                                     payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                         'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                             }`}>
+                               {payment.status}
+                             </span>
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">
+                                            {payment.payment_method || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                            {payment.receipt_url ? (
+                                                <a
+                                                    href={payment.receipt_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline"
+                                                >
+                                                    View
+                                                </a>
+                                            ) : (
+                                                'N/A'
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                            {(payment.status === 'pending' || payment.status === 'failed') ? (
+                                                <Link
+                                                    to={`/pay/${payment.id}`}
+                                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline font-medium"
+                                                >
+                                                    {payment.status === 'pending' ? 'Complete Payment' : 'Retry Payment'}
+                                                </Link>
+                                            ) : (
+                                                'N/A'
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <p className="text-gray-600 dark:text-gray-400 text-lg">No payment history found.</p>
+                            <p className="text-gray-500 dark:text-gray-500 text-sm mt-2">Your payment transactions will appear here once you make your first payment.</p>
+                        </div>
+                    )}
                 </div>
-            ) : (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                    <p className="text-gray-600 dark:text-gray-400">No payment history found.</p>
-                </div>
-            )}
+            </div>
         </div>
     );
 }
@@ -155,12 +168,32 @@ export function ErrorBoundary() {
     const error: Error = new Error("An unknown error occurred on the payment history page."); // Placeholder
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyPaymentHistory()} className="mb-6" />
-            <h1 className="text-3xl font-bold mb-6 text-red-600 dark:text-red-400">Error Loading Payment History</h1>
-            <p className="text-gray-600 dark:text-gray-400">
-                {error.message}
-            </p>
+        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AppBreadcrumb items={breadcrumbPatterns.familyPaymentHistory()} className="mb-6" />
+                
+                {/* Page Header */}
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold text-red-600 dark:text-red-400 sm:text-4xl">
+                        Error Loading Payment History
+                    </h1>
+                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                        We encountered an issue while loading your payment history
+                    </p>
+                </div>
+
+                {/* Error Content */}
+                <div className="form-container-styles p-8 backdrop-blur-lg">
+                    <div className="text-center py-12">
+                        <p className="text-gray-600 dark:text-gray-400 text-lg">
+                            {error.message}
+                        </p>
+                        <p className="text-gray-500 dark:text-gray-500 text-sm mt-4">
+                            Please try refreshing the page or contact support if the problem persists.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

@@ -100,76 +100,79 @@ export default function FamilyOrders() {
     const { orders } = useLoaderData<typeof loader>();
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyOrders()} />
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AppBreadcrumb items={breadcrumbPatterns.familyOrders()} className="mb-6" />
 
-            <h1 className="text-3xl font-bold mb-6">Order History</h1>
+                {/* Page Header */}
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
+                        Order History
+                    </h1>
+                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                        View your past orders and track their status
+                    </p>
+                </div>
 
-            {/* Replaced Card with styled div */}
-            <div className="overflow-x-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                {orders.length === 0 ? (
-                    <Alert>
-                        <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>No Orders Found</AlertTitle>
-                            <AlertDescription>
-                                You haven&apos;t placed any orders yet. Visit the <Link to="/family/store" className="font-medium text-primary underline underline-offset-4">Store</Link> to make a purchase.
-                            </AlertDescription>
-                    </Alert>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Order Date</TableHead>
-                                <TableHead>Order ID</TableHead>
-                                <TableHead>Student</TableHead> {/* Added Student Header */}
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Total</TableHead>
-                                <TableHead>Items</TableHead>
-                                {/* <TableHead className="text-right">Actions</TableHead> */}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {orders.map((order) => (
-                                <TableRow key={order.id}>
-                                    <TableCell className="whitespace-nowrap">{formatDate(order.created_at, { type: 'datetime' })}</TableCell>
-                                    <TableCell className="whitespace-nowrap font-mono text-xs">{order.id.substring(0, 8)}...</TableCell>
-                                    <TableCell className="whitespace-nowrap"> {/* Added Student Cell */}
-                                        {order.students ? `${order.students.first_name} ${order.students.last_name}` : 'N/A'}
-                                    </TableCell>
-                                    <TableCell className="whitespace-nowrap">
-                                        {/* Use Badge component for status */}
-                                        <Badge variant={
-                                            order.status === 'completed' ? 'default' : // Use 'default' for success
-                                            order.status === 'paid_pending_pickup' ? 'secondary' : // Use 'secondary' for pending pickup
-                                            order.status === 'cancelled' ? 'destructive' :
-                                            'secondary' // Default/pending_payment
-                                        }>
-                                            {order.status.replace(/_/g, ' ').replace('paid pending', 'pending')}
-                                        </Badge>
-                                    </TableCell>
-                                    {/* Pass raw cents to formatCurrency, assuming it handles the division */}
-                                    <TableCell className="whitespace-nowrap text-right">{formatCurrency(order.total_amount_cents)}</TableCell>
-                                    <TableCell className="whitespace-normal"> {/* Allow wrapping */}
-                                        <ul className="list-disc list-inside">
-                                            {order.order_items.map(item => (
-                                                <li key={item.id}>
-                                                        {item.quantity} x {item.product_variants?.products?.name ?? 'Unknown Product'}
-                                                        {item.product_variants?.size && ` (${item.product_variants.size})`}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </TableCell>
-                                    {/* Optional: Add actions like view details or reorder */}
-                                    {/* <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link to={`/family/orders/${order.id}`}>View</Link>
-                                        </Button>
-                                    </TableCell> */}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
+                {/* Order History Content */}
+                <div className="form-container-styles p-8 backdrop-blur-lg">
+                    <div className="overflow-x-auto">
+                        {orders.length === 0 ? (
+                            <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>No Orders Found</AlertTitle>
+                                <AlertDescription>
+                                    You haven&apos;t placed any orders yet. Visit the <Link to="/family/store" className="font-medium text-primary underline underline-offset-4">Store</Link> to make a purchase.
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Order Date</TableHead>
+                                        <TableHead>Order ID</TableHead>
+                                        <TableHead>Student</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Total</TableHead>
+                                        <TableHead>Items</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {orders.map((order) => (
+                                        <TableRow key={order.id}>
+                                            <TableCell className="whitespace-nowrap">{formatDate(order.created_at, { type: 'datetime' })}</TableCell>
+                                            <TableCell className="whitespace-nowrap font-mono text-xs">{order.id.substring(0, 8)}...</TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                {order.students ? `${order.students.first_name} ${order.students.last_name}` : 'N/A'}
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                <Badge variant={
+                                                    order.status === 'completed' ? 'default' :
+                                                    order.status === 'paid_pending_pickup' ? 'secondary' :
+                                                    order.status === 'cancelled' ? 'destructive' :
+                                                    'secondary'
+                                                }>
+                                                    {order.status.replace(/_/g, ' ').replace('paid pending', 'pending')}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap text-right">{formatCurrency(order.total_amount_cents)}</TableCell>
+                                            <TableCell className="whitespace-normal">
+                                                <ul className="list-disc list-inside">
+                                                    {order.order_items.map(item => (
+                                                        <li key={item.id}>
+                                                            {item.quantity} x {item.product_variants?.products?.name ?? 'Unknown Product'}
+                                                            {item.product_variants?.size && ` (${item.product_variants.size})`}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
