@@ -31,7 +31,7 @@ const familyNavItems = [
     {to: "/family/payment-history", label: "Payment History", icon: FileText},
     {to: "/family/orders", label: "Orders", icon: ShoppingBag},
     {to: "/family/messages", label: "Messages", icon: MessageSquare},
-    {to: "/waivers", label: "Waivers", icon: FileText},
+    {to: "/family/waivers", label: "Waivers", icon: FileText},
 ];
 
 export default function FamilyNavbar() {

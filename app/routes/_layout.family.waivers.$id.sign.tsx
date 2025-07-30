@@ -16,7 +16,7 @@ export async function loader({request, params}: LoaderFunctionArgs) {
     const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {
-        return redirect('/login?redirectTo=/waivers');
+        return redirect('/login?redirectTo=/family/waivers');
     }
 
     // Fetch user profile to get family_id
@@ -56,7 +56,7 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         .single();
 
     if (error || !waiver) {
-        return redirect('/waivers');
+        return redirect('/family/waivers');
     }
 
     // Check if already signed
@@ -68,7 +68,7 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         .single();
 
     if (existingSignature) {
-        return redirect('/waivers');
+        return redirect('/family/waivers');
     }
 
     return json({
@@ -119,7 +119,7 @@ export async function action({request, params}: ActionFunctionArgs) {
         return json({success: false, error: 'Failed to save signature'});
     }
 
-    return redirect('/waivers');
+    return redirect('/family/waivers');
 }
 
 export default function SignWaiver() {
@@ -301,92 +301,100 @@ export default function SignWaiver() {
     }
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
-                    <AppBreadcrumb items={breadcrumbPatterns.waiverSign(waiver.title, waiver.id)} className="mb-6" />
-                    
-                    <h1 className="text-3xl font-bold text-green-600 dark:text-green-400 mb-6">Sign: {waiver.title}</h1>
-
+                <AppBreadcrumb items={breadcrumbPatterns.familyWaiverSign(waiver.title, waiver.id)} className="mb-6" />
+                
+                {/* Page Header */}
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
+                        Sign Waiver
+                    </h1>
+                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                        {waiver.title}
+                    </p>
+                </div>
+                
+                <div className="form-container-styles p-8 backdrop-blur-lg">
                     <div className="mb-8 p-6 border rounded bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
                         <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
                             {waiver.content}
                         </div>
                     </div>
 
-            <Form method="post" onSubmit={handleSubmit}>
-                <div className="mb-6">
-                    <h2 className="text-xl font-semibold mb-2">Your Signature</h2>
-                    <p className="text-sm text-gray-600 mb-4">
-                        Please sign below using your mouse or finger on touch devices.
-                    </p>
+                    <Form method="post" onSubmit={handleSubmit}>
+                        <div className="mb-6">
+                            <h2 className="text-xl font-semibold mb-2">Your Signature</h2>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                Please sign below using your mouse or finger on touch devices.
+                            </p>
 
-                    <div className="border rounded p-1 bg-white dark:bg-gray-800 dark:border-gray-700">
-                        <canvas
-                            ref={canvasRef}
-                            width={600}
-                            height={150}
-                            className="w-full border border-gray-300 dark:border-gray-600 touch-none dark:bg-gray-700"
-                            onMouseDown={startDrawing}
-                            onMouseMove={draw}
-                            onMouseUp={stopDrawing}
-                            onMouseLeave={stopDrawing}
-                            onTouchStart={startDrawing}
-                            onTouchMove={draw}
-                            onTouchEnd={stopDrawing}
-                        />
-                    </div>
+                            <div className="border rounded p-1 bg-white dark:bg-gray-800 dark:border-gray-700">
+                                <canvas
+                                    ref={canvasRef}
+                                    width={600}
+                                    height={150}
+                                    className="w-full border border-gray-300 dark:border-gray-600 touch-none dark:bg-gray-700"
+                                    onMouseDown={startDrawing}
+                                    onMouseMove={draw}
+                                    onMouseUp={stopDrawing}
+                                    onMouseLeave={stopDrawing}
+                                    onTouchStart={startDrawing}
+                                    onTouchMove={draw}
+                                    onTouchEnd={stopDrawing}
+                                />
+                            </div>
 
-                    <input type="hidden" name="signature" value={signatureData}/>
+                            <input type="hidden" name="signature" value={signatureData}/>
 
-                    <button
-                        type="button"
-                        onClick={clearSignature}
-                        className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                        aria-label="Clear signature"
-                    >
-                        Clear Signature
-                    </button>
+                            <button
+                                type="button"
+                                onClick={clearSignature}
+                                className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                                aria-label="Clear signature"
+                            >
+                                Clear Signature
+                            </button>
+                        </div>
+
+                        <div className="mb-6">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="agreement"
+                                    name="agreement"
+                                    checked={isAgreed}
+                                    onCheckedChange={(checked) => setIsAgreed(Boolean(checked))}
+                                    aria-describedby="agreement-description"
+                                />
+                                <Label
+                                    htmlFor="agreement"
+                                    id="agreement-description"
+                                >
+                                    <span className="dark:text-gray-300">I, {fullName}, have read and agree to the terms outlined in this document.</span>
+                                </Label>
+                            </div>
+                        </div>
+
+                        {(error || actionData?.error) && (
+                            <Alert variant="destructive" className="mb-4 dark:border-red-800 dark:bg-red-900/20">
+                                <AlertDescription className="dark:text-red-300">{error || actionData?.error}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        <div className="flex justify-end space-x-4">
+                            <Button asChild variant="outline">
+                                <a href="/family/waivers">Cancel</a>
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={!isAgreed || !signatureData}
+                            >
+                                Submit Signature
+                            </Button>
+                        </div>
+                    </Form>
                 </div>
-
-                <div className="mb-6">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="agreement"
-                            name="agreement"
-                            checked={isAgreed}
-                            onCheckedChange={(checked) => setIsAgreed(Boolean(checked))}
-                            aria-describedby="agreement-description" // For accessibility
-                        />
-                        <Label
-                            htmlFor="agreement"
-                            id="agreement-description" // For accessibility
-                        >
-                            <span className="dark:text-gray-300">I, {fullName}, have read and agree to the terms outlined in this document.</span>
-                        </Label>
-                    </div>
-                </div>
-
-                {(error || actionData?.error) && (
-                    <Alert variant="destructive" className="mb-4 dark:border-red-800 dark:bg-red-900/20">
-                        <AlertDescription className="dark:text-red-300">{error || actionData?.error}</AlertDescription>
-                    </Alert>
-                )}
-
-                    <div className="flex justify-end space-x-4">
-                        <Button asChild variant="outline">
-                            <a href="/waivers">Cancel</a>
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={!isAgreed || !signatureData}
-                        >
-                            Submit Signature
-                        </Button>
-                    </div>
-                </Form>
             </div>
         </div>
-    </div>
     );
 }
