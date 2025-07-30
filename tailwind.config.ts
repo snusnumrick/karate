@@ -7,7 +7,6 @@ export default {
     theme: {
         extend: {
             colors: {
-                // Keep your existing custom green and amber
                 green: {
                     '50': '#F0F9F0',
                     '600': '#2E7D32',
@@ -16,8 +15,6 @@ export default {
                 amber: {
                     '50': '#FFF8E1'
                 },
-
-                // Keep all existing shadcn/ui colors
                 background: 'hsl(var(--background))',
                 foreground: 'hsl(var(--foreground))',
                 card: {
@@ -57,18 +54,6 @@ export default {
                     '3': 'hsl(var(--chart-3))',
                     '4': 'hsl(var(--chart-4))',
                     '5': 'hsl(var(--chart-5))'
-                },
-
-                // ADD your new limited palette
-                'theme': {
-                    'graphite': 'var(--color-graphite)',
-                    'yellow': 'var(--color-yellow)',
-                    'green': 'var(--color-green)',
-                    'red': 'var(--color-red)',
-                    'background': 'var(--color-background)',
-                    'surface': 'var(--color-surface)',
-                    'text': 'var(--color-text)',
-                    'border': 'var(--color-border)',
                 }
             },
             fontFamily: {
