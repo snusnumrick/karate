@@ -601,7 +601,7 @@ export default function FamilyCalendarPage() {
   };
 
   return (
-    <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+    <div className="min-h-screen page-background-styles py-12 text-foreground">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} />
@@ -609,20 +609,17 @@ export default function FamilyCalendarPage() {
 
         {/* Page Header */}
         <div className="text-center mb-12">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+          <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
             <CalendarIcon className="inline-block mr-2 h-8 w-8" />
             Family Calendar
           </h1>
-          <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+          <p className="mt-3 max-w-2xl mx-auto text-xl page-subheader-styles sm:mt-4">
             {familyName ? `View ${familyName} family's schedule and events` : 'View your family schedule and events'}
           </p>
         </div>
 
         {/* Calendar Component in Card */}
         <div className="form-container-styles p-8 backdrop-blur-lg mb-8">
-{/*          <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-            <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Calendar View</h2>
-          </div>*/}
           <Calendar
             events={allEvents}
             currentDate={currentDate}

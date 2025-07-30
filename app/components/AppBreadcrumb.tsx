@@ -608,7 +608,26 @@ export const breadcrumbPatterns = {
     { label: "New Message", current: true },
   ],
 
-  // Public waiver pages
+  // Family waiver pages
+  familyWaivers: () => [
+    { label: "Family Portal", href: "/family" },
+    { label: "Waivers & Agreements", current: true },
+  ],
+  
+  familyWaiverDetail: (waiverTitle: string) => [
+    { label: "Family Portal", href: "/family" },
+    { label: "Waivers & Agreements", href: "/family/waivers" },
+    { label: waiverTitle, current: true },
+  ],
+  
+  familyWaiverSign: (waiverTitle: string, waiverId: string) => [
+    { label: "Family Portal", href: "/family" },
+    { label: "Waivers & Agreements", href: "/family/waivers" },
+    { label: waiverTitle, href: `/family/waivers/${waiverId}` },
+    { label: "Sign", current: true },
+  ],
+
+  // Public waiver pages (for non-authenticated users)
   waivers: () => [
     { label: "Home", href: "/" },
     { label: "Waivers & Agreements", current: true },

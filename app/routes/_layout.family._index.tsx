@@ -380,24 +380,21 @@ export default function FamilyDashboard() {
     const familyDisplayName = family.name || `Your Family Portal`;
 
     return (
-        <div className="min-h-screen page-background-styles">
-            <div className="container mx-auto px-4 py-8">
+        <div className="page-background-styles">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header Section */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-green-600 rounded-lg">
-                            <Users className="h-6 w-6 text-white" />
-                        </div>
-                        <h1 className="text-4xl font-bold page-header-styles">
-                            {familyDisplayName}
-                        </h1>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400 text-lg">Welcome to your family dashboard</p>
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                        {familyDisplayName}
+                    </h1>
+                    <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                        Welcome to your family portal. Manage students, view schedules, and track progress.
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {/* My Students Section */}
-                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Users className="h-5 w-5 text-white" />
@@ -411,7 +408,7 @@ export default function FamilyDashboard() {
                                 <Link
                                     key={student.id}
                                     to={`/family/student/${student.id}`}
-                                    className="block p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300 group"
+                                    className="block p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300 group"
                                 >
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="flex-1">
@@ -506,7 +503,7 @@ export default function FamilyDashboard() {
                 </div>
 
                 {/* Next Classes Section */}
-                <div className="form-container-styles form-container p-6 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Calendar className="h-5 w-5 text-white" />
@@ -516,7 +513,7 @@ export default function FamilyDashboard() {
                     {upcomingClasses && upcomingClasses.length > 0 ? (
                         <div className="space-y-4">
                             {upcomingClasses.map((session, index) => (
-                                <div key={index} className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300">
+                                <div key={index} className="p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300">
                                     <div className="flex justify-between items-start">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
@@ -572,7 +569,7 @@ export default function FamilyDashboard() {
                 </div>
 
                 {/* Attendance Panel */}
-                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <CheckCircle className="h-5 w-5 text-white" />
@@ -582,7 +579,7 @@ export default function FamilyDashboard() {
                     {studentAttendanceData && studentAttendanceData.length > 0 ? (
                         <div className="space-y-4">
                             {studentAttendanceData.map((attendance, index) => (
-                                <div key={index} className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300">
+                                <div key={index} className="p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300">
                                     <div className="flex justify-between items-center">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
@@ -644,7 +641,7 @@ export default function FamilyDashboard() {
                 </div>
 
                 {/* Guardians Section */}
-                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Users className="h-5 w-5 text-white" />
@@ -666,7 +663,7 @@ export default function FamilyDashboard() {
                                 <Link
                                     key={guardian.id}
                                     to={`/family/guardian/${guardian.id}`}
-                                    className="block p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300 group"
+                                    className="block p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300 group"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm">
@@ -709,7 +706,7 @@ export default function FamilyDashboard() {
                 </div>
 
                 {/* Waivers Section */}
-                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-green-600 rounded-lg">
                             <Shield className="h-5 w-5 text-white" />
@@ -718,7 +715,7 @@ export default function FamilyDashboard() {
                     </div>
                     {/* Display waiver status */}
                     {allWaiversSigned ? (
-                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500 mb-6">
+                        <div className="p-4 form-card-styles rounded-lg border-l-4 border-green-500 mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-green-100 dark:bg-green-800 rounded-full">
                                     <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -727,7 +724,7 @@ export default function FamilyDashboard() {
                             </div>
                         </div>
                     ) : (
-                        <Alert variant="destructive" className="mb-6">
+                        <Alert variant="destructive" className="mb-6 form-card-styles">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Action Required</AlertTitle>
                             <AlertDescription>
@@ -737,7 +734,7 @@ export default function FamilyDashboard() {
                     )}
                     {/* Use asChild prop for correct Button/Link integration */}
                     <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                        <Link to="/waivers" className="flex items-center justify-center gap-2">
+                        <Link to="/family/waivers" className="flex items-center justify-center gap-2">
                             <Shield className="h-5 w-5" />
                             View/Sign Waivers
                         </Link>
@@ -745,14 +742,14 @@ export default function FamilyDashboard() {
                 </div>
 
                 {/* Account Settings Section */}
-                <div className="form-container-styles p-6 hover:shadow-lg transition-shadow duration-300">
+                <div className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-gray-500 rounded-lg">
                             <Settings className="h-5 w-5 text-white" />
                         </div>
                         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Account Settings</h2>
                     </div>
-                    <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border border-gray-100 dark:border-gray-700 mb-6">
+                    <div className="p-4 form-card-styles rounded-lg border border-gray-100 dark:border-gray-700 mb-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm">
                                 <Settings className="h-4 w-4 text-gray-600" />
@@ -765,7 +762,7 @@ export default function FamilyDashboard() {
                             </div>
                         </div>
                     </div>
-                    <Button asChild className="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                    <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
                         <Link to="/family/account" className="flex items-center justify-center gap-2">
                             <Settings className="h-5 w-5" />
                             Manage Account

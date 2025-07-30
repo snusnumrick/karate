@@ -9,7 +9,7 @@ export default function ClassesPage() {
                     <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
                         Karate Classes for Children
                     </h1>
-                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                    <p className="mt-3 max-w-2xl mx-auto text-xl page-subheader-styles sm:mt-4">
                         Discover the art of the &ldquo;empty hand&rdquo; with Sensei Negin
                     </p>
                 </div>
