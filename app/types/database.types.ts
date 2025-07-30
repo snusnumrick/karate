@@ -2140,6 +2140,12 @@ export type Database = {
           timezone: string | null
           location: string | null
           address: string | null
+          location_name: string | null
+          street_address: string | null
+          locality: string | null
+          region: string | null
+          postal_code: string | null
+          country: string | null
           max_participants: number | null
           registration_deadline: string | null
           min_age: number | null
@@ -2172,6 +2178,12 @@ export type Database = {
           timezone?: string | null
           location?: string | null
           address?: string | null
+          location_name?: string | null
+          street_address?: string | null
+          locality?: string | null
+          region?: string | null
+          postal_code?: string | null
+          country?: string | null
           max_participants?: number | null
           registration_deadline?: string | null
           min_age?: number | null
@@ -2204,6 +2216,12 @@ export type Database = {
           timezone?: string | null
           location?: string | null
           address?: string | null
+          location_name?: string | null
+          street_address?: string | null
+          locality?: string | null
+          region?: string | null
+          postal_code?: string | null
+          country?: string | null
           max_participants?: number | null
           registration_deadline?: string | null
           min_age?: number | null

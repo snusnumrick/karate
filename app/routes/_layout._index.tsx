@@ -1,14 +1,47 @@
 // Import types needed for merging parent meta
-import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
-import { Link } from "@remix-run/react";
-import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind } from 'lucide-react'; // Import icons for environment
+import type { MetaFunction, MetaArgs, MetaDescriptor, LoaderFunctionArgs } from "@remix-run/node";
+import { Link, useLoaderData } from "@remix-run/react";
+import { json } from "@remix-run/node";
+import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
+import { EventService } from "~/services/event.server";
+import type { Database } from "~/types/database.types";
 
-// Loader for homepage - no redirects, allow all users to see the public homepage
-export async function loader() {
-    // Allow all users (including admins) to see the public homepage
-    // The navbar will adapt based on user status via the main layout
-    return null;
+type UpcomingEvent = Pick<Database['public']['Tables']['events']['Row'], 
+  'id' | 'title' | 'description' | 'event_type' | 'status' | 'start_date' | 
+  'end_date' | 'start_time' | 'end_time' | 'location' | 'address' | 
+  'max_participants' | 'registration_fee' | 'registration_deadline' | 
+  'external_url' | 'is_public'
+>;
+
+// Loader for homepage - fetch upcoming events
+export async function loader({ request }: LoaderFunctionArgs) {
+    try {
+        const upcomingEvents = await EventService.getUpcomingEvents();
+        return json(
+            { upcomingEvents },
+            {
+                headers: {
+                    // Cache for 5 minutes (300 seconds) to match server-side cache duration
+                    // public: can be cached by browsers and CDNs
+                    // max-age: cache duration in seconds
+                    // stale-while-revalidate: serve stale content while fetching fresh data
+                    'Cache-Control': 'public, max-age=300, stale-while-revalidate=600'
+                }
+            }
+        );
+    } catch (error) {
+        console.error('Error loading upcoming events:', error);
+        return json(
+            { upcomingEvents: [] },
+            {
+                headers: {
+                    // Don't cache error responses
+                    'Cache-Control': 'no-cache, no-store, must-revalidate'
+                }
+            }
+        );
+    }
 }
 
 // Helper function to merge meta tags, giving precedence to child tags
@@ -37,6 +70,10 @@ export const meta: MetaFunction = (args: MetaArgs) => {
     // Get the already computed meta tags from the parent route match
     const parentMeta = parentMatch?.meta || [];
 
+    // Get loader data for events
+    const loaderData = args.data as { upcomingEvents: UpcomingEvent[] } | undefined;
+    const upcomingEvents = loaderData?.upcomingEvents || [];
+
     // Define meta tags specific to this Index page
     const indexPageTitle = "Karate Classes - Sensei Negin";
     // Use siteConfig.location.address for consistency in description
@@ -53,11 +90,55 @@ export const meta: MetaFunction = (args: MetaArgs) => {
         { tagName: "link", rel: "canonical", href: siteConfig.url },
     ];
 
+    // Add structured data for events if we have any
+    if (upcomingEvents.length > 0) {
+        const eventsStructuredData = {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "Upcoming Karate Events",
+            "description": "Upcoming karate events and workshops at Sensei Negin's dojo",
+            "itemListElement": upcomingEvents.map((event, index) => ({
+                "@type": "Event",
+                "position": index + 1,
+                "name": event.title,
+                "description": event.description || `${event.event_type} event at our karate dojo`,
+                "startDate": event.start_date + (event.start_time ? `T${event.start_time}` : ''),
+                "endDate": event.end_date ? (event.end_date + (event.end_time ? `T${event.end_time}` : '')) : undefined,
+                "location": {
+                     "@type": "Place",
+                     "name": event.location || siteConfig.name,
+                     "address": {
+                         "@type": "PostalAddress",
+                         "streetAddress": event.address || siteConfig.location.address
+                     }
+                 },
+                "organizer": {
+                    "@type": "Organization",
+                    "name": siteConfig.name,
+                    "url": siteConfig.url
+                },
+                "offers": event.registration_fee ? {
+                    "@type": "Offer",
+                    "price": event.registration_fee,
+                    "priceCurrency": "CAD",
+                    "availability": "https://schema.org/InStock"
+                } : undefined,
+                "eventStatus": "https://schema.org/EventScheduled",
+                "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode"
+            }))
+        };
+
+        indexMeta.push({
+            "script:ld+json": eventsStructuredData
+        });
+    }
+
     // Merge parent defaults with specific tags for this page
     return mergeMeta(parentMeta, indexMeta);
 };
 
 export default function Index() {
+    const { upcomingEvents } = useLoaderData<typeof loader>();
     return (
         <div className="page-background-styles">
             {/* Hero Section with Background Image */}
@@ -142,6 +223,155 @@ export default function Index() {
                     </svg>
                 </div>
             </div>
+
+            {/* Upcoming Events Section */}
+            {upcomingEvents.length > 0 && (
+                <div className="bg-gray-50 dark:bg-gray-800 py-16">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 className="text-3xl font-bold text-center text-green-600 dark:text-green-400 mb-12">
+                            Upcoming Events
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {upcomingEvents.map((event) => (
+                                <div key={event.id} className="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                                    <div className="p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                 event.event_type === 'workshop' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                                                 event.event_type === 'tournament' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                                                 event.event_type === 'seminar' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                                                 event.event_type === 'testing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                 event.event_type === 'competition' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
+                                                 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
+                                             }`}>
+                                                {event.event_type?.replace('_', ' ').toUpperCase() || 'EVENT'}
+                                            </span>
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                event.status === 'published' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                                event.status === 'registration_open' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                                                'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
+                                            }`}>
+                                                {event.status === 'registration_open' ? 'OPEN' : event.status?.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                            {event.title}
+                                        </h3>
+                                        
+                                        {event.description && (
+                                            <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+                                                {event.description}
+                                            </p>
+                                        )}
+                                        
+                                        <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                                            <div className="flex items-center">
+                                                <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                                                <span>
+                                                    {new Date(event.start_date).toLocaleDateString('en-CA', {
+                                                        weekday: 'short',
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    })}
+                                                    {event.end_date && event.end_date !== event.start_date && (
+                                                        <> - {new Date(event.end_date).toLocaleDateString('en-CA', {
+                                                            weekday: 'short',
+                                                            year: 'numeric',
+                                                            month: 'short',
+                                                            day: 'numeric'
+                                                        })}</>
+                                                    )}
+                                                </span>
+                                            </div>
+                                            
+                                            {(event.start_time || event.end_time) && (
+                                                <div className="flex items-center">
+                                                    <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
+                                                    <span>
+                                                        {event.start_time && new Date(`2000-01-01T${event.start_time}`).toLocaleTimeString('en-CA', {
+                                                            hour: 'numeric',
+                                                            minute: '2-digit',
+                                                            hour12: true
+                                                        })}
+                                                        {event.end_time && (
+                                                            <> - {new Date(`2000-01-01T${event.end_time}`).toLocaleTimeString('en-CA', {
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                                hour12: true
+                                                            })}</>
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            
+                                            {event.location && (
+                                                <div className="flex items-center">
+                                                    <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
+                                                    <span>{event.location}</span>
+                                                </div>
+                                            )}
+                                            
+                                            {event.registration_fee && (
+                                                <div className="flex items-center">
+                                                    <span className="text-green-600 dark:text-green-400 font-semibold">
+                                                        ${event.registration_fee} CAD
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {event.status === 'registration_open' && event.registration_deadline && (
+                                            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                                    <strong>Registration deadline:</strong> {new Date(event.registration_deadline).toLocaleDateString('en-CA', {
+                                                        weekday: 'short',
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    })}
+                                                </p>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="mt-6 flex justify-between items-center">
+                                            <Link
+                                                to={`/events/${event.id}`}
+                                                className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+                                            >
+                                                Learn More
+                                                <ExternalLink className="h-4 w-4 ml-1" />
+                                            </Link>
+                                            
+                                            {event.status === 'registration_open' && (
+                                                <Link
+                                                    to={`/events/${event.id}/register`}
+                                                    className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                                                >
+                                                    Register
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {upcomingEvents.length >= 6 && (
+                            <div className="text-center mt-12">
+                                <Link
+                                    to="/events"
+                                    className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200"
+                                >
+                                    View All Events
+                                    <ExternalLink className="h-5 w-5 ml-2" />
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Class Info Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

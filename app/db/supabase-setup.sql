@@ -5199,6 +5199,12 @@ CREATE TABLE IF NOT EXISTS events (
     -- Location information
     location text,
     address text,
+    location_name text,
+    street_address text,
+    locality text,
+    region text,
+    postal_code text,
+    country text,
     
     -- Registration and capacity
     max_participants integer,

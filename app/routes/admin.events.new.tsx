@@ -110,6 +110,13 @@ export async function action({ request }: ActionFunctionArgs) {
   const start_time = formData.get("start_time") as string;
   const end_time = formData.get("end_time") as string;
   const location = formData.get("location") as string;
+  const location_name = formData.get("location_name") as string;
+  const street_address = formData.get("street_address") as string;
+  const address = formData.get("address") as string;
+  const locality = formData.get("locality") as string;
+  const region = formData.get("region") as string;
+  const postal_code = formData.get("postal_code") as string;
+  const country = formData.get("country") as string;
   const max_participants = formData.get("max_participants") as string;
   const registration_fee = formData.get("registration_fee") as string;
   const registration_deadline = formData.get("registration_deadline") as string;
@@ -119,6 +126,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const max_belt_rank = formData.get("max_belt_rank") as string;
   const min_age = formData.get("min_age") as string;
   const max_age = formData.get("max_age") as string;
+  const external_url = formData.get("external_url") as string;
 
   // Extract selected waivers
   const selectedWaivers: Array<{waiverId: string, isRequired: boolean}> = [];
@@ -164,6 +172,13 @@ export async function action({ request }: ActionFunctionArgs) {
       start_time: start_time || null,
       end_time: end_time || null,
       location: location || null,
+      address: address || null,
+      location_name: location_name || null,
+      street_address: street_address || null,
+      locality: locality || null,
+      region: region || null,
+      postal_code: postal_code || null,
+      country: country || null,
       max_participants: max_participants ? parseInt(max_participants) : null,
       registration_fee: registration_fee ? parseFloat(registration_fee) : null,
       registration_deadline: registration_deadline || null,
@@ -175,6 +190,7 @@ export async function action({ request }: ActionFunctionArgs) {
       max_age: max_age ? parseInt(max_age) : null,
       status: "published",
       created_by: user.id,
+      external_url: external_url || null,
     };
 
     const { data: event, error: eventError } = await supabaseServer
@@ -314,6 +330,21 @@ export default function NewEvent() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div>
+                <Label htmlFor="external_url">External Event URL</Label>
+                <Input
+                  id="external_url"
+                  name="external_url"
+                  type="url"
+                  placeholder="https://example.com/event-registration"
+                  className="input-custom-styles"
+                  tabIndex={5}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional: Link to external registration or event information page
+                </p>
+              </div>
             </div>
           </div>
 
@@ -333,7 +364,7 @@ export default function NewEvent() {
                     type="date"
                     required
                     className="input-custom-styles"
-                    tabIndex={5}
+                    tabIndex={6}
                   />
                   {actionData?.fieldErrors?.start_date && (
                     <p className="text-sm text-destructive mt-1">{actionData.fieldErrors.start_date}</p>
@@ -347,7 +378,7 @@ export default function NewEvent() {
                   name="end_date"
                   type="date"
                   className="input-custom-styles"
-                  tabIndex={6}
+                  tabIndex={7}
                 />
               </div>
               </div>
@@ -360,7 +391,7 @@ export default function NewEvent() {
                     name="start_time"
                     type="time"
                     className="input-custom-styles"
-                    tabIndex={7}
+                    tabIndex={9}
                   />
                 </div>
 
@@ -386,30 +417,123 @@ export default function NewEvent() {
             </h2>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location">Location Name</Label>
                 <Input
                   id="location"
                   name="location"
                   placeholder="e.g., Main Dojo, Community Center"
                   className="input-custom-styles"
-                  tabIndex={9}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="max_participants">Maximum Participants</Label>
-                <Input
-                  id="max_participants"
-                  name="max_participants"
-                  type="number"
-                  min="1"
-                  placeholder="e.g., 50"
-                  className="input-custom-styles"
                   tabIndex={10}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Leave empty for unlimited capacity
+                  General location name or venue name
                 </p>
+              </div>
+
+              <div>
+                <Label htmlFor="location_name">Specific Location Name</Label>
+                <Input
+                  id="location_name"
+                  name="location_name"
+                  placeholder="e.g., Toronto Karate Academy - Main Hall"
+                  className="input-custom-styles"
+                  tabIndex={10.1}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Detailed venue name for metadata and SEO
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="street_address">Street Address</Label>
+                  <Input
+                    id="street_address"
+                    name="street_address"
+                    placeholder="e.g., 123 Main Street"
+                    className="input-custom-styles"
+                    tabIndex={10.2}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="address">Full Address (Legacy)</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    placeholder="Complete address for display"
+                    className="input-custom-styles"
+                    tabIndex={10.3}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Fallback address if structured fields are empty
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="locality">City/Locality</Label>
+                  <Input
+                    id="locality"
+                    name="locality"
+                    placeholder="e.g., Toronto"
+                    className="input-custom-styles"
+                    tabIndex={10.4}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="region">Province/State</Label>
+                  <Input
+                    id="region"
+                    name="region"
+                    placeholder="e.g., ON"
+                    className="input-custom-styles"
+                    tabIndex={10.5}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="postal_code">Postal Code</Label>
+                  <Input
+                    id="postal_code"
+                    name="postal_code"
+                    placeholder="e.g., M5V 3A8"
+                    className="input-custom-styles"
+                    tabIndex={10.6}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    name="country"
+                    placeholder="e.g., Canada"
+                    defaultValue="Canada"
+                    className="input-custom-styles"
+                    tabIndex={10.7}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="max_participants">Maximum Participants</Label>
+                  <Input
+                    id="max_participants"
+                    name="max_participants"
+                    type="number"
+                    min="1"
+                    placeholder="e.g., 50"
+                    className="input-custom-styles"
+                    tabIndex={11}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Leave empty for unlimited capacity
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -432,7 +556,7 @@ export default function NewEvent() {
                     step="0.01"
                     placeholder="0.00"
                     className="input-custom-styles"
-                    tabIndex={11}
+                    tabIndex={12}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Leave empty or 0 for free events
@@ -449,7 +573,7 @@ export default function NewEvent() {
                     name="registration_deadline"
                     type="date"
                     className="input-custom-styles"
-                    tabIndex={12}
+                    tabIndex={13}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Leave empty for no deadline
@@ -470,7 +594,7 @@ export default function NewEvent() {
                 <div>
                   <Label htmlFor="min_belt_rank">Minimum Belt Rank</Label>
                   <Select name="min_belt_rank">
-                    <SelectTrigger className="input-custom-styles" tabIndex={13}>
+                    <SelectTrigger className="input-custom-styles" tabIndex={14}>
                       <SelectValue placeholder="Any belt" />
                     </SelectTrigger>
                     <SelectContent>
@@ -488,7 +612,7 @@ export default function NewEvent() {
                 <div>
                   <Label htmlFor="max_belt_rank">Maximum Belt Rank</Label>
                   <Select name="max_belt_rank">
-                    <SelectTrigger className="input-custom-styles" tabIndex={14}>
+                    <SelectTrigger className="input-custom-styles" tabIndex={15}>
                       <SelectValue placeholder="Any belt" />
                     </SelectTrigger>
                     <SelectContent>
@@ -515,7 +639,7 @@ export default function NewEvent() {
                     min="1"
                     placeholder="Any age"
                     className="input-custom-styles"
-                    tabIndex={15}
+                    tabIndex={17}
                   />
                 </div>
                 <div>
@@ -535,7 +659,7 @@ export default function NewEvent() {
               <div>
                 <Label htmlFor="gender_restriction">Gender Restriction</Label>
                 <Select name="gender_restriction">
-                  <SelectTrigger className="input-custom-styles" tabIndex={17}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={18}>
                     <SelectValue placeholder="No restriction" />
                   </SelectTrigger>
                   <SelectContent>
@@ -550,7 +674,7 @@ export default function NewEvent() {
                 <Checkbox
                   id="special_needs_support"
                   name="special_needs_support"
-                  tabIndex={18}
+                  tabIndex={19}
                 />
                 <Label htmlFor="special_needs_support" className="text-sm font-medium cursor-pointer">
                   Special Needs Support Available
@@ -575,7 +699,7 @@ export default function NewEvent() {
                   name="requires_waiver"
                   checked={requiresWaiver}
                   onCheckedChange={(checked) => setRequiresWaiver(checked as boolean)}
-                  tabIndex={19}
+                  tabIndex={20}
                 />
                 <Label htmlFor="requires_waiver">Requires Waiver</Label>
               </div>
@@ -594,7 +718,7 @@ export default function NewEvent() {
                             <Checkbox
                               id={`waiver_${waiver.id}`}
                               name={`waiver_${waiver.id}`}
-                              tabIndex={20 + index * 2}
+                              tabIndex={21 + index * 2}
                             />
                             <div className="flex-1">
                               <Label htmlFor={`waiver_${waiver.id}`} className="text-sm font-medium cursor-pointer">
@@ -613,7 +737,7 @@ export default function NewEvent() {
                               id={`waiver_required_${waiver.id}`}
                               name={`waiver_required_${waiver.id}`}
                               defaultChecked={waiver.required}
-                              tabIndex={21 + index * 2}
+                              tabIndex={22 + index * 2}
                             />
                             <Label htmlFor={`waiver_required_${waiver.id}`} className="text-xs text-muted-foreground">
                               Required
