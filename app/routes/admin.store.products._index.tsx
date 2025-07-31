@@ -1,12 +1,12 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData } from "@remix-run/react";
+import { Link, useLoaderData, ClientLoaderFunctionArgs } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
 import { formatDate } from "~/utils/misc"; // Import formatDate utility
 import type { Tables } from "~/types/database.types"; // Removed unused Database import
-import { PlusCircle, Edit } from "lucide-react"; // Import icons
+import { PlusCircle, Edit, Package } from "lucide-react"; // Import icons
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type ProductRow = Tables<'products'>;
@@ -32,11 +32,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return json({ products: products || [] }, { headers: response.headers });
 }
 
+export async function clientLoader({ serverLoader }: ClientLoaderFunctionArgs) {
+    return serverLoader();
+}
+
 export default function AdminProductListPage() {
     const { products } = useLoaderData<LoaderData>();
 
     return (
-        <div className="space-y-6">
+        <div className="container mx-auto px-4 py-6 space-y-6">
             <AppBreadcrumb 
                 items={breadcrumbPatterns.adminStoreProducts()}
             />
@@ -49,53 +53,59 @@ export default function AdminProductListPage() {
                 </Button>
             </div>
 
-            {products.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400">No products found. Add your first product!</p>
-            ) : (
-                <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-                    <Table>
-                        <TableHeader>
+            <div className="rounded-md border">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead>Updated</TableHead>
+                            <TableHead>Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {products.length === 0 ? (
                             <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead className="text-center">Status</TableHead>
-                                <TableHead className="text-center">Created</TableHead>
-                                <TableHead className="text-center">Updated</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                    No products found. Create your first product to get started.
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {products.map((product) => (
+                        ) : (
+                            products.map((product) => (
                                 <TableRow key={product.id}>
                                     <TableCell className="font-medium">{product.name}</TableCell>
-                                    <TableCell className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs">
-                                        {product.description || '-'}
+                                    <TableCell className="max-w-xs truncate">
+                                        {product.description || "No description"}
                                     </TableCell>
-                                    <TableCell className="text-center">
+                                    <TableCell>
                                         <Badge variant={product.is_active ? "default" : "secondary"}>
                                             {product.is_active ? "Active" : "Inactive"}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-center text-sm text-gray-500 dark:text-gray-400">
-                                        {formatDate(product.created_at, { formatString: 'PPp' })}
-                                    </TableCell>
-                                     <TableCell className="text-center text-sm text-gray-500 dark:text-gray-400">
-                                        {formatDate(product.updated_at, { formatString: 'PPp' })}
-                                    </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell>{formatDate(product.created_at)}</TableCell>
+                                    <TableCell>{formatDate(product.updated_at)}</TableCell>
+                                    <TableCell className="text-right space-x-2">
                                         <Button asChild variant="outline" size="sm">
-                                            <Link to={`${product.id}/edit`}>
-                                                <Edit className="mr-1 h-3 w-3" /> Edit
+                                            <Link to={`${product.id}/variants`}>
+                                                <Package className="mr-1 h-3 w-3" />
+                                                Variants
                                             </Link>
                                         </Button>
-                                        {/* Add View Variants button later */}
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link to={`${product.id}/edit`}>
+                                                <Edit className="mr-1 h-3 w-3" />
+                                                Edit
+                                            </Link>
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            )}
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     );
 }

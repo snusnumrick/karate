@@ -19,7 +19,8 @@ import {
     AlertDialogTitle,
 } from "~/components/ui/alert-dialog"; // Added AlertDialog components
 import type { Database, Tables, TablesUpdate } from "~/types/database.types";
-import { ArrowLeft, Trash2 } from "lucide-react"; // Added Trash2
+import { Trash2 } from "lucide-react"; // Removed ArrowLeft
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 // import { formatCurrency } from "~/utils/misc"; // Removed unused formatCurrency import
 import { createClient } from "@supabase/supabase-js"; // Import admin client
 
@@ -260,12 +261,15 @@ export default function EditProductVariantPage() {
     };
 
     return (
-        <div className="space-y-6 max-w-lg mx-auto">
-            <Link to={`/admin/store/products/${params.productId}/variants`} className="inline-flex items-center text-sm text-blue-600 hover:underline">
-                <ArrowLeft className="mr-1 h-4 w-4" /> Back to Variants for {product.name}
-            </Link>
-            <h1 className="text-2xl font-bold">Edit Variant</h1>
-             <p className="text-gray-600 dark:text-gray-400">Editing variant for product: <span className="font-semibold">{product.name}</span>.</p>
+        <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminStoreProductVariantEdit(product.name, product.id, variant.size)} className="mb-6" />
+            
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold tracking-tight">Edit Variant</h1>
+                <p className="text-muted-foreground">
+                    Product: {product.name} - Size: {variant.size}
+                </p>
+            </div>
 
             {actionData?.error && !actionData.fieldErrors && (
                 <Alert variant="destructive" className="mb-4">

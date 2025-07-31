@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { formatCurrency, formatDate } from "~/utils/misc"; // Import formatDate utility
 import type { Tables } from "~/types/database.types";
-import { PlusCircle, Edit, ArrowLeft } from "lucide-react";
+import { PlusCircle, Edit } from "lucide-react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type ProductRow = Tables<'products'>;
 type ProductVariantRow = Tables<'product_variants'>;
@@ -56,13 +57,11 @@ export default function AdminProductVariantListPage() {
     const params = useParams(); // Get productId for links
 
     return (
-        <div className="space-y-6">
-             <Link to={`/admin/store/products/${params.productId}/edit`} className="inline-flex items-center text-sm text-blue-600 hover:underline">
-                <ArrowLeft className="mr-1 h-4 w-4" /> Back to Product Details
-            </Link>
-
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Manage Variants for: <span className="text-green-600 dark:text-green-400">{product.name}</span></h1>
+        <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminStoreProductVariants(product.name, params.productId!)} className="mb-6" />
+            
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Manage Variants for: <span className="text-green-600 dark:text-green-400">{product.name}</span></h1>
                 <Button asChild>
                     <Link to="new">
                         <PlusCircle className="mr-2 h-4 w-4" /> Add New Variant

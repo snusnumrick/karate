@@ -226,11 +226,11 @@ export const breadcrumbPatterns = {
     { label: productName, current: true },
   ],
   
-  adminStoreProductVariants: (productName: string) => [
+  adminStoreProductVariants: (productName: string, productId: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Store", href: "/admin/store" },
     { label: "Products", href: "/admin/store/products" },
-    { label: productName, href: `/admin/store/products/${productName.toLowerCase()}` },
+    { label: productName, href: `/admin/store/products/${productId}` },
     { label: "Variants", current: true },
   ],
   
