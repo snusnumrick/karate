@@ -5,7 +5,7 @@ import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } fr
 import { createClient } from "@supabase/supabase-js";
 import {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
+import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
@@ -14,6 +14,7 @@ import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"; // Import Select components
 import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
 import { siteConfig } from "~/config/site"; // Import siteConfig
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 
@@ -184,197 +185,213 @@ export default function EditFamilyPage() {
     ];
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Edit Family: {family.name}</h1>
-                {/* Top Cancel button removed */}
+        <div className="container mx-auto px-4 py-8">
+            <AppBreadcrumb items={breadcrumbPatterns.adminFamilyEdit(family.name, family.id)} className="mb-6" />
+            
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Edit Family: {family.name}</h1>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Edit Family Details</CardTitle>
-                    <CardDescription>Update the information for the {family.name} family.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form method="post" className="space-y-4">
-                        {actionData?.error && !actionData.fieldErrors && (
-                            <Alert variant="destructive">
-                                <ExclamationTriangleIcon className="h-4 w-4"/>
-                                <AlertTitle>Error</AlertTitle>
-                                <AlertDescription>{actionData.error}</AlertDescription>
-                            </Alert>
-                        )}
+        <Form method="post" className="space-y-6">
+            {actionData?.error && !actionData.fieldErrors && (
+                <Alert variant="destructive">
+                    <ExclamationTriangleIcon className="h-4 w-4"/>
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{actionData.error}</AlertDescription>
+                </Alert>
+            )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Family Name */}
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Family Name</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    defaultValue={family.name}
-                                    required
-                                    className="input-custom-styles" // Added custom style
-                                    aria-invalid={!!actionData?.fieldErrors?.name}
-                                    aria-describedby="name-error"
-                                    tabIndex={1}
-                                />
-                                {actionData?.fieldErrors?.name && (
-                                    <p id="name-error" className="text-sm text-destructive">
-                                        {actionData.fieldErrors.name}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Email */}
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    defaultValue={family.email}
-                                    required
-                                    autoComplete="email"
-                                    className="input-custom-styles" // Added custom style
-                                    aria-invalid={!!actionData?.fieldErrors?.email}
-                                    aria-describedby="email-error"
-                                    tabIndex={2}
-                                />
-                                {actionData?.fieldErrors?.email && (
-                                    <p id="email-error" className="text-sm text-destructive">
-                                        {actionData.fieldErrors.email}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Primary Phone */}
-                            <div className="space-y-2">
-                                <Label htmlFor="primary_phone">Primary Phone</Label>
-                                <Input
-                                    id="primary_phone"
-                                    name="primary_phone"
-                                    type="tel"
-                                    defaultValue={family.primary_phone ?? ''}
-                                    autoComplete="tel"
-                                    className="input-custom-styles" // Added custom style
-                                    aria-invalid={!!actionData?.fieldErrors?.primary_phone}
-                                    aria-describedby="primary_phone-error"
-                                    tabIndex={3}
-                                />
-                                {actionData?.fieldErrors?.primary_phone && (
-                                    <p id="primary_phone-error" className="text-sm text-destructive">
-                                        {actionData.fieldErrors.primary_phone}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Address */}
-                            <div className="space-y-2">
-                                <Label htmlFor="address">Address</Label>
-                                <Input
-                                    id="address"
-                                    name="address"
-                                    defaultValue={family.address ?? ''}
-                                    required
-                                    className="input-custom-styles" // Added custom style
-                                    aria-invalid={!!actionData?.fieldErrors?.address}
-                                    aria-describedby="address-error"
-                                    tabIndex={4}
-                                />
-                                {actionData?.fieldErrors?.address && (
-                                    <p id="address-error" className="text-sm text-destructive">
-                                        {actionData.fieldErrors.address}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* City */}
-                            <div className="space-y-2">
-                                <Label htmlFor="city">City</Label>
-                                <Input
-                                    id="city"
-                                    name="city"
-                                    defaultValue={family.city ?? ''}
-                                    required
-                                    className="input-custom-styles" // Added custom style
-                                    aria-invalid={!!actionData?.fieldErrors?.city}
-                                    aria-describedby="city-error"
-                                    tabIndex={5}
-                                />
-                                {actionData?.fieldErrors?.city && (
-                                    <p id="city-error" className="text-sm text-destructive">
-                                        {actionData.fieldErrors.city}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Province */}
-                            <div className="space-y-2">
-                                <Label htmlFor="province">Province</Label>
-                                {/* Wrapped Select with ClientOnly and added hidden input */}
-                                <ClientOnly fallback={<Input disabled placeholder="Province..." className="input-custom-styles w-full"/>}>
-                                    {() => (
-                                        <Select
-                                            name="province_select" // Use different name for select to avoid conflict
-                                            defaultValue={family.province ?? ''}
-                                            required
-                                            // Update hidden input value on change
-                                            onValueChange={(value) => {
-                                                const hiddenInput = document.getElementById('province-hidden') as HTMLInputElement | null;
-                                                if (hiddenInput) hiddenInput.value = value;
-                                            }}
-                                        >
-                                            <SelectTrigger
-                                                id="province" // Keep id for label association
-                                                className="input-custom-styles w-full"
-                                                tabIndex={6}
-                                                aria-invalid={!!actionData?.fieldErrors?.province}
-                                                aria-describedby="province-error"
-                                            >
-                                                <SelectValue placeholder="Select province" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {/* Use provinces from siteConfig */}
-                                                {siteConfig.provinces.map((prov) => (
-                                                    <SelectItem key={prov.value} value={prov.value}>
-                                                        {prov.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                </ClientOnly>
-                                {/* Hidden input to submit the actual value */}
-                                <input type="hidden" name="province" id="province-hidden" defaultValue={family.province ?? ''} />
-                                {actionData?.fieldErrors?.province && (
-                                    <p id="province-error" className="text-sm text-destructive">
-                                        {actionData.fieldErrors.province}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Postal Code */}
-                            <div className="space-y-2">
-                                <Label htmlFor="postal_code">Postal Code</Label>
-                                <Input
-                                    id="postal_code"
-                                    name="postal_code"
-                                    defaultValue={family.postal_code ?? ''}
-                                    required
-                                    className="input-custom-styles" // Added custom style
-                                    aria-invalid={!!actionData?.fieldErrors?.postal_code}
-                                    aria-describedby="postal_code-error"
-                                    tabIndex={7}
-                                />
-                                {actionData?.fieldErrors?.postal_code && (
-                                    <p id="postal_code-error" className="text-sm text-destructive">
-                                        {actionData.fieldErrors.postal_code}
-                                    </p>
-                                )}
-                            </div>
+            {/* Basic Information Section */}
+            <AdminCard>
+                <AdminCardHeader>
+                    <AdminCardTitle>Basic Information</AdminCardTitle>
+                </AdminCardHeader>
+                <AdminCardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Family Name */}
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Family Name</Label>
+                            <Input
+                                id="name"
+                                name="name"
+                                defaultValue={family.name}
+                                required
+                                className="input-custom-styles"
+                                aria-invalid={!!actionData?.fieldErrors?.name}
+                                aria-describedby="name-error"
+                                tabIndex={1}
+                            />
+                            {actionData?.fieldErrors?.name && (
+                                <p id="name-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.name}
+                                </p>
+                            )}
                         </div>
 
+                        {/* Email */}
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                defaultValue={family.email}
+                                required
+                                autoComplete="email"
+                                className="input-custom-styles"
+                                aria-invalid={!!actionData?.fieldErrors?.email}
+                                aria-describedby="email-error"
+                                tabIndex={2}
+                            />
+                            {actionData?.fieldErrors?.email && (
+                                <p id="email-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.email}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Primary Phone */}
+                        <div className="space-y-2">
+                            <Label htmlFor="primary_phone">Primary Phone</Label>
+                            <Input
+                                id="primary_phone"
+                                name="primary_phone"
+                                type="tel"
+                                defaultValue={family.primary_phone ?? ''}
+                                autoComplete="tel"
+                                className="input-custom-styles"
+                                aria-invalid={!!actionData?.fieldErrors?.primary_phone}
+                                aria-describedby="primary_phone-error"
+                                tabIndex={3}
+                            />
+                            {actionData?.fieldErrors?.primary_phone && (
+                                <p id="primary_phone-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.primary_phone}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </AdminCardContent>
+            </AdminCard>
+
+            {/* Address Information Section */}
+            <AdminCard>
+                <AdminCardHeader>
+                    <AdminCardTitle>Address Information</AdminCardTitle>
+                </AdminCardHeader>
+                <AdminCardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Address */}
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="address">Address</Label>
+                            <Input
+                                id="address"
+                                name="address"
+                                defaultValue={family.address ?? ''}
+                                required
+                                className="input-custom-styles"
+                                aria-invalid={!!actionData?.fieldErrors?.address}
+                                aria-describedby="address-error"
+                                tabIndex={4}
+                            />
+                            {actionData?.fieldErrors?.address && (
+                                <p id="address-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.address}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* City */}
+                        <div className="space-y-2">
+                            <Label htmlFor="city">City</Label>
+                            <Input
+                                id="city"
+                                name="city"
+                                defaultValue={family.city ?? ''}
+                                required
+                                className="input-custom-styles"
+                                aria-invalid={!!actionData?.fieldErrors?.city}
+                                aria-describedby="city-error"
+                                tabIndex={5}
+                            />
+                            {actionData?.fieldErrors?.city && (
+                                <p id="city-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.city}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Province */}
+                        <div className="space-y-2">
+                            <Label htmlFor="province">Province</Label>
+                            <ClientOnly fallback={<Input disabled placeholder="Province..." className="input-custom-styles w-full"/>}>
+                                {() => (
+                                    <Select
+                                        name="province_select"
+                                        defaultValue={family.province ?? ''}
+                                        required
+                                        onValueChange={(value) => {
+                                            const hiddenInput = document.getElementById('province-hidden') as HTMLInputElement | null;
+                                            if (hiddenInput) hiddenInput.value = value;
+                                        }}
+                                    >
+                                        <SelectTrigger
+                                            id="province"
+                                            className="input-custom-styles w-full"
+                                            tabIndex={6}
+                                            aria-invalid={!!actionData?.fieldErrors?.province}
+                                            aria-describedby="province-error"
+                                        >
+                                            <SelectValue placeholder="Select province" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {siteConfig.provinces.map((prov) => (
+                                                <SelectItem key={prov.value} value={prov.value}>
+                                                    {prov.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </ClientOnly>
+                            <input type="hidden" name="province" id="province-hidden" defaultValue={family.province ?? ''} />
+                            {actionData?.fieldErrors?.province && (
+                                <p id="province-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.province}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Postal Code */}
+                        <div className="space-y-2">
+                            <Label htmlFor="postal_code">Postal Code</Label>
+                            <Input
+                                id="postal_code"
+                                name="postal_code"
+                                defaultValue={family.postal_code ?? ''}
+                                required
+                                className="input-custom-styles"
+                                aria-invalid={!!actionData?.fieldErrors?.postal_code}
+                                aria-describedby="postal_code-error"
+                                tabIndex={7}
+                            />
+                            {actionData?.fieldErrors?.postal_code && (
+                                <p id="postal_code-error" className="text-sm text-destructive">
+                                    {actionData.fieldErrors.postal_code}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </AdminCardContent>
+            </AdminCard>
+
+            {/* Additional Information Section */}
+            <AdminCard>
+                <AdminCardHeader>
+                    <AdminCardTitle>Additional Information</AdminCardTitle>
+                </AdminCardHeader>
+                <AdminCardContent>
+                    <div className="space-y-4">
                         {/* Emergency Contact */}
                         <div className="space-y-2">
                             <Label htmlFor="emergency_contact">Emergency Contact</Label>
@@ -382,7 +399,7 @@ export default function EditFamilyPage() {
                                 id="emergency_contact"
                                 name="emergency_contact"
                                 defaultValue={family.emergency_contact ?? ''}
-                                className="input-custom-styles" // Added custom style
+                                className="input-custom-styles"
                                 aria-invalid={!!actionData?.fieldErrors?.emergency_contact}
                                 aria-describedby="emergency_contact-error"
                                 tabIndex={8}
@@ -397,11 +414,11 @@ export default function EditFamilyPage() {
                         {/* Health Info */}
                         <div className="space-y-2">
                             <Label htmlFor="health_info">Health Info</Label>
-                            <Input // Consider Textarea if this can be long
+                            <Input
                                 id="health_info"
                                 name="health_info"
                                 defaultValue={family.health_info ?? ''}
-                                className="input-custom-styles" // Added custom style
+                                className="input-custom-styles"
                                 aria-invalid={!!actionData?.fieldErrors?.health_info}
                                 aria-describedby="health_info-error"
                                 tabIndex={9}
@@ -416,11 +433,11 @@ export default function EditFamilyPage() {
                         {/* Notes */}
                         <div className="space-y-2">
                             <Label htmlFor="notes">Notes</Label>
-                            <Input // Consider Textarea if this can be long
+                            <Input
                                 id="notes"
                                 name="notes"
                                 defaultValue={family.notes ?? ''}
-                                className="input-custom-styles" // Added custom style
+                                className="input-custom-styles"
                                 aria-invalid={!!actionData?.fieldErrors?.notes}
                                 aria-describedby="notes-error"
                                 tabIndex={10}
@@ -431,24 +448,32 @@ export default function EditFamilyPage() {
                                 </p>
                             )}
                         </div>
+                    </div>
+                </AdminCardContent>
+            </AdminCard>
 
+            {/* Referral Information Section */}
+            <AdminCard>
+                <AdminCardHeader>
+                    <AdminCardTitle>Referral Information</AdminCardTitle>
+                </AdminCardHeader>
+                <AdminCardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Referral Source */}
                         <div className="space-y-2">
                             <Label htmlFor="referral_source">Referral Source</Label>
-                            {/* Replaced Input with Select, wrapped in ClientOnly */}
                             <ClientOnly fallback={<Input disabled placeholder="Referral Source..." className="input-custom-styles w-full"/>}>
                                 {() => (
                                     <Select
-                                        name="referral_source_select" // Use different name for select
+                                        name="referral_source_select"
                                         defaultValue={family.referral_source ?? ''}
-                                        // Update hidden input value on change
                                         onValueChange={(value) => {
                                             const hiddenInput = document.getElementById('referral_source-hidden') as HTMLInputElement | null;
                                             if (hiddenInput) hiddenInput.value = value;
                                         }}
                                     >
                                         <SelectTrigger
-                                            id="referral_source" // Keep id for label association
+                                            id="referral_source"
                                             className="input-custom-styles w-full"
                                             aria-invalid={!!actionData?.fieldErrors?.referral_source}
                                             aria-describedby="referral_source-error"
@@ -466,11 +491,10 @@ export default function EditFamilyPage() {
                                     </Select>
                                 )}
                             </ClientOnly>
-                            {/* Hidden input to submit the actual value */}
                             <input type="hidden" name="referral_source" id="referral_source-hidden" defaultValue={family.referral_source ?? ''} />
                             {actionData?.fieldErrors?.referral_source && (
                                 <p id="referral_source-error" className="text-sm text-destructive">
-                                    {actionData.fieldErrors.referral_source} {/* Keep error display */}
+                                    {actionData.fieldErrors.referral_source}
                                 </p>
                             )}
                         </div>
@@ -482,7 +506,7 @@ export default function EditFamilyPage() {
                                 id="referral_name"
                                 name="referral_name"
                                 defaultValue={family.referral_name ?? ''}
-                                className="input-custom-styles" // Added custom style
+                                className="input-custom-styles"
                                 aria-invalid={!!actionData?.fieldErrors?.referral_name}
                                 aria-describedby="referral_name-error"
                                 tabIndex={12}
@@ -493,20 +517,21 @@ export default function EditFamilyPage() {
                                 </p>
                             )}
                         </div>
+                    </div>
+                </AdminCardContent>
+            </AdminCard>
 
-                        <Separator className="my-4"/>
+            <Separator className="my-4"/>
 
-                        <div className="flex justify-end space-x-2">
-                            <Button type="button" variant="outline" asChild tabIndex={13}>
-                                <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
-                            </Button>
-                            <Button type="submit" disabled={isSubmitting} tabIndex={14}>
-                                {isSubmitting ? "Saving..." : "Save Changes"}
-                            </Button>
-                        </div>
-                    </Form>
-                </CardContent>
-            </Card>
+            <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" asChild tabIndex={13}>
+                    <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
+                </Button>
+                <Button type="submit" disabled={isSubmitting} tabIndex={14}>
+                    {isSubmitting ? "Saving..." : "Save Changes"}
+                </Button>
+            </div>
+        </Form>
         </div>
     );
 }
