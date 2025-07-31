@@ -339,11 +339,19 @@ export default function ClassesPage() {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
                 {/* Programs Section */}
-                {programs.length > 0 && (
+                {programs.length > 0 && programs.some(program => 
+                    (program.monthly_fee && program.monthly_fee > 0) || 
+                    (program.yearly_fee && program.yearly_fee > 0)
+                ) && (
                     <section className="mb-20">
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {programs.map((program) => (
+                            {programs
+                                .filter(program => 
+                                    (program.monthly_fee && program.monthly_fee > 0) || 
+                                    (program.yearly_fee && program.yearly_fee > 0)
+                                )
+                                .map((program) => (
                                 <div
                                     key={program.id}
                                     className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-700 hover:border-green-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/10"
