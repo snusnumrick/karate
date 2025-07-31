@@ -2,6 +2,7 @@ import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from
 import { useLoaderData, Link, useNavigation, useSubmit } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { AdminCard, AdminCardContent, AdminCardDescription, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
 import { Badge } from "~/components/ui/badge";
 import {
   AlertDialog,
@@ -75,11 +76,11 @@ export default function AutomaticDiscountsIndex() {
   const isSubmitting = navigation.state === 'submitting';
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 py-8">
       <AppBreadcrumb items={breadcrumbPatterns.adminAutomaticDiscounts()} className="mb-6" />
       
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Automatic Discounts</h1>
           <p className="text-muted-foreground">
@@ -106,9 +107,11 @@ export default function AutomaticDiscountsIndex() {
           </div>
       </div>
 
+      <div className="space-y-6">
+
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="form-card-styles">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Rules</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
@@ -123,7 +126,7 @@ export default function AutomaticDiscountsIndex() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="form-card-styles">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Assignments</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
@@ -136,7 +139,7 @@ export default function AutomaticDiscountsIndex() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="form-card-styles">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Recent Assignments</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -158,14 +161,14 @@ export default function AutomaticDiscountsIndex() {
       </div>
 
       {/* Automation Rules */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Automation Rules</CardTitle>
-          <CardDescription>
+      <AdminCard>
+        <AdminCardHeader>
+          <AdminCardTitle>Automation Rules</AdminCardTitle>
+          <AdminCardDescription>
             Rules that automatically assign discounts when specific events occur
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </AdminCardDescription>
+        </AdminCardHeader>
+        <AdminCardContent>
           {automationRules.length === 0 ? (
             <div className="text-center py-8">
               <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -224,18 +227,18 @@ export default function AutomaticDiscountsIndex() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </AdminCardContent>
+      </AdminCard>
 
       {/* Recent Assignments */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Assignments</CardTitle>
-          <CardDescription>
+      <AdminCard>
+        <AdminCardHeader>
+          <AdminCardTitle>Recent Assignments</AdminCardTitle>
+          <AdminCardDescription>
             Latest automatic discount assignments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </AdminCardDescription>
+        </AdminCardHeader>
+        <AdminCardContent>
           {assignments.length === 0 ? (
             <div className="text-center py-8">
               <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -285,8 +288,10 @@ export default function AutomaticDiscountsIndex() {
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </AdminCardContent>
+      </AdminCard>
+
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>

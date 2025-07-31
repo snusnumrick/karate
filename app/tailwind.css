@@ -16,7 +16,7 @@
     }
 
     .form-card-styles {
-        @apply bg-amber-50 dark:bg-gray-800;
+        @apply bg-amber-50 dark:bg-gray-800 rounded-xl border text-card-foreground shadow;
     }
 
     .page-background-styles {

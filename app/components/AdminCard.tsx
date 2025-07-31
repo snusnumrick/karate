@@ -29,7 +29,7 @@ const AdminCard = React.forwardRef<HTMLDivElement, AdminCardProps>(
   ({ className, children, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("bg-white dark:bg-gray-800 rounded-lg shadow", className)}
+      className={cn("form-card-styles", className)}
       {...props}
     >
       {children}
