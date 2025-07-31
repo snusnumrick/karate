@@ -133,6 +133,69 @@ export const meta: MetaFunction = (args: MetaArgs) => {
         });
     }
 
+    // Add Course structured data for karate classes
+    const courseStructuredData = {
+        "@context": "https://schema.org",
+        "@type": "Course",
+        "name": "Karate Classes with Sensei Negin",
+        "description": `Learn the art of karate with professional instruction from a 5th Dan Black Belt. Classes for children ages ${siteConfig.classes.ageRange} focusing on discipline, self-defense, and personal growth.`,
+        "provider": {
+            "@type": "Organization",
+            "name": siteConfig.name,
+            "url": siteConfig.url,
+            "address": {
+                "@type": "PostalAddress",
+                "streetAddress": siteConfig.location.address,
+                "addressLocality": siteConfig.location.locality,
+                "addressRegion": siteConfig.location.region,
+                "postalCode": siteConfig.location.postalCode,
+                "addressCountry": siteConfig.location.country
+            },
+            "telephone": siteConfig.contact.phone,
+            "email": siteConfig.contact.email
+        },
+        "courseCode": "KARATE-MAIN",
+        "educationalLevel": "Beginner to Advanced",
+        "teaches": [
+            "Karate techniques",
+            "Self-defense",
+            "Discipline and respect",
+            "Physical fitness",
+            "Mental focus",
+            "Character development"
+        ],
+        "timeRequired": "P3M", // 3 months duration
+        "courseSchedule": {
+            "@type": "Schedule",
+            "scheduleTimezone": "America/Vancouver",
+            "byDay": siteConfig.classes.days.split(' and ').map(day => day.trim()),
+            "startTime": siteConfig.classes.time.split(' - ')[0] || "18:30",
+            "endTime": siteConfig.classes.time.split(' - ')[1] || "19:30"
+        },
+        "offers": {
+            "@type": "Offer",
+            "price": siteConfig.pricing.monthly.toString(),
+            "priceCurrency": siteConfig.localization.currency,
+            "category": "Monthly",
+            "description": `${siteConfig.pricing.freeTrial} available`
+        },
+        "audience": {
+            "@type": "EducationalAudience",
+            "educationalRole": "student",
+            "audienceType": `Ages ${siteConfig.classes.ageRange}`
+        },
+        "instructor": {
+            "@type": "Person",
+            "name": "Sensei Negin",
+            "jobTitle": "Karate Instructor",
+            "description": "5th Dan Black Belt with M.S. in Sport Psychology, Kids Sports Certified Coach, Award Winning Youth Coach, and Personal Trainer Certified"
+        }
+    };
+
+    indexMeta.push({
+        "script:ld+json": courseStructuredData
+    });
+
     // Merge parent defaults with specific tags for this page
     return mergeMeta(parentMeta, indexMeta);
 };
