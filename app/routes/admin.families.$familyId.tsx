@@ -1,7 +1,5 @@
 import invariant from "tiny-invariant";
-// Response is globally available or comes from web fetch API, not @remix-run/node
 import { type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
-// Import isRouteErrorResponse from @remix-run/react
 import {
     isRouteErrorResponse,
     Link,
@@ -12,21 +10,24 @@ import {
     useParams,
     useRouteError,
 } from "@remix-run/react";
-// createClient is no longer needed here directly for loader/action
-// import { createClient } from "@supabase/supabase-js";
-// Removed unused createClient import
-// Removed unused Database import
+import React from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Trash2, Edit, Plus } from "lucide-react";
 import { formatDate } from "~/utils/misc";
-import React from "react";
-import { getFamilyDetails, type FamilyDetails } from "~/services/family.server"; // Import service function and type
-import { deleteStudent } from "~/services/student.server"; // Import deleteStudent service function (removed .ts)
+import { getFamilyDetails, type FamilyDetails } from "~/services/family.server";
+import { getGuardiansByFamily } from "~/services/guardian.server";
+import { deleteStudent } from "~/services/student.server";
+import { requireAdminUser } from "~/utils/auth.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import type { Database } from "~/types/database.types";
+
+type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 
 // Define the shape of the data returned by the loader using the imported type
 type LoaderData = {
-    family: FamilyDetails; // Use the imported type which includes oneOnOneBalance
+    family: FamilyDetails;
+    guardians: GuardianRow[];
 };
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -39,7 +40,9 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
+    const user = await requireAdminUser(request);
+    
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
     console.log(`[Loader] Requesting family details for ID: ${familyId}`);
@@ -48,13 +51,14 @@ export async function loader({ params }: LoaderFunctionArgs) {
     const response = new Response();
 
     try {
-        // Call the service function to get family details
-        // No need to create supabaseAdmin here, service function handles it
-        const familyDetails = await getFamilyDetails(familyId);
+        // Call the service functions to get family details and guardians
+        const [familyDetails, guardians] = await Promise.all([
+            getFamilyDetails(familyId),
+            getGuardiansByFamily(familyId, user.id)
+        ]);
 
         // Return the data using Remix's json helper
-        // The service function returns the combined structure including balance
-        return json({ family: familyDetails }, { headers: response.headers });
+        return json({ family: familyDetails, guardians }, { headers: response.headers });
 
     } catch (error) {
         console.error(`[Loader] Error caught while fetching family ${familyId}:`, error);
@@ -139,7 +143,7 @@ function DeleteStudentButton({studentId, studentName}: { studentId: string, stud
 
 export default function FamilyDetailPage() {
     // Destructure the nested family object which now contains oneOnOneBalance
-    const { family } = useLoaderData<LoaderData>();
+    const { family, guardians } = useLoaderData<LoaderData>();
     const params = useParams();
     const outlet = useOutlet();
 
@@ -268,9 +272,56 @@ export default function FamilyDetailPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Guardian Card and Separators Removed */}
+                    {/* Guardians Card */}
+                     <Card className="bg-white dark:bg-gray-800">
+                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                             <CardTitle>Guardians</CardTitle>
+                         </CardHeader>
+                         <CardContent className="pt-4">
+                             {guardians && guardians.length > 0 ? (
+                                 <ul className="space-y-4">
+                                     {guardians.map((guardian) => (
+                                         <li key={guardian.id} className="border p-4 rounded-md shadow-sm">
+                                             <div className="flex justify-between items-center">
+                                                 <div>
+                                                     <p className="font-semibold">{guardian.first_name} {guardian.last_name}</p>
+                                                     <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                         Email: {guardian.email || 'N/A'}
+                                                     </p>
+                                                     <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                         Phone: {guardian.cell_phone || guardian.home_phone || 'N/A'}
+                                                     </p>
+                                                     <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                         Relationship: {guardian.relationship || 'N/A'}
+                                                     </p>
+                                                 </div>
+                                                 <div className="flex space-x-2">
+                                                     <Button asChild variant="outline" size="sm">
+                                                         <Link to={`/admin/families/${params.familyId}/guardians/edit`}>
+                                                             <Edit className="h-4 w-4 mr-1" />
+                                                             Edit Guardians
+                                                         </Link>
+                                                     </Button>
+                                                 </div>
+                                             </div>
+                                         </li>
+                                     ))}
+                                 </ul>
+                             ) : (
+                                 <div className="text-center py-4">
+                                     <p className="text-gray-500 dark:text-gray-400 mb-4">No guardians associated with this family.</p>
+                                     <Button asChild variant="outline" size="sm">
+                                         <Link to={`/admin/families/${params.familyId}/guardians/edit`}>
+                                             <Plus className="h-4 w-4 mr-1" />
+                                             Manage Guardians
+                                         </Link>
+                                     </Button>
+                                 </div>
+                             )}
+                         </CardContent>
+                     </Card>
 
-                    {/* Added explicit background */}
+                    {/* Students Card */}
                     <Card className="bg-white dark:bg-gray-800">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle>Students</CardTitle>

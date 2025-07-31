@@ -7,7 +7,6 @@ import {createClient} from "@supabase/supabase-js";
 // Remove unused PostgrestFilterBuilder import
 import {Database, TablesUpdate} from "~/types/database.types"; // Import TablesUpdate
 import {Button} from "~/components/ui/button";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select"; // Import Select components
@@ -15,6 +14,8 @@ import {Separator} from "~/components/ui/separator";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
+import { AdminCard, AdminCardHeader, AdminCardTitle, AdminCardDescription, AdminCardContent, AdminCardFooter } from "~/components/AdminCard";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 
@@ -218,20 +219,33 @@ export default function EditGuardiansPage() {
 
     const isSubmitting = navigation.state === "submitting";
 
+    // Get the first guardian's name for breadcrumb, or use "Guardians" if multiple
+    const guardianName = guardians.length === 1 
+        ? `${guardians[0].first_name} ${guardians[0].last_name}`.trim()
+        : "Guardians";
+
     return (
         <div className="space-y-6">
+            <AppBreadcrumb 
+                items={breadcrumbPatterns.adminFamilyGuardianEdit(
+                    familyName ?? 'Family', 
+                    params.familyId!, 
+                    guardianName
+                )} 
+            />
+            
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Edit Guardians for {familyName ?? 'Family'}</h1>
                 {/* Top Cancel button removed */}
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Edit Guardian Details</CardTitle>
-                    <CardDescription>Update the information for the guardians associated with
-                        the {familyName ?? 'family'} family.</CardDescription>
-                </CardHeader>
-                <CardContent>
+            <AdminCard>
+                <AdminCardHeader>
+                    <AdminCardTitle>Edit Guardian Details</AdminCardTitle>
+                    <AdminCardDescription>Update the information for the guardians associated with
+                        the {familyName ?? 'family'} family.</AdminCardDescription>
+                </AdminCardHeader>
+                <AdminCardContent>
                     {actionData?.error && !actionData.fieldErrors && (
                         <Alert variant="destructive" className="mb-4">
                             <ExclamationTriangleIcon className="h-4 w-4"/>
@@ -503,8 +517,8 @@ export default function EditGuardiansPage() {
                             )}
                         </ClientOnly>
                     )}
-                </CardContent>
-            </Card>
+                </AdminCardContent>
+            </AdminCard>
         </div>
     );
 }

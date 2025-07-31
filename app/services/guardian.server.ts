@@ -211,7 +211,7 @@ export async function getGuardiansByFamily(
         .from('guardians')
         .select('*')
         .eq('family_id', familyId)
-        .order('created_at', { ascending: true }); // Optional: order by creation time
+        .order('last_name', { ascending: true }); // Order by last name
 
     if (error) {
         console.error(`[Service/getGuardiansByFamily] Supabase error fetching guardians for family ${familyId}:`, error.message);
@@ -235,7 +235,7 @@ export async function getGuardiansByFamily(
  */
 export async function createGuardian(
     familyId: string,
-    guardianData: Omit<GuardianInsert, 'family_id' | 'id' | 'created_at' | 'updated_at'>, // Exclude auto-generated fields
+    guardianData: Omit<GuardianInsert, 'family_id' | 'id'>, // Exclude auto-generated fields
     requestingUserId: string,
     supabaseAdmin?: SupabaseClient<Database>
 ): Promise<GuardianRow> {
