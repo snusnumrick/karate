@@ -219,8 +219,8 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                             </td>
                             <td>${getItemTypeLabel(item.item_type)}</td>
                             <td class="text-right">${item.quantity}</td>
-                            <td class="text-right">${formatCurrency(item.unit_price * 100)}</td>
-                            <td class="text-right"><strong>${formatCurrency(item.line_total * 100)}</strong></td>
+                            <td class="text-right">${formatCurrency(item.unit_price)}</td>
+                            <td class="text-right"><strong>${formatCurrency(item.line_total)}</strong></td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -231,7 +231,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
             <table class="totals-table">
                 <tr>
                     <td>Subtotal:</td>
-                    <td class="text-right">${formatCurrency(invoice.subtotal * 100)}</td>
+                    <td class="text-right">${formatCurrency(invoice.subtotal)}</td>
                 </tr>
                 ${invoice.discount_amount > 0 ? `
                 <tr>
@@ -239,7 +239,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                         <div class="breakdown-section">
                             <div class="breakdown-item breakdown-total">
                                 <span>Total Discounts:</span>
-                                <span class="discount-text">-${formatCurrency(invoice.discount_amount * 100)}</span>
+                                <span class="discount-text">-${formatCurrency(invoice.discount_amount)}</span>
                             </div>
                             ${invoice.line_items.map(item => {
                                 const itemDiscount = calculateLineItemDiscount(item);
@@ -247,7 +247,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                                     return `
                                     <div class="breakdown-item">
                                         <span>${item.description} (${Number(item.discount_rate).toFixed(2)}%):</span>
-                                        <span class="discount-text">-${formatCurrency(itemDiscount * 100)}</span>
+                                        <span class="discount-text">-${formatCurrency(itemDiscount)}</span>
                                     </div>`;
                                 }
                                 return '';
@@ -262,7 +262,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                         <div class="breakdown-section">
                             <div class="breakdown-item breakdown-total">
                                 <span>Total Tax:</span>
-                                <span>${formatCurrency(invoice.tax_amount * 100)}</span>
+                                <span>${formatCurrency(invoice.tax_amount)}</span>
                             </div>
                             ${invoice.line_items.map(item => {
                                 const itemTax = calculateLineItemTax(item);
@@ -270,7 +270,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                                     return `
                                      <div class="breakdown-item">
                                          <span>${item.description} (${Number(item.tax_rate).toFixed(2)}%):</span>
-                                         <span>${formatCurrency(itemTax * 100)}</span>
+                                         <span>${formatCurrency(itemTax)}</span>
                                      </div>`;
                                 }
                                 return '';
@@ -281,7 +281,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                 ` : ''}
                 <tr class="total-row">
                     <td><strong>Total:</strong></td>
-                    <td class="text-right"><strong>${formatCurrency(invoice.total_amount * 100)}</strong></td>
+                    <td class="text-right"><strong>${formatCurrency(invoice.total_amount)}</strong></td>
                 </tr>
             </table>
         </div>

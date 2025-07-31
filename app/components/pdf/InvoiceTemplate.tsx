@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 20,
     paddingBottom: 15,
-    borderBottom: '2px solid #1e40af',
+    borderBottom: '2px solid #16a34a',
   },
   logo: {
     width: 160,
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1e40af',
+    color: '#16a34a',
     marginBottom: 6,
     letterSpacing: 0.3,
   },
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#1e40af',
+    color: '#16a34a',
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#1e40af',
+    backgroundColor: '#16a34a',
     paddingVertical: 8,
     paddingHorizontal: 6,
   },
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     paddingHorizontal: 4,
-    backgroundColor: '#1e40af',
+    backgroundColor: '#16a34a',
     borderRadius: 4,
     marginTop: 6,
   },
@@ -297,9 +297,9 @@ const styles = StyleSheet.create({
     border: '1px solid #6b7280',
   },
   sentBadge: {
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    border: '1px solid #3b82f6',
+    backgroundColor: '#dcfce7',
+    color: '#16a34a',
+    border: '1px solid #22c55e',
   },
 });
 
@@ -497,10 +497,10 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
                 {item.quantity || 0}
               </Text>
               <Text style={[styles.tableCell, styles.priceColumn]}>
-                {formatCurrency(item.unit_price * 100)}
+                {formatCurrency(item.unit_price)}
               </Text>
               <Text style={[styles.tableCell, styles.amountColumn]}>
-                {formatCurrency((item.quantity || 0) * (item.unit_price || 0) * 100)}
+                {formatCurrency((item.quantity || 0) * (item.unit_price || 0))}
               </Text>
             </View>
           ))}
@@ -511,14 +511,14 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
           <View style={styles.totalsTable}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal:</Text>
-              <Text style={styles.totalValue}>{formatCurrency(subtotal * 100)}</Text>
+              <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
             </View>
             
             {discountAmount > 0 ? (
               <View>
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Total Discounts:</Text>
-                  <Text style={styles.totalValue}>-{formatCurrency(discountAmount * 100)}</Text>
+                  <Text style={styles.totalValue}>-{formatCurrency(discountAmount)}</Text>
                 </View>
                 {invoice.line_items?.map((item, index) => {
                   const itemDiscount = calculateLineItemDiscount(item);
@@ -528,7 +528,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
                         <Text style={styles.breakdownLabel}>
                           {item.description} ({Number(item.discount_rate).toFixed(2)}%):
                         </Text>
-                        <Text style={styles.breakdownValue}>-{formatCurrency(itemDiscount * 100)}</Text>
+                        <Text style={styles.breakdownValue}>-{formatCurrency(itemDiscount)}</Text>
                       </View>
                     );
                   }
@@ -541,7 +541,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
               <View>
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Total Tax:</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(taxAmount * 100)}</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(taxAmount)}</Text>
                 </View>
                 {invoice.line_items?.map((item, index) => {
                   const itemTax = calculateLineItemTax(item);
@@ -552,7 +552,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
                           {item.description} ({Number(item.tax_rate).toFixed(2)}%):
                         </Text>
                         <Text style={styles.breakdownValue}>
-                          {formatCurrency(itemTax * 100)}
+                          {formatCurrency(itemTax)}
                         </Text>
                       </View>
                     );
@@ -564,7 +564,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
             
             <View style={styles.grandTotalRow}>
               <Text style={styles.grandTotalLabel}>Total:</Text>
-              <Text style={styles.grandTotalValue}>{formatCurrency(total * 100)}</Text>
+              <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
             </View>
           </View>
         </View>
