@@ -412,10 +412,10 @@ export default function ClassesPage() {
                 {/* Class Schedule Section */}
                 <section className="mb-20">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                        <h2 className="header-2-styles">
                             Class Schedule
                         </h2>
-                        <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+                        <p className="text-lg page-subheader-styles max-w-2xl mx-auto">
                             Find the perfect time to join our karate classes
                         </p>
                     </div>
@@ -503,7 +503,7 @@ export default function ClassesPage() {
                 {/* What to Expect Section */}
                 <section className="mb-20">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                        <h2 className="header-2-styles">
                             What to Expect
                         </h2>
                     </div>
@@ -564,7 +564,7 @@ export default function ClassesPage() {
                 {/* Pricing Section */}
                 <section className="mb-20">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                        <h2 className="header-2-styles">
                             Tuition & Pricing
                         </h2>
                     </div>
@@ -613,10 +613,10 @@ export default function ClassesPage() {
                 {/* Belt Progression Section */}
                 <section className="mb-20">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                        <h2 className="header-2-styles">
                             Belt Progression
                         </h2>
-                        <p className="text-lg text-slate-400 max-w-3xl mx-auto">
+                        <p className="text-lg page-subheader-styles max-w-3xl mx-auto">
                             Students progress through a traditional belt system that recognizes their growing skills and knowledge.
                             Regular testing opportunities allow students to demonstrate their abilities and advance to the next level.
                         </p>

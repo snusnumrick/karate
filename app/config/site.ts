@@ -29,7 +29,7 @@ export const siteConfig = {
         email: "info@karate.greenegin.ca",
     },
     classes: {
-        days: "Tue & Fri",
+        days: "Tue & Thu",
         time: "5:45 - 7:15 p.m",
         timeLong: "5:45 PM - 7:15 PM", // For more formal display
         ageRange: "4-12",
