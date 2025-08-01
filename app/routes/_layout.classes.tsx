@@ -489,7 +489,7 @@ export default function ClassesPage() {
                                     </div>
                                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">Friday</span>
+                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">Thursday</span>
                                             <span className="text-gray-900 dark:text-white font-medium">{siteConfig.classes.timeLong}</span>
                                         </div>
                                         <div className="text-sm text-gray-600 dark:text-gray-400">at {siteConfig.location.address}</div>
