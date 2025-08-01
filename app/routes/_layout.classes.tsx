@@ -354,14 +354,14 @@ export default function ClassesPage() {
                                 .map((program) => (
                                 <div
                                     key={program.id}
-                                    className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-700 hover:border-green-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/10"
+                                    className="form-container-styles p-8"
                                 >
                                     <div className="mb-6">
-                                        <h3 className="text-2xl font-bold text-white mb-3">
+                                        <h3 className="text-2xl font-bold mb-3">
                                             {program.name}
                                         </h3>
                                         {program.description && (
-                                            <p className="text-slate-400 leading-relaxed">
+                                            <p className="leading-relaxed">
                                                 {program.description}
                                             </p>
                                         )}
@@ -369,36 +369,36 @@ export default function ClassesPage() {
 
                                     <div className="space-y-4">
                                         {program.min_age && program.max_age && (
-                                            <div className="flex items-center text-slate-300">
+                                            <div className="flex items-center ">
                                                 <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
                                                 <span className="font-medium">Age Range:</span>
-                                                <span className="ml-2 text-white">{program.min_age}-{program.max_age} years</span>
+                                                <span className="ml-2 ">{program.min_age}-{program.max_age} years</span>
                                             </div>
                                         )}
 
                                         {program.monthly_fee && (
-                                            <div className="bg-slate-700/50 rounded-lg p-4">
+                                            <div className="form-card-styles p-4">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-slate-300 font-medium">Monthly:</span>
-                                                    <span className="text-green-400 font-bold text-lg">${program.monthly_fee}</span>
+                                                    <span className="font-medium">Monthly:</span>
+                                                    <span className="font-bold text-lg">${program.monthly_fee}</span>
                                                 </div>
                                             </div>
                                         )}
 
                                         {program.yearly_fee && (
-                                            <div className="bg-slate-700/50 rounded-lg p-4">
+                                            <div className="form-card-styles p-4">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-slate-300 font-medium">Yearly:</span>
-                                                    <span className="text-green-400 font-bold text-lg">${program.yearly_fee}</span>
+                                                    <span className="font-medium">Yearly:</span>
+                                                    <span className="font-bold text-lg">${program.yearly_fee}</span>
                                                 </div>
                                             </div>
                                         )}
 
                                         {program.individual_session_fee && (
-                                            <div className="bg-slate-700/50 rounded-lg p-4">
+                                            <div className="form-card-styles p-4">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-slate-300 font-medium">Per Session:</span>
-                                                    <span className="text-green-400 font-bold text-lg">${program.individual_session_fee}</span>
+                                                    <span className="font-medium">Per Session:</span>
+                                                    <span className="font-bold text-lg">${program.individual_session_fee}</span>
                                                 </div>
                                             </div>
                                         )}
@@ -420,23 +420,23 @@ export default function ClassesPage() {
                         </p>
                     </div>
 
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-700">
+                    <div className="form-container-styles p-8">
                         {classes.length > 0 ? (
                             <div className="space-y-8">
                                 {classes.map((classItem) => (
                                     <div
                                         key={classItem.id}
-                                        className="border-b border-slate-700 last:border-b-0 pb-8 last:pb-0"
+                                        className="form-card-styles pb-8 last:pb-0"
                                     >
                                         <div className="mb-6">
-                                            <h3 className="text-2xl font-bold text-white mb-2">
+                                            <h3 className="text-2xl font-bold mb-2">
                                                 {classItem.name}
                                             </h3>
                                             {classItem.program && (
-                                                <div className="inline-flex items-center bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-medium mb-3">
+                                                <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-3">
                                                     {classItem.program.name}
                                                     {classItem.program.min_age && classItem.program.max_age && (
-                                                        <span className="ml-2 text-green-300">
+                                                        <span className="ml-2 text-green-700 dark:text-green-300">
                                                             (Ages {classItem.program.min_age}-{classItem.program.max_age})
                                                         </span>
                                                     )}
@@ -457,7 +457,7 @@ export default function ClassesPage() {
                                                         className="bg-slate-700/50 rounded-lg p-4 border border-slate-600"
                                                     >
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <span className="text-green-400 font-bold text-lg">
+                                                            <span className="text-green-700 dark:text-green-300 font-bold text-lg">
                                                                 {formatDayName(schedule.day_of_week)}
                                                             </span>
                                                             <span className="text-white font-medium">
@@ -476,23 +476,23 @@ export default function ClassesPage() {
                             </div>
                         ) : (
                             <div className="text-center py-8">
-                                <h3 className="text-2xl font-bold text-white mb-4">
+                                <h3 className="text-2xl font-bold mb-4">
                                     Children&apos;s Classes (Ages {getAgeRange()})
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                                    <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                                    <div className="form-card-styles p-4">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-green-400 font-bold text-lg">Tuesday</span>
-                                            <span className="text-white font-medium">{siteConfig.classes.timeLong}</span>
+                                            <span className="text-green-700 dark:text-green-300 font-bold text-lg">Tuesday</span>
+                                            <span className=" font-medium">{siteConfig.classes.timeLong}</span>
                                         </div>
-                                        <div className="text-sm text-slate-400">at {siteConfig.location.address}</div>
+                                        <div className="text-sm ">at {siteConfig.location.address}</div>
                                     </div>
-                                    <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                                    <div className="form-card-styles p-4">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-green-400 font-bold text-lg">Friday</span>
-                                            <span className="text-white font-medium">{siteConfig.classes.timeLong}</span>
+                                            <span className="text-green-700 dark:text-green-300 font-bold text-lg">Thursday</span>
+                                            <span className=" font-medium">{siteConfig.classes.timeLong}</span>
                                         </div>
-                                        <div className="text-sm text-slate-400">at {siteConfig.location.address}</div>
+                                        <div className="text-sm ">at {siteConfig.location.address}</div>
                                     </div>
                                 </div>
                             </div>
@@ -508,9 +508,9 @@ export default function ClassesPage() {
                         </h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-700">
-                            <h3 className="text-2xl font-bold text-white mb-6">Class Structure</h3>
-                            <ul className="space-y-3 text-slate-300">
+                        <div className="form-container-styles p-8">
+                            <h3 className="text-2xl font-bold  mb-6">Class Structure</h3>
+                            <ul className="space-y-3 ">
                                 <li className="flex items-start">
                                     <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
                                     Warm-up exercises and stretching
@@ -537,9 +537,9 @@ export default function ClassesPage() {
                                 </li>
                             </ul>
                         </div>
-                        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-700">
-                            <h3 className="text-2xl font-bold text-white mb-6">What to Bring</h3>
-                            <ul className="space-y-3 text-slate-300">
+                        <div className="form-container-styles p-8">
+                            <h3 className="text-2xl font-bold  mb-6">What to Bring</h3>
+                            <ul className="space-y-3 ">
                                 <li className="flex items-start">
                                     <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
                                     Comfortable workout clothes (karate gi not required for beginners)
@@ -568,41 +568,41 @@ export default function ClassesPage() {
                             Tuition & Pricing
                         </h2>
                     </div>
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-700">
+                    <div className="form-container-styles p-8">
                         <div className="space-y-4 mb-8">
                             {getPricingTiers().map((tier) => (
-                                <div key={tier.label} className="flex justify-between items-center bg-slate-700/50 rounded-lg p-4">
-                                    <span className="font-semibold text-white">{tier.label}</span>
-                                    <span className="text-lg font-bold text-green-400">{tier.description || "Free"}</span>
+                                <div key={tier.label} className="flex justify-between items-center form-card-styles p-4">
+                                    <span className="font-semibold ">{tier.label}</span>
+                                    <span className="text-lg font-bold text-green-700 dark:text-green-300">{tier.description || "Free"}</span>
                                 </div>
                             ))}
                         </div>
                         
                         {/* Special pricing highlight for new students */}
-                        <div className="bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 rounded-lg p-6">
-                            <h3 className="text-xl font-bold text-green-400 mb-4">🎉 New Student Benefits</h3>
-                            <ul className="space-y-2 text-green-300">
+                        <div className="form-card-styles p-6">
+                            <h3 className="text-xl font-bold text-green-600 dark:text-green-300 mb-4">🎉 New Student Benefits</h3>
+                            <ul className="space-y-2 text-green-700 dark:text-green-300">
                                 <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full mr-3 mt-2"></span>
+                                    <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full mr-3 mt-2"></span>
                                     <strong>Free trial class</strong> - Try before you commit!
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full mr-3 mt-2"></span>
+                                    <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full mr-3 mt-2"></span>
                                     <strong>Automatic discounts</strong> for new students
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full mr-3 mt-2"></span>
+                                    <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full mr-3 mt-2"></span>
                                     <strong>No long-term contracts</strong> - Pay monthly
                                 </li>
                                 <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full mr-3 mt-2"></span>
+                                    <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full mr-3 mt-2"></span>
                                     <strong>Family discounts</strong> available for multiple children
                                 </li>
                             </ul>
                         </div>
                         
                         <div className="mt-6">
-                            <p className="text-slate-400 text-center">
+                            <p className=" text-center">
                                 Start with a free trial class, then enjoy special introductory pricing automatically applied for new students. 
                                 Regular monthly tuition is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per student.
                             </p>
@@ -621,43 +621,43 @@ export default function ClassesPage() {
                             Regular testing opportunities allow students to demonstrate their abilities and advance to the next level.
                         </p>
                     </div>
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 border border-slate-700">
+                    <div className="form-container-styles p-8">
                         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-4">
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-white border border-gray-300 rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">White</span>
+                                <span className="text-sm ">White</span>
                             </div>
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-yellow-400 rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">Yellow</span>
+                                <span className="text-sm ">Yellow</span>
                             </div>
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-orange-400 rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">Orange</span>
+                                <span className="text-sm ">Orange</span>
                             </div>
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-green-500 rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">Green</span>
+                                <span className="text-sm ">Green</span>
                             </div>
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-blue-500 rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">Blue</span>
+                                <span className="text-sm ">Blue</span>
                             </div>
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-purple-500 rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">Purple</span>
+                                <span className="text-sm ">Purple</span>
                             </div>
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-red-600 rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">Red</span>
+                                <span className="text-sm ">Red</span>
                             </div>
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-yellow-800 rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">Brown</span>
+                                <span className="text-sm ">Brown</span>
                             </div>
-                            <div className="bg-slate-700/50 p-4 text-center border border-slate-600 rounded-lg">
+                            <div className="form-card-styles p-4 text-center">
                                 <div className="h-4 bg-black rounded mb-3"></div>
-                                <span className="text-sm text-slate-300">Black</span>
+                                <span className="text-sm ">Black</span>
                             </div>
                         </div>
                     </div>
