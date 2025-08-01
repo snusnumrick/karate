@@ -111,9 +111,9 @@ export async function loader(_: LoaderFunctionArgs) {
             supabaseAdmin.from('students').select('id', {count: 'exact', head: true}), // Use admin client
             supabaseAdmin.from('payments').select('total_amount').eq('status', PaymentStatus.Succeeded), // Use total_amount
             supabaseAdmin.from('attendance')
-                .select('id', {count: 'exact', head: true})
-                .eq('class_date', getTodayLocalDateString()) // Today's date
-                .eq('present', true), // Use admin client
+                .select('id, class_sessions!inner(session_date)', {count: 'exact', head: true})
+                .eq('class_sessions.session_date', getTodayLocalDateString()) // Today's date
+                .eq('status', 'present'), // Use status instead of present
             supabaseAdmin.from('payments')
                 .select('family_id')
                 .eq('status', PaymentStatus.Pending), // Use enum

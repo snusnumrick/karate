@@ -162,18 +162,6 @@ export async function recordSessionAttendance(
   attendanceRecords: Omit<AttendanceRecord, 'class_session_id'>[],
   supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 ): Promise<AttendanceRecord[]> {
-  // First, get the session date from the class_sessions table
-  const { data: sessionData, error: sessionError } = await supabase
-    .from('class_sessions')
-    .select('session_date')
-    .eq('id', sessionId)
-    .single();
-
-  if (sessionError || !sessionData) {
-    console.error('Error fetching session data:', sessionError);
-    throw new Error(`Failed to fetch session data: ${sessionError?.message || 'Session not found'}`);
-  }
-
   // First, delete existing attendance records for this session
   const { error: deleteError } = await supabase
     .from('attendance')
@@ -190,9 +178,7 @@ export async function recordSessionAttendance(
     student_id: record.student_id,
     class_session_id: sessionId,
     status: record.status,
-    notes: record.notes || null,
-    class_date: sessionData.session_date, // Required field
-    present: record.status === 'present' || record.status === 'late' // Required field
+    notes: record.notes || null
   }));
 
   const { data, error } = await supabase
