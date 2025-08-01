@@ -423,8 +423,7 @@ export default function FamilyCalendarPage() {
   }));
 
   // Add birthday events
-  const currentYear = currentDate.getFullYear();
-  const birthdayEvents = birthdaysToCalendarEvents(students, currentYear);
+  const birthdayEvents = birthdaysToCalendarEvents(students, currentDate);
   
   // Transform events into CalendarEvent objects
   console.log('Family Calendar: Raw events from loader:', events);

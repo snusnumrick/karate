@@ -496,6 +496,7 @@ export async function updateClassSession(
   if (updates.session_date !== undefined) updateData.session_date = updates.session_date;
   if (updates.start_time !== undefined) updateData.start_time = updates.start_time;
   if (updates.end_time !== undefined) updateData.end_time = updates.end_time;
+  if (updates.instructor_id !== undefined) updateData.instructor_id = updates.instructor_id;
 
   if (updates.notes !== undefined) updateData.notes = updates.notes;
   if (updates.status !== undefined) updateData.status = updates.status;
@@ -626,6 +627,32 @@ export async function bulkDeleteClassSessions(
     skippedCount: sessionsToSkip.length,
     errors
   };
+}
+
+/**
+ * Get a single class session by ID
+ */
+export async function getClassSessionById(
+  id: string,
+  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+): Promise<ClassSession | null> {
+  const { data, error } = await supabase
+    .from('class_sessions')
+    .select(`
+      *,
+      class:classes(id, name, program:programs(name))
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to fetch class session: ${error.message}`);
+  }
+
+  return data as ClassSession;
 }
 
 /**

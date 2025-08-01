@@ -395,9 +395,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       : 0;
 
     // Convert student birthdays to calendar events
-    const currentYear = new Date().getFullYear();
+    // Use current date to create a 12-month rolling window of birthdays
     const studentsWithBirthDates = students.filter(s => s.birth_date);
-    const birthdayEvents = birthdaysToCalendarEvents(studentsWithBirthDates, currentYear);
+    const birthdayEvents = birthdaysToCalendarEvents(studentsWithBirthDates, new Date());
 
     const stats = {
       totalSessions: events.length,

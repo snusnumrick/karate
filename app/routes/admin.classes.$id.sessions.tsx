@@ -5,8 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Textarea } from "~/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import {
   AlertDialog,
@@ -22,7 +20,7 @@ import { Calendar, Clock, Plus, Edit2, Trash2, ExternalLink } from "lucide-react
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { siteConfig } from "~/config/site";
 import { requireAdminUser } from "~/utils/auth.server";
-import { getClassById, getClassSessions, generateClassSessions, updateClassSession, deleteClassSession } from "~/services/class.server";
+import { getClassById, getClassSessions, generateClassSessions, deleteClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { ClassSession, BulkSessionGeneration } from "~/types/multi-class";
 import { useState } from "react";
@@ -69,14 +67,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (intent === "generate") {
       const startDate = formData.get("start_date") as string;
       const endDate = formData.get("end_date") as string;
-      const instructorOverride = formData.get("instructor_override") as string;
       const excludedDates = formData.get("excluded_dates") as string;
 
       const generationData: BulkSessionGeneration = {
         class_id: classId,
         start_date: startDate,
         end_date: endDate,
-        override_instructor: instructorOverride || undefined,
         exclude_dates: excludedDates ? excludedDates.split(',').map(d => d.trim()) : undefined
       };
 
@@ -89,19 +85,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
       }
 
       return json({ success: `Generated ${sessionCount} sessions successfully` });
-    }
-
-    if (intent === "update_session") {
-      const sessionId = formData.get("session_id") as string;
-      const status = formData.get("status") as string;
-      const notes = formData.get("notes") as string;
-
-      await updateClassSession(sessionId, {
-        status: status as 'scheduled' | 'completed' | 'cancelled',
-        notes: notes || undefined
-      });
-
-      return json({ success: "Session updated successfully" });
     }
 
     if (intent === "delete_session") {
@@ -137,7 +120,6 @@ export default function ClassSessions() {
   const isSubmitting = navigation.state === "submitting" || fetcher.state === "submitting";
 
   const [showGenerateForm, setShowGenerateForm] = useState(false);
-  const [editingSession, setEditingSession] = useState<ClassSession | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<ClassSession | null>(null);
 
@@ -279,16 +261,6 @@ export default function ClassSessions() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="instructor_override">Instructor Override (Optional)</Label>
-                  <Input
-                    id="instructor_override"
-                    name="instructor_override"
-                    placeholder="Override default instructor"
-                    className="input-custom-styles"
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="excluded_dates">Excluded Dates (Optional)</Label>
                   <Input
                     id="excluded_dates"
@@ -343,12 +315,14 @@ export default function ClassSessions() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
+                      asChild
                       variant="ghost"
                       size="sm"
-                      onClick={() => setEditingSession(session)}
                       tabIndex={0}
                     >
-                      <Edit2 className="h-4 w-4" />
+                      <Link to={`/admin/sessions/${session.id}/edit`}>
+                        <Edit2 className="h-4 w-4" />
+                      </Link>
                     </Button>
                     <Button
                       variant="ghost"
@@ -395,11 +369,13 @@ export default function ClassSessions() {
                     </Badge>
                   </div>
                   <Button
+                    asChild
                     variant="ghost"
                     size="sm"
-                    onClick={() => setEditingSession(session)}
                   >
-                    <Edit2 className="h-4 w-4" />
+                    <Link to={`/admin/sessions/${session.id}/edit`}>
+                      <Edit2 className="h-4 w-4" />
+                    </Link>
                   </Button>
                 </div>
               ))}
@@ -412,70 +388,6 @@ export default function ClassSessions() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Edit Session Modal */}
-      {editingSession && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Edit Session</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form method="post" className="space-y-4">
-                <input type="hidden" name="intent" value="update_session" />
-                <input type="hidden" name="session_id" value={editingSession.id} />
-
-                <div className="space-y-2">
-                  <Label>Date & Time</Label>
-                  <div className="text-sm text-muted-foreground">
-                    {formatDate(editingSession.session_date, { formatString: 'EEEE, MMMM d, yyyy' })} • {formatTime(editingSession.start_time)} - {formatTime(editingSession.end_time)}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select name="status" defaultValue={editingSession.status}>
-                    <SelectTrigger className="input-custom-styles">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="scheduled">Scheduled</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    defaultValue={editingSession.notes || ''}
-                    placeholder="Session notes..."
-                    rows={3}
-                    className="input-custom-styles"
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={isSubmitting} size="sm">
-                    {isSubmitting ? "Updating..." : "Update"}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setEditingSession(null)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

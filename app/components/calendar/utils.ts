@@ -3,6 +3,7 @@ import type { CalendarDay, CalendarEvent } from './types';
 
 /**
  * Convert student birthdays to calendar events
+ * Creates birthday events for a 12-month rolling window from the given start date
  */
 export function birthdaysToCalendarEvents(
   students: Array<{
@@ -11,20 +12,39 @@ export function birthdaysToCalendarEvents(
     last_name: string;
     birth_date: string;
   }>,
-  currentYear: number
+  startDate: Date = new Date()
 ): CalendarEvent[] {
   const events: CalendarEvent[] = [];
+  const currentYear = startDate.getFullYear();
+  const nextYear = currentYear + 1;
   
   students.forEach(student => {
     if (student.birth_date) {
-      // Parse the birth date and create an event for the current year
+      // Parse the birth date
       const birthDate = parseLocalDate(student.birth_date);
-      const birthdayThisYear = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
+      const birthMonth = birthDate.getMonth();
+      const birthDay = birthDate.getDate();
       
+      // Create birthday events for current year and next year
+      // This ensures we always have a 12-month rolling window
+      const birthdayThisYear = new Date(currentYear, birthMonth, birthDay);
+      const birthdayNextYear = new Date(nextYear, birthMonth, birthDay);
+      
+      // Add birthday for current year
       events.push({
         id: `birthday-${student.id}-${currentYear}`,
         title: `🎂 ${student.first_name} ${student.last_name}`,
         date: birthdayThisYear,
+        type: 'birthday' as const,
+        studentName: `${student.first_name} ${student.last_name}`,
+        studentId: student.id
+      });
+      
+      // Add birthday for next year
+      events.push({
+        id: `birthday-${student.id}-${nextYear}`,
+        title: `🎂 ${student.first_name} ${student.last_name}`,
+        date: birthdayNextYear,
         type: 'birthday' as const,
         studentName: `${student.first_name} ${student.last_name}`,
         studentId: student.id

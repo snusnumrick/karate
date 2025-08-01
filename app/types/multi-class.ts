@@ -97,6 +97,7 @@ export interface ClassSession {
   end_time: string;
   status: 'scheduled' | 'completed' | 'cancelled';
   notes?: string;
+  instructor_id?: string;
   created_at: string;
   updated_at: string;
   // Relations
@@ -191,6 +192,7 @@ export interface CreateSessionData {
 export interface UpdateSessionData extends Partial<CreateSessionData> {
   id: string;
   status?: 'scheduled' | 'completed' | 'cancelled';
+  instructor_id?: string;
 }
 
 // Query filters and options
