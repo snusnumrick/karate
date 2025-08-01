@@ -352,30 +352,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
             // Use all_issues array for comprehensive visibility logic
             const allIssues = result.all_issues as Database['public']['Enums']['eligibility_reason_enum'][];
             
-            // Show event if any of these conditions are met:
-            // 1. Student is already registered
-            // 2. Registration is not open (event exists but registration closed)
-            // 3. Registration deadline has passed (event exists but deadline passed)
-            // 4. Event is full (event exists but no capacity)
-            // 5. Student doesn't meet requirements but event is otherwise valid
-            const shouldShowForIssues = allIssues.some(issue => 
-              issue === 'already_registered' || 
-              issue === 'registration_not_open' ||
-              issue === 'registration_deadline_passed' ||
-              issue === 'event_full' ||
-              issue === 'student_too_young' ||
-              issue === 'student_too_old' ||
-              issue === 'student_belt_rank_too_low' ||
-              issue === 'student_belt_rank_too_high'
-            );
+            // Define allowed reasons that should still show the event
+            const allowedReasons = new Set([
+              'already_registered',
+              'registration_not_open',
+              'registration_deadline_passed', 
+              'event_full',
+              'student_too_young',
+              'student_too_old',
+              'student_belt_rank_too_low',
+              'student_belt_rank_too_high'
+            ]);
             
-            // Don't show events if fundamental issues exist (event/student not found)
-            const hasFundamentalIssues = allIssues.some(issue => 
-              issue === 'event_not_found' || 
-              issue === 'student_not_found'
-            );
+            // Show event only if ALL issues are in the allowed list
+            // This ensures we don't show events with fundamental problems
+            const allIssuesAreAllowed = allIssues.length > 0 && allIssues.every(issue => allowedReasons.has(issue));
             
-            if (shouldShowForIssues && !hasFundamentalIssues) {
+            if (allIssuesAreAllowed) {
               shouldShowEvent = true;
               break; // Show event for these scenarios
             }
