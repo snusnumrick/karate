@@ -319,15 +319,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.log('Family Calendar Loader: All events found:', allEvents.length);
 
     // Filter events to only include those where at least one family student is eligible
-    const eligibleEvents: EventRow[] = [];
+    const visibleEvents: EventRow[] = [];
     
     // Create service role client for RPC calls
     const supabaseService = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     
     for (const event of allEvents) {
-      let hasEligibleStudent = false;
+      let shouldShowEvent = false;
       
-      // Check eligibility for each student in the family
+      // Check each student in the family to determine if event should be visible
       for (const student of students) {
         try {
           const { data: eligibilityResult, error: eligibilityError } = await supabaseService
@@ -343,9 +343,56 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
           // Parse the JSON result
           const result = typeof eligibilityResult === 'string' ? JSON.parse(eligibilityResult) : eligibilityResult;
+          
+          // Show event if student is eligible
           if (result?.eligible === true) {
-            hasEligibleStudent = true;
-            break; // At least one student is eligible, no need to check others
+            shouldShowEvent = true;
+            break; // At least one student is eligible, show the event
+          } else if (result?.all_issues) {
+            // Use all_issues array for comprehensive visibility logic
+            const allIssues = result.all_issues as Database['public']['Enums']['eligibility_reason_enum'][];
+            
+            // Show event if any of these conditions are met:
+            // 1. Student is already registered
+            // 2. Registration is not open (event exists but registration closed)
+            // 3. Registration deadline has passed (event exists but deadline passed)
+            // 4. Event is full (event exists but no capacity)
+            // 5. Student doesn't meet requirements but event is otherwise valid
+            const shouldShowForIssues = allIssues.some(issue => 
+              issue === 'already_registered' || 
+              issue === 'registration_not_open' ||
+              issue === 'registration_deadline_passed' ||
+              issue === 'event_full' ||
+              issue === 'student_too_young' ||
+              issue === 'student_too_old' ||
+              issue === 'student_belt_rank_too_low' ||
+              issue === 'student_belt_rank_too_high'
+            );
+            
+            // Don't show events if fundamental issues exist (event/student not found)
+            const hasFundamentalIssues = allIssues.some(issue => 
+              issue === 'event_not_found' || 
+              issue === 'student_not_found'
+            );
+            
+            if (shouldShowForIssues && !hasFundamentalIssues) {
+              shouldShowEvent = true;
+              break; // Show event for these scenarios
+            }
+          } else if (result?.reason) {
+            // Fallback to single reason check for backward compatibility
+            const reason = result.reason as Database['public']['Enums']['eligibility_reason_enum'];
+            if (reason === 'already_registered' || 
+                reason === 'registration_not_open' ||
+                reason === 'registration_deadline_passed' ||
+                reason === 'event_full' ||
+                reason === 'student_too_young' ||
+                reason === 'student_too_old' ||
+                reason === 'student_belt_rank_too_low' ||
+                reason === 'student_belt_rank_too_high') {
+              shouldShowEvent = true;
+              break; // Show event for these scenarios
+            }
           }
         } catch (error) {
           console.error(`Family Calendar Loader: Error checking eligibility for student ${student.id}, event ${event.id}:`, error);
@@ -353,19 +400,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
         }
       }
       
-      if (hasEligibleStudent) {
-        eligibleEvents.push(event);
+      if (shouldShowEvent) {
+        visibleEvents.push(event);
       }
     }
     
-    console.log('Family Calendar Loader: Eligible events found:', eligibleEvents.length);
+    console.log('Family Calendar Loader: Visible events found:', visibleEvents.length);
 
     const result = {
       students, 
       sessions: upcomingSessions, 
       attendance: attendanceRecords, 
       enrollments, 
-      events: eligibleEvents,
+      events: visibleEvents,
       familyName, 
       currentMonth 
     };

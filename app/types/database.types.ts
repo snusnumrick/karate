@@ -784,6 +784,254 @@ export type Database = {
           },
         ]
       }
+      event_registrations: {
+        Row: {
+          emergency_contact: string | null
+          event_id: string
+          family_id: string
+          id: string
+          notes: string | null
+          payment_amount: number | null
+          payment_id: string | null
+          payment_required: boolean | null
+          payment_status: Database["public"]["Enums"]["payment_status"] | null
+          registered_at: string | null
+          registration_status:
+            | Database["public"]["Enums"]["registration_status_enum"]
+            | null
+          student_id: string
+        }
+        Insert: {
+          emergency_contact?: string | null
+          event_id: string
+          family_id: string
+          id?: string
+          notes?: string | null
+          payment_amount?: number | null
+          payment_id?: string | null
+          payment_required?: boolean | null
+          payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          registered_at?: string | null
+          registration_status?:
+            | Database["public"]["Enums"]["registration_status_enum"]
+            | null
+          student_id: string
+        }
+        Update: {
+          emergency_contact?: string | null
+          event_id?: string
+          family_id?: string
+          id?: string
+          notes?: string | null
+          payment_amount?: number | null
+          payment_id?: string | null
+          payment_required?: boolean | null
+          payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          registered_at?: string | null
+          registration_status?:
+            | Database["public"]["Enums"]["registration_status_enum"]
+            | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_waivers: {
+        Row: {
+          event_id: string
+          id: string
+          is_required: boolean | null
+          waiver_id: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          is_required?: boolean | null
+          waiver_id: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          is_required?: boolean | null
+          waiver_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_waivers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_waivers_waiver_id_fkey"
+            columns: ["waiver_id"]
+            isOneToOne: false
+            referencedRelation: "waivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          address: string | null
+          country: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          end_date: string | null
+          end_time: string | null
+          event_type: Database["public"]["Enums"]["event_type_enum"]
+          external_url: string | null
+          id: string
+          instructor_id: string | null
+          is_public: boolean | null
+          late_registration_fee: number | null
+          locality: string | null
+          location: string | null
+          location_name: string | null
+          max_age: number | null
+          max_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_participants: number | null
+          min_age: number | null
+          min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          notes: string | null
+          postal_code: string | null
+          region: string | null
+          registration_deadline: string | null
+          registration_fee: number | null
+          required_waiver_ids: string[] | null
+          requires_equipment: string[] | null
+          requires_waiver: boolean | null
+          start_date: string
+          start_time: string | null
+          status: Database["public"]["Enums"]["event_status_enum"]
+          street_address: string | null
+          timezone: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          country?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          end_date?: string | null
+          end_time?: string | null
+          event_type?: Database["public"]["Enums"]["event_type_enum"]
+          external_url?: string | null
+          id?: string
+          instructor_id?: string | null
+          is_public?: boolean | null
+          late_registration_fee?: number | null
+          locality?: string | null
+          location?: string | null
+          location_name?: string | null
+          max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_participants?: number | null
+          min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          notes?: string | null
+          postal_code?: string | null
+          region?: string | null
+          registration_deadline?: string | null
+          registration_fee?: number | null
+          required_waiver_ids?: string[] | null
+          requires_equipment?: string[] | null
+          requires_waiver?: boolean | null
+          start_date: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["event_status_enum"]
+          street_address?: string | null
+          timezone?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          country?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          end_date?: string | null
+          end_time?: string | null
+          event_type?: Database["public"]["Enums"]["event_type_enum"]
+          external_url?: string | null
+          id?: string
+          instructor_id?: string | null
+          is_public?: boolean | null
+          late_registration_fee?: number | null
+          locality?: string | null
+          location?: string | null
+          location_name?: string | null
+          max_age?: number | null
+          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          max_participants?: number | null
+          min_age?: number | null
+          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          notes?: string | null
+          postal_code?: string | null
+          region?: string | null
+          registration_deadline?: string | null
+          registration_fee?: number | null
+          required_waiver_ids?: string[] | null
+          requires_equipment?: string[] | null
+          requires_waiver?: boolean | null
+          start_date?: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["event_status_enum"]
+          street_address?: string | null
+          timezone?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       families: {
         Row: {
           address: string
@@ -2126,231 +2374,6 @@ export type Database = {
         }
         Relationships: []
       }
-      events: {
-        Row: {
-          id: string
-          title: string
-          description: string | null
-          event_type: Database["public"]["Enums"]["event_type_enum"]
-          status: Database["public"]["Enums"]["event_status_enum"]
-          start_date: string
-          end_date: string | null
-          start_time: string | null
-          end_time: string | null
-          timezone: string | null
-          location: string | null
-          address: string | null
-          location_name: string | null
-          street_address: string | null
-          locality: string | null
-          region: string | null
-          postal_code: string | null
-          country: string | null
-          max_participants: number | null
-          registration_deadline: string | null
-          min_age: number | null
-          max_age: number | null
-          min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
-          max_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
-          registration_fee: number | null
-          late_registration_fee: number | null
-          requires_waiver: boolean
-          required_waiver_ids: string[] | null
-          requires_equipment: string[] | null
-          instructor_id: string | null
-          created_by: string
-          created_at: string
-          updated_at: string
-          external_url: string | null
-          notes: string | null
-          is_public: boolean
-        }
-        Insert: {
-          id?: string
-          title: string
-          description?: string | null
-          event_type: Database["public"]["Enums"]["event_type_enum"]
-          status?: Database["public"]["Enums"]["event_status_enum"]
-          start_date: string
-          end_date?: string | null
-          start_time?: string | null
-          end_time?: string | null
-          timezone?: string | null
-          location?: string | null
-          address?: string | null
-          location_name?: string | null
-          street_address?: string | null
-          locality?: string | null
-          region?: string | null
-          postal_code?: string | null
-          country?: string | null
-          max_participants?: number | null
-          registration_deadline?: string | null
-          min_age?: number | null
-          max_age?: number | null
-          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
-          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
-          registration_fee?: number | null
-          late_registration_fee?: number | null
-          requires_waiver?: boolean
-          required_waiver_ids?: string[] | null
-          requires_equipment?: string[] | null
-          instructor_id?: string | null
-          created_by: string
-          created_at?: string
-          updated_at?: string
-          external_url?: string | null
-          notes?: string | null
-          is_public?: boolean
-        }
-        Update: {
-          id?: string
-          title?: string
-          description?: string | null
-          event_type?: Database["public"]["Enums"]["event_type_enum"]
-          status?: Database["public"]["Enums"]["event_status_enum"]
-          start_date?: string
-          end_date?: string | null
-          start_time?: string | null
-          end_time?: string | null
-          timezone?: string | null
-          location?: string | null
-          address?: string | null
-          location_name?: string | null
-          street_address?: string | null
-          locality?: string | null
-          region?: string | null
-          postal_code?: string | null
-          country?: string | null
-          max_participants?: number | null
-          registration_deadline?: string | null
-          min_age?: number | null
-          max_age?: number | null
-          min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
-          max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
-          registration_fee?: number | null
-          late_registration_fee?: number | null
-          requires_waiver?: boolean
-          required_waiver_ids?: string[] | null
-          requires_equipment?: string[] | null
-          instructor_id?: string | null
-          created_by?: string
-          created_at?: string
-          updated_at?: string
-          external_url?: string | null
-          notes?: string | null
-          is_public?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "events_instructor_id_fkey"
-            columns: ["instructor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "events_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      event_registrations: {
-        Row: {
-          id: string
-          event_id: string
-          student_id: string
-          registration_status: Database["public"]["Enums"]["registration_status_enum"]
-          registration_date: string
-          payment_status: Database["public"]["Enums"]["payment_status"]
-          payment_amount: number | null
-          payment_date: string | null
-          notes: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          event_id: string
-          student_id: string
-          registration_status?: Database["public"]["Enums"]["registration_status_enum"]
-          registration_date?: string
-          payment_status?: Database["public"]["Enums"]["payment_status"]
-          payment_amount?: number | null
-          payment_date?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          event_id?: string
-          student_id?: string
-          registration_status?: Database["public"]["Enums"]["registration_status_enum"]
-          registration_date?: string
-          payment_status?: Database["public"]["Enums"]["payment_status"]
-          payment_amount?: number | null
-          payment_date?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_registrations_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_registrations_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      event_waivers: {
-        Row: {
-          id: string
-          event_id: string
-          waiver_id: string
-          is_required: boolean
-        }
-        Insert: {
-          id?: string
-          event_id: string
-          waiver_id: string
-          is_required?: boolean
-        }
-        Update: {
-          id?: string
-          event_id?: string
-          waiver_id?: string
-          is_required?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_waivers_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_waivers_waiver_id_fkey"
-            columns: ["waiver_id"]
-            isOneToOne: false
-            referencedRelation: "waivers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       family_one_on_one_balance: {
@@ -2465,6 +2488,10 @@ export type Database = {
         Args: { student_id_param: string; class_id_param: string }
         Returns: boolean
       }
+      check_event_registration_eligibility: {
+        Args: { p_event_id: string; p_student_id: string }
+        Returns: Json
+      }
       check_program_eligibility: {
         Args: { student_id_param: string; program_id_param: string }
         Returns: boolean
@@ -2545,6 +2572,10 @@ export type Database = {
           participant_display_names: string
           is_unread_by_admin: boolean
         }[]
+      }
+      get_belt_rank_order: {
+        Args: { belt_rank: Database["public"]["Enums"]["belt_rank_enum"] }
+        Returns: number
       }
       get_family_conversation_summaries: {
         Args: { p_user_id: string }
@@ -2641,6 +2672,18 @@ export type Database = {
         | "family_referral"
         | "birthday"
         | "seasonal_promotion"
+      eligibility_reason_enum:
+        | "eligible"
+        | "event_not_found"
+        | "student_not_found"
+        | "registration_not_open"
+        | "registration_deadline_passed"
+        | "already_registered"
+        | "event_full"
+        | "student_too_young"
+        | "student_too_old"
+        | "student_belt_rank_too_low"
+        | "student_belt_rank_too_high"
       enrollment_status:
         | "active"
         | "inactive"
@@ -2860,6 +2903,19 @@ export const Constants = {
         "birthday",
         "seasonal_promotion",
       ],
+      eligibility_reason_enum: [
+        "eligible",
+        "event_not_found",
+        "student_not_found",
+        "registration_not_open",
+        "registration_deadline_passed",
+        "already_registered",
+        "event_full",
+        "student_too_young",
+        "student_too_old",
+        "student_belt_rank_too_low",
+        "student_belt_rank_too_high",
+      ],
       enrollment_status: [
         "active",
         "inactive",
@@ -2867,6 +2923,25 @@ export const Constants = {
         "dropped",
         "waitlist",
         "trial",
+      ],
+      event_status_enum: [
+        "draft",
+        "published",
+        "registration_open",
+        "registration_closed",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      event_type_enum: [
+        "competition",
+        "seminar",
+        "testing",
+        "tournament",
+        "workshop",
+        "social_event",
+        "fundraiser",
+        "other",
       ],
       invoice_item_type: [
         "class_enrollment",
@@ -2906,6 +2981,12 @@ export const Constants = {
         "individual_session",
         "other",
         "store_purchase",
+      ],
+      registration_status_enum: [
+        "pending",
+        "confirmed",
+        "cancelled",
+        "waitlist",
       ],
     },
   },

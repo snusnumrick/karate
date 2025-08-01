@@ -903,6 +903,7 @@ export type Database = {
       events: {
         Row: {
           address: string | null
+          country: string | null
           created_at: string | null
           created_by: string
           description: string | null
@@ -914,13 +915,17 @@ export type Database = {
           instructor_id: string | null
           is_public: boolean | null
           late_registration_fee: number | null
+          locality: string | null
           location: string | null
+          location_name: string | null
           max_age: number | null
           max_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
           max_participants: number | null
           min_age: number | null
           min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
           notes: string | null
+          postal_code: string | null
+          region: string | null
           registration_deadline: string | null
           registration_fee: number | null
           required_waiver_ids: string[] | null
@@ -929,12 +934,14 @@ export type Database = {
           start_date: string
           start_time: string | null
           status: Database["public"]["Enums"]["event_status_enum"]
+          street_address: string | null
           timezone: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
           address?: string | null
+          country?: string | null
           created_at?: string | null
           created_by: string
           description?: string | null
@@ -946,13 +953,17 @@ export type Database = {
           instructor_id?: string | null
           is_public?: boolean | null
           late_registration_fee?: number | null
+          locality?: string | null
           location?: string | null
+          location_name?: string | null
           max_age?: number | null
           max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           max_participants?: number | null
           min_age?: number | null
           min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           notes?: string | null
+          postal_code?: string | null
+          region?: string | null
           registration_deadline?: string | null
           registration_fee?: number | null
           required_waiver_ids?: string[] | null
@@ -961,12 +972,14 @@ export type Database = {
           start_date: string
           start_time?: string | null
           status?: Database["public"]["Enums"]["event_status_enum"]
+          street_address?: string | null
           timezone?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
           address?: string | null
+          country?: string | null
           created_at?: string | null
           created_by?: string
           description?: string | null
@@ -978,13 +991,17 @@ export type Database = {
           instructor_id?: string | null
           is_public?: boolean | null
           late_registration_fee?: number | null
+          locality?: string | null
           location?: string | null
+          location_name?: string | null
           max_age?: number | null
           max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           max_participants?: number | null
           min_age?: number | null
           min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           notes?: string | null
+          postal_code?: string | null
+          region?: string | null
           registration_deadline?: string | null
           registration_fee?: number | null
           required_waiver_ids?: string[] | null
@@ -993,6 +1010,7 @@ export type Database = {
           start_date?: string
           start_time?: string | null
           status?: Database["public"]["Enums"]["event_status_enum"]
+          street_address?: string | null
           timezone?: string | null
           title?: string
           updated_at?: string | null
@@ -2555,6 +2573,10 @@ export type Database = {
           is_unread_by_admin: boolean
         }[]
       }
+      get_belt_rank_order: {
+        Args: { belt_rank: Database["public"]["Enums"]["belt_rank_enum"] }
+        Returns: number
+      }
       get_family_conversation_summaries: {
         Args: { p_user_id: string }
         Returns: {
@@ -2650,6 +2672,18 @@ export type Database = {
         | "family_referral"
         | "birthday"
         | "seasonal_promotion"
+      eligibility_reason_enum:
+        | "eligible"
+        | "event_not_found"
+        | "student_not_found"
+        | "registration_not_open"
+        | "registration_deadline_passed"
+        | "already_registered"
+        | "event_full"
+        | "student_too_young"
+        | "student_too_old"
+        | "student_belt_rank_too_low"
+        | "student_belt_rank_too_high"
       enrollment_status:
         | "active"
         | "inactive"
@@ -2868,6 +2902,19 @@ export const Constants = {
         "family_referral",
         "birthday",
         "seasonal_promotion",
+      ],
+      eligibility_reason_enum: [
+        "eligible",
+        "event_not_found",
+        "student_not_found",
+        "registration_not_open",
+        "registration_deadline_passed",
+        "already_registered",
+        "event_full",
+        "student_too_young",
+        "student_too_old",
+        "student_belt_rank_too_low",
+        "student_belt_rank_too_high",
       ],
       enrollment_status: [
         "active",
