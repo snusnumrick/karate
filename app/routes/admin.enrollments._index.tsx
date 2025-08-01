@@ -17,7 +17,15 @@ import { getEnrollments, updateEnrollment, dropStudent } from "~/services/enroll
 import { getClasses } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import type { ClassEnrollment } from "~/types/multi-class";
+import type { EligibilityStatus } from "~/types/payment";
 import { checkStudentEligibility, createClient } from "~/utils/supabase.server";
+
+// Extended type for enrollment with eligibility
+type EnrollmentWithEligibility = ClassEnrollment & {
+  student?: ClassEnrollment['student'] & {
+    eligibility?: EligibilityStatus;
+  };
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -103,7 +111,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-function getStudentName(enrollment: ClassEnrollment): string {
+function getStudentName(enrollment: EnrollmentWithEligibility): string {
   if (!enrollment.student) return "Unknown Student";
   return `${enrollment.student.first_name} ${enrollment.student.last_name}`;
 }
@@ -114,7 +122,7 @@ export default function AdminEnrollments() {
   const [searchParams, setSearchParams] = useSearchParams();
   const submit = useSubmit();
   
-  const [selectedEnrollment, setSelectedEnrollment] = useState<ClassEnrollment | null>(null);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentWithEligibility | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteEnrollmentId, setDeleteEnrollmentId] = useState<string | null>(null);
   
@@ -129,19 +137,70 @@ export default function AdminEnrollments() {
     setSearchParams(searchParams);
   };
   
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
-      case "trial":
-        return <Badge className="bg-blue-100 text-blue-800"><CheckCircle className="h-3 w-3 mr-1" />Trial</Badge>;
-      case "waitlist":
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Waitlisted</Badge>;
-      case "dropped":
-        return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Dropped</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const getStatusBadge = (enrollment: EnrollmentWithEligibility) => {
+    const status = enrollment.status;
+    const eligibility = enrollment.student?.eligibility;
+    
+    // For dropped or waitlisted enrollments, show simple status
+    if (status === "dropped") {
+      return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Dropped</Badge>;
     }
+    if (status === "waitlist") {
+      return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Waitlisted</Badge>;
+    }
+    
+    // For active/trial enrollments, combine with eligibility info
+    if (status === "trial") {
+      return (
+        <div className="space-y-1">
+          <Badge className="bg-blue-100 text-blue-800">
+            <CheckCircle className="h-3 w-3 mr-1" />Trial
+          </Badge>
+        </div>
+      );
+    }
+    
+    if (status === "active" && eligibility) {
+      if (eligibility.eligible) {
+        const paidUntilText = eligibility.paidUntil 
+          ? formatDate(eligibility.paidUntil, { formatString: 'MMM d, yyyy' })
+          : '';
+        
+        return (
+          <div className="space-y-1">
+            <Badge className="bg-green-100 text-green-800">
+              <CheckCircle className="h-3 w-3 mr-1" />Active
+            </Badge>
+            {paidUntilText && (
+              <div className="text-xs text-muted-foreground">
+                Paid until {paidUntilText}
+              </div>
+            )}
+          </div>
+        );
+      } else {
+        // Active enrollment but not eligible (expired payment)
+        const paidUntilText = eligibility.paidUntil 
+          ? formatDate(eligibility.paidUntil, { formatString: 'MMM d, yyyy' })
+          : '';
+        
+        return (
+          <div className="space-y-1">
+            <Badge className="bg-orange-100 text-orange-800">
+              <AlertCircle className="h-3 w-3 mr-1" />Active (Expired)
+            </Badge>
+            {paidUntilText && (
+              <div className="text-xs text-muted-foreground">
+                Expired {paidUntilText}
+              </div>
+            )}
+          </div>
+        );
+      }
+    }
+    
+    // Fallback for active without eligibility data
+    return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
   };
   
   const getClassInfo = (classId: string) => {
@@ -285,7 +344,7 @@ export default function AdminEnrollments() {
                     </TableCell>
                     <TableCell>{program?.name || "Unknown"}</TableCell>
                     <TableCell className="min-w-[200px]">{classItem?.name || "Unknown"}</TableCell>
-                    <TableCell>{getStatusBadge(enrollment.status)}</TableCell>
+                    <TableCell>{getStatusBadge(enrollment)}</TableCell>
                     <TableCell>
                       {formatDate(enrollment.enrolled_at, { formatString: 'MMM d, yyyy' })}
                     </TableCell>
