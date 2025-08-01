@@ -344,6 +344,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
           // Parse the JSON result
           const result = typeof eligibilityResult === 'string' ? JSON.parse(eligibilityResult) : eligibilityResult;
           
+          // Define allowed reasons that should still show the event
+          const allowedReasons = new Set([
+            'already_registered',
+            'registration_not_open',
+            'registration_deadline_passed', 
+            'event_full',
+            'student_too_young',
+            'student_too_old',
+            'student_belt_rank_too_low',
+            'student_belt_rank_too_high'
+          ]);
+
           // Show event if student is eligible
           if (result?.eligible === true) {
             shouldShowEvent = true;
@@ -351,18 +363,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
           } else if (result?.all_issues) {
             // Use all_issues array for comprehensive visibility logic
             const allIssues = result.all_issues as Database['public']['Enums']['eligibility_reason_enum'][];
-            
-            // Define allowed reasons that should still show the event
-            const allowedReasons = new Set([
-              'already_registered',
-              'registration_not_open',
-              'registration_deadline_passed', 
-              'event_full',
-              'student_too_young',
-              'student_too_old',
-              'student_belt_rank_too_low',
-              'student_belt_rank_too_high'
-            ]);
             
             // Show event only if ALL issues are in the allowed list
             // This ensures we don't show events with fundamental problems
@@ -375,14 +375,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           } else if (result?.reason) {
             // Fallback to single reason check for backward compatibility
             const reason = result.reason as Database['public']['Enums']['eligibility_reason_enum'];
-            if (reason === 'already_registered' || 
-                reason === 'registration_not_open' ||
-                reason === 'registration_deadline_passed' ||
-                reason === 'event_full' ||
-                reason === 'student_too_young' ||
-                reason === 'student_too_old' ||
-                reason === 'student_belt_rank_too_low' ||
-                reason === 'student_belt_rank_too_high') {
+            if (allowedReasons.has(reason)) {
               shouldShowEvent = true;
               break; // Show event for these scenarios
             }
