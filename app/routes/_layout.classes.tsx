@@ -6,25 +6,25 @@ import { createClient } from "~/utils/supabase.server";
 import type { Program } from "~/types/multi-class";
 
 type ClassWithSchedule = {
-  id: string;
-  name: string;
-  description: string | null;
-  is_active: boolean;
-  program: {
+    id: string;
     name: string;
     description: string | null;
-    min_age: number | null;
-    max_age: number | null;
-  } | null;
-  schedules: Array<{
-    day_of_week: string;
-    start_time: string;
-  }>;
+    is_active: boolean;
+    program: {
+        name: string;
+        description: string | null;
+        min_age: number | null;
+        max_age: number | null;
+    } | null;
+    schedules: Array<{
+        day_of_week: string;
+        start_time: string;
+    }>;
 };
 
 type LoaderData = {
-  programs: Program[];
-  classes: ClassWithSchedule[];
+    programs: Program[];
+    classes: ClassWithSchedule[];
 };
 
 // Helper function to merge meta tags from parent and child routes
@@ -56,7 +56,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
     // Define meta tags specific to this Classes page
     const classesPageTitle = "Karate Classes - Programs & Schedules";
     const classesPageDescription = `Explore our comprehensive karate programs at ${siteConfig.location.address}. Classes for children ages ${siteConfig.classes.ageRange} with experienced instructors. ${siteConfig.pricing.freeTrial} available!`;
-    
+
     const classesMeta: MetaDescriptor[] = [
         { title: classesPageTitle },
         { name: "description", content: classesPageDescription },
@@ -128,7 +128,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
                         "audience": {
                             "@type": "EducationalAudience",
                             "educationalRole": "student",
-                            "audienceType": classItem.program?.min_age && classItem.program?.max_age 
+                            "audienceType": classItem.program?.min_age && classItem.program?.max_age
                                 ? `Ages ${classItem.program.min_age}-${classItem.program.max_age}`
                                 : "Children and Adults"
                         }
@@ -153,16 +153,16 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function loader(_: LoaderFunctionArgs) {
-  try {
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-    
-    // Get active programs for public display
-    const programs = await getPrograms({ is_active: true }, supabase);
-    
-    // Get active classes with their schedules
-    const { data: classesData, error } = await supabase
-      .from('classes')
-      .select(`
+    try {
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+        // Get active programs for public display
+        const programs = await getPrograms({ is_active: true }, supabase);
+
+        // Get active classes with their schedules
+        const { data: classesData, error } = await supabase
+            .from('classes')
+            .select(`
         id,
         name,
         description,
@@ -178,151 +178,151 @@ export async function loader(_: LoaderFunctionArgs) {
           start_time
         )
       `)
-      .eq('is_active', true)
-      .order('name');
+            .eq('is_active', true)
+            .order('name');
 
-    if (error) {
-      console.error('Error fetching classes:', error);
+        if (error) {
+            console.error('Error fetching classes:', error);
+        }
+
+        // Transform the data to match our expected type
+        const classes: ClassWithSchedule[] = (classesData || []).map(classItem => ({
+            id: classItem.id,
+            name: classItem.name,
+            description: classItem.description,
+            is_active: classItem.is_active,
+            program: Array.isArray(classItem.program) ? classItem.program[0] || null : classItem.program,
+            schedules: classItem.schedules || []
+        }));
+
+        return json<LoaderData>(
+            { programs, classes },
+            {
+                headers: {
+                    // Cache for 5 minutes (300 seconds) to match server-side cache duration
+                    // public: can be cached by browsers and CDNs
+                    // max-age: cache duration in seconds
+                    // stale-while-revalidate: serve stale content while fetching fresh data
+                    'Cache-Control': 'public, max-age=300, stale-while-revalidate=600'
+                }
+            }
+        );
+    } catch (error) {
+        console.error('Error loading classes and programs:', error);
+        return json<LoaderData>(
+            { programs: [], classes: [] },
+            {
+                headers: {
+                    // Don't cache error responses
+                    'Cache-Control': 'no-cache, no-store, must-revalidate'
+                }
+            }
+        );
     }
-
-    // Transform the data to match our expected type
-    const classes: ClassWithSchedule[] = (classesData || []).map(classItem => ({
-      id: classItem.id,
-      name: classItem.name,
-      description: classItem.description,
-      is_active: classItem.is_active,
-      program: Array.isArray(classItem.program) ? classItem.program[0] || null : classItem.program,
-      schedules: classItem.schedules || []
-    }));
-
-    return json<LoaderData>(
-      { programs, classes },
-      {
-        headers: {
-          // Cache for 5 minutes (300 seconds) to match server-side cache duration
-          // public: can be cached by browsers and CDNs
-          // max-age: cache duration in seconds
-          // stale-while-revalidate: serve stale content while fetching fresh data
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=600'
-        }
-      }
-    );
-  } catch (error) {
-    console.error('Error loading classes and programs:', error);
-    return json<LoaderData>(
-      { programs: [], classes: [] },
-      {
-        headers: {
-          // Don't cache error responses
-          'Cache-Control': 'no-cache, no-store, must-revalidate'
-        }
-      }
-    );
-  }
 }
 
 export default function ClassesPage() {
-  const { programs, classes } = useLoaderData<typeof loader>();
+    const { programs, classes } = useLoaderData<typeof loader>();
 
-  // Helper function to format day names
-  const formatDayName = (day: string) => {
-    const dayMap: Record<string, string> = {
-      'monday': 'Monday',
-      'tuesday': 'Tuesday', 
-      'wednesday': 'Wednesday',
-      'thursday': 'Thursday',
-      'friday': 'Friday',
-      'saturday': 'Saturday',
-      'sunday': 'Sunday'
+    // Helper function to format day names
+    const formatDayName = (day: string) => {
+        const dayMap: Record<string, string> = {
+            'monday': 'Monday',
+            'tuesday': 'Tuesday',
+            'wednesday': 'Wednesday',
+            'thursday': 'Thursday',
+            'friday': 'Friday',
+            'saturday': 'Saturday',
+            'sunday': 'Sunday'
+        };
+        return dayMap[day.toLowerCase()] || day;
     };
-    return dayMap[day.toLowerCase()] || day;
-  };
 
-  // Helper function to format time
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+    // Helper function to format time
+    const formatTime = (time: string) => {
+        const [hours, minutes] = time.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        return `${displayHour}:${minutes} ${ampm}`;
+    };
 
-  // Get age range from programs or classes
-  const getAgeRange = () => {
-    if (programs.length > 0) {
-      const ages = programs
-        .filter(p => p.min_age && p.max_age)
-        .map(p => ({ min: p.min_age!, max: p.max_age! }));
-      
-      if (ages.length > 0) {
-        const minAge = Math.min(...ages.map(a => a.min));
-        const maxAge = Math.max(...ages.map(a => a.max));
-        return `${minAge}-${maxAge}`;
-      }
-    }
-    return siteConfig.classes.ageRange; // Fallback to static config
-  };
+    // Get age range from programs or classes
+    const getAgeRange = () => {
+        if (programs.length > 0) {
+            const ages = programs
+                .filter(p => p.min_age && p.max_age)
+                .map(p => ({ min: p.min_age!, max: p.max_age! }));
 
-  // Get pricing information from programs
-  const getPricingTiers = () => {
-    const tiers = [];
-    
-    // Free trial (always available)
-    tiers.push({ label: "Free Trial", description: "Your first class is on us!" });
-    
-    // Monthly pricing from programs
-    const monthlyPrograms = programs.filter(p => p.monthly_fee && p.monthly_fee > 0);
-    if (monthlyPrograms.length > 0) {
-      const monthlyFees = monthlyPrograms.map(p => p.monthly_fee!);
-      const minMonthly = Math.min(...monthlyFees);
-      const maxMonthly = Math.max(...monthlyFees);
-      
-      if (minMonthly === maxMonthly) {
-        tiers.push({ label: "Monthly", description: `$${minMonthly} - Ongoing` });
-      } else {
-        tiers.push({ label: "Monthly", description: `$${minMonthly}-$${maxMonthly} - Ongoing` });
-      }
-    }
-    
-    // Yearly pricing from programs
-    const yearlyPrograms = programs.filter(p => p.yearly_fee && p.yearly_fee > 0);
-    if (yearlyPrograms.length > 0) {
-      const yearlyFees = yearlyPrograms.map(p => p.yearly_fee!);
-      const minYearly = Math.min(...yearlyFees);
-      const maxYearly = Math.max(...yearlyFees);
-      
-      if (minYearly === maxYearly) {
-        tiers.push({ label: "Yearly Membership", description: `$${minYearly} - Paid Annually` });
-      } else {
-        tiers.push({ label: "Yearly Membership", description: `$${minYearly}-$${maxYearly} - Paid Annually` });
-      }
-    }
-    
-    // Individual session pricing - only for 1:1 programs (max_capacity = 1)
-    const sessionPrograms = programs.filter(p => 
-      p.individual_session_fee && 
-      p.individual_session_fee > 0 && 
-      p.max_capacity === 1
-    );
-    if (sessionPrograms.length > 0) {
-      const sessionFees = sessionPrograms.map(p => p.individual_session_fee!);
-      const minSession = Math.min(...sessionFees);
-      const maxSession = Math.max(...sessionFees);
-      
-      if (minSession === maxSession) {
-        tiers.push({ label: "1:1 Session", description: `$${minSession} - Per Session` });
-      } else {
-        tiers.push({ label: "1:1 Session", description: `$${minSession}-$${maxSession} - Per Session` });
-      }
-    }
-    
-    // Fallback to static config if no programs found
-    if (tiers.length === 1) {
-      return siteConfig.pricing.tiers;
-    }
-    
-    return tiers;
-  };
+            if (ages.length > 0) {
+                const minAge = Math.min(...ages.map(a => a.min));
+                const maxAge = Math.max(...ages.map(a => a.max));
+                return `${minAge}-${maxAge}`;
+            }
+        }
+        return siteConfig.classes.ageRange; // Fallback to static config
+    };
+
+    // Get pricing information from programs
+    const getPricingTiers = () => {
+        const tiers = [];
+
+        // Free trial (always available)
+        tiers.push({ label: "Free Trial", description: "Your first class is on us!" });
+
+        // Monthly pricing from programs
+        const monthlyPrograms = programs.filter(p => p.monthly_fee && p.monthly_fee > 0);
+        if (monthlyPrograms.length > 0) {
+            const monthlyFees = monthlyPrograms.map(p => p.monthly_fee!);
+            const minMonthly = Math.min(...monthlyFees);
+            const maxMonthly = Math.max(...monthlyFees);
+
+            if (minMonthly === maxMonthly) {
+                tiers.push({ label: "Monthly", description: `$${minMonthly} - Ongoing` });
+            } else {
+                tiers.push({ label: "Monthly", description: `$${minMonthly}-$${maxMonthly} - Ongoing` });
+            }
+        }
+
+        // Yearly pricing from programs
+        const yearlyPrograms = programs.filter(p => p.yearly_fee && p.yearly_fee > 0);
+        if (yearlyPrograms.length > 0) {
+            const yearlyFees = yearlyPrograms.map(p => p.yearly_fee!);
+            const minYearly = Math.min(...yearlyFees);
+            const maxYearly = Math.max(...yearlyFees);
+
+            if (minYearly === maxYearly) {
+                tiers.push({ label: "Yearly Membership", description: `$${minYearly} - Paid Annually` });
+            } else {
+                tiers.push({ label: "Yearly Membership", description: `$${minYearly}-$${maxYearly} - Paid Annually` });
+            }
+        }
+
+        // Individual session pricing - only for 1:1 programs (max_capacity = 1)
+        const sessionPrograms = programs.filter(p =>
+            p.individual_session_fee &&
+            p.individual_session_fee > 0 &&
+            p.max_capacity === 1
+        );
+        if (sessionPrograms.length > 0) {
+            const sessionFees = sessionPrograms.map(p => p.individual_session_fee!);
+            const minSession = Math.min(...sessionFees);
+            const maxSession = Math.max(...sessionFees);
+
+            if (minSession === maxSession) {
+                tiers.push({ label: "1:1 Session", description: `$${minSession} - Per Session` });
+            } else {
+                tiers.push({ label: "1:1 Session", description: `$${minSession}-$${maxSession} - Per Session` });
+            }
+        }
+
+        // Fallback to static config if no programs found
+        if (tiers.length === 1) {
+            return siteConfig.pricing.tiers;
+        }
+
+        return tiers;
+    };
     return (
         <div className="page-background-styles py-12" suppressHydrationWarning>
             {/* Hero Section */}
@@ -339,72 +339,72 @@ export default function ClassesPage() {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
                 {/* Programs Section */}
-                {programs.length > 0 && programs.some(program => 
-                    (program.monthly_fee && program.monthly_fee > 0) || 
+                {programs.length > 0 && programs.some(program =>
+                    (program.monthly_fee && program.monthly_fee > 0) ||
                     (program.yearly_fee && program.yearly_fee > 0)
                 ) && (
                     <section className="mb-20">
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {programs
-                                .filter(program => 
-                                    (program.monthly_fee && program.monthly_fee > 0) || 
+                                .filter(program =>
+                                    (program.monthly_fee && program.monthly_fee > 0) ||
                                     (program.yearly_fee && program.yearly_fee > 0)
                                 )
                                 .map((program) => (
-                                <div
-                                    key={program.id}
-                                    className="form-container-styles p-8"
-                                >
-                                    <div className="mb-6">
-                                        <h3 className="text-2xl font-bold mb-3">
-                                            {program.name}
-                                        </h3>
-                                        {program.description && (
-                                            <p className="leading-relaxed">
-                                                {program.description}
-                                            </p>
-                                        )}
+                                    <div
+                                        key={program.id}
+                                        className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700 hover:border-green-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/10"
+                                    >
+                                        <div className="mb-6">
+                                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                                                {program.name}
+                                            </h3>
+                                            {program.description && (
+                                                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                                    {program.description}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {program.min_age && program.max_age && (
+                                                <div className="flex items-center text-gray-700 dark:text-gray-300">
+                                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                                                    <span className="font-medium">Age Range:</span>
+                                                    <span className="ml-2 text-gray-900 dark:text-white">{program.min_age}-{program.max_age} years</span>
+                                                </div>
+                                            )}
+
+                                            {program.monthly_fee && (
+                                                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">Monthly:</span>
+                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">${program.monthly_fee}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {program.yearly_fee && (
+                                                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">Yearly:</span>
+                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">${program.yearly_fee}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {program.individual_session_fee && (
+                                                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">Per Session:</span>
+                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">${program.individual_session_fee}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-
-                                    <div className="space-y-4">
-                                        {program.min_age && program.max_age && (
-                                            <div className="flex items-center ">
-                                                <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
-                                                <span className="font-medium">Age Range:</span>
-                                                <span className="ml-2 ">{program.min_age}-{program.max_age} years</span>
-                                            </div>
-                                        )}
-
-                                        {program.monthly_fee && (
-                                            <div className="form-card-styles p-4">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="font-medium">Monthly:</span>
-                                                    <span className="font-bold text-lg">${program.monthly_fee}</span>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {program.yearly_fee && (
-                                            <div className="form-card-styles p-4">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="font-medium">Yearly:</span>
-                                                    <span className="font-bold text-lg">${program.yearly_fee}</span>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {program.individual_session_fee && (
-                                            <div className="form-card-styles p-4">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="font-medium">Per Session:</span>
-                                                    <span className="font-bold text-lg">${program.individual_session_fee}</span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                ))}
                         </div>
                     </section>
                 )}
@@ -412,38 +412,38 @@ export default function ClassesPage() {
                 {/* Class Schedule Section */}
                 <section className="mb-20">
                     <div className="text-center mb-12">
-                        <h2 className="header-2-styles">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
                             Class Schedule
                         </h2>
-                        <p className="text-lg page-subheader-styles max-w-2xl mx-auto">
+                        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
                             Find the perfect time to join our karate classes
                         </p>
                     </div>
 
-                    <div className="form-container-styles p-8">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
                         {classes.length > 0 ? (
                             <div className="space-y-8">
                                 {classes.map((classItem) => (
                                     <div
                                         key={classItem.id}
-                                        className="form-card-styles pb-8 last:pb-0"
+                                        className="border-b border-gray-200 dark:border-gray-700 last:border-b-0 pb-8 last:pb-0"
                                     >
                                         <div className="mb-6">
-                                            <h3 className="text-2xl font-bold mb-2">
+                                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                                                 {classItem.name}
                                             </h3>
                                             {classItem.program && (
-                                                <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-3">
+                                                <div className="inline-flex items-center bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-medium mb-3">
                                                     {classItem.program.name}
                                                     {classItem.program.min_age && classItem.program.max_age && (
-                                                        <span className="ml-2 text-green-700 dark:text-green-300">
+                                                        <span className="ml-2 text-green-600 dark:text-green-300">
                                                             (Ages {classItem.program.min_age}-{classItem.program.max_age})
                                                         </span>
                                                     )}
                                                 </div>
                                             )}
                                             {classItem.description && (
-                                                <p className="text-slate-400 leading-relaxed">
+                                                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
                                                     {classItem.description}
                                                 </p>
                                             )}
@@ -454,17 +454,17 @@ export default function ClassesPage() {
                                                 {classItem.schedules.map((schedule, index) => (
                                                     <div
                                                         key={index}
-                                                        className="bg-slate-700/50 rounded-lg p-4 border border-slate-600"
+                                                        className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
                                                     >
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <span className="text-green-700 dark:text-green-300 font-bold text-lg">
+                                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">
                                                                 {formatDayName(schedule.day_of_week)}
                                                             </span>
-                                                            <span className="text-white font-medium">
+                                                            <span className="text-gray-900 dark:text-white font-medium">
                                                                 {formatTime(schedule.start_time)}
                                                             </span>
                                                         </div>
-                                                        <div className="text-sm text-slate-400">
+                                                        <div className="text-sm text-gray-600 dark:text-gray-400">
                                                             at {siteConfig.location.address}
                                                         </div>
                                                     </div>
@@ -476,23 +476,23 @@ export default function ClassesPage() {
                             </div>
                         ) : (
                             <div className="text-center py-8">
-                                <h3 className="text-2xl font-bold mb-4">
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                                     Children&apos;s Classes (Ages {getAgeRange()})
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                                    <div className="form-card-styles p-4">
+                                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-green-700 dark:text-green-300 font-bold text-lg">Tuesday</span>
-                                            <span className=" font-medium">{siteConfig.classes.timeLong}</span>
+                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">Tuesday</span>
+                                            <span className="text-gray-900 dark:text-white font-medium">{siteConfig.classes.timeLong}</span>
                                         </div>
-                                        <div className="text-sm ">at {siteConfig.location.address}</div>
+                                        <div className="text-sm text-gray-600 dark:text-gray-400">at {siteConfig.location.address}</div>
                                     </div>
-                                    <div className="form-card-styles p-4">
+                                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-green-700 dark:text-green-300 font-bold text-lg">Thursday</span>
-                                            <span className=" font-medium">{siteConfig.classes.timeLong}</span>
+                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">Friday</span>
+                                            <span className="text-gray-900 dark:text-white font-medium">{siteConfig.classes.timeLong}</span>
                                         </div>
-                                        <div className="text-sm ">at {siteConfig.location.address}</div>
+                                        <div className="text-sm text-gray-600 dark:text-gray-400">at {siteConfig.location.address}</div>
                                     </div>
                                 </div>
                             </div>
@@ -503,60 +503,85 @@ export default function ClassesPage() {
                 {/* What to Expect Section */}
                 <section className="mb-20">
                     <div className="text-center mb-12">
-                        <h2 className="header-2-styles">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
                             What to Expect
                         </h2>
+                        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                            Your child&apos;s journey in martial arts
+                        </p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="form-container-styles p-8">
-                            <h3 className="text-2xl font-bold  mb-6">Class Structure</h3>
-                            <ul className="space-y-3 ">
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Warm-up exercises and stretching
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Basic techniques (kihon) practice
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Forms (kata) training
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Partner drills and applications
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Games and activities to reinforce skills
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Cool-down and meditation
-                                </li>
-                            </ul>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                            <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl">🥋</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                                Traditional Techniques
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                Learn authentic karate forms, stances, and techniques passed down through generations.
+                            </p>
                         </div>
-                        <div className="form-container-styles p-8">
-                            <h3 className="text-2xl font-bold  mb-6">What to Bring</h3>
-                            <ul className="space-y-3 ">
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Comfortable workout clothes (karate gi not required for beginners)
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Water bottle
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Positive attitude and willingness to learn
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2"></span>
-                                    Completed waiver form (for first-time students)
-                                </li>
-                            </ul>
+
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                            <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl">💪</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                                Physical Fitness
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                Build strength, flexibility, and coordination through structured training exercises.
+                            </p>
+                        </div>
+
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                            <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl">🧠</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                                Mental Discipline
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                Develop focus, self-control, and confidence through mindful practice.
+                            </p>
+                        </div>
+
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                            <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl">🤝</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                                Respect & Values
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                Learn the importance of respect, humility, and perseverance in all aspects of life.
+                            </p>
+                        </div>
+
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                            <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl">🎯</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                                Goal Setting
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                Work towards belt promotions and personal achievements with clear milestones.
+                            </p>
+                        </div>
+
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                            <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl">👥</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                                Community
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                Join a supportive community of students and families sharing the martial arts journey.
+                            </p>
                         </div>
                     </div>
                 </section>
@@ -564,23 +589,23 @@ export default function ClassesPage() {
                 {/* Pricing Section */}
                 <section className="mb-20">
                     <div className="text-center mb-12">
-                        <h2 className="header-2-styles">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
                             Tuition & Pricing
                         </h2>
                     </div>
-                    <div className="form-container-styles p-8">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
                         <div className="space-y-4 mb-8">
                             {getPricingTiers().map((tier) => (
-                                <div key={tier.label} className="flex justify-between items-center form-card-styles p-4">
-                                    <span className="font-semibold ">{tier.label}</span>
-                                    <span className="text-lg font-bold text-green-700 dark:text-green-300">{tier.description || "Free"}</span>
+                                <div key={tier.label} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                    <span className="font-semibold text-gray-900 dark:text-white">{tier.label}</span>
+                                    <span className="text-lg font-bold text-green-600 dark:text-green-400">{tier.description || "Free"}</span>
                                 </div>
                             ))}
                         </div>
-                        
+
                         {/* Special pricing highlight for new students */}
-                        <div className="form-card-styles p-6">
-                            <h3 className="text-xl font-bold text-green-600 dark:text-green-300 mb-4">🎉 New Student Benefits</h3>
+                        <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-500/20 dark:to-green-600/20 border border-green-200 dark:border-green-500/30 rounded-lg p-6">
+                            <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-4">🎉 New Student Benefits</h3>
                             <ul className="space-y-2 text-green-700 dark:text-green-300">
                                 <li className="flex items-start">
                                     <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full mr-3 mt-2"></span>
@@ -600,10 +625,10 @@ export default function ClassesPage() {
                                 </li>
                             </ul>
                         </div>
-                        
+
                         <div className="mt-6">
-                            <p className=" text-center">
-                                Start with a free trial class, then enjoy special introductory pricing automatically applied for new students. 
+                            <p className="text-gray-600 dark:text-gray-400 text-center">
+                                Start with a free trial class, then enjoy special introductory pricing automatically applied for new students.
                                 Regular monthly tuition is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per student.
                             </p>
                         </div>
@@ -613,51 +638,51 @@ export default function ClassesPage() {
                 {/* Belt Progression Section */}
                 <section className="mb-20">
                     <div className="text-center mb-12">
-                        <h2 className="header-2-styles">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
                             Belt Progression
                         </h2>
-                        <p className="text-lg page-subheader-styles max-w-3xl mx-auto">
+                        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
                             Students progress through a traditional belt system that recognizes their growing skills and knowledge.
                             Regular testing opportunities allow students to demonstrate their abilities and advance to the next level.
                         </p>
                     </div>
-                    <div className="form-container-styles p-8">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
                         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-4">
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-white border border-gray-300 rounded mb-3"></div>
-                                <span className="text-sm ">White</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">White</span>
                             </div>
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-yellow-400 rounded mb-3"></div>
-                                <span className="text-sm ">Yellow</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Yellow</span>
                             </div>
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-orange-400 rounded mb-3"></div>
-                                <span className="text-sm ">Orange</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Orange</span>
                             </div>
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-green-500 rounded mb-3"></div>
-                                <span className="text-sm ">Green</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Green</span>
                             </div>
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-blue-500 rounded mb-3"></div>
-                                <span className="text-sm ">Blue</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Blue</span>
                             </div>
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-purple-500 rounded mb-3"></div>
-                                <span className="text-sm ">Purple</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Purple</span>
                             </div>
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-red-600 rounded mb-3"></div>
-                                <span className="text-sm ">Red</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Red</span>
                             </div>
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-yellow-800 rounded mb-3"></div>
-                                <span className="text-sm ">Brown</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Brown</span>
                             </div>
-                            <div className="form-card-styles p-4 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-black rounded mb-3"></div>
-                                <span className="text-sm ">Black</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Black</span>
                             </div>
                         </div>
                     </div>
@@ -665,24 +690,24 @@ export default function ClassesPage() {
 
                 {/* Call to Action Section */}
                 <section>
-                    <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-2xl p-8 text-center">
-                        <h2 className="text-3xl font-bold text-white mb-4">Ready to Join?</h2>
-                        <p className="text-xl text-green-100 mb-8 max-w-3xl mx-auto">
-                            Whether for transformative or competitive purposes, karate nurtures champions in all aspects of life!
-                            Join Sensei Negin&apos;s karate class and begin your journey in the art of karate.
+                    <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-500/20 dark:to-green-600/20 rounded-2xl p-8 text-center border border-green-200 dark:border-green-500/30">
+                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Ready to Begin Your Journey?</h2>
+                        <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
+                            Join our karate family and discover the benefits of traditional martial arts training.
+                            Start with a free trial class and see if our program is right for your child.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link
-                                to="/register"
-                                className="inline-block bg-white text-green-600 font-bold py-3 px-8 rounded-lg text-center hover:bg-gray-100 transition-colors duration-200"
+                                to="/contact"
+                                className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-center transition-colors duration-200"
                             >
-                                Register Now
+                                Schedule Free Trial
                             </Link>
                             <Link
                                 to="/contact"
-                                className="inline-block bg-transparent border-2 border-white text-white font-bold py-3 px-8 rounded-lg text-center hover:bg-white hover:text-green-600 transition-colors duration-200"
+                                className="inline-block bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-green-600 dark:text-green-400 border-2 border-green-600 dark:border-green-400 font-bold py-3 px-8 rounded-lg text-center transition-colors duration-200"
                             >
-                                Contact Us
+                                Ask Questions
                             </Link>
                         </div>
                     </div>
