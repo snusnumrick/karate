@@ -16,7 +16,7 @@ import {
 } from "date-fns";
 import { Calendar } from "~/components/calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
-import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents } from "~/components/calendar/utils";
+import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents } from "~/components/calendar/utils";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
@@ -82,6 +82,7 @@ type EventRow = {
   description: string | null;
   event_type: string;
   start_date: string;
+  end_date: string | null;
   start_time: string | null;
   end_time: string | null;
   location: string | null;
@@ -298,6 +299,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         description,
         event_type,
         start_date,
+        end_date,
         start_time,
         end_time,
         location,
@@ -464,13 +466,14 @@ export default function FamilyCalendarPage() {
     const calendarEvent = {
       id: event.id,
       title: event.title,
-      date: new Date(event.start_date),
+      date: parseLocalDate(event.start_date), // Use parseLocalDate to avoid timezone issues
       type: 'event' as const,
       eventType: event.event_type,
       startTime: event.start_time || undefined,
       endTime: event.end_time || undefined,
       location: event.location || undefined,
       description: event.description || undefined,
+      endDate: event.end_date || undefined, // Include end date for multi-day events
       status: event.status === 'completed' ? 'completed' as const : 
               event.status === 'cancelled' ? 'cancelled' as const : 
               'scheduled' as const,
@@ -479,7 +482,11 @@ export default function FamilyCalendarPage() {
     return calendarEvent;
   });
   
-  const allEvents = [...sessionEvents, ...attendanceEvents, ...birthdayEvents, ...eventCalendarEvents];
+  // Combine all events and expand multi-day events
+  const combinedEvents = [...sessionEvents, ...attendanceEvents, ...birthdayEvents, ...eventCalendarEvents];
+  
+  // Expand multi-day events to show on all days
+  const allEvents = expandMultiDayEvents(combinedEvents);
   console.log('Family Calendar: All events for calendar:', allEvents);
   console.log('Family Calendar: Session events:', sessionEvents);
   console.log('Family Calendar: Attendance events:', attendanceEvents);

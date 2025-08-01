@@ -19,6 +19,11 @@ export interface CalendarEvent {
   eventType?: string; // For events from the events table
   description?: string; // For events from the events table
   location?: string; // For events from the events table
+  endDate?: string; // For multi-day events (YYYY-MM-DD format)
+  isMultiDay?: boolean; // Indicates if this is part of a multi-day event
+  isFirstDay?: boolean; // Indicates if this is the first day of a multi-day event
+  isLastDay?: boolean; // Indicates if this is the last day of a multi-day event
+  originalEventId?: string; // For multi-day events, references the original event ID
 }
 
 export interface CalendarDay {

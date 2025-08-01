@@ -117,10 +117,20 @@ export function parseLocalDate(dateString: string): Date {
 }
 
 /**
- * Format a Date object as a local date string (YYYY-MM-DD) to avoid timezone issues
+ * Format a Date object or date string as a local date string (YYYY-MM-DD) to avoid timezone issues
  * This ensures the date is formatted in the user's local timezone, not UTC
  */
-export function formatLocalDate(date: Date): string {
+export function formatLocalDate(date: Date | string): string {
+  // If it's already a string in YYYY-MM-DD format, return as-is
+  if (typeof date === 'string') {
+    // Validate it's in the correct format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return date;
+    }
+    // If it's a different string format, parse it as a date
+    date = parseLocalDate(date);
+  }
+  
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -434,4 +444,49 @@ export function getEventColors(): {
     text: 'text-purple-900 dark:text-purple-100',
     hover: 'hover:bg-purple-200 dark:hover:bg-purple-900/50'
   };
+}
+
+/**
+ * Expand multi-day events to show on all days between start and end dates
+ */
+export function expandMultiDayEvents(events: CalendarEvent[]): CalendarEvent[] {
+  const expandedEvents: CalendarEvent[] = [];
+  
+  events.forEach(event => {
+    // For events with endDate, create an event for each day
+    if (event.endDate && event.endDate !== formatLocalDate(event.date)) {
+      const startDate = event.date;
+      const endDate = parseLocalDate(event.endDate);
+      
+      // Generate events for each day in the range
+      const currentDate = new Date(startDate);
+      let dayIndex = 0;
+      
+      while (currentDate <= endDate) {
+        const isFirstDay = dayIndex === 0;
+        const isLastDay = formatLocalDate(currentDate) === event.endDate;
+        
+        expandedEvents.push({
+          ...event,
+          id: `${event.id}-day-${dayIndex}`,
+          date: new Date(currentDate),
+          title: isFirstDay ? event.title : 
+                 isLastDay ? `${event.title} (ends)` : 
+                 `${event.title} (cont.)`,
+          isMultiDay: true,
+          isFirstDay,
+          isLastDay,
+          originalEventId: event.id
+        });
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+        dayIndex++;
+      }
+    } else {
+      // Single day event, add as-is
+      expandedEvents.push(event);
+    }
+  });
+  
+  return expandedEvents;
 }

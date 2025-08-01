@@ -2,7 +2,7 @@ import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams, useNavigate } from "@remix-run/react";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
-import { parseLocalDate, birthdaysToCalendarEvents } from "~/components/calendar/utils";
+import { parseLocalDate, birthdaysToCalendarEvents, expandMultiDayEvents } from "~/components/calendar/utils";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -29,6 +29,7 @@ interface AdminCalendarEvent {
   programName?: string;
   startTime?: string;
   endTime?: string;
+  endDate?: string; // For multi-day events (YYYY-MM-DD format)
 
   // Admin-specific properties
   programId: string;
@@ -354,6 +355,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           programName: event.event_type.replace('_', ' ').toUpperCase(),
           startTime: event.start_time || undefined,
           endTime: event.end_time || undefined,
+          endDate: event.end_date || undefined, // Include end date for multi-day events
 
           // Admin-specific properties
           programId: 'events', // Special program ID for events
@@ -575,7 +577,7 @@ export default function AdminCalendar() {
         <Card>
           <CardContent className="p-0 sm:p-3">
             <Calendar
-              events={[
+              events={expandMultiDayEvents([
                 // Session events
                 ...events.map(event => ({
                   id: event.id,
@@ -588,11 +590,12 @@ export default function AdminCalendar() {
                   classId: event.classId,
                   programName: event.programName,
                   startTime: event.startTime,
-                  endTime: event.endTime
+                  endTime: event.endTime,
+                  endDate: event.endDate // Include end date for multi-day events
                 })),
                 // Birthday events
                 ...birthdayEvents
-              ]}
+              ])}
               currentDate={currentDate}
               onDateChange={handleDateChange}
               onEventClick={handleEventClick}
