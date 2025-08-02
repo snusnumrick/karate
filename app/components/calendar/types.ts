@@ -24,6 +24,15 @@ export interface CalendarEvent {
   isFirstDay?: boolean; // Indicates if this is the first day of a multi-day event
   isLastDay?: boolean; // Indicates if this is the last day of a multi-day event
   originalEventId?: string; // For multi-day events, references the original event ID
+  // Eligibility information for family calendar events
+  eligibilityStatus?: 'eligible' | 'all_registered' | 'not_eligible';
+  eligibilityDetails?: {
+    studentId: string;
+    studentName: string;
+    eligible: boolean;
+    reason: string;
+    allIssues: string[];
+  }[];
 }
 
 export interface CalendarDay {

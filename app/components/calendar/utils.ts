@@ -447,6 +447,60 @@ export function getEventColors(): {
 }
 
 /**
+ * Get event colors based on eligibility status for family calendar
+ */
+export function getEligibilityEventColors(eligibilityStatus?: string): {
+  background: string;
+  border: string;
+  text: string;
+  hover: string;
+} {
+  switch (eligibilityStatus) {
+    case 'eligible':
+      // Green for events where at least one student is eligible
+      return {
+        background: 'bg-emerald-100 dark:bg-emerald-900/30',
+        border: 'border-emerald-500 dark:border-emerald-400',
+        text: 'text-emerald-900 dark:text-emerald-100',
+        hover: 'hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
+      };
+    case 'all_registered':
+      // Blue for events where all eligible students are already registered
+      return {
+        background: 'bg-sky-100 dark:bg-sky-900/30',
+        border: 'border-sky-500 dark:border-sky-400',
+        text: 'text-sky-900 dark:text-sky-100',
+        hover: 'hover:bg-sky-200 dark:hover:bg-sky-900/50'
+      };
+    case 'not_eligible':
+    default:
+      // Gray for events where no students are eligible
+      return {
+        background: 'bg-gray-100 dark:bg-gray-900/30',
+        border: 'border-gray-500 dark:border-gray-400',
+        text: 'text-gray-900 dark:text-gray-100',
+        hover: 'hover:bg-gray-200 dark:hover:bg-gray-900/50'
+      };
+  }
+}
+
+/**
+ * Get eligibility status circle color based on eligibility status
+ */
+export function getEligibilityIconColor(eligibilityStatus?: string): string {
+  switch (eligibilityStatus) {
+    case 'eligible':
+      return 'bg-green-500';
+    case 'all_registered':
+      return 'bg-blue-500';
+    case 'not_eligible':
+      return 'bg-gray-400';
+    default:
+      return 'bg-purple-500';
+  }
+}
+
+/**
  * Expand multi-day events to show on all days between start and end dates
  */
 export function expandMultiDayEvents(events: CalendarEvent[]): CalendarEvent[] {

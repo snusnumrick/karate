@@ -1,6 +1,6 @@
 import { Badge } from '~/components/ui/badge';
 import { CalendarIcon } from 'lucide-react';
-import { formatEventTime, getAttendanceStatusVariant, getSessionStatusColors, getBirthdayColors, getEventColors } from './utils';
+import { formatEventTime, getAttendanceStatusVariant, getSessionStatusColors, getBirthdayColors, getEventColors, getEligibilityIconColor } from './utils';
 import type { CalendarEventProps } from './types';
 
 export function CalendarEvent({ event, onClick, compact = false }: CalendarEventProps) {
@@ -103,7 +103,16 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
   }
 
   if (event.type === 'event') {
-    const colors = getEventColors();
+    // Use consistent purple background for all events
+    const colors = {
+      background: 'bg-purple-100 dark:bg-purple-900/30',
+      border: 'border-purple-500 dark:border-purple-400',
+      text: 'text-purple-900 dark:text-purple-100',
+      hover: 'hover:bg-purple-200 dark:hover:bg-purple-900/50'
+    };
+    
+    // Get icon color based on eligibility status
+    const iconColor = getEligibilityIconColor(event.eligibilityStatus);
     
     return (
       <div
@@ -112,10 +121,10 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
         onKeyDown={handleKeyDown}
         role="button"
         tabIndex={0}
-        aria-label={`Event: ${event.title}`}
+        aria-label={`Event: ${event.title}${event.eligibilityStatus ? ` (${event.eligibilityStatus.replace('_', ' ')})` : ''}`}
       >
         <div className="flex items-center gap-1">
-          <CalendarIcon className="w-3 h-3 flex-shrink-0" />
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${iconColor}`}></div>
           <div className={`font-medium ${colors.text} text-xs leading-tight truncate`}>
             {compact ? (event.title && event.title.length > 15 ? event.title.substring(0, 15) + '...' : event.title) : event.title}
           </div>
@@ -128,6 +137,13 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
         {!compact && (event.startTime || event.endTime) && (
           <div className={`text-xs ${colors.text} opacity-70 leading-tight`}>
             {formatEventTime(event.startTime, event.endTime)}
+          </div>
+        )}
+        {!compact && event.eligibilityStatus && event.eligibilityDetails && (
+          <div className={`text-xs ${colors.text} opacity-90 leading-tight mt-0.5`}>
+            {event.eligibilityStatus === 'eligible' && `${event.eligibilityDetails.filter(d => d.eligible).length} eligible`}
+            {event.eligibilityStatus === 'all_registered' && 'All registered'}
+            {event.eligibilityStatus === 'not_eligible' && 'Not eligible'}
           </div>
         )}
       </div>

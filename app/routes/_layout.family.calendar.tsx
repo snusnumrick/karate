@@ -320,14 +320,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const allEvents = (eventsData || []) as EventRow[];
     console.log('Family Calendar Loader: All events found:', allEvents.length);
 
-    // Filter events to only include those where at least one family student is eligible
-    const visibleEvents: EventRow[] = [];
+    // Filter events and collect eligibility information for visual styling
+    const visibleEventsWithEligibility: (EventRow & { eligibilityInfo: any })[] = [];
     
     // Create service role client for RPC calls
     const supabaseService = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     
     for (const event of allEvents) {
       let shouldShowEvent = false;
+      const eligibilityDetails: any[] = [];
+      let eligibleStudents = 0;
+      let registeredStudents = 0;
       
       // Check each student in the family to determine if event should be visible
       for (const student of students) {
@@ -346,6 +349,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
           // Parse the JSON result
           const result = typeof eligibilityResult === 'string' ? JSON.parse(eligibilityResult) : eligibilityResult;
           
+          // Store eligibility details for this student
+          eligibilityDetails.push({
+            studentId: student.id,
+            studentName: `${student.first_name} ${student.last_name}`,
+            eligible: result?.eligible === true,
+            reason: result?.reason || 'unknown',
+            allIssues: result?.all_issues || []
+          });
+          
+          // Count eligible and registered students
+          if (result?.eligible === true) {
+            eligibleStudents++;
+          }
+          if (result?.reason === 'already_registered') {
+            registeredStudents++;
+          }
+          
           // Define allowed reasons that should still show the event
           const allowedReasons = new Set([
             'already_registered',
@@ -361,7 +381,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
           // Show event if student is eligible
           if (result?.eligible === true) {
             shouldShowEvent = true;
-            break; // At least one student is eligible, show the event
           } else if (result?.all_issues) {
             // Use all_issues array for comprehensive visibility logic
             const allIssues = result.all_issues as Database['public']['Enums']['eligibility_reason_enum'][];
@@ -372,14 +391,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
             
             if (allIssuesAreAllowed) {
               shouldShowEvent = true;
-              break; // Show event for these scenarios
             }
           } else if (result?.reason) {
             // Fallback to single reason check for backward compatibility
             const reason = result.reason as Database['public']['Enums']['eligibility_reason_enum'];
             if (allowedReasons.has(reason)) {
               shouldShowEvent = true;
-              break; // Show event for these scenarios
             }
           }
         } catch (error) {
@@ -389,18 +406,35 @@ export async function loader({ request }: LoaderFunctionArgs) {
       }
       
       if (shouldShowEvent) {
-        visibleEvents.push(event);
+        // Determine overall eligibility status for visual styling
+        let eligibilityStatus: 'eligible' | 'all_registered' | 'not_eligible';
+        
+        if (registeredStudents === students.length && students.length > 0) {
+          eligibilityStatus = 'all_registered';
+        } else if (eligibleStudents > 0) {
+          eligibilityStatus = 'eligible';
+        } else {
+          eligibilityStatus = 'not_eligible';
+        }
+        
+        visibleEventsWithEligibility.push({
+          ...event,
+          eligibilityInfo: {
+            status: eligibilityStatus,
+            details: eligibilityDetails
+          }
+        });
       }
     }
     
-    console.log('Family Calendar Loader: Visible events found:', visibleEvents.length);
+    console.log('Family Calendar Loader: Visible events found:', visibleEventsWithEligibility.length);
 
     const result = {
       students, 
       sessions: upcomingSessions, 
       attendance: attendanceRecords, 
       enrollments, 
-      events: visibleEvents,
+      events: visibleEventsWithEligibility,
       familyName, 
       currentMonth 
     };
@@ -462,7 +496,7 @@ export default function FamilyCalendarPage() {
   
   // Transform events into CalendarEvent objects
   console.log('Family Calendar: Raw events from loader:', events);
-  const eventCalendarEvents: CalendarEvent[] = events.map((event: EventRow) => {
+  const eventCalendarEvents: CalendarEvent[] = events.map((event: any) => {
     const calendarEvent = {
       id: event.id,
       title: event.title,
@@ -477,6 +511,9 @@ export default function FamilyCalendarPage() {
       status: event.status === 'completed' ? 'completed' as const : 
               event.status === 'cancelled' ? 'cancelled' as const : 
               'scheduled' as const,
+      // Add eligibility information for visual styling
+      eligibilityStatus: event.eligibilityInfo?.status,
+      eligibilityDetails: event.eligibilityInfo?.details,
     };
     console.log('Family Calendar: Transformed event:', calendarEvent);
     return calendarEvent;
@@ -676,36 +713,70 @@ export default function FamilyCalendarPage() {
         <div className="form-container-styles p-8 backdrop-blur-lg">
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CALENDAR LEGEND</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 border-l-4 border-blue-500 dark:border-blue-400 rounded text-sm text-blue-900 dark:text-blue-100 font-medium">
-                  Scheduled
+            
+            {/* Class Status Legend */}
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-foreground mb-3">Class Status</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 border-l-4 border-blue-500 dark:border-blue-400 rounded text-sm text-blue-900 dark:text-blue-100 font-medium">
+                    Scheduled
+                  </div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">Scheduled class</span>
                 </div>
-                <span className="text-gray-600 dark:text-gray-400 text-sm">Scheduled class</span>
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-2 bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500 dark:border-green-400 rounded text-sm text-green-900 dark:text-green-100 font-medium">
+                    Completed
+                  </div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">Completed class</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-2 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-400 rounded text-sm text-red-900 dark:text-red-100 font-medium">
+                    Cancelled
+                  </div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">Cancelled class</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="px-3 py-2 bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500 dark:border-green-400 rounded text-sm text-green-900 dark:text-green-100 font-medium">
-                  Completed
+            </div>
+
+            {/* Event Registration Status Legend */}
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-foreground mb-3">Event Registration Status</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400 rounded text-sm text-purple-900 dark:text-purple-100 font-medium flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    Can Register
+                  </div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">At least one student can register</span>
                 </div>
-                <span className="text-gray-600 dark:text-gray-400 text-sm">Completed class</span>
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400 rounded text-sm text-purple-900 dark:text-purple-100 font-medium flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    All Registered
+                  </div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">All eligible students already registered</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400 rounded text-sm text-purple-900 dark:text-purple-100 font-medium flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                    Not Eligible
+                  </div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">No students can register</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="px-3 py-2 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-400 rounded text-sm text-red-900 dark:text-red-100 font-medium">
-                  Cancelled
+            </div>
+
+            {/* Other Event Types Legend */}
+            <div>
+              <h3 className="text-lg font-medium text-foreground mb-3">Other Events</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-2 bg-pink-100 dark:bg-pink-900/30 border-l-4 border-pink-500 dark:border-pink-400 rounded text-sm text-pink-900 dark:text-pink-100 font-medium">
+                    Birthday
+                  </div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">Student birthday</span>
                 </div>
-                <span className="text-gray-600 dark:text-gray-400 text-sm">Cancelled class</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="px-3 py-2 bg-pink-100 dark:bg-pink-900/30 border-l-4 border-pink-500 dark:border-pink-400 rounded text-sm text-pink-900 dark:text-pink-100 font-medium">
-                  Birthday
-                </div>
-                <span className="text-gray-600 dark:text-gray-400 text-sm">Student birthday</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400 rounded text-sm text-purple-900 dark:text-purple-100 font-medium">
-                  Event
-                </div>
-                <span className="text-gray-600 dark:text-gray-400 text-sm">School event</span>
               </div>
             </div>
           </div>
