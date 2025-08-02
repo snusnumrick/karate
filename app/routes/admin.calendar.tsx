@@ -443,22 +443,39 @@ export default function AdminCalendar() {
     const month = searchParams.get('month');
     return month ? parseISO(month + '-01') : new Date();
   });
-
+  
   const handleDateChange = (date: Date) => {
+    // Store current scroll position
+    const currentScrollY = window.scrollY;
+    
     setCurrentDate(date);
+    
+    // Update URL without triggering navigation
     const newParams = new URLSearchParams(searchParams);
     newParams.set('month', format(date, 'yyyy-MM'));
-    setSearchParams(newParams);
+    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+    
+    // Restore scroll position immediately
+    window.scrollTo(0, currentScrollY);
   };
 
   const handleFilterChange = (key: string, value: string) => {
+    // Store current scroll position
+    const currentScrollY = window.scrollY;
+    
+    // Update URL without triggering navigation
     const newParams = new URLSearchParams(searchParams);
     if (value === 'all' || !value) {
       newParams.delete(key);
     } else {
       newParams.set(key, value);
     }
-    setSearchParams(newParams);
+    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+    
+    // Restore scroll position immediately
+    window.scrollTo(0, currentScrollY);
   };
 
   const handleEventClick = (event: CalendarEvent) => {

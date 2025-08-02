@@ -532,27 +532,42 @@ export default function FamilyCalendarPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedStudentId = searchParams.get('student') || 'all';
+  
+
 
   const handleDateChange = (newDate: Date) => {
+    // Store current scroll position
+    const currentScrollY = window.scrollY;
+    
     setCurrentDate(newDate);
     const newMonth = format(newDate, 'yyyy-MM');
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev);
-      newParams.set('month', newMonth);
-      return newParams;
-    });
+    
+    // Update URL without triggering navigation
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('month', newMonth);
+    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+    
+    // Restore scroll position immediately
+    window.scrollTo(0, currentScrollY);
   };
 
   const handleStudentChange = (studentId: string) => {
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev);
-      if (studentId === 'all') {
-        newParams.delete('student');
-      } else {
-        newParams.set('student', studentId);
-      }
-      return newParams;
-    });
+    // Store current scroll position
+    const currentScrollY = window.scrollY;
+    
+    // Update URL without triggering navigation
+    const newParams = new URLSearchParams(searchParams);
+    if (studentId === 'all') {
+      newParams.delete('student');
+    } else {
+      newParams.set('student', studentId);
+    }
+    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+    
+    // Restore scroll position immediately
+    window.scrollTo(0, currentScrollY);
   };
 
   const handleEventClick = (event: CalendarEvent) => {
