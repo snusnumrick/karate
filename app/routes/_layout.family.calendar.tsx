@@ -102,7 +102,7 @@ type LoaderData = {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
-    console.log('Family Calendar Loader: Starting...');
+    // console.log('Family Calendar Loader: Starting...');
     
     const { supabaseServer, response } = getSupabaseServerClient(request);
     const headers = response.headers;
@@ -112,10 +112,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       console.log('Family Calendar Loader: No authenticated user, redirecting to login');
       return redirect("/login?redirectTo=/family/calendar", { headers });
     }
-    console.log('Family Calendar Loader: User authenticated:', user.id);
+    // console.log('Family Calendar Loader: User authenticated:', user.id);
 
     // Get user's profile to find their family ID
-    console.log('Family Calendar Loader: Fetching user profile...');
+    // console.log('Family Calendar Loader: Fetching user profile...');
     const { data: profile, error: profileError } = await supabaseServer
       .from('profiles')
       .select('family_id')
@@ -131,16 +131,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       console.error('Family Calendar Loader: No family found for user');
       return redirect("/family", { headers });
     }
-    console.log('Family Calendar Loader: Family ID found:', profile.family_id);
+    // console.log('Family Calendar Loader: Family ID found:', profile.family_id);
 
     const familyId = profile.family_id;
     const url = new URL(request.url);
     const monthParam = url.searchParams.get('month');
     const currentMonth = monthParam || format(new Date(), 'yyyy-MM');
-    console.log('Family Calendar Loader: Current month:', currentMonth);
+    // console.log('Family Calendar Loader: Current month:', currentMonth);
 
     // Fetch family name
-    console.log('Family Calendar Loader: Fetching family data...');
+    // console.log('Family Calendar Loader: Fetching family data...');
     const { data: familyData, error: familyError } = await supabaseServer
       .from('families')
       .select('name')
@@ -151,10 +151,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       console.error('Family Calendar Loader: Family query error:', familyError);
     }
     const familyName = familyData?.name ?? null;
-    console.log('Family Calendar Loader: Family name:', familyName);
+    // console.log('Family Calendar Loader: Family name:', familyName);
 
     // Fetch students in the family
-    console.log('Family Calendar Loader: Fetching students...');
+    // console.log('Family Calendar Loader: Fetching students...');
     const { data: studentsData, error: studentsError } = await supabaseServer
       .from('students')
       .select('id, first_name, last_name, birth_date')
@@ -168,7 +168,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
     const students = studentsData ?? [];
     const studentIds = students.map(s => s.id);
-    console.log('Family Calendar Loader: Students found:', students.length);
+    // console.log('Family Calendar Loader: Students found:', students.length);
 
     if (studentIds.length === 0) {
       console.log('Family Calendar Loader: No students found, returning empty data');
@@ -180,10 +180,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const monthEnd = endOfMonth(monthStart);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
-    console.log('Family Calendar Loader: Date range:', formatLocalDate(calendarStart), 'to', formatLocalDate(calendarEnd));
+    // console.log('Family Calendar Loader: Date range:', formatLocalDate(calendarStart), 'to', formatLocalDate(calendarEnd));
 
     // Fetch enrollments for students to get their classes
-    console.log('Family Calendar Loader: Fetching enrollments...');
+    // console.log('Family Calendar Loader: Fetching enrollments...');
     const { data: enrollmentsData, error: enrollmentsError } = await supabaseServer
       .from('enrollments')
       .select(`
@@ -209,12 +209,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
     const enrollments = enrollmentsData as EnrollmentWithClass[] ?? [];
     const classIds = enrollments.map(e => e.class_id);
-    console.log('Family Calendar Loader: Enrollments found:', enrollments.length, 'Class IDs:', classIds);
+    // console.log('Family Calendar Loader: Enrollments found:', enrollments.length, 'Class IDs:', classIds);
 
     // Fetch upcoming class sessions for enrolled classes
     let upcomingSessions: ClassSession[] = [];
     if (classIds.length > 0) {
-      console.log('Family Calendar Loader: Fetching class sessions...');
+      // console.log('Family Calendar Loader: Fetching class sessions...');
       const { data: sessionsData, error: sessionsError } = await supabaseServer
         .from('class_sessions')
         .select(`
@@ -247,13 +247,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
         throw new Error(`Failed to fetch class sessions: ${sessionsError.message}`);
       }
       upcomingSessions = sessionsData as ClassSession[] ?? [];
-      console.log('Family Calendar Loader: Sessions found:', upcomingSessions.length);
+      // console.log('Family Calendar Loader: Sessions found:', upcomingSessions.length);
     } else {
       console.log('Family Calendar Loader: No class IDs, skipping sessions fetch');
     }
 
     // Fetch attendance records for the date range
-    console.log('Family Calendar Loader: Fetching attendance records...');
+    // console.log('Family Calendar Loader: Fetching attendance records...');
     const { data: attendanceData, error: attendanceError } = await supabaseServer
       .from('attendance')
       .select(`
@@ -287,10 +287,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       throw new Error(`Failed to fetch attendance records: ${attendanceError.message}`);
     }
     const attendanceRecords = attendanceData as AttendanceRow[] ?? [];
-    console.log('Family Calendar Loader: Attendance records found:', attendanceRecords.length);
+    // console.log('Family Calendar Loader: Attendance records found:', attendanceRecords.length);
 
     // Fetch events and check eligibility for family students
-    console.log('Family Calendar Loader: Fetching events...');
+    // console.log('Family Calendar Loader: Fetching events...');
     const { data: eventsData, error: eventsError } = await supabaseServer
       .from('events')
       .select(`
@@ -318,7 +318,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     const allEvents = (eventsData || []) as EventRow[];
-    console.log('Family Calendar Loader: All events found:', allEvents.length);
+    // console.log('Family Calendar Loader: All events found:', allEvents.length);
 
     // Filter events and collect eligibility information for visual styling
     const visibleEventsWithEligibility: (EventRow & { eligibilityInfo: any })[] = [];
@@ -427,7 +427,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       }
     }
     
-    console.log('Family Calendar Loader: Visible events found:', visibleEventsWithEligibility.length);
+    // console.log('Family Calendar Loader: Visible events found:', visibleEventsWithEligibility.length);
 
     const result = {
       students, 
@@ -439,7 +439,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       currentMonth 
     };
     
-    console.log('Family Calendar Loader: Success, returning data');
+    // console.log('Family Calendar Loader: Success, returning data');
     return json(result, { headers });
 
   } catch (error) {
@@ -495,7 +495,7 @@ export default function FamilyCalendarPage() {
   const birthdayEvents = birthdaysToCalendarEvents(students, currentDate);
   
   // Transform events into CalendarEvent objects
-  console.log('Family Calendar: Raw events from loader:', events);
+  // console.log('Family Calendar: Raw events from loader:', events);
   const eventCalendarEvents: CalendarEvent[] = events.map((event: any) => {
     const calendarEvent = {
       id: event.id,
@@ -515,7 +515,7 @@ export default function FamilyCalendarPage() {
       eligibilityStatus: event.eligibilityInfo?.status,
       eligibilityDetails: event.eligibilityInfo?.details,
     };
-    console.log('Family Calendar: Transformed event:', calendarEvent);
+    // console.log('Family Calendar: Transformed event:', calendarEvent);
     return calendarEvent;
   });
   
@@ -524,11 +524,11 @@ export default function FamilyCalendarPage() {
   
   // Expand multi-day events to show on all days
   const allEvents = expandMultiDayEvents(combinedEvents);
-  console.log('Family Calendar: All events for calendar:', allEvents);
-  console.log('Family Calendar: Session events:', sessionEvents);
-  console.log('Family Calendar: Attendance events:', attendanceEvents);
-  console.log('Family Calendar: Birthday events:', birthdayEvents);
-  console.log('Family Calendar: Event calendar events:', eventCalendarEvents);
+  // console.log('Family Calendar: All events for calendar:', allEvents);
+  // console.log('Family Calendar: Session events:', sessionEvents);
+  // console.log('Family Calendar: Attendance events:', attendanceEvents);
+  // console.log('Family Calendar: Birthday events:', birthdayEvents);
+  // console.log('Family Calendar: Event calendar events:', eventCalendarEvents);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedStudentId = searchParams.get('student') || 'all';

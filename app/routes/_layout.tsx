@@ -72,7 +72,7 @@ export default function Layout() {
     const isAdminRoute = location.pathname.startsWith('/admin');
     const isFamilyRoute = location.pathname.startsWith('/family');
 
-    console.log(`Layout render ${serverSession}`);
+    // console.log(`Layout render ${serverSession}`);
 
     const [supabase, setSupabase] = React.useState<SupabaseClient<Database> | null>(null);
 
@@ -119,7 +119,7 @@ export default function Layout() {
         }
     };
 
-    console.log(`Layout render ${supabase}`);
+    // console.log(`Layout render ${supabase}`);
     return (
         <div className="flex flex-col min-h-screen text-gray-900 dark:text-white">
             <div className={isReceiptPage ? 'print:hidden' : ''}>
