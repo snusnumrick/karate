@@ -220,9 +220,9 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
           {/* Weekday headers */}
           <div className="grid grid-cols-7 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
             {WEEKDAYS.map(day => (
-                <div key={day} className="p-1 sm:p-2 md:p-3 text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                <div key={day} className="p-2 sm:p-2 md:p-3 text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
                   <span className="hidden sm:inline">{day}</span>
-                  <span className="sm:hidden">{day.charAt(0)}</span>
+                  <span className="sm:hidden text-xs font-bold">{day.slice(0, 2)}</span>
                 </div>
             ))}
           </div>
@@ -231,13 +231,13 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
           <div className="grid grid-cols-7">
             {days.map((day) => {
               const dayKey = format(day.date, 'yyyy-MM-dd');
-              const maxVisible = isMobile ? 2 : 3;
+              const maxVisible = isMobile ? 1 : 3;
               const hasMoreEvents = day.events.length > maxVisible;
 
               return (
                   <div
                       key={dayKey}
-                      className={`min-h-[80px] sm:min-h-[100px] md:min-h-[120px] p-1 sm:p-2 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      className={`min-h-[70px] sm:min-h-[100px] md:min-h-[120px] p-1.5 sm:p-2 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors active:bg-gray-100 dark:active:bg-gray-600 ${
                           !day.isCurrentMonth ? 'bg-gray-50/50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-500' : 'bg-white dark:bg-gray-800'
                       } ${
                           day.isToday ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400 border-2 shadow-inner' : ''
@@ -249,10 +249,17 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
                       aria-label={`${format(day.date, 'MMMM d, yyyy')} - ${day.events.length} events`}
                   >
                     {/* Day number */}
-                    <div className={`text-xs sm:text-sm mb-1 ${
-                        day.isToday ? 'font-bold bg-blue-600 dark:bg-blue-500 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center mx-auto text-xs sm:text-sm md:text-base' : day.isCurrentMonth ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-400 dark:text-gray-500 font-medium'
+                    <div className={`text-sm sm:text-sm mb-1 flex items-center justify-between ${
+                        day.isToday ? 'font-bold' : day.isCurrentMonth ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-400 dark:text-gray-500 font-medium'
                     }`}>
-                      {format(day.date, 'd')}
+                      <span className={day.isToday ? 'bg-blue-600 dark:bg-blue-500 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm font-bold' : ''}>
+                        {format(day.date, 'd')}
+                      </span>
+                      {day.events.length > 0 && (
+                        <span className="text-xs bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                          {day.events.length}
+                        </span>
+                      )}
                     </div>
 
                     {/* Events */}
@@ -268,7 +275,7 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
                       {hasMoreEvents && (
                           <button
                               onClick={(e) => handleMoreClick(e, day.date, day.events)}
-                              className="w-full text-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-1 rounded transition-colors text-xs font-medium"
+                              className="w-full text-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-1 rounded transition-colors text-xs font-medium bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700"
                               aria-label={`Show ${day.events.length - maxVisible} more events for ${format(day.date, 'MMMM d')}`}
                           >
                             +{day.events.length - maxVisible} more

@@ -1,11 +1,12 @@
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams, useRouteError } from "@remix-run/react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Database } from "~/types/database.types";
 import { createClient, getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { 
   format, 
   startOfMonth, 
@@ -468,6 +469,7 @@ export default function FamilyCalendarPage() {
   const [currentDate, setCurrentDate] = useState(() => parseISO(currentMonth + '-01'));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const scrollPositionRef = useRef<number>(0);
 
   // Convert raw data to calendar events
   const studentList = students.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` }));
@@ -533,42 +535,42 @@ export default function FamilyCalendarPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedStudentId = searchParams.get('student') || 'all';
+
+  // Restore scroll position after navigation
+  useEffect(() => {
+    if (scrollPositionRef.current > 0) {
+      window.scrollTo(0, scrollPositionRef.current);
+      scrollPositionRef.current = 0;
+    }
+  }, [currentMonth, selectedStudentId]);
   
 
 
   const handleDateChange = (newDate: Date) => {
     // Store current scroll position
-    const currentScrollY = window.scrollY;
+    scrollPositionRef.current = window.scrollY;
     
     setCurrentDate(newDate);
     const newMonth = format(newDate, 'yyyy-MM');
     
-    // Update URL without triggering navigation
+    // Update URL and trigger navigation to reload events
     const newParams = new URLSearchParams(searchParams);
     newParams.set('month', newMonth);
-    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-    window.history.replaceState(null, '', newUrl);
-    
-    // Restore scroll position immediately
-    window.scrollTo(0, currentScrollY);
+    setSearchParams(newParams);
   };
 
   const handleStudentChange = (studentId: string) => {
     // Store current scroll position
-    const currentScrollY = window.scrollY;
+    scrollPositionRef.current = window.scrollY;
     
-    // Update URL without triggering navigation
+    // Update URL and trigger navigation
     const newParams = new URLSearchParams(searchParams);
     if (studentId === 'all') {
       newParams.delete('student');
     } else {
       newParams.set('student', studentId);
     }
-    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-    window.history.replaceState(null, '', newUrl);
-    
-    // Restore scroll position immediately
-    window.scrollTo(0, currentScrollY);
+    setSearchParams(newParams);
   };
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -577,6 +579,17 @@ export default function FamilyCalendarPage() {
       setSelectedEvent(event);
       setIsModalOpen(true);
     }
+  };
+
+  // Navigation functions for fixed arrows
+  const handlePrevMonth = () => {
+    const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    handleDateChange(prevMonth);
+  };
+
+  const handleNextMonth = () => {
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    handleDateChange(nextMonth);
   };
 
   const renderEventDetails = (event: CalendarEvent) => {
@@ -693,56 +706,79 @@ export default function FamilyCalendarPage() {
   };
 
   return (
-    <div className="min-h-screen page-background-styles py-2 lg:py-12 text-foreground">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} />
-        </div>
+    <>
+      {/* Fixed navigation arrows - positioned relative to viewport */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handlePrevMonth}
+        className="fixed left-2 top-1/2 transform -translate-y-1/2 z-50 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 shadow-lg rounded-full w-10 h-10 p-0"
+        title="Previous month"
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </Button>
 
-        {/* Page Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
-            <CalendarIcon className="inline-block mr-2 h-8 w-8" />
-            Family Calendar
-          </h1>
-          <p className="mt-3 max-w-2xl mx-auto text-xl page-subheader-styles sm:mt-4">
-            {familyName ? `View ${familyName} family's schedule and events` : 'View your family schedule and events'}
-          </p>
-        </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleNextMonth}
+        className="fixed right-2 top-1/2 transform -translate-y-1/2 z-50 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 shadow-lg rounded-full w-10 h-10 p-0"
+        title="Next month"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </Button>
 
-        {/* Calendar Component in Card */}
-        <div className="form-container-styles p-2 backdrop-blur-lg mb-8">
-          <Calendar
-            events={allEvents}
-            currentDate={currentDate}
-            onDateChange={handleDateChange}
-            onEventClick={handleEventClick}
-            filterOptions={{
-              students: studentList,
-              selectedStudentId: selectedStudentId,
-              onStudentChange: handleStudentChange
-            }}
-          />
-        </div>
-
-        {/* Legend */}
-        <CalendarLegend />
-      </div>
-
-      {/* Event Detail Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-md mx-auto">
-          <DialogHeader>
-             <DialogTitle>
-               Event Details
-             </DialogTitle>
-           </DialogHeader>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {selectedEvent && renderEventDetails(selectedEvent)}
+      <div className="min-h-screen page-background-styles py-2 lg:py-12 text-foreground">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-6">
+            <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} />
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+
+          {/* Page Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
+              <CalendarIcon className="inline-block mr-2 h-8 w-8" />
+              Family Calendar
+            </h1>
+            <p className="mt-3 max-w-2xl mx-auto text-xl page-subheader-styles sm:mt-4">
+              {familyName ? `View ${familyName} family's schedule and events` : 'View your family schedule and events'}
+            </p>
+          </div>
+
+          {/* Calendar Component in Card */}
+          <div className="form-container-styles p-2 backdrop-blur-lg mb-8">
+            <Calendar
+              events={allEvents}
+              currentDate={currentDate}
+              onDateChange={handleDateChange}
+              onEventClick={handleEventClick}
+              filterOptions={{
+                students: studentList,
+                selectedStudentId: selectedStudentId,
+                onStudentChange: handleStudentChange
+              }}
+            />
+          </div>
+
+          {/* Legend */}
+          <CalendarLegend />
+        </div>
+
+        {/* Event Detail Modal */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="max-w-md mx-auto">
+            <DialogHeader>
+               <DialogTitle>
+                 Event Details
+               </DialogTitle>
+             </DialogHeader>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {selectedEvent && renderEventDetails(selectedEvent)}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 }
 

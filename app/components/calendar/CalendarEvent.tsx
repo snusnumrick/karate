@@ -37,7 +37,7 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
         tabIndex={0}
         aria-label={`Session: ${event.className} - ${event.status}`}
       >
-        <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'truncate w-full' : ''}`} title={event.className}>
+        <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'break-words' : ''}`} title={event.className}>
           {event.className}
         </div>
         {!compact && event.programName && (
@@ -74,7 +74,7 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
             {compact ? event.status?.charAt(0).toUpperCase() : event.status?.toUpperCase()}
           </Badge>
           {!compact && (
-            <span className="text-xs text-gray-600 dark:text-gray-300 truncate leading-tight">
+            <span className="text-xs text-gray-600 dark:text-gray-300 truncate text-clip leading-tight">
               {event.studentName}
             </span>
           )}
@@ -100,14 +100,22 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
         tabIndex={0}
         aria-label={`Birthday: ${event.studentName}`}
       >
-        <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'truncate w-full' : ''}`} title={event.studentName}>
-          {compact ? 
-            event.studentName : 
-            `🎂 ${event.studentName}`
-          }
-        </div>
-        {!compact && (
-          <div className={`text-xs ${colors.text} opacity-80 leading-tight`}>Birthday</div>
+        {compact ? (
+          <div className="space-y-0">
+            <div className={`font-medium ${colors.text} text-xs leading-tight truncate text-clip`} title={event.studentName}>
+              {event.studentName?.split(' ')[0] || ''}
+            </div>
+            <div className={`${colors.text} text-xs leading-tight truncate text-clip opacity-80`} title={event.studentName}>
+              {event.studentName?.split(' ').slice(1).join(' ') || ''}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className={`font-medium ${colors.text} text-xs leading-tight`} title={event.studentName}>
+              🎂 {event.studentName}
+            </div>
+            <div className={`text-xs ${colors.text} opacity-80 leading-tight`}>Birthday</div>
+          </>
         )}
       </div>
     );
@@ -139,7 +147,7 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
       >
         <div className="flex items-center gap-1">
           {/*<div className={`w-2 h-2 rounded-full flex-shrink-0 ${iconColor}`}></div>*/}
-          <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'truncate text-clip w-full' : ''}`} title={event.title}>
+          <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'break-words truncate text-clip\n' : ''}`} title={event.title}>
             {event.title}
           </div>
         </div>

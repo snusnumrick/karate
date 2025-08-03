@@ -76,12 +76,21 @@ export interface CalendarHeaderProps {
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onToday: () => void;
+  viewMode?: 'grid' | 'list';
+  onViewModeChange?: (mode: 'grid' | 'list') => void;
+  isMobile?: boolean;
 }
 
 export interface CalendarFiltersProps {
   students?: Array<{ id: string; name: string }>;
   selectedStudentId?: string;
   onStudentChange?: (studentId: string) => void;
+}
+
+export interface CalendarListViewProps {
+  events: CalendarEvent[];
+  currentDate: Date;
+  onEventClick?: (event: CalendarEvent) => void;
 }
 
 // Database types for calendar data
