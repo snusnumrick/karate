@@ -1,34 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" fill="none">
-  <rect width="192" height="192" rx="24" fill="#2E7D32"/>
-  <g transform="translate(24, 24)">
-    <!-- Calendar base -->
-    <rect x="12" y="20" width="120" height="100" rx="8" fill="white"/>
-    <rect x="12" y="20" width="120" height="24" rx="8" fill="#4CAF50"/>
-    <rect x="12" y="36" width="120" height="84" rx="0" fill="white"/>
-    
-    <!-- Calendar rings -->
-    <rect x="36" y="8" width="8" height="24" rx="4" fill="#666"/>
-    <rect x="108" y="8" width="8" height="24" rx="4" fill="#666"/>
-    
-    <!-- Calendar grid -->
-    <line x1="32" y1="56" x2="112" y2="56" stroke="#E0E0E0" stroke-width="1"/>
-    <line x1="32" y1="72" x2="112" y2="72" stroke="#E0E0E0" stroke-width="1"/>
-    <line x1="32" y1="88" x2="112" y2="88" stroke="#E0E0E0" stroke-width="1"/>
-    <line x1="32" y1="104" x2="112" y2="104" stroke="#E0E0E0" stroke-width="1"/>
-    
-    <line x1="44" y1="44" x2="44" y2="120" stroke="#E0E0E0" stroke-width="1"/>
-    <line x1="56" y1="44" x2="56" y2="120" stroke="#E0E0E0" stroke-width="1"/>
-    <line x1="68" y1="44" x2="68" y2="120" stroke="#E0E0E0" stroke-width="1"/>
-    <line x1="80" y1="44" x2="80" y2="120" stroke="#E0E0E0" stroke-width="1"/>
-    <line x1="92" y1="44" x2="92" y2="120" stroke="#E0E0E0" stroke-width="1"/>
-    <line x1="104" y1="44" x2="104" y2="120" stroke="#E0E0E0" stroke-width="1"/>
-    
-    <!-- Highlighted dates -->
-    <circle cx="50" cy="64" r="4" fill="#2E7D32"/>
-    <circle cx="74" cy="80" r="4" fill="#FF5722"/>
-    <circle cx="98" cy="96" r="4" fill="#2E7D32"/>
-    
-    <!-- Month text area -->
-    <rect x="20" y="24" width="104" height="16" fill="transparent"/>
-  </g>
+  <rect width="192" height="192" rx="24" fill="#FF5722"/>
+  
+  <!-- Simple calendar shape -->
+  <rect x="48" y="64" width="96" height="80" rx="8" fill="white"/>
+  
+  <!-- Calendar header -->
+  <rect x="48" y="64" width="96" height="24" rx="8" fill="#D32F2F"/>
+  <rect x="48" y="80" width="96" height="8" fill="#D32F2F"/>
+  
+  <!-- Calendar rings (simplified) -->
+  <rect x="72" y="48" width="12" height="32" rx="6" fill="#666"/>
+  <rect x="108" y="48" width="12" height="32" rx="6" fill="#666"/>
+  
+  <!-- Large date number -->
+  <text x="96" y="128" text-anchor="middle" fill="#FF5722" font-size="32" font-weight="bold">15</text>
 </svg>
