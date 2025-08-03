@@ -16,6 +16,7 @@ dist/
 .serena/
 db-tools/
 *.backup
+.junie
 
 .vercel
 playwright-report/

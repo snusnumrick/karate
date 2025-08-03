@@ -355,7 +355,8 @@ for communication between families and administrators.
             3. Under "Source", click on the number link next to `supabase_realtime`.
             4. Find the `conversations` and `messages` tables in the list.
             5. For **both** the `conversations` and `messages` tables, click the corresponding toggle switch in the "Realtime" column to enable realtime updates.
-        - **Push Notification Setup:** The database setup script (`app/db/supabase-setup.sql`) includes tables for push notification subscriptions (`push_subscriptions`) and user notification preferences (`user_notification_preferences`). These are automatically created when you run the setup script. After setting up the database, make sure to configure your VAPID keys in the `.env` file (see Environment Variables section above).
+        - **Push Notification Setup:** The database setup script (`app/db/supabase-setup.sql`) includes tables for push notification subscriptions (`push_subscriptions`) and user notification preferences (`user_notification_preferences`). These are automatically created when you run the setup script. After setting up the database, make sure to configure your
+          VAPID keys in the `.env` file (see Environment Variables section above).
     - Obtain your Supabase Project URL, Anon Key, and Service Role Key (Project Settings -> API) and add them to your `.env` file (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY).
 5.  **Stripe Setup (Optional for Local):**
     - Create a Stripe account at [stripe.com](https://stripe.com).
@@ -400,10 +401,70 @@ for communication between families and administrators.
     - `FROM_EMAIL`
     - `GEMINI_API_KEY` (Required for Admin DB Chat feature)
     - `VITE_SITE_URL` (Your production website URL, e.g., `https://www.yourdomain.com` - **Required** for generating correct absolute receipt URLs and for frontend config)
-    - **Push Notification Variables:**
+    - **Push Notification Variables (Required for push notifications):**
         - `VAPID_PUBLIC_KEY` (VAPID public key for push notifications)
         - `VAPID_PRIVATE_KEY` (VAPID private key for push notifications)
         - `VAPID_SUBJECT` (Contact email or URL for VAPID, e.g., `mailto:admin@yourdomain.com`)
+
+### VAPID Keys Setup for Push Notifications
+
+Push notifications require VAPID (Voluntary Application Server Identification) keys for secure communication between your server and browser push services. Follow these steps to set up VAPID keys for your deployment:
+
+#### Option 1: Using the Built-in Script (Recommended)
+
+1. **Generate VAPID Keys:**
+   ```bash
+   node scripts/generate-vapid-keys.js
+   ```
+
+2. **Copy the Generated Keys:**
+   The script will output three environment variables. Copy these values to your deployment environment:
+   ```
+   VAPID_PUBLIC_KEY=BG7rWXf8xI9...
+   VAPID_PRIVATE_KEY=4f8Kz2nM1pL...
+   VAPID_SUBJECT=mailto:your-email@example.com
+   ```
+
+3. **Update VAPID_SUBJECT:**
+   Replace `your-email@example.com` with your actual contact email address.
+
+#### Option 2: Using web-push CLI
+
+1. **Install web-push globally:**
+   ```bash
+   npm install -g web-push
+   ```
+
+2. **Generate VAPID Keys:**
+   ```bash
+   web-push generate-vapid-keys
+   ```
+
+3. **Add to Environment Variables:**
+   Copy the generated public and private keys to your deployment environment variables, along with your contact email for `VAPID_SUBJECT`.
+
+#### Option 3: Using npx (No Global Installation)
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+#### Important Notes for Production Deployment:
+
+- **Security:** Keep your `VAPID_PRIVATE_KEY` secret and never expose it in client-side code
+- **Consistency:** Use the same VAPID keys across all environments (staging, production) to maintain push subscription compatibility
+- **Contact Information:** The `VAPID_SUBJECT` should be a valid email address or URL where you can be contacted about push notification issues
+- **Key Regeneration:** If you regenerate VAPID keys, all existing push subscriptions will become invalid and users will need to re-subscribe
+- **Backup:** Store your VAPID keys securely as losing them will require all users to re-subscribe to push notifications
+
+#### Verifying Push Notification Setup:
+
+After deployment, you can verify push notifications are working by:
+
+1. **Admin Test:** Visit `/admin/account` and test push notifications using the built-in test feature
+2. **Family Test:** Have a family member enable push notifications in `/family/account` and send them a test message
+3. **Browser Console:** Check for any VAPID-related errors in the browser developer console
+4. **Server Logs:** Monitor your deployment logs for push notification delivery confirmations
 5.  **Tax Configuration:** Ensure the `tax_rates` table in your production Supabase database contains the correct tax rates (e.g., GST, PST_BC) and that they are marked `is_active = true`. Verify `applicableTaxNames` in `app/config/site.ts` matches the desired active taxes for your site. Stripe Tax configuration in the dashboard is **not** used for calculation.
 6.  **Deploy:** Trigger a deployment in Vercel.
 7.  **Vercel Configuration:**
