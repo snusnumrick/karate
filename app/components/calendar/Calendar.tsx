@@ -33,17 +33,26 @@ export function Calendar({
   // Check if mobile and set initial default view
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
+      // Consider landscape tablets (like Google Nest 1024x600, iPad Mini 1024x768, iPad Air 1180x820) as mobile for compact view
+      const isLandscapeTablet = window.innerWidth >= 1024 && window.innerHeight <= 820;
+      const mobile = window.innerWidth < 768 || isLandscapeTablet;
       setIsMobile(mobile);
+      
+      // For landscape tablets, default to grid view if no preference is saved
+      if (isLandscapeTablet && !localStorage.getItem('calendar-view-mode')) {
+        setViewMode('grid');
+      }
     };
 
     // Set initial view based on screen size only once
-    const initialMobile = window.innerWidth < 768;
+    const isLandscapeTablet = window.innerWidth >= 1024 && window.innerHeight <= 820;
+    const initialMobile = window.innerWidth < 768 || isLandscapeTablet;
     setIsMobile(initialMobile);
     
-    // Only override saved preference if it's the first time on mobile
+    // Only override saved preference if it's the first time on mobile/landscape tablet
     if (initialMobile && !localStorage.getItem('calendar-view-mode')) {
-      setViewMode('list');
+      // For landscape tablets, prefer grid view with compact layout
+      setViewMode(isLandscapeTablet ? 'grid' : 'list');
     }
 
     checkMobile();

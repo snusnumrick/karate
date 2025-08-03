@@ -30,14 +30,14 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
     
     return (
       <div
-        className={`p-0.5 sm:p-1 mb-0.5 sm:mb-1 ${colors.background} border-l-2 sm:border-l-4 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
+        className={`p-0.5 sm:p-1 landscape-tablet:p-0.5 mb-0.5 sm:mb-1 landscape-tablet:mb-0 ${colors.background} border-l-2 sm:border-l-4 landscape-tablet:border-l-2 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         role="button"
         tabIndex={0}
         aria-label={`Session: ${event.className} - ${event.status}`}
       >
-        <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'break-words' : ''}`} title={event.className}>
+        <div className={`font-medium ${colors.text} text-xs landscape-tablet:text-xs leading-tight ${compact ? 'break-words' : ''}`} title={event.className}>
           {event.className}
         </div>
         {!compact && event.programName && (
@@ -62,7 +62,7 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
     
     return (
       <div
-        className={`p-0.5 sm:p-1 mb-0.5 sm:mb-1 rounded cursor-pointer hover:opacity-80 transition-opacity`}
+        className={`p-0.5 sm:p-1 landscape-tablet:p-0.5 mb-0.5 sm:mb-1 landscape-tablet:mb-0 rounded cursor-pointer hover:opacity-80 transition-opacity`}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         role="button"
@@ -93,7 +93,7 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
     
     return (
       <div
-        className={`p-0.5 sm:p-1 mb-0.5 sm:mb-1 ${colors.background} border-l-2 sm:border-l-4 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
+        className={`p-0.5 sm:p-1 landscape-tablet:p-0.5 mb-0.5 sm:mb-1 landscape-tablet:mb-0 ${colors.background} border-l-2 sm:border-l-4 landscape-tablet:border-l-2 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         role="button"
@@ -138,7 +138,7 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
     
     return (
       <div
-        className={`p-0.5 sm:p-1 mb-0.5 sm:mb-1 ${colors.background} border-l-2 sm:border-l-4 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
+        className={`p-0.5 sm:p-1 landscape-tablet:p-0.5 mb-0.5 sm:mb-1 landscape-tablet:mb-0 ${colors.background} border-l-2 sm:border-l-4 landscape-tablet:border-l-2 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         role="button"

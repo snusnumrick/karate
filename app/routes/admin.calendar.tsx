@@ -10,8 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Calendar } from "~/components/calendar/Calendar";
+import { CalendarLayout } from "~/components/calendar/CalendarLayout";
+import { CalendarPageHeader } from "~/components/calendar/CalendarPageHeader";
+import { CalendarFilterContainer } from "~/components/calendar/CalendarFilterContainer";
+import { CalendarStats, StatCard } from "~/components/calendar/CalendarStats";
 import type { CalendarEvent } from "~/components/calendar/types";
-import { Calendar as CalendarIcon, Users, DollarSign, Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter } from "lucide-react";
+import { Calendar as CalendarIcon, Users, DollarSign, Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter, TrendingUp } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import {createClient} from "@supabase/supabase-js";
 
@@ -518,81 +522,75 @@ export default function AdminCalendar() {
   };
 
   return (
-    <div className="sm:container sm:mx-auto px-2 sm:px-4 py-2 sm:py-4 space-y-3 sm:space-y-4">
-      <AppBreadcrumb items={breadcrumbPatterns.adminCalendar()} className="mb-6" />
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Calendar</h1>
-        </div>
-      </div>
+    <CalendarLayout>
+      <CalendarPageHeader
+        title="Admin Calendar"
+        subtitle="Manage class sessions, events, and student activities"
+        icon={CalendarIcon}
+        breadcrumbItems={breadcrumbPatterns.adminCalendar()}
+      />
 
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-medium">Program</span>
-              </div>
-              <Select value={filters.program || 'all'} onValueChange={(value) => handleFilterChange('program', value)}>
-                <SelectTrigger className="h-8 input-custom-styles">
-                  <SelectValue placeholder="All Programs" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Programs</SelectItem>
-                  {programs.map(program => (
-                    <SelectItem key={program.id} value={program.id}>{program.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      <CalendarFilterContainer>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium">Program</span>
             </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-medium">Instructor</span>
-              </div>
-              <Select value={filters.instructor || 'all'} onValueChange={(value) => handleFilterChange('instructor', value)}>
-                <SelectTrigger className="h-8 input-custom-styles">
-                  <SelectValue placeholder="All Instructors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Instructors</SelectItem>
-                  {instructors.map(instructor => (
-                    <SelectItem key={instructor.id} value={instructor.id}>{instructor.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-medium">Status</span>
-              </div>
-              <Select value={filters.status || 'all'} onValueChange={(value) => handleFilterChange('status', value)}>
-                <SelectTrigger className="h-8 input-custom-styles">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={filters.program || 'all'} onValueChange={(value) => handleFilterChange('program', value)}>
+              <SelectTrigger className="h-8 input-custom-styles">
+                <SelectValue placeholder="All Programs" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Programs</SelectItem>
+                {programs.map(program => (
+                  <SelectItem key={program.id} value={program.id}>{program.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium">Instructor</span>
+            </div>
+            <Select value={filters.instructor || 'all'} onValueChange={(value) => handleFilterChange('instructor', value)}>
+              <SelectTrigger className="h-8 input-custom-styles">
+                <SelectValue placeholder="All Instructors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Instructors</SelectItem>
+                {instructors.map(instructor => (
+                  <SelectItem key={instructor.id} value={instructor.id}>{instructor.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium">Status</span>
+            </div>
+            <Select value={filters.status || 'all'} onValueChange={(value) => handleFilterChange('status', value)}>
+              <SelectTrigger className="h-8 input-custom-styles">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+      </CalendarFilterContainer>
 
       {/* Calendar */}
       <div className="-mx-2 sm:mx-0">
         <Card>
-          <CardContent className="p-0 sm:p-3">
+          <CardContent className="p-0 sm:p-3 landscape-tablet:p-1">
             <Calendar
               events={expandMultiDayEvents([
                 // Session events
@@ -623,57 +621,40 @@ export default function AdminCalendar() {
       </div>
 
       {/* Month/Year Header */}
-      <div className="text-center py-2">
-        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+      <div className="text-center py-2 landscape-tablet:py-1">
+        <h2 className="text-lg landscape-tablet:text-base font-semibold text-gray-700 dark:text-gray-300">
           {format(currentDate, 'MMMM yyyy')} Overview
         </h2>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-medium">Total Sessions</CardTitle>
-            <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="pt-1">
-            <div className="text-xl font-bold">{stats.totalSessions}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-medium">Completed</CardTitle>
-            <CheckCircle className="h-3 w-3 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="pt-1">
-            <div className="text-xl font-bold">{stats.completedSessions}</div>
-            <p className="text-xs text-muted-foreground">
-              {calculateCompletionPercentage()}%
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-medium">Enrollments</CardTitle>
-            <Users className="h-3 w-3 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="pt-1">
-            <div className="text-xl font-bold">{stats.totalEnrollments}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-medium">Avg Capacity</CardTitle>
-            <DollarSign className="h-3 w-3 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="pt-1">
-            <div className="text-xl font-bold">{stats.averageCapacity}%</div>
-          </CardContent>
-        </Card>
-      </div>
+      <CalendarStats>
+        <StatCard
+          icon={CalendarIcon}
+          iconColor="text-blue-600"
+          label="Total Sessions"
+          value={stats.totalSessions}
+        />
+        <StatCard
+          icon={CheckCircle}
+          iconColor="text-green-600"
+          label="Completed"
+          value={stats.completedSessions}
+          subtitle={`${calculateCompletionPercentage()}%`}
+        />
+        <StatCard
+          icon={Users}
+          iconColor="text-purple-600"
+          label="Enrollments"
+          value={stats.totalEnrollments}
+        />
+        <StatCard
+          icon={DollarSign}
+          iconColor="text-orange-600"
+          label="Avg Capacity"
+          value={`${stats.averageCapacity}%`}
+        />
+      </CalendarStats>
 
       {/* Event Detail Modal */}
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
@@ -731,6 +712,6 @@ export default function AdminCalendar() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </CalendarLayout>
   );
 }

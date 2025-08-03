@@ -152,7 +152,9 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
+      // Consider landscape tablets (like Google Nest 1024x600, iPad Mini 1024x768, iPad Air 1180x820) as mobile for compact view
+      const isLandscapeTablet = window.innerWidth >= 1024 && window.innerHeight <= 820;
+      setIsMobile(window.innerWidth < 768 || isLandscapeTablet);
     };
 
     checkMobile();
@@ -220,9 +222,9 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
           {/* Weekday headers */}
           <div className="grid grid-cols-7 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
             {WEEKDAYS.map(day => (
-                <div key={day} className="p-2 sm:p-2 md:p-3 text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
-                  <span className="hidden sm:inline">{day}</span>
-                  <span className="sm:hidden text-xs font-bold">{day.slice(0, 2)}</span>
+                <div key={day} className="p-1.5 sm:p-2 md:p-3 landscape-tablet:p-1.5 text-center text-xs sm:text-sm landscape-tablet:text-xs font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                  <span className="hidden sm:inline landscape-tablet:hidden">{day}</span>
+                  <span className="sm:hidden landscape-tablet:inline text-xs font-bold">{day.slice(0, 2)}</span>
                 </div>
             ))}
           </div>
@@ -237,7 +239,7 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
               return (
                   <div
                       key={dayKey}
-                      className={`min-h-[70px] sm:min-h-[100px] md:min-h-[120px] p-1.5 sm:p-2 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors active:bg-gray-100 dark:active:bg-gray-600 ${
+                      className={`min-h-[70px] sm:min-h-[100px] md:min-h-[120px] landscape-tablet:min-h-[65px] p-1.5 sm:p-2 landscape-tablet:p-1 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors active:bg-gray-100 dark:active:bg-gray-600 ${
                           !day.isCurrentMonth ? 'bg-gray-50/50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-500' : 'bg-white dark:bg-gray-800'
                       } ${
                           day.isToday ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400 border-2 shadow-inner' : ''
@@ -249,21 +251,21 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
                       aria-label={`${format(day.date, 'MMMM d, yyyy')} - ${day.events.length} events`}
                   >
                     {/* Day number */}
-                    <div className={`text-sm sm:text-sm mb-1 flex items-center justify-between ${
+                    <div className={`text-sm sm:text-sm landscape-tablet:text-xs mb-1 landscape-tablet:mb-0.5 flex items-center justify-between ${
                         day.isToday ? 'font-bold' : day.isCurrentMonth ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-400 dark:text-gray-500 font-medium'
                     }`}>
-                      <span className={day.isToday ? 'bg-blue-600 dark:bg-blue-500 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm font-bold' : ''}>
+                      <span className={day.isToday ? 'bg-blue-600 dark:bg-blue-500 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 landscape-tablet:w-5 landscape-tablet:h-5 flex items-center justify-center text-xs sm:text-sm landscape-tablet:text-xs font-bold' : ''}>
                         {format(day.date, 'd')}
                       </span>
                       {day.events.length > 0 && (
-                        <span className="text-xs bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                        <span className="text-xs bg-red-500 text-white rounded-full w-4 h-4 landscape-tablet:w-3 landscape-tablet:h-3 flex items-center justify-center font-bold landscape-tablet:text-xs">
                           {day.events.length}
                         </span>
                       )}
                     </div>
 
                     {/* Events */}
-                    <div className="space-y-0.5 sm:space-y-1">
+                    <div className="space-y-0.5 sm:space-y-1 landscape-tablet:space-y-0">
                       {day.events.slice(0, maxVisible).map(event => (
                           <CalendarEvent
                               key={event.id}
@@ -275,7 +277,7 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
                       {hasMoreEvents && (
                           <button
                               onClick={(e) => handleMoreClick(e, day.date, day.events)}
-                              className="w-full text-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-1 rounded transition-colors text-xs font-medium bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700"
+                              className="w-full text-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-1 landscape-tablet:py-0.5 rounded transition-colors text-xs landscape-tablet:text-xs font-medium bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700"
                               aria-label={`Show ${day.events.length - maxVisible} more events for ${format(day.date, 'MMMM d')}`}
                           >
                             +{day.events.length - maxVisible} more

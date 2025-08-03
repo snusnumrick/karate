@@ -15,11 +15,15 @@ import {
   endOfWeek, 
   parseISO
 } from "date-fns";
-import { Calendar } from "~/components/calendar";
+import { Calendar } from "~/components/calendar/Calendar";
+import { CalendarLayout } from "~/components/calendar/CalendarLayout";
+import { CalendarPageHeader } from "~/components/calendar/CalendarPageHeader";
+import { CalendarFilters } from "~/components/calendar/CalendarFilters";
+import { CalendarLegend } from "~/components/calendar/CalendarLegend";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents } from "~/components/calendar/utils";
-import { CalendarLegend } from "~/components/calendar/CalendarLegend";
-import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { requireUserId } from "~/utils/auth.server";
+import { breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 // Define types
@@ -78,6 +82,19 @@ type EnrollmentWithClass = {
   } | null;
 };
 
+type EligibilityDetail = {
+  studentId: string;
+  studentName: string;
+  eligible: boolean;
+  reason: string;
+  allIssues: Database['public']['Enums']['eligibility_reason_enum'][];
+};
+
+type EligibilityInfo = {
+  status: 'eligible' | 'all_registered' | 'not_eligible';
+  details: EligibilityDetail[];
+};
+
 type EventRow = {
   id: string;
   title: string;
@@ -92,12 +109,14 @@ type EventRow = {
   is_public: boolean;
 };
 
+type EventRowWithEligibility = EventRow & { eligibilityInfo: EligibilityInfo };
+
 type LoaderData = {
   students: StudentRow[];
   sessions: ClassSession[];
   attendance: AttendanceRow[];
   enrollments: EnrollmentWithClass[];
-  events: EventRow[];
+  events: EventRowWithEligibility[];
   familyName: string | null;
   currentMonth: string;
 };
@@ -106,22 +125,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
   try {
     // console.log('Family Calendar Loader: Starting...');
     
-    const { supabaseServer, response } = getSupabaseServerClient(request);
-    const headers = response.headers;
-    const { data: { user } } = await supabaseServer.auth.getUser();
-
-    if (!user) {
-      console.log('Family Calendar Loader: No authenticated user, redirecting to login');
-      return redirect("/login?redirectTo=/family/calendar", { headers });
-    }
-    // console.log('Family Calendar Loader: User authenticated:', user.id);
+    const userId = await requireUserId(request);
+    const { supabaseServer: supabase } = getSupabaseServerClient(request);
+    // console.log('Family Calendar Loader: User authenticated:', userId);
 
     // Get user's profile to find their family ID
     // console.log('Family Calendar Loader: Fetching user profile...');
-    const { data: profile, error: profileError } = await supabaseServer
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('family_id')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (profileError) {
@@ -131,7 +144,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (!profile || !profile.family_id) {
       console.error('Family Calendar Loader: No family found for user');
-      return redirect("/family", { headers });
+      return redirect("/family");
     }
     // console.log('Family Calendar Loader: Family ID found:', profile.family_id);
 
@@ -143,7 +156,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // Fetch family name
     // console.log('Family Calendar Loader: Fetching family data...');
-    const { data: familyData, error: familyError } = await supabaseServer
+    const { data: familyData, error: familyError } = await supabase
       .from('families')
       .select('name')
       .eq('id', familyId)
@@ -157,7 +170,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // Fetch students in the family
     // console.log('Family Calendar Loader: Fetching students...');
-    const { data: studentsData, error: studentsError } = await supabaseServer
+    const { data: studentsData, error: studentsError } = await supabase
       .from('students')
       .select('id, first_name, last_name, birth_date')
       .eq('family_id', familyId)
@@ -174,7 +187,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (studentIds.length === 0) {
       console.log('Family Calendar Loader: No students found, returning empty data');
-      return json({ students, sessions: [], attendance: [], enrollments: [], familyName, currentMonth }, { headers });
+      return json({ students, sessions: [], attendance: [], enrollments: [], events: [], familyName, currentMonth });
     }
 
     // Get date range for the month view (including surrounding weeks)
@@ -186,7 +199,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // Fetch enrollments for students to get their classes
     // console.log('Family Calendar Loader: Fetching enrollments...');
-    const { data: enrollmentsData, error: enrollmentsError } = await supabaseServer
+    const { data: enrollmentsData, error: enrollmentsError } = await supabase
       .from('enrollments')
       .select(`
         id,
@@ -217,7 +230,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     let upcomingSessions: ClassSession[] = [];
     if (classIds.length > 0) {
       // console.log('Family Calendar Loader: Fetching class sessions...');
-      const { data: sessionsData, error: sessionsError } = await supabaseServer
+      const { data: sessionsData, error: sessionsError } = await supabase
         .from('class_sessions')
         .select(`
           id,
@@ -256,7 +269,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // Fetch attendance records for the date range
     // console.log('Family Calendar Loader: Fetching attendance records...');
-    const { data: attendanceData, error: attendanceError } = await supabaseServer
+    const { data: attendanceData, error: attendanceError } = await supabase
       .from('attendance')
       .select(`
         id,
@@ -293,7 +306,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // Fetch events and check eligibility for family students
     // console.log('Family Calendar Loader: Fetching events...');
-    const { data: eventsData, error: eventsError } = await supabaseServer
+    const { data: eventsData, error: eventsError } = await supabase
       .from('events')
       .select(`
         id,
@@ -323,14 +336,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // console.log('Family Calendar Loader: All events found:', allEvents.length);
 
     // Filter events and collect eligibility information for visual styling
-    const visibleEventsWithEligibility: (EventRow & { eligibilityInfo: any })[] = [];
+    const visibleEventsWithEligibility: EventRowWithEligibility[] = [];
     
     // Create service role client for RPC calls
     const supabaseService = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     
     for (const event of allEvents) {
       let shouldShowEvent = false;
-      const eligibilityDetails: any[] = [];
+      const eligibilityDetails: EligibilityDetail[] = [];
       let eligibleStudents = 0;
       let registeredStudents = 0;
       
@@ -442,7 +455,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     };
     
     // console.log('Family Calendar Loader: Success, returning data');
-    return json(result, { headers });
+    return json(result);
 
   } catch (error) {
     console.error('Family Calendar Loader: Caught error:', error);
@@ -472,7 +485,7 @@ export default function FamilyCalendarPage() {
   const scrollPositionRef = useRef<number>(0);
 
   // Convert raw data to calendar events
-  const studentList = students.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` }));
+  const studentList = students.map((s: StudentRow) => ({ id: s.id, name: `${s.first_name} ${s.last_name}` }));
   const sessionEvents = sessionsToCalendarEvents(sessions, enrollments, studentList);
   
   // Transform attendance data to match the expected format for the utility function
@@ -499,7 +512,7 @@ export default function FamilyCalendarPage() {
   
   // Transform events into CalendarEvent objects
   // console.log('Family Calendar: Raw events from loader:', events);
-  const eventCalendarEvents: CalendarEvent[] = events.map((event: any) => {
+  const eventCalendarEvents: CalendarEvent[] = events.map((event: EventRowWithEligibility) => {
     const calendarEvent = {
       id: event.id,
       title: event.title,
@@ -592,121 +605,96 @@ export default function FamilyCalendarPage() {
     handleDateChange(nextMonth);
   };
 
-  const renderEventDetails = (event: CalendarEvent) => {
-    if (event.type === 'session') {
-      const getStatusBadgeVariant = (status?: string) => {
-        switch (status) {
-          case 'completed': return 'default';
-          case 'cancelled': return 'destructive';
-          case 'scheduled': 
-          default: return 'secondary';
-        }
-      };
-
-      return (
-        <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">
-                Session
-              </Badge>
-              {event.status && (
-                <Badge variant={getStatusBadgeVariant(event.status)}>
-                  {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                </Badge>
-              )}
-            </div>
-            {event.startTime && event.endTime && (
-              <span className="text-sm font-medium">
-                {event.startTime} - {event.endTime}
-              </span>
-            )}
-          </div>
-          <h4 className="font-semibold text-lg">{event.className}</h4>
-          {event.programName && (
-            <p className="text-gray-600 dark:text-gray-400">Program: {event.programName}</p>
-          )}
-          {event.studentNames && event.studentNames.length > 0 && (
-            <div className="text-gray-600 dark:text-gray-400">
-              <p className="font-medium">Enrolled Students:</p>
-              <ul className="list-disc list-inside ml-2">
-                {event.studentNames.map((studentName, index) => (
-                  <li key={index}>{studentName}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {event.studentName && (
-            <p className="text-gray-600 dark:text-gray-400">Student: {event.studentName}</p>
-          )}
-        </div>
-      );
-    } else if (event.type === 'attendance') {
-      return (
-        <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
-          <div className="flex items-center justify-between mb-2">
-            <Badge variant={event.status === 'present' ? 'default' : 'destructive'}>
-              {event.status?.toUpperCase()}
-            </Badge>
-          </div>
-          <h4 className="font-semibold text-lg">Attendance Record</h4>
-          <p className="text-gray-600 dark:text-gray-400">Class: {event.className}</p>
-          {event.studentName && (
-            <p className="text-gray-600 dark:text-gray-400">Student: {event.studentName}</p>
-          )}
-        </div>
-      );
-    } else if (event.type === 'birthday') {
-      return (
-        <div className="p-3 border rounded-lg bg-pink-50 dark:bg-pink-900/30">
-          <div className="flex items-center justify-between mb-2">
-            <Badge variant="outline" className="border-pink-500 text-pink-700 dark:text-pink-300">
-              Birthday
-            </Badge>
-          </div>
-          <h4 className="font-semibold text-lg text-pink-900 dark:text-pink-100">
-            {event.studentName}&apos;s Birthday
-          </h4>
-          <p className="text-pink-700 dark:text-pink-300">🎉 Happy Birthday!</p>
-        </div>
-      );
-    } else if (event.type === 'event') {
-      return (
-        <div className="p-3 border rounded-lg bg-purple-50 dark:bg-purple-900/30">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="border-purple-500 text-purple-700 dark:text-purple-300">
-                Event
-              </Badge>
-              {event.eventType && (
-                <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-200">
-                  {event.eventType.charAt(0).toUpperCase() + event.eventType.slice(1)}
-                </Badge>
-              )}
-            </div>
-            {event.startTime && event.endTime && (
-              <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                {event.startTime} - {event.endTime}
-              </span>
-            )}
-          </div>
-          <h4 className="font-semibold text-lg text-purple-900 dark:text-purple-100">
-            {event.title}
-          </h4>
-          {event.description && (
-            <p className="text-purple-700 dark:text-purple-300 mt-2">{event.description}</p>
-          )}
-          {event.location && (
-            <p className="text-purple-600 dark:text-purple-400 text-sm mt-1">📍 {event.location}</p>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
-    <>
+    <CalendarLayout>
+      <CalendarPageHeader
+        title="Family Calendar"
+        subtitle={familyName ? `View ${familyName} family's schedule and events` : 'View your family schedule and events'}
+        icon={CalendarIcon}
+        breadcrumbItems={breadcrumbPatterns.familyCalendar()}
+      />
+      
+      {/* Calendar Filters */}
+      <CalendarFilters
+        students={studentList}
+        selectedStudentId={selectedStudentId}
+        onStudentChange={handleStudentChange}
+      />
+
+      {/* Calendar Component in Card */}
+      <div className="form-container-styles p-2 backdrop-blur-lg mb-8 landscape-tablet:mb-2 landscape-tablet:p-1">
+        <Calendar
+          events={allEvents}
+          currentDate={currentDate}
+          onDateChange={handleDateChange}
+          onEventClick={handleEventClick}
+        />
+      </div>
+
+      {/* Legend */}
+      <div className="landscape-tablet:hidden">
+        <CalendarLegend />
+      </div>
+
+      {/* Event Detail Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedEvent?.title}</DialogTitle>
+          </DialogHeader>
+          {selectedEvent && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600">
+                  {format(selectedEvent.date, 'EEEE, MMMM d, yyyy')}
+                </p>
+                {selectedEvent.startTime && (
+                  <p className="text-sm text-gray-600">
+                    {selectedEvent.startTime}
+                    {selectedEvent.endTime && ` - ${selectedEvent.endTime}`}
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Badge variant={selectedEvent.type === 'session' ? 'default' : 
+                              selectedEvent.type === 'attendance' ? 'secondary' :
+                              selectedEvent.type === 'event' ? 'outline' : 'default'}>
+                  {selectedEvent.type}
+                </Badge>
+                {selectedEvent.status && (
+                  <Badge variant={selectedEvent.status === 'completed' ? 'default' :
+                                selectedEvent.status === 'cancelled' ? 'destructive' : 'outline'}>
+                    {selectedEvent.status}
+                  </Badge>
+                )}
+              </div>
+              
+              {selectedEvent.location && (
+                <div>
+                  <p className="text-sm font-medium">Location:</p>
+                  <p className="text-sm text-gray-600">{selectedEvent.location}</p>
+                </div>
+              )}
+              
+              {selectedEvent.description && (
+                <div>
+                  <p className="text-sm font-medium">Description:</p>
+                  <p className="text-sm text-gray-600">{selectedEvent.description}</p>
+                </div>
+              )}
+              
+              {selectedEvent.studentName && (
+                <div>
+                  <p className="text-sm font-medium">Student:</p>
+                  <p className="text-sm text-gray-600">{selectedEvent.studentName}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Fixed navigation arrows - positioned relative to viewport */}
       <Button
         variant="ghost"
@@ -727,58 +715,7 @@ export default function FamilyCalendarPage() {
       >
         <ChevronRight className="h-5 w-5" />
       </Button>
-
-      <div className="min-h-screen page-background-styles py-2 lg:py-12 text-foreground">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-6">
-            <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} />
-          </div>
-
-          {/* Page Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
-              <CalendarIcon className="inline-block mr-2 h-8 w-8" />
-              Family Calendar
-            </h1>
-            <p className="mt-3 max-w-2xl mx-auto text-xl page-subheader-styles sm:mt-4">
-              {familyName ? `View ${familyName} family's schedule and events` : 'View your family schedule and events'}
-            </p>
-          </div>
-
-          {/* Calendar Component in Card */}
-          <div className="form-container-styles p-2 backdrop-blur-lg mb-8">
-            <Calendar
-              events={allEvents}
-              currentDate={currentDate}
-              onDateChange={handleDateChange}
-              onEventClick={handleEventClick}
-              filterOptions={{
-                students: studentList,
-                selectedStudentId: selectedStudentId,
-                onStudentChange: handleStudentChange
-              }}
-            />
-          </div>
-
-          {/* Legend */}
-          <CalendarLegend />
-        </div>
-
-        {/* Event Detail Modal */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="max-w-md mx-auto">
-            <DialogHeader>
-               <DialogTitle>
-                 Event Details
-               </DialogTitle>
-             </DialogHeader>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {selectedEvent && renderEventDetails(selectedEvent)}
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
+    </CalendarLayout>
   );
 }
 

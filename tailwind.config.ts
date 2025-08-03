@@ -6,6 +6,9 @@ export default {
     content: ["./app/**/*.{js,jsx,ts,tsx}"],
     theme: {
         extend: {
+            screens: {
+                'landscape-tablet': {'raw': '(min-width: 1024px) and (max-height: 820px)'},
+            },
             colors: {
                 green: {
                     '50': '#F0F9F0',
