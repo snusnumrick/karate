@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" fill="none">
+  <rect width="192" height="192" rx="24" fill="#2E7D32"/>
+  <g transform="translate(24, 24)">
+    <!-- Credit card -->
+    <rect x="20" y="40" width="104" height="64" rx="8" fill="white" stroke="#E0E0E0" stroke-width="2"/>
+    
+    <!-- Magnetic stripe -->
+    <rect x="20" y="56" width="104" height="12" fill="#333"/>
+    
+    <!-- Card details area -->
+    <rect x="28" y="76" width="88" height="20" rx="4" fill="#F5F5F5"/>
+    
+    <!-- Card number dots -->
+    <circle cx="32" cy="82" r="2" fill="#666"/>
+    <circle cx="40" cy="82" r="2" fill="#666"/>
+    <circle cx="48" cy="82" r="2" fill="#666"/>
+    <circle cx="56" cy="82" r="2" fill="#666"/>
+    
+    <circle cx="68" cy="82" r="2" fill="#666"/>
+    <circle cx="76" cy="82" r="2" fill="#666"/>
+    <circle cx="84" cy="82" r="2" fill="#666"/>
+    <circle cx="92" cy="82" r="2" fill="#666"/>
+    
+    <!-- Expiry and CVV -->
+    <text x="32" y="94" font-size="8" fill="#666" font-family="monospace">12/25</text>
+    <text x="100" y="94" font-size="8" fill="#666" font-family="monospace">123</text>
+    
+    <!-- Dollar sign -->
+    <circle cx="96" cy="32" r="16" fill="#4CAF50"/>
+    <text x="96" y="38" text-anchor="middle" fill="white" font-size="20" font-weight="bold">$</text>
+    
+    <!-- Payment history lines -->
+    <rect x="32" y="116" width="80" height="3" rx="1.5" fill="#4CAF50" opacity="0.8"/>
+    <rect x="32" y="124" width="64" height="3" rx="1.5" fill="#4CAF50" opacity="0.6"/>
+    <rect x="32" y="132" width="72" height="3" rx="1.5" fill="#4CAF50" opacity="0.4"/>
+    
+    <!-- Payment status indicators -->
+    <circle cx="24" cy="118" r="3" fill="#4CAF50"/>
+    <circle cx="24" cy="126" r="3" fill="#4CAF50"/>
+    <circle cx="24" cy="134" r="3" fill="#FF9800"/>
+    
+    <!-- Invoice/receipt icon -->
+    <rect x="128" y="48" width="24" height="32" rx="2" fill="white" stroke="#E0E0E0" stroke-width="1"/>
+    <line x1="132" y1="56" x2="148" y2="56" stroke="#666" stroke-width="1"/>
+    <line x1="132" y1="60" x2="144" y2="60" stroke="#666" stroke-width="1"/>
+    <line x1="132" y1="64" x2="148" y2="64" stroke="#666" stroke-width="1"/>
+    <line x1="132" y1="68" x2="140" y2="68" stroke="#666" stroke-width="1"/>
+  </g>
+</svg>

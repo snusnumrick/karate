@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" fill="none">
+  <rect width="192" height="192" rx="24" fill="#2E7D32"/>
+  <g transform="translate(24, 24)">
+    <!-- Karate figure in action pose -->
+    <g transform="translate(72, 20)">
+      <!-- Head -->
+      <circle cx="0" cy="0" r="12" fill="white"/>
+      
+      <!-- Body -->
+      <rect x="-6" y="12" width="12" height="32" rx="6" fill="white"/>
+      
+      <!-- Arms in karate pose -->
+      <rect x="-20" y="16" width="14" height="6" rx="3" fill="white" transform="rotate(-30)"/>
+      <rect x="6" y="16" width="14" height="6" rx="3" fill="white" transform="rotate(45)"/>
+      
+      <!-- Legs in stance -->
+      <rect x="-10" y="44" width="8" height="20" rx="4" fill="white" transform="rotate(-15)"/>
+      <rect x="2" y="44" width="8" height="20" rx="4" fill="white" transform="rotate(15)"/>
+      
+      <!-- Belt -->
+      <rect x="-8" y="32" width="16" height="4" rx="2" fill="#FFD700"/>
+    </g>
+    
+    <!-- Training equipment/mats -->
+    <rect x="20" y="100" width="104" height="8" rx="4" fill="white" opacity="0.8"/>
+    <rect x="32" y="108" width="80" height="8" rx="4" fill="white" opacity="0.6"/>
+    <rect x="44" y="116" width="56" height="8" rx="4" fill="white" opacity="0.4"/>
+    
+    <!-- Action lines for movement -->
+    <path d="M40 40 Q50 35, 60 40" stroke="white" stroke-width="2" fill="none" opacity="0.6"/>
+    <path d="M100 50 Q110 45, 120 50" stroke="white" stroke-width="2" fill="none" opacity="0.6"/>
+    <path d="M30 70 Q40 65, 50 70" stroke="white" stroke-width="2" fill="none" opacity="0.6"/>
+    
+    <!-- Class schedule indicators -->
+    <circle cx="32" cy="32" r="3" fill="#FFD700"/>
+    <circle cx="112" cy="40" r="3" fill="#FFD700"/>
+    <circle cx="128" cy="72" r="3" fill="#FFD700"/>
+  </g>
+</svg>

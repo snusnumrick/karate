@@ -55,39 +55,52 @@
     {
       "name": "Family Dashboard",
       "short_name": "Dashboard",
-      "description": "Access your family dashboard",
+      "description": "Access your family dashboard and overview",
       "url": "/family",
       "icons": [
         {
-          "src": "/web-app-manifest-192x192.png",
+          "src": "/icons/dashboard-icon.svg",
           "sizes": "192x192",
-          "type": "image/png"
+          "type": "image/svg+xml"
         }
       ]
     },
     {
-      "name": "Class Schedule",
-      "short_name": "Schedule",
-      "description": "View class schedules",
-      "url": "/classes",
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "description": "View class schedules and upcoming events",
+      "url": "/family/calendar",
       "icons": [
         {
-          "src": "/web-app-manifest-192x192.png",
+          "src": "/icons/calendar-icon.svg",
           "sizes": "192x192",
-          "type": "image/png"
+          "type": "image/svg+xml"
         }
       ]
     },
     {
-      "name": "Contact",
-      "short_name": "Contact",
-      "description": "Contact Sensei Negin",
-      "url": "/contact",
+      "name": "Messages",
+      "short_name": "Messages",
+      "description": "Communicate with instructors and admin",
+      "url": "/family/messages",
       "icons": [
         {
-          "src": "/web-app-manifest-192x192.png",
+          "src": "/icons/messages-icon.svg",
           "sizes": "192x192",
-          "type": "image/png"
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "short_name": "Payments",
+      "description": "View payment history and manage invoices",
+      "url": "/family/payment-history",
+      "icons": [
+        {
+          "src": "/icons/payments-icon.svg",
+          "sizes": "192x192",
+          "type": "image/svg+xml"
         }
       ]
     }
