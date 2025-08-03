@@ -500,6 +500,19 @@ export function getEligibilityIconColor(eligibilityStatus?: string): string {
   }
 }
 
+export function getEligibilityBorderColor(eligibilityStatus?: string): string {
+  switch (eligibilityStatus) {
+    case 'eligible':
+      return 'border-green-500';
+    case 'all_registered':
+      return 'border-blue-500';
+    case 'not_eligible':
+      return 'border-gray-400';
+    default:
+      return 'border-purple-500 dark:border-purple-400';
+  }
+}
+
 /**
  * Expand multi-day events to show on all days between start and end dates
  */

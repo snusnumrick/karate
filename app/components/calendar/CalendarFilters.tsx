@@ -12,13 +12,13 @@ export function CalendarFilters({
 
   return (
     <div className="mb-6">
-      <div className="flex items-center space-x-4">
-        <label htmlFor="student-filter" className="text-sm font-medium sm:pl-6">Filter by Student:</label>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+        <label htmlFor="student-filter" className="text-sm font-medium sm:pl-6 flex-shrink-0">Filter by Student:</label>
         <Select
           value={selectedStudentId || 'all'}
           onValueChange={onStudentChange}
         >
-          <SelectTrigger id="student-filter" className="w-48">
+          <SelectTrigger id="student-filter" className="w-full sm:w-48">
             <SelectValue placeholder="Select student" />
           </SelectTrigger>
           <SelectContent>

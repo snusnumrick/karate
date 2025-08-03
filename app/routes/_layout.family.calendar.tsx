@@ -17,6 +17,7 @@ import {
 import { Calendar } from "~/components/calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents } from "~/components/calendar/utils";
+import { CalendarLegend } from "~/components/calendar/CalendarLegend";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
@@ -692,7 +693,7 @@ export default function FamilyCalendarPage() {
   };
 
   return (
-    <div className="min-h-screen page-background-styles py-12 text-foreground">
+    <div className="min-h-screen page-background-styles py-2 lg:py-12 text-foreground">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <AppBreadcrumb items={breadcrumbPatterns.familyCalendar()} />
@@ -710,7 +711,7 @@ export default function FamilyCalendarPage() {
         </div>
 
         {/* Calendar Component in Card */}
-        <div className="form-container-styles p-8 backdrop-blur-lg mb-8">
+        <div className="form-container-styles p-2 backdrop-blur-lg mb-8">
           <Calendar
             events={allEvents}
             currentDate={currentDate}
@@ -725,77 +726,7 @@ export default function FamilyCalendarPage() {
         </div>
 
         {/* Legend */}
-        <div className="form-container-styles p-8 backdrop-blur-lg">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">CALENDAR LEGEND</h2>
-            
-            {/* Class Status Legend */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-foreground mb-3">Class Status</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 border-l-4 border-blue-500 dark:border-blue-400 rounded text-sm text-blue-900 dark:text-blue-100 font-medium">
-                    Scheduled
-                  </div>
-                  <span className="text-gray-600 dark:text-gray-400 text-sm">Scheduled class</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="px-3 py-2 bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500 dark:border-green-400 rounded text-sm text-green-900 dark:text-green-100 font-medium">
-                    Completed
-                  </div>
-                  <span className="text-gray-600 dark:text-gray-400 text-sm">Completed class</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="px-3 py-2 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-400 rounded text-sm text-red-900 dark:text-red-100 font-medium">
-                    Cancelled
-                  </div>
-                  <span className="text-gray-600 dark:text-gray-400 text-sm">Cancelled class</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Event Registration Status Legend */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-foreground mb-3">Event Registration Status</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400 rounded text-sm text-purple-900 dark:text-purple-100 font-medium flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    Can Register
-                  </div>
-                  <span className="text-gray-600 dark:text-gray-400 text-sm">At least one student can register</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400 rounded text-sm text-purple-900 dark:text-purple-100 font-medium flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    All Registered
-                  </div>
-                  <span className="text-gray-600 dark:text-gray-400 text-sm">All eligible students already registered</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 border-l-4 border-purple-500 dark:border-purple-400 rounded text-sm text-purple-900 dark:text-purple-100 font-medium flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                    Not Eligible
-                  </div>
-                  <span className="text-gray-600 dark:text-gray-400 text-sm">No students can register</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Other Event Types Legend */}
-            <div>
-              <h3 className="text-lg font-medium text-foreground mb-3">Other Events</h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="px-3 py-2 bg-pink-100 dark:bg-pink-900/30 border-l-4 border-pink-500 dark:border-pink-400 rounded text-sm text-pink-900 dark:text-pink-100 font-medium">
-                    Birthday
-                  </div>
-                  <span className="text-gray-600 dark:text-gray-400 text-sm">Student birthday</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CalendarLegend />
       </div>
 
       {/* Event Detail Modal */}

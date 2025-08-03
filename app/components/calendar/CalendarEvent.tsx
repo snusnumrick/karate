@@ -1,6 +1,14 @@
 import { Badge } from '~/components/ui/badge';
 import { CalendarIcon } from 'lucide-react';
-import { formatEventTime, getAttendanceStatusVariant, getSessionStatusColors, getBirthdayColors, getEventColors, getEligibilityIconColor } from './utils';
+import {
+  formatEventTime,
+  getAttendanceStatusVariant,
+  getSessionStatusColors,
+  getBirthdayColors,
+  getEventColors,
+  getEligibilityIconColor,
+  getEligibilityBorderColor
+} from './utils';
 import type { CalendarEventProps } from './types';
 
 export function CalendarEvent({ event, onClick, compact = false }: CalendarEventProps) {
@@ -29,8 +37,8 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
         tabIndex={0}
         aria-label={`Session: ${event.className} - ${event.status}`}
       >
-        <div className={`font-medium ${colors.text} text-xs leading-tight`}>
-          {compact ? (event.className && event.className.length > 15 ? event.className.substring(0, 15) + '...' : event.className) : event.className}
+        <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'truncate w-full' : ''}`} title={event.className}>
+          {event.className}
         </div>
         {!compact && event.programName && (
           <div className={`text-xs ${colors.text} opacity-80 leading-tight`}>{event.programName}</div>
@@ -92,8 +100,11 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
         tabIndex={0}
         aria-label={`Birthday: ${event.studentName}`}
       >
-        <div className={`font-medium ${colors.text} text-xs leading-tight`}>
-          {compact ? (event.title && event.title.length > 15 ? event.title.substring(0, 15) + '...' : event.title) : event.title}
+        <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'truncate w-full' : ''}`} title={event.studentName}>
+          {compact ? 
+            event.studentName : 
+            `🎂 ${event.studentName}`
+          }
         </div>
         {!compact && (
           <div className={`text-xs ${colors.text} opacity-80 leading-tight`}>Birthday</div>
@@ -103,16 +114,19 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
   }
 
   if (event.type === 'event') {
+    // Get border color based on eligibility status
+    const borderColor = getEligibilityBorderColor(event.eligibilityStatus);
+
     // Use consistent purple background for all events
     const colors = {
       background: 'bg-purple-100 dark:bg-purple-900/30',
-      border: 'border-purple-500 dark:border-purple-400',
+      border: borderColor,
       text: 'text-purple-900 dark:text-purple-100',
       hover: 'hover:bg-purple-200 dark:hover:bg-purple-900/50'
     };
     
     // Get icon color based on eligibility status
-    const iconColor = getEligibilityIconColor(event.eligibilityStatus);
+    // const iconColor = getEligibilityIconColor(event.eligibilityStatus);
     
     return (
       <div
@@ -124,9 +138,9 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
         aria-label={`Event: ${event.title}${event.eligibilityStatus ? ` (${event.eligibilityStatus.replace('_', ' ')})` : ''}`}
       >
         <div className="flex items-center gap-1">
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${iconColor}`}></div>
-          <div className={`font-medium ${colors.text} text-xs leading-tight truncate`}>
-            {compact ? (event.title && event.title.length > 15 ? event.title.substring(0, 15) + '...' : event.title) : event.title}
+          {/*<div className={`w-2 h-2 rounded-full flex-shrink-0 ${iconColor}`}></div>*/}
+          <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'truncate text-clip w-full' : ''}`} title={event.title}>
+            {event.title}
           </div>
         </div>
         {!compact && event.eventType && (
