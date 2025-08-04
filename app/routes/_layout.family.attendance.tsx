@@ -128,7 +128,7 @@ export default function FamilyAttendancePage() {
                 {/* Attendance Records */}
                 <div className="form-container-styles p-8 backdrop-blur-lg">
                     <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                        <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Attendance Records</h2>
+                        <h2 className="text-2xl font-bold form-header-styles ">Attendance Records</h2>
                     </div>
 
                     {students.length === 0 ? (

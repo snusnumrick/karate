@@ -1,14 +1,13 @@
 import {useEffect, useRef, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
-import {Link, useFetcher, useLoaderData} from "@remix-run/react";
+import {useFetcher, useLoaderData} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database, Tables} from "~/types/database.types";
-import MessageView from "~/components/MessageView"; // We will create this component
-import MessageInput from "~/components/MessageInput"; // We will create this component
-import {Button} from "~/components/ui/button";
-import {ArrowLeft} from "lucide-react";
+import MessageView from "~/components/MessageView";
+import MessageInput from "~/components/MessageInput";
 import {createClient, REALTIME_SUBSCRIBE_STATES, type SupabaseClient} from "@supabase/supabase-js"; // Import createClient
 import { notificationService } from "~/utils/notifications.client";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Add TypeScript declaration for the global window.__SUPABASE_SINGLETON_CLIENT property
 declare global {
@@ -778,34 +777,38 @@ export default function ConversationView() {
     }
 
     return (
-        <div
-            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--header-height)-var(--footer-height)-2rem)] flex flex-col page-background-styles"> {/* Add background, Adjust height calculation */}
-            <div className="flex items-center mb-4">
-                <Button variant="ghost" size="icon" asChild className="mr-2">
-                    <Link to="/family/messages" aria-label="Back to messages">
-                        <ArrowLeft className="h-5 w-5"/>
-                    </Link>
-                </Button>
-                {/* Display Subject and Participant Names */}
-                <div className="flex-1 min-w-0 ml-2">
-                    <h1 className="text-lg font-semibold truncate text-foreground">{conversation.subject || 'Conversation'}</h1> {/* Ensure foreground color */}
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AppBreadcrumb 
+                    items={breadcrumbPatterns.familyMessageConversation(conversation.subject || 'Conversation')} 
+                    className="mb-6" 
+                />
+
+                {/* Page Header */}
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
+                        {conversation.subject || 'Conversation'}
+                    </h1>
                     {conversation.participant_display_names && (
-                        <p className="text-sm text-muted-foreground truncate"> {/* Use muted foreground */}
-                            With: {conversation.participant_display_names}
+                        <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                            Participants: {conversation.participant_display_names}
                         </p>
                     )}
                 </div>
+
+                <div className="form-container-styles p-8 backdrop-blur-lg">
+                    <div className="flex flex-col h-[600px]">
+                        <MessageView
+                            messages={messages}
+                            currentUserId={userId}
+                        />
+                        <MessageInput fetcher={fetcher} ref={messageInputRef} />
+                        {fetcher.data?.error && (
+                            <p className="text-red-500 text-sm mt-2">{fetcher.data.error}</p>
+                        )}
+                    </div>
+                </div>
             </div>
-
-            {/* Message Display Area */}
-            <MessageView messages={messages} currentUserId={userId}/>
-
-            {/* Message Input Area */}
-            {/* Pass the ref to MessageInput, remove autoFocus prop */}
-            <MessageInput fetcher={fetcher} ref={messageInputRef} />
-            {fetcher.data?.error && (
-                <p className="text-red-500 text-sm mt-2">{fetcher.data.error}</p>
-            )}
         </div>
     );
 }

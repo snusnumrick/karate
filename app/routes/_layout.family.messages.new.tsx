@@ -1,14 +1,16 @@
 import { useRef, useEffect } from "react"; // <-- Import useRef and useEffect
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type TypedResponse } from "@remix-run/node";
-import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, Send, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { cn } from "~/lib/utils"; // Import cn utility
+import { cn } from "~/lib/utils";
+
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define types for loader and action data
 
@@ -118,32 +120,34 @@ export default function NewMessageRoute() {
     }, []); // <-- Empty dependency array ensures this runs only once on mount
 
     if (loaderError) {
-        return (
-            <div className="container mx-auto px-4 py-8">
-                 <Button variant="ghost" size="icon" asChild className="mr-2 mb-4">
-                    <Link to="/family/messages" aria-label="Back to messages">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error Loading Recipients</AlertTitle>
-                    <AlertDescription>{loaderError}</AlertDescription>
-                </Alert>
-            </div>
-        );
-    }
+         return (
+             <div className="min-h-screen page-background-styles py-12 text-foreground">
+                 <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                     <AppBreadcrumb items={breadcrumbPatterns.familyMessageNew()} className="mb-6" />
+                     <Alert variant="destructive">
+                         <AlertCircle className="h-4 w-4" />
+                         <AlertTitle>Error</AlertTitle>
+                         <AlertDescription>{loaderError}</AlertDescription>
+                     </Alert>
+                 </div>
+             </div>
+         );
+     }
 
-    return (
-        <div className="container mx-auto px-4 py-8 max-w-2xl bg-amber-50 dark:bg-gray-800"> {/* Add background */}
-             <div className="flex items-center mb-6">
-                 <Button variant="ghost" size="icon" asChild className="mr-2">
-                    <Link to="/family/messages" aria-label="Back to messages">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <h1 className="text-2xl font-semibold text-foreground">New Message</h1> {/* Add text color */}
-            </div>
+     return (
+         <div className="min-h-screen page-background-styles py-12 text-foreground">
+             <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                 <AppBreadcrumb items={breadcrumbPatterns.familyMessageNew()} className="mb-6" />
+                 
+                 {/* Page Header */}
+                 <div className="text-center mb-8">
+                     <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
+                         New Message
+                     </h1>
+                     <p className="mt-3 text-xl text-gray-500 dark:text-gray-400">
+                         Send a message to your instructors
+                     </p>
+                 </div>
 
             {actionData?.error && (
                  <Alert variant="destructive" className="mb-4">
@@ -153,54 +157,58 @@ export default function NewMessageRoute() {
                 </Alert>
             )}
 
-            <Form method="post" className="space-y-6">
-                {/* Recipient Selection Removed */}
+            <div className="form-container-styles p-8 backdrop-blur-lg">
+                <Form method="post" className="space-y-6">
+                    {/* Recipient Selection Removed */}
 
-                {/* Subject Input */}
-                <div>
-                    <Label htmlFor="subject">Subject (Optional):</Label>
-                    <Input
-                        type="text"
-                        ref={subjectInputRef} // <-- Attach ref
-                        id="subject"
-                        name="subject"
-                        className={cn("input-custom-styles", "mt-1")} // Apply custom styles
-                        disabled={isSubmitting}
-                    />
-                     {actionData?.fieldErrors?.subject && (
-                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.subject}</p>
-                    )}
-                </div>
-
-                {/* Message Content */}
-                <div>
-                    <Label htmlFor="content">Message:</Label>
-                    <Textarea
-                        id="content"
-                        name="content"
-                        required
-                        rows={6}
-                        className={cn("input-custom-styles", "mt-1")} // Apply custom styles
-                        disabled={isSubmitting}
-                    />
-                     {actionData?.fieldErrors?.content && (
-                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.content}</p>
-                    )}
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
-                            </>
-                        ) : (
-                            "Send Message"
+                    {/* Subject Input */}
+                    <div>
+                        <Label htmlFor="subject">Subject (Optional):</Label>
+                        <Input
+                            type="text"
+                            ref={subjectInputRef} // <-- Attach ref
+                            id="subject"
+                            name="subject"
+                            className={cn("mt-1", "input-custom-styles")}
+                            disabled={isSubmitting}
+                        />
+                         {actionData?.fieldErrors?.subject && (
+                            <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.subject}</p>
                         )}
-                    </Button>
-                </div>
-            </Form>
+                    </div>
+
+                    {/* Message Content */}
+                    <div>
+                        <Label htmlFor="content">Message:</Label>
+                        <Textarea
+                            id="content"
+                            name="content"
+                            placeholder="Enter your message"
+                            required
+                            rows={6}
+                            className={cn("mt-1", "input-custom-styles")}
+                            disabled={isSubmitting}
+                        />
+                         {actionData?.fieldErrors?.content && (
+                            <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.content}</p>
+                        )}
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="flex justify-end">
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
+                                </>
+                            ) : (
+                                "Send Message"
+                            )}
+                        </Button>
+                    </div>
+                </Form>
+            </div>
         </div>
+    </div>
     );
 }

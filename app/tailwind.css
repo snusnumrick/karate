@@ -4,7 +4,15 @@
 
 @layer components {
     .input-custom-styles {
-        @apply focus:ring-green-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:border-green-400 dark:focus:ring-green-400;
+        @apply focus-visible:outline-none focus-visible:ring-1 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus-visible:border-green-400;
+    }
+    
+    .input-custom-styles:focus-visible {
+        --tw-ring-color: rgb(34 197 94) !important; /* green-500 */
+    }
+    
+    .dark .input-custom-styles:focus-visible {
+        --tw-ring-color: rgb(74 222 128) !important; /* green-400 */
     }
 
     .checkbox-custom-styles {
@@ -17,6 +25,10 @@
 
     .form-card-styles {
         @apply bg-amber-100 dark:bg-gray-800 rounded-xl border text-card-foreground shadow;
+    }
+
+    .form-card-alt-styles {
+        @apply rounded-xl border shadow;
     }
 
     .page-background-styles {
