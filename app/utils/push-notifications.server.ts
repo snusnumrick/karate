@@ -307,6 +307,12 @@ export function createMessageNotificationPayload(
   customUrl?: string,
   recipientUserId?: string
 ): NotificationPayload {
+  // Validate conversationId to prevent undefined URLs
+  if (!conversationId || conversationId === 'undefined') {
+    console.error('[createMessageNotificationPayload] Invalid conversationId:', conversationId);
+    throw new Error('Invalid conversationId provided to createMessageNotificationPayload');
+  }
+  
   const url = customUrl || `/conversations/${conversationId}`;
 
   const payload = {

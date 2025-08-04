@@ -156,6 +156,13 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
     // Type assertion for the RPC response
     const conversationData = newConversationId as { conversation_id: string; message_id: string };
+    
+    // Additional safety check for conversation_id
+    if (!conversationData?.conversation_id || conversationData.conversation_id === 'undefined') {
+        console.error("Admin New Message Action: Invalid conversation_id returned from RPC:", conversationData);
+        return json({ error: "Failed to create conversation: Invalid conversation ID" }, { status: 500, headers });
+    }
+    
     console.log(`Admin New Message Action: Conversation ${conversationData.conversation_id} created successfully.`);
 
     // Send push notifications to family members
@@ -302,24 +309,27 @@ export default function AdminNewMessage() {
     }
 
     return (
-        // Apply standard admin background colors and container padding
-        <div className="container mx-auto px-4 py-8 max-w-2xl page-background-styles rounded-lg shadow">
-            <AppBreadcrumb 
-                items={breadcrumbPatterns.adminMessageNew()} 
-                className="mb-6"
-            />
+        <div className="max-w-7xl mx-auto py-8 px-4">
+            {/* Header */}
+            <div className="mb-8">
+                <AppBreadcrumb items={breadcrumbPatterns.adminMessageNew()} />
+                <div className="mt-4">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">New Message</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">Send a message to a family</p>
+                </div>
+            </div>
 
-            <h1 className="text-2xl font-semibold text-foreground mb-6">New Message</h1>
+            {/* Form Container */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 max-w-2xl">
+                {actionData?.error && (
+                    <Alert variant="destructive" className="mb-6">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{actionData.error}</AlertDescription>
+                    </Alert>
+                )}
 
-            {actionData?.error && (
-                <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>{actionData.error}</AlertDescription>
-                </Alert>
-            )}
-
-            <Form method="post" className="space-y-6">
+                <Form method="post" className="space-y-6">
                 <div>
                     <Label htmlFor="familyId">To Family</Label>
                     <Select
@@ -332,7 +342,7 @@ export default function AdminNewMessage() {
                         <SelectTrigger
                             ref={familySelectRef} // Attach ref
                             id="familyId"
-                            className={cn("w-full", "mt-1", "input-custom-styles", familyIdError ? "border-red-500" : "")} // Use w-full for width, add input-custom-styles
+                            className={cn("w-full", "mt-1 input-custom-styles", familyIdError ? "border-red-500" : "")}
                             tabIndex={1}
                         >
                             <SelectValue placeholder="Select a family..." />
@@ -358,7 +368,7 @@ export default function AdminNewMessage() {
                         required
                         maxLength={255}
                         disabled={isSubmitting}
-                        className={cn("input-custom-styles", "mt-1", subjectError ? "border-red-500" : "")} // Apply custom styles + conditional error
+                        className={cn("mt-1 input-custom-styles", subjectError ? "border-red-500" : "")}
                         tabIndex={2}
                     />
                     {subjectError && <p className="text-sm text-red-600 mt-1">{subjectError}</p>}
@@ -372,25 +382,26 @@ export default function AdminNewMessage() {
                         required
                         rows={6}
                         disabled={isSubmitting}
-                        className={cn("input-custom-styles", "mt-1", messageError ? "border-red-500" : "")} // Apply custom styles + conditional error
+                        className={cn("mt-1 input-custom-styles", messageError ? "border-red-500" : "")}
                         tabIndex={3}
                     />
                     {messageError && <p className="text-sm text-red-600 mt-1">{messageError}</p>}
                 </div>
 
-                {/* Submit Button - aligned right */}
-                <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting} tabIndex={4}>
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
-                        </>
-                    ) : (
-                        "Send Message"
-                    )}
-                </Button>
-                </div> {/* Close the flex justify-end div */}
-            </Form> {/* Close the form */}
-        </div> // Close the main container div
+                    {/* Submit Button - aligned right */}
+                    <div className="flex justify-end">
+                        <Button type="submit" disabled={isSubmitting} tabIndex={4}>
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
+                            </>
+                        ) : (
+                            "Send Message"
+                        )}
+                    </Button>
+                    </div>
+                </Form>
+            </div>
+        </div>
     );
 }

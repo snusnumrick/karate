@@ -8,15 +8,10 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Calendar } from "~/components/calendar/Calendar";
-import { CalendarLayout } from "~/components/calendar/CalendarLayout";
-import { CalendarPageHeader } from "~/components/calendar/CalendarPageHeader";
-import { CalendarFilterContainer } from "~/components/calendar/CalendarFilterContainer";
-import { CalendarStats, StatCard } from "~/components/calendar/CalendarStats";
-import type { CalendarEvent } from "~/components/calendar/types";
-import { Calendar as CalendarIcon, Users, DollarSign, Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter, TrendingUp } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { Calendar } from "~/components/calendar/Calendar";
+import type { CalendarEvent } from "~/components/calendar/types";
+import { Calendar as CalendarIcon, Users, DollarSign, Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter, TrendingUp, Plus } from "lucide-react";
 import {createClient} from "@supabase/supabase-js";
 
 // Enhanced admin calendar event interface
@@ -522,16 +517,27 @@ export default function AdminCalendar() {
   };
 
   return (
-    <CalendarLayout>
-      <CalendarPageHeader
-        title="Admin Calendar"
-        subtitle="Manage class sessions, events, and student activities"
-        icon={CalendarIcon}
-        breadcrumbItems={breadcrumbPatterns.adminCalendar()}
-      />
+    <div className="max-w-7xl mx-auto py-8 px-4">
+      {/* Header */}
+      <div className="mb-8">
+        <AppBreadcrumb items={breadcrumbPatterns.adminCalendar()} />
+        <div className="flex justify-between items-center mt-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Calendar</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage class sessions, events, and student activities</p>
+          </div>
+          <Button asChild>
+            <Link to="/admin/calendar/new">
+              <Plus className="w-4 h-4 mr-2" />
+              New Event
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       {/* Filters */}
-      <CalendarFilterContainer>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <BookOpen className="h-4 w-4 text-muted-foreground" />
@@ -574,7 +580,7 @@ export default function AdminCalendar() {
               <span className="text-xs font-medium">Status</span>
             </div>
             <Select value={filters.status || 'all'} onValueChange={(value) => handleFilterChange('status', value)}>
-              <SelectTrigger className="h-8 input-custom-styles">
+              <SelectTrigger className="h-8">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -585,76 +591,39 @@ export default function AdminCalendar() {
               </SelectContent>
             </Select>
           </div>
-      </CalendarFilterContainer>
+        </div>
+      </div>
 
       {/* Calendar */}
-      <div className="-mx-2 sm:mx-0">
-        <Card>
-          <CardContent className="p-0 sm:p-3 landscape-tablet:p-1">
-            <Calendar
-              events={expandMultiDayEvents([
-                // Session events
-                ...events.map(event => ({
-                  id: event.id,
-                  title: event.title,
-                  date: event.date,
-                  type: event.type,
-                  status: event.status, // Pass the session status for color coding
-                  className: event.className,
-                  sessionId: event.sessionId,
-                  classId: event.classId,
-                  programName: event.programName,
-                  startTime: event.startTime,
-                  endTime: event.endTime,
-                  endDate: event.endDate // Include end date for multi-day events
-                })),
-                // Birthday events
-                ...birthdayEvents
-              ])}
-              currentDate={currentDate}
-              onDateChange={handleDateChange}
-              onEventClick={handleEventClick}
-              className="w-full"
-            />
-          </CardContent>
-        </Card>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-6">
+        <div className="p-6">
+          <Calendar
+            events={expandMultiDayEvents([
+              // Session events
+              ...events.map(event => ({
+                id: event.id,
+                title: event.title,
+                date: event.date,
+                type: event.type,
+                status: event.status, // Pass the session status for color coding
+                className: event.className,
+                sessionId: event.sessionId,
+                classId: event.classId,
+                programName: event.programName,
+                startTime: event.startTime,
+                endTime: event.endTime,
+                endDate: event.endDate // Include end date for multi-day events
+              })),
+              // Birthday events
+              ...birthdayEvents
+            ])}
+            currentDate={currentDate}
+            onDateChange={handleDateChange}
+            onEventClick={handleEventClick}
+            className="w-full"
+          />
+        </div>
       </div>
-
-      {/* Month/Year Header */}
-      <div className="text-center py-2 landscape-tablet:py-1">
-        <h2 className="text-lg landscape-tablet:text-base font-semibold text-gray-700 dark:text-gray-300">
-          {format(currentDate, 'MMMM yyyy')} Overview
-        </h2>
-      </div>
-
-      {/* Stats Cards */}
-      <CalendarStats>
-        <StatCard
-          icon={CalendarIcon}
-          iconColor="text-blue-600"
-          label="Total Sessions"
-          value={stats.totalSessions}
-        />
-        <StatCard
-          icon={CheckCircle}
-          iconColor="text-green-600"
-          label="Completed"
-          value={stats.completedSessions}
-          subtitle={`${calculateCompletionPercentage()}%`}
-        />
-        <StatCard
-          icon={Users}
-          iconColor="text-purple-600"
-          label="Enrollments"
-          value={stats.totalEnrollments}
-        />
-        <StatCard
-          icon={DollarSign}
-          iconColor="text-orange-600"
-          label="Avg Capacity"
-          value={`${stats.averageCapacity}%`}
-        />
-      </CalendarStats>
 
       {/* Event Detail Modal */}
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
@@ -712,6 +681,6 @@ export default function AdminCalendar() {
           )}
         </DialogContent>
       </Dialog>
-    </CalendarLayout>
+    </div>
   );
 }

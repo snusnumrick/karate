@@ -21,63 +21,61 @@ interface AdminConversationListProps {
  */
 export default function AdminConversationList({ conversations, basePath }: AdminConversationListProps) {
     // Optional: Log for debugging
-    // console.log(`[AdminConversationList] Rendering ${conversations.length} conversations.`);
-    // console.log(conversations);
-
-    if (!conversations || conversations.length === 0) {
-        return <p className="p-4 text-gray-500 dark:text-gray-400">No conversations found.</p>;
-    }
+    console.log(`[AdminConversationList] Rendering ${conversations.length} conversations.`);
+    console.log(conversations);
 
     return (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                {conversations.map((convo) => (
-                    <li key={convo.id}
-                        className={cn(
-                            "transition-colors", // Base class for smooth hover
-                            // Conditional classes for unread status
-                            convo.is_unread_by_admin
-                                ? "bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 border-l-4 border-blue-500"
-                                : "hover:bg-gray-50 dark:hover:bg-gray-700" // Default hover style if read
-                        )}
-                    >
-                        <Link to={`${basePath}/${convo.id}`} className="block p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+            {conversations.length === 0 ? (
+                <div className="text-center py-8 px-6">
+                    <p className="text-gray-500 dark:text-gray-400">No conversations found.</p>
+                </div>
+            ) : (
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {conversations.map((conversation) => (
+                        <Link
+                            key={conversation.id}
+                            to={`${basePath}/${conversation.id}`}
+                            className={cn(
+                                "block p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700",
+                                conversation.is_unread_by_admin
+                                    ? "bg-blue-50 dark:bg-blue-900/20"
+                                    : ""
+                            )}
+                        >
                             <div className="flex justify-between items-start">
-                                {/* Main content area */}
-                                <div className="flex-1 min-w-0 pr-2"> {/* Added padding-right */}
-                                    {/* Subject */}
-                                    {convo.subject && (
-                                        <p className="text-md font-medium text-gray-900 dark:text-gray-100 truncate">
-                                            {convo.subject}
-                                        </p>
-                                    )}
-                                    {/* Participant Names */}
-                                    <p className={`text-sm ${convo.subject ? 'text-gray-600 dark:text-gray-400' : 'text-md font-medium text-gray-900 dark:text-gray-100'} truncate`}>
-                                        {convo.participant_display_names || `Conversation ${convo.id.substring(0, 6)}...`}
+                                <div className="flex-1">
+                                    <h3 className={cn(
+                                        "text-lg font-medium",
+                                        conversation.is_unread_by_admin
+                                            ? "text-blue-900 dark:text-blue-100"
+                                            : "text-gray-900 dark:text-white"
+                                    )}>
+                                        {conversation.subject || "No Subject"}
+                                    </h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                        Participants: {conversation.participant_display_names}
                                     </p>
                                 </div>
-                                {/* Timestamp Area */}
-                                <div className="ml-2 flex-shrink-0 flex flex-col items-end space-y-1">
-                                    {/* Time - using ClientOnly */}
-                                    <ClientOnly fallback={<p className="text-xs text-gray-500 dark:text-gray-400">&nbsp;</p>}>
+                                <div className="text-right">
+                                    <ClientOnly fallback={<span className="text-sm text-gray-500">Loading...</span>}>
                                         {() => (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                {formatDistanceToNow(parseISO(convo.last_message_at), { addSuffix: true })}
-                                            </p>
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                                {formatDistanceToNow(parseISO(conversation.last_message_at), { addSuffix: true })}
+                                            </span>
                                         )}
                                     </ClientOnly>
-                                    {/* No Badge needed for admin view */}
-                                    <div className="h-4"></div> {/* Placeholder to maintain alignment if needed, adjust height */}
+                                    {conversation.is_unread_by_admin && (
+                                        <div className="mt-1">
+                                            <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                            {/* Optional: Last message preview (if data available) */}
-                            {/* <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 truncate">
-                                {convo.last_message_preview || 'No messages yet'}
-                            </p> */}
                         </Link>
-                    </li>
-                ))}
-            </ul>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

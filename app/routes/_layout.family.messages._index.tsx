@@ -275,7 +275,7 @@ export default function MessagesIndex() {
                                  <Button asChild>
                                      <Link to="/family/messages/new">
                                          <Plus className="h-4 w-4 mr-2" />
-                                         New Message
+                                         New
                                      </Link>
                                  </Button>
                              </div>
@@ -287,7 +287,7 @@ export default function MessagesIndex() {
                                  <Button asChild>
                                      <Link to="/family/messages/new">
                                          <Plus className="h-4 w-4 mr-2" />
-                                         New Message
+                                         New
                                      </Link>
                                  </Button>
                              </div>

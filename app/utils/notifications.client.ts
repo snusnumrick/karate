@@ -200,6 +200,12 @@ class NotificationService {
    * Show a notification for a new message
    */
   public async showMessageNotification(data: MessageNotificationData): Promise<Notification | null> {
+    // Safety check: ensure conversationId is valid
+    if (!data.conversationId || data.conversationId === 'undefined') {
+      console.error('[showMessageNotification] Invalid conversationId:', data.conversationId);
+      return null;
+    }
+
     const options: NotificationOptions = {
       title: `New message from ${data.senderName}`,
       body: data.messageContent.length > 100 
@@ -226,12 +232,21 @@ class NotificationService {
         event.preventDefault();
         window.focus();
         
+        // Additional safety check: ensure conversationId is valid before navigation
+        if (!data.conversationId || data.conversationId === 'undefined') {
+          console.error('[Notification Click] Invalid conversationId, cannot navigate:', data.conversationId);
+          notification.close();
+          return;
+        }
+        
         // Determine the correct path based on user role
         // This is a simple check - you might want to make this more robust
         const isAdmin = window.location.pathname.includes('/admin');
         const conversationPath = isAdmin 
           ? `/admin/messages/${data.conversationId}`
           : `/family/messages/${data.conversationId}`;
+        
+        console.log('[Notification Click] Navigating to:', conversationPath);
         
         // Navigate to the conversation
         window.location.href = conversationPath;

@@ -461,6 +461,15 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(
         self.clients.matchAll({type: 'window', includeUncontrolled: true}).then((clientList) => {
             const targetUrl = notificationData?.url || '/';
+            
+            // Validate URL to prevent navigation to undefined paths
+            if (targetUrl.includes('/undefined') || targetUrl.includes('undefined')) {
+                console.error('[Service Worker] Invalid URL detected, preventing navigation:', targetUrl);
+                return; // Don't navigate to undefined URLs
+            }
+            
+            console.log('[Service Worker] Navigating to:', targetUrl);
+            
             for (const client of clientList) {
                 if (new URL(client.url).pathname === new URL(targetUrl, client.url).pathname && 'focus' in client) {
                     return client.focus();

@@ -10,6 +10,7 @@ import {AlertCircle, ArrowLeft} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {createClient, type SupabaseClient} from "@supabase/supabase-js";
 import { notificationService } from "~/utils/notifications.client";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Add global type declaration for the Supabase singleton client
 declare global {
@@ -53,6 +54,11 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     const accessToken = session?.access_token ?? null;
     const refreshToken = session?.refresh_token ?? null;
     const conversationId = params.conversationId;
+    
+    // Debug logging
+    console.log("[AdminConversationView Loader] URL:", request.url);
+    console.log("[AdminConversationView Loader] Params:", params);
+    console.log("[AdminConversationView Loader] ConversationId:", conversationId);
 
     if (!user || !accessToken) { // Check for user and token
         return json({
@@ -67,11 +73,12 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             refreshToken: null
         }, {status: 401, headers});
     }
-    if (!conversationId) {
+    if (!conversationId || conversationId === 'undefined') {
+        console.error("[AdminConversationView Loader] Invalid conversationId:", conversationId);
         return json({
             conversation: null,
             messages: [],
-            error: "Conversation ID missing",
+            error: "Invalid conversation ID",
             userId: user.id,
             userFirstName: null,
             userLastName: null,
@@ -113,12 +120,16 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         .maybeSingle();
 
     if (participantError || !participantCheck) {
-        console.error("Error checking admin participation or conversation not found:", participantError?.message);
+        console.error("Error checking admin participation or conversation not found:", {
+            conversationId,
+            error: participantError?.message,
+            participantCheck
+        });
         // It's possible an admin tries to access a conversation they aren't part of (e.g., if created differently later)
         return json({
             conversation: null,
             messages: [],
-            error: "Access denied or conversation not found.",
+            error: `Access denied or conversation not found. ConversationId: ${conversationId}`,
             userId: user.id,
             userFirstName: null,
             userLastName: null,
@@ -684,13 +695,18 @@ export default function AdminConversationView() {
                                 // If no name, it will default to 'Family Member'
                             }
 
-                            await notificationService.showMessageNotification({
-                                conversationId: conversation.id,
-                                senderId: rawNewMessage.sender_id,
-                                senderName: senderName, // Use the dynamically found name
-                                messageContent: rawNewMessage.content || 'New message',
-                                timestamp: rawNewMessage.created_at || new Date().toISOString()
-                            });
+                            // Only show notification if we have a valid conversation ID
+                            if (conversation?.id) {
+                                await notificationService.showMessageNotification({
+                                    conversationId: conversation.id,
+                                    senderId: rawNewMessage.sender_id,
+                                    senderName: senderName, // Use the dynamically found name
+                                    messageContent: rawNewMessage.content || 'New message',
+                                    timestamp: rawNewMessage.created_at || new Date().toISOString()
+                                });
+                            } else {
+                                console.warn('[Admin] Skipping notification: conversation.id is undefined');
+                            }
                         }
 
                         // --- Mark conversation as read immediately since admin is viewing it ---
@@ -864,64 +880,71 @@ export default function AdminConversationView() {
 
     if (error) {
         return (
-            <div className="container mx-auto px-4 py-8">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4"/>
-                    <AlertTitle>Error Loading Conversation</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                    <Button variant="link" asChild className="mt-2">
-                        <Link to="/admin/messages">Back to Messages</Link>
-                    </Button>
-                </Alert>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="mb-6">
+                        <AppBreadcrumb items={breadcrumbPatterns.adminMessages()} />
+                        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mt-4">Error Loading Conversation</h1>
+                    </div>
+                    <Alert variant="destructive" className="mb-6">
+                        <AlertCircle className="h-4 w-4"/>
+                        <AlertTitle>Error Loading Conversation</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                        <Button variant="link" asChild className="mt-2">
+                            <Link to="/admin/messages">Back to Messages</Link>
+                        </Button>
+                    </Alert>
+                </div>
             </div>
         );
     }
 
     if (!conversation) {
         return (
-            <div className="container mx-auto px-4 py-8">
-                <Alert variant="default">
-                    <AlertCircle className="h-4 w-4"/>
-                    <AlertTitle>Not Found</AlertTitle>
-                    <AlertDescription>Conversation not found.</AlertDescription>
-                    <Button variant="link" asChild className="mt-2">
-                        <Link to="/admin/messages">Back to Messages</Link>
-                    </Button>
-                </Alert>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="mb-6">
+                        <AppBreadcrumb items={breadcrumbPatterns.adminMessages()} />
+                        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mt-4">Conversation Not Found</h1>
+                    </div>
+                    <Alert variant="default" className="mb-6">
+                        <AlertCircle className="h-4 w-4"/>
+                        <AlertTitle>Not Found</AlertTitle>
+                        <AlertDescription>Conversation not found.</AlertDescription>
+                        <Button variant="link" asChild className="mt-2">
+                            <Link to="/admin/messages">Back to Messages</Link>
+                        </Button>
+                    </Alert>
+                </div>
             </div>
         );
     }
 
     return (
-        // Use similar height calculation as family view, adjust if admin layout differs
-        <div
-            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--admin-header-height,64px)-var(--admin-footer-height,64px)-2rem)] flex flex-col page-background-styles"> {/* Add background */}
-            <div className="flex items-center mb-4">
-                <Button variant="ghost" size="icon" asChild className="mr-2">
-                    <Link to="/admin/messages" aria-label="Back to messages">
-                        <ArrowLeft className="h-5 w-5"/>
-                    </Link>
-                </Button>
-                {/* Display Subject and Participant Names */}
-                <div className="flex-1 min-w-0 ml-2">
-                    <h1 className="text-lg font-semibold truncate text-foreground">{conversation.subject || 'Conversation'}</h1> {/* Ensure foreground color */}
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+            <div className="max-w-7xl mx-auto">
+                <div className="mb-6">
+                    <AppBreadcrumb items={breadcrumbPatterns.adminMessageConversation(conversation.subject || undefined)} />
+                    <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mt-4">
+                        {conversation.subject || 'Conversation'}
+                    </h1>
                     {conversation.participant_display_names && (
-                        <p className="text-sm text-muted-foreground truncate"> {/* Use muted foreground */}
-                            With: {conversation.participant_display_names}
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            Participants: {conversation.participant_display_names}
                         </p>
                     )}
                 </div>
+
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                    <div className="flex flex-col h-[600px]">
+                        <MessageView messages={messages} currentUserId={userId}/>
+                        <MessageInput fetcher={fetcher} ref={messageInputRef} />
+                        {fetcher.data?.error && (
+                            <p className="text-destructive text-sm mt-2">{fetcher.data.error}</p>
+                        )}
+                    </div>
+                </div>
             </div>
-
-            {/* Message Display Area */}
-            <MessageView messages={messages} currentUserId={userId}/>
-
-            {/* Message Input Area */}
-            {/* Pass the ref to MessageInput, remove autoFocus prop */}
-            <MessageInput fetcher={fetcher} ref={messageInputRef} />
-            {fetcher.data?.error && (
-                <p className="text-red-500 text-sm mt-2">{fetcher.data.error}</p>
-            )}
         </div>
     );
 }

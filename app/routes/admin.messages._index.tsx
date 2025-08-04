@@ -4,7 +4,7 @@ import {useLoaderData, useRevalidator, Link} from "@remix-run/react";
 import {createClient, SupabaseClient, RealtimeChannel} from "@supabase/supabase-js"; // Import RealtimeChannel
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types";
-import {AlertCircle, MessageSquarePlus} from "lucide-react";
+import {AlertCircle, MessageSquarePlus, PlusCircle} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import AdminConversationList, {AdminConversationSummary} from "~/components/AdminConversationList";
 import { Button } from "~/components/ui/button"; // Import Button
@@ -247,26 +247,37 @@ export default function AdminMessagesIndex() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 page-background-styles"> {/* Add background */}
-            <AppBreadcrumb 
-                items={breadcrumbPatterns.adminMessages()}
-                className="mb-6"
-            />
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-semibold text-foreground">Admin Messages</h1> {/* Add text color */}
-                {/* Add button for admins to start new conversations - Use default variant */}
-                <Button asChild>
-                    <Link to="/admin/messages/new">
-                        <MessageSquarePlus className="mr-2 h-4 w-4" /> New Message
-                    </Link>
-                </Button>
+        <div className="max-w-7xl mx-auto py-8 px-4">
+            {/* Header */}
+            <div className="mb-8">
+                <AppBreadcrumb items={breadcrumbPatterns.adminMessages()} />
+                <div className="flex justify-between items-center mt-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Messages</h1>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage conversations with families and students</p>
+                    </div>
+                    <Button asChild>
+                        <Link to="/admin/messages/new">
+                            <PlusCircle className="w-4 h-4 mr-2" />
+                            New Message
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
-            {conversations.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400">No conversations found.</p>
-            ) : (
-                <AdminConversationList conversations={conversations} basePath="/admin/messages"/>
+            {/* Error Alert */}
+            {error && (
+                <div className="mb-6">
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4"/>
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                </div>
             )}
+
+            {/* Main Content */}
+            <AdminConversationList conversations={conversations} basePath="/admin/messages"/>
         </div>
     );
 }

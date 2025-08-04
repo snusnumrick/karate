@@ -71,8 +71,9 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     }
     loaderData.userId = user.id;
 
-    if (!conversationId) {
-        loaderData.error = "Conversation ID missing";
+    if (!conversationId || conversationId === 'undefined') {
+        console.error("[FamilyConversationView Loader] Invalid conversationId:", conversationId);
+        loaderData.error = "Invalid conversation ID";
         return json(loaderData, {status: 400, headers});
     }
 
@@ -236,8 +237,9 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     if (!user) {
         return json({error: "User not authenticated"}, {status: 401, headers});
     }
-    if (!conversationId) {
-        return json({error: "Conversation ID missing"}, {status: 400, headers});
+    if (!conversationId || conversationId === 'undefined') {
+        console.error("[FamilyConversationView Action] Invalid conversationId:", conversationId);
+        return json({error: "Invalid conversation ID"}, {status: 400, headers});
     }
     if (!content || content.trim().length === 0) {
         return json({error: "Message content cannot be empty"}, {status: 400, headers});
@@ -634,13 +636,18 @@ export default function ConversationView() {
                                 ? `${fetchedProfile.first_name || ''} ${fetchedProfile.last_name || ''}`.trim() || 'Someone'
                                 : 'Someone';
                             
-                            await notificationService.showMessageNotification({
-                                conversationId: conversation.id,
-                                senderId: rawNewMessage.sender_id,
-                                senderName: senderName,
-                                messageContent: rawNewMessage.content || 'New message',
-                                timestamp: rawNewMessage.created_at || new Date().toISOString()
-                            });
+                            // Only show notification if we have a valid conversation ID
+                            if (conversation?.id) {
+                                await notificationService.showMessageNotification({
+                                    conversationId: conversation.id,
+                                    senderId: rawNewMessage.sender_id,
+                                    senderName: senderName,
+                                    messageContent: rawNewMessage.content || 'New message',
+                                    timestamp: rawNewMessage.created_at || new Date().toISOString()
+                                });
+                            } else {
+                                console.warn('[Family] Skipping notification: conversation.id is undefined');
+                            }
                         }
 
                         // --- Mark conversation as read immediately since user is viewing it ---
