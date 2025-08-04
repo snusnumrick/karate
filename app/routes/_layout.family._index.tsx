@@ -388,7 +388,7 @@ export default function FamilyDashboard() {
     const familyDisplayName = family.name || `Your Family Portal`;
 
     return (
-        <div className="page-background-styles">
+        <div className="min-h-screen page-background-styles text-foreground">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header Section */}
                 <div className="text-center mb-12">

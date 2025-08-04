@@ -478,24 +478,27 @@ export default function StudentDetailPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl student-payment-page">
-            <AppBreadcrumb 
-                items={isEditing 
-                    ? [
-                        { label: "Family Portal", href: "/family" },
-                        { label: `${student.first_name} ${student.last_name}`, onClick: () => setIsEditing(false) },
-                        { label: "Edit", current: true },
-                      ]
-                    : breadcrumbPatterns.familyStudentDetail(student.first_name, student.last_name)
-                } 
-                className="mb-6" 
-            />
+                <AppBreadcrumb 
+                    items={isEditing 
+                        ? [
+                            { label: "Family Portal", href: "/family" },
+                            { label: `${student.first_name} ${student.last_name}`, onClick: () => setIsEditing(false) },
+                            { label: "Edit", current: true },
+                          ]
+                        : breadcrumbPatterns.familyStudentDetail(student.first_name, student.last_name)
+                    } 
+                    className="mb-6" 
+                />
 
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                    {student.first_name} {student.last_name}
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-2">Student Profile</p>
-            </div>
+                {/* Header Section */}
+                <div className="text-center mb-12">
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                        {student.first_name} {student.last_name}
+                    </h1>
+                    <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                        {isEditing ? 'Edit student information and health details' : 'Manage student profile, enrollments, and track progress'}
+                    </p>
+                </div>
 
             {/* Display action feedback */}
             {actionData?.error && (
