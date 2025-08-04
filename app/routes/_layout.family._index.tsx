@@ -49,11 +49,11 @@ type UpcomingClassSession = {
 };
 
 // Define student attendance type
-type StudentAttendance = {
+interface StudentAttendance {
     student_id: string;
     student_name: string;
     last_session_date?: string;
-    attendance_status?: 'Present' | 'Absent';
+    attendance_status?: 'Present' | 'Absent' | 'Excused' | 'Late';
 };
 
 interface LoaderData {
@@ -293,7 +293,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     if (studentsWithEligibility.length > 0) {
         try {
             const attendancePromises = studentsWithEligibility.map(async (student) => {
-                const { data } = await supabaseServer
+                const { data, error } = await supabaseServer
                     .from('attendance')
                     .select(`
                         status,
@@ -302,14 +302,22 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
                         )
                     `)
                     .eq('student_id', student.id)
-                    .order('class_sessions.session_date', { ascending: false })
+                    .not('class_session_id', 'is', null) // Only get records with valid class sessions
+                    .order('class_sessions(session_date)', { ascending: false }) // Fixed ordering syntax
                     .limit(1);
+                
+                if (error) {
+                    console.error(`Error fetching attendance for student ${student.id}:`, error);
+                }
                 
                 return {
                     student_id: student.id,
                     student_name: `${student.first_name} ${student.last_name}`,
                     last_session_date: data?.[0]?.class_sessions?.session_date || undefined,
-                    attendance_status: data?.[0]?.status === 'present' ? 'Present' as const : data?.[0]?.status === 'absent' ? 'Absent' as const : undefined
+                    attendance_status: data?.[0]?.status === 'present' ? 'Present' as const : 
+                                     data?.[0]?.status === 'absent' ? 'Absent' as const : 
+                                     data?.[0]?.status === 'excused' ? 'Excused' as const :
+                                     data?.[0]?.status === 'late' ? 'Late' as const : undefined
                 };
             });
             
@@ -602,7 +610,12 @@ export default function FamilyDashboard() {
                                         <div className="text-right">
                                             {attendance.attendance_status ? (
                                                 <Badge 
-                                                    variant={attendance.attendance_status === 'Present' ? 'default' : 'destructive'}
+                                                    variant={
+                                                        attendance.attendance_status === 'Present' ? 'default' : 
+                                                        attendance.attendance_status === 'Absent' ? 'destructive' :
+                                                        attendance.attendance_status === 'Excused' ? 'secondary' :
+                                                        attendance.attendance_status === 'Late' ? 'outline' : 'outline'
+                                                    }
                                                     className="text-sm px-3 py-1 font-medium"
                                                 >
                                                     {attendance.attendance_status}
