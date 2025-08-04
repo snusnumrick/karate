@@ -40,7 +40,7 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
 
                         {/* Desktop Navigation */}
                         <nav className="hidden lg:flex lg:space-x-8 lg:items-center">
-                            <NavLink to="/classes">Classes</NavLink>
+                            <NavLink to="/classes">Programs</NavLink>
                             <NavLink to="/about">About</NavLink>
                             {!user && (
                                 <NavLink to="/register">Register</NavLink>

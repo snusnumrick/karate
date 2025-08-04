@@ -15,6 +15,10 @@ type ClassWithSchedule = {
         description: string | null;
         min_age: number | null;
         max_age: number | null;
+        duration_minutes: number | null;
+        max_capacity: number | null;
+        monthly_fee: number | null;
+        yearly_fee: number | null;
     } | null;
     schedules: Array<{
         day_of_week: string;
@@ -171,29 +175,48 @@ export async function loader(_: LoaderFunctionArgs) {
           name,
           description,
           min_age,
-          max_age
-        ),
-        schedules:class_schedules(
-          day_of_week,
-          start_time
+          max_age,
+          duration_minutes,
+          max_capacity,
+          monthly_fee,
+          yearly_fee
         )
       `)
             .eq('is_active', true)
             .order('name');
+
+        // Get schedules separately to avoid foreign key issues
+        let schedulesData: any[] = [];
+        if (classesData && classesData.length > 0) {
+            const classIds = classesData.map(c => c.id);
+            const { data: schedules } = await supabase
+                .from('class_schedules')
+                .select('class_id, day_of_week, start_time')
+                .in('class_id', classIds);
+            schedulesData = schedules || [];
+        }
 
         if (error) {
             console.error('Error fetching classes:', error);
         }
 
         // Transform the data to match our expected type
-        const classes: ClassWithSchedule[] = (classesData || []).map(classItem => ({
-            id: classItem.id,
-            name: classItem.name,
-            description: classItem.description,
-            is_active: classItem.is_active,
-            program: Array.isArray(classItem.program) ? classItem.program[0] || null : classItem.program,
-            schedules: classItem.schedules || []
-        }));
+        const classes: ClassWithSchedule[] = (classesData || []).map(classItem => {
+            // Find schedules for this class
+            const classSchedules = schedulesData.filter(schedule => schedule.class_id === classItem.id);
+            
+            return {
+                id: classItem.id,
+                name: classItem.name,
+                description: classItem.description,
+                is_active: classItem.is_active,
+                program: Array.isArray(classItem.program) ? classItem.program[0] || null : classItem.program,
+                schedules: classSchedules.map(schedule => ({
+                    day_of_week: schedule.day_of_week,
+                    start_time: schedule.start_time
+                }))
+            };
+        });
 
         return json<LoaderData>(
             { programs, classes },
@@ -323,13 +346,16 @@ export default function ClassesPage() {
 
         return tiers;
     };
+
+    console.log('classes', classes);
+
     return (
         <div className="page-background-styles py-12" suppressHydrationWarning>
             {/* Hero Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">
                     <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
-                        Karate Classes
+                        Karate Programs
                     </h1>
                     <p className="mt-3 max-w-2xl mx-auto text-xl page-subheader-styles sm:mt-4">
                         Choose from our diverse range of karate programs designed for all ages and skill levels
@@ -421,59 +447,74 @@ export default function ClassesPage() {
                     </div>
 
                     <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
-                        {classes.length > 0 ? (
-                            <div className="space-y-8">
-                                {classes.map((classItem) => (
-                                    <div
-                                        key={classItem.id}
-                                        className="border-b border-gray-200 dark:border-gray-700 last:border-b-0 pb-8 last:pb-0"
-                                    >
-                                        <div className="mb-6">
-                                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                                                {classItem.name}
-                                            </h3>
-                                            {classItem.program && (
-                                                <div className="inline-flex items-center bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-medium mb-3">
-                                                    {classItem.program.name}
-                                                    {classItem.program.min_age && classItem.program.max_age && (
-                                                        <span className="ml-2 text-green-600 dark:text-green-300">
-                                                            (Ages {classItem.program.min_age}-{classItem.program.max_age})
-                                                        </span>
-                                                    )}
+                        {(() => {
+                            // Filter classes to only show those with programs that have:
+                            // 1. max_capacity > 1 (group classes, not 1:1)
+                            // 2. At least one of monthly_fee or yearly_fee defined and > 0
+                            const filteredClasses = classes.filter(classItem => {
+                                if (!classItem.program) return false;
+                                
+                                const hasGroupCapacity = !classItem.program.max_capacity || classItem.program.max_capacity > 1;
+                                const hasMonthlyOrYearlyFee = 
+                                    (classItem.program.monthly_fee && classItem.program.monthly_fee > 0) ||
+                                    (classItem.program.yearly_fee && classItem.program.yearly_fee > 0);
+                                
+                                return hasGroupCapacity && hasMonthlyOrYearlyFee;
+                            });
+                            
+                            return filteredClasses.length > 0 ? (
+                                <div className="space-y-8">
+                                    {filteredClasses.map((classItem) => (
+                                        <div
+                                            key={classItem.id}
+                                            className="border-b border-gray-200 dark:border-gray-700 last:border-b-0 pb-8 last:pb-0"
+                                        >
+                                            <div className="mb-6">
+                                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                                    {classItem.name}
+                                                </h3>
+                                                {classItem.program && (
+                                                    <div className="inline-flex items-center bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-medium mb-3">
+                                                        {classItem.program.name}
+                                                        {classItem.program.min_age && classItem.program.max_age && (
+                                                            <span className="ml-2 text-green-600 dark:text-green-300">
+                                                                (Ages {classItem.program.min_age}-{classItem.program.max_age})
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {classItem.description && (
+                                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                                        {classItem.description}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {classItem.schedules.length > 0 && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {classItem.schedules.map((schedule, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
+                                                        >
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <span className="text-green-600 dark:text-green-400 font-bold text-lg">
+                                                                    {formatDayName(schedule.day_of_week)}
+                                                                </span>
+                                                                <span className="text-gray-900 dark:text-white font-medium">
+                                                                    {formatTime(schedule.start_time)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                                                                at {siteConfig.location.address}
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
-                                            {classItem.description && (
-                                                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                                                    {classItem.description}
-                                                </p>
-                                            )}
                                         </div>
-
-                                        {classItem.schedules.length > 0 && (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {classItem.schedules.map((schedule, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
-                                                    >
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">
-                                                                {formatDayName(schedule.day_of_week)}
-                                                            </span>
-                                                            <span className="text-gray-900 dark:text-white font-medium">
-                                                                {formatTime(schedule.start_time)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                                                            at {siteConfig.location.address}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
                         ) : (
                             <div className="text-center py-8">
                                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
@@ -496,7 +537,8 @@ export default function ClassesPage() {
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        );
+                        })()}
                     </div>
                 </section>
 
