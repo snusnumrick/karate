@@ -158,7 +158,7 @@ export default function RegisterPage() {
     const isBaseRegisterRoute = location.pathname === '/register';
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {isBaseRegisterRoute ? (
                     <>
@@ -667,7 +667,7 @@ export function ErrorBoundary() {
 
     return (
         <div
-            className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground flex items-center justify-center">
+            className="min-h-screen page-background-styles py-12 text-foreground flex items-center justify-center">
             <div className="max-w-md w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <Alert variant="destructive"
                        className="bg-white dark:bg-gray-800 shadow-md border dark:border-gray-700">

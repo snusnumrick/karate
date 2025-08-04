@@ -268,7 +268,7 @@ export function ErrorBoundary() {
     // Use bg-amber-50 to match the background of other main pages like login/register.
     return (
         <div
-            className="flex flex-col min-h-screen items-center justify-center gap-4 p-4 text-foreground bg-amber-50 dark:bg-gray-800">
+            className="flex flex-col min-h-screen items-center justify-center gap-4 p-4 text-foreground page-background-styles">
             <h1 className="text-4xl font-bold">{status} Error</h1>
             <p className="text-lg text-muted-foreground">{errorMessage}</p>
             {process.env.NODE_ENV === "development" && error && ( // Add check for error existence

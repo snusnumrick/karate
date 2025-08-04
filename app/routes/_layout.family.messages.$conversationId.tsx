@@ -779,7 +779,7 @@ export default function ConversationView() {
 
     return (
         <div
-            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--header-height)-var(--footer-height)-2rem)] flex flex-col bg-amber-50 dark:bg-gray-800"> {/* Add background, Adjust height calculation */}
+            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--header-height)-var(--footer-height)-2rem)] flex flex-col page-background-styles"> {/* Add background, Adjust height calculation */}
             <div className="flex items-center mb-4">
                 <Button variant="ghost" size="icon" asChild className="mr-2">
                     <Link to="/family/messages" aria-label="Back to messages">

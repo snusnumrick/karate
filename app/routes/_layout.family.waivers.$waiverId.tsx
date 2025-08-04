@@ -154,7 +154,7 @@ export function ErrorBoundary() {
     // Check if it's a response error (like our 404)
     if (isRouteErrorResponse(error)) {
         return (
-            <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+            <div className="min-h-screen page-background-styles py-12 text-foreground">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700 text-center">
                         <h1 className="text-2xl font-bold text-red-600 mb-4">
@@ -172,7 +172,7 @@ export function ErrorBoundary() {
 
     // Generic error for unexpected issues
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700 text-center">
                     <h1 className="text-2xl font-bold text-red-600 mb-4">An Unexpected Error Occurred</h1>

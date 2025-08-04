@@ -56,7 +56,7 @@ export default function InvoiceTemplatesIndex() {
     };
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+        <div className="min-h-screen page-background-styles">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <AppBreadcrumb items={breadcrumbPatterns.adminInvoiceTemplates()} className="mb-6" />
                 

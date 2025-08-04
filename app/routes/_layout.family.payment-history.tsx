@@ -51,7 +51,7 @@ export default function PaymentHistoryPage() {
     const {payments} = useLoaderData<typeof loader>();
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AppBreadcrumb items={breadcrumbPatterns.familyPaymentHistory()} className="mb-6" />
 
@@ -168,7 +168,7 @@ export function ErrorBoundary() {
     const error: Error = new Error("An unknown error occurred on the payment history page."); // Placeholder
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AppBreadcrumb items={breadcrumbPatterns.familyPaymentHistory()} className="mb-6" />
                 

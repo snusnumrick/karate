@@ -247,7 +247,7 @@ export default function AdminMessagesIndex() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 bg-amber-50 dark:bg-gray-800"> {/* Add background */}
+        <div className="container mx-auto px-4 py-8 page-background-styles"> {/* Add background */}
             <AppBreadcrumb 
                 items={breadcrumbPatterns.adminMessages()}
                 className="mb-6"

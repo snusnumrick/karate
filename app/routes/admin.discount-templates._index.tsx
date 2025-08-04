@@ -19,7 +19,7 @@ export default function DiscountTemplatesIndex() {
   const { templates } = useLoaderData<typeof loader>();
 
   return (
-    <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+    <div className="min-h-screen page-background-styles py-12 text-foreground">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700">
           <AppBreadcrumb items={breadcrumbPatterns.adminDiscountTemplates()} className="mb-6" />

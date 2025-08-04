@@ -895,7 +895,7 @@ export default function AdminConversationView() {
     return (
         // Use similar height calculation as family view, adjust if admin layout differs
         <div
-            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--admin-header-height,64px)-var(--admin-footer-height,64px)-2rem)] flex flex-col bg-amber-50 dark:bg-gray-800"> {/* Add background */}
+            className="container mx-auto px-4 py-8 h-[calc(100vh-var(--admin-header-height,64px)-var(--admin-footer-height,64px)-2rem)] flex flex-col page-background-styles"> {/* Add background */}
             <div className="flex items-center mb-4">
                 <Button variant="ghost" size="icon" asChild className="mr-2">
                     <Link to="/admin/messages" aria-label="Back to messages">

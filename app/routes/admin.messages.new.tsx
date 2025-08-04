@@ -303,7 +303,7 @@ export default function AdminNewMessage() {
 
     return (
         // Apply standard admin background colors and container padding
-        <div className="container mx-auto px-4 py-8 max-w-2xl bg-amber-50 dark:bg-gray-800 rounded-lg shadow">
+        <div className="container mx-auto px-4 py-8 max-w-2xl page-background-styles rounded-lg shadow">
             <AppBreadcrumb 
                 items={breadcrumbPatterns.adminMessageNew()} 
                 className="mb-6"

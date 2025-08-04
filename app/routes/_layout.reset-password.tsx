@@ -104,7 +104,7 @@ export default function ResetPasswordPage() {
 
     if (!isValidSession) {
         return (
-            <div className="min-h-screen bg-amber-50 dark:bg-gray-800 flex flex-col justify-center items-center">
+            <div className="min-h-screen page-background-styles flex flex-col justify-center items-center">
                 <div className="sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="form-container-styles py-8 px-4 sm:px-10">
                         <Alert variant="destructive">
@@ -128,7 +128,7 @@ export default function ResetPasswordPage() {
     }
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 flex flex-col">
+        <div className="min-h-screen page-background-styles flex flex-col">
             <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
                 <div className="sm:mx-auto sm:w-full sm:max-w-md">
                     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">

@@ -162,7 +162,7 @@ export default function InvoiceDetailPage() {
   const canCancel = invoice.status === "sent" || invoice.status === "draft";
 
   return (
-    <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+    <div className="min-h-screen page-background-styles">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <AppBreadcrumb items={breadcrumbPatterns.adminInvoiceDetail(invoice.invoice_number, invoice.id)}  className="mb-6"/>

@@ -273,7 +273,7 @@ export default function FamilyPaymentPage() {
     // Handle case where loader found no students
     if (loaderError === "No students found in this family.") {
         return (
-            <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+            <div className="min-h-screen page-background-styles">
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     {/* Page Header */}
                     <div className="text-center mb-8">
@@ -304,7 +304,7 @@ export default function FamilyPaymentPage() {
     // Handle other potential loader errors
     if (!familyId || !studentPaymentDetails) {
         return (
-            <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+            <div className="min-h-screen page-background-styles">
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     {/* Page Header */}
                     <div className="text-center mb-8">
@@ -336,7 +336,7 @@ export default function FamilyPaymentPage() {
     const initialOption = searchParams.get('option') === 'individual' ? 'individual' : 'monthly';
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+        <div className="min-h-screen page-background-styles">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Page Header */}
                 <div className="text-center mb-8">
@@ -374,7 +374,7 @@ export function ErrorBoundary() {
     const error = useRouteError();
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800">
+        <div className="min-h-screen page-background-styles">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Page Header */}
                 <div className="text-center mb-8">

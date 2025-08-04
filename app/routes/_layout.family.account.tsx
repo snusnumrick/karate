@@ -363,7 +363,7 @@ export default function AccountSettingsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-amber-50 dark:bg-gray-800 py-12 text-foreground">
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AppBreadcrumb items={breadcrumbPatterns.familyAccount()} className="mb-6" />
 
