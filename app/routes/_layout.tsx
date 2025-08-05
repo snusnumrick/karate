@@ -22,18 +22,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 // --- 1. MODIFIED: AuthTokenSender now accepts the supabase client as a prop ---
 function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> }) {
-    console.log(`AuthTokenSender render ${supabase}`);
+    // console.log(`AuthTokenSender render ${supabase}`);
     React.useEffect(() => {
-        console.log(`AuthTokenSender useEffect ${supabase}`);
+        // console.log(`AuthTokenSender useEffect ${supabase}`);
         // We already know supabase exists because of the conditional render below
         const sendTokenToSw = (token: string | null) => {
-            console.log(`AuthTokenSender sendTokenToSw ${token}`);
+            // console.log(`AuthTokenSender sendTokenToSw ${token}`);
             if (window.navigator.serviceWorker) {
-                console.log(`AuthTokenSender sendTokenToSw navigator.serviceWorker ${token}`);
+                // console.log(`AuthTokenSender sendTokenToSw navigator.serviceWorker ${token}`);
                 navigator.serviceWorker.ready.then((registration) => {
-                    console.log(`AuthTokenSender sendTokenToSw navigator.serviceWorker.ready ${token}`);
+                    // console.log(`AuthTokenSender sendTokenToSw navigator.serviceWorker.ready ${token}`);
                     if (registration.active) {
-                        console.log(`AuthTokenSender sendTokenToSw navigator.serviceWorker.ready.active ${token}`);
+                        // console.log(`AuthTokenSender sendTokenToSw navigator.serviceWorker.ready.active ${token}`);
                         registration.active.postMessage({
                             type: token ? 'SET_AUTH_TOKEN' : 'CLEAR_AUTH_TOKEN',
                             token: token,

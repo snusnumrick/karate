@@ -33,17 +33,17 @@ export async function loader({request}: LoaderFunctionArgs) {
 
 // AuthTokenSender component for admin routes
 function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> }) {
-    console.log(`Admin AuthTokenSender render ${supabase}`);
+    // console.log(`Admin AuthTokenSender render ${supabase}`);
     React.useEffect(() => {
-        console.log(`Admin AuthTokenSender useEffect ${supabase}`);
+        // console.log(`Admin AuthTokenSender useEffect ${supabase}`);
         const sendTokenToSw = (token: string | null) => {
-            console.log(`Admin AuthTokenSender sendTokenToSw ${token}`);
+            // console.log(`Admin AuthTokenSender sendTokenToSw ${token}`);
             if (window.navigator.serviceWorker) {
-                console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker ${token}`);
+                // console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker ${token}`);
                 navigator.serviceWorker.ready.then((registration) => {
-                    console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker.ready ${token}`);
+                    // console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker.ready ${token}`);
                     if (registration.active) {
-                        console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker.ready.active ${token}`);
+                        // console.log(`Admin AuthTokenSender sendTokenToSw navigator.serviceWorker.ready.active ${token}`);
                         registration.active.postMessage({
                             type: token ? 'SET_AUTH_TOKEN' : 'CLEAR_AUTH_TOKEN',
                             token: token,
