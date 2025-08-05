@@ -125,7 +125,7 @@ export default function Layout() {
             <div className={isReceiptPage ? 'print:hidden' : ''}>
                 {renderNavbar()}
             </div>
-            <main className="flex-grow pb-16 sm:pb-2">
+            <main className="flex-grow">
                 <Outlet/>
             </main>
             <div className={isReceiptPage ? 'print:hidden' : ''}>

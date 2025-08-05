@@ -24,7 +24,7 @@
     }
 
     .form-card-styles {
-        @apply bg-amber-100 dark:bg-gray-800 rounded-xl border text-card-foreground shadow;
+        @apply bg-amber-50 dark:bg-gray-800 rounded-xl border text-card-foreground shadow;
     }
 
     .form-card-alt-styles {
@@ -32,7 +32,11 @@
     }
 
     .page-background-styles {
-        @apply bg-amber-100 dark:bg-gray-800;
+        @apply bg-amber-50 dark:bg-gray-800;
+    }
+
+    .page-styles {
+        @apply min-h-screen page-background-styles py-2 lg:py-4 landscape-tablet:py-2 text-foreground;
     }
 
     .header-2-styles {

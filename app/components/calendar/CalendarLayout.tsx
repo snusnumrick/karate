@@ -7,7 +7,7 @@ interface CalendarLayoutProps {
 
 export function CalendarLayout({
   children,
-  containerClassName = "min-h-screen page-background-styles py-2 lg:py-12 landscape-tablet:py-2 text-foreground"
+  containerClassName = "page-styles"
 }: CalendarLayoutProps) {
   return (
     <div className={containerClassName}>

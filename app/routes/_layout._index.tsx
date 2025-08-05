@@ -567,7 +567,7 @@ export default function Index() {
             </div>
 
             {/* CTA Section */}
-            <div className="bg-green-600 text-white py-16">
+            <div className="bg-green-600 text-white py-16 border-b-amber-50 border-b-2 dark:border-b-0">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <h2 className="text-3xl font-bold mb-6">Ready to Begin Your Karate Journey?</h2>
                     <p className="text-xl mb-8 max-w-3xl mx-auto">
