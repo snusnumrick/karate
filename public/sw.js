@@ -122,6 +122,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const {request} = event;
     const url = new URL(request.url);
+    console.log('Service Worker: Fetching', request.url, request.mode);
 
     // Skip non-GET and external requests
     if (request.method !== 'GET' || url.origin !== location.origin) {

@@ -233,6 +233,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     const conversationId = params.conversationId;
     const formData = await request.formData();
     const content = formData.get("content") as string;
+    const url = new URL(request.url);
 
     if (!user) {
         return json({error: "User not authenticated"}, {status: 401, headers});
@@ -374,7 +375,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                         content.trim(),
                         conversationId,
                         newMessage.id,
-                        `/family/messages/${conversationId}`, // Use correct family URL
+                        `${url.origin}/admin/messages/${conversationId}`, // Use correct admin URL
                         subscription.user_id // Pass the specific recipient's user ID for quick reply
                     );
 

@@ -386,6 +386,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
     const conversationId = params.conversationId;
+    const url = new URL(request.url);
 
     // --- START: MODIFIED LOGIC ---
     // Handle both JSON (from quick reply) and FormData (from web form)
@@ -491,7 +492,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                         content.trim(),
                         conversationId,
                         newMessage.id,
-                        `/admin/messages/${conversationId}`,
+                        `${url.origin}/family/messages/${conversationId}`,
                         subscription.user_id
                     );
 
