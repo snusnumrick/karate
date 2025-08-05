@@ -130,6 +130,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
       errors.due_date = "Due date is required";
     }
 
+    // Validate that the entity has an email
+    if (entity_id) {
+      try {
+        const entitiesResult = await getInvoiceEntities();
+        const selectedEntity = entitiesResult?.entities?.find(e => e.id === entity_id);
+        if (!selectedEntity?.email) {
+          errors.entity_id = "Selected entity must have an email address";
+        }
+      } catch (error) {
+        console.error("Error validating entity email:", error);
+        errors.entity_id = "Error validating entity information";
+      }
+    }
+
     let line_items: CreateInvoiceLineItemData[] = [];
     try {
       line_items = JSON.parse(line_items_json);

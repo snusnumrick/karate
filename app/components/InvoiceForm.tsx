@@ -142,6 +142,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
   const isFormValid = () => {
     return (
       selectedEntity &&
+      selectedEntity.email && // Email is now required
       invoiceData.issue_date &&
       invoiceData.due_date &&
       invoiceData.line_items.length > 0 &&
@@ -156,6 +157,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
   // Validation status helpers
   const getValidationStatus = () => {
     const hasEntity = !!selectedEntity;
+    const hasEntityEmail = !!(selectedEntity && selectedEntity.email);
     const hasIssueDate = !!invoiceData.issue_date;
     const hasDueDate = !!invoiceData.due_date;
     const hasValidLineItems = invoiceData.line_items.length > 0 && 
@@ -166,10 +168,10 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
       );
 
     return {
-      entity: hasEntity,
+      entity: hasEntity && hasEntityEmail,
       dates: hasIssueDate && hasDueDate,
       lineItems: hasValidLineItems,
-      overall: hasEntity && hasIssueDate && hasDueDate && hasValidLineItems
+      overall: hasEntity && hasEntityEmail && hasIssueDate && hasDueDate && hasValidLineItems
     };
   };
 
@@ -184,7 +186,11 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
     const status = getValidationStatus();
     const missing = [];
     
-    if (!status.entity) missing.push("billing entity");
+    if (!selectedEntity) {
+      missing.push("billing entity");
+    } else if (!selectedEntity.email) {
+      missing.push("entity with email address");
+    }
     if (!status.dates) missing.push("issue and due dates");
     if (!status.lineItems) missing.push("valid line items");
     
@@ -542,7 +548,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                 name="action"
                 value="save_draft"
                 variant="outline"
-                disabled={isSubmitting}
+                disabled={!isFormValid() || isSubmitting}
                 className="w-full font-bold py-3 px-6 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Save className="h-4 w-4" />

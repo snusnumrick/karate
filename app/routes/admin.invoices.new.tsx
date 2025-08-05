@@ -85,13 +85,15 @@ export async function action({ request }: ActionFunctionArgs) {
       errors.due_date = "Due date is required";
     }
 
-    // For save_and_send, we also need to validate that the entity has an email
-    if (isSaveAndSend && entity_id) {
+    // Validate that the entity has an email for both save_and_send and save_draft
+    if (entity_id) {
       try {
         const entitiesResult = await getInvoiceEntities();
         const selectedEntity = entitiesResult?.entities?.find(e => e.id === entity_id);
         if (!selectedEntity?.email) {
-          errors.entity_id = "Selected entity must have an email address to send invoice";
+          errors.entity_id = isSaveAndSend 
+            ? "Selected entity must have an email address to send invoice"
+            : "Selected entity must have an email address";
         }
       } catch (error) {
         console.error("Error validating entity email:", error);
