@@ -16,6 +16,7 @@ export interface NotificationOptions {
 
 export interface MessageNotificationData {
   conversationId: string;
+  messageId?: string; // Optional messageId for unique notification tags
   senderId: string;
   senderName: string;
   messageContent: string;
@@ -213,7 +214,7 @@ class NotificationService {
         : data.messageContent,
       icon: '/icon.svg',
       badge: '/icon.svg',
-      tag: `message-${data.conversationId}`,
+      tag: `message-${data.messageId || data.conversationId}`, // Use messageId if available, fallback to conversationId
       data: {
         type: 'message',
         conversationId: data.conversationId,

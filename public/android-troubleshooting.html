@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Push Notification Troubleshooting</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #1e40af;
+            margin-top: 30px;
+        }
+        .step {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .success {
+            background: #dcfce7;
+            border-left: 4px solid #22c55e;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .browser-specific {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .emoji {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Android Push Notification Troubleshooting Guide</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> This guide is specifically for Android devices experiencing issues with push notifications in web browsers.
+        </div>
+
+        <h2>🔍 Quick Diagnosis</h2>
+        <div class="step">
+            <strong>Step 1: Check Basic Requirements</strong>
+            <ul>
+                <li>✅ Using HTTPS (not HTTP) - Android requires secure connections</li>
+                <li>✅ Browser supports Service Workers and Push API</li>
+                <li>✅ Notification permission granted</li>
+                <li>✅ Not in incognito/private browsing mode</li>
+            </ul>
+        </div>
+
+        <h2>🔧 Common Android Issues & Solutions</h2>
+
+        <div class="browser-specific">
+            <h3>🌐 Chrome on Android</h3>
+            <div class="step">
+                <strong>Enable Notifications:</strong>
+                <ol>
+                    <li>Open Chrome Settings (⋮ menu → Settings)</li>
+                    <li>Go to "Site settings" → "Notifications"</li>
+                    <li>Ensure "Notifications" is enabled</li>
+                    <li>Find your site and ensure it's set to "Allow"</li>
+                </ol>
+            </div>
+            
+            <div class="step">
+                <strong>Check Android System Settings:</strong>
+                <ol>
+                    <li>Go to Android Settings → Apps → Chrome</li>
+                    <li>Tap "Notifications" → ensure enabled</li>
+                    <li>Check "Show notifications" is ON</li>
+                    <li>Verify notification categories are enabled</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="browser-specific">
+            <h3>🦊 Firefox on Android</h3>
+            <div class="step">
+                <strong>Enable Notifications:</strong>
+                <ol>
+                    <li>Open Firefox Settings (⋮ menu → Settings)</li>
+                    <li>Go to "Site permissions" → "Notifications"</li>
+                    <li>Ensure "Ask to allow" is selected</li>
+                    <li>Check site-specific permissions</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="browser-specific">
+            <h3>🌐 Samsung Internet</h3>
+            <div class="step">
+                <strong>Enable Notifications:</strong>
+                <ol>
+                    <li>Open Samsung Internet Settings</li>
+                    <li>Go to "Sites and downloads" → "Notifications"</li>
+                    <li>Ensure notifications are enabled</li>
+                    <li>Check site permissions</li>
+                </ol>
+            </div>
+        </div>
+
+        <h2>⚡ Battery Optimization Issues</h2>
+        <div class="warning">
+            <strong>🔋 Critical:</strong> Android's battery optimization can prevent push notifications from working properly.
+        </div>
+
+        <div class="step">
+            <strong>Disable Battery Optimization for Browser:</strong>
+            <ol>
+                <li>Go to Android Settings → Battery</li>
+                <li>Find "Battery optimization" or "App power management"</li>
+                <li>Find your browser (Chrome, Firefox, etc.)</li>
+                <li>Set to "Don't optimize" or "No restrictions"</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <strong>Alternative Method:</strong>
+            <ol>
+                <li>Settings → Apps → [Your Browser]</li>
+                <li>Battery → "Optimize battery usage"</li>
+                <li>Turn OFF optimization for the browser</li>
+            </ol>
+        </div>
+
+        <h2>🔕 Do Not Disturb & Focus Modes</h2>
+        <div class="step">
+            <strong>Check Do Not Disturb Settings:</strong>
+            <ul>
+                <li>Swipe down from top → look for DND icon</li>
+                <li>Settings → Sound & vibration → Do Not Disturb</li>
+                <li>Ensure notifications from apps are allowed</li>
+                <li>Check if "Priority only" mode is blocking notifications</li>
+            </ul>
+        </div>
+
+        <h2>📶 Network & Connection Issues</h2>
+        <div class="step">
+            <strong>Network Troubleshooting:</strong>
+            <ul>
+                <li>Try both WiFi and mobile data</li>
+                <li>Disable VPN temporarily</li>
+                <li>Check if corporate/school networks block push services</li>
+                <li>Restart network connection</li>
+            </ul>
+        </div>
+
+        <h2>🧪 Testing Steps</h2>
+        <div class="step">
+            <strong>Systematic Testing:</strong>
+            <ol>
+                <li><strong>Test Basic Notifications:</strong> Use browser's built-in notification test</li>
+                <li><strong>Test Service Worker:</strong> Verify SW can show notifications</li>
+                <li><strong>Test Push:</strong> Use the app's test push button</li>
+                <li><strong>Background Test:</strong> Switch apps immediately after testing</li>
+            </ol>
+        </div>
+
+        <div class="success">
+            <strong>✅ Success Indicators:</strong>
+            <ul>
+                <li>Notification appears in Android notification panel</li>
+                <li>Sound/vibration occurs (if enabled)</li>
+                <li>Notification persists until dismissed</li>
+                <li>Works when app is in background</li>
+            </ul>
+        </div>
+
+        <h2>🔄 Reset & Refresh Solutions</h2>
+        <div class="step">
+            <strong>If All Else Fails:</strong>
+            <ol>
+                <li><strong>Clear Browser Data:</strong> Settings → Privacy → Clear browsing data</li>
+                <li><strong>Reset Site Permissions:</strong> Remove and re-grant notification permission</li>
+                <li><strong>Restart Browser:</strong> Force close and reopen</li>
+                <li><strong>Restart Device:</strong> Sometimes Android needs a fresh start</li>
+                <li><strong>Update Browser:</strong> Ensure you have the latest version</li>
+            </ol>
+        </div>
+
+        <h2>📋 Manufacturer-Specific Issues</h2>
+        
+        <div class="browser-specific">
+            <h3>📱 Samsung Devices</h3>
+            <ul>
+                <li>Check "Smart Manager" or "Device Care" settings</li>
+                <li>Disable "Put unused apps to sleep"</li>
+                <li>Add browser to "Never sleeping apps"</li>
+            </ul>
+        </div>
+
+        <div class="browser-specific">
+            <h3>📱 Huawei/Honor Devices</h3>
+            <ul>
+                <li>Check "Phone Manager" → "Protected apps"</li>
+                <li>Enable protection for your browser</li>
+                <li>Disable "Close apps after screen lock"</li>
+            </ul>
+        </div>
+
+        <div class="browser-specific">
+            <h3>📱 Xiaomi/MIUI Devices</h3>
+            <ul>
+                <li>Security → Permissions → Autostart</li>
+                <li>Enable autostart for browser</li>
+                <li>Battery saver → choose "No restrictions"</li>
+            </ul>
+        </div>
+
+        <div class="browser-specific">
+            <h3>📱 OnePlus/OxygenOS</h3>
+            <ul>
+                <li>Settings → Battery → Battery optimization</li>
+                <li>Advanced optimization → disable for browser</li>
+                <li>Check "App auto-launch" settings</li>
+            </ul>
+        </div>
+
+        <h2>🆘 Still Not Working?</h2>
+        <div class="warning">
+            <strong>Debug Information to Collect:</strong>
+            <ul>
+                <li>Android version and device model</li>
+                <li>Browser name and version</li>
+                <li>Error messages from browser console</li>
+                <li>Whether basic notifications work</li>
+                <li>Network type (WiFi/Mobile/Corporate)</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <strong>Advanced Debugging:</strong>
+            <ol>
+                <li>Open browser developer tools (if available)</li>
+                <li>Check console for error messages</li>
+                <li>Test on different networks</li>
+                <li>Try different browsers</li>
+                <li>Test with a different Android device</li>
+            </ol>
+        </div>
+
+        <div class="code">
+// Open browser console and run this test:
+if ('serviceWorker' in navigator && 'PushManager' in window) {
+    console.log('✅ Push notifications supported');
+    navigator.serviceWorker.ready.then(registration => {
+        registration.showNotification('Test', {
+            body: 'Direct SW test notification',
+            icon: '/icon.svg'
+        });
+    });
+} else {
+    console.log('❌ Push notifications not supported');
+}
+        </div>
+
+        <div class="success">
+            <strong>🎉 Success Tips:</strong>
+            <ul>
+                <li>Always test with the app in background</li>
+                <li>Wait 3-5 seconds for notifications to appear</li>
+                <li>Check notification panel if you don't see popup</li>
+                <li>Remember: Android is stricter than desktop browsers</li>
+            </ul>
+        </div>
+
+        <p style="text-align: center; margin-top: 40px; color: #6b7280;">
+            <small>Last updated: December 2024 | For technical support, contact your app administrator</small>
+        </p>
+    </div>
+</body>
+</html>

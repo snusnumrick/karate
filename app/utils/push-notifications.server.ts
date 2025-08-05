@@ -344,7 +344,7 @@ export function createMessageNotificationPayload(
     ],
     requireInteraction: true,
     vibrate: [200, 100, 200],
-    tag: `message-${conversationId}`
+    tag: `message-${messageId}` // Use messageId instead of conversationId to prevent duplicates
   };
 
   console.log('--- Push Notification Payload Debug ---');

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Debug Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        #log { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+        .log-entry { margin: 2px 0; }
+        .log-error { color: #dc3545; }
+        .log-success { color: #28a745; }
+        .log-warning { color: #ffc107; }
+        .log-info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Notification Debug Tool</h1>
+    
+    <div class="section">
+        <h2>System Status</h2>
+        <div id="systemStatus"></div>
+    </div>
+
+    <div class="section">
+        <h2>Basic Tests</h2>
+        <button onclick="requestPermission()">Request Permission</button>
+        <button onclick="testBasicNotification()">Test Basic Notification</button>
+        <button onclick="testPersistentNotification()">Test Persistent Notification</button>
+        <button onclick="testSilentNotification()">Test Silent Notification</button>
+        <button onclick="testWithActions()">Test with Actions</button>
+    </div>
+
+    <div class="section">
+        <h2>Service Worker Tests</h2>
+        <button onclick="registerServiceWorker()">Register Service Worker</button>
+        <button onclick="testServiceWorkerNotification()">Test SW Notification</button>
+        <button onclick="simulatePushEvent()">Simulate Push Event</button>
+    </div>
+
+    <div class="section">
+        <h2>Advanced Tests</h2>
+        <button onclick="testNotificationVisibility()">Test Visibility Detection</button>
+        <button onclick="testMultipleNotifications()">Test Multiple Notifications</button>
+        <button onclick="clearAllNotifications()">Clear All Notifications</button>
+    </div>
+
+    <div class="section">
+        <h2>Debug Log</h2>
+        <button onclick="clearLog()">Clear Log</button>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let logContainer = document.getElementById('log');
+        let systemStatusContainer = document.getElementById('systemStatus');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLog() {
+            logContainer.innerHTML = '';
+        }
+
+        function updateSystemStatus() {
+            let status = '';
+            
+            // Check notification support
+            if ('Notification' in window) {
+                status += `<div class="status success">✅ Notifications supported</div>`;
+                status += `<div class="status info">📋 Permission: ${Notification.permission}</div>`;
+                status += `<div class="status info">📋 Max actions: ${Notification.maxActions || 'Unknown'}</div>`;
+            } else {
+                status += `<div class="status error">❌ Notifications not supported</div>`;
+            }
+
+            // Check service worker support
+            if ('serviceWorker' in navigator) {
+                status += `<div class="status success">✅ Service Worker supported</div>`;
+                navigator.serviceWorker.ready.then(registration => {
+                    status += `<div class="status info">📋 SW Active: ${registration.active ? 'Yes' : 'No'}</div>`;
+                    systemStatusContainer.innerHTML = status;
+                });
+            } else {
+                status += `<div class="status error">❌ Service Worker not supported</div>`;
+            }
+
+            // Check push support
+            if ('PushManager' in window) {
+                status += `<div class="status success">✅ Push notifications supported</div>`;
+            } else {
+                status += `<div class="status error">❌ Push notifications not supported</div>`;
+            }
+
+            // Check page visibility
+            status += `<div class="status info">👁️ Page visible: ${document.visibilityState === 'visible'}</div>`;
+            status += `<div class="status info">🔍 Document focused: ${document.hasFocus()}</div>`;
+
+            systemStatusContainer.innerHTML = status;
+        }
+
+        async function requestPermission() {
+            if (!('Notification' in window)) {
+                log('Notifications not supported', 'error');
+                return;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                log(`Permission result: ${permission}`, permission === 'granted' ? 'success' : 'warning');
+                updateSystemStatus();
+            } catch (error) {
+                log(`Permission request failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testBasicNotification() {
+            if (Notification.permission !== 'granted') {
+                log('Permission not granted', 'error');
+                return;
+            }
+
+            try {
+                const notification = new Notification('Basic Test', {
+                    body: 'This is a basic notification test',
+                    icon: '/icon.svg',
+                    tag: 'basic-test'
+                });
+
+                notification.onclick = () => {
+                    log('Basic notification clicked', 'success');
+                    notification.close();
+                };
+
+                notification.onshow = () => log('Basic notification shown', 'success');
+                notification.onerror = (e) => log(`Basic notification error: ${e}`, 'error');
+                notification.onclose = () => log('Basic notification closed', 'info');
+
+                log('Basic notification created', 'info');
+            } catch (error) {
+                log(`Basic notification failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testPersistentNotification() {
+            if (Notification.permission !== 'granted') {
+                log('Permission not granted', 'error');
+                return;
+            }
+
+            try {
+                const notification = new Notification('Persistent Test', {
+                    body: 'This notification requires interaction',
+                    icon: '/icon.svg',
+                    tag: 'persistent-test',
+                    requireInteraction: true,
+                    vibrate: [200, 100, 200]
+                });
+
+                notification.onclick = () => {
+                    log('Persistent notification clicked', 'success');
+                    notification.close();
+                };
+
+                log('Persistent notification created', 'info');
+            } catch (error) {
+                log(`Persistent notification failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testSilentNotification() {
+            if (Notification.permission !== 'granted') {
+                log('Permission not granted', 'error');
+                return;
+            }
+
+            try {
+                const notification = new Notification('Silent Test', {
+                    body: 'This is a silent notification',
+                    icon: '/icon.svg',
+                    tag: 'silent-test',
+                    silent: true
+                });
+
+                notification.onclick = () => {
+                    log('Silent notification clicked', 'success');
+                    notification.close();
+                };
+
+                log('Silent notification created', 'info');
+            } catch (error) {
+                log(`Silent notification failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testWithActions() {
+            if (Notification.permission !== 'granted') {
+                log('Permission not granted', 'error');
+                return;
+            }
+
+            try {
+                const notification = new Notification('Actions Test', {
+                    body: 'This notification has actions',
+                    icon: '/icon.svg',
+                    tag: 'actions-test',
+                    actions: [
+                        { action: 'view', title: 'View' },
+                        { action: 'dismiss', title: 'Dismiss' }
+                    ]
+                });
+
+                log('Actions notification created', 'info');
+            } catch (error) {
+                log(`Actions notification failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) {
+                log('Service Worker not supported', 'error');
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                log('Service Worker registered successfully', 'success');
+                updateSystemStatus();
+            } catch (error) {
+                log(`Service Worker registration failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testServiceWorkerNotification() {
+            if (!('serviceWorker' in navigator)) {
+                log('Service Worker not supported', 'error');
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.showNotification('SW Test', {
+                    body: 'This notification is from the service worker',
+                    icon: '/icon.svg',
+                    tag: 'sw-test',
+                    requireInteraction: true
+                });
+                log('Service Worker notification created', 'success');
+            } catch (error) {
+                log(`Service Worker notification failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function simulatePushEvent() {
+            if (!('serviceWorker' in navigator)) {
+                log('Service Worker not supported', 'error');
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                
+                // Simulate the exact payload from our test endpoint
+                const testPayload = {
+                    type: 'test',
+                    title: 'Simulated Push Test',
+                    body: 'This simulates a push notification from the server',
+                    icon: '/icon.svg',
+                    badge: '/icon.svg',
+                    data: {
+                        url: '/admin/messages',
+                        timestamp: Date.now(),
+                        userId: 'test-user',
+                        conversationId: 'test-conversation'
+                    },
+                    actions: [
+                        { action: 'view', title: 'View Details', icon: '/icon.svg' },
+                        { action: 'dismiss', title: 'Dismiss', icon: '/icon.svg' }
+                    ]
+                };
+
+                await registration.showNotification(testPayload.title, {
+                    body: testPayload.body,
+                    icon: testPayload.icon,
+                    badge: testPayload.badge,
+                    tag: 'simulated-push',
+                    data: testPayload.data,
+                    actions: testPayload.actions,
+                    requireInteraction: true,
+                    vibrate: [300, 200, 300]
+                });
+
+                log('Simulated push notification created', 'success');
+            } catch (error) {
+                log(`Simulated push failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testNotificationVisibility() {
+            log(`Page visibility: ${document.visibilityState}`, 'info');
+            log(`Document focused: ${document.hasFocus()}`, 'info');
+            log(`Window focused: ${window.document.hasFocus()}`, 'info');
+            
+            // Test notification while page is visible
+            if (Notification.permission === 'granted') {
+                const notification = new Notification('Visibility Test', {
+                    body: `Created while page is ${document.visibilityState}`,
+                    tag: 'visibility-test'
+                });
+                log(`Notification created while page is ${document.visibilityState}`, 'info');
+            }
+        }
+
+        async function testMultipleNotifications() {
+            if (Notification.permission !== 'granted') {
+                log('Permission not granted', 'error');
+                return;
+            }
+
+            for (let i = 1; i <= 3; i++) {
+                setTimeout(() => {
+                    const notification = new Notification(`Multiple Test ${i}`, {
+                        body: `This is notification number ${i}`,
+                        tag: `multiple-test-${i}`,
+                        icon: '/icon.svg'
+                    });
+                    log(`Created notification ${i}`, 'info');
+                }, i * 1000);
+            }
+        }
+
+        async function clearAllNotifications() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    const notifications = await registration.getNotifications();
+                    notifications.forEach(notification => notification.close());
+                    log(`Cleared ${notifications.length} notifications`, 'success');
+                } catch (error) {
+                    log(`Failed to clear notifications: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Listen for visibility changes
+        document.addEventListener('visibilitychange', () => {
+            log(`Page visibility changed to: ${document.visibilityState}`, 'info');
+            updateSystemStatus();
+        });
+
+        // Listen for focus changes
+        window.addEventListener('focus', () => {
+            log('Window gained focus', 'info');
+            updateSystemStatus();
+        });
+
+        window.addEventListener('blur', () => {
+            log('Window lost focus', 'info');
+            updateSystemStatus();
+        });
+
+        // Initialize
+        updateSystemStatus();
+        log('Notification Debug Tool initialized', 'success');
+    </script>
+</body>
+</html>

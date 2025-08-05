@@ -86,6 +86,35 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
 
     setIsLoading(true);
     try {
+      // Detect Android for enhanced error handling
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const isHTTPS = window.location.protocol === 'https:';
+      
+      console.log(`🔍 Subscribing to push notifications - Android: ${isAndroid}, HTTPS: ${isHTTPS}`);
+      
+      // Android-specific checks
+      if (isAndroid && !isHTTPS && window.location.hostname !== 'localhost') {
+        throw new Error('Android devices require HTTPS for push notifications to work properly');
+      }
+
+      // Check for Android-specific requirements
+      if (isAndroid) {
+        console.log('📱 Using Android-optimized subscription flow');
+        
+        if (!('serviceWorker' in navigator)) {
+          throw new Error('Service Workers not supported on this Android device');
+        }
+        
+        if (!('PushManager' in window)) {
+          throw new Error('Push messaging not supported on this Android device');
+        }
+        
+        // Check if we're in a secure context
+        if (!window.isSecureContext) {
+          throw new Error('Push notifications require a secure context (HTTPS) on Android');
+        }
+      }
+
       const registration = await navigator.serviceWorker.ready;
       
       const response = await fetch('/api/push/vapid-key');
@@ -95,13 +124,15 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       const data = await response.json();
       const vapidPublicKey = data.publicKey;
       
+      console.log('📤 Creating push subscription...');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       });
 
-      // Send subscription to server (you'll need to implement this endpoint)
-      await fetch('/api/push/subscribe', {
+      console.log('📤 Sending subscription to server...');
+      // Send subscription to server with timeout for mobile networks
+      const subscribeResponse = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,13 +143,40 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
             p256dh: arrayBufferToBase64(subscription.getKey('p256dh')!),
             auth: arrayBufferToBase64(subscription.getKey('auth')!)
           }
-        })
+        }),
+        signal: AbortSignal.timeout(10000) // 10 second timeout for mobile networks
       });
 
+      if (!subscribeResponse.ok) {
+        throw new Error(`Failed to register subscription with server: ${subscribeResponse.status}`);
+      }
+
       setPushSubscribed(true);
-      console.log('Successfully subscribed to push notifications');
+      console.log('✅ Successfully subscribed to push notifications');
+      
+      if (isAndroid) {
+        console.log('📱 Android subscription successful! You may need to:');
+        console.log('   - Disable battery optimization for your browser');
+        console.log('   - Check notification settings in Android Settings');
+        console.log('   - Ensure Do Not Disturb is not blocking notifications');
+      }
     } catch (error) {
-      console.error('Error subscribing to push notifications:', error);
+      console.error('❌ Error subscribing to push notifications:', error);
+      
+      // Enhanced error handling for Android
+      if (error instanceof Error) {
+        if (error.name === 'TimeoutError') {
+          alert('Subscription timed out. Please check your internet connection and try again.');
+        } else if (error.name === 'NotAllowedError') {
+          alert('Push notifications were denied. Please enable notifications in your browser settings.');
+        } else if (error.name === 'NotSupportedError') {
+          alert('Push notifications are not supported on this device/browser.');
+        } else {
+          alert(`Subscription failed: ${error.message}`);
+        }
+      } else {
+        alert('An unknown error occurred while subscribing to push notifications.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -182,75 +240,172 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
 
     setIsTestingPush(true);
     try {
-      // First try a basic browser notification to see if those work
+      // Enhanced debugging for Android devices
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const isChrome = /Chrome/i.test(navigator.userAgent);
+      const isHTTPS = window.location.protocol === 'https:';
+      
+      console.log('🔍 Device/Browser Detection:');
+      console.log(`   - Android: ${isAndroid}`);
+      console.log(`   - Chrome: ${isChrome}`);
+      console.log(`   - HTTPS: ${isHTTPS}`);
+      console.log(`   - User Agent: ${navigator.userAgent}`);
+
+      // Check if we're on Android without HTTPS
+      if (isAndroid && !isHTTPS && window.location.hostname !== 'localhost') {
+        console.warn('⚠️ Android devices require HTTPS for push notifications to work properly');
+        alert('Android devices require HTTPS for push notifications. Please access this site via HTTPS.');
+        return;
+      }
+
+      // First verify service worker is ready and subscription is valid
+      console.log('🔍 Verifying service worker and subscription...');
+      const registration = await navigator.serviceWorker.ready;
+      const currentSubscription = await registration.pushManager.getSubscription();
+      
+      if (!currentSubscription) {
+        console.error('❌ No push subscription found during test');
+        alert('Push subscription lost. Please refresh the page and try again.');
+        return;
+      }
+
+      console.log('✅ Service worker ready and subscription valid');
+      console.log('📱 Subscription endpoint:', currentSubscription.endpoint.substring(0, 50) + '...');
+
+      // Test basic browser notification first (if supported)
       if (permission === 'granted') {
         console.log('🧪 Testing basic browser notification first...');
-        const basicNotification = new Notification('Basic Test', {
-          body: 'If you see this, basic notifications work!',
+        try {
+          const basicNotification = new Notification('Basic Test', {
+            body: 'If you see this, basic notifications work!',
+            icon: '/icon.svg',
+            tag: 'basic-test',
+            requireInteraction: false
+          });
+          
+          basicNotification.onclick = () => {
+            console.log('✅ Basic notification clicked');
+            basicNotification.close();
+          };
+
+          // Auto-close after 3 seconds
+          setTimeout(() => {
+            basicNotification.close();
+          }, 3000);
+        } catch (basicError) {
+          console.warn('⚠️ Basic notification failed:', basicError);
+        }
+      }
+
+      // Test service worker notification directly
+      console.log('🧪 Testing direct service worker notification...');
+      try {
+        await registration.showNotification('SW Direct Test', {
+          body: 'This is a direct service worker notification test',
           icon: '/icon.svg',
-          tag: 'basic-test'
+          tag: 'sw-direct-test',
+          requireInteraction: true
         });
-        
-        basicNotification.onclick = () => {
-          console.log('✅ Basic notification clicked');
-          basicNotification.close();
-        };
-        
-        // Wait a moment then test service worker notification
-        setTimeout(async () => {
-          console.log('🧪 Now testing service worker notification...');
-          try {
-            const registration = await navigator.serviceWorker.ready;
-            await registration.showNotification('SW Direct Test', {
-               body: 'This is a direct service worker notification test',
-               icon: '/icon.svg',
-               tag: 'sw-direct-test',
-               requireInteraction: true
-             });
-            console.log('✅ Service worker notification created');
-          } catch (swError) {
-            console.error('❌ Service worker notification failed:', swError);
-          }
-        }, 2000);
+        console.log('✅ Service worker notification created successfully');
+      } catch (swError) {
+        console.error('❌ Service worker notification failed:', swError);
+        if (isAndroid) {
+          console.warn('⚠️ This might indicate Android-specific notification issues');
+        }
       }
 
       console.log('🧪 Starting test push notification...');
-      console.log('💡 To see the notification:');
-      console.log('   1. Click this button');
-      console.log('   2. IMMEDIATELY switch to another tab or minimize this window');
-      console.log('   3. The notification should appear within 1-2 seconds');
-      console.log('💡 On macOS: Check System Preferences > Notifications > [Your Browser] if you don\'t see it');
+      
+      // Android-specific instructions
+      if (isAndroid) {
+        console.log('📱 Android Instructions:');
+        console.log('   1. Click this button');
+        console.log('   2. IMMEDIATELY switch to another app or home screen');
+        console.log('   3. The notification should appear in 1-3 seconds');
+        console.log('   4. Check notification panel if you don\'t see it');
+        console.log('💡 Android: Check Settings > Apps > [Browser] > Notifications if issues persist');
+      } else {
+        console.log('💡 Desktop Instructions:');
+        console.log('   1. Click this button');
+        console.log('   2. IMMEDIATELY switch to another tab or minimize this window');
+        console.log('   3. The notification should appear within 1-2 seconds');
+        console.log('💡 Desktop: Check browser notification settings if you don\'t see it');
+      }
 
-      // Also create a browser notification with instructions
+      // Show instructions notification
       if (permission === 'granted') {
         new Notification('Test Instructions', {
-          body: 'Switch tabs NOW to see the push notification test!',
+          body: isAndroid ? 'Switch to another app NOW to see the push test!' : 'Switch tabs NOW to see the push notification test!',
           icon: '/icon.svg',
-          tag: 'test-instructions'
+          tag: 'test-instructions',
+          requireInteraction: false
         });
       }
 
-      // Then send the push notification
+      // Add a small delay for Android devices
+      if (isAndroid) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Send the push notification with enhanced error handling
+      console.log('📤 Sending push notification to server...');
       const response = await fetch('/api/push/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        // Add timeout for mobile networks
+        signal: AbortSignal.timeout(10000)
       });
+
+      const responseData = await response.json().catch(() => ({}));
 
       if (response.ok) {
         console.log('✅ Test push notification sent successfully');
-        console.log('🔍 If you don\'t see a notification, check:');
-        console.log('   - Browser notification settings');
-        console.log('   - System notification settings');
-        console.log('   - Make sure you switched tabs/minimized window');
+        console.log('📊 Server response:', responseData);
+        
+        if (isAndroid) {
+          console.log('📱 Android troubleshooting:');
+          console.log('   - Check notification panel');
+          console.log('   - Ensure app is not in battery optimization');
+          console.log('   - Check Do Not Disturb settings');
+          console.log('   - Verify mobile data/WiFi connection');
+        }
       } else {
         console.error('❌ Failed to send test push notification');
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Error details:', errorData);
+        console.error('📊 Server response:', responseData);
+        console.error('📊 Response status:', response.status, response.statusText);
+        
+        // Show user-friendly error message
+        if (response.status === 404) {
+          alert('Push notification service not found. Please contact support.');
+        } else if (response.status >= 500) {
+          alert('Server error occurred. Please try again later.');
+        } else {
+          alert(`Push notification failed: ${responseData.message || 'Unknown error'}`);
+        }
       }
     } catch (error) {
       console.error('❌ Error sending test push notification:', error);
+      
+      if (error instanceof Error) {
+        if (error.name === 'TimeoutError') {
+          console.error('⏰ Request timed out - possible network issue');
+          alert('Request timed out. Please check your internet connection and try again.');
+        } else if (error.name === 'NotAllowedError') {
+          console.error('🚫 Notification permission denied');
+          alert('Notification permission was denied. Please enable notifications in your browser settings.');
+        } else {
+          console.error('🔍 Full error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
+          alert(`Test failed: ${error.message}`);
+        }
+      } else {
+        alert('An unknown error occurred during the test.');
+      }
     } finally {
       setIsTestingPush(false);
     }
@@ -418,8 +573,30 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
               </div>
             </div>
             
+            {/* Android-specific guidance */}
+            {typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent) && pushSubscribed && (
+              <Alert className="mb-3">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>📱 Android Users:</strong> If test notifications don&apos;t work:
+                  <br />• Switch to another app IMMEDIATELY after clicking &quot;Test Push&quot;
+                  <br />• Check Settings → Apps → {navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Browser'} → Notifications
+                  <br />• Disable battery optimization for your browser
+                  <br />• Turn off Do Not Disturb mode
+                  <br />
+                  <a 
+                    href="/android-troubleshooting.html" 
+                    target="_blank" 
+                    className="text-blue-600 underline hover:text-blue-800"
+                  >
+                    📋 Complete Android Troubleshooting Guide
+                  </a>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* macOS-specific guidance */}
-            {typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') && pushSubscribed && (
+            {typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') && !(/Android/i.test(navigator.userAgent)) && pushSubscribed && (
               <Alert className="mb-3">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs">

@@ -237,6 +237,10 @@ self.addEventListener('sync', (event) => {
 // Handle push notifications
 self.addEventListener('push', (event) => {
     console.log('🔔 Push event received in service worker');
+    
+    // Detect Android for platform-specific handling
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    console.log(`📱 Platform detection: Android=${isAndroid}, UserAgent=${navigator.userAgent}`);
 
     let notificationData = {title: 'New Message', body: 'You have a new message.'};
 
@@ -272,30 +276,51 @@ self.addEventListener('push', (event) => {
     // Ensure actions are properly formatted and available
     let actions = [];
     if ('actions' in Notification.prototype && notificationData.actions && Array.isArray(notificationData.actions)) {
-        actions = notificationData.actions.map(action => ({
+        // Limit actions on Android (some versions have issues with too many actions)
+        const maxActions = isAndroid ? 2 : 3;
+        actions = notificationData.actions.slice(0, maxActions).map(action => ({
             action: action.action,
             title: action.title,
             icon: action.icon ? new URL(action.icon, self.location.origin).href : undefined,
             type: action.type, // Preserve type for text input fields
             placeholder: action.placeholder // Preserve placeholder for text input fields
         }));
-        console.log('🎬 Processed actions:', actions);
+        console.log(`🎬 Processed actions (${actions.length}/${notificationData.actions.length}):`, actions);
     } else {
         console.log('⚠️ No actions available or actions not supported');
     }
+
+    // Android-specific vibration patterns (some Android devices are picky about vibration)
+    const getVibrationPattern = (isTest = false) => {
+        if (!isAndroid) {
+            return isTest ? [300, 200, 300, 200, 300] : [200, 100, 200];
+        }
+        
+        // Android-specific patterns (shorter, more compatible)
+        if (isTest) {
+            return [200, 100, 200, 100, 200]; // Shorter pattern for Android
+        }
+        return [200, 100, 200]; // Standard pattern for Android
+    };
 
     const options = {
         body: notificationData.body,
         icon: new URL(notificationData.icon || '/icon.svg', self.location.origin).href,
         badge: new URL(notificationData.badge || '/icon.svg', self.location.origin).href,
-        tag: notificationData.tag || (isTestNotification ? 'test-notification' : `message-${notificationData.data?.conversationId || 'default'}`),
+        tag: notificationData.tag || (isTestNotification ? 'test-notification' : `message-${notificationData.data?.messageId || notificationData.data?.conversationId || 'default'}`),
         data: notificationData.data || {},
         requireInteraction: notificationData.requireInteraction || false,
-        vibrate: notificationData.vibrate || [200, 100, 200],
+        vibrate: getVibrationPattern(isTestNotification),
         actions: actions,
-        // Force show notification even when page is active (for test notifications)
         silent: false,
         renotify: true,
+        // Android-specific optimizations
+        ...(isAndroid && {
+            // Some Android versions work better with these settings
+            timestamp: Date.now(),
+            // Ensure proper icon sizing for Android
+            image: notificationData.image ? new URL(notificationData.image, self.location.origin).href : undefined
+        })
     };
 
     // Modify options for test notifications
@@ -306,8 +331,16 @@ self.addEventListener('push', (event) => {
         options.requireInteraction = true; // Make test notifications persistent
         options.silent = false; // Ensure sound/vibration
         options.renotify = true; // Force renotification
-        // Try to make it more visible
-        options.vibrate = [300, 200, 300, 200, 300];
+        options.vibrate = getVibrationPattern(true);
+        
+        // Android-specific test notification enhancements
+        if (isAndroid) {
+            console.log('📱 Applying Android-specific test notification settings');
+            // Force timestamp to ensure uniqueness
+            options.timestamp = Date.now();
+            // Ensure the notification is not grouped with others
+            options.tag = `test-notification-${Date.now()}`;
+        }
     }
 
     console.log('🎯 About to show notification with title:', notificationData.title);
@@ -315,6 +348,7 @@ self.addEventListener('push', (event) => {
     console.log('🎯 Notification type:', notificationData.type);
     console.log('🎯 Original title from payload:', notificationData.title);
     console.log('🎯 Actions count:', options.actions.length);
+    console.log(`🎯 Platform: ${isAndroid ? 'Android' : 'Desktop'}`);
 
     // Check if any clients (tabs) are currently focused
     const showNotificationPromise = self.clients.matchAll({type: 'window', includeUncontrolled: true})
@@ -326,13 +360,17 @@ self.addEventListener('push', (event) => {
             if (isTestNotification) {
                 console.log('🧪 Test notification - forcing display regardless of page visibility');
                 console.log('🧪 Test notification will use tag:', options.tag);
+                
+                if (isAndroid) {
+                    console.log('📱 Android test notification - using enhanced visibility settings');
+                }
             }
 
             // Always show the notification (browsers may still suppress if page is active)
             return self.registration.showNotification(notificationData.title, options);
         })
         .then(() => {
-            console.log(`✅ Notification displayed successfully ${self.registration.getNotifications()}`);
+            console.log(`✅ Notification displayed successfully`);
 
             // Additional debugging: Check if notification was actually created
             return self.registration.getNotifications();
@@ -342,14 +380,37 @@ self.addEventListener('push', (event) => {
             notifications.forEach((notification, index) => {
                 console.log(`   ${index + 1}. "${notification.title}" (tag: ${notification.tag})`);
             });
+            
+            // Android-specific debugging
+            if (isAndroid && notifications.length === 0) {
+                console.warn('⚠️ Android: No notifications found after creation - possible Android-specific issue');
+                console.warn('💡 Android troubleshooting:');
+                console.warn('   - Check if browser has notification permission');
+                console.warn('   - Check if device is in Do Not Disturb mode');
+                console.warn('   - Check if app is in battery optimization whitelist');
+                console.warn('   - Verify network connectivity');
+            }
         })
         .catch((error) => {
             console.error('❌ Failed to display notification:', error);
             console.error('Error details:', {
                 name: error.name,
                 message: error.message,
-                stack: error.stack
+                stack: error.stack,
+                platform: isAndroid ? 'Android' : 'Desktop'
             });
+            
+            // Android-specific error handling
+            if (isAndroid) {
+                console.error('📱 Android-specific error occurred');
+                if (error.name === 'NotAllowedError') {
+                    console.error('🚫 Android: Notification permission denied or restricted');
+                } else if (error.name === 'AbortError') {
+                    console.error('⏹️ Android: Notification was aborted (possibly by system)');
+                } else {
+                    console.error('❓ Android: Unknown notification error');
+                }
+            }
         });
 
     event.waitUntil(showNotificationPromise);

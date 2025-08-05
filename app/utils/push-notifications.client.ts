@@ -265,7 +265,7 @@ class PushNotificationService {
   }
 
   /**
-   * Test push notification
+   * Test push notification with enhanced Android support
    */
   public async testPushNotification(): Promise<boolean> {
     if (!this.subscription) {
@@ -273,7 +273,33 @@ class PushNotificationService {
       return false;
     }
 
+    // Detect Android for platform-specific handling
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isHTTPS = window.location.protocol === 'https:';
+    
+    console.log(`🔍 Testing push notification - Android: ${isAndroid}, HTTPS: ${isHTTPS}`);
+    
+    // Android-specific checks
+    if (isAndroid && !isHTTPS && window.location.hostname !== 'localhost') {
+      console.error('❌ Android requires HTTPS for push notifications');
+      throw new Error('Android devices require HTTPS for push notifications to work properly');
+    }
+
     try {
+      // Verify subscription is still valid before testing
+      const registration = await navigator.serviceWorker.ready;
+      const currentSubscription = await registration.pushManager.getSubscription();
+      
+      if (!currentSubscription || currentSubscription.endpoint !== this.subscription.endpoint) {
+        console.warn('⚠️ Subscription mismatch detected, refreshing...');
+        this.subscription = currentSubscription;
+        if (!this.subscription) {
+          throw new Error('Push subscription lost. Please refresh the page and try again.');
+        }
+      }
+
+      console.log('📤 Sending test push notification request...');
+      
       const response = await fetch('/api/push/test', {
         method: 'POST',
         headers: {
@@ -281,14 +307,96 @@ class PushNotificationService {
         },
         body: JSON.stringify({
           endpoint: this.subscription.endpoint
-        })
+        }),
+        // Add timeout for mobile networks
+        signal: AbortSignal.timeout(10000)
       });
 
-      return response.ok;
+      if (response.ok) {
+        const result = await response.json().catch(() => ({}));
+        console.log('✅ Test push notification sent successfully:', result);
+        
+        if (isAndroid) {
+          console.log('📱 Android: Switch to another app to see the notification');
+        }
+        
+        return true;
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('❌ Test push notification failed:', errorData);
+        
+        // Handle specific error cases
+        if (response.status === 410) {
+          console.error('🔄 Subscription expired, need to resubscribe');
+          await this.handleExpiredSubscription();
+        } else if (response.status === 403) {
+          console.error('🔑 VAPID key mismatch or authentication issue');
+        }
+        
+        return false;
+      }
     } catch (error) {
-      console.error('Failed to send test notification:', error);
+      console.error('❌ Failed to send test notification:', error);
+      
+      if (error instanceof Error) {
+         if (error.name === 'TimeoutError') {
+           console.error('⏰ Request timed out - possible network issue');
+         } else if (error.name === 'NotAllowedError') {
+           console.error('🚫 Notification permission denied');
+         }
+       }
+      
       return false;
     }
+  }
+
+  /**
+   * Handle expired subscription by resubscribing
+   */
+  private async handleExpiredSubscription(): Promise<void> {
+    try {
+      console.log('🔄 Handling expired subscription...');
+      
+      // Unsubscribe the old subscription
+      if (this.subscription) {
+        await this.subscription.unsubscribe();
+        this.subscription = null;
+      }
+      
+      // Create new subscription
+      await this.subscribe();
+      
+      console.log('✅ Successfully resubscribed after expiration');
+    } catch (error) {
+      console.error('❌ Failed to handle expired subscription:', error);
+    }
+  }
+
+  /**
+   * Enhanced subscription method with Android-specific optimizations
+   */
+  public async subscribeWithAndroidOptimizations(): Promise<PushSubscription | null> {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    
+    if (isAndroid) {
+      console.log('📱 Using Android-optimized subscription flow');
+      
+      // Check for Android-specific requirements
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Workers not supported on this Android device');
+      }
+      
+      if (!('PushManager' in window)) {
+        throw new Error('Push messaging not supported on this Android device');
+      }
+      
+      // Check if we're in a secure context
+      if (!window.isSecureContext) {
+        throw new Error('Push notifications require a secure context (HTTPS) on Android');
+      }
+    }
+    
+    return this.subscribe();
   }
 
   /**
