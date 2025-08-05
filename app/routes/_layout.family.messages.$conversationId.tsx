@@ -374,7 +374,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                         content.trim(),
                         conversationId,
                         newMessage.id,
-                        `/admin/messages/${conversationId}`, // Use correct admin URL
+                        `/family/messages/${conversationId}`, // Use correct family URL
                         subscription.user_id // Pass the specific recipient's user ID for quick reply
                     );
 

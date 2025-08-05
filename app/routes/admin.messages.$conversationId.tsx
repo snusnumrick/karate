@@ -491,7 +491,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
                         content.trim(),
                         conversationId,
                         newMessage.id,
-                        `/family/messages/${conversationId}`,
+                        `/admin/messages/${conversationId}`,
                         subscription.user_id
                     );
 
