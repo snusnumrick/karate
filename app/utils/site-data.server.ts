@@ -60,7 +60,7 @@ export async function getSiteData(forceRefresh = false): Promise<SiteData> {
   // Return cached data if valid and not forcing refresh
   if (!forceRefresh && isCacheValid()) {
     console.log("[getSiteData] using cache");
-    return siteDataCache;
+    return siteDataCache!; // Non-null assertion: isCacheValid() ensures siteDataCache is not null
   }
 
   try {

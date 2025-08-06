@@ -10,10 +10,18 @@ import type { SiteData } from "~/utils/site-data.server";
 let clientSiteDataCache: SiteData | null = null;
 
 /**
+ * Type for site data that may come from JSON serialization (e.g., from Remix loaders)
+ * where Date objects are serialized as strings
+ */
+type SerializedSiteData = Omit<SiteData, 'lastUpdated'> & {
+  lastUpdated: string | Date;
+};
+
+/**
  * Set site data in client-side cache (called from layout loader)
  * Handles Date deserialization from JSON
  */
-export function setSiteData(data: SiteData | any): void {
+export function setSiteData(data: SiteData | SerializedSiteData): void {
   // Handle Date deserialization if needed
   if (data.lastUpdated && typeof data.lastUpdated === 'string') {
     data.lastUpdated = new Date(data.lastUpdated);
