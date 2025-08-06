@@ -85,20 +85,16 @@ export default function Layout() {
 
     // console.log(`Layout render ${serverSession}`);
 
-    const [supabase, setSupabase] = React.useState<SupabaseClient<Database> | null>(null);
-
-    React.useEffect(() => {
-        const client = createBrowserClient<Database>(
+    // Use useMemo to ensure single client instance per environment
+    const supabase = React.useMemo(() => {
+        return createBrowserClient<Database>(
             ENV.SUPABASE_URL!,
             ENV.SUPABASE_ANON_KEY!
         );
-        setSupabase(client);
     }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
 
 
     React.useEffect(() => {
-        if (!supabase) return;
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
                 if (event === 'PASSWORD_RECOVERY') {
@@ -143,8 +139,8 @@ export default function Layout() {
                 <Footer user={user}/>
             </div>
 
-            {/* --- 2. MODIFIED: Conditionally render and pass the client as a prop --- */}
-            {supabase && <AuthTokenSender supabase={supabase} />}
+            {/* --- 2. MODIFIED: Pass the client as a prop --- */}
+            <AuthTokenSender supabase={supabase} />
         </div>
     );
 }

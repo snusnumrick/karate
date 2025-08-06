@@ -32,25 +32,30 @@ export default function Footer({ user }: { user?: Session['user'] | null }) {
         },
     });
 
-    // Load client data after hydration
+    // Load client data after hydration, but only if cache is available
     useEffect(() => {
-        try {
-            setScheduleData(getScheduleData());
-            setContactData(getContactData());
-            const businessInfo = getBusinessData();
-            setBusinessData({
-                name: businessInfo.name,
-                description: businessInfo.description,
-                url: businessInfo.url,
-                socials: {
-                    facebook: businessInfo.socials.facebook || '',
-                    instagram: businessInfo.socials.instagram || '',
-                },
-            });
-        } catch (error) {
-            // Keep fallback data if there's an error
-            console.warn('Failed to load client site data:', error);
-        }
+        // Small delay to ensure setSiteData has been called from _layout.tsx
+        const timer = setTimeout(() => {
+            try {
+                setScheduleData(getScheduleData());
+                setContactData(getContactData());
+                const businessInfo = getBusinessData();
+                setBusinessData({
+                    name: businessInfo.name,
+                    description: businessInfo.description,
+                    url: businessInfo.url,
+                    socials: {
+                        facebook: businessInfo.socials.facebook || '',
+                        instagram: businessInfo.socials.instagram || '',
+                    },
+                });
+            } catch (error) {
+                // Keep fallback data if there's an error
+                console.warn('Failed to load client site data:', error);
+            }
+        }, 100); // Small delay to allow cache to be populated
+
+        return () => clearTimeout(timer);
     }, []);
 
     // Define base links

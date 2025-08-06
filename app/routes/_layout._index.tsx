@@ -7,6 +7,8 @@ import { siteConfig } from "~/config/site"; // Import site config
 import { EventService } from "~/services/event.server";
 import type { Database } from "~/types/database.types";
 import { mergeMeta } from "~/utils/meta";
+import { useEffect, useState } from "react";
+import { getScheduleData } from "~/utils/site-data.client";
 
 type UpcomingEvent = Pick<Database['public']['Tables']['events']['Row'], 
   'id' | 'title' | 'description' | 'event_type' | 'status' | 'start_date' | 
@@ -185,6 +187,35 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
 export default function Index() {
     const { upcomingEvents } = useLoaderData<typeof loader>();
+    const [scheduleData, setScheduleData] = useState<{
+        days: string;
+        times: string;
+        ageRange: string;
+    } | null>(null);
+
+    useEffect(() => {
+        // Add a small delay to ensure setSiteData from _layout.tsx has populated the cache
+        const timer = setTimeout(() => {
+            const data = getScheduleData();
+            if (data) {
+                setScheduleData(data);
+            }
+        }, 100);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Use dynamic schedule data if available, otherwise fall back to static config
+    const displaySchedule = scheduleData ? {
+        days: scheduleData.days,
+        time: scheduleData.times, // Map 'times' to 'time' for consistency with existing UI
+        ageRange: scheduleData.ageRange
+    } : {
+        days: siteConfig.classes.days,
+        time: siteConfig.classes.time,
+        ageRange: siteConfig.classes.ageRange
+    };
+
     return (
         <div className="page-background-styles">
             {/* Hero Section with Background Image */}
@@ -243,13 +274,13 @@ export default function Index() {
                             <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
                                 <Clock className="h-8 w-8 text-green-400 mx-auto mb-3" />
                                 <h3 className="font-bold text-lg mb-2">Class Schedule</h3>
-                                <p className="text-sm">{siteConfig.classes.days}</p>
-                                <p className="text-sm">{siteConfig.classes.time}</p>
+                                <p className="text-sm">{displaySchedule.days}</p>
+                                <p className="text-sm">{displaySchedule.time}</p>
                             </div>
                             <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
                                 <Users className="h-8 w-8 text-green-400 mx-auto mb-3" />
                                 <h3 className="font-bold text-lg mb-2">Age Range</h3>
-                                <p className="text-sm">Ages {siteConfig.classes.ageRange}</p>
+                                <p className="text-sm">Ages {displaySchedule.ageRange}</p>
                                 <p className="text-sm">All skill levels welcome</p>
                             </div>
                             <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
@@ -438,11 +469,11 @@ export default function Index() {
                             </li>
                             <li className="flex items-center">
                                 <Clock className="mr-2 h-5 w-5 flex-shrink-0 text-blue-500 dark:text-blue-400" aria-hidden="true" />
-                                <span>{siteConfig.classes.days} at {siteConfig.classes.time}</span>
+                                <span>{displaySchedule.days} at {displaySchedule.time}</span>
                             </li>
                             <li className="flex items-center">
                                 <Users className="mr-2 h-5 w-5 flex-shrink-0 text-purple-500 dark:text-purple-400" aria-hidden="true" />
-                                <span>Ages {siteConfig.classes.ageRange}</span>
+                                <span>Ages {displaySchedule.ageRange}</span>
                             </li>
                             <li className="flex items-center">
                                 <Phone className="mr-2 h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />

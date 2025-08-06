@@ -8,6 +8,7 @@ import type { SiteData } from "~/utils/site-data.server";
 
 // Client-side cache for site data received from loaders
 let clientSiteDataCache: SiteData | null = null;
+let hasWarnedAboutFallback = false;
 
 /**
  * Type for site data that may come from JSON serialization (e.g., from Remix loaders)
@@ -26,7 +27,6 @@ export function setSiteData(data: SiteData | SerializedSiteData): void {
   if (data.lastUpdated && typeof data.lastUpdated === 'string') {
     data.lastUpdated = new Date(data.lastUpdated);
   }
-  console.log("setSiteData",data);
   clientSiteDataCache = data as SiteData;
 }
 
@@ -39,8 +39,11 @@ export function getSiteData(): SiteData {
     return clientSiteDataCache;
   }
 
-  // Fallback to static config
-  console.warn('SSR: Using fallback site data');
+  // Fallback to static config (warn only once to reduce console noise)
+  if (!hasWarnedAboutFallback) {
+    console.warn('SSR: Using fallback site data during hydration');
+    hasWarnedAboutFallback = true;
+  }
   return {
     schedule: {
       days: siteConfig.classes.days,
@@ -96,7 +99,6 @@ export function getScheduleData() {
   }
   
   const siteData = getSiteData();
-  console.log("getScheduleData",siteData.schedule);
   return siteData.schedule;
 }
 
