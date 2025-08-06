@@ -6,6 +6,40 @@ export const siteConfig = {
     name: "GREENEGIN KARATE", // Added site name
     description: "Kids Karate Classes in Langford, BC. Learn discipline, respect, and self-defense with Sensei Negin. Free trial available!", // Added default description
     url: siteUrl, // Use the environment variable
+    // SEO and Meta Configuration
+    seo: {
+        keywords: [
+            "karate classes",
+            "kids martial arts",
+            "children karate",
+            "Langford BC",
+            "Victoria BC",
+            "self-defense",
+            "discipline training",
+            "youth karate",
+            "martial arts school",
+            "Sensei Negin"
+        ],
+        author: "Sensei Negin",
+        robots: "index, follow",
+        googleSiteVerification: "a5438f604752dea3", // From googlea5438f604752dea3.html
+        openGraph: {
+            type: "website",
+            siteName: "GREENEGIN KARATE",
+            locale: "en_CA",
+        },
+        twitter: {
+            card: "summary_large_image",
+            site: "@greenegin_karate", // Add if Twitter account exists
+        },
+        structuredData: {
+            organizationType: "SportsOrganization",
+            businessType: "Martial Arts School",
+            priceRange: "$",
+            paymentAccepted: ["Cash", "Credit Card", "Debit Card", "Online Payment"],
+            currenciesAccepted: "CAD",
+        }
+    },
     // Localization settings
     localization: {
         locale: 'en-CA', // Primary locale
@@ -33,10 +67,109 @@ export const siteConfig = {
         time: "5:45 - 7:15 p.m",
         timeLong: "5:45 PM - 7:15 PM", // For more formal display
         ageRange: "4-12",
+        duration: "90 minutes", // Class duration
+        maxStudents: 15, // Maximum students per class
+        minAge: 4,
+        maxAge: 12,
+    },
+    // Business Hours
+    businessHours: {
+        timezone: "America/Vancouver", // Pacific Time
+        classes: {
+            tuesday: { open: "17:45", close: "19:15", closed: false },
+            thursday: { open: "17:45", close: "19:15", closed: false },
+        }
+    },
+    // Instructor Information
+    instructor: {
+        name: "Sensei Negin",
+        title: "Head Instructor",
+        rank: "5th Dan Black Belt",
+        experience: "15+ years",
+        specializations: [
+            "Children's Martial Arts",
+            "Character Development",
+            "Self-Defense",
+            "Traditional Karate"
+        ],
+        bio: "Sensei Negin brings over 15 years of martial arts experience and specializes in teaching children the values of discipline, respect, and self-confidence through traditional karate training.",
+    },
+    // Program Information
+    programs: {
+        mainProgram: {
+            name: "Youth Karate Program",
+            description: "Traditional karate training focused on character development, self-defense, and physical fitness for children.",
+            benefits: [
+                "Improved discipline and focus",
+                "Enhanced self-confidence",
+                "Physical fitness and coordination",
+                "Self-defense skills",
+                "Respect and character building",
+                "Goal setting and achievement"
+            ],
+            curriculum: [
+                "Basic karate techniques",
+                "Forms (Kata)",
+                "Self-defense applications",
+                "Character development",
+                "Belt progression system"
+            ]
+        }
     },
     socials: {
         instagram: "https://www.instagram.com/greenegin.karate/",
         facebook: "https://www.facebook.com/greenegin.karate/",
+        // youtube: "", // Add if YouTube channel exists
+        // tiktok: "", // Add if TikTok account exists
+    },
+    // Facility Information
+    facility: {
+        name: "Colwood Studio",
+        type: "Martial Arts Dojo",
+        features: [
+            "Professional training mats",
+            "Spacious training area",
+            "Changing rooms",
+            "Viewing area for parents",
+            "Air conditioning",
+            "Sound system"
+        ],
+        accessibility: [
+            "Wheelchair accessible entrance",
+            "Accessible parking",
+            "Ground floor location"
+        ],
+        safety: [
+            "First aid kit on premises",
+            "Emergency procedures posted",
+            "Trained instructor in CPR",
+            "Secure entry system"
+        ]
+    },
+    // Emergency and Additional Contacts
+    emergencyContact: {
+        primary: {
+            name: "Sensei Negin",
+            phone: "(604) 690-7121",
+            email: "info@karate.greenegin.ca",
+            role: "Head Instructor"
+        },
+        // backup: {
+        //     name: "",
+        //     phone: "",
+        //     email: "",
+        //     role: "Assistant Instructor"
+        // }
+    },
+    // Legal and Business Information
+    legal: {
+        businessName: "GREENEGIN KARATE",
+        // businessNumber: "", // Add if needed for tax purposes
+        // gstNumber: "", // Add GST number if applicable
+        insuranceProvider: "Sport & Fitness Insurance",
+        waiverRequired: true,
+        privacyPolicyUrl: "/privacy-policy", // Add when privacy policy page exists
+        termsOfServiceUrl: "/terms-of-service", // Add when terms page exists
     },
     pricing: {
         currency: "$",
@@ -96,7 +229,56 @@ export const siteConfig = {
         title: "Territory Acknowledgement",
         text: "At Greenegin Karate, we acknowledge we live, work, and train on the traditional, unceded territories of the Lekwungen-speaking Peoples, including the Songhees and Esquimalt Nations. We are grateful for their care of this territory and honour their ongoing connection to it. As martial artists, we commit to respect, humility, and integrity in our relationships with this territory and its peoples."
     },
-    // Add other site-wide config as needed
+    // Analytics and Tracking
+    analytics: {
+        // googleAnalyticsId: "", // Add GA4 tracking ID when available
+        // facebookPixelId: "", // Add Facebook Pixel ID if using Facebook ads
+        // hotjarId: "", // Add Hotjar ID for user behavior analytics
+        enableCookieConsent: true,
+        enablePerformanceTracking: true,
+    },
+    // Performance and Technical Configuration
+    performance: {
+        enableServiceWorker: true,
+        enablePWA: true,
+        cacheStrategy: "networkFirst", // or "cacheFirst"
+        offlineSupport: true,
+        enablePushNotifications: true,
+        enableWebVitals: true,
+    },
+    // Feature Flags
+    features: {
+        enableOnlinePayments: true,
+        enableClassBooking: true,
+        enableMessaging: true,
+        enableCalendarIntegration: true,
+        enableMultiLanguage: false, // Set to true when multiple languages are supported
+        enableDarkMode: true,
+        enablePrintInvoices: true,
+        enableBulkOperations: true,
+        enableAdvancedReporting: true,
+        enableAPIAccess: false, // For future API integrations
+    },
+    // Content Management
+    content: {
+        maxFileUploadSize: 5 * 1024 * 1024, // 5MB in bytes
+        allowedFileTypes: ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx'],
+        defaultPageSize: 10, // For pagination
+        maxSearchResults: 50,
+        sessionTimeout: 30 * 60 * 1000, // 30 minutes in milliseconds
+    },
+    // Notification Settings
+    notifications: {
+        enableEmailNotifications: true,
+        enableSMSNotifications: false, // Set to true when SMS service is configured
+        enablePushNotifications: true,
+        defaultNotificationPreferences: {
+            classReminders: true,
+            paymentReminders: true,
+            announcements: true,
+            promotions: false,
+        }
+    }
 };
 
 export type SiteConfig = typeof siteConfig;
