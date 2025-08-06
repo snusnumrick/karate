@@ -6,6 +6,7 @@ import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, 
 import { siteConfig } from "~/config/site"; // Import site config
 import { EventService } from "~/services/event.server";
 import type { Database } from "~/types/database.types";
+import { mergeMeta } from "~/utils/meta";
 
 type UpcomingEvent = Pick<Database['public']['Tables']['events']['Row'], 
   'id' | 'title' | 'description' | 'event_type' | 'status' | 'start_date' | 
@@ -44,25 +45,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 }
 
-// Helper function to merge meta tags, giving precedence to child tags
-// (Same helper function as in about.tsx/contact.tsx - could be extracted to a util file)
-function mergeMeta(
-    parentMeta: MetaDescriptor[],
-    childMeta: MetaDescriptor[]
-): MetaDescriptor[] {
-    const merged: Record<string, MetaDescriptor> = {};
-    const getKey = (tag: MetaDescriptor): string | null => {
-        if ('title' in tag) return 'title';
-        if ('name' in tag) return `name=${tag.name}`;
-        if ('property' in tag) return `property=${tag.property}`;
-        if ('tagName' in tag && tag.tagName === 'link' && tag.rel === 'canonical') return 'canonical';
-        if ('script:ld+json' in tag) return 'script:ld+json';
-        try { return JSON.stringify(tag); } catch { return null; }
-    };
-    parentMeta.forEach(tag => { const key = getKey(tag); if (key) merged[key] = tag; });
-    childMeta.forEach(tag => { const key = getKey(tag); if (key) merged[key] = tag; });
-    return Object.values(merged);
-}
+
 
 export const meta: MetaFunction = (args: MetaArgs) => {
     // Find the parent 'root' route match

@@ -3,41 +3,7 @@ import {siteConfig} from "~/config/site"; // Import site config
 // Import types needed for merging parent meta
 import type {MetaArgs, MetaDescriptor, MetaFunction} from "@remix-run/node";
 import {Button} from "~/components/ui/button"; // Import Button component
-
-// Helper function to merge meta tags, giving precedence to child tags
-function mergeMeta(
-    parentMeta: MetaDescriptor[],
-    childMeta: MetaDescriptor[]
-): MetaDescriptor[] {
-    const merged: Record<string, MetaDescriptor> = {};
-    const getKey = (tag: MetaDescriptor): string | null => {
-        if ('title' in tag) return 'title';
-        if ('name' in tag) return `name=${tag.name}`;
-        if ('property' in tag) return `property=${tag.property}`;
-        // Handle canonical link specifically
-        if ('tagName' in tag && tag.tagName === 'link' && tag.rel === 'canonical') return 'canonical';
-        // Key for JSON-LD script
-        if ('script:ld+json' in tag) return 'script:ld+json';
-        // Fallback for other potential tags (less common)
-        try {
-            return JSON.stringify(tag);
-        } catch {
-            return null; // Cannot stringify
-        }
-    };
-
-    parentMeta.forEach(tag => {
-        const key = getKey(tag);
-        if (key) merged[key] = tag;
-    });
-
-    childMeta.forEach(tag => {
-        const key = getKey(tag);
-        if (key) merged[key] = tag; // Child overwrites parent
-    });
-
-    return Object.values(merged);
-}
+import {mergeMeta} from "~/utils/meta";
 
 
 export const meta: MetaFunction = (args: MetaArgs) => {

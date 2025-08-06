@@ -13,6 +13,7 @@ import {Label} from "~/components/ui/label";
 // Import database utilities
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import type {Database} from "~/types/database.types";
+import {mergeMeta} from "~/utils/meta";
 
 // Type definitions
 type Schedule = Database['public']['Tables']['class_schedules']['Row'];
@@ -103,35 +104,7 @@ export async function loader({request}: LoaderFunctionArgs) {
     }
 }
 
-// Helper function to merge meta tags, giving precedence to child tags
-// (Same helper function as in about.tsx - could be extracted to a util file)
-function mergeMeta(
-    parentMeta: MetaDescriptor[],
-    childMeta: MetaDescriptor[]
-): MetaDescriptor[] {
-    const merged: Record<string, MetaDescriptor> = {};
-    const getKey = (tag: MetaDescriptor): string | null => {
-        if ('title' in tag) return 'title';
-        if ('name' in tag) return `name=${tag.name}`;
-        if ('property' in tag) return `property=${tag.property}`;
-        if ('tagName' in tag && tag.tagName === 'link' && tag.rel === 'canonical') return 'canonical';
-        if ('script:ld+json' in tag) return 'script:ld+json';
-        try {
-            return JSON.stringify(tag);
-        } catch {
-            return null;
-        }
-    };
-    parentMeta.forEach(tag => {
-        const key = getKey(tag);
-        if (key) merged[key] = tag;
-    });
-    childMeta.forEach(tag => {
-        const key = getKey(tag);
-        if (key) merged[key] = tag;
-    });
-    return Object.values(merged);
-}
+
 
 export const meta: MetaFunction<typeof loader> = ({matches, data}) => {
     // Find the parent 'root' route match
