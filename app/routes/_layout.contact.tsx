@@ -14,13 +14,22 @@ import {Label} from "~/components/ui/label";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import type {Database} from "~/types/database.types";
 import {mergeMeta} from "~/utils/meta";
+import {
+    getScheduleInfo,
+    getAgeRange,
+    getOpeningHoursSpecification,
+    formatDayName,
+    formatTime,
+    calculateEndTime,
+    parseTimeFromSiteConfig
+} from "~/utils/schedule";
 
 // Type definitions
-type Schedule = Database['public']['Tables']['class_schedules']['Row'];
-type PartialSchedule = Pick<Schedule, 'class_id' | 'day_of_week' | 'start_time'>;
+type Session = Database['public']['Tables']['class_sessions']['Row'];
+type PartialSession = Pick<Session, 'class_id' | 'session_date' | 'start_time' | 'end_time'>;
 type Program = Database['public']['Tables']['programs']['Row'];
 type ClassWithSchedule = Database['public']['Tables']['classes']['Row'] & {
-  class_schedules: PartialSchedule[];
+  class_sessions: PartialSession[];
 };
 
 type LoaderData = {
@@ -49,15 +58,15 @@ export async function loader({request}: LoaderFunctionArgs) {
             .select('*')
             .eq('is_active', true);
 
-        // Get schedules separately to avoid foreign key issues
-        let schedulesData: PartialSchedule[] = [];
+        // Get sessions separately to avoid foreign key issues
+        let sessionsData: PartialSession[] = [];
         if (classesData && classesData.length > 0) {
             const classIds = classesData.map(c => c.id);
-            const { data: schedules } = await supabaseServer
-                .from('class_schedules')
-                .select('class_id, day_of_week, start_time')
+            const { data: sessions } = await supabaseServer
+                .from('class_sessions')
+                .select('class_id, session_date, start_time, end_time')
                 .in('class_id', classIds);
-            schedulesData = schedules || [];
+            sessionsData = sessions || [];
         }
 
         if (classesError) {
@@ -66,15 +75,16 @@ export async function loader({request}: LoaderFunctionArgs) {
 
         // Transform the data to match our expected type
         const classes = (classesData || []).map(classItem => {
-            // Find schedules for this class
-            const classSchedules = schedulesData.filter(schedule => schedule.class_id === classItem.id);
+            // Find sessions for this class
+            const classSessions = sessionsData.filter(session => session.class_id === classItem.id);
             
             return {
                 ...classItem,
-                class_schedules: classSchedules
+                class_sessions: classSessions
             };
         });
 
+        // console.log('[contact loader] classes', classes);
         return json<LoaderData>(
             {
                 programs: programs || [],
@@ -178,252 +188,17 @@ export const meta: MetaFunction<typeof loader> = ({matches, data}) => {
     return mergeMeta(parentMeta, contactMeta);
 };
 
-// Helper function to format day names
-const formatDayName = (day: string) => {
-    const dayMap: Record<string, string> = {
-        'monday': 'Monday',
-        'tuesday': 'Tuesday',
-        'wednesday': 'Wednesday',
-        'thursday': 'Thursday',
-        'friday': 'Friday',
-        'saturday': 'Saturday',
-        'sunday': 'Sunday'
-    };
-    return dayMap[day.toLowerCase()] || day;
-};
 
-// Helper function to format time
-const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes} ${ampm}`;
-};
-
-// Get age range from programs or fallback to site config
-const getAgeRange = (programs: Program[]) => {
-    if (programs.length === 0) {
-        return siteConfig.classes.ageRange;
-    }
-    
-    const ages = programs.map(p => ({min: p.min_age, max: p.max_age})).filter(a => a.min !== null && a.max !== null);
-    if (ages.length === 0) {
-        return siteConfig.classes.ageRange;
-    }
-    
-    const minAge = Math.min(...ages.map(a => a.min!));
-    const maxAge = Math.max(...ages.map(a => a.max!));
-    return `${minAge}-${maxAge}`;
-};
-
-// Helper function to convert time from site config to 24-hour format
-const parseTimeFromSiteConfig = (timeLong: string) => {
-    // Parse "5:45 PM - 7:15 PM" format
-    const timeRange = timeLong.split(' - ');
-    if (timeRange.length !== 2) {
-        return { opens: "17:45", closes: "19:15" }; // Fallback
-    }
-    
-    const convertTo24Hour = (time12: string) => {
-        const [time, period] = time12.trim().split(' ');
-        const [hours, minutes] = time.split(':');
-        let hour = parseInt(hours);
-        
-        if (period.toUpperCase() === 'PM' && hour !== 12) {
-            hour += 12;
-        } else if (period.toUpperCase() === 'AM' && hour === 12) {
-            hour = 0;
-        }
-        
-        return `${hour.toString().padStart(2, '0')}:${minutes}`;
-    };
-    
-    return {
-        opens: convertTo24Hour(timeRange[0]),
-        closes: convertTo24Hour(timeRange[1])
-    };
-};
-
-// Helper function to generate opening hours specification for structured data
-const getOpeningHoursSpecification = (classes: ClassWithSchedule[], programs: Program[]) => {
-    if (classes.length === 0) {
-        // Fallback to site config
-        const dayMap: Record<string, string[]> = {
-            'Tue & Thu': ['Tuesday', 'Thursday'],
-            'Mon & Wed': ['Monday', 'Wednesday'],
-            'Tue & Fri': ['Tuesday', 'Friday']
-        };
-        
-        const { opens, closes } = parseTimeFromSiteConfig(siteConfig.classes.timeLong);
-        
-        return [{
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": dayMap[siteConfig.classes.days] || ["Tuesday", "Thursday"],
-            "opens": opens,
-            "closes": closes
-        }];
-    }
-    
-    // Collect all schedules from all classes with their program duration
-    const allSchedules: (PartialSchedule & { duration_minutes?: number })[] = [];
-    classes.forEach(c => {
-        const program = programs.find(p => p.id === c.program_id);
-        if (c.class_schedules && Array.isArray(c.class_schedules)) {
-            c.class_schedules.forEach((schedule: PartialSchedule) => {
-                allSchedules.push({
-                    ...schedule,
-                    duration_minutes: program?.duration_minutes
-                });
-            });
-        }
-    });
-    
-    if (allSchedules.length === 0) {
-        const { opens, closes } = parseTimeFromSiteConfig(siteConfig.classes.timeLong);
-        const dayMap: Record<string, string[]> = {
-            'Tue & Thu': ['Tuesday', 'Thursday'],
-            'Mon & Wed': ['Monday', 'Wednesday'],
-            'Tue & Fri': ['Tuesday', 'Friday']
-        };
-        
-        return [{
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": dayMap[siteConfig.classes.days] || ["Tuesday", "Thursday"],
-            "opens": opens,
-            "closes": closes
-        }];
-    }
-    
-    // Group schedules by day and calculate end times using duration
-    const schedulesByDay: Record<string, { start: string; end: string }[]> = {};
-    allSchedules.forEach(schedule => {
-        const dayName = formatDayName(schedule.day_of_week);
-        if (!schedulesByDay[dayName]) {
-            schedulesByDay[dayName] = [];
-        }
-        if (schedule.start_time && schedule.duration_minutes) {
-            const endTime = calculateEndTime(schedule.start_time, schedule.duration_minutes);
-            schedulesByDay[dayName].push({
-                start: schedule.start_time,
-                end: endTime
-            });
-        }
-    });
-    
-    // Convert to opening hours specification
-    return Object.entries(schedulesByDay).map(([day, timeSlots]) => {
-        const startTimes = timeSlots.map(slot => slot.start);
-        const endTimes = timeSlots.map(slot => slot.end);
-        
-        const earliestStart = startTimes.sort()[0];
-        const latestEnd = endTimes.sort().reverse()[0];
-        
-        return {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": [day],
-            "opens": earliestStart,
-            "closes": latestEnd
-        };
-    });
-};
-
-// Helper function to calculate end time from start time and duration
-const calculateEndTime = (startTime: string, durationMinutes: number) => {
-    const [hours, minutes] = startTime.split(':').map(Number);
-    const startDate = new Date();
-    startDate.setHours(hours, minutes, 0, 0);
-    
-    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-    
-    return `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
-};
-
-// Get schedule information from classes and programs
-const getScheduleInfo = (classes: ClassWithSchedule[], programs: Program[]) => {
-    if (classes.length === 0) {
-        console.warn('No classes found, falling back to site config');
-        return {
-            days: siteConfig.classes.days,
-            times: siteConfig.classes.timeLong
-        };
-    }
-    
-    // Collect all schedules from all classes with their program duration
-    const allSchedules: (PartialSchedule & { duration_minutes?: number })[] = [];
-    classes.forEach(c => {
-        const program = programs.find(p => p.id === c.program_id);
-        if (c.class_schedules && Array.isArray(c.class_schedules)) {
-            c.class_schedules.forEach((schedule: PartialSchedule) => {
-                allSchedules.push({
-                    ...schedule,
-                    duration_minutes: program?.duration_minutes
-                });
-            });
-        }
-    });
-    
-    if (allSchedules.length === 0) {
-        console.warn('No schedules found, falling back to site config');
-        return {
-            days: siteConfig.classes.days,
-            times: siteConfig.classes.timeLong
-        };
-    }
-    
-    // Group schedules by day
-    const schedulesByDay: Record<string, { start: string; end: string }[]> = {};
-    allSchedules.forEach(schedule => {
-        const dayName = formatDayName(schedule.day_of_week);
-        console.log('dayName', dayName);
-        if (!schedulesByDay[dayName]) {
-            schedulesByDay[dayName] = [];
-        }
-        console.log('schedule', schedule);
-        if (schedule.start_time && schedule.duration_minutes) {
-            const endTime = calculateEndTime(schedule.start_time, schedule.duration_minutes);
-            schedulesByDay[dayName].push({
-                start: schedule.start_time,
-                end: endTime
-            });
-        }
-    });
-    console.log('allSchedules', allSchedules);
-    console.log('schedulesByDay', schedulesByDay);
-    
-    // Format days and times - sort by day of week order
-    const dayOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const sortedDays = Object.keys(schedulesByDay).sort((a, b) => {
-        return dayOrder.indexOf(a) - dayOrder.indexOf(b);
-    });
-    const days = sortedDays.join(' & ');
-    
-    // Get the time range (earliest start to latest end)
-    const allTimes = Object.values(schedulesByDay).flat();
-    if (allTimes.length > 0) {
-        const earliestStart = allTimes.map(t => t.start).sort()[0];
-        const latestEnd = allTimes.map(t => t.end).sort().reverse()[0];
-        const times = `${formatTime(earliestStart)} - ${formatTime(latestEnd)}`;
-        
-        return {
-            days: days || siteConfig.classes.days,
-            times: times
-        };
-    }
-
-    console.warn('No schedules found, falling back to site config');
-    return {
-        days: siteConfig.classes.days,
-        times: siteConfig.classes.timeLong
-    };
-};
 
 export default function ContactPage() {
     const {programs, classes} = useLoaderData<LoaderData>();
+    // console.log('[ContactPage] classes', classes);
 
     // Use dynamic data from database
     const scheduleInfo = getScheduleInfo(classes, programs);
+    // console.log('[ContactPage] scheduleInfo', scheduleInfo);
     const ageRange = getAgeRange(programs);
+    // console.log('[ContactPage] ageRange', ageRange);
 
     return (
         <div className="min-h-screen page-background-styles py-12 text-foreground">

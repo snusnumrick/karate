@@ -7,6 +7,8 @@ import FamilyNavbar from "~/components/FamilyNavbar";
 import AdminNavbar from "~/components/AdminNavbar";
 import Footer from "~/components/Footer";
 import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
+import { getSiteData } from "~/utils/site-data.server";
+import { setSiteData } from "~/utils/site-data.client";
 import type { Database } from "~/types/database.types";
 
 
@@ -17,7 +19,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (session?.user) {
         isAdmin = await isUserAdmin(session.user.id);
     }
-    return json({ session, ENV, isAdmin }, { headers });
+    
+    // Fetch site data for consistent information across all pages
+    const siteData = await getSiteData();
+    
+    return json({ session, ENV, isAdmin, siteData }, { headers });
 }
 
 // --- 1. MODIFIED: AuthTokenSender now accepts the supabase client as a prop ---
@@ -64,7 +70,12 @@ function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> }) {
 
 
 export default function Layout() {
-    const { session: serverSession, ENV, isAdmin } = useLoaderData<typeof loader>();
+    const { session: serverSession, ENV, isAdmin, siteData } = useLoaderData<typeof loader>();
+    
+    // Initialize client-side site data cache
+    React.useEffect(() => {
+        setSiteData(siteData);
+    }, [siteData]);
     const revalidator = useRevalidator();
     const location = useLocation();
     const navigate = useNavigate();

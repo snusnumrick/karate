@@ -2,10 +2,56 @@ import { Link } from "@remix-run/react";
 import type { Session } from "@supabase/auth-helpers-remix";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
-import { siteConfig } from "~/config/site"; // Import loader type
+import { getScheduleData, getContactData, getBusinessData } from "~/utils/site-data.client";
+import { siteConfig } from "~/config/site";
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'; // Import icons
+import { useEffect, useState } from "react";
 
 export default function Footer({ user }: { user?: Session['user'] | null }) {
+    // Use fallback data initially for SSR
+    const [scheduleData, setScheduleData] = useState({
+        days: siteConfig.classes.days,
+        times: siteConfig.classes.timeLong,
+        ageRange: siteConfig.classes.ageRange,
+    });
+    const [contactData, setContactData] = useState({
+        phone: siteConfig.contact.phone,
+        email: siteConfig.contact.email,
+        address: siteConfig.location.address,
+        locality: siteConfig.location.locality,
+        region: siteConfig.location.region,
+        postalCode: siteConfig.location.postalCode,
+    });
+    const [businessData, setBusinessData] = useState({
+        name: siteConfig.name,
+        description: siteConfig.description,
+        url: siteConfig.url,
+        socials: {
+            facebook: siteConfig.socials.facebook || '',
+            instagram: siteConfig.socials.instagram || '',
+        },
+    });
+
+    // Load client data after hydration
+    useEffect(() => {
+        try {
+            setScheduleData(getScheduleData());
+            setContactData(getContactData());
+            const businessInfo = getBusinessData();
+            setBusinessData({
+                name: businessInfo.name,
+                description: businessInfo.description,
+                url: businessInfo.url,
+                socials: {
+                    facebook: businessInfo.socials.facebook || '',
+                    instagram: businessInfo.socials.instagram || '',
+                },
+            });
+        } catch (error) {
+            // Keep fallback data if there's an error
+            console.warn('Failed to load client site data:', error);
+        }
+    }, []);
 
     // Define base links
     const baseLinks = [
@@ -35,14 +81,14 @@ export default function Footer({ user }: { user?: Session['user'] | null }) {
                         </Button>
                         <p className="text-green-100 dark:text-gray-300 text-sm">
                             Discover the art of the &ldquo;empty hand&rdquo;
-                            with Sensei Negin&apos;s karate classes for children ages <span>{`${siteConfig.classes.ageRange}`}</span>.
+                            with Sensei Negin&apos;s karate classes for children ages <span>{scheduleData.ageRange}</span>.
                         </p>
                         {/* Justify icons: center mobile, start md+ */}
                         <div className="flex items-center justify-center md:justify-start gap-2">
                             <span className="text-sm text-green-100 dark:text-gray-300">Follow Us:</span>
                             <Button variant="secondary" size="icon" asChild
                                     className="bg-[#E1306C] hover:bg-[#C1355B] text-white">
-                                <a href={siteConfig.socials.instagram} target="_blank" rel="noopener noreferrer">
+                                <a href={businessData.socials.instagram} target="_blank" rel="noopener noreferrer">
                                     <span className="sr-only">Instagram</span>
                                     <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         {/* Instagram Icon SVG Path */}
@@ -55,7 +101,7 @@ export default function Footer({ user }: { user?: Session['user'] | null }) {
                             {/* Facebook Button */}
                             <Button variant="secondary" size="icon" asChild
                                     className="bg-[#1877F2] hover:bg-[#166FE5] text-white">
-                                <a href={siteConfig.socials.facebook} target="_blank" rel="noopener noreferrer">
+                                <a href={businessData.socials.facebook} target="_blank" rel="noopener noreferrer">
                                     <span className="sr-only">Facebook</span>
                                     <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         {/* Facebook Icon SVG Path */}
@@ -105,27 +151,27 @@ export default function Footer({ user }: { user?: Session['user'] | null }) {
                             <div className="mt-3 space-y-2 text-sm text-green-100 dark:text-gray-300 flex flex-col items-end"> {/* Align items end, added text-sm */}
                                 {/* Address */}
                                 <a
-                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactData.address)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-start justify-end text-right hover:text-white transition-colors" /* Use items-start for multi-line */
                                 >
-                                    <span className="flex-grow hover:underline">{siteConfig.location.address}</span>
+                                    <span className="flex-grow hover:underline">{contactData.address}</span>
                                     <MapPin className="ml-2 mt-1 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
                                 </a>
                                 {/* Phone */}
-                                <a href={`tel:${siteConfig.contact.phone.replace(/\D/g, '')}`} className="flex items-center justify-end hover:text-white transition-colors">
-                                    <span>{siteConfig.contact.phone}</span>
+                                <a href={`tel:${contactData.phone.replace(/\D/g, '')}`} className="flex items-center justify-end hover:text-white transition-colors">
+                                    <span>{contactData.phone}</span>
                                     <Phone className="ml-2 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
                                 </a>
                                 {/* Email */}
-                                <a href={`mailto:${siteConfig.contact.email}`} className="flex items-center justify-end hover:text-white transition-colors">
-                                    <span>{siteConfig.contact.email}</span>
+                                <a href={`mailto:${contactData.email}`} className="flex items-center justify-end hover:text-white transition-colors">
+                                    <span>{contactData.email}</span>
                                     <Mail className="ml-2 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
                                 </a>
                                 {/* Class Time */}
                                 <div className="flex items-center justify-end">
-                                    <span>{`${siteConfig.classes.days}: ${siteConfig.classes.timeLong}`}</span>
+                                    <span>{`${scheduleData.days}: ${scheduleData.times}`}</span>
                                     <Clock className="ml-2 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
                                 </div>
                             </div> {/* Closes Contact List div */}
