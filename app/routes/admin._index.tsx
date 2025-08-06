@@ -12,7 +12,7 @@ import { getInvoiceEntities } from "~/services/invoice-entity.server";
 // Give the unused argument object a name prefixed with underscore and disable the lint rule for this line
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function loader(_: LoaderFunctionArgs) {
-    console.log("Entering /admin/index loader (data fetch only)...");
+    // console.log("Entering /admin/index loader (data fetch only)...");
 
     // Create a service role client directly for admin-level data fetching
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -29,7 +29,7 @@ export async function loader(_: LoaderFunctionArgs) {
 
     // --- Data fetching logic using supabaseAdmin ---
     try {
-        console.log("Admin index loader - Fetching dashboard data using service role..."); // Add log
+        // console.log("Admin index loader - Fetching dashboard data using service role..."); // Add log
 
         // --- Data fetching logic ---
         // Fetch required waiver IDs first (using admin client)
@@ -305,7 +305,7 @@ export async function loader(_: LoaderFunctionArgs) {
             return now < sessionStart;
         }).length || 0;
 
-        console.log("Admin index loader - Data fetched.");
+        // console.log("Admin index loader - Data fetched.");
 
         // Return data without explicitly setting headers
         return json({
@@ -363,7 +363,7 @@ export async function loader(_: LoaderFunctionArgs) {
 export default function AdminDashboard() {
     // Re-add useLoaderData
     const data = useLoaderData<typeof loader>();
-    console.log("Rendering AdminDashboard component, loader data:", data);
+    // console.log("Rendering AdminDashboard component, loader data:", data);
 
     return (
         <div className="max-w-7xl mx-auto py-8 px-4">
