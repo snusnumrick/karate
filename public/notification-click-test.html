@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Click Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Notification Click Test</h1>
+        <p>This page tests notification click events and service worker communication.</p>
+        
+        <div id="status" class="status"></div>
+        
+        <div>
+            <button onclick="requestPermission()">Request Notification Permission</button>
+            <button onclick="registerServiceWorker()">Register Service Worker</button>
+            <button onclick="testBasicNotification()">Test Basic Notification</button>
+            <button onclick="testNotificationWithActions()">Test Notification with Actions</button>
+            <button onclick="checkNotificationSettings()">Check Notification Settings</button>
+            <button onclick="testMinimalNotification()">Test Minimal Notification</button>
+            <button onclick="testNotificationWhenUnfocused()">Test When Tab Unfocused (5s delay)</button>
+        <button onclick="unregisterAllServiceWorkers()" style="background-color: #ff6b6b;">Unregister All Service Workers</button>
+    </div>        <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+        
+        <div id="logs" class="log"></div>
+    </div>
+
+    <script>
+        let logs = [];
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logMessage = `[${timestamp}] ${message}`;
+            logs.push(logMessage);
+            console.log(logMessage);
+            updateLogDisplay();
+        }
+        
+        function updateLogDisplay() {
+            document.getElementById('logs').textContent = logs.join('\n');
+            document.getElementById('logs').scrollTop = document.getElementById('logs').scrollHeight;
+        }
+        
+        function clearLogs() {
+            logs = [];
+            updateLogDisplay();
+        }
+        
+        function updateStatus(message, type = 'success') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        async function requestPermission() {
+            log('🔔 Requesting notification permission...');
+            
+            if (!('Notification' in window)) {
+                log('❌ This browser does not support notifications');
+                updateStatus('Notifications not supported', 'error');
+                return;
+            }
+            
+            const permission = await Notification.requestPermission();
+            log(`📋 Permission result: ${permission}`);
+            
+            if (permission === 'granted') {
+                updateStatus('Notification permission granted', 'success');
+            } else {
+                updateStatus('Notification permission denied', 'error');
+            }
+        }
+        
+        async function registerServiceWorker() {
+            log('🔧 Registering service worker...');
+            
+            if (!('serviceWorker' in navigator)) {
+                log('❌ Service workers not supported');
+                updateStatus('Service workers not supported', 'error');
+                return;
+            }
+            
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                log(`✅ Service worker registered: ${registration.scope}`);
+                
+                // Wait for service worker to be ready
+                await navigator.serviceWorker.ready;
+                log('✅ Service worker is ready');
+                
+                // Set up message listener
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    log(`📨 Message from SW: ${JSON.stringify(event.data)}`);
+                    
+                    // Handle navigation messages from service worker
+                    if (event.data && event.data.type === 'NAVIGATE') {
+                        log('🔗 Handling NAVIGATE request');
+                        log(`🔗 Target URL: ${event.data.url}`);
+                        
+                        if (event.data.url && window) {
+                            log('🚀 Navigating to: ' + event.data.url);
+                            window.location.href = event.data.url;
+                        } else {
+                            log('❌ Cannot navigate - missing URL or window object');
+                        }
+                    }
+                });
+                
+                updateStatus('Service worker registered and ready', 'success');
+            } catch (error) {
+                log(`❌ Service worker registration failed: ${error.message}`);
+                updateStatus('Service worker registration failed', 'error');
+            }
+        }
+        
+        async function testBasicNotification() {
+            log('🧪 Testing basic notification...');
+            
+            if (Notification.permission !== 'granted') {
+                log('❌ Notification permission not granted');
+                updateStatus('Need notification permission first', 'error');
+                return;
+            }
+            
+            try {
+                const notification = new Notification('Basic Test', {
+                    body: 'This is a basic notification test',
+                    icon: '/icon.svg',
+                    tag: 'basic-test'
+                });
+                
+                notification.onclick = function(event) {
+                    log('🎯 Basic notification clicked!');
+                    event.preventDefault();
+                    notification.close();
+                };
+                
+                log('✅ Basic notification created');
+                updateStatus('Basic notification sent', 'success');
+            } catch (error) {
+                log(`❌ Basic notification failed: ${error.message}`);
+                updateStatus('Basic notification failed', 'error');
+            }
+        }
+        
+        async function testNotificationWithActions() {
+            log('🧪 Testing notification with actions via service worker...');
+            
+            if (Notification.permission !== 'granted') {
+                log('❌ Notification permission not granted');
+                updateStatus('Need notification permission first', 'error');
+                return;
+            }
+            
+            if (!('serviceWorker' in navigator)) {
+                log('❌ Service workers not supported');
+                updateStatus('Service workers not supported', 'error');
+                return;
+            }
+            
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                
+                const notificationOptions = {
+                    body: 'Click "View Message" to test navigation',
+                    icon: '/icon.svg',
+                    badge: '/icon.svg',
+                    tag: 'action-test',
+                    data: {
+                        url: '/family/messages/test-conversation-123',
+                        timestamp: Date.now()
+                    },
+                    actions: [
+                        {
+                            action: 'view',
+                            title: 'View Message',
+                            icon: '/icon.svg'
+                        },
+                        {
+                            action: 'dismiss',
+                            title: 'Dismiss',
+                            icon: '/icon.svg'
+                        }
+                    ],
+                    requireInteraction: true,
+                    silent: false,
+                    vibrate: [200, 100, 200]
+                };
+                
+                log(`📋 Notification options: ${JSON.stringify(notificationOptions, null, 2)}`);
+                log(`🔍 Document visibility: ${document.visibilityState}`);
+                log(`🔍 Window focus: ${document.hasFocus()}`);
+                
+                // Try to show notification
+                const showPromise = registration.showNotification('Action Test', notificationOptions);
+                log('📤 showNotification() called, waiting for result...');
+                
+                await showPromise;
+                log('✅ showNotification() completed successfully');
+                
+                // Wait a moment then check notifications
+                setTimeout(async () => {
+                    try {
+                        const notifications = await registration.getNotifications();
+                        log(`📊 Active notifications after creation: ${notifications.length}`);
+                        
+                        if (notifications.length === 0) {
+                            log('⚠️ No active notifications found - notification may have been blocked or not displayed');
+                            log('💡 Try checking:');
+                            log('   - Browser notification settings');
+                            log('   - System notification settings (macOS System Preferences)');
+                            log('   - Whether notifications are blocked for this site');
+                        } else {
+                            notifications.forEach((notif, index) => {
+                                log(`   ${index + 1}. "${notif.title}" (tag: ${notif.tag})`);
+                                log(`      - Body: ${notif.body}`);
+                                log(`      - Actions: ${notif.actions.length}`);
+                            });
+                        }
+                    } catch (error) {
+                        log(`❌ Error checking notifications: ${error.message}`);
+                    }
+                }, 1000);
+                
+                updateStatus('Notification with actions sent', 'success');
+                
+            } catch (error) {
+                log(`❌ Notification with actions failed: ${error.message}`);
+                log(`❌ Error details: ${error.stack}`);
+                updateStatus('Notification with actions failed', 'error');
+            }
+        }
+        
+        async function checkNotificationSettings() {
+            log('🔍 Checking notification settings...');
+            
+            // Basic support checks
+            log(`🔔 Notification API support: ${'Notification' in window}`);
+            log(`🔧 Service Worker support: ${'serviceWorker' in navigator}`);
+            log(`📋 Current permission: ${Notification.permission}`);
+            
+            // Document state
+            log(`📄 Document visibility: ${document.visibilityState}`);
+            log(`🎯 Document has focus: ${document.hasFocus()}`);
+            log(`🌐 Page origin: ${window.location.origin}`);
+            
+            // Check if we can query permission
+            if ('permissions' in navigator) {
+                try {
+                    const permission = await navigator.permissions.query({name: 'notifications'});
+                    log(`🔐 Permission API result: ${permission.state}`);
+                } catch (error) {
+                    log(`❌ Permission API error: ${error.message}`);
+                }
+            }
+            
+            // Check service worker state
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    log(`✅ Service worker registered at: ${registration.scope}`);
+                    log(`🔄 SW state: active=${!!registration.active}, installing=${!!registration.installing}, waiting=${!!registration.waiting}`);
+                } else {
+                    log(`❌ No service worker registration found`);
+                }
+            }
+            
+            updateStatus('Notification settings checked - see logs', 'success');
+        }
+        
+        async function testMinimalNotification() {
+            log('🧪 Testing minimal notification via service worker...');
+            
+            if (Notification.permission !== 'granted') {
+                log('❌ Notification permission not granted');
+                return;
+            }
+            
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                
+                // Minimal notification options
+                const options = {
+                    body: 'Minimal test notification',
+                    tag: 'minimal-test'
+                };
+                
+                log('📤 Creating minimal notification...');
+                await registration.showNotification('Minimal Test', options);
+                log('✅ Minimal notification created');
+                
+                // Check if it exists
+                setTimeout(async () => {
+                    const notifications = await registration.getNotifications();
+                    log(`📊 Active notifications: ${notifications.length}`);
+                    if (notifications.length === 0) {
+                        log('⚠️ Minimal notification not found - likely blocked by system');
+                    }
+                }, 500);
+                
+                updateStatus('Minimal notification sent', 'success');
+            } catch (error) {
+                log(`❌ Minimal notification failed: ${error.message}`);
+                updateStatus('Minimal notification failed', 'error');
+            }
+        }
+         
+         function testNotificationWhenUnfocused() {
+             log('⏰ Testing notification when tab is unfocused...');
+             log('🔄 You have 5 seconds to switch to another tab/app');
+             log('📱 The notification should appear when this tab is not focused');
+             
+             setTimeout(async () => {
+                 try {
+                     const registration = await navigator.serviceWorker.ready;
+                     
+                     const options = {
+                         body: 'This notification was created when tab was unfocused',
+                         icon: '/icon.svg',
+                         tag: 'unfocused-test',
+                         data: {
+                             url: '/family/messages/unfocused-test',
+                             timestamp: Date.now()
+                         },
+                         actions: [
+                             {
+                                 action: 'view',
+                                 title: 'View Message',
+                                 icon: '/icon.svg'
+                             }
+                         ],
+                         requireInteraction: true
+                     };
+                     
+                     log(`📤 Creating notification (focus: ${document.hasFocus()}, visibility: ${document.visibilityState})`);
+                     await registration.showNotification('Unfocused Test', options);
+                     log('✅ Unfocused notification created');
+                     
+                     // Check if notification exists
+                     setTimeout(async () => {
+                         const notifications = await registration.getNotifications();
+                         log(`📊 Active notifications after unfocused test: ${notifications.length}`);
+                     }, 1000);
+                     
+                 } catch (error) {
+                     log(`❌ Unfocused notification failed: ${error.message}`);
+                 }
+             }, 5000);
+             
+             updateStatus('Unfocused test scheduled - switch tabs now!', 'success');
+         }
+         
+         async function unregisterAllServiceWorkers() {
+             log('🧹 Unregistering all service workers...');
+             
+             if (!('serviceWorker' in navigator)) {
+                 log('❌ Service workers not supported');
+                 return;
+             }
+             
+             try {
+                 const registrations = await navigator.serviceWorker.getRegistrations();
+                 log(`📋 Found ${registrations.length} service worker registrations`);
+                 
+                 for (let i = 0; i < registrations.length; i++) {
+                     const registration = registrations[i];
+                     log(`🗑️ Unregistering SW ${i + 1}: ${registration.scope}`);
+                     await registration.unregister();
+                     log(`✅ SW ${i + 1} unregistered successfully`);
+                 }
+                 
+                 if (registrations.length === 0) {
+                     log('ℹ️ No service workers found to unregister');
+                 } else {
+                     log('🎉 All service workers unregistered successfully');
+                     log('🔄 Please refresh the page and re-register the service worker');
+                 }
+                 
+                 updateStatus(`Unregistered ${registrations.length} service workers`, 'success');
+             } catch (error) {
+                 log(`❌ Error unregistering service workers: ${error.message}`);
+                 updateStatus('Failed to unregister service workers', 'error');
+             }
+         }
+         
+         // Initialize
+        log('🚀 Notification Click Test initialized');
+        log(`📋 Notification permission: ${Notification.permission}`);
+        log(`🔧 Service worker support: ${'serviceWorker' in navigator}`);
+        log(`🔔 Notification support: ${'Notification' in window}`);
+    </script>
+</body>
+</html>

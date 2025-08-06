@@ -18,25 +18,37 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Determine the appropriate URL based on user role
     const userIsAdmin = await isUserAdmin(userId);
-    const testUrl = userIsAdmin ? '/admin/messages' : '/conversations';
+    
+    // Generate a dynamic conversation ID for testing
+    const testConversationId = `test-conversation-${Date.now()}`;
+    
+    // Determine the correct URL based on user role
+    const testUrl = userIsAdmin 
+      ? `/admin/messages/${testConversationId}`
+      : `/family/messages/${testConversationId}`;
+    
+    console.log('🧪 Test notification details:');
+    console.log('   - Generated conversation ID:', testConversationId);
+    console.log('   - User is admin:', userIsAdmin);
+    console.log('   - Generated test URL:', testUrl);
 
     // Send a test notification using our push notification service
     const result = await sendPushNotificationToUser(userId, {
       type: 'test',
       title: 'Test Notification',
-      body: 'This is a test push notification from your Karate app! 🥋',
+      body: 'This is a test push notification from your Karate app! 🥋 Click "View Message" to test navigation.',
       icon: '/icon.svg',
       badge: '/icon.svg',
       data: {
         url: testUrl,
         timestamp: Date.now(),
         userId: userId,
-        conversationId: 'test-conversation'
+        conversationId: testConversationId
       },
       actions: [
           {
             action: 'view',
-            title: 'View Details',
+            title: 'View Message',
             icon: '/icon.svg'
           },
           {

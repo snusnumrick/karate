@@ -49,11 +49,17 @@ class NotificationService {
    * Initialize push notification service
    */
   private async initializePushNotifications(): Promise<void> {
+    console.log('🚀 Initializing push notification service...');
     try {
+      console.log('📡 Initializing push notification service core...');
       await pushNotificationService.initialize();
+      
+      console.log('🎧 Setting up push notification message listener...');
       pushNotificationService.setupMessageListener();
+      
+      console.log('✅ Push notification service initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize push notifications:', error);
+      console.error('❌ Failed to initialize push notifications:', error);
     }
   }
 

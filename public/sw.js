@@ -1,19 +1,38 @@
 /// <reference lib="webworker" />
 
+// Service Worker for Karate School Management System
+// Handles push notifications, caching, and offline functionality
+
+console.log('🚀 SW: Service Worker script loading...');
+console.log('🚀 SW: Timestamp:', new Date().toISOString());
+console.log('🚀 SW: Location:', self.location.href);
+
 // --- ADDED: Code to handle authentication token ---
 let authToken = null; // Global variable to store the auth token
 
 // Listen for messages from the main application to receive the token
 self.addEventListener('message', (event) => {
-   console.log(`mesage from main app ${event.data.type}`);
+   console.log(`📨 SW: Message from main app - ${event.data.type}`);
     if (event.data && event.data.type === 'SET_AUTH_TOKEN') {
         authToken = event.data.token;
+        console.log('🔑 SW: Auth token set');
     }
     if (event.data && event.data.type === 'CLEAR_AUTH_TOKEN') {
         authToken = null;
+        console.log('🗑️ SW: Auth token cleared');
     }
     if (event.data && event.data.type === 'SKIP_WAITING') {
+        console.log('⏭️ SW: Skip waiting requested');
         self.skipWaiting();
+    }
+    if (event.data && event.data.type === 'TEST_CONNECTION') {
+        console.log('🧪 SW: Test connection received, responding back...');
+        // Send a response back to confirm communication works
+        event.source.postMessage({
+            type: 'TEST_CONNECTION_RESPONSE',
+            message: 'Service worker is active and responding',
+            timestamp: Date.now()
+        });
     }
 });
 // --- END ADDED CODE ---
@@ -238,6 +257,12 @@ self.addEventListener('sync', (event) => {
 // Handle push notifications
 self.addEventListener('push', (event) => {
     console.log('🔔 Push event received in service worker');
+    console.log('⏰ Timestamp:', new Date().toISOString());
+    console.log('📊 Event details:', {
+        hasData: !!event.data,
+        dataType: event.data ? typeof event.data : 'no data',
+        origin: self.location.origin
+    });
     
     // Detect Android for platform-specific handling
     const isAndroid = /Android/i.test(navigator.userAgent);
@@ -277,9 +302,7 @@ self.addEventListener('push', (event) => {
     // Ensure actions are properly formatted and available
     let actions = [];
     if ('actions' in Notification.prototype && notificationData.actions && Array.isArray(notificationData.actions)) {
-        // Limit actions on Android (some versions have issues with too many actions)
-        const maxActions = isAndroid ? 2 : 3;
-        actions = notificationData.actions.slice(0, maxActions).map(action => ({
+        actions = notificationData.actions.map(action => ({
             action: action.action,
             title: action.title,
             icon: action.icon ? new URL(action.icon, self.location.origin).href : undefined,
@@ -418,18 +441,22 @@ self.addEventListener('push', (event) => {
 });
 
 // Handle notification click events
-console.log('sw addEventListener');
+console.log('🔧 SW: Registering notificationclick event listener');
 self.addEventListener('notificationclick', (event) => {
+    console.log('🚨 SW: NOTIFICATION CLICK EVENT TRIGGERED!');
+    console.log('🚨 SW: Event object:', event);
+    console.log('🚨 SW: Event type:', event.type);
+    console.log('🚨 SW: Notification object:', event.notification);
+    
     const notificationData = event.notification.data;
     const action = event.action;
-    console.log(`fw event ${action} ${JSON.stringify(notificationData, null, 2)}`);
+    console.log(`🔔 Notification clicked - Action: ${action || 'default'}`);
+    console.log(`🔔 Notification data:`, JSON.stringify(notificationData, null, 2));
 
-    // The 'dismiss' action was not in your original file but is good practice.
-    // We can close the specific notification clicked first.
-    event.notification.close();
-
+    // Handle dismiss action - close and do nothing else
     if (action === 'dismiss') {
-        return; // Do nothing else if dismissed
+        event.notification.close();
+        return;
     }
 
     // Handle quick reply action using Background Sync
@@ -519,27 +546,87 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    // For all other actions (including default click), handle as before
-    event.waitUntil(
-        self.clients.matchAll({type: 'window', includeUncontrolled: true}).then((clientList) => {
-            const targetUrl = notificationData?.url || '/';
-            
-            // Validate URL to prevent navigation to undefined paths
-            if (targetUrl.includes('/undefined') || targetUrl.includes('undefined')) {
-                console.error('[Service Worker] Invalid URL detected, preventing navigation:', targetUrl);
-                return; // Don't navigate to undefined URLs
-            }
-            
-            console.log('[Service Worker] Navigating to:', targetUrl);
-            
-            for (const client of clientList) {
-                if (new URL(client.url).pathname === new URL(targetUrl, client.url).pathname && 'focus' in client) {
-                    return client.focus();
+    // For view action and default click, navigate to the URL
+    if (action === 'view' || !action) {
+        console.log(`🔔 Handling navigation action: ${action || 'default click'}`);
+        console.log('📋 Full notification data:', JSON.stringify(notificationData, null, 2));
+        
+        event.waitUntil(
+            self.clients.matchAll({type: 'window', includeUncontrolled: true}).then((clientList) => {
+                const targetUrl = notificationData?.url || '/';
+                
+                console.log('🔍 Client search results:');
+                console.log(`   - Total clients found: ${clientList.length}`);
+                clientList.forEach((client, index) => {
+                    console.log(`   - Client ${index + 1}: ${client.url} (focused: ${client.focused}, type: ${client.type})`);
+                });
+                
+                // Validate URL to prevent navigation to undefined paths
+                if (targetUrl.includes('/undefined') || targetUrl.includes('undefined')) {
+                    console.error('🚫 Invalid URL detected, preventing navigation:', targetUrl);
+                    event.notification.close();
+                    return;
                 }
-            }
-            if (self.clients.openWindow) {
-                return self.clients.openWindow(targetUrl);
-            }
-        })
-    );
+                
+                console.log('🔗 Target URL for navigation:', targetUrl);
+                console.log('🌐 Service worker origin:', self.location.origin);
+                
+                // Try to find an existing client with the same origin and focus it
+                for (const client of clientList) {
+                    console.log(`🔍 Checking client: ${client.url}`);
+                    console.log(`   - Has same origin: ${client.url.includes(self.location.origin)}`);
+                    console.log(`   - Has focus capability: ${'focus' in client}`);
+                    
+                    if (client.url.includes(self.location.origin) && 'focus' in client) {
+                        console.log('🎯 Found matching client, focusing and sending navigation message');
+                        console.log('📤 Sending postMessage with data:', {
+                            type: 'NAVIGATE',
+                            url: targetUrl
+                        });
+                        
+                        event.notification.close();
+                        return client.focus().then(() => {
+                            console.log('✅ Client focused successfully');
+                            // Send message to client to handle navigation
+                            const message = {
+                                type: 'NAVIGATE',
+                                url: targetUrl
+                            };
+                            console.log('📨 Posting navigation message:', message);
+                            return client.postMessage(message);
+                        }).then(() => {
+                            console.log('✅ Navigation message sent successfully');
+                        }).catch((error) => {
+                            console.error('❌ Error during client focus/message:', error);
+                        });
+                    }
+                }
+                
+                // No existing client found, open a new window
+                if (self.clients.openWindow) {
+                    console.log('🆕 No matching clients found, opening new window');
+                    console.log('🔗 Opening URL:', targetUrl);
+                    event.notification.close();
+                    return self.clients.openWindow(targetUrl).then((newClient) => {
+                        console.log('✅ New window opened successfully:', newClient ? 'with client' : 'without client reference');
+                    }).catch((error) => {
+                        console.error('❌ Error opening new window:', error);
+                    });
+                }
+                
+                // Fallback: close notification
+                console.warn('⚠️ No navigation method available, closing notification');
+                event.notification.close();
+            }).catch((error) => {
+                console.error('❌ Navigation error:', error);
+                console.error('Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+                event.notification.close();
+            })
+        );
+        return;
+    }
 });
