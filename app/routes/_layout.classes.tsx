@@ -4,6 +4,7 @@ import { siteConfig } from "~/config/site";
 import { getPrograms } from "~/services/program.server";
 import { createClient } from "~/utils/supabase.server";
 import type { Program } from "~/types/multi-class";
+import { mergeMeta } from "~/utils/meta";
 
 type ClassWithSchedule = {
     id: string;
@@ -29,22 +30,6 @@ type ClassWithSchedule = {
 type LoaderData = {
     programs: Program[];
     classes: ClassWithSchedule[];
-};
-
-// Helper function to merge meta tags from parent and child routes
-const mergeMeta = (parentMeta: MetaDescriptor[], childMeta: MetaDescriptor[]): MetaDescriptor[] => {
-    const merged: Record<string, MetaDescriptor> = {};
-    const getKey = (tag: MetaDescriptor): string | null => {
-        if ('title' in tag && tag.title) return 'title';
-        if ('name' in tag && tag.name) return `name:${tag.name}`;
-        if ('property' in tag && tag.property) return `property:${tag.property}`;
-        if ('tagName' in tag && 'rel' in tag && tag.tagName && tag.rel) return `${tag.tagName}:${tag.rel}`;
-        if ('script:ld+json' in tag && tag['script:ld+json']) return `script:ld+json:${Date.now()}:${Math.random()}`;
-        try { return JSON.stringify(tag); } catch { return null; }
-    };
-    parentMeta.forEach(tag => { const key = getKey(tag); if (key) merged[key] = tag; });
-    childMeta.forEach(tag => { const key = getKey(tag); if (key) merged[key] = tag; });
-    return Object.values(merged);
 };
 
 export const meta: MetaFunction = (args: MetaArgs) => {
