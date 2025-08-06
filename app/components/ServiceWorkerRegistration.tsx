@@ -10,7 +10,7 @@ export function ServiceWorkerRegistration() {
           scope: '/'
         })
         .then((registration) => {
-          console.log('Service Worker registered successfully:', registration);
+          // console.log('Service Worker registered successfully:', registration);
 
           // Check for updates
           registration.addEventListener('updatefound', () => {

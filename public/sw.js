@@ -15,11 +15,11 @@ self.addEventListener('message', (event) => {
    console.log(`📨 SW: Message from main app - ${event.data.type}`);
     if (event.data && event.data.type === 'SET_AUTH_TOKEN') {
         authToken = event.data.token;
-        console.log('🔑 SW: Auth token set');
+        // console.log('🔑 SW: Auth token set');
     }
     if (event.data && event.data.type === 'CLEAR_AUTH_TOKEN') {
         authToken = null;
-        console.log('🗑️ SW: Auth token cleared');
+        // console.log('🗑️ SW: Auth token cleared');
     }
     if (event.data && event.data.type === 'SKIP_WAITING') {
         console.log('⏭️ SW: Skip waiting requested');
@@ -141,7 +141,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const {request} = event;
     const url = new URL(request.url);
-    console.log('Service Worker: Fetching', request.url, request.mode);
+    // console.log('Service Worker: Fetching', request.url, request.mode);
 
     // Skip non-GET and external requests
     if (request.method !== 'GET' || url.origin !== location.origin) {
