@@ -17,7 +17,7 @@ export function CalendarPageHeader({ title, subtitle, icon: Icon, breadcrumbItem
       </div>
 
       {/* Page Header */}
-      <div className="text-center mb-12 landscape-tablet:mb-4">
+      <div className="text-center mb-8 landscape-tablet:mb-4">
         <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl landscape-tablet:text-2xl">
           {Icon && <Icon className="inline-block mr-2 h-8 w-8 landscape-tablet:h-6 landscape-tablet:w-6" />}
           {title}

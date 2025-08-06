@@ -103,7 +103,7 @@ export default function PWAInfo() {
       {/* Features Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {features.map((feature, index) => (
-          <Card key={index} className="form-container-styles h-full">
+          <Card key={index} className="page-card-styles">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg text-green-600 dark:text-green-400">
@@ -125,7 +125,7 @@ export default function PWAInfo() {
       </div>
 
       {/* How to Install */}
-      <Card className="form-container-styles">
+      <Card className="page-card-styles">
         <CardHeader>
           <CardTitle>How to Install</CardTitle>
           <CardDescription>
@@ -166,7 +166,7 @@ export default function PWAInfo() {
       </Card>
 
       {/* Benefits */}
-      <Card className="form-container-styles mt-8">
+      <Card className="page-card-styles mt-8">
         <CardHeader>
           <CardTitle>Why Use the PWA?</CardTitle>
           <CardDescription>
@@ -199,7 +199,7 @@ export default function PWAInfo() {
       </Card>
 
       {/* Notification Features */}
-      <Card className="form-container-styles mt-8">
+      <Card className="page-card-styles mt-8">
         <CardHeader>
           <CardTitle>Smart Notifications</CardTitle>
           <CardDescription>

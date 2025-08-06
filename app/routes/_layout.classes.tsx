@@ -354,10 +354,10 @@ export default function ClassesPage() {
             {/* Hero Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">
-                    <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
+                    <h1 className="page-header-styles">
                         Karate Programs
                     </h1>
-                    <p className="mt-3 max-w-2xl mx-auto text-xl page-subheader-styles sm:mt-4">
+                    <p className="page-subheader-styles">
                         Choose from our diverse range of karate programs designed for all ages and skill levels
                     </p>
                 </div>
@@ -380,7 +380,7 @@ export default function ClassesPage() {
                                 .map((program) => (
                                     <div
                                         key={program.id}
-                                        className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700 hover:border-green-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/10"
+                                        className="page-card-styles"
                                     >
                                         <div className="mb-6">
                                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
@@ -446,7 +446,7 @@ export default function ClassesPage() {
                         </p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                    <div className="page-card-styles">
                         {(() => {
                             // Filter classes to only show those with programs that have:
                             // 1. max_capacity > 1 (group classes, not 1:1)
@@ -554,7 +554,7 @@ export default function ClassesPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                        <div className="page-card-styles">
                             <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
                                 <span className="text-2xl">🥋</span>
                             </div>
@@ -566,7 +566,7 @@ export default function ClassesPage() {
                             </p>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                        <div className="page-card-styles">
                             <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
                                 <span className="text-2xl">💪</span>
                             </div>
@@ -578,7 +578,7 @@ export default function ClassesPage() {
                             </p>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                        <div className="page-card-styles">
                             <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
                                 <span className="text-2xl">🧠</span>
                             </div>
@@ -590,7 +590,7 @@ export default function ClassesPage() {
                             </p>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                        <div className="page-card-styles">
                             <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
                                 <span className="text-2xl">🤝</span>
                             </div>
@@ -602,7 +602,7 @@ export default function ClassesPage() {
                             </p>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                        <div className="page-card-styles">
                             <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
                                 <span className="text-2xl">🎯</span>
                             </div>
@@ -614,7 +614,7 @@ export default function ClassesPage() {
                             </p>
                         </div>
 
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                        <div className="page-card-styles">
                             <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-6">
                                 <span className="text-2xl">👥</span>
                             </div>
@@ -635,7 +635,7 @@ export default function ClassesPage() {
                             Tuition & Pricing
                         </h2>
                     </div>
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                    <div className="page-card-styles">
                         <div className="space-y-4 mb-8">
                             {getPricingTiers().map((tier) => (
                                 <div key={tier.label} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -688,7 +688,7 @@ export default function ClassesPage() {
                             Regular testing opportunities allow students to demonstrate their abilities and advance to the next level.
                         </p>
                     </div>
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
+                    <div className="page-card-styles">
                         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-4">
                             <div className="bg-gray-50 dark:bg-gray-700/50 p-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
                                 <div className="h-4 bg-white border border-gray-300 rounded mb-3"></div>

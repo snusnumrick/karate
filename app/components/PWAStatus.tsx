@@ -48,7 +48,7 @@ export function PWAStatus() {
   // Don't render until client-side
   if (!isClient) {
     return (
-      <Card className="form-container-styles">
+      <Card className="page-card-styles">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Smartphone className="h-5 w-5" />

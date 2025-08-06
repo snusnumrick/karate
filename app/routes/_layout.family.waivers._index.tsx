@@ -52,16 +52,16 @@ export default function WaiversIndex() {
     });
 
     return (
-        <div className="min-h-screen page-background-styles py-12 text-foreground">
+        <div className="page-styles">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AppBreadcrumb items={breadcrumbPatterns.familyWaivers()} className="mb-6" />
                 
                 {/* Page Header */}
-                <div className="text-center mb-12">
-                    <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
+                <div className="family-page-header-section-styles">
+                    <h1 className="page-header-styles">
                         Waivers & Agreements
                     </h1>
-                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                    <p className="page-subheader-styles">
                         Review and sign required waivers for your family
                     </p>
                 </div>
