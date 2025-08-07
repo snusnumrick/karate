@@ -18,13 +18,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { Trash2, Plus, X } from "lucide-react";
+import { Trash2, Plus, X, AlertTriangle, Info } from "lucide-react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClassById, updateClass, deleteClass, getInstructors, getClassSchedules, updateClassSchedules } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import type { UpdateClassData, Program } from "~/types/multi-class";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { validateClassConstraints, getSessionFrequencyDescription } from "~/utils/class-validation";
 
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -74,8 +75,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const [programs] = await Promise.all([getPrograms()]);
       const selectedProgram = programs.find(p => p.id === programId);
 
-      const classDescription = formData.get("description") as string;
+      if (!selectedProgram) {
+        return json(
+          { error: "Selected program not found" },
+          { status: 400 }
+        );
+      }
 
+      const classDescription = formData.get("description") as string;
       const instructorId = formData.get("instructor_id") as string;
 
       // Handle schedules
@@ -94,12 +101,27 @@ export async function action({ request, params }: ActionFunctionArgs) {
         }
       }
 
+      // Validate class constraints against program requirements
+      const maxCapacity = formData.get("max_capacity") ? parseInt(formData.get("max_capacity") as string, 10) : undefined;
+      const validationResult = validateClassConstraints({
+        maxCapacity,
+        schedules,
+        program: selectedProgram
+      });
+
+      if (!validationResult.isValid) {
+        return json(
+          { error: validationResult.errors.join('. ') },
+          { status: 400 }
+        );
+      }
+
       const updateData: Omit<UpdateClassData, 'id'> = {
         program_id: programId,
         name: className || selectedProgram?.name || "Unnamed Class",
         description: classDescription || selectedProgram?.description || "",
         is_active: formData.get("is_active") === "on",
-        max_capacity: formData.get("max_capacity") ? parseInt(formData.get("max_capacity") as string, 10) : undefined,
+        max_capacity: maxCapacity,
         instructor_id: instructorId === "none" ? undefined : instructorId || undefined,
       };
 
@@ -133,6 +155,34 @@ export default function EditClass() {
       time: schedule.start_time
     }))
   );
+
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(classData.program_id);
+  const [maxCapacity, setMaxCapacity] = useState<string>(classData.max_capacity?.toString() || '');
+  const [validationResult, setValidationResult] = useState<{isValid: boolean, errors: string[], warnings: string[]}>({
+    isValid: true,
+    errors: [],
+    warnings: []
+  });
+
+  const selectedProgram = programs.find(p => p.id === selectedProgramId);
+
+  // Validate constraints in real-time
+  useEffect(() => {
+    if (selectedProgram) {
+      const currentSchedules = classSchedules.map(schedule => ({
+        day_of_week: schedule.day,
+        start_time: schedule.time
+      }));
+
+      const result = validateClassConstraints({
+        maxCapacity: maxCapacity ? parseInt(maxCapacity, 10) : undefined,
+        schedules: currentSchedules,
+        program: selectedProgram
+      });
+
+      setValidationResult(result);
+    }
+  }, [selectedProgram, maxCapacity, classSchedules]);
 
   const addSchedule = () => {
     setClassSchedules([...classSchedules, { day: 'monday', time: '09:00' }]);
@@ -188,7 +238,12 @@ export default function EditClass() {
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="program_id" className="text-sm font-medium">Program *</Label>
-                  <Select name="program_id" defaultValue={classData.program_id} required>
+                  <Select 
+                    name="program_id" 
+                    value={selectedProgramId}
+                    onValueChange={setSelectedProgramId}
+                    required
+                  >
                     <SelectTrigger className="h-10 input-custom-styles">
                       <SelectValue placeholder="Select program" />
                     </SelectTrigger>
@@ -200,6 +255,12 @@ export default function EditClass() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedProgram && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Info className="h-3 w-3" />
+                      {getSessionFrequencyDescription(selectedProgram)}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -214,16 +275,27 @@ export default function EditClass() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity</Label>
+                  <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity *</Label>
                   <Input
-                    id="max_capacity"
-                    name="max_capacity"
                     type="number"
+                    name="max_capacity"
+                    value={maxCapacity}
+                    onChange={(e) => setMaxCapacity(e.target.value)}
                     min="1"
-                    defaultValue={classData.max_capacity || ''}
-                    placeholder="e.g., 20"
-                    className="h-10 input-custom-styles"
+                    max={selectedProgram?.max_capacity}
+                    placeholder={selectedProgram ? `Max: ${selectedProgram.max_capacity}` : "Enter capacity"}
+                    required
+                    className={`h-10 input-custom-styles ${
+                      validationResult.errors.some(error => error.includes('capacity')) 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : ''
+                    }`}
                   />
+                  {selectedProgram && (
+                    <p className="text-xs text-muted-foreground">
+                      Program maximum: {selectedProgram.max_capacity} students
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -265,12 +337,45 @@ export default function EditClass() {
               </div>
             </div>
 
+            {/* Validation Errors */}
+            {validationResult.errors.length > 0 && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <ul className="list-disc list-inside space-y-1">
+                    {validationResult.errors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Validation Warnings */}
+            {validationResult.warnings.length > 0 && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <ul className="list-disc list-inside space-y-1">
+                    {validationResult.warnings.map((warning, index) => (
+                      <li key={index}>{warning}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Class Schedule Section */}
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b pb-2">
                 <div>
                   <h3 className="text-lg font-medium text-foreground">Class Schedule</h3>
                   <p className="text-sm text-muted-foreground mt-1">Set up weekly recurring sessions for this class</p>
+                  {selectedProgram && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {getSessionFrequencyDescription(selectedProgram)}
+                    </p>
+                  )}
                 </div>
                 <Button
                   type="button"
@@ -377,7 +482,7 @@ export default function EditClass() {
               <div className="sm:ml-auto">
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !validationResult.isValid}
                   className="h-10 px-8"
                 >
                   {isSubmitting ? "Updating..." : "Update Class"}
