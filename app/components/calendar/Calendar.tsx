@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '~/components/ui/button';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarFilters } from './CalendarFilters';
 import { CalendarGrid } from './CalendarGrid';
@@ -16,8 +14,6 @@ export function Calendar({
   filterOptions,
   className = ''
 }: CalendarProps) {
-  const [isMobile, setIsMobile] = useState(false);
-  
   // Initialize viewMode from localStorage or default
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     if (typeof window !== 'undefined') {
@@ -30,35 +26,18 @@ export function Calendar({
   // Use the selectedStudentId from filterOptions instead of local state
   const selectedStudentId = filterOptions?.selectedStudentId || 'all';
 
-  // Check if mobile and set initial default view
+  // Set initial view based on screen size
   useEffect(() => {
-    const checkMobile = () => {
-      // Consider landscape tablets (like Google Nest 1024x600, iPad Mini 1024x768, iPad Air 1180x820) as mobile for compact view
-      const isLandscapeTablet = window.innerWidth >= 1024 && window.innerHeight <= 820;
-      const mobile = window.innerWidth < 768 || isLandscapeTablet;
-      setIsMobile(mobile);
-      
-      // For landscape tablets, default to grid view if no preference is saved
-      if (isLandscapeTablet && !localStorage.getItem('calendar-view-mode')) {
-        setViewMode('grid');
-      }
-    };
-
     // Set initial view based on screen size only once
     const isLandscapeTablet = window.innerWidth >= 1024 && window.innerHeight <= 820;
     const initialMobile = window.innerWidth < 768 || isLandscapeTablet;
-    setIsMobile(initialMobile);
     
     // Only override saved preference if it's the first time on mobile/landscape tablet
     if (initialMobile && !localStorage.getItem('calendar-view-mode')) {
       // For landscape tablets, prefer grid view with compact layout
       setViewMode(isLandscapeTablet ? 'grid' : 'list');
     }
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []); // Remove viewMode dependency to prevent auto-switching
+  }, []);
 
   // Save viewMode to localStorage when it changes
   const handleViewModeChange = (newViewMode: 'grid' | 'list') => {
@@ -107,7 +86,6 @@ export function Calendar({
           onToday={handleToday}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
-          isMobile={isMobile}
         />
         
         {filterOptions && (

@@ -171,7 +171,7 @@ export async function loader(_: LoaderFunctionArgs) {
             .order('name');
 
         // Get schedules separately to avoid foreign key issues
-        let schedulesData: any[] = [];
+        let schedulesData: Array<{ class_id: string; day_of_week: string; start_time: string }> = [];
         if (classesData && classesData.length > 0) {
             const classIds = classesData.map(c => c.id);
             const { data: schedules } = await supabase

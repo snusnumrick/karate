@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Calendar } from "~/components/calendar/Calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
-import { Calendar as CalendarIcon, Users, DollarSign, Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter, TrendingUp, Plus } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter, Plus } from "lucide-react";
 import {createClient} from "@supabase/supabase-js";
 
 // Enhanced admin calendar event interface
@@ -434,8 +434,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function AdminCalendar() {
-  const { events, birthdayEvents, programs, instructors, filters, stats } = useLoaderData<LoaderData>();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { events, birthdayEvents, programs, instructors, filters } = useLoaderData<LoaderData>();
+  const [searchParams] = useSearchParams();
   const [selectedEvent, setSelectedEvent] = useState<AdminCalendarEvent | null>(null);
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(() => {
@@ -511,10 +511,7 @@ export default function AdminCalendar() {
     return <Badge variant="outline">Available</Badge>;
   };
 
-  const calculateCompletionPercentage = () => {
-    if (stats.totalSessions === 0) return 0;
-    return Math.round((stats.completedSessions * 100) / stats.totalSessions);
-  };
+
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">

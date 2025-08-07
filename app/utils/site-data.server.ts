@@ -149,9 +149,9 @@ async function fetchDynamicSiteData() {
   const activePrograms = programs as Program[];
 
   // Generate schedule information
-  const scheduleInfo = getScheduleInfo(classesWithSchedules, activePrograms);
+  const scheduleInfo = getScheduleInfo(classesWithSchedules);
   const ageRange = getAgeRange(activePrograms);
-  const openingHours = getOpeningHoursSpecification(classesWithSchedules, activePrograms);
+  const openingHours = getOpeningHoursSpecification(classesWithSchedules);
 
   return {
     schedule: {

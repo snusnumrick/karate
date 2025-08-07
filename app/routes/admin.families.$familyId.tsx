@@ -13,7 +13,7 @@ import {
 import React from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Trash2, Edit, Plus } from "lucide-react";
+import { Edit, Plus } from "lucide-react";
 import { formatDate } from "~/utils/misc";
 import { getFamilyDetails, type FamilyDetails } from "~/services/family.server";
 import { getGuardiansByFamily } from "~/services/guardian.server";

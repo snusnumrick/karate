@@ -68,7 +68,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     try {
       await DiscountTemplateService.deleteTemplate(templateId);
       return redirect("/admin/discount-templates");
-    } catch (error) {
+    } catch {
       return json(
         { errors: { general: "Failed to delete template. Please try again." } },
         { status: 500 }
@@ -143,7 +143,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     });
 
     return redirect("/admin/discount-templates");
-  } catch (error) {
+  } catch {
     return json(
       { errors: { general: "Failed to update template. Please try again." } },
       { status: 500 }

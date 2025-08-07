@@ -84,7 +84,7 @@ export default function EventRegistration() {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Registration Form Coming Soon</h3>
             <p className="text-gray-600 mb-6">
-              We're working on building the registration system. In the meantime, please contact us directly to register for this event.
+              We&apos;re working on building the registration system. In the meantime, please contact us directly to register for this event.
             </p>
             
             <div className="space-y-3">

@@ -4,7 +4,7 @@ import {useLoaderData, useRevalidator, Link} from "@remix-run/react";
 import {createClient, SupabaseClient, RealtimeChannel} from "@supabase/supabase-js"; // Import RealtimeChannel
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types";
-import {AlertCircle, MessageSquarePlus, PlusCircle} from "lucide-react";
+import {AlertCircle, PlusCircle} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import AdminConversationList, {AdminConversationSummary} from "~/components/AdminConversationList";
 import { Button } from "~/components/ui/button"; // Import Button

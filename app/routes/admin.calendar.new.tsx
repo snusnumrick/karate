@@ -305,7 +305,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function AdminCalendar() {
   const { events, programs, instructors, filters, stats } = useLoaderData<LoaderData>();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [selectedEvent, setSelectedEvent] = useState<AdminCalendarEvent | null>(null);
   const [currentDate, setCurrentDate] = useState(() => {
     const month = searchParams.get('month');

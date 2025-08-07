@@ -9,8 +9,7 @@ export function CalendarHeader({
   onNextMonth,
   onToday,
   viewMode,
-  onViewModeChange,
-  isMobile
+  onViewModeChange
 }: CalendarHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">

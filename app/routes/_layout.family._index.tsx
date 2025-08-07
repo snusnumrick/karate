@@ -54,7 +54,7 @@ interface StudentAttendance {
     student_name: string;
     last_session_date?: string;
     attendance_status?: 'Present' | 'Absent' | 'Excused' | 'Late';
-};
+}
 
 interface LoaderData {
     profile?: { familyId: string };

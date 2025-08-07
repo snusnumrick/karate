@@ -1,12 +1,9 @@
 import { Badge } from '~/components/ui/badge';
-import { CalendarIcon } from 'lucide-react';
 import {
   formatEventTime,
   getAttendanceStatusVariant,
   getSessionStatusColors,
   getBirthdayColors,
-  getEventColors,
-  getEligibilityIconColor,
   getEligibilityBorderColor
 } from './utils';
 import type { CalendarEventProps } from './types';

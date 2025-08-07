@@ -357,7 +357,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 // Critical: Amounts in 'payments' table might not match sum of 'payment_taxes'.
                 // Attempt to cancel PI? For now, log and return error.
                 console.log(`[API Create PI] Attempting to cancel Stripe Payment Intent ${paymentIntent.id} due to tax insertion failure.`);
-                try { await stripe.paymentIntents.cancel(paymentIntent.id); } catch (cancelError) { /* Log cancel error */ }
+                try { await stripe.paymentIntents.cancel(paymentIntent.id); } catch { /* Log cancel error */ }
                 return json({ error: "Failed to record tax details. Please contact support." }, { status: 500, headers: response.headers });
             }
             // console.log(`[API Create PI] Inserted ${taxesWithPaymentId.length} new tax records for payment ${supabasePaymentId}.`);

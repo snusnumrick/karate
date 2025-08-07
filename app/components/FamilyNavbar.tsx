@@ -6,7 +6,6 @@ import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/too
 import {
     Calendar,
     CalendarCheck,
-    CreditCard,
     FileText,
     Home,
     LogOut,

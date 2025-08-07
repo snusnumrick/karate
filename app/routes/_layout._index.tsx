@@ -1,5 +1,5 @@
 // Import types needed for merging parent meta
-import type { MetaFunction, MetaArgs, MetaDescriptor, LoaderFunctionArgs } from "@remix-run/node";
+import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
@@ -18,7 +18,7 @@ type UpcomingEvent = Pick<Database['public']['Tables']['events']['Row'],
 >;
 
 // Loader for homepage - fetch upcoming events
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader() {
     try {
         const upcomingEvents = await EventService.getUpcomingEvents();
         return json(

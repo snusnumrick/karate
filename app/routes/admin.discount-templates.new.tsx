@@ -96,7 +96,7 @@ export async function action({ request }: ActionFunctionArgs) {
     });
 
     return redirect("/admin/discount-templates");
-  } catch (error) {
+  } catch {
     return json(
       { errors: { general: "Failed to create template. Please try again." } },
       { status: 500 }

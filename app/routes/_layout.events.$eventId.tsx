@@ -7,9 +7,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
-import type { Database } from "~/types/database.types";
 
-type Event = Database['public']['Tables']['events']['Row'];
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.event) {

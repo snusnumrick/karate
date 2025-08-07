@@ -6,7 +6,7 @@ import {Database, Tables} from "~/types/database.types";
 import MessageView, {MessageWithSender, SenderProfile} from "~/components/MessageView";
 import MessageInput from "~/components/MessageInput";
 import {Button} from "~/components/ui/button";
-import {AlertCircle, ArrowLeft} from "lucide-react";
+import {AlertCircle} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {createClient, type SupabaseClient} from "@supabase/supabase-js";
 import { notificationService } from "~/utils/notifications.client";
@@ -515,7 +515,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
 // --- Component ---
 export default function AdminConversationView() {
-    const {conversation, messages: initialMessages, userId, userFirstName, userLastName, error, ENV, accessToken, refreshToken} = useLoaderData<typeof loader>();
+    const {conversation, messages: initialMessages, userId, error, ENV, accessToken, refreshToken} = useLoaderData<typeof loader>();
     const fetcher = useFetcher<ActionData>();
     const [messages, setMessages] = useState<MessageWithSender[]>(initialMessages);
     const messageInputRef = useRef<HTMLTextAreaElement>(null); // Ref for the message input
@@ -861,9 +861,12 @@ export default function AdminConversationView() {
         };
         // Dependencies: Re-run only if the user or conversation changes.
         // The Supabase client should handle internal token refreshes for the subscription.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId, conversation?.id]); // Ensure dependencies are minimal
 
     // Update messages state if loader data changes
+    // Note: 'messages' is intentionally excluded from deps to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         setMessages(initialMessages);
     }, [initialMessages]);

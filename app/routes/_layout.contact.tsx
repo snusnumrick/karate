@@ -17,11 +17,7 @@ import {mergeMeta} from "~/utils/meta";
 import {
     getScheduleInfo,
     getAgeRange,
-    getOpeningHoursSpecification,
-    formatDayName,
-    formatTime,
-    calculateEndTime,
-    parseTimeFromSiteConfig
+    getOpeningHoursSpecification
 } from "~/utils/schedule";
 
 // Type definitions
@@ -128,7 +124,7 @@ export const meta: MetaFunction<typeof loader> = ({matches, data}) => {
     const programs = loaderData?.programs || [];
     
     // Get dynamic schedule and age information
-    const scheduleInfo = getScheduleInfo(classes, programs);
+    const scheduleInfo = getScheduleInfo(classes);
     const ageRange = getAgeRange(programs);
     
     const contactPageTitle = "Contact Us | Greenegin Karate";
@@ -165,7 +161,7 @@ export const meta: MetaFunction<typeof loader> = ({matches, data}) => {
                 "email": siteConfig.contact.email,
                 "url": siteConfig.url,
                 "sport": "Karate",
-                "openingHoursSpecification": getOpeningHoursSpecification(classes, programs),
+                "openingHoursSpecification": getOpeningHoursSpecification(classes),
                 "location": {
                     "@type": "Place",
                     "name": "Greenegin Karate Class Location",
@@ -195,7 +191,7 @@ export default function ContactPage() {
     // console.log('[ContactPage] classes', classes);
 
     // Use dynamic data from database
-    const scheduleInfo = getScheduleInfo(classes, programs);
+    const scheduleInfo = getScheduleInfo(classes);
     // console.log('[ContactPage] scheduleInfo', scheduleInfo);
     const ageRange = getAgeRange(programs);
     // console.log('[ContactPage] ageRange', ageRange);

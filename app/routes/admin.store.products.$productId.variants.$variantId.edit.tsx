@@ -1,5 +1,5 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
-import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
+import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { siteConfig } from "~/config/site";
 import { Button } from "~/components/ui/button";
@@ -247,7 +247,6 @@ export default function EditProductVariantPage() {
     const { product, variant } = useLoaderData<LoaderData>();
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
-    const params = useParams();
     const isSubmitting = navigation.state === "submitting";
     const formIntent = navigation.formData?.get('intent'); // Get intent for loading state
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete dialog

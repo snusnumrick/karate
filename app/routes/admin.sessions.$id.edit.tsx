@@ -6,12 +6,10 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Calendar, Clock, Save } from "lucide-react";
-import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { AppBreadcrumb } from "~/components/AppBreadcrumb";
 import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
-import { siteConfig } from "~/config/site";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClassSessionById, updateClassSession } from "~/services/class.server";
-import type { ClassSession } from "~/types/multi-class";
 import { formatDate } from "~/utils/misc";
 
 type ActionData = {

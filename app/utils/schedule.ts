@@ -89,7 +89,7 @@ export const parseTimeFromSiteConfig = (timeLong: string) => {
 };
 
 // Get schedule information from classes and programs
-export const getScheduleInfo = (classes: ClassWithSchedule[], programs: Program[]) => {
+export const getScheduleInfo = (classes: ClassWithSchedule[]) => {
     if (classes.length === 0) {
         console.warn('No classes found');
         return {
@@ -165,7 +165,7 @@ export const getScheduleInfo = (classes: ClassWithSchedule[], programs: Program[
 };
 
 // Helper function to generate opening hours specification for structured data
-export const getOpeningHoursSpecification = (classes: ClassWithSchedule[], programs: Program[]) => {
+export const getOpeningHoursSpecification = (classes: ClassWithSchedule[]) => {
     if (classes.length === 0) {
         // Fallback to site config
         const dayMap: Record<string, string[]> = {

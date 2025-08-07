@@ -14,7 +14,7 @@ import {Separator} from "~/components/ui/separator";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import { ClientOnly } from "~/components/client-only"; // Import ClientOnly
-import { AdminCard, AdminCardHeader, AdminCardTitle, AdminCardDescription, AdminCardContent, AdminCardFooter } from "~/components/AdminCard";
+import { AdminCard, AdminCardHeader, AdminCardTitle, AdminCardDescription, AdminCardContent } from "~/components/AdminCard";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
