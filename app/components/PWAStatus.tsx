@@ -2,19 +2,18 @@ import { useState, useEffect } from 'react';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { Smartphone, Wifi, WifiOff, Download, CheckCircle, Globe } from 'lucide-react';
+import { Smartphone, Wifi, WifiOff, Download, CheckCircle, Globe, Loader2 } from 'lucide-react';
 import { usePWAInstall, isPWA, getPWADisplayMode } from '~/components/ServiceWorkerRegistration';
+import { useClientReady } from '~/hooks/use-client-ready';
 
 export function PWAStatus() {
   const [isOnline, setIsOnline] = useState(true);
   const [displayMode, setDisplayMode] = useState('browser');
   const [isAppInstalled, setIsAppInstalled] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const isClient = useClientReady();
   const { install, canInstall } = usePWAInstall();
 
   useEffect(() => {
-    // Mark as client-side
-    setIsClient(true);
     
     // Only run browser APIs on client
     if (typeof window !== 'undefined') {
@@ -59,10 +58,11 @@ export function PWAStatus() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="flex items-center justify-center py-8">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Loading app status...</span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -155,14 +155,13 @@ export function PWAStatus() {
 // Simplified PWA badge component for headers/navbars
 export function PWABadge() {
   const [isAppInstalled, setIsAppInstalled] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const isClient = useClientReady();
 
   useEffect(() => {
-    setIsClient(true);
-    if (typeof window !== 'undefined') {
+    if (isClient && typeof window !== 'undefined') {
       setIsAppInstalled(isPWA());
     }
-  }, []);
+  }, [isClient]);
 
   if (!isClient || !isAppInstalled) return null;
 

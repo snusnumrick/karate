@@ -58,7 +58,12 @@ function handleBotRequest(
                     // Construct Content Security Policy header
                     const supabaseHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : '';
                     const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : '';
-                    const connectSrc = `'self' https://api.stripe.com ${supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : ''}`;
+                    
+                    // In development, allow WebSocket connections to local dev servers
+                    const isDevelopment = process.env.NODE_ENV === 'development';
+                    const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:*' : '';
+                    
+                    const connectSrc = `'self' https://api.stripe.com ${supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : ''} ${devWebSockets} ws://127.0.0.1:* wss://127.0.0.1:*`.trim();
                     const imgSrc = `'self' data: ${supabaseOrigin}`; // Add Supabase origin for images
                     const scriptSrc = `'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`; // Add 'unsafe-eval' and stripe js
                     const styleSrc = `'self' 'unsafe-inline' https://fonts.googleapis.com`;
@@ -134,7 +139,12 @@ function handleBrowserRequest(
                     // Construct Content Security Policy header (ensure this logic matches the one in handleBotRequest)
                     const supabaseHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : '';
                     const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : '';
-                    const connectSrc = `'self' https://api.stripe.com ${supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : ''}`;
+                    
+                    // In development, allow WebSocket connections to local dev servers
+                    const isDevelopment = process.env.NODE_ENV === 'development';
+                    const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:*' : '';
+                    
+                    const connectSrc = `'self' https://api.stripe.com ${supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : ''} ${devWebSockets} ws://127.0.0.1:* wss://127.0.0.1:*`.trim();
                     const imgSrc = `'self' data: ${supabaseOrigin}`; // Add Supabase origin for images
                     const scriptSrc = `'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com`; // Add 'unsafe-eval' and stripe js
                     const styleSrc = `'self' 'unsafe-inline' https://fonts.googleapis.com`;

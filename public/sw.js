@@ -160,7 +160,48 @@ self.addEventListener('fetch', (event) => {
                     }
                     return response;
                 })
-                .catch(() => caches.match(request))
+                .catch(() => {
+                    return caches.match(request).then((cachedResponse) => {
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        // Return a proper offline response for API requests
+                        return new Response(JSON.stringify({ error: 'Offline', message: 'This data is not available offline' }), {
+                            status: 503,
+                            statusText: 'Service Unavailable',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    });
+                })
+        );
+        return;
+    }
+
+    // Data route requests (Remix loader data): Network-first, fallback to cache, then offline response
+    if (url.search.includes('_data=')) {
+        event.respondWith(
+            fetch(request)
+                .then((response) => {
+                    // Cache successful data responses
+                    if (response.ok) {
+                        const responseClone = response.clone();
+                        caches.open(DYNAMIC_CACHE_NAME).then((cache) => cache.put(request, responseClone));
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    return caches.match(request).then((cachedResponse) => {
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        // Return a proper offline response for data routes
+                        return new Response(JSON.stringify({ offline: true, message: 'Data not available offline' }), {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    });
+                })
         );
         return;
     }
@@ -178,12 +219,19 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 })
                 // if offline, return cached page or fallback to offline page
-                .catch(() => caches.match(request).then((res) => res || caches.match('/offline.html')))
+                .catch(() => {
+                    return caches.match(request).then((cachedResponse) => {
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        return caches.match('/offline.html');
+                    });
+                })
         );
         return;
     }
 
-// Other requests (assets): Cache-first, fallback to network
+    // Other requests (assets): Cache-first, fallback to network
     event.respondWith(
         caches.match(request).then((cachedResponse) => {
             // If the asset is in the cache, return it.
@@ -205,9 +253,21 @@ self.addEventListener('fetch', (event) => {
                 // If the fetch fails (e.g., offline)...
                 // and if the request was for an image, return the fallback icon.
                 if (request.destination === 'image') {
-                    return caches.match('/icon.svg');
+                    return caches.match('/icon.svg').then((fallbackIcon) => {
+                        if (fallbackIcon) {
+                            return fallbackIcon;
+                        }
+                        // If even the fallback icon is not cached, return a minimal SVG
+                        return new Response('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" fill="#ccc"/></svg>', {
+                            headers: { 'Content-Type': 'image/svg+xml' }
+                        });
+                    });
                 }
-                // For other assets like scripts, we don't provide a fallback.
+                // For other assets like scripts, return a proper error response
+                return new Response('', {
+                    status: 503,
+                    statusText: 'Service Unavailable'
+                });
             });
         })
     );

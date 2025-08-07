@@ -1,3 +1,4 @@
+import React from "react";
 import {Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError,} from "@remix-run/react";
 import type {LinksFunction, MetaFunction} from "@remix-run/node"; // Import MetaFunction
 import {ThemeProvider} from "~/components/theme-provider";
@@ -6,6 +7,46 @@ import {ServiceWorkerRegistration} from "~/components/ServiceWorkerRegistration"
 import {PWAInstallPrompt} from "~/components/PWAInstallPrompt";
 
 import "./tailwind.css";
+
+// Error boundary wrapper to catch React context errors
+class ErrorBoundaryWrapper extends React.Component<
+    { children: React.ReactNode },
+    { hasError: boolean; error?: Error }
+> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+        console.error("React Error Boundary caught an error:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="flex flex-col min-h-screen items-center justify-center gap-4 p-4 text-foreground page-background-styles">
+                    <h1 className="text-4xl font-bold">Application Error</h1>
+                    <p className="text-lg text-muted-foreground">
+                        Something went wrong. Please refresh the page.
+                    </p>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                    >
+                        Refresh Page
+                    </button>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
 
 // Helper function to parse class times for schema.org
 const parseClassTimesForSchema = (daysString: string, timeString: string) => {
@@ -227,7 +268,9 @@ export function Layout() {
             enableSystem
             disableTransitionOnChange
         >
-            <Outlet/> {/* Render the matched route component directly */}
+            <ErrorBoundaryWrapper>
+                <Outlet/> {/* Render the matched route component directly */}
+            </ErrorBoundaryWrapper>
             <PWAInstallPrompt />
         </ThemeProvider>
         <ScrollRestoration/>

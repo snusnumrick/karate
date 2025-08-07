@@ -24,11 +24,32 @@ if (process.env.NODE_ENV === 'development') {
     };
 }
 
-startTransition(() => {
-    hydrateRoot(
-        document,
-        <StrictMode>
-            <RemixBrowser/>
-        </StrictMode>
-    );
-});
+// Add error handling for hydration
+function hydrate() {
+    try {
+        startTransition(() => {
+            hydrateRoot(
+                document,
+                <StrictMode>
+                    <RemixBrowser/>
+                </StrictMode>,
+                {
+                    onRecoverableError: (error) => {
+                        console.warn("Recoverable hydration error:", error);
+                    }
+                }
+            );
+        });
+    } catch (error) {
+        console.error("Hydration failed:", error);
+        // Fallback: force a full page reload if hydration fails
+        window.location.reload();
+    }
+}
+
+// Ensure DOM is ready before hydrating
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', hydrate);
+} else {
+    hydrate();
+}

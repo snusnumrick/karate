@@ -92,7 +92,7 @@ export async function getSiteData(forceRefresh = false): Promise<SiteData> {
     };
 
     // Update cache
-    console.log("[getSiteData] updating cache",siteData);
+    // console.log("[getSiteData] updating cache",siteData);
     siteDataCache = siteData;
     cacheExpiry = new Date(Date.now() + CACHE_DURATION_MS);
 
@@ -132,7 +132,7 @@ async function fetchDynamicSiteData() {
     console.error('Error fetching classes:', classesError);
     throw classesError;
   }
-  console.log("[fetchDynamicSiteData] classes",classes);
+  // console.log("[fetchDynamicSiteData] classes",classes);
 
   const { data: programs, error: programsError } = await supabase
     .from('programs')
@@ -143,7 +143,7 @@ async function fetchDynamicSiteData() {
     console.error('Error fetching programs:', programsError);
     throw programsError;
   }
-  console.log("[fetchDynamicSiteData] programs",programs);
+  // console.log("[fetchDynamicSiteData] programs",programs);
 
   const classesWithSchedules = classes as ClassWithSchedule[];
   const activePrograms = programs as Program[];
