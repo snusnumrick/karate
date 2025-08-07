@@ -1,6 +1,6 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Form, useNavigation, useActionData, Link } from "@remix-run/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -9,12 +9,13 @@ import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Plus, X } from "lucide-react";
+import { Plus, X, AlertTriangle, Info } from "lucide-react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { createClass, getInstructors, createClassSchedule } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { CreateClassData, Program } from "~/types/multi-class";
+import { validateClassConstraints, getDefaultMaxCapacity, getSessionFrequencyDescription } from "~/utils/class-validation";
 
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -44,25 +45,19 @@ export async function action({ request }: ActionFunctionArgs) {
     const [programs] = await Promise.all([getPrograms()]);
     const selectedProgram = programs.find(p => p.id === programId);
 
+    if (!selectedProgram) {
+      return json(
+        { error: "Selected program not found" },
+        { status: 400 }
+      );
+    }
+
     const classDescription = formData.get("description") as string;
 
-    const classData: CreateClassData = {
-      program_id: programId,
-      name: className || selectedProgram?.name || "Unnamed Class",
-      description: classDescription || selectedProgram?.description || "",
-      max_capacity: maxCapacityValue ? parseInt(maxCapacityValue, 10) : undefined,
-      instructor_id: instructorIdValue || undefined,
-      is_active: formData.get("is_active") === "on", // Checkbox sends "on" when checked
-    };
-
-    const newClass = await createClass(classData);
-
-    // Create class schedules if provided
+    // Parse schedules from form data
     const schedules: Array<{day_of_week: string, start_time: string}> = [];
-
-    // Parse multiple schedules from form data
     for (const [key, value] of formData.entries()) {
-      const scheduleMatch = key.match(/^schedules\[(\d+)\]\[(\w+)\]$/);
+      const scheduleMatch = key.match(/^schedules\[(\d+)]\[(\w+)]$/);
       if (scheduleMatch) {
         const [, index, field] = scheduleMatch;
         const scheduleIndex = parseInt(index, 10);
@@ -76,6 +71,32 @@ export async function action({ request }: ActionFunctionArgs) {
         }
       }
     }
+
+    // Validate class constraints against program requirements
+    const maxCapacity = maxCapacityValue ? parseInt(maxCapacityValue, 10) : undefined;
+    const validationResult = validateClassConstraints({
+      maxCapacity,
+      schedules,
+      program: selectedProgram
+    });
+
+    if (!validationResult.isValid) {
+      return json(
+        { error: validationResult.errors.join('. ') },
+        { status: 400 }
+      );
+    }
+
+    const classData: CreateClassData = {
+      program_id: programId,
+      name: className || selectedProgram?.name || "Unnamed Class",
+      description: classDescription || selectedProgram?.description || "",
+      max_capacity: maxCapacity,
+      instructor_id: instructorIdValue || undefined,
+      is_active: formData.get("is_active") === "on", // Checkbox sends "on" when checked
+    };
+
+    const newClass = await createClass(classData);
 
     // Create schedule entries for valid schedules
      for (const schedule of schedules) {
@@ -103,13 +124,52 @@ export default function NewClass() {
   const actionData = useActionData<typeof action>();
   const isSubmitting = navigation.state === "submitting";
 
-  const [schedules, setSchedules] = useState([{ id: 0, startTime: '' }]);
+  const [schedules, setSchedules] = useState([{ id: 0, startTime: '', dayOfWeek: '' }]);
   const [scheduleTimes, setScheduleTimes] = useState<{[key: number]: string}>({0: ''});
+  const [scheduleDays, setScheduleDays] = useState<{[key: number]: string}>({0: ''});
+  const [selectedProgramId, setSelectedProgramId] = useState<string>('');
+  const [maxCapacity, setMaxCapacity] = useState<string>('');
+  const [validationResult, setValidationResult] = useState<{isValid: boolean, errors: string[], warnings: string[]}>({
+    isValid: true,
+    errors: [],
+    warnings: []
+  });
+
+  const selectedProgram = programs.find(p => p.id === selectedProgramId);
+
+  // Update default max capacity when program changes
+  useEffect(() => {
+    if (selectedProgram && !maxCapacity) {
+      const defaultCapacity = getDefaultMaxCapacity(selectedProgram);
+      if (defaultCapacity) {
+        setMaxCapacity(defaultCapacity.toString());
+      }
+    }
+  }, [selectedProgram, maxCapacity]);
+
+  // Validate constraints in real-time
+  useEffect(() => {
+    if (selectedProgram) {
+      const currentSchedules = schedules.map((schedule, index) => ({
+        day_of_week: scheduleDays[schedule.id] || '',
+        start_time: scheduleTimes[schedule.id] || ''
+      }));
+
+      const result = validateClassConstraints({
+        maxCapacity: maxCapacity ? parseInt(maxCapacity, 10) : undefined,
+        schedules: currentSchedules,
+        program: selectedProgram
+      });
+
+      setValidationResult(result);
+    }
+  }, [selectedProgram, maxCapacity, schedules, scheduleTimes, scheduleDays]);
 
   const addSchedule = () => {
     const newId = schedules.length;
-    setSchedules(prev => [...prev, { id: newId, startTime: '' }]);
+    setSchedules(prev => [...prev, { id: newId, startTime: '', dayOfWeek: '' }]);
     setScheduleTimes(prev => ({...prev, [newId]: ''}));
+    setScheduleDays(prev => ({...prev, [newId]: ''}));
   };
 
   const removeSchedule = (id: number) => {
@@ -119,10 +179,19 @@ export default function NewClass() {
       delete newTimes[id];
       return newTimes;
     });
+    setScheduleDays(prev => {
+      const newDays = {...prev};
+      delete newDays[id];
+      return newDays;
+    });
   };
 
   const handleTimeChange = (scheduleId: number, time: string) => {
     setScheduleTimes(prev => ({...prev, [scheduleId]: time}));
+  };
+
+  const handleDayChange = (scheduleId: number, day: string) => {
+    setScheduleDays(prev => ({...prev, [scheduleId]: day}));
   };
 
   const validateTimeFormat = (time: string): boolean => {
@@ -169,7 +238,12 @@ export default function NewClass() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="program_id">Program *</Label>
-                <Select name="program_id" required>
+                <Select 
+                  name="program_id" 
+                  required 
+                  value={selectedProgramId}
+                  onValueChange={setSelectedProgramId}
+                >
                   <SelectTrigger className="input-custom-styles">
                     <SelectValue placeholder="Select program" />
                   </SelectTrigger>
@@ -181,6 +255,12 @@ export default function NewClass() {
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedProgram && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    {getSessionFrequencyDescription(selectedProgram)}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -215,8 +295,18 @@ export default function NewClass() {
                   name="max_capacity"
                   type="number"
                   min="1"
-                  placeholder="e.g., 20"
+                  max={selectedProgram?.max_capacity || undefined}
+                  value={maxCapacity}
+                  onChange={(e) => setMaxCapacity(e.target.value)}
+                  placeholder={selectedProgram?.max_capacity ? `Default: ${selectedProgram.max_capacity}` : "e.g., 20"}
+                  className={validationResult.errors.some(e => e.includes('capacity')) ? "border-red-500" : ""}
                 />
+                {selectedProgram?.max_capacity && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Program maximum: {selectedProgram.max_capacity} students
+                  </p>
+                )}
               </div>
             </div>
 
@@ -230,12 +320,35 @@ export default function NewClass() {
               />
             </div>
 
+            {/* Validation Messages */}
+            {(validationResult.errors.length > 0 || validationResult.warnings.length > 0) && (
+              <div className="space-y-2">
+                {validationResult.errors.map((error, index) => (
+                  <Alert key={`error-${index}`} className="border-red-200 bg-red-50">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800">{error}</AlertDescription>
+                  </Alert>
+                ))}
+                {validationResult.warnings.map((warning, index) => (
+                  <Alert key={`warning-${index}`} className="border-yellow-200 bg-yellow-50">
+                    <Info className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-yellow-800">{warning}</AlertDescription>
+                  </Alert>
+                ))}
+              </div>
+            )}
+
             {/* Class Schedule Section */}
             <div className="space-y-4">
               <div className="border-t pt-4">
-                <h3 className="text-lg font-medium mb-3">Class Schedule (Optional)</h3>
+                <h3 className="text-lg font-medium mb-3">Class Schedule</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Add one or more weekly schedule slots for this class. Duration is taken from the program.
+                  Add weekly schedule slots for this class. Duration is taken from the program.
+                  {selectedProgram && (
+                    <span className="block mt-1 font-medium">
+                      {getSessionFrequencyDescription(selectedProgram)}
+                    </span>
+                  )}
                 </p>
 
                 <div className="space-y-3">
@@ -251,7 +364,11 @@ export default function NewClass() {
                       <div key={schedule.id} className="flex gap-4 items-start border rounded-lg p-4">
                         <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
-                            <Select name={`schedules[${index}][day_of_week]`}>
+                            <Select 
+                              name={`schedules[${index}][day_of_week]`}
+                              value={scheduleDays[schedule.id] || ''}
+                              onValueChange={(value) => handleDayChange(schedule.id, value)}
+                            >
                               <SelectTrigger className="input-custom-styles">
                                 <SelectValue placeholder="Select day" />
                               </SelectTrigger>
@@ -333,7 +450,7 @@ export default function NewClass() {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !validationResult.isValid}
                 >
                   {isSubmitting ? "Creating..." : "Create Class"}
                 </Button>
