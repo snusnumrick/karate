@@ -5,9 +5,16 @@ const staticRoutes = [
     "/",
     "/about",
     "/contact",
+    "/classes", // Public classes overview
+    // Introductory program landing pages
+    "/intro/adaptive",
+    "/intro/elementary",
+    "/intro/daycare",
+    // Tooling page (public but non-sensitive)
+    "/intro/builder",
+    // Auth pages (optional to include; can help searchers)
     "/login",
     "/register",
-    "/classes", // Add the classes route
     // Add other static public routes as needed
 ];
 
