@@ -20,9 +20,6 @@ interface AdminConversationListProps {
  * Uses a background/border highlight to indicate conversations unread by any admin.
  */
 export default function AdminConversationList({ conversations, basePath }: AdminConversationListProps) {
-    // Optional: Log for debugging
-    console.log(`[AdminConversationList] Rendering ${conversations.length} conversations.`);
-    console.log(conversations);
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">

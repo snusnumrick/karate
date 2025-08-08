@@ -83,8 +83,6 @@ export default function AdminLayout() {
         );
         setSupabase(client);
     }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
-
-    console.log("Entering AdminLayout...");
     return (
         <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
             <AdminNavbar/> {/* Add the Admin Navbar */}

@@ -16,6 +16,35 @@ for communication between families and administrators.
     - Home Page: Introduction, class schedule, location (`app/config/site.ts`).
     - Instructor Profile (`/about`): Bio for Sensei Negin.
     - Contact Page (`/contact`).
+- **Introductory Program Landing Pages:**
+    - **Templated Landing Pages:** Three specialized landing pages for introductory karate programs targeting different audiences:
+        - **Elementary Schools** (`/intro/elementary`): Designed for school administrators and teachers looking to offer karate programs.
+        - **Adaptive Programs** (`/intro/adaptive`): Tailored for special needs programs and adaptive sports coordinators.
+        - **Day Care Centers** (`/intro/daycare`): Focused on day care directors and early childhood educators.
+    - **Dynamic Content System:** All landing pages support URL parameters for customization:
+        - `sept`: September series start dates
+        - `feb`: February series start dates  
+        - `price`: Program pricing (automatically adds "+ PST")
+        - `sessions`: Number of sessions per series
+        - `duration`: Duration of each session
+        - `frequency`: Frequency of sessions (e.g., "weekly", "twice weekly")
+    - **URL Builder Interface** (`/intro/builder`): Administrative tool for generating custom URLs:
+        - **Configuration Panel:** Set dates, pricing, and program details with real-time preview
+        - **Automatic URL Generation:** Creates custom URLs for all three audience types
+        - **One-Click Copy:** Easy copying of generated URLs for sharing
+        - **Live Preview:** Shows exactly how settings will appear on landing pages
+    - **Professional Design:** Each landing page features:
+        - SEO-optimized meta tags and structured data
+        - Responsive design consistent with main site branding
+        - Audience-specific content and messaging
+        - Clear call-to-action sections for enrollment and contact
+        - Professional layout with program benefits and details
+    - **Marketing Benefits:**
+        - **Replace PDF Files:** Send direct URLs instead of static PDF documents
+        - **Always Current:** No outdated files - content updates instantly
+        - **Better Tracking:** Monitor which URLs get the most engagement
+        - **Easy Customization:** Quickly adjust dates and pricing for different campaigns
+        - **Professional Appearance:** Branded web pages that reflect your school's quality
 - **Authentication:** Secure user registration, login, email confirmation, and password management.
 - **Family Portal (`/family`):** Central dashboard for logged-in users.
     - View associated family details.
@@ -557,6 +586,11 @@ After deployment, you can verify push notifications are working by:
         - `app/routes/admin.programs.tsx`: Admin program management interface.
         - `app/routes/admin.classes.tsx`: Admin class management interface.
         - `app/routes/admin.enrollments.tsx`: Admin enrollment management interface.
+        - **Intro Template Routes:** Introductory program landing pages and URL builder:
+            - `app/routes/_layout.intro.elementary.tsx`: Elementary school landing page with dynamic URL parameters
+            - `app/routes/_layout.intro.adaptive.tsx`: Adaptive programs landing page with dynamic URL parameters
+            - `app/routes/_layout.intro.daycare.tsx`: Day care centers landing page with dynamic URL parameters
+            - `app/routes/_layout.intro.builder.tsx`: URL builder interface for generating custom landing page URLs
     - `app/components/`: Shared React components (UI elements, layout parts).
         - **PWA Components:** `ServiceWorkerRegistration.tsx` (service worker management), `PWAInstallPrompt.tsx` (installation prompts), `PWAStatus.tsx` (PWA status indicators and installation button).
         - **Notification Components:** `NotificationSettings.tsx` (notification preferences management with customizable settings for frequency, quiet hours, and sound preferences).

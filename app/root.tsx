@@ -3,8 +3,6 @@ import {Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError,} from "@
 import type {LinksFunction, MetaFunction} from "@remix-run/node"; // Import MetaFunction
 import {ThemeProvider} from "~/components/theme-provider";
 import {siteConfig} from "~/config/site"; // Import site config
-import {ServiceWorkerRegistration} from "~/components/ServiceWorkerRegistration";
-import {PWAInstallPrompt} from "~/components/PWAInstallPrompt";
 
 import "./tailwind.css";
 
@@ -261,7 +259,6 @@ export function Layout() {
         </head>
         {/* Removed contentEditable attributes as suppressHydrationWarning on <html> handles extension issues */}
         <body className="h-full bg-background text-foreground">
-        <ServiceWorkerRegistration />
         <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -271,7 +268,6 @@ export function Layout() {
             <ErrorBoundaryWrapper>
                 <Outlet/> {/* Render the matched route component directly */}
             </ErrorBoundaryWrapper>
-            <PWAInstallPrompt />
         </ThemeProvider>
         <ScrollRestoration/>
         <Scripts/>
