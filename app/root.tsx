@@ -166,6 +166,8 @@ export function Layout() {
         <head>
             <meta charSet="utf-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+            {/*Tracking*/}
+            <script defer src="https://umami-two-lilac.vercel.app/script.js" data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"></script>
             {/* CSP is now set via HTTP header in entry.server.tsx */}
             {/* Favicon links are now managed solely by the links function */}
             <meta name="google-site-verification" content="u2fl3O-U-93ZYbncQ8drQwMBMNDWPY159eyNaoJO3Kk" />
