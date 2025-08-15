@@ -12,6 +12,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntityById, updateInvoiceEntity } from "~/services/invoice-entity.server";
 import type { EntityType, PaymentTerms } from "~/types/invoice";
 import { Save, CheckCircle } from "lucide-react";
+import { Constants } from "~/types/database.types";
 
 interface ActionData {
   errors?: {
@@ -175,11 +176,11 @@ export default function EditInvoiceEntityPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="family">Family</SelectItem>
-                    <SelectItem value="school">School</SelectItem>
-                    <SelectItem value="government">Government</SelectItem>
-                    <SelectItem value="corporate">Corporate</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    {Constants.public.Enums.entity_type_enum.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {actionData?.errors?.entity_type && (

@@ -1149,7 +1149,7 @@ export type Database = {
           created_at: string | null
           credit_limit: number | null
           email: string | null
-          entity_type: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"]
           id: string
           is_active: boolean | null
           name: string
@@ -1170,7 +1170,7 @@ export type Database = {
           created_at?: string | null
           credit_limit?: number | null
           email?: string | null
-          entity_type: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"]
           id?: string
           is_active?: boolean | null
           name: string
@@ -1191,7 +1191,7 @@ export type Database = {
           created_at?: string | null
           credit_limit?: number | null
           email?: string | null
-          entity_type?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"]
           id?: string
           is_active?: boolean | null
           name?: string
@@ -2684,6 +2684,12 @@ export type Database = {
         | "student_too_old"
         | "student_belt_rank_too_low"
         | "student_belt_rank_too_high"
+      entity_type_enum:
+        | "family"
+        | "school"
+        | "government"
+        | "corporate"
+        | "other"
       enrollment_status:
         | "active"
         | "inactive"
@@ -2915,6 +2921,13 @@ export const Constants = {
         "student_too_old",
         "student_belt_rank_too_low",
         "student_belt_rank_too_high",
+      ],
+      entity_type_enum: [
+        "family",
+        "school",
+        "government",
+        "corporate",
+        "other",
       ],
       enrollment_status: [
         "active",

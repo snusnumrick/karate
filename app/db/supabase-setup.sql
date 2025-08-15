@@ -98,6 +98,22 @@ $$
     END
 $$;
 
+-- Create entity_type enum for invoice entities
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'entity_type_enum') THEN
+            CREATE TYPE entity_type_enum AS ENUM (
+                'family',
+                'school',
+                'government',
+                'corporate',
+                'other'
+            );
+        END IF;
+    END
+$$;
+
 
 -- Create tables with IF NOT EXISTS to avoid errors on subsequent runs
 
@@ -4455,7 +4471,7 @@ $$;
 CREATE TABLE IF NOT EXISTS invoice_entities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR NOT NULL,
-    entity_type VARCHAR NOT NULL CHECK (entity_type IN ('family', 'school', 'government', 'corporate', 'other')),
+    entity_type entity_type_enum NOT NULL,
     contact_person VARCHAR,
     email VARCHAR,
     phone VARCHAR,
