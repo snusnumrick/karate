@@ -21,7 +21,8 @@ interface GeneratePDFOptions {
 }
 
 export async function generateInvoicePDF({ invoice, companyInfo }: GeneratePDFOptions): Promise<Buffer> {
-  try {
+  console.log("[generateInvoicePDF] invoice",invoice);
+    try {
     // Validate required data
     if (!invoice) {
       throw new Error('Invoice data is required');

@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 20,
     paddingBottom: 15,
-    borderBottom: '2px solid #16a34a',
+    borderBottom: `2px solid ${siteConfig.colors.primary}`,
   },
   logo: {
     width: 160,
@@ -37,10 +37,11 @@ const styles = StyleSheet.create({
     maxWidth: 250,
   },
   companyName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#16a34a',
+    fontSize: 12,
+    // fontWeight: 'bold',
+    // color: siteConfig.colors.primary,
     marginBottom: 6,
+    marginTop: 12,
     letterSpacing: 0.3,
   },
   companyDetails: {
@@ -48,7 +49,7 @@ const styles = StyleSheet.create({
     color: '#4b5563',
     lineHeight: 1.4,
     marginBottom: 3,
-    marginTop: 12,
+    marginTop: 2,
   },
   addressLine: {
     fontSize: 9,
@@ -60,7 +61,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 18,
+    marginBottom: 30,
     textAlign: 'center',
     letterSpacing: 0.8,
   },
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#16a34a',
+    color: siteConfig.colors.primary,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#16a34a',
+    backgroundColor: siteConfig.colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 6,
   },
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     paddingHorizontal: 4,
-    backgroundColor: '#16a34a',
+    backgroundColor: siteConfig.colors.primary,
     borderRadius: 4,
     marginTop: 6,
   },
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
   },
   sentBadge: {
     backgroundColor: '#dcfce7',
-    color: '#16a34a',
+    color: siteConfig.colors.primary,
     border: '1px solid #22c55e',
   },
 });
@@ -370,9 +371,11 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
   // Get dynamic origin for logo URL
   const getLogoUrl = () => {
     if (typeof window !== 'undefined') {
+        console.log('client side logo url', `${window.location.origin}/logo-light.png`);
       return `${window.location.origin}/logo-light.png`;
     }
     // Fallback for server-side rendering
+      console.log('server side logo url', `${siteConfig.url}/logo-light.png`);
     return siteConfig.url + '/logo-light.png';
   };
 
@@ -394,11 +397,14 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
               src={getLogoUrl()} 
               style={styles.logo}
             />
+            <Text style={styles.companyName}>{companyInfo?.name || siteConfig.name}</Text>
             <View style={styles.companyDetails}>
-              <Text style={styles.addressLine}>{siteConfig.name}</Text>
-              <Text style={styles.addressLine}>{siteConfig.legal.address}</Text>
-              <Text style={styles.addressLine}>{siteConfig.contact.phone}</Text>
-              <Text style={styles.addressLine}>{siteConfig.contact.email}</Text>
+              <Text style={styles.addressLine}>{companyInfo?.address || siteConfig.legal.address}</Text>
+              <Text style={styles.addressLine}>{companyInfo?.phone || siteConfig.contact.phone}</Text>
+              <Text style={styles.addressLine}>{companyInfo?.email || siteConfig.contact.email}</Text>
+              {companyInfo?.website && (
+                <Text style={styles.addressLine}>{companyInfo.website}</Text>
+              )}
             </View>
           </View>
         </View>
