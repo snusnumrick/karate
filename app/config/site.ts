@@ -164,6 +164,7 @@ export const siteConfig = {
     // Legal and Business Information
     legal: {
         businessName: "GREENEGIN KARATE",
+        address: "989 Iota Pl., Langford, BC V9C3T1, Canada",
         // businessNumber: "", // Add if needed for tax purposes
         // gstNumber: "", // Add GST number if applicable
         insuranceProvider: "Sport & Fitness Insurance",

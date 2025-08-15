@@ -396,10 +396,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
             />
             <View style={styles.companyDetails}>
               <Text style={styles.addressLine}>{siteConfig.name}</Text>
-              <Text style={styles.addressLine}>{siteConfig.location.address}</Text>
-              <Text style={styles.addressLine}>
-                {siteConfig.location.locality}, {siteConfig.location.region} {siteConfig.location.postalCode}
-              </Text>
+              <Text style={styles.addressLine}>{siteConfig.legal.address}</Text>
               <Text style={styles.addressLine}>{siteConfig.contact.phone}</Text>
               <Text style={styles.addressLine}>{siteConfig.contact.email}</Text>
             </View>

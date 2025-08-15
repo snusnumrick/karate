@@ -105,14 +105,10 @@ function sanitizeText(text: string | null | undefined): string {
 }
 
 export function getDefaultCompanyInfo(): CompanyInfo {
-  const { name, location, contact } = siteConfig;
+  const { name, legal, contact } = siteConfig;
   
-  // Format the address from site config
-  const formattedAddress = [
-    location.address,
-    `${location.locality}, ${location.region} ${location.postalCode}`,
-    location.country === 'CA' ? 'Canada' : location.country
-  ].join('\n');
+  // Use the legal address for invoices
+  const formattedAddress = legal.address;
 
   return {
     name: name,
