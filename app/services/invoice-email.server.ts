@@ -339,6 +339,7 @@ export async function sendInvoiceEmail(invoice: InvoiceWithDetails): Promise<boo
       to: invoice.entity.email,
       subject,
       html,
+      from: siteConfig.contact.paymentsEmail,
       attachments: [
         {
           filename,

@@ -115,7 +115,7 @@ export function getDefaultCompanyInfo(): CompanyInfo {
     name: name,
     address: formattedAddress,
     phone: contact.phone,
-    email: contact.email,
+    email: contact.paymentsEmail, // Use payments email for invoices
     website: siteConfig.url,
     // logo: process.env.COMPANY_LOGO_URL, // Optional logo URL
   };

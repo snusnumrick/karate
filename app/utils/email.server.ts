@@ -17,6 +17,7 @@ interface SendEmailOptions {
     to: string | string[];
     subject: string;
     html: string; // Use HTML for email body
+    from?: string; // Optional custom from email, defaults to FROM_EMAIL
     attachments?: EmailAttachment[];
     // text?: string; // Optional plain text version
 }
@@ -44,7 +45,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
                 type: string;
             }>;
         } = {
-            from: fromEmail, // Use the configured FROM_EMAIL
+            from: options.from || fromEmail, // Use custom from email or default FROM_EMAIL
             to: options.to,
             subject: options.subject,
             html: options.html,

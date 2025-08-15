@@ -61,6 +61,7 @@ export const siteConfig = {
     contact: {
         phone: "(604) 690-7121",
         email: "info@karate.greenegin.ca",
+        paymentsEmail: "payments@karate.greenegin.ca",
     },
     classes: {
         days: "Tue & Thu",
