@@ -69,6 +69,7 @@ export async function action({request}: ActionFunctionArgs) {
     const birthDate = formData.get("birthDate") as string;
     const gender = formData.get("gender") as string;
     const tShirtSize = formData.get("tShirtSize") as string;
+    const height = formData.get("height") as string | null;
     const school = formData.get("school") as string;
     const gradeLevel = formData.get("gradeLevel") as string;
     // Optional fields
@@ -89,6 +90,9 @@ export async function action({request}: ActionFunctionArgs) {
     if (!birthDate) fieldErrors.birthDate = "Birth date is required.";
     if (!gender) fieldErrors.gender = "Gender is required.";
     if (!tShirtSize) fieldErrors.tShirtSize = "T-Shirt size is required.";
+    if (height && (isNaN(parseInt(height)) || parseInt(height) < 50 || parseInt(height) > 250)) {
+        fieldErrors.height = "Height must be between 50 and 250 cm.";
+    }
     if (!school) fieldErrors.school = "School is required.";
     if (!gradeLevel) fieldErrors.gradeLevel = "Grade level is required.";
 
@@ -112,6 +116,7 @@ export async function action({request}: ActionFunctionArgs) {
             gender: gender,
             birth_date: birthDate,
             t_shirt_size: tShirtSize as Database['public']['Enums']['t_shirt_size_enum'],
+            height: height ? parseInt(height) : null,
             school: school,
             grade_level: gradeLevel,
             special_needs: specialNeeds || null,
@@ -328,6 +333,25 @@ export default function AdminAddStudentPage() {
                                 )}
                             </div>
 
+                            <div className="space-y-2">
+                                <Label htmlFor="height">Height (cm)</Label>
+                                <Input 
+                                    type="number" 
+                                    id="height" 
+                                    name="height" 
+                                    min="50" 
+                                    max="250" 
+                                    className="input-custom-styles" 
+                                    placeholder="e.g., 150"
+                                    defaultValue={getFormData("height")}
+                                />
+                                {getFieldError("height") && (
+                                    <p className="text-sm text-red-600">{getFieldError("height")}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="beltRank">Current Belt Rank</Label>
                                 <Select name="beltRank" defaultValue={getFormData("beltRank")}>

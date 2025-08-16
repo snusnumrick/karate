@@ -32,6 +32,22 @@ const tShirtToUniformSizeMap: Record<Database['public']['Enums']['t_shirt_size_e
     'A2XL': '7',// Adult XXL -> Uniform 7
 };
 
+// Height-based uniform size recommendations (most accurate method)
+// Heights in centimeters mapped to uniform sizes
+const heightToUniformSizeMap: Array<{ minHeight: number; maxHeight: number; size: string }> = [
+    { minHeight: 90, maxHeight: 105, size: '0000' },   // ~90-105cm: Size 0000
+    { minHeight: 106, maxHeight: 115, size: '000' },   // ~106-115cm: Size 000
+    { minHeight: 116, maxHeight: 125, size: '00' },    // ~116-125cm: Size 00
+    { minHeight: 126, maxHeight: 135, size: '0' },     // ~126-135cm: Size 0
+    { minHeight: 136, maxHeight: 145, size: '1' },     // ~136-145cm: Size 1
+    { minHeight: 146, maxHeight: 155, size: '2' },     // ~146-155cm: Size 2
+    { minHeight: 156, maxHeight: 165, size: '3' },     // ~156-165cm: Size 3
+    { minHeight: 166, maxHeight: 175, size: '4' },     // ~166-175cm: Size 4
+    { minHeight: 176, maxHeight: 185, size: '5' },     // ~176-185cm: Size 5
+    { minHeight: 186, maxHeight: 195, size: '6' },     // ~186-195cm: Size 6
+    { minHeight: 196, maxHeight: 250, size: '7' },     // ~196cm+: Size 7
+];
+
 // Age-based uniform size recommendations (reliable for younger children only)
 // For teens (13+), we recommend manual sizing due to growth variations
 const ageToUniformSizeMap: Record<string, string> = {
@@ -55,6 +71,13 @@ function calculateAge(birthDate: string): number {
     return age;
 }
 
+function getHeightBasedUniformSize(height: number): string | null {
+    const sizeMapping = heightToUniformSizeMap.find(
+        mapping => height >= mapping.minHeight && height <= mapping.maxHeight
+    );
+    return sizeMapping ? sizeMapping.size : null;
+}
+
 function getAgeBasedUniformSize(birthDate: string): string | null {
     const age = calculateAge(birthDate);
     
@@ -75,14 +98,20 @@ function getAgeBasedUniformSize(birthDate: string): string | null {
 
 function getRecommendedUniformSize(
     tShirtSize: Database['public']['Enums']['t_shirt_size_enum'] | null | undefined,
-    birthDate?: string | null
+    birthDate?: string | null,
+    height?: number | null
 ): string | null {
-    // First try to use t-shirt size if available
+    // First priority: Use height if available (most accurate)
+    if (height && height >= 50 && height <= 250) {
+        return getHeightBasedUniformSize(height);
+    }
+    
+    // Second priority: Use t-shirt size if available
     if (tShirtSize) {
         return tShirtToUniformSizeMap[tShirtSize] || null;
     }
     
-    // Fall back to age-based recommendation if birth date is available
+    // Third priority: Fall back to age-based recommendation if birth date is available
     if (birthDate) {
         return getAgeBasedUniformSize(birthDate);
     }
@@ -102,7 +131,7 @@ type ProductWithVariants = ProductRow & {
 };
 
 type LoaderData = {
-    student: Pick<StudentRow, 'id' | 'first_name' | 'last_name' | 't_shirt_size' | 'birth_date'>;
+    student: Pick<StudentRow, 'id' | 'first_name' | 'last_name' | 't_shirt_size' | 'birth_date' | 'height'>;
     products: ProductWithVariants[];
     applicableTaxes: Array<{ name: string; rate: number }>; // Pass calculated tax rates
 };
@@ -130,7 +159,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // Fetch student data (only needed fields)
     const { data: studentData, error: studentError } = await supabaseServer
         .from('students')
-        .select('id, first_name, last_name, t_shirt_size, birth_date')
+        .select('id, first_name, last_name, t_shirt_size, birth_date, height')
         .eq('id', studentId)
         .single();
 
@@ -385,18 +414,20 @@ export default function PurchaseGiPage() {
     const isSubmitting = navigation.state === "submitting";
 
     // Calculate recommended size
-    const recommendedUniformSize = getRecommendedUniformSize(student.t_shirt_size, student.birth_date);
+    const recommendedUniformSize = getRecommendedUniformSize(student.t_shirt_size, student.birth_date, student.height);
     
     // Determine recommendation source for display
     const recommendationSource = useMemo(() => {
-        if (student.t_shirt_size) {
+        if (student.height && student.height >= 50 && student.height <= 250) {
+            return { type: 'height', value: student.height };
+        } else if (student.t_shirt_size) {
             return { type: 'tshirt', value: student.t_shirt_size };
         } else if (student.birth_date) {
             const age = calculateAge(student.birth_date);
             return { type: 'age', value: age };
         }
         return null;
-    }, [student.t_shirt_size, student.birth_date]);
+    }, [student.height, student.t_shirt_size, student.birth_date]);
 
     // Find the default variant based on student's t-shirt size across all products
     const defaultVariant = useMemo(() => {
@@ -516,7 +547,10 @@ export default function PurchaseGiPage() {
                                             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                             <AlertTitle className="text-blue-800 dark:text-blue-300">Recommendation</AlertTitle>
                                             <AlertDescription className="text-blue-700 dark:text-blue-300">
-                                                {recommendationSource.type === 'tshirt' ? (
+                                                {recommendationSource.type === 'height' ? (
+                                                    <>Based on {student.first_name}&apos;s height ({recommendationSource.value}cm) - most accurate method, we recommend Uniform Size:
+                                                    <span className="font-semibold"> {recommendedUniformSize}</span>.</>
+                                                ) : recommendationSource.type === 'tshirt' ? (
                                                     <>Based on {student.first_name}&apos;s T-shirt size ({recommendationSource.value}), we recommend Uniform Size:
                                                     <span className="font-semibold"> {recommendedUniformSize}</span>.</>
                                                 ) : (

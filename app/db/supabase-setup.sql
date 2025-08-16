@@ -252,6 +252,7 @@ CREATE TABLE IF NOT EXISTS students
     grade_level              text,
     cell_phone               varchar(20),
     email                    text,
+    height                   integer,                                        -- Height in centimeters (optional)
     immunizations_up_to_date text,
     immunization_notes       text,
     allergies                text,

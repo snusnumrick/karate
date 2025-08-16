@@ -13,6 +13,13 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
 
+type ActionData = {
+    success?: boolean;
+    message?: string;
+    error?: string;
+    fieldErrors?: { [key: string]: string };
+};
+
 // Loader to get family ID and name for context
 export async function loader({request}: LoaderFunctionArgs) {
     const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
@@ -54,13 +61,13 @@ export async function loader({request}: LoaderFunctionArgs) {
 
 
 // Action function to handle adding the student
-export async function action({request}: ActionFunctionArgs) {
+export async function action({request}: ActionFunctionArgs): Promise<Response> {
     const formData = await request.formData();
     const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
 
     if (!user) {
-        return json({error: "User not authenticated."}, {status: 401, headers});
+        return json<ActionData>({error: "User not authenticated."}, {status: 401, headers});
     }
 
     // Get family_id from profile again (or pass from loader if preferred, but safer to re-fetch)
@@ -72,7 +79,7 @@ export async function action({request}: ActionFunctionArgs) {
 
     if (profileError || !profileData || !profileData.family_id) {
         console.error("Action Error: fetching profile or family_id:", profileError?.message);
-        return json({error: "Could not find your family information."}, {status: 400, headers});
+        return json<ActionData>({error: "Could not find your family information."}, {status: 400, headers});
     }
 
     const familyId = profileData.family_id;
@@ -83,6 +90,7 @@ export async function action({request}: ActionFunctionArgs) {
     const birthDate = formData.get("birthDate") as string;
     const gender = formData.get("gender") as string;
     const tShirtSize = formData.get("tShirtSize") as string;
+    const height = formData.get("height") as string;
     const school = formData.get("school") as string;
     const gradeLevel = formData.get("gradeLevel") as string;
     // Optional fields
@@ -97,8 +105,22 @@ export async function action({request}: ActionFunctionArgs) {
 
 
     // Basic validation (add more as needed)
-    if (!firstName || !lastName || !birthDate || !gender || !tShirtSize || !school || !gradeLevel) {
-        return json({error: "Please fill in all required fields."}, {status: 400, headers});
+    const fieldErrors: { [key: string]: string } = {};
+    if (!firstName) fieldErrors.firstName = "First name is required.";
+    if (!lastName) fieldErrors.lastName = "Last name is required.";
+    if (!birthDate) fieldErrors.birthDate = "Birth date is required.";
+    if (!gender) fieldErrors.gender = "Gender is required.";
+    if (!tShirtSize) fieldErrors.tShirtSize = "T-Shirt size is required.";
+    if (!school) fieldErrors.school = "School is required.";
+    if (!gradeLevel) fieldErrors.gradeLevel = "Grade level is required.";
+
+    // Validate height if provided
+    if (height && (parseInt(height) < 50 || parseInt(height) > 250)) {
+        fieldErrors.height = 'Height must be between 50 and 250 cm.';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+        return json<ActionData>({error: "Please fill in all required fields.", fieldErrors}, {status: 400, headers});
     }
 
     try {
@@ -109,6 +131,7 @@ export async function action({request}: ActionFunctionArgs) {
             gender: gender,
             birth_date: birthDate,
             t_shirt_size: tShirtSize as Database['public']['Enums']['t_shirt_size_enum'],
+            height: height ? parseInt(height) : null,
             school: school,
             grade_level: gradeLevel,
             special_needs: specialNeeds,
@@ -135,10 +158,8 @@ export async function action({request}: ActionFunctionArgs) {
 
     } catch (error: unknown) {
         console.error('Add student error:', error);
-        return json({
-            error: error instanceof Error ? error.message : 'Failed to add student. Please try again.',
-            // Optionally return formData values to repopulate form
-            // formData: Object.fromEntries(formData)
+        return json<ActionData>({
+            error: error instanceof Error ? error.message : 'Failed to add student. Please try again.'
         }, {status: 500, headers});
     }
 }
@@ -238,10 +259,28 @@ export default function AddStudentPage() {
                             </Select>
                         </div>
                         <div>
+                            <Label htmlFor="height" className="block text-sm font-medium mb-1">
+                                Height (cm)
+                            </Label>
+                            <Input 
+                                type="number" 
+                                id="height" 
+                                name="height" 
+                                min="50" 
+                                max="250" 
+                                className="input-custom-styles focus:ring-green-500" 
+                                tabIndex={6}
+                                placeholder="e.g., 150"
+                            />
+                            {actionData?.fieldErrors?.height && (
+                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.height}</p>
+                            )}
+                        </div>
+                        <div>
                             <Label htmlFor="school" className="block text-sm font-medium mb-1">
                                 School<span className="text-red-500">*</span>
                             </Label>
-                            <Input type="text" id="school" name="school" required className="input-custom-styles focus:ring-green-500" tabIndex={6}/>
+                            <Input type="text" id="school" name="school" required className="input-custom-styles focus:ring-green-500" tabIndex={7}/>
                         </div>
                         <div>
                             <Label htmlFor="gradeLevel" className="block text-sm font-medium mb-1">
@@ -251,7 +290,7 @@ export default function AddStudentPage() {
                                 <SelectTrigger id="gradeLevel"
                                                className="input-custom-styles"
                                                aria-describedby="gradeLevel-error"
-                                               tabIndex={7}>
+                                               tabIndex={8}>
                                     <SelectValue placeholder="Select grade"/>
                                 </SelectTrigger>
                                 <SelectContent>

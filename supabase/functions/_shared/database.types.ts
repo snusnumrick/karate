@@ -2227,6 +2227,7 @@ export type Database = {
           first_name: string
           gender: string
           grade_level: string | null
+          height: number | null
           id: string
           immunization_notes: string | null
           immunizations_up_to_date: string | null
@@ -2245,6 +2246,7 @@ export type Database = {
           first_name: string
           gender: string
           grade_level?: string | null
+          height?: number | null
           id?: string
           immunization_notes?: string | null
           immunizations_up_to_date?: string | null
@@ -2263,6 +2265,7 @@ export type Database = {
           first_name?: string
           gender?: string
           grade_level?: string | null
+          height?: number | null
           id?: string
           immunization_notes?: string | null
           immunizations_up_to_date?: string | null

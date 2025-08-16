@@ -273,6 +273,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         const gender = formData.get('gender') as string;
         const birthDate = formData.get('birth_date') as string;
         const tShirtSize = formData.get('t_shirt_size') as string;
+        const height = formData.get('height') as string;
         const school = formData.get('school') as string;
         const gradeLevel = formData.get('grade_level') as string;
 
@@ -285,6 +286,9 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         if (!tShirtSize) fieldErrors.t_shirt_size = 'T-Shirt size is required.';
         if (!school) fieldErrors.school = 'School is required.';
         if (!gradeLevel) fieldErrors.grade_level = 'Grade level is required.';
+        if (height && (parseInt(height) < 50 || parseInt(height) > 250)) {
+            fieldErrors.height = 'Height must be between 50 and 250 cm.';
+        }
 
         if (Object.keys(fieldErrors).length > 0) {
             return json({
@@ -298,6 +302,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             last_name: lastName, // Already validated
             gender: gender, // Already validated
             birth_date: birthDate, // Already validated
+            height: height ? parseInt(height) : null,
             cell_phone: formData.get('cell_phone') as string || null,
             email: formData.get('email') as string || null,
             t_shirt_size: tShirtSize as Database['public']['Enums']['t_shirt_size_enum'], // Already validated
@@ -570,6 +575,14 @@ export default function StudentDetailPage() {
                                 </Select>
                             </div>
                             <div>
+                                <Label htmlFor="height">Height (cm)</Label>
+                                <Input id="height" name="height" type="number" min="50" max="250" 
+                                       defaultValue={student.height || ''} className="input-custom-styles"
+                                       placeholder="e.g. 150"/>
+                                {actionData?.fieldErrors?.height &&
+                                    <p className="text-red-500 text-sm">{actionData.fieldErrors.height}</p>}
+                            </div>
+                            <div>
                                 <Label htmlFor="school">School</Label>
                                 <Input id="school" name="school" defaultValue={student.school} required className="input-custom-styles"/>
                             </div>
@@ -679,6 +692,10 @@ export default function StudentDetailPage() {
                                             <div>
                                                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400">T-Shirt Size</span>
                                                 <p className="text-gray-900 dark:text-gray-100">{student.t_shirt_size}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Height</span>
+                                                <p className="text-gray-900 dark:text-gray-100">{student.height ? `${student.height} cm` : 'N/A'}</p>
                                             </div>
                                         </div>
                                         <div className="space-y-3">

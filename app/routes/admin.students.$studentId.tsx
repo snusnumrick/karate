@@ -149,6 +149,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             last_name: formData.get('last_name') as string,
             gender: formData.get('gender') as string,
             birth_date: formData.get('birth_date') as string,
+            height: formData.get('height') ? parseInt(formData.get('height') as string) : null,
             cell_phone: formData.get('cell_phone') as string || null,
             email: formData.get('email') as string || null,
             t_shirt_size: formData.get('t_shirt_size') as Database['public']['Enums']['t_shirt_size_enum'],
@@ -169,6 +170,9 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         if (!updateData.birth_date) fieldErrors.birth_date = "Birth date is required.";
         if (!updateData.t_shirt_size) fieldErrors.t_shirt_size = "T-shirt size is required.";
         if (!updateData.school) fieldErrors.school = "School is required.";
+        if (updateData.height !== null && updateData.height !== undefined && (updateData.height < 50 || updateData.height > 250)) {
+            fieldErrors.height = "Height must be between 50 and 250 cm.";
+        }
         // Add more validation as needed
 
         if (Object.values(fieldErrors).some(Boolean)) {
@@ -315,15 +319,23 @@ export default function AdminStudentDetailPage() {
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.t_shirt_size}</p>}
                             </div>
                             <div>
+                                <Label htmlFor="height">Height (cm)</Label>
+                                <Input id="height" name="height" type="number" min="50" max="250" 
+                                       defaultValue={student.height || ''} tabIndex={6} className="input-custom-styles"
+                                       placeholder="e.g. 150"/>
+                                {actionData?.fieldErrors?.height &&
+                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.height}</p>}
+                            </div>
+                            <div>
                                 <Label htmlFor="school">School <span className="text-red-500">*</span></Label>
-                                <Input id="school" name="school" defaultValue={student.school} required tabIndex={6} className="input-custom-styles"/>
+                                <Input id="school" name="school" defaultValue={student.school} required tabIndex={7} className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.school &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.school}</p>}
                             </div>
                             <div>
                                 <Label htmlFor="grade_level">Grade Level</Label>
                                 <Select name="grade_level" defaultValue={student.grade_level || ''}>
-                                    <SelectTrigger id="grade_level" tabIndex={7} className="input-custom-styles"><SelectValue
+                                    <SelectTrigger id="grade_level" tabIndex={8} className="input-custom-styles"><SelectValue
                                         placeholder="Select grade"/></SelectTrigger>
                                     <SelectContent>
                                         {/* Removed SelectItem with value="" */}
@@ -346,7 +358,7 @@ export default function AdminStudentDetailPage() {
                             <div>
                                 <Label htmlFor="cell_phone">Cell Phone</Label>
                                 <Input id="cell_phone" name="cell_phone" type="tel" autoComplete="mobile tel"
-                                       defaultValue={student.cell_phone || ''} tabIndex={8} className="input-custom-styles"/>
+                                       defaultValue={student.cell_phone || ''} tabIndex={9} className="input-custom-styles"/>
                             </div>
                             <div>
                                 <Label htmlFor="email">Email</Label>
@@ -431,6 +443,7 @@ export default function AdminStudentDetailPage() {
                                 )}
                             </div>
                             <p><strong>T-Shirt Size:</strong> {student.t_shirt_size}</p>
+                            <p><strong>Height:</strong> {student.height ? `${student.height} cm` : 'N/A'}</p>
                             <p><strong>School:</strong> {student.school}</p>
                             <p><strong>Grade Level:</strong> {student.grade_level || 'N/A'}</p>
                             <p><strong>Cell Phone:</strong> {student.cell_phone || 'N/A'}</p>
