@@ -284,6 +284,7 @@ export default function EditProductVariantPage() {
             )}
 
             <Form method="post" className="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <input type="hidden" name="intent" value="edit" />
                  {/* Size */}
                 <div>
                     <Label htmlFor="size">Size <span className="text-destructive">*</span></Label>
