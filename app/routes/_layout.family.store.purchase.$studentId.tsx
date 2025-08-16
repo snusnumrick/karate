@@ -32,9 +32,62 @@ const tShirtToUniformSizeMap: Record<Database['public']['Enums']['t_shirt_size_e
     'A2XL': '7',// Adult XXL -> Uniform 7
 };
 
-function getRecommendedUniformSize(tShirtSize: Database['public']['Enums']['t_shirt_size_enum'] | null | undefined): string | null {
-    if (!tShirtSize) return null;
-    return tShirtToUniformSizeMap[tShirtSize] || null;
+// Age-based uniform size recommendations (reliable for younger children only)
+// For teens (13+), we recommend manual sizing due to growth variations
+const ageToUniformSizeMap: Record<string, string> = {
+    '3-4': '0000',   // Ages 3-4: Size 0000
+    '5-6': '000',    // Ages 5-6: Size 000
+    '7-8': '00',     // Ages 7-8: Size 00
+    '9-10': '0',     // Ages 9-10: Size 0
+    '11-12': '1',    // Ages 11-12: Size 1
+};
+
+function calculateAge(birthDate: string): number {
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    
+    return age;
+}
+
+function getAgeBasedUniformSize(birthDate: string): string | null {
+    const age = calculateAge(birthDate);
+    
+    // Only provide age-based recommendations for children 12 and under
+    // Teens have too much variation in growth for reliable age-based sizing
+    if (age > 12) {
+        return null;
+    }
+    
+    if (age >= 3 && age <= 4) return ageToUniformSizeMap['3-4'];
+    if (age >= 5 && age <= 6) return ageToUniformSizeMap['5-6'];
+    if (age >= 7 && age <= 8) return ageToUniformSizeMap['7-8'];
+    if (age >= 9 && age <= 10) return ageToUniformSizeMap['9-10'];
+    if (age >= 11 && age <= 12) return ageToUniformSizeMap['11-12'];
+    
+    return null; // Age too young (under 3)
+}
+
+function getRecommendedUniformSize(
+    tShirtSize: Database['public']['Enums']['t_shirt_size_enum'] | null | undefined,
+    birthDate?: string | null
+): string | null {
+    // First try to use t-shirt size if available
+    if (tShirtSize) {
+        return tShirtToUniformSizeMap[tShirtSize] || null;
+    }
+    
+    // Fall back to age-based recommendation if birth date is available
+    if (birthDate) {
+        return getAgeBasedUniformSize(birthDate);
+    }
+    
+    return null;
 }
 
 // --- Define Types ---
@@ -49,7 +102,7 @@ type ProductWithVariants = ProductRow & {
 };
 
 type LoaderData = {
-    student: Pick<StudentRow, 'id' | 'first_name' | 'last_name' | 't_shirt_size'>;
+    student: Pick<StudentRow, 'id' | 'first_name' | 'last_name' | 't_shirt_size' | 'birth_date'>;
     products: ProductWithVariants[];
     applicableTaxes: Array<{ name: string; rate: number }>; // Pass calculated tax rates
 };
@@ -77,7 +130,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // Fetch student data (only needed fields)
     const { data: studentData, error: studentError } = await supabaseServer
         .from('students')
-        .select('id, first_name, last_name, t_shirt_size')
+        .select('id, first_name, last_name, t_shirt_size, birth_date')
         .eq('id', studentId)
         .single();
 
@@ -332,7 +385,18 @@ export default function PurchaseGiPage() {
     const isSubmitting = navigation.state === "submitting";
 
     // Calculate recommended size
-    const recommendedUniformSize = getRecommendedUniformSize(student.t_shirt_size);
+    const recommendedUniformSize = getRecommendedUniformSize(student.t_shirt_size, student.birth_date);
+    
+    // Determine recommendation source for display
+    const recommendationSource = useMemo(() => {
+        if (student.t_shirt_size) {
+            return { type: 'tshirt', value: student.t_shirt_size };
+        } else if (student.birth_date) {
+            const age = calculateAge(student.birth_date);
+            return { type: 'age', value: age };
+        }
+        return null;
+    }, [student.t_shirt_size, student.birth_date]);
 
     // Find the default variant based on student's t-shirt size across all products
     const defaultVariant = useMemo(() => {
@@ -447,13 +511,18 @@ export default function PurchaseGiPage() {
                                 >
                                     <Label className="text-base font-medium">Select Size:</Label>
                                     {/* Display Recommendation */}
-                                    {recommendedUniformSize && (
+                                    {recommendedUniformSize && recommendationSource && (
                                         <Alert variant="default" className="mt-2 mb-3 text-sm bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700">
                                             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                             <AlertTitle className="text-blue-800 dark:text-blue-300">Recommendation</AlertTitle>
                                             <AlertDescription className="text-blue-700 dark:text-blue-300">
-                                                Based on {student.first_name}&apos;s T-shirt size ({student.t_shirt_size}), we recommend Uniform Size:
-                                                <span className="font-semibold"> {recommendedUniformSize}</span>.
+                                                {recommendationSource.type === 'tshirt' ? (
+                                                    <>Based on {student.first_name}&apos;s T-shirt size ({recommendationSource.value}), we recommend Uniform Size:
+                                                    <span className="font-semibold"> {recommendedUniformSize}</span>.</>
+                                                ) : (
+                                                    <>Based on {student.first_name}&apos;s age ({recommendationSource.value} years old) - reliable for children 12 and under, we recommend Uniform Size:
+                                                    <span className="font-semibold"> {recommendedUniformSize}</span>.</>
+                                                )}
                                             </AlertDescription>
                                         </Alert>
                                     )}
