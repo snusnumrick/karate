@@ -28,6 +28,7 @@ import {formatDate} from '~/utils/misc'; // Import the new formatDate utility
 import {beltColorMap} from "~/utils/constants";
 import { StudentPaymentSection } from '~/components/StudentPaymentSection';
 import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
+import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
 
 // Define types based on updated Supabase schema
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
@@ -299,7 +300,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             birth_date: birthDate, // Already validated
             cell_phone: formData.get('cell_phone') as string || null,
             email: formData.get('email') as string || null,
-            t_shirt_size: tShirtSize, // Already validated
+            t_shirt_size: tShirtSize as Database['public']['Enums']['t_shirt_size_enum'], // Already validated
             school: school, // Already validated
             grade_level: gradeLevel, // Already validated
             special_needs: formData.get('special_needs') as string || null,
@@ -560,16 +561,11 @@ export default function StudentDetailPage() {
                                     <SelectTrigger id="t_shirt_size" className="input-custom-styles"><SelectValue
                                         placeholder="Select size"/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="YXS">Youth XS</SelectItem>
-                                        <SelectItem value="YS">Youth S</SelectItem>
-                                        <SelectItem value="YM">Youth M</SelectItem>
-                                        <SelectItem value="YL">Youth L</SelectItem>
-                                        <SelectItem value="YXL">Youth XL</SelectItem>
-                                        <SelectItem value="AS">Adult S</SelectItem>
-                                        <SelectItem value="AM">Adult M</SelectItem>
-                                        <SelectItem value="AL">Adult L</SelectItem>
-                                        <SelectItem value="AXL">Adult XL</SelectItem>
-                                        <SelectItem value="A2XL">Adult 2XL</SelectItem>
+                                        {T_SHIRT_SIZE_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

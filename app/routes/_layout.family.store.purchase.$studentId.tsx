@@ -14,10 +14,13 @@ import { formatCurrency } from "~/utils/misc"; // Assuming you have a currency f
 import { siteConfig } from "~/config/site"; // For tax calculation consistency
 import { Info } from 'lucide-react'; // Added Info icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { T_SHIRT_SIZE_VALUES } from "~/constants/tShirtSizes";
 
 // --- Helper Function for Size Recommendation ---
-const tShirtToUniformSizeMap: { [key: string]: string } = {
+const tShirtToUniformSizeMap: Record<Database['public']['Enums']['t_shirt_size_enum'], string> = {
     // Assuming standard Youth/Adult sizing codes. Adjust keys if your codes differ.
+    'YXXS': '0000', // Youth eXtra extra Small -> Child XXS -> Uniform 0000
+    'YXS': '000', // Youth eXtra Small -> Child XS -> Uniform 000
     'YS': '00', // Youth Small -> Child S -> Uniform 00
     'YM': '0',  // Youth Medium -> Child M -> Uniform 0
     'YL': '1',  // Youth Large -> Child L -> Uniform 1
@@ -26,13 +29,12 @@ const tShirtToUniformSizeMap: { [key: string]: string } = {
     'AM': '4',  // Adult Medium -> Uniform 4
     'AL': '5',  // Adult Large -> Uniform 5
     'AXL': '6', // Adult XL -> Uniform 6
-    'AXXL': '7',// Adult XXL -> Uniform 7
-    // Add other potential t-shirt sizes if needed
+    'A2XL': '7',// Adult XXL -> Uniform 7
 };
 
-function getRecommendedUniformSize(tShirtSize: string | null | undefined): string | null {
+function getRecommendedUniformSize(tShirtSize: Database['public']['Enums']['t_shirt_size_enum'] | null | undefined): string | null {
     if (!tShirtSize) return null;
-    return tShirtToUniformSizeMap[tShirtSize.toUpperCase()] || null; // Case-insensitive lookup
+    return tShirtToUniformSizeMap[tShirtSize] || null;
 }
 
 // --- Define Types ---

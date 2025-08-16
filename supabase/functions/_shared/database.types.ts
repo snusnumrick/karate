@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -2234,7 +2234,7 @@ export type Database = {
           medications: string | null
           school: string
           special_needs: string | null
-          t_shirt_size: string
+          t_shirt_size: Database["public"]["Enums"]["t_shirt_size_enum"]
         }
         Insert: {
           allergies?: string | null
@@ -2252,7 +2252,7 @@ export type Database = {
           medications?: string | null
           school: string
           special_needs?: string | null
-          t_shirt_size: string
+          t_shirt_size: Database["public"]["Enums"]["t_shirt_size_enum"]
         }
         Update: {
           allergies?: string | null
@@ -2270,7 +2270,7 @@ export type Database = {
           medications?: string | null
           school?: string
           special_needs?: string | null
-          t_shirt_size?: string
+          t_shirt_size?: Database["public"]["Enums"]["t_shirt_size_enum"]
         }
         Relationships: [
           {
@@ -2485,7 +2485,7 @@ export type Database = {
         Returns: number
       }
       check_class_eligibility: {
-        Args: { student_id_param: string; class_id_param: string }
+        Args: { class_id_param: string; student_id_param: string }
         Returns: boolean
       }
       check_event_registration_eligibility: {
@@ -2493,29 +2493,29 @@ export type Database = {
         Returns: Json
       }
       check_program_eligibility: {
-        Args: { student_id_param: string; program_id_param: string }
+        Args: { program_id_param: string; student_id_param: string }
         Returns: boolean
       }
       complete_new_user_registration: {
         Args: {
-          p_user_id: string
-          p_family_name: string
           p_address: string
           p_city: string
-          p_province: string
-          p_postal_code: string
-          p_primary_phone: string
-          p_user_email: string
-          p_referral_source?: string
-          p_referral_name?: string
-          p_emergency_contact?: string
-          p_health_info?: string
+          p_contact1_cell_phone?: string
           p_contact1_first_name?: string
+          p_contact1_home_phone?: string
           p_contact1_last_name?: string
           p_contact1_type?: string
-          p_contact1_home_phone?: string
           p_contact1_work_phone?: string
-          p_contact1_cell_phone?: string
+          p_emergency_contact?: string
+          p_family_name: string
+          p_health_info?: string
+          p_postal_code: string
+          p_primary_phone: string
+          p_province: string
+          p_referral_name?: string
+          p_referral_source?: string
+          p_user_email: string
+          p_user_id: string
         }
         Returns: string
       }
@@ -2525,26 +2525,26 @@ export type Database = {
       }
       create_admin_initiated_conversation: {
         Args: {
-          p_sender_id: string
-          p_target_family_id: string
-          p_subject: string
           p_message_body: string
+          p_sender_id: string
+          p_subject: string
+          p_target_family_id: string
         }
         Returns: Json
       }
       create_new_conversation: {
         Args:
           | {
-              p_sender_id: string
-              p_recipient_id: string
-              p_subject: string
               p_content: string
+              p_recipient_id: string
+              p_sender_id: string
+              p_subject: string
             }
-          | { p_sender_id: string; p_subject: string; p_content: string }
+          | { p_content: string; p_sender_id: string; p_subject: string }
         Returns: string
       }
       decrement_variant_stock: {
-        Args: { variant_id: string; decrement_quantity: number }
+        Args: { decrement_quantity: number; variant_id: string }
         Returns: undefined
       }
       execute_admin_query: {
@@ -2556,7 +2556,7 @@ export type Database = {
         Returns: Json
       }
       generate_class_sessions: {
-        Args: { p_class_id: string; p_start_date: string; p_end_date: string }
+        Args: { p_class_id: string; p_end_date: string; p_start_date: string }
         Returns: number
       }
       generate_invoice_number: {
@@ -2567,10 +2567,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           id: string
-          subject: string
+          is_unread_by_admin: boolean
           last_message_at: string
           participant_display_names: string
-          is_unread_by_admin: boolean
+          subject: string
         }[]
       }
       get_belt_rank_order: {
@@ -2581,9 +2581,9 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: {
           id: string
-          subject: string
           last_message_at: string
           participant_display_names: string
+          subject: string
           unread_count: number
         }[]
       }
@@ -2594,12 +2594,12 @@ export type Database = {
       get_program_statistics: {
         Args: Record<PropertyKey, never>
         Returns: {
-          total_programs: number
-          programs_with_belt_requirements: number
-          private_programs: number
+          avg_sessions_per_week: number
           group_programs: number
           open_programs: number
-          avg_sessions_per_week: number
+          private_programs: number
+          programs_with_belt_requirements: number
+          total_programs: number
         }[]
       }
       get_student_current_belt_rank: {
@@ -2609,16 +2609,16 @@ export type Database = {
       get_student_eligible_programs: {
         Args: { student_id_param: string }
         Returns: {
-          program_id: string
-          program_name: string
-          description: string
           belt_requirement_display: string
-          frequency_display: string
           capacity_display: string
-          monthly_fee: number
+          description: string
+          eligibility_reason: string
+          frequency_display: string
           individual_session_fee: number
           is_eligible: boolean
-          eligibility_reason: string
+          monthly_fee: number
+          program_id: string
+          program_name: string
         }[]
       }
       increment_discount_code_usage: {
@@ -2631,17 +2631,17 @@ export type Database = {
       }
       validate_discount_code: {
         Args: {
+          p_applicable_to?: Database["public"]["Enums"]["payment_type_enum"]
           p_code: string
           p_family_id: string
           p_student_id?: string
           p_subtotal_amount?: number
-          p_applicable_to?: Database["public"]["Enums"]["payment_type_enum"]
         }
         Returns: {
-          is_valid: boolean
-          discount_code_id: string
           discount_amount: number
+          discount_code_id: string
           error_message: string
+          is_valid: boolean
         }[]
       }
     }
@@ -2684,12 +2684,6 @@ export type Database = {
         | "student_too_old"
         | "student_belt_rank_too_low"
         | "student_belt_rank_too_high"
-      entity_type_enum:
-        | "family"
-        | "school"
-        | "government"
-        | "corporate"
-        | "other"
       enrollment_status:
         | "active"
         | "inactive"
@@ -2697,6 +2691,12 @@ export type Database = {
         | "dropped"
         | "waitlist"
         | "trial"
+      entity_type_enum:
+        | "family"
+        | "school"
+        | "government"
+        | "corporate"
+        | "other"
       event_status_enum:
         | "draft"
         | "published"
@@ -2753,6 +2753,18 @@ export type Database = {
         | "confirmed"
         | "cancelled"
         | "waitlist"
+      t_shirt_size_enum:
+        | "YXXS"
+        | "YXS"
+        | "YS"
+        | "YM"
+        | "YL"
+        | "YXL"
+        | "AS"
+        | "AM"
+        | "AL"
+        | "AXL"
+        | "A2XL"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2922,13 +2934,6 @@ export const Constants = {
         "student_belt_rank_too_low",
         "student_belt_rank_too_high",
       ],
-      entity_type_enum: [
-        "family",
-        "school",
-        "government",
-        "corporate",
-        "other",
-      ],
       enrollment_status: [
         "active",
         "inactive",
@@ -2936,6 +2941,13 @@ export const Constants = {
         "dropped",
         "waitlist",
         "trial",
+      ],
+      entity_type_enum: [
+        "family",
+        "school",
+        "government",
+        "corporate",
+        "other",
       ],
       event_status_enum: [
         "draft",
@@ -3000,6 +3012,19 @@ export const Constants = {
         "confirmed",
         "cancelled",
         "waitlist",
+      ],
+      t_shirt_size_enum: [
+        "YXXS",
+        "YXS",
+        "YS",
+        "YM",
+        "YL",
+        "YXL",
+        "AS",
+        "AM",
+        "AL",
+        "AXL",
+        "A2XL",
       ],
     },
   },

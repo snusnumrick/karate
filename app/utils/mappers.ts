@@ -39,7 +39,7 @@ export function mapStudentToSupabase(student: Student): Database['public']['Tabl
         birth_date: student.birthDate,
         cell_phone: student.cellPhone,
         email: student.email,
-        t_shirt_size: student.tShirtSize,
+        t_shirt_size: student.tShirtSize as Database['public']['Enums']['t_shirt_size_enum'],
         school: student.school,
         grade_level: student.gradeLevel,
         special_needs: student.specialNeeds,

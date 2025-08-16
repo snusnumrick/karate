@@ -206,7 +206,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                     birth_date: dob, // Renamed from date_of_birth
                     gender: gender, // Required
                     school: school, // Required
-                    t_shirt_size: tShirtSize, // Required
+                    t_shirt_size: tShirtSize as Database['public']['Enums']['t_shirt_size_enum'], // Required
                     cell_phone: cellPhone, // Optional
                     email: email, // Optional
                     grade_level: gradeLevel, // Optional

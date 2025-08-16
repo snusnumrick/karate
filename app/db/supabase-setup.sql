@@ -114,6 +114,73 @@ $$
     END
 $$;
 
+-- Create t_shirt_size enum type if it doesn't exist
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 't_shirt_size_enum') THEN
+            CREATE TYPE t_shirt_size_enum AS ENUM (
+                'YXXS',
+                'YXS',
+                'YS',
+                'YM',
+                'YL',
+                'YXL',
+                'AS',
+                'AM',
+                'AL',
+                'AXL',
+                'A2XL'
+            );
+        END IF;
+    END
+$$;
+
+-- Migrate existing t_shirt_size data from text to enum
+DO
+$$
+    BEGIN
+        -- Check if the column is still text type
+        IF EXISTS (SELECT 1 FROM information_schema.columns 
+                  WHERE table_name = 'students' 
+                  AND column_name = 't_shirt_size' 
+                  AND data_type = 'text') THEN
+            
+            -- First, update any invalid values to valid enum values
+            UPDATE students SET t_shirt_size = 'YXS' WHERE t_shirt_size NOT IN ('YXXS', 'YXS', 'YS', 'YM', 'YL', 'YXL', 'AS', 'AM', 'AL', 'AXL', 'A2XL');
+            
+            -- Add a temporary column with the enum type
+            ALTER TABLE students ADD COLUMN t_shirt_size_temp t_shirt_size_enum;
+            
+            -- Copy data from text column to enum column with explicit casting
+            UPDATE students SET t_shirt_size_temp = 
+                CASE t_shirt_size
+                    WHEN 'YXXS' THEN 'YXXS'::t_shirt_size_enum
+                    WHEN 'YXS' THEN 'YXS'::t_shirt_size_enum
+                    WHEN 'YS' THEN 'YS'::t_shirt_size_enum
+                    WHEN 'YM' THEN 'YM'::t_shirt_size_enum
+                    WHEN 'YL' THEN 'YL'::t_shirt_size_enum
+                    WHEN 'YXL' THEN 'YXL'::t_shirt_size_enum
+                    WHEN 'AS' THEN 'AS'::t_shirt_size_enum
+                    WHEN 'AM' THEN 'AM'::t_shirt_size_enum
+                    WHEN 'AL' THEN 'AL'::t_shirt_size_enum
+                    WHEN 'AXL' THEN 'AXL'::t_shirt_size_enum
+                    WHEN 'A2XL' THEN 'A2XL'::t_shirt_size_enum
+                    ELSE 'YXS'::t_shirt_size_enum
+                END;
+            
+            -- Drop the old text column
+            ALTER TABLE students DROP COLUMN t_shirt_size;
+            
+            -- Rename the temp column to the original name
+            ALTER TABLE students RENAME COLUMN t_shirt_size_temp TO t_shirt_size;
+            
+            -- Add NOT NULL constraint
+            ALTER TABLE students ALTER COLUMN t_shirt_size SET NOT NULL;
+        END IF;
+    END
+$$;
+
 
 -- Create tables with IF NOT EXISTS to avoid errors on subsequent runs
 
@@ -1392,13 +1459,14 @@ ALTER TABLE families
         CHECK (province IN ('AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'));
 END IF;
 
-IF NOT EXISTS (SELECT 1
-                       FROM pg_constraint
-                       WHERE conname = 'valid_t_shirt_size') THEN
-ALTER TABLE students
-    ADD CONSTRAINT valid_t_shirt_size
-        CHECK (t_shirt_size IN ('YXS', 'YS', 'YM', 'YL', 'YXL', 'AS', 'AM', 'AL', 'AXL', 'A2XL'));
-END IF;
+-- T-shirt size constraint is now handled by the enum type
+-- IF NOT EXISTS (SELECT 1
+--                        FROM pg_constraint
+--                        WHERE conname = 'valid_t_shirt_size') THEN
+-- ALTER TABLE students
+--     ADD CONSTRAINT valid_t_shirt_size
+--         CHECK (t_shirt_size IN ('YXS', 'YS', 'YM', 'YL', 'YXL', 'AS', 'AM', 'AL', 'AXL', 'A2XL'));
+-- END IF;
 END $$;
 
 -- Add update timestamp trigger for families table

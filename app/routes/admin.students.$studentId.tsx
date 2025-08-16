@@ -5,6 +5,7 @@ import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation, u
 // createClient is only needed for admin actions until fully refactored
 // Removed unused createClient import
 import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { Database } from "~/types/database.types";
 // Removed unused Database import
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -35,6 +36,7 @@ import {
     type StudentUpdateData
 } from "~/services/student.server"; // Import service functions
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb"; // Import breadcrumb component
+import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
 
 // Define types using imported service types
 type LoaderData = {
@@ -149,7 +151,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             birth_date: formData.get('birth_date') as string,
             cell_phone: formData.get('cell_phone') as string || null,
             email: formData.get('email') as string || null,
-            t_shirt_size: formData.get('t_shirt_size') as string,
+            t_shirt_size: formData.get('t_shirt_size') as Database['public']['Enums']['t_shirt_size_enum'],
             school: formData.get('school') as string,
             grade_level: formData.get('grade_level') as string || null,
             special_needs: formData.get('special_needs') as string || null,
@@ -302,16 +304,11 @@ export default function AdminStudentDetailPage() {
                                     <SelectTrigger id="t_shirt_size" tabIndex={5} className="input-custom-styles"><SelectValue
                                         placeholder="Select size"/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="YXS">Youth XS</SelectItem>
-                                        <SelectItem value="YS">Youth S</SelectItem>
-                                        <SelectItem value="YM">Youth M</SelectItem>
-                                        <SelectItem value="YL">Youth L</SelectItem>
-                                        <SelectItem value="YXL">Youth XL</SelectItem>
-                                        <SelectItem value="AS">Adult S</SelectItem>
-                                        <SelectItem value="AM">Adult M</SelectItem>
-                                        <SelectItem value="AL">Adult L</SelectItem>
-                                        <SelectItem value="AXL">Adult XL</SelectItem>
-                                        <SelectItem value="A2XL">Adult 2XL</SelectItem>
+                                        {T_SHIRT_SIZE_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                                 {actionData?.fieldErrors?.t_shirt_size &&

@@ -13,6 +13,7 @@ import {BELT_RANKS} from "~/utils/constants";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
 
 // Loader to get all families for the dropdown
 export async function loader() {
@@ -110,7 +111,7 @@ export async function action({request}: ActionFunctionArgs) {
             last_name: lastName,
             gender: gender,
             birth_date: birthDate,
-            t_shirt_size: tShirtSize,
+            t_shirt_size: tShirtSize as Database['public']['Enums']['t_shirt_size_enum'],
             school: school,
             grade_level: gradeLevel,
             special_needs: specialNeeds || null,
@@ -315,12 +316,11 @@ export default function AdminAddStudentPage() {
                   <SelectValue placeholder="Select size" />
                 </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="XS">XS</SelectItem>
-                                        <SelectItem value="S">S</SelectItem>
-                                        <SelectItem value="M">M</SelectItem>
-                                        <SelectItem value="L">L</SelectItem>
-                                        <SelectItem value="XL">XL</SelectItem>
-                                        <SelectItem value="XXL">XXL</SelectItem>
+                                        {T_SHIRT_SIZE_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                                 {getFieldError("tShirtSize") && (

@@ -13,6 +13,7 @@ import {BELT_RANKS} from "~/utils/constants"; // Assuming this constant file exi
 import invariant from "tiny-invariant";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
+import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
 
 
 // Loader to get family ID and name for context
@@ -124,7 +125,7 @@ export async function action({request, params}: ActionFunctionArgs) {
             last_name: lastName,
             gender: gender,
             birth_date: birthDate,
-            t_shirt_size: tShirtSize,
+            t_shirt_size: tShirtSize as Database['public']['Enums']['t_shirt_size_enum'],
             school: school,
             grade_level: gradeLevel,
             special_needs: specialNeeds || null,
@@ -271,16 +272,11 @@ export default function AdminAddStudentPage() {
                                         <SelectValue placeholder="Select size"/>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="YXS">Youth XS</SelectItem>
-                                        <SelectItem value="YS">Youth S</SelectItem>
-                                        <SelectItem value="YM">Youth M</SelectItem>
-                                        <SelectItem value="YL">Youth L</SelectItem>
-                                        <SelectItem value="YXL">Youth XL</SelectItem>
-                                        <SelectItem value="AS">Adult S</SelectItem>
-                                        <SelectItem value="AM">Adult M</SelectItem>
-                                        <SelectItem value="AL">Adult L</SelectItem>
-                                        <SelectItem value="AXL">Adult XL</SelectItem>
-                                        <SelectItem value="A2XL">Adult 2XL</SelectItem>
+                                        {T_SHIRT_SIZE_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                                 {getFieldError('tShirtSize') && <p id="tShirtSize-error"
