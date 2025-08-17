@@ -5237,6 +5237,41 @@ BEGIN
     END IF;
 END $$;
 
+-- Create event_types table for dynamic event type management
+CREATE TABLE IF NOT EXISTS event_types (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name text UNIQUE NOT NULL, -- Maps to event_type_enum values
+    display_name text NOT NULL,
+    description text,
+    color_class text NOT NULL DEFAULT 'bg-gray-100 text-gray-800',
+    border_class text,
+    dark_mode_class text,
+    icon text,
+    is_active boolean NOT NULL DEFAULT true,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
+-- Create updated_at trigger for event_types
+CREATE OR REPLACE TRIGGER event_types_updated_at
+    BEFORE UPDATE ON event_types
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Insert default event types with styling
+INSERT INTO event_types (name, display_name, description, color_class, border_class, dark_mode_class, sort_order)
+VALUES 
+    ('competition', 'Competition', 'Competitive karate events and matches', 'bg-red-100 text-red-800', 'border-red-200', 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', 1),
+    ('tournament', 'Tournament', 'Large-scale competitive tournaments', 'bg-orange-100 text-orange-800', 'border-orange-200', 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', 2),
+    ('testing', 'Testing', 'Belt testing and rank advancement', 'bg-yellow-100 text-yellow-800', 'border-yellow-200', 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', 3),
+    ('seminar', 'Seminar', 'Educational seminars and workshops', 'bg-blue-100 text-blue-800', 'border-blue-200', 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', 4),
+    ('workshop', 'Workshop', 'Skill-building workshops and training', 'bg-green-100 text-green-800', 'border-green-200', 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', 5),
+    ('social_event', 'Social Event', 'Community gatherings and social activities', 'bg-pink-100 text-pink-800', 'border-pink-200', 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200', 6),
+    ('fundraiser', 'Fundraiser', 'Fundraising events and activities', 'bg-purple-100 text-purple-800', 'border-purple-200', 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', 7),
+    ('other', 'Other', 'Other types of events', 'bg-gray-100 text-gray-800', 'border-gray-200', 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200', 8)
+ON CONFLICT (name) DO NOTHING;
+
 -- Create event_status enum
 DO $$
 BEGIN

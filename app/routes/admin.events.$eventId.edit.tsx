@@ -12,6 +12,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Calendar, MapPin, Users, DollarSign, FileText, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import type { Database } from "~/types/database.types";
+import { getEventTypeOptions } from "~/utils/event-helpers.server";
 
 type Event = Database['public']['Tables']['events']['Row'];
 
@@ -33,6 +34,7 @@ type LoaderData = {
   instructors: Instructor[];
   waivers: Waiver[];
   eventWaivers: string[]; // Array of waiver IDs associated with this event
+  eventTypeOptions: { value: string; label: string; }[];
 };
 
 type ActionData = {
@@ -114,11 +116,15 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       console.error('Error fetching event waivers:', eventWaiversError);
     }
 
+    // Get event type options
+    const eventTypeOptions = await getEventTypeOptions(request);
+
     return json({
       event,
       instructors: instructors || [],
       waivers: waivers || [],
-      eventWaivers: eventWaivers?.map(ew => ew.waiver_id) || []
+      eventWaivers: eventWaivers?.map(ew => ew.waiver_id) || [],
+      eventTypeOptions
     }, { headers });
   } catch (error) {
     console.error('Error in loader:', error);
@@ -252,7 +258,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 }
 
 export default function EditEvent() {
-  const { event, instructors, waivers, eventWaivers } = useLoaderData<LoaderData>();
+  const { event, instructors, waivers, eventWaivers, eventTypeOptions } = useLoaderData<LoaderData>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const [requiresWaiver, setRequiresWaiver] = useState(eventWaivers.length > 0);
@@ -318,14 +324,11 @@ export default function EditEvent() {
                     <SelectValue placeholder="Select event type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="competition">Competition</SelectItem>
-                    <SelectItem value="seminar">Seminar</SelectItem>
-                    <SelectItem value="testing">Testing</SelectItem>
-                    <SelectItem value="tournament">Tournament</SelectItem>
-                    <SelectItem value="workshop">Workshop</SelectItem>
-                    <SelectItem value="social_event">Social Event</SelectItem>
-                    <SelectItem value="fundraiser">Fundraiser</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    {eventTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {actionData?.fieldErrors?.event_type && (

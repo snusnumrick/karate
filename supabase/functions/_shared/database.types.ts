@@ -864,6 +864,51 @@ export type Database = {
           },
         ]
       }
+      event_types: {
+        Row: {
+          border_class: string | null
+          color_class: string
+          created_at: string | null
+          dark_mode_class: string | null
+          description: string | null
+          display_name: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          border_class?: string | null
+          color_class: string
+          created_at?: string | null
+          dark_mode_class?: string | null
+          description?: string | null
+          display_name: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          border_class?: string | null
+          color_class?: string
+          created_at?: string | null
+          dark_mode_class?: string | null
+          description?: string | null
+          display_name?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       event_waivers: {
         Row: {
           event_id: string
@@ -2716,6 +2761,7 @@ export type Database = {
         | "workshop"
         | "social_event"
         | "fundraiser"
+        | "belt_exam"
         | "other"
       invoice_item_type:
         | "class_enrollment"
@@ -2969,6 +3015,7 @@ export const Constants = {
         "workshop",
         "social_event",
         "fundraiser",
+        "belt_exam",
         "other",
       ],
       invoice_item_type: [

@@ -1,7 +1,7 @@
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
-import { json } from "@remix-run/node";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
 import { EventService } from "~/services/event.server";
@@ -9,20 +9,33 @@ import type { Database } from "~/types/database.types";
 import { mergeMeta } from "~/utils/meta";
 import { useEffect, useState } from "react";
 import { getScheduleData } from "~/utils/site-data.client";
+// Server imports moved to loader function only
 
 type UpcomingEvent = Pick<Database['public']['Tables']['events']['Row'], 
   'id' | 'title' | 'description' | 'event_type' | 'status' | 'start_date' | 
   'end_date' | 'start_time' | 'end_time' | 'location' | 'address' | 
   'max_participants' | 'registration_fee' | 'registration_deadline' | 
   'external_url' | 'is_public'
->;
+> & {
+  formattedEventType: string;
+};
 
 // Loader for homepage - fetch upcoming events
-export async function loader() {
+export async function loader({ request }: LoaderFunctionArgs) {
+    const { getEventTypeConfigWithDarkMode, formatEventTypeName } = await import("~/utils/event-helpers.server");
+    
     try {
         const upcomingEvents = await EventService.getUpcomingEvents();
+        const eventTypeConfig = await getEventTypeConfigWithDarkMode(request);
+        
+        // Format event type names on the server side
+        const upcomingEventsWithFormattedTypes = upcomingEvents.map(event => ({
+            ...event,
+            formattedEventType: formatEventTypeName(event.event_type || 'other')
+        }));
+        
         return json(
-            { upcomingEvents },
+            { upcomingEvents: upcomingEventsWithFormattedTypes, eventTypeConfig },
             {
                 headers: {
                     // Cache for 5 minutes (300 seconds) to match server-side cache duration
@@ -35,8 +48,9 @@ export async function loader() {
         );
     } catch (error) {
         console.error('Error loading upcoming events:', error);
+        const eventTypeConfig = await getEventTypeConfigWithDarkMode(request);
         return json(
-            { upcomingEvents: [] },
+            { upcomingEvents: [], eventTypeConfig },
             {
                 headers: {
                     // Don't cache error responses
@@ -186,7 +200,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 };
 
 export default function Index() {
-    const { upcomingEvents } = useLoaderData<typeof loader>();
+    const { upcomingEvents, eventTypeConfig } = useLoaderData<typeof loader>();
     const [scheduleData, setScheduleData] = useState<{
         days: string;
         times: string;
@@ -314,14 +328,9 @@ export default function Index() {
                                     <div className="p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                 event.event_type === 'workshop' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                                                 event.event_type === 'tournament' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                                                 event.event_type === 'seminar' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                                                 event.event_type === 'testing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                                 event.event_type === 'competition' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
-                                                 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
-                                             }`}>
-                                                {event.event_type?.replace('_', ' ').toUpperCase() || 'EVENT'}
+                                eventTypeConfig[event.event_type || 'other']?.color || eventTypeConfig.other?.color || 'bg-gray-100 text-gray-800'
+                             }`}>
+                                                {event.formattedEventType.toUpperCase()}
                                             </span>
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                                 event.status === 'published' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :

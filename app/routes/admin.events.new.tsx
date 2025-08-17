@@ -12,6 +12,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Calendar, MapPin, Users, DollarSign, FileText, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import type { Database } from "~/types/database.types";
+import { getEventTypeOptions } from "~/utils/event-helpers.server";
 
 type Instructor = {
   id: string;
@@ -29,6 +30,7 @@ type Waiver = {
 type LoaderData = {
   instructors: Instructor[];
   waivers: Waiver[];
+  eventTypeOptions: { value: string; label: string; }[];
 };
 
 type ActionData = {
@@ -79,9 +81,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (waiversError) throw waiversError;
 
+    // Get event type options
+    const eventTypeOptions = await getEventTypeOptions(request);
+
     return json({
       instructors: instructors || [],
-      waivers: waivers || []
+      waivers: waivers || [],
+      eventTypeOptions
     }, { headers });
 
   } catch (error) {
@@ -234,7 +240,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function NewEvent() {
-  const { instructors, waivers } = useLoaderData<LoaderData>();
+  const { instructors, waivers, eventTypeOptions } = useLoaderData<LoaderData>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const [requiresWaiver, setRequiresWaiver] = useState(false);
@@ -300,14 +306,11 @@ export default function NewEvent() {
                     <SelectValue placeholder="Select event type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="competition">Competition</SelectItem>
-                    <SelectItem value="seminar">Seminar</SelectItem>
-                    <SelectItem value="testing">Testing</SelectItem>
-                    <SelectItem value="tournament">Tournament</SelectItem>
-                    <SelectItem value="workshop">Workshop</SelectItem>
-                    <SelectItem value="social_event">Social Event</SelectItem>
-                    <SelectItem value="fundraiser">Fundraiser</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    {eventTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {actionData?.fieldErrors?.event_type && (
@@ -391,7 +394,7 @@ export default function NewEvent() {
                     name="start_time"
                     type="time"
                     className="input-custom-styles"
-                    tabIndex={9}
+                    tabIndex={8}
                   />
                 </div>
 
@@ -402,7 +405,7 @@ export default function NewEvent() {
                     name="end_time"
                     type="time"
                     className="input-custom-styles"
-                    tabIndex={8}
+                    tabIndex={9}
                   />
                 </div>
               </div>
@@ -437,7 +440,7 @@ export default function NewEvent() {
                   name="location_name"
                   placeholder="e.g., Toronto Karate Academy - Main Hall"
                   className="input-custom-styles"
-                  tabIndex={10.1}
+                  tabIndex={11}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Detailed venue name for metadata and SEO
@@ -452,7 +455,7 @@ export default function NewEvent() {
                     name="street_address"
                     placeholder="e.g., 123 Main Street"
                     className="input-custom-styles"
-                    tabIndex={10.2}
+                    tabIndex={12}
                   />
                 </div>
 
@@ -463,7 +466,7 @@ export default function NewEvent() {
                     name="address"
                     placeholder="Complete address for display"
                     className="input-custom-styles"
-                    tabIndex={10.3}
+                    tabIndex={13}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Fallback address if structured fields are empty
@@ -479,7 +482,7 @@ export default function NewEvent() {
                     name="locality"
                     placeholder="e.g., Toronto"
                     className="input-custom-styles"
-                    tabIndex={10.4}
+                    tabIndex={14}
                   />
                 </div>
 
@@ -490,7 +493,7 @@ export default function NewEvent() {
                     name="region"
                     placeholder="e.g., ON"
                     className="input-custom-styles"
-                    tabIndex={10.5}
+                    tabIndex={15}
                   />
                 </div>
 
@@ -501,7 +504,7 @@ export default function NewEvent() {
                     name="postal_code"
                     placeholder="e.g., M5V 3A8"
                     className="input-custom-styles"
-                    tabIndex={10.6}
+                    tabIndex={16}
                   />
                 </div>
               </div>
@@ -515,7 +518,7 @@ export default function NewEvent() {
                     placeholder="e.g., Canada"
                     defaultValue="Canada"
                     className="input-custom-styles"
-                    tabIndex={10.7}
+                    tabIndex={17}
                   />
                 </div>
 
@@ -528,7 +531,7 @@ export default function NewEvent() {
                     min="1"
                     placeholder="e.g., 50"
                     className="input-custom-styles"
-                    tabIndex={11}
+                    tabIndex={18}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Leave empty for unlimited capacity
@@ -556,7 +559,7 @@ export default function NewEvent() {
                     step="0.01"
                     placeholder="0.00"
                     className="input-custom-styles"
-                    tabIndex={12}
+                    tabIndex={19}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Leave empty or 0 for free events
@@ -573,7 +576,7 @@ export default function NewEvent() {
                     name="registration_deadline"
                     type="date"
                     className="input-custom-styles"
-                    tabIndex={13}
+                    tabIndex={20}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Leave empty for no deadline
@@ -594,7 +597,7 @@ export default function NewEvent() {
                 <div>
                   <Label htmlFor="min_belt_rank">Minimum Belt Rank</Label>
                   <Select name="min_belt_rank">
-                    <SelectTrigger className="input-custom-styles" tabIndex={14}>
+                    <SelectTrigger className="input-custom-styles" tabIndex={21}>
                       <SelectValue placeholder="Any belt" />
                     </SelectTrigger>
                     <SelectContent>
@@ -612,7 +615,7 @@ export default function NewEvent() {
                 <div>
                   <Label htmlFor="max_belt_rank">Maximum Belt Rank</Label>
                   <Select name="max_belt_rank">
-                    <SelectTrigger className="input-custom-styles" tabIndex={15}>
+                    <SelectTrigger className="input-custom-styles" tabIndex={22}>
                       <SelectValue placeholder="Any belt" />
                     </SelectTrigger>
                     <SelectContent>
@@ -639,7 +642,7 @@ export default function NewEvent() {
                     min="1"
                     placeholder="Any age"
                     className="input-custom-styles"
-                    tabIndex={17}
+                    tabIndex={23}
                   />
                 </div>
                 <div>
@@ -651,7 +654,7 @@ export default function NewEvent() {
                     min="1"
                     placeholder="Any age"
                     className="input-custom-styles"
-                    tabIndex={16}
+                    tabIndex={24}
                   />
                 </div>
               </div>
@@ -659,7 +662,7 @@ export default function NewEvent() {
               <div>
                 <Label htmlFor="gender_restriction">Gender Restriction</Label>
                 <Select name="gender_restriction">
-                  <SelectTrigger className="input-custom-styles" tabIndex={18}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={25}>
                     <SelectValue placeholder="No restriction" />
                   </SelectTrigger>
                   <SelectContent>
@@ -674,7 +677,7 @@ export default function NewEvent() {
                 <Checkbox
                   id="special_needs_support"
                   name="special_needs_support"
-                  tabIndex={19}
+                  tabIndex={26}
                 />
                 <Label htmlFor="special_needs_support" className="text-sm font-medium cursor-pointer">
                   Special Needs Support Available
@@ -699,7 +702,7 @@ export default function NewEvent() {
                   name="requires_waiver"
                   checked={requiresWaiver}
                   onCheckedChange={(checked) => setRequiresWaiver(checked as boolean)}
-                  tabIndex={20}
+                  tabIndex={27}
                 />
                 <Label htmlFor="requires_waiver">Requires Waiver</Label>
               </div>
@@ -718,7 +721,7 @@ export default function NewEvent() {
                             <Checkbox
                               id={`waiver_${waiver.id}`}
                               name={`waiver_${waiver.id}`}
-                              tabIndex={21 + index * 2}
+                              tabIndex={28 + index * 2}
                             />
                             <div className="flex-1">
                               <Label htmlFor={`waiver_${waiver.id}`} className="text-sm font-medium cursor-pointer">
@@ -737,7 +740,7 @@ export default function NewEvent() {
                               id={`waiver_required_${waiver.id}`}
                               name={`waiver_required_${waiver.id}`}
                               defaultChecked={waiver.required}
-                              tabIndex={22 + index * 2}
+                              tabIndex={29 + index * 2}
                             />
                             <Label htmlFor={`waiver_required_${waiver.id}`} className="text-xs text-muted-foreground">
                               Required
@@ -758,10 +761,10 @@ export default function NewEvent() {
         </div>
 
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" asChild tabIndex={100}>
+          <Button type="button" variant="outline" asChild tabIndex={98}>
             <a href="/admin/events">Cancel</a>
           </Button>
-          <Button type="submit" disabled={isSubmitting} tabIndex={101}>
+          <Button type="submit" disabled={isSubmitting} tabIndex={99}>
             {isSubmitting ? "Creating..." : "Create Event"}
           </Button>
         </div>

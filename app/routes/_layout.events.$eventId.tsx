@@ -1,12 +1,13 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Link, useLoaderData } from "@remix-run/react";
+import { Link, useLoaderData, Outlet, useLocation } from "@remix-run/react";
 import { EventService } from "~/services/event.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
+// Server-side imports moved to loader function
 
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -82,7 +83,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   ];
 };
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ params, request }: LoaderFunctionArgs) {
   const { eventId } = params;
   
   if (!eventId) {
@@ -95,11 +96,16 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response("Event not found", { status: 404 });
   }
 
-  return json({ event });
+  const eventHelpers = await import("~/utils/event-helpers.server");
+  const eventTypeColor = await eventHelpers.getEventTypeColorWithBorder(event.event_type, request);
+  const formattedEventType = eventHelpers.formatEventTypeName(event.event_type);
+
+  return json({ event, eventTypeColor, formattedEventType });
 }
 
 export default function EventDetail() {
-  const { event } = useLoaderData<typeof loader>();
+  const { event, eventTypeColor, formattedEventType } = useLoaderData<typeof loader>();
+  const location = useLocation();
 
   // Helper function to format date with weekday using the centralized utility
   const formatDateWithWeekday = (dateString: string) => {
@@ -118,29 +124,21 @@ export default function EventDetail() {
     });
   };
 
-  const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case 'competition':
-      case 'tournament':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'testing':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'seminar':
-      case 'workshop':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'social_event':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'fundraiser':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   const isRegistrationOpen = event.status === 'registration_open';
   const registrationDeadlinePassed = event.registration_deadline 
     ? new Date(event.registration_deadline) < new Date() 
     : false;
+  
+  // Registration is available if event is open AND (no deadline OR deadline hasn't passed)
+  const canRegister = isRegistrationOpen && !registrationDeadlinePassed;
+
+  // Check if we're on a nested route (like /register)
+  const isNestedRoute = location.pathname !== `/events/${event.id}`;
+
+  // If we're on a nested route, render the Outlet instead of event details
+  if (isNestedRoute) {
+    return <Outlet />;
+  }
 
   return (
     <div className="min-h-screen page-background-styles py-12">
@@ -155,8 +153,8 @@ export default function EventDetail() {
         {/* Page Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center space-x-3 mb-4">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getEventTypeColor(event.event_type)}`}>
-              {event.event_type.replace('_', ' ').toUpperCase()}
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${eventTypeColor}`}>
+              {formattedEventType}
             </span>
             <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
               event.status === 'registration_open' 
@@ -321,7 +319,7 @@ export default function EventDetail() {
                 )}
 
                 <div className="space-y-3">
-                  {isRegistrationOpen && !registrationDeadlinePassed ? (
+                  {canRegister ? (
                     <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white">
                       <Link to={`/events/${event.id}/register`}>
                         Register for Event

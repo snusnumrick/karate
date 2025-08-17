@@ -11,6 +11,7 @@ import { Calendar, Plus, Users, DollarSign, MapPin, Clock, Filter } from "lucide
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { format, parseISO } from "date-fns";
 import type { Database } from "~/types/database.types";
+import { getEventTypeOptions, getEventTypeConfig } from "~/utils/event-helpers.server";
 
 type Event = {
   id: string;
@@ -50,6 +51,7 @@ type LoaderData = {
     type?: string;
     search?: string;
   };
+  eventTypeOptions: { value: string; label: string; }[];
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -153,6 +155,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       sum + ((event.registration_fee || 0) * (registrationCountMap.get(event.id) || 0)), 0
     );
 
+    // Get event type options
+    const eventTypeOptions = await getEventTypeOptions(request);
+
     return json({
       events,
       stats: {
@@ -165,7 +170,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         status: statusFilter,
         type: typeFilter,
         search: searchFilter
-      }
+      },
+      eventTypeOptions
     }, { headers });
 
   } catch (error) {
@@ -208,7 +214,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function AdminEventsIndex() {
-  const { events, stats, filters } = useLoaderData<LoaderData>();
+  const { events, stats, filters, eventTypeOptions } = useLoaderData<LoaderData>();
   const navigation = useNavigation();
   const [searchTerm, setSearchTerm] = useState(filters.search || "");
 
@@ -228,19 +234,8 @@ export default function AdminEventsIndex() {
   };
 
   const getEventTypeBadge = (type: string) => {
-    const typeConfig = {
-      competition: { label: "Competition", color: "bg-red-100 text-red-800" },
-      seminar: { label: "Seminar", color: "bg-blue-100 text-blue-800" },
-      testing: { label: "Testing", color: "bg-purple-100 text-purple-800" },
-      tournament: { label: "Tournament", color: "bg-orange-100 text-orange-800" },
-      workshop: { label: "Workshop", color: "bg-green-100 text-green-800" },
-      social_event: { label: "Social Event", color: "bg-pink-100 text-pink-800" },
-      fundraiser: { label: "Fundraiser", color: "bg-yellow-100 text-yellow-800" },
-      other: { label: "Other", color: "bg-gray-100 text-gray-800" }
-    };
-
-    const config = typeConfig[type as keyof typeof typeConfig] || typeConfig.other;
-    return <Badge className={config.color}>{config.label}</Badge>;
+    const option = eventTypeOptions.find(opt => opt.value === type);
+    return <Badge className="bg-blue-100 text-blue-800">{option?.label || type}</Badge>;
   };
 
   const formatDate = (dateString: string) => {
@@ -351,14 +346,11 @@ export default function AdminEventsIndex() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="competition">Competition</SelectItem>
-                <SelectItem value="seminar">Seminar</SelectItem>
-                <SelectItem value="testing">Testing</SelectItem>
-                <SelectItem value="tournament">Tournament</SelectItem>
-                <SelectItem value="workshop">Workshop</SelectItem>
-                <SelectItem value="social_event">Social Event</SelectItem>
-                <SelectItem value="fundraiser">Fundraiser</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                {eventTypeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
