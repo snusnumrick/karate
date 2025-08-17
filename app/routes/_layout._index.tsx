@@ -12,7 +12,7 @@ import { getScheduleData } from "~/utils/site-data.client";
 // Server imports moved to loader function only
 
 type UpcomingEvent = Pick<Database['public']['Tables']['events']['Row'], 
-  'id' | 'title' | 'description' | 'event_type' | 'status' | 'start_date' | 
+  'id' | 'title' | 'description' | 'event_type_id' | 'status' | 'start_date' | 
   'end_date' | 'start_time' | 'end_time' | 'location' | 'address' | 
   'max_participants' | 'registration_fee' | 'registration_deadline' | 
   'external_url' | 'is_public'
@@ -31,7 +31,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         // Format event type names on the server side
         const upcomingEventsWithFormattedTypes = upcomingEvents.map(event => ({
             ...event,
-            formattedEventType: formatEventTypeName(event.event_type || 'other')
+            formattedEventType: formatEventTypeName(event.event_type_id || 'other')
         }));
         
         return json(
@@ -100,7 +100,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
                 "@type": "Event",
                 "position": index + 1,
                 "name": event.title,
-                "description": event.description || `${event.event_type} event at our karate dojo`,
+                "description": event.description || `${event.event_type_id} event at our karate dojo`,
                 "startDate": event.start_date + (event.start_time ? `T${event.start_time}` : ''),
                 "endDate": event.end_date ? (event.end_date + (event.end_time ? `T${event.end_time}` : '')) : undefined,
                 "location": {
@@ -328,7 +328,7 @@ export default function Index() {
                                     <div className="p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                eventTypeConfig[event.event_type || 'other']?.color || eventTypeConfig.other?.color || 'bg-gray-100 text-gray-800'
+                                eventTypeConfig[event.event_type_id || 'other']?.color || eventTypeConfig.other?.color || 'bg-gray-100 text-gray-800'
                              }`}>
                                                 {event.formattedEventType.toUpperCase()}
                                             </span>

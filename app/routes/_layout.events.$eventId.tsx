@@ -97,8 +97,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   }
 
   const eventHelpers = await import("~/utils/event-helpers.server");
-  const eventTypeColor = await eventHelpers.getEventTypeColorWithBorder(event.event_type, request);
-  const formattedEventType = eventHelpers.formatEventTypeName(event.event_type);
+  const eventTypeColor = await eventHelpers.getEventTypeColorWithBorder(event.event_type_id, request);
+  const formattedEventType = eventHelpers.formatEventTypeName(event.event_type_id);
 
   return json({ event, eventTypeColor, formattedEventType });
 }
@@ -347,7 +347,7 @@ export default function EventDetail() {
                 <dl className="space-y-4">
                   <div>
                     <dt className="text-sm text-gray-600 dark:text-gray-300">Event Type</dt>
-                    <dd className="font-semibold text-gray-900 dark:text-white capitalize">{event.event_type.replace('_', ' ')}</dd>
+                    <dd className="font-semibold text-gray-900 dark:text-white capitalize">{event.event_type_id.replace('_', ' ')}</dd>
                   </div>
                   <div>
                     <dt className="text-sm text-gray-600 dark:text-gray-300">Status</dt>

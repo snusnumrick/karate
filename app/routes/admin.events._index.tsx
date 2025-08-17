@@ -7,17 +7,18 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Calendar, Plus, Users, DollarSign, MapPin, Clock, Filter } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
+import { Calendar, Plus, Users, DollarSign, MapPin, Clock, Filter, Trash2 } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { format, parseISO } from "date-fns";
 import type { Database } from "~/types/database.types";
-import { getEventTypeOptions, getEventTypeConfig } from "~/utils/event-helpers.server";
+import { getEventTypeOptions } from "~/utils/event-helpers.server";
 
 type Event = {
   id: string;
   title: string;
   description: string | null;
-  event_type: string;
+  event_type_id: string;
   status: string;
   start_date: string;
   end_date: string | null;
@@ -87,7 +88,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         id,
         title,
         description,
-        event_type,
+        event_type_id,
         status,
         start_date,
         end_date,
@@ -111,7 +112,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     if (typeFilter && typeFilter !== 'all') {
-      eventsQuery = eventsQuery.eq('event_type', typeFilter as Database["public"]["Enums"]["event_type_enum"]);
+      eventsQuery = eventsQuery.eq('event_type_id', typeFilter);
     }
 
     if (searchFilter) {
@@ -196,7 +197,19 @@ export async function action({ request }: ActionFunctionArgs) {
     const eventId = formData.get("eventId") as string;
     
     try {
-      const { error } = await supabaseServer
+      // Use service role client to bypass RLS for admin operations
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!supabaseUrl || !supabaseServiceKey) {
+        console.error("Missing Supabase URL or Service Role Key");
+        return json({ error: "Server configuration error" }, { status: 500, headers });
+      }
+
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+      const { error } = await supabaseAdmin
         .from('events')
         .delete()
         .eq('id', eventId);
@@ -217,6 +230,8 @@ export default function AdminEventsIndex() {
   const { events, stats, filters, eventTypeOptions } = useLoaderData<LoaderData>();
   const navigation = useNavigation();
   const [searchTerm, setSearchTerm] = useState(filters.search || "");
+  const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -395,7 +410,7 @@ export default function AdminEventsIndex() {
                         </Link>
                       </CardTitle>
                       {getStatusBadge(event.status)}
-                      {getEventTypeBadge(event.event_type)}
+                      {getEventTypeBadge(event.event_type_id)}
                     </div>
                     {event.description && (
                       <p className="text-muted-foreground">{event.description}</p>
@@ -409,6 +424,17 @@ export default function AdminEventsIndex() {
                       <Link to={`/admin/events/${event.id}/registrations`}>
                         Registrations ({event._count?.registrations || 0})
                       </Link>
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => {
+                        setDeleteEventId(event.id);
+                        setEventToDelete(event);
+                      }}
+                      disabled={navigation.state === "submitting"}
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -468,6 +494,35 @@ export default function AdminEventsIndex() {
           ))
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteEventId} onOpenChange={(open) => !open && setDeleteEventId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the event
+              <span className="font-semibold"> {eventToDelete?.title}</span> and remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={navigation.state === "submitting"}>Cancel</AlertDialogCancel>
+            {deleteEventId && (
+               <Form method="post" onSubmit={() => setDeleteEventId(null)}>
+                 <input type="hidden" name="intent" value="delete" />
+                 <input type="hidden" name="eventId" value={deleteEventId} />
+                 <AlertDialogAction
+                   type="submit"
+                   disabled={navigation.state === "submitting"}
+                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                 >
+                   {navigation.state === "submitting" ? 'Deleting...' : 'Delete Event'}
+                 </AlertDialogAction>
+               </Form>
+             )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

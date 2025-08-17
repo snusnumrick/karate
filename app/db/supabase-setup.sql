@@ -5229,27 +5229,12 @@ $$;
 
 -- --- Events System ---
 
--- Create event_type enum
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'event_type_enum') THEN
-        CREATE TYPE event_type_enum AS ENUM (
-            'competition',
-            'seminar',
-            'testing',
-            'tournament',
-            'workshop',
-            'social_event',
-            'fundraiser',
-            'other'
-        );
-    END IF;
-END $$;
+-- Note: event_type_enum removed - using foreign key to event_types table instead
 
 -- Create event_types table for dynamic event type management
 CREATE TABLE IF NOT EXISTS event_types (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name text UNIQUE NOT NULL, -- Maps to event_type_enum values
+    name text UNIQUE NOT NULL, -- Unique identifier for event type
     display_name text NOT NULL,
     description text,
     color_class text NOT NULL DEFAULT 'bg-gray-100 text-gray-800',
@@ -5280,6 +5265,11 @@ VALUES
     ('fundraiser', 'Fundraiser', 'Fundraising events and activities', 'bg-purple-100 text-purple-800', 'border-purple-200', 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', 7),
     ('other', 'Other', 'Other types of events', 'bg-gray-100 text-gray-800', 'border-gray-200', 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200', 8)
 ON CONFLICT (name) DO NOTHING;
+
+-- Add constraint to prevent deletion of the 'other' event type (required for default values)
+ALTER TABLE event_types 
+ADD CONSTRAINT IF NOT EXISTS prevent_other_deletion 
+CHECK (name != 'other' OR is_active = true);
 
 -- Create event_status enum
 DO $$
@@ -5315,7 +5305,7 @@ CREATE TABLE IF NOT EXISTS events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     title text NOT NULL,
     description text,
-    event_type event_type_enum NOT NULL DEFAULT 'other',
+    event_type_id uuid REFERENCES event_types(id) NOT NULL DEFAULT (SELECT id FROM event_types WHERE name = 'other' LIMIT 1),
     status event_status_enum NOT NULL DEFAULT 'draft',
     
     -- Date and time information
@@ -5411,7 +5401,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_events_type') THEN
-        CREATE INDEX idx_events_type ON events(event_type);
+        CREATE INDEX idx_events_type ON events(event_type_id);
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_events_instructor') THEN

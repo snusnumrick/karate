@@ -99,7 +99,7 @@ type EventRow = {
   id: string;
   title: string;
   description: string | null;
-  event_type: string;
+  event_type_id: string;
   start_date: string;
   end_date: string | null;
   start_time: string | null;
@@ -312,7 +312,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         id,
         title,
         description,
-        event_type,
+        event_type_id,
         start_date,
         end_date,
         start_time,
@@ -518,7 +518,7 @@ export default function FamilyCalendarPage() {
       title: event.title,
       date: parseLocalDate(event.start_date), // Use parseLocalDate to avoid timezone issues
       type: 'event' as const,
-      eventType: event.event_type,
+      eventTypeId: event.event_type_id,
       startTime: event.start_time || undefined,
       endTime: event.end_time || undefined,
       location: event.location || undefined,

@@ -148,9 +148,9 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
             {event.title}
           </div>
         </div>
-        {!compact && event.eventType && (
+        {!compact && event.eventTypeId && (
           <div className={`text-xs ${colors.text} opacity-80 leading-tight capitalize`}>
-            {event.eventType.replace('_', ' ')}
+            {event.eventTypeId.replace('_', ' ')}
           </div>
         )}
         {!compact && (event.startTime || event.endTime) && (

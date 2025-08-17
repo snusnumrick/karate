@@ -1,4 +1,3 @@
-import { Constants } from "~/types/database.types";
 import { EventTypeService, type EventType } from "~/services/event-type.server";
 
 /**
@@ -26,10 +25,20 @@ export function formatEventTypeName(eventType: string, eventTypeData?: EventType
 }
 
 /**
- * Gets all event types from the database enum (fallback)
+ * Gets default event type names (fallback when database is unavailable)
  */
-export function getEventTypes() {
-  return Constants.public.Enums.event_type_enum;
+function getDefaultEventTypes() {
+  return [
+    'competition',
+    'seminar', 
+    'testing',
+    'tournament',
+    'workshop',
+    'social_event',
+    'fundraiser',
+    'belt_exam',
+    'other'
+  ];
 }
 
 /**
@@ -41,13 +50,13 @@ export async function getEventTypeOptions(request: Request) {
     const eventTypes = await eventTypeService.getActiveEventTypes();
     
     return eventTypes.map((eventType) => ({
-      value: eventType.name,
+      value: eventType.id,
       label: eventType.display_name
     }));
   } catch (error) {
     // Fallback to enum if database fails
     console.warn('Failed to fetch event types from database, falling back to enum:', error);
-    return getEventTypes().map((eventType) => ({
+    return getDefaultEventTypes().map((eventType) => ({
       value: eventType,
       label: formatEventTypeName(eventType)
     }));
@@ -58,7 +67,7 @@ export async function getEventTypeOptions(request: Request) {
  * Gets event type options for select components (sync version for client-side)
  */
 export function getEventTypeOptionsSync() {
-  return getEventTypes().map((eventType) => ({
+  return getDefaultEventTypes().map((eventType) => ({
     value: eventType,
     label: formatEventTypeName(eventType)
   }));
@@ -106,7 +115,7 @@ export function getEventTypeConfigSync() {
 
   const config: Record<string, { label: string; color: string }> = {};
   
-  getEventTypes().forEach((eventType) => {
+  getDefaultEventTypes().forEach((eventType) => {
     config[eventType] = {
       label: formatEventTypeName(eventType),
       color: colorMap[eventType] || "bg-gray-100 text-gray-800"
@@ -209,7 +218,7 @@ export function getEventTypeConfigWithDarkModeSync() {
 
   const config: Record<string, { label: string; color: string }> = {};
   
-  getEventTypes().forEach((eventType) => {
+  getDefaultEventTypes().forEach((eventType) => {
     config[eventType] = {
       label: labelMap[eventType] || eventType,
       color: colorMap[eventType] || colorMap.other

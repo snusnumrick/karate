@@ -1,5 +1,3 @@
-import { Constants } from "~/types/database.types";
-
 /**
  * Converts event type enum values to user-friendly display names
  * Client-safe version without server dependencies
@@ -21,17 +19,27 @@ export function formatEventTypeName(eventType: string): string {
 }
 
 /**
- * Gets all event types from the database enum (fallback)
+ * Gets default event type names (fallback when database is unavailable)
  */
-export function getEventTypes() {
-  return Constants.public.Enums.event_type_enum;
+function getDefaultEventTypes() {
+  return [
+    'competition',
+    'seminar', 
+    'testing',
+    'tournament',
+    'workshop',
+    'social_event',
+    'fundraiser',
+    'belt_exam',
+    'other'
+  ];
 }
 
 /**
  * Gets event type options for select components (sync version)
  */
 export function getEventTypeOptionsSync() {
-  return getEventTypes().map((eventType) => ({
+  return getDefaultEventTypes().map((eventType) => ({
     value: eventType,
     label: formatEventTypeName(eventType)
   }));
@@ -52,7 +60,7 @@ export function getEventTypeConfigSync() {
     other: "bg-gray-100 text-gray-800"
   };
   
-  return getEventTypes().map((eventType) => ({
+  return getDefaultEventTypes().map((eventType) => ({
     name: eventType,
     display_name: formatEventTypeName(eventType),
     color_class: colorMap[eventType] || "bg-gray-100 text-gray-800"
@@ -116,7 +124,7 @@ export function getEventTypeConfigWithDarkModeSync() {
     }
   };
   
-  return getEventTypes().map((eventType) => {
+  return getDefaultEventTypes().map((eventType) => {
     const colors = colorMap[eventType] || colorMap.other;
     return {
       name: eventType,

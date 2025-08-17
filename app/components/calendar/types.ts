@@ -16,7 +16,7 @@ export interface CalendarEvent {
   startTime?: string;
   endTime?: string;
   studentId?: string; // For birthday events
-  eventType?: string; // For events from the events table
+  eventTypeId?: string; // For events from the events table
   description?: string; // For events from the events table
   location?: string; // For events from the events table
   endDate?: string; // For multi-day events (YYYY-MM-DD format)

@@ -5,7 +5,7 @@ type Event = Database['public']['Tables']['events']['Row'];
 
 // Type for upcoming events with selected fields
 type UpcomingEvent = Pick<Event, 
-    'id' | 'title' | 'description' | 'event_type' | 'status' | 
+    'id' | 'title' | 'description' | 'event_type_id' | 'status' | 
     'start_date' | 'end_date' | 'start_time' | 'end_time' | 
     'location' | 'registration_fee' | 'registration_deadline' | 'external_url'
 >;
@@ -45,7 +45,7 @@ export class EventService {
         id,
         title,
         description,
-        event_type,
+        event_type_id,
         status,
         start_date,
         end_date,

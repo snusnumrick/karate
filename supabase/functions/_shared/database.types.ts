@@ -954,7 +954,7 @@ export type Database = {
           description: string | null
           end_date: string | null
           end_time: string | null
-          event_type: Database["public"]["Enums"]["event_type_enum"]
+          event_type_id: string
           external_url: string | null
           id: string
           instructor_id: string | null
@@ -992,7 +992,7 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           end_time?: string | null
-          event_type?: Database["public"]["Enums"]["event_type_enum"]
+          event_type_id?: string
           external_url?: string | null
           id?: string
           instructor_id?: string | null
@@ -1066,6 +1066,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_event_type_id_fkey"
+            columns: ["event_type_id"]
+            isOneToOne: false
+            referencedRelation: "event_types"
             referencedColumns: ["id"]
           },
           {
@@ -2753,16 +2760,7 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
-      event_type_enum:
-        | "competition"
-        | "seminar"
-        | "testing"
-        | "tournament"
-        | "workshop"
-        | "social_event"
-        | "fundraiser"
-        | "belt_exam"
-        | "other"
+
       invoice_item_type:
         | "class_enrollment"
         | "individual_session"
@@ -3007,17 +3005,7 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
-      event_type_enum: [
-        "competition",
-        "seminar",
-        "testing",
-        "tournament",
-        "workshop",
-        "social_event",
-        "fundraiser",
-        "belt_exam",
-        "other",
-      ],
+
       invoice_item_type: [
         "class_enrollment",
         "individual_session",

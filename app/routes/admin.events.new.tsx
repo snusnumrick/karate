@@ -37,7 +37,7 @@ type ActionData = {
   error?: string;
   fieldErrors?: {
     title?: string;
-    event_type?: string;
+    event_type_id?: string;
     start_date?: string;
     registration_fee?: string;
   };
@@ -110,7 +110,7 @@ export async function action({ request }: ActionFunctionArgs) {
   // Extract form data
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
-  const event_type = formData.get("event_type") as string;
+  const event_type_id = formData.get("event_type_id") as string;
   const start_date = formData.get("start_date") as string;
   const end_date = formData.get("end_date") as string;
   const start_time = formData.get("start_time") as string;
@@ -151,8 +151,8 @@ export async function action({ request }: ActionFunctionArgs) {
     fieldErrors.title = "Title is required";
   }
   
-  if (!event_type) {
-    fieldErrors.event_type = "Event type is required";
+  if (!event_type_id) {
+    fieldErrors.event_type_id = "Event type is required";
   }
   
   if (!start_date) {
@@ -172,7 +172,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const eventData: Database["public"]["Tables"]["events"]["Insert"] = {
       title,
       description: description || null,
-      event_type: event_type as Database["public"]["Enums"]["event_type_enum"],
+      event_type_id: event_type_id,
       start_date,
       end_date: end_date || null,
       start_time: start_time || null,
@@ -301,7 +301,7 @@ export default function NewEvent() {
 
               <div>
                 <Label htmlFor="event_type">Event Type *</Label>
-                <Select name="event_type" required>
+                <Select name="event_type_id" required>
                   <SelectTrigger className="input-custom-styles" tabIndex={3}>
                     <SelectValue placeholder="Select event type" />
                   </SelectTrigger>
@@ -313,8 +313,8 @@ export default function NewEvent() {
                     ))}
                   </SelectContent>
                 </Select>
-                {actionData?.fieldErrors?.event_type && (
-                  <p className="text-sm text-destructive mt-1">{actionData.fieldErrors.event_type}</p>
+                {actionData?.fieldErrors?.event_type_id && (
+                  <p className="text-sm text-destructive mt-1">{actionData.fieldErrors.event_type_id}</p>
                 )}
               </div>
 
