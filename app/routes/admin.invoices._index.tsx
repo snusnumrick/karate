@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { getInvoices } from "~/services/invoice.server";
+import { getInvoices, getInvoiceStats } from "~/services/invoice.server";
 import { formatCurrency } from "~/utils/misc";
 import { requireUserId } from "~/utils/auth.server";
 import { Plus, Search, FileText, Calendar, DollarSign, Users } from "lucide-react";
@@ -25,29 +25,44 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const sortOrder = url.searchParams.get("sortOrder") || "desc";
   
   try {
-    const result = await getInvoices({
-      search,
-      status: statusParam ? [statusParam as InvoiceStatus] : undefined,
-    });
+    const [result, invoiceStats] = await Promise.all([
+      getInvoices({
+        search,
+        status: statusParam ? [statusParam as InvoiceStatus] : undefined,
+      }),
+      getInvoiceStats()
+    ]);
     
     const invoices = result.invoices;
     
-    // Calculate summary statistics
+    // Use server-side statistics for consistency
     const stats = {
-      total: invoices.length,
+      total: invoiceStats.total_invoices,
       pending: invoices.filter((inv: InvoiceWithDetails) => inv.status === "sent" || inv.status === "viewed").length,
       paid: invoices.filter((inv: InvoiceWithDetails) => inv.status === "paid").length,
-      overdue: invoices.filter((inv: InvoiceWithDetails) => inv.status === "overdue").length,
-      totalAmount: invoices.reduce((sum: number, inv: InvoiceWithDetails) => sum + inv.total_amount, 0),
-      pendingAmount: invoices
-        .filter((inv: InvoiceWithDetails) => inv.status === "sent" || inv.status === "viewed" || inv.status === "overdue")
-        .reduce((sum: number, inv: InvoiceWithDetails) => sum + inv.total_amount, 0)
+      overdue: invoiceStats.overdue_count,
+      totalAmount: invoiceStats.total_amount,
+      pendingAmount: invoiceStats.outstanding_amount
     };
     
     return json({ invoices, stats, search, status: statusParam, sortBy, sortOrder });
   } catch (error) {
     console.error("Error loading invoices:", error);
-    return json({ invoices: [], stats: null, search, status: statusParam, sortBy, sortOrder });
+    return json({ 
+      invoices: [], 
+      stats: {
+        total: 0,
+        pending: 0,
+        paid: 0,
+        overdue: 0,
+        totalAmount: 0,
+        pendingAmount: 0
+      }, 
+      search, 
+      status: statusParam, 
+      sortBy, 
+      sortOrder 
+    });
   }
 }
 
