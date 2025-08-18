@@ -122,7 +122,7 @@ export default function AdaptiveIntroPage() {
                         Adaptive Program
                     </h1>
                     <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-6">
-                        Inclusive Karate Training
+                        Introduction to Inclusive Karate Training
                     </h2>
                     <div className="flex flex-wrap justify-center gap-4 text-lg font-semibold text-gray-700 dark:text-gray-300">
                         <span className="flex items-center"><Heart className="mr-2 h-5 w-5 text-red-500" />Building Confidence</span>
