@@ -1,6 +1,6 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
-import {createClient} from "@supabase/supabase-js";
+import {getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types";
 
 import {Button} from "~/components/ui/button";
@@ -21,15 +21,7 @@ export async function loader({params}: LoaderFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Admin Add Student Loader] Missing Supabase URL or Service Role Key env vars.");
-        throw new Response("Server configuration error", {status: 500});
-    }
-
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseServer = getSupabaseAdminClient();
 
     // Fetch family name for display purposes
     const {data: familyData, error: familyError} = await supabaseServer
@@ -66,15 +58,7 @@ export async function action({request, params}: ActionFunctionArgs) {
     const familyId = params.familyId; // Get familyId from URL params
     const formData = await request.formData();
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Admin Add Student Action] Missing Supabase URL or Service Role Key env vars.");
-        return json({error: "Server configuration error"}, {status: 500});
-    }
-
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseServer = getSupabaseAdminClient();
 
     // Extract student data from form
     const firstName = formData.get("firstName") as string;

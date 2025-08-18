@@ -1,8 +1,9 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~/types/database.types"; // Removed unused TablesInsert
 import invariant from "tiny-invariant";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 // Removed unused StudentInput type
 // Removed unused Guardian2Input interface
@@ -49,17 +50,7 @@ interface RegisterSuccessResponse {
     message: string;
 }
 
-// Helper to create admin client (consider moving to shared utils)
-function createSupabaseAdminClient(): SupabaseClient<Database> {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[API Register] Missing Supabase URL or Service Role Key env vars.");
-        throw json({ error: "Server configuration error" }, { status: 500 });
-    }
-    return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
 
 /**
  * API endpoint for user registration.
@@ -133,7 +124,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Add more robust validation (email format, phone format, etc.)
 
-    const supabaseAdmin = createSupabaseAdminClient();
+    const supabaseAdmin = getSupabaseAdminClient();
     let createdUserId: string | undefined;
     let createdFamilyId: string | undefined;
 

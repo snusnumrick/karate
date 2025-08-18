@@ -1,6 +1,6 @@
 import {json, type LoaderFunctionArgs} from "@remix-run/node";
 import {Form, Link, useLoaderData, useRouteError} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from "~/utils/supabase.server";
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
@@ -61,15 +61,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
 
     console.log(`Fetching attendance report for range: ${startDate} to ${endDate}`);
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin attendance report loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // Fetch all students first

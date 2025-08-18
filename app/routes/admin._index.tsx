@@ -1,7 +1,6 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node"; // Keep json, LoaderFunctionArgs
 import { Link, useLoaderData } from "@remix-run/react"; // Remove useRouteError
-// Remove getSupabaseServerClient import as it's no longer needed here
-import { createClient } from '@supabase/supabase-js'; // Import createClient
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { PaymentStatus } from "~/types/models"; // Import the enum
 import { getTodayLocalDateString } from "~/components/calendar/utils";
 import { getInvoiceStats } from "~/services/invoice.server";
@@ -14,18 +13,8 @@ import { getInvoiceEntities } from "~/services/invoice-entity.server";
 export async function loader(_: LoaderFunctionArgs) {
     // console.log("Entering /admin/index loader (data fetch only)...");
 
-    // Create a service role client directly for admin-level data fetching
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin index loader: Missing Supabase URL or Service Role Key env variables.");
-        // Throw simple response, headers are handled by parent/Remix
-        throw new Response("Server configuration error.", { status: 500 });
-    }
-
     // Use service role client for admin data access
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     // --- Data fetching logic using supabaseAdmin ---
     try {

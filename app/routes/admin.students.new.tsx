@@ -1,7 +1,7 @@
 import {type ActionFunctionArgs, json, type MetaFunction, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
-import {createClient} from "@supabase/supabase-js";
 import {Database} from "~/types/database.types";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
@@ -17,15 +17,7 @@ import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
 
 // Loader to get all families for the dropdown
 export async function loader() {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Admin Add Student Loader] Missing Supabase URL or Service Role Key env vars.");
-        throw new Response("Server configuration error", {status: 500});
-    }
-
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseServer = getSupabaseAdminClient();
 
     // Fetch all families for the dropdown
     const {data: families, error: familiesError} = await supabaseServer
@@ -52,15 +44,7 @@ export const meta: MetaFunction = () => {
 export async function action({request}: ActionFunctionArgs) {
     const formData = await request.formData();
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Admin Add Student Action] Missing Supabase URL or Service Role Key env vars.");
-        return json({error: "Server configuration error"}, {status: 500});
-    }
-
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseServer = getSupabaseAdminClient();
 
     // Extract student data from form
     const familyId = formData.get("familyId") as string;

@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
 import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
@@ -20,18 +20,9 @@ import {
   calculateLineItemDiscount,
   calculateLineItemSubtotal
 } from "~/utils/line-item-helpers";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
-// Helper to create admin client
-function createSupabaseAdminClient(): SupabaseClient<Database> {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("[Service/createSupabaseAdminClient] Missing Supabase URL or Service Role Key env vars.");
-    throw new Response("Server configuration error: Missing Supabase credentials.", { status: 500 });
-  }
-  return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
 
 /**
  * Calculate line item totals including tax and discount
@@ -88,7 +79,7 @@ export function calculateInvoiceTotals(lineItems: InvoiceLineItem[]): InvoiceCal
 export async function generateInvoiceNumber(
   supabaseAdmin?: SupabaseClient<Database>
 ): Promise<string> {
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   const { data, error } = await client.rpc('generate_invoice_number');
   
@@ -110,7 +101,7 @@ export async function createInvoice(
   invariant(invoiceData.entity_id, "Missing entity_id");
   invariant(invoiceData.line_items.length > 0, "At least one line item is required");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log('[Service/createInvoice] Creating invoice with data:', invoiceData);
 
@@ -189,7 +180,7 @@ export async function getInvoiceById(
 ): Promise<InvoiceWithDetails> {
   invariant(invoiceId, "Missing invoiceId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/getInvoiceById] Fetching invoice details for ID: ${invoiceId}`);
 
@@ -284,7 +275,7 @@ export async function getInvoices(
   limit: number = 20,
   supabaseAdmin?: SupabaseClient<Database>
 ): Promise<{ invoices: InvoiceWithDetails[]; total: number; totalPages: number }> {
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log('[Service/getInvoices] Fetching invoices with filters:', filters);
 
@@ -425,7 +416,7 @@ export async function updateInvoice(
 ): Promise<InvoiceWithDetails> {
   invariant(invoiceId, "Missing invoiceId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/updateInvoice] Updating invoice ${invoiceId} with data:`, invoiceData);
 
@@ -538,7 +529,7 @@ export async function updateInvoiceStatus(
   invariant(invoiceId, "Missing invoiceId parameter");
   invariant(status, "Missing status parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/updateInvoiceStatus] Updating invoice ${invoiceId} status to ${status}`);
 
@@ -581,7 +572,7 @@ export async function deleteInvoice(
 ): Promise<void> {
   invariant(invoiceId, "Missing invoiceId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/deleteInvoice] Deleting invoice ${invoiceId}`);
 
@@ -631,7 +622,7 @@ export async function getInvoiceStats(
   outstanding_amount: number;
   overdue_count: number;
 }> {
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log('[Service/getInvoiceStats] Fetching invoice statistics');
 

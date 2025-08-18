@@ -1,6 +1,7 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
+import type { Database } from '~/types/database.types';
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -55,8 +56,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         return json({ error: "Product ID is missing." }, { status: 400 });
     }
     // Admin check happens in the parent _admin layout loader
-    const { supabaseServer, response } = getSupabaseServerClient(request);
-    const headers = response.headers;
+    const supabaseAdmin = getSupabaseAdminClient();
 
     const formData = await request.formData();
     const size = formData.get('size') as string;
@@ -91,7 +91,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     }
 
     if (Object.keys(fieldErrors).length > 0) {
-        return json({ error: "Please fix the errors below.", fieldErrors }, { status: 400, headers });
+        return json({ error: "Please fix the errors below.", fieldErrors }, { status: 400 });
     }
 
     // --- Database Insert ---
@@ -103,7 +103,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         is_active: isActive,
     };
 
-    const { error: insertError } = await supabaseServer
+    const { error: insertError } = await supabaseAdmin
         .from('product_variants')
         .insert(insertData);
 
@@ -111,13 +111,13 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         console.error("Error inserting product variant:", insertError.message);
         // Handle potential unique constraint violation (duplicate size for this product)
         if (insertError.code === '23505' && insertError.message.includes('unique_product_size')) {
-             return json({ error: "A variant with this size already exists for this product.", fieldErrors: { size: "Size must be unique for this product." } }, { status: 409, headers });
+             return json({ error: "A variant with this size already exists for this product.", fieldErrors: { size: "Size must be unique for this product." } }, { status: 409 });
         }
-        return json({ error: `Failed to add variant: ${insertError.message}` }, { status: 500, headers });
+        return json({ error: `Failed to add variant: ${insertError.message}` }, { status: 500 });
     }
 
     // Redirect back to the variant list page for this product
-    return redirect(`/admin/store/products/${productId}/variants`, { headers });
+    return redirect(`/admin/store/products/${productId}/variants`);
 }
 
 

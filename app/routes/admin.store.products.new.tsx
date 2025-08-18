@@ -1,6 +1,6 @@
 import { type ActionFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useNavigation } from "@remix-run/react";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -8,7 +8,6 @@ import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import type { Database, TablesInsert } from "~/types/database.types";
-import { createClient } from "@supabase/supabase-js"; // Import Supabase client for storage
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 // Define constants at module scope
@@ -57,7 +56,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
     // --- Upload Image (if provided) ---
     // Use admin client for storage operations
-    const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdmin = getSupabaseAdminClient();
     const storageBucket = 'product-images'; // Ensure this bucket exists and is public
 
     if (imageFile && imageFile.size > 0) {
@@ -88,6 +87,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             return json({ error: "Image uploaded, but failed to get its public URL." }, { status: 500, headers });
         }
         imageUrl = urlData.publicUrl;
+        console.log('image is uploaded', imageUrl);
     }
 
     // --- Database Insert ---

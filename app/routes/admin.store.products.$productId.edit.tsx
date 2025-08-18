@@ -1,5 +1,5 @@
 import { Form, Link, useActionData, useLoaderData, useNavigation, useSubmit } from "@remix-run/react"; // Added useSubmit
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Button, buttonVariants } from "~/components/ui/button"; // Import buttonVariants
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -20,7 +20,7 @@ import {
 } from "~/components/ui/alert-dialog"; // Added AlertDialog components
 import type { Database, Tables, TablesUpdate } from "~/types/database.types"; // Added Database
 import { ArrowLeft, Trash2 } from "lucide-react"; // Added Trash2 icon
-import { createClient } from "@supabase/supabase-js"; // Import Supabase client for storage
+
 
 // Define constants at module scope
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -78,7 +78,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     // --- Handle Delete Intent ---
     if (intent === 'delete') {
         console.log(`[Action/DeleteProduct] Attempting delete for product ID: ${productId}`);
-        const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!); // Define admin client here
+        const supabaseAdmin = getSupabaseAdminClient();
         const storageBucket = 'product-images';
 
         // 1. Fetch associated variant IDs
@@ -197,7 +197,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         }
 
         // --- Fetch Current Product Data (for image deletion) ---
-        const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!); // Define admin client here
+        const supabaseAdmin = getSupabaseAdminClient();
         const { data: currentProduct, error: fetchError } = await supabaseAdmin
             .from('products')
             .select('image_url')

@@ -1,6 +1,6 @@
 import {json, TypedResponse} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -23,14 +23,7 @@ type LoaderData = {
 export async function loader(): Promise<TypedResponse<LoaderData>> {
     console.log("Entering /admin/waivers/missing loader...");
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin missing waivers loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // 1. Fetch all required waivers

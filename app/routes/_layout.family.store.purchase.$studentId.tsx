@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
 import { getSupabaseServerClient, createInitialPaymentRecord } from "~/utils/supabase.server";
-import { createClient } from '@supabase/supabase-js'; // Import createClient for admin
+import { getSupabaseAdminClient } from '~/utils/supabase.server'; // Import admin client helper
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
@@ -290,7 +290,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     }
 
     // Fetch selected product variant details (price, stock check) using ADMIN client for reliability
-    const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdmin = getSupabaseAdminClient();
     const { data: variantData, error: variantError } = await supabaseAdmin
         .from('product_variants')
         .select('id, price_in_cents, stock_quantity, is_active, products(id, is_active)') // Include product active status

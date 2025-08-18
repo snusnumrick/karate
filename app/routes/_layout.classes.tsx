@@ -2,7 +2,7 @@ import { Link, useLoaderData } from "@remix-run/react";
 import { json, type LoaderFunctionArgs, type MetaFunction, type MetaArgs, type MetaDescriptor } from "@remix-run/node";
 import { siteConfig } from "~/config/site";
 import { getPrograms } from "~/services/program.server";
-import { createClient } from "~/utils/supabase.server";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import type { Program } from "~/types/multi-class";
 import { mergeMeta } from "~/utils/meta";
 
@@ -143,7 +143,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function loader(_: LoaderFunctionArgs) {
     try {
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+        const supabase = getSupabaseAdminClient();
 
         // Get active programs for public display
         const programs = await getPrograms({ is_active: true }, supabase);

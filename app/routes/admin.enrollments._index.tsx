@@ -18,7 +18,7 @@ import { getClasses } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import type { ClassEnrollment } from "~/types/multi-class";
 import type { EligibilityStatus } from "~/types/payment";
-import { checkStudentEligibility, createClient } from "~/utils/supabase.server";
+import { checkStudentEligibility, getSupabaseAdminClient } from "~/utils/supabase.server";
 
 // Extended type for enrollment with eligibility
 type EnrollmentWithEligibility = ClassEnrollment & {
@@ -42,7 +42,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   ]);
 
   // Create supabase admin client for eligibility checks
-  const supabaseAdmin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const supabaseAdmin = getSupabaseAdminClient();
 
   // Fetch eligibility for each enrolled student
   const enrollmentsWithEligibility = await Promise.all(

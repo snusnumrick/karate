@@ -22,7 +22,7 @@ import type { Database, Tables, TablesUpdate } from "~/types/database.types";
 import { Trash2 } from "lucide-react"; // Removed ArrowLeft
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 // import { formatCurrency } from "~/utils/misc"; // Removed unused formatCurrency import
-import { createClient } from "@supabase/supabase-js"; // Import admin client
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 type ProductRow = Tables<'products'>;
 type ProductVariantRow = Tables<'product_variants'>;
@@ -155,7 +155,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     if (intent === 'delete') {
         console.log(`[Action/DeleteVariant] Attempting delete for variant ID: ${variantId}`);
         // Use admin client for deletion attempt
-        const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+        const supabaseAdmin = getSupabaseAdminClient();
 
         const { error: deleteError } = await supabaseAdmin
             .from('product_variants')

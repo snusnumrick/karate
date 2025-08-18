@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import type { Database } from '~/types/database.types';
 import type {
   DiscountTemplate,
@@ -11,16 +10,9 @@ import type {
   DiscountScope
 } from '~/types/discount';
 import { DiscountService } from './discount.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
+const supabase = getSupabaseAdminClient();
 
 export class DiscountTemplateService {
   static async getAllTemplates(): Promise<DiscountTemplate[]> {

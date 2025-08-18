@@ -1,21 +1,9 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { createClient } from "@supabase/supabase-js"; // Import createClient
 import { getFamilyDetails } from "~/services/family.server";
 import { requireApiAuth } from "~/utils/api-auth.server"; // Import auth helper
 import type { Database } from "~/types/database.types"; // Import Database type
-
-// Helper to create admin client (copied from family.server.ts - consider moving to shared utils)
-function createSupabaseAdminClient(): ReturnType<typeof createClient<Database>> {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[API /family/me] Missing Supabase URL or Service Role Key env vars.");
-        throw json({ error: "Server configuration error" }, { status: 500 });
-    }
-    return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 
 /**
@@ -40,7 +28,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // 2. Fetch the user's profile to get their family_id
     let familyId: string | null = null;
     try {
-        const supabaseAdmin = createSupabaseAdminClient(); // Use admin client to read profiles table
+        const supabaseAdmin = getSupabaseAdminClient(); // Use admin client to read profiles table
         const { data: profile, error: profileError } = await supabaseAdmin
             .from('profiles')
             .select('family_id')

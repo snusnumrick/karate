@@ -1,13 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database, Json } from '~/types/database.types';
 import { DiscountService } from './discount.server';
 import type { DiscountType, UsageType, DiscountScope, CreateDiscountCodeData, ApplicableTo } from '~/types/discount';
 
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
+const supabase = getSupabaseAdminClient();
 
 type DiscountEventType = Database['public']['Enums']['discount_event_type'];
 type DiscountEvent = Database['public']['Tables']['discount_events']['Row'];

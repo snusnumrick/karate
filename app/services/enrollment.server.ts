@@ -1,4 +1,4 @@
-import { createClient } from '~/utils/supabase.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type {
   ClassEnrollment,
   CreateEnrollmentData,
@@ -17,7 +17,7 @@ import { recordStudentEnrollmentEvent } from '~/utils/auto-discount-events.serve
  */
 export async function enrollStudent(
   enrollmentData: CreateEnrollmentData,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassEnrollment> {
   // Check if student has an existing enrollment for this class
   const { data: existingEnrollment } = await supabase
@@ -190,7 +190,7 @@ export async function enrollStudent(
 export async function updateEnrollment(
   id: string,
   updates: Partial<UpdateEnrollmentData>,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassEnrollment> {
   const updateData: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -240,7 +240,7 @@ export async function updateEnrollment(
 export async function dropStudent(
   enrollmentId: string,
   reason?: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<void> {
   const notes = reason ? `Dropped: ${reason}` : 'Dropped';
   
@@ -270,7 +270,7 @@ export async function dropStudent(
  */
 export async function getEnrollments(
   filters: EnrollmentFilters = {},
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassEnrollment[]> {
   let query = supabase
     .from('enrollments')
@@ -332,7 +332,7 @@ export async function getEnrollments(
  */
 export async function getEnrollmentsByClass(
   classId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassEnrollment[]> {
   return getEnrollments({ class_id: classId }, supabase);
 }
@@ -342,7 +342,7 @@ export async function getEnrollmentsByClass(
  */
 export async function getEnrollmentsByStudent(
   studentId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassEnrollment[]> {
   return getEnrollments({ student_id: studentId }, supabase);
 }
@@ -352,7 +352,7 @@ export async function getEnrollmentsByStudent(
  */
 export async function getEnrollmentsByFamily(
   familyId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassEnrollment[]> {
   return getEnrollments({ family_id: familyId }, supabase);
 }
@@ -363,7 +363,7 @@ export async function getEnrollmentsByFamily(
 export async function validateEnrollment(
   classId: string,
   studentId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<EnrollmentValidation> {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -501,7 +501,7 @@ export async function validateEnrollment(
  */
 export async function processWaitlist(
   classId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<number> {
   // Get class capacity info
   const { data: classData, error: classError } = await supabase
@@ -584,7 +584,7 @@ export async function processWaitlist(
  */
 export async function bulkEnrollStudents(
   data: BulkEnrollmentData,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<{ successful: ClassEnrollment[]; failed: { studentId: string; error: string }[] }> {
   const successful: ClassEnrollment[] = [];
   const failed: { studentId: string; error: string }[] = [];
@@ -627,7 +627,7 @@ export async function bulkEnrollStudents(
  */
 export async function getEnrollmentStats(
   classId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<EnrollmentStats> {
   const { data: enrollments, error } = await supabase
     .from('enrollments')
@@ -664,7 +664,7 @@ export async function getEnrollmentStats(
  */
 export async function getEnrollmentById(
   id: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassEnrollment | null> {
   const { data, error } = await supabase
     .from('enrollments')

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { DiscountService } from "~/services/discount.server";
 import { getDiscountTemplateById } from "~/services/discount-template.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -58,14 +58,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   // Use service role client for admin data access (bypass RLS)
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Response("Server configuration error.", {status: 500});
-  }
-
-  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+  const supabaseAdmin = getSupabaseAdminClient();
   
   // Check for template parameter
   const url = new URL(request.url);

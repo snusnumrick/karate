@@ -1,8 +1,8 @@
 import { type ActionFunctionArgs, json, TypedResponse } from "@remix-run/node";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import Stripe from 'stripe';
-// createInitialPaymentRecord is no longer used here
-import { getSupabaseServerClient } from '~/utils/supabase.server';
+import invariant from "tiny-invariant";
+import { getSupabaseServerClient, getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from "~/types/database.types"; // Removed unused Tables import
 import { siteConfig } from "~/config/site";
 
@@ -10,15 +10,7 @@ import { siteConfig } from "~/config/site";
 type PaymentOption = 'monthly' | 'yearly' | 'individual' | 'store'; // Add 'store' option
 type PaymentTypeEnum = Database['public']['Enums']['payment_type_enum'];
 
-// Helper function to get Supabase admin client (avoids repetition)
-function getSupabaseAdmin(): SupabaseClient<Database> {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Error("Missing Supabase URL or Service Role Key environment variables.");
-    }
-    return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
+
 
 // Type for the successful response (includes subtotal, tax, total)
 type ActionSuccessResponse = {
@@ -101,7 +93,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     }
     // --- End Validation ---
 
-    const supabaseAdmin = getSupabaseAdmin();
+    const supabaseAdmin = getSupabaseAdminClient();
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeSecretKey) {
         console.error("STRIPE_SECRET_KEY is not set.");

@@ -1,7 +1,6 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {createInitialPaymentRecord, getSupabaseServerClient} from "~/utils/supabase.server";
+import {createInitialPaymentRecord, getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {getStudentPaymentOptions} from "~/services/enrollment-payment.server";
-import {createClient} from "@supabase/supabase-js";
 import type {Database} from "~/types/database.types";
 import {siteConfig} from "~/config/site";
 import {
@@ -191,17 +190,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             // Update the payment status to succeeded since no actual payment is needed
             console.log(`[Action] Attempting to update payment ${paymentRecord.id} to succeeded status`);
 
-            // Use the same client pattern as createInitialPaymentRecord for consistency
-            const supabaseUrl = process.env.SUPABASE_URL;
-            const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-            if (!supabaseUrl || !supabaseServiceKey) {
-                console.error("[Action] Missing Supabase environment variables for payment update");
-                return json({error: "Failed to complete zero payment: Missing configuration"}, {
-                    status: 500,
-                    headers: response.headers
-                });
-            }
-            const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+            // Use the centralized admin client
+            const supabaseAdmin = getSupabaseAdminClient();
 
             const {data: updateData, error: updateError} = await supabaseAdmin
                 .from('payments')

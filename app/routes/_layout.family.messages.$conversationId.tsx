@@ -5,16 +5,11 @@ import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database, Tables} from "~/types/database.types";
 import MessageView from "~/components/MessageView";
 import MessageInput from "~/components/MessageInput";
-import {createClient, REALTIME_SUBSCRIBE_STATES, type SupabaseClient} from "@supabase/supabase-js"; // Import createClient
+import { REALTIME_SUBSCRIBE_STATES, type SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { notificationService } from "~/utils/notifications.client";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-
-// Add TypeScript declaration for the global window.__SUPABASE_SINGLETON_CLIENT property
-declare global {
-    interface Window {
-        __SUPABASE_SINGLETON_CLIENT?: SupabaseClient<Database>;
-    }
-}
+import { getSupabaseClient } from "~/utils/supabase.client";
 
 // Define Profile type for sender details
 type SenderProfile = Pick<Tables<'profiles'>, 'id' | 'email' | 'first_name' | 'last_name'>;
@@ -292,7 +287,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     // Send push notifications to other participants
     try {
         // Create an admin client to bypass RLS ---
-        const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+        const supabaseAdmin = getSupabaseAdminClient();
 
         // Get other participants in the conversation (excluding the sender)
         const {data: otherParticipants, error: participantsError} = await supabaseAdmin
@@ -436,37 +431,20 @@ export default function ConversationView() {
 
     // Initialize the Supabase client only once - use a static client for the entire app
     useEffect(() => {
-        // Use a module-level singleton pattern to ensure only one client exists
-        if (!window.__SUPABASE_SINGLETON_CLIENT) {
-            if (ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY) {
-                const client = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
-                    auth: {persistSession: false, autoRefreshToken: false},
-                    realtime: {
-                        params: {
-                            eventsPerSecond: 10
-                        }
-                    },
-                    global: {
-                        headers: {
-                            'X-Client-Info': 'family-messaging-client'
-                        }
-                    }
-                });
+        if (ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY) {
+            const client = getSupabaseClient({
+                url: ENV.SUPABASE_URL,
+                anonKey: ENV.SUPABASE_ANON_KEY,
+                accessToken: accessToken ?? undefined,
+                refreshToken: refreshToken ?? undefined,
+                clientInfo: 'family-messaging-client'
+            });
 
-                // Set the session after client creation
-                client.auth.setSession({
-                    access_token: accessToken ?? '',
-                    refresh_token: refreshToken ?? '',
-                });
-                window.__SUPABASE_SINGLETON_CLIENT = client;
-                console.log(`[Family] Created global Supabase singleton client`);
-            }
+            // Assign the singleton to our ref
+            supabaseRef.current = client;
         } else {
-            console.log(`[Family] Using existing global Supabase singleton client`);
+            console.error("[Family] Missing SUPABASE_URL or SUPABASE_ANON_KEY for client initialization.");
         }
-
-        // Assign the singleton to our ref
-        supabaseRef.current = window.__SUPABASE_SINGLETON_CLIENT as SupabaseClient<Database>;
 
         return () => {
             // We don't destroy the singleton client on unmount

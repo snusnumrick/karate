@@ -2,7 +2,7 @@ import {useEffect, useRef} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
-import { createClient } from '@supabase/supabase-js'; // Import createClient
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Input} from "~/components/ui/input";
@@ -119,15 +119,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         family_id: familyId, // Associate with the correct family
     };
 
-    // Explicitly create an admin client to bypass RLS for insertion
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Action/AddGuardian] Missing Supabase URL or Service Role Key");
-        return json({ status: 'error', message: "Server configuration error." }, { status: 500, headers });
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    // Get admin client to bypass RLS for insertion
+    const supabaseAdmin = getSupabaseAdminClient();
 
     // Insert the new guardian using the admin client
     console.log(`[Action/AddGuardian] Attempting insert for family ${familyId}`);

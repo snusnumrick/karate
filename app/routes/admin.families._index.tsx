@@ -1,6 +1,6 @@
 import {json} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table"; // Assuming you have Table components
@@ -20,16 +20,7 @@ type FamilyWithGuardians = {
 export async function loader() {
     // console.log("Entering /admin/families loader...");
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin families loader: Missing Supabase URL or Service Role Key env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
-    // Use service role client for admin data access
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // console.log("Admin families loader - Fetching all families and related guardians using service role...");

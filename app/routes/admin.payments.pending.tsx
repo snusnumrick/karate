@@ -1,6 +1,6 @@
 import {json, TypedResponse} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
@@ -30,14 +30,7 @@ type LoaderData = {
 export async function loader(): Promise<TypedResponse<LoaderData>> {
     console.log("Entering /admin/payments/pending loader...");
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin pending payments loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // Fetch payments with status 'pending' and related family name using correct syntax

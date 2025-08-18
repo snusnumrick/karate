@@ -1,6 +1,6 @@
 /* eslint-disable-next-line import/no-unresolved */
 import {serve} from 'https://deno.land/std@0.177.0/http/server.ts';
-import {createClient, SupabaseClient} from 'https://esm.sh/@supabase/supabase-js@2';
+import {getSupabaseAdminClient, SupabaseClient} from '../_shared/supabase.ts';
 import {Database} from '../_shared/database.types.ts'; // Assuming you generate types for functions
 import {sendEmail} from '../_shared/email.ts'; // Shared email utility for functions
 import {checkStudentEligibility, EligibilityStatus} from '../_shared/eligibility.ts'; // Shared eligibility logic for functions
@@ -27,12 +27,7 @@ serve(async (req: Request) => {
 
   try {
     // 3. Create Supabase Admin Client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase environment variables.');
-    }
-    const supabaseAdmin: SupabaseClient<Database> = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin: SupabaseClient<Database> = getSupabaseAdminClient();
     console.log('Supabase client created.');
 
     // Check for VITE_SITE_URL needed for email links

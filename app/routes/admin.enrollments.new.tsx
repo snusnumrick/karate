@@ -15,7 +15,7 @@ import { getClasses } from "~/services/class.server";
 import { enrollStudent, getEnrollments } from "~/services/enrollment.server";
 import { getPrograms } from "~/services/program.server";
 import { requireAdminUser } from "~/utils/auth.server";
-import { createClient } from "~/utils/supabase.server";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { formatDate } from "~/utils/misc";
 import type { CreateEnrollmentData } from "~/types/multi-class";
 
@@ -35,7 +35,7 @@ type FamilyWithStudents = {
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
 
-  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const supabase = getSupabaseAdminClient();
 
   const [classes, programs, familiesResult, enrollments] = await Promise.all([
     getClasses(),
@@ -86,7 +86,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     // Get class data to find program_id
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabase = getSupabaseAdminClient();
     const { data: classData, error: classError } = await supabase
       .from('classes')
       .select('program_id')

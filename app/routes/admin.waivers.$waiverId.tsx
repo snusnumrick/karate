@@ -1,8 +1,9 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useRouteError,} from "@remix-run/react";
 import {useEffect, useRef} from "react";
-import {createClient, type SupabaseClient} from '@supabase/supabase-js'; // Import SupabaseClient
+import type {SupabaseClient} from '@supabase/supabase-js'; // Import SupabaseClient type
 import type {Database} from "~/types/database.types";
+import {getSupabaseAdminClient} from "~/utils/supabase.server";
 import {sendEmail} from '~/utils/email.server'; // Import email utility
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
@@ -21,15 +22,7 @@ export async function loader({params}: LoaderFunctionArgs) {
         throw new Response("Waiver ID is required", {status: 400});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin waiver detail loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         console.log(`Fetching waiver with ID: ${waiverId}`);
@@ -89,15 +82,7 @@ export async function action({request, params}: ActionFunctionArgs) {
         return json({error: "Title, Description, and Content are required."}, {status: 400});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin waiver update action: Missing Supabase env variables.");
-        return json({error: "Server configuration error."}, {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // Fetch the current state of the waiver BEFORE updating

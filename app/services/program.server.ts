@@ -1,4 +1,4 @@
-import { createClient } from '~/utils/supabase.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import {
   Program,
   CreateProgramData,
@@ -10,7 +10,7 @@ import {
  */
 export async function createProgram(
   programData: CreateProgramData,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Program> {
   const { data, error } = await supabase
     .from('programs')
@@ -59,7 +59,7 @@ export async function createProgram(
 export async function updateProgram(
   id: string,
   updates: Partial<UpdateProgramData>,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Program> {
   const updateData: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -115,7 +115,7 @@ export async function updateProgram(
  */
 export async function getPrograms(
   filters: { is_active?: boolean; search?: string } = {},
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Program[]> {
   let query = supabase.from('programs').select('*');
 
@@ -144,7 +144,7 @@ export async function getPrograms(
  */
 export async function getProgramById(
   id: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Program | null> {
   const { data, error } = await supabase
     .from('programs')
@@ -167,7 +167,7 @@ export async function getProgramById(
  */
 export async function getProgramsWithStats(
   filters: { is_active?: boolean; search?: string } = {},
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Program[]> {
   let query = supabase
     .from('programs')
@@ -218,7 +218,7 @@ export async function getProgramsWithStats(
  * Get overall program statistics
  */
 export async function getProgramStats(
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<{ total_programs: number; active_programs: number; total_classes: number; active_classes: number }> {
   // Get basic counts
   const [programsResult, classesResult, enrollmentsResult] = await Promise.all([
@@ -254,7 +254,7 @@ export async function getProgramStats(
 export async function checkProgramEligibility(
   programId: string,
   studentId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<{ eligible: boolean; reasons: string[] }> {
   try {
     // Use the database function for comprehensive eligibility checking
@@ -292,7 +292,7 @@ export async function checkProgramEligibility(
  */
 export async function getProgramsForStudent(
   studentId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Program[]> {
   // Get all active programs
   const allPrograms = await getPrograms({ is_active: true }, supabase);

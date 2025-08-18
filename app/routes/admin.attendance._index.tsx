@@ -1,6 +1,6 @@
 import {json, type LoaderFunctionArgs} from "@remix-run/node";
 import {Form, Link, useLoaderData, useRouteError} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge";
@@ -45,16 +45,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
     const studentId = searchParams.get("studentId") || undefined;
     console.log(`Fetching attendance with filters: startDate=${startDate}, endDate=${endDate}, studentId=${studentId}`);
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin attendance loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
-    // Use service role client for admin data access
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         console.log("Admin attendance loader - Fetching all students for filter...");

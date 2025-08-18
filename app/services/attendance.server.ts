@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
+import type { Database } from '~/types/database.types';
 
 type AttendanceRecord = {
   id?: string;
@@ -38,7 +39,7 @@ type AttendanceWithSession = AttendanceRecord & {
  */
 export async function getAttendanceBySession(
   sessionId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<AttendanceRecord[]> {
   const { data, error } = await supabase
     .from('attendance')
@@ -66,7 +67,7 @@ export async function getAttendanceByStudent(
   studentId: string,
   startDate?: string,
   endDate?: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<AttendanceWithSession[]> {
   let query = supabase
     .from('attendance')
@@ -119,7 +120,7 @@ export async function getAttendanceByStudent(
 export async function getAttendanceByDateRange(
   startDate: string,
   endDate: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<AttendanceWithStudent[]> {
   const { data, error } = await supabase
     .from('attendance')
@@ -160,7 +161,7 @@ export async function getAttendanceByDateRange(
 export async function recordSessionAttendance(
   sessionId: string,
   attendanceRecords: Omit<AttendanceRecord, 'class_session_id'>[],
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<AttendanceRecord[]> {
   // First, delete existing attendance records for this session
   const { error: deleteError } = await supabase
@@ -207,7 +208,7 @@ export async function getStudentAttendanceStats(
   studentId: string,
   startDate?: string,
   endDate?: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<{
   totalSessions: number;
   presentCount: number;
@@ -262,7 +263,7 @@ export async function getStudentAttendanceStats(
  */
 export async function getSessionAttendanceSummary(
   sessionId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<{
   totalStudents: number;
   presentCount: number;
@@ -303,7 +304,7 @@ export async function getSessionAttendanceSummary(
  */
 export async function deleteAttendanceRecord(
   attendanceId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<void> {
   const { error } = await supabase
     .from('attendance')
@@ -321,7 +322,7 @@ export async function deleteAttendanceRecord(
  */
 export async function hasAttendanceRecords(
   sessionId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from('attendance')

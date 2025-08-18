@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { requireUserId } from '~/utils/auth.server';
-import { createClient } from '~/utils/supabase.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -17,15 +17,7 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     // Create Supabase admin client for database operations
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('[Push Verify] Missing Supabase credentials');
-      return json({ error: 'Server configuration error' }, { status: 500 });
-    }
-
-    const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabase = getSupabaseAdminClient();
 
     // Check if the subscription exists in the database for this user
     const { data, error } = await supabase

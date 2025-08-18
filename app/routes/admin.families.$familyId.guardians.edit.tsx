@@ -2,9 +2,7 @@ import invariant from "tiny-invariant";
 import type {ActionFunctionArgs, LoaderFunctionArgs, MetaFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
-// Import createClient
-import {createClient} from "@supabase/supabase-js";
-// Remove unused PostgrestFilterBuilder import
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import {Database, TablesUpdate} from "~/types/database.types"; // Import TablesUpdate
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
@@ -46,15 +44,7 @@ export async function loader({params}: LoaderFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Guardians Edit Loader] Missing Supabase URL or Service Role Key env vars.");
-        throw new Response("Server configuration error", {status: 500});
-    }
-
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseServer = getSupabaseAdminClient();
 
     // Fetch family name and guardians in parallel
     const [familyResult, guardiansResult] = await Promise.all([
@@ -96,15 +86,7 @@ export async function action({request, params}: ActionFunctionArgs) {
     const familyId = params.familyId;
     const formData = await request.formData();
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Guardians Edit Action] Missing Supabase URL or Service Role Key env vars.");
-        return json<ActionData>({error: "Server configuration error"}, {status: 500});
-    }
-
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseServer = getSupabaseAdminClient();
 
     // Let TypeScript infer the type of the array elements (they are thenable builders)
     const updates = [];

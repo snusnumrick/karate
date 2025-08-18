@@ -1,7 +1,7 @@
 import {json} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // For displaying 'Required' status
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
@@ -13,16 +13,8 @@ type WaiverRow = Database['public']['Tables']['waivers']['Row'];
 export async function loader() {
     console.log("Entering /admin/waivers loader...");
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin waivers loader: Missing Supabase URL or Service Role Key env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
     // Use service role client for admin data access
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         console.log("Admin waivers loader - Fetching all waivers using service role...");

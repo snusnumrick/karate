@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
 
 // Types for enrollment-based payment system
@@ -80,7 +80,7 @@ export function calculatePaymentAmount(
 // Get payment options for a specific student
 export async function getStudentPaymentOptions(
   studentId: string,
-  supabaseClient: ReturnType<typeof createClient<Database>>
+  supabaseClient: ReturnType<typeof getSupabaseAdminClient>
 ): Promise<StudentPaymentOptions> {
   // Fetch student info
   const { data: student, error: studentError } = await supabaseClient
@@ -183,7 +183,7 @@ export async function getStudentPaymentOptions(
 // Get payment options for all students in a family
 export async function getFamilyPaymentOptions(
   familyId: string,
-  supabaseClient: ReturnType<typeof createClient<Database>>
+  supabaseClient: ReturnType<typeof getSupabaseAdminClient>
 ): Promise<StudentPaymentOptions[]> {
   // Fetch all students in the family
   const { data: students, error: studentsError } = await supabaseClient

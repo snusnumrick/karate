@@ -2,7 +2,7 @@ import invariant from "tiny-invariant";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node"; // Removed MetaFunction import
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
@@ -59,15 +59,7 @@ export async function loader({params}: LoaderFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Edit Loader] Missing Supabase URL or Service Role Key env vars.");
-        throw new Response("Server configuration error", {status: 500});
-    }
-
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseServer = getSupabaseAdminClient();
 
     const {data: family, error} = await supabaseServer
         .from('families')
@@ -122,15 +114,7 @@ export async function action({request, params}: ActionFunctionArgs) {
         return json<ActionData>({error: "Validation failed", fieldErrors}, {status: 400});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Edit Action] Missing Supabase URL or Service Role Key env vars.");
-        return json<ActionData>({error: "Server configuration error"}, {status: 500});
-    }
-
-    const supabaseServer = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseServer = getSupabaseAdminClient();
 
     const {error} = await supabaseServer
         .from('families')

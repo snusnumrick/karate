@@ -1,7 +1,8 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
 import type { Database, Tables, TablesInsert, TablesUpdate } from "~/types/database.types";
 import { json } from "@remix-run/node"; // For throwing Response objects
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 // Define row types locally
 type GuardianRow = Tables<'guardians'>;
@@ -10,21 +11,7 @@ type GuardianUpdate = TablesUpdate<'guardians'>;
 
 // --- Helper Functions ---
 
-/**
- * Creates a Supabase client with service role privileges.
- * @returns SupabaseClient<Database>
- * @throws {Response} If Supabase URL or Service Role Key are missing.
- */
-function createSupabaseAdminClient(): SupabaseClient<Database> {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Service/createSupabaseAdminClient] Missing Supabase URL or Service Role Key env vars.");
-        throw json("Server configuration error: Missing Supabase credentials.", { status: 500 });
-    }
-    return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
 
 /**
  * Verifies if a user has permission to access/modify a specific guardian.
@@ -154,7 +141,7 @@ export async function getGuardianDetails(
     invariant(requestingUserId, "Missing requestingUserId for authorization");
     console.log(`[Service/getGuardianDetails] Fetching guardian details for ID: ${guardianId} by User: ${requestingUserId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     // Authorize
     const { authorized } = await verifyGuardianAccess(client, requestingUserId, guardianId);
@@ -198,7 +185,7 @@ export async function getGuardiansByFamily(
     invariant(requestingUserId, "Missing requestingUserId for authorization");
     console.log(`[Service/getGuardiansByFamily] Fetching guardians for Family ID: ${familyId} by User: ${requestingUserId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     // Authorize
     const authorized = await verifyFamilyAccess(client, requestingUserId, familyId);
@@ -248,7 +235,7 @@ export async function createGuardian(
 
     console.log(`[Service/createGuardian] Attempting to create guardian in Family ID: ${familyId} by User: ${requestingUserId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     // Authorize
     const authorized = await verifyFamilyAccess(client, requestingUserId, familyId);
@@ -309,7 +296,7 @@ export async function updateGuardian(
     invariant(Object.keys(updateData).length > 0, "No update data provided.");
     console.log(`[Service/updateGuardian] Attempting to update guardian ID: ${guardianId} by User: ${requestingUserId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     // Authorize (also implicitly checks if guardian exists)
     const { authorized } = await verifyGuardianAccess(client, requestingUserId, guardianId);
@@ -358,7 +345,7 @@ export async function deleteGuardian(
     invariant(requestingUserId, "Missing requestingUserId for authorization");
     console.log(`[Service/deleteGuardian] Attempting to delete guardian ID: ${guardianId} by User: ${requestingUserId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     // Authorize (also implicitly checks if guardian exists)
     const { authorized } = await verifyGuardianAccess(client, requestingUserId, guardianId);

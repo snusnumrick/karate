@@ -9,6 +9,23 @@ export type { EligibilityStatus };
 // Export createClient for use in other modules
 export { createClient };
 
+/**
+ * Creates a Supabase admin client with service role privileges.
+ * This is a centralized function to avoid code duplication across the codebase.
+ * @returns SupabaseClient<Database> with admin privileges
+ * @throws {Error} If Supabase URL or Service Role Key are missing
+ */
+export function getSupabaseAdminClient() {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Missing Supabase URL or Service Role Key environment variables.');
+    }
+
+    return createClient<Database>(supabaseUrl, supabaseServiceKey);
+}
+
 import { siteConfig } from "~/config/site"; // Import siteConfig for tax rate
 import { DiscountService } from "~/services/discount.server";
 
@@ -87,8 +104,8 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
         throw new Error('Missing Supabase environment variables (URL or Service Role Key) required for admin check.');
     }
 
-    // Create a temporary client instance with service role privileges
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    // Use the centralized admin client function
+    const supabaseAdmin = getSupabaseAdminClient();
 
     const {data, error} = await supabaseAdmin
         .from('profiles')
@@ -113,14 +130,8 @@ export async function createInitialPaymentRecord(
     discountCodeId?: string | null, // Optional: Discount code ID
     discountAmount?: number | null // Optional: Discount amount in cents
 ) {
-    // Use the standard client with service role for DB operations server-side
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Error('Missing Supabase environment variables required for payment record creation.');
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    // Use the centralized admin client function
+    const supabaseAdmin = getSupabaseAdminClient();
 
     // Note: subtotalAmount is already the discounted amount from the family payment page
     // No need to apply discount again here
@@ -422,15 +433,8 @@ export async function updatePaymentStatus(
     // Add card last 4
     cardLast4?: string | null
 ) {
-    // Use the standard client with service role for webhooks/server-side updates
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        // Throw an error for missing configuration
-        throw new Error('Missing Supabase environment variables (URL or Service Role Key) required for payment update.');
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    // Use the centralized admin client function
+    const supabaseAdmin = getSupabaseAdminClient();
 
 
     const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {

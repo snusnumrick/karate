@@ -1,7 +1,7 @@
 import {useState} from "react"; // Import useState
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
 import {useLoaderData, useNavigate, useNavigation, useSubmit} from "@remix-run/react"; // Import useNavigate
-import {createClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
@@ -45,15 +45,7 @@ export async function loader({params}: LoaderFunctionArgs): Promise<TypedRespons
         throw new Response("Student ID is required", {status: 400});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin achievements loader: Missing Supabase URL or Service Role Key env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     // Fetch student basic info
     const {data: studentData, error: studentError} = await supabaseAdmin
@@ -94,14 +86,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         return json({error: "Invalid request."}, {status: 400});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        return json({error: "Server configuration error."}, {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     // Verify belt award belongs to the student before deleting (optional but good practice)
     const {data: beltAward, error: fetchError} = await supabaseAdmin // Renamed variable

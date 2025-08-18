@@ -1,23 +1,17 @@
 import {useEffect, useRef, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
 import {Link, useFetcher, useLoaderData} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Database, Tables} from "~/types/database.types";
 import MessageView, {MessageWithSender, SenderProfile} from "~/components/MessageView";
 import MessageInput from "~/components/MessageInput";
 import {Button} from "~/components/ui/button";
 import {AlertCircle} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {createClient, type SupabaseClient} from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { notificationService } from "~/utils/notifications.client";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-
-// Add global type declaration for the Supabase singleton client
-declare global {
-    interface Window {
-        __SUPABASE_SINGLETON_CLIENT?: SupabaseClient<Database>; // Explicitly type the singleton
-    }
-}
+import { getSupabaseClient } from "~/utils/supabase.client";
 
 // Define Conversation details type
 type ConversationDetails = Tables<'conversations'> & {
@@ -204,7 +198,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     // Create an admin client directly using environment variables on the server
     // to ensure service_role privileges for fetching profiles and families
-    const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdmin = getSupabaseAdminClient();
     console.log("[AdminConversationView Loader] Fetching profiles using explicit admin client for IDs:", userIds);
 
     // Step 4: Fetch profiles for all users using the admin client
@@ -266,12 +260,12 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     // Process participant names (focus on family names)
     const familyParticipantNames = profilesWithFamilies
         .filter(profile => !['admin', 'instructor'].includes(profile.role)) // Filter for non-admin/instructor profiles
-        .map(profile => {
+        .map((profile: any) => {
             if (profile.families?.name) return profile.families.name;
             if (profile.first_name && profile.last_name) return `${profile.first_name} ${profile.last_name}`;
             return `User ${profile.id.substring(0, 6)}`; // Fallback
         })
-        .filter((name, index, self) => name && self.indexOf(name) === index) // Unique names
+        .filter((name: string, index: number, self: string[]) => name && self.indexOf(name) === index) // Unique names
         .join(', ');
 
     const processedConversation: ConversationDetails = {
@@ -526,47 +520,24 @@ export default function AdminConversationView() {
     // const clientId = useRef(`admin-messages-${Math.random().toString(36).substring(2, 9)}`);
 
     // Single Supabase client instance with memoization
-    const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null); // Use the correct SupabaseClient type
+    const supabaseRef = useRef<SupabaseClient<Database> | null>(null); // Use the correct SupabaseClient type
 
     // Initialize the Supabase client only once - use a static client for the entire app
     useEffect(() => {
-        // Use a module-level singleton pattern to ensure only one client exists
-        // Initialize with ANON KEY.
-        if (!window.__SUPABASE_SINGLETON_CLIENT) {
-            if (ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY) { // Use ANON KEY
-                console.log("[Admin] Creating global Supabase singleton client with ANON KEY and autoRefreshToken."); // Updated log
-                const client = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
-                    // Enable autoRefreshToken for client-side instance
-                    auth: {persistSession: true, autoRefreshToken: true},
-                    realtime: {
-                        params: {
-                            eventsPerSecond: 10 // Keep throttling reasonable
-                        }
-                    } // <-- Added missing closing brace here
-                });
-
-                // Set the session after client creation // RE-ADDED setSession
-                client.auth.setSession({
-                    access_token: accessToken ?? '',
-                    refresh_token: refreshToken ?? '',
-                });
-
-                window.__SUPABASE_SINGLETON_CLIENT = client;
-                console.log(`[Admin] Created global Supabase singleton client with ANON KEY and set initial session.`); // Updated log
-            } else {
-                console.error("[Admin] Missing SUPABASE_URL or SUPABASE_ANON_KEY for client initialization.");
-            }
-        } else if (window.__SUPABASE_SINGLETON_CLIENT) { // Check if the client exists
-            console.log(`[Admin] Using existing global Supabase singleton client. Updating session.`); // Updated log
-            // RE-ADDED setSession update
-            window.__SUPABASE_SINGLETON_CLIENT.auth.setSession({
-                access_token: accessToken ?? '',
-                refresh_token: refreshToken ?? '',
+        if (ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY) {
+            const client = getSupabaseClient({
+                url: ENV.SUPABASE_URL,
+                anonKey: ENV.SUPABASE_ANON_KEY,
+                accessToken: accessToken ?? undefined,
+                refreshToken: refreshToken ?? undefined,
+                clientInfo: 'admin-messaging-client'
             });
-        }
 
-        // Assign the singleton to our ref
-        supabaseRef.current = window.__SUPABASE_SINGLETON_CLIENT as ReturnType<typeof createClient>;
+            // Assign the singleton to our ref
+            supabaseRef.current = client;
+        } else {
+            console.error("[Admin] Missing SUPABASE_URL or SUPABASE_ANON_KEY for client initialization.");
+        }
 
         return () => {
             // We don't destroy the singleton client on unmount
@@ -627,7 +598,7 @@ export default function AdminConversationView() {
 
                 // Set up event listener
                 console.log(`[Admin] Attaching 'postgres_changes' listener to channel: ${channelName}`); // Added log
-                channel.on(
+                channel?.on(
                     'postgres_changes',
                     {
                         event: 'INSERT',
@@ -716,7 +687,7 @@ export default function AdminConversationView() {
                             supabase.rpc('mark_conversation_as_read', {
                                 p_conversation_id: conversation.id,
                                 p_user_id: userId,
-                            }).then(({ error: markReadError }) => {
+                            }).then(({ error: markReadError }: { error: any }) => {
                                 if (markReadError) {
                                     console.error(`[Admin] Error marking conversation ${conversation.id} as read via RPC after realtime message:`, markReadError.message);
                                 } else {
@@ -735,7 +706,7 @@ export default function AdminConversationView() {
 
                 // Subscribe to the channel
                 console.log(`[Admin Subscription Effect] Attempting to subscribe to channel: ${channelName}`);
-                channel.subscribe((status, err) => {
+                channel?.subscribe((status, err) => {
                     // Log all status changes, including potential errors
                     // console.log(`[Admin Subscription Status Callback] Channel: ${channelName}, Status: ${status}`, err || ''); // Redundant log
 

@@ -1,6 +1,6 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
 import { useLoaderData, useNavigate } from '@remix-run/react';
-import { createClient } from '~/utils/supabase.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { requireUserId } from '~/utils/auth.server';
 import { z } from 'zod';
 import { ArrowLeft } from 'lucide-react';
@@ -10,16 +10,7 @@ import type { Database } from '~/types/database.types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatDate } from '~/utils/misc';
 
-function createSupabaseAdminClient(): SupabaseClient<Database> {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("[Service/createSupabaseAdminClient] Missing Supabase URL or Service Role Key env vars.");
-    throw new Response("Server configuration error: Missing Supabase credentials.", { status: 500 });
-  }
-  return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
 
 // Validation schema for payment recording
 const RecordPaymentSchema = z.object({
@@ -33,7 +24,7 @@ const RecordPaymentSchema = z.object({
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   await requireUserId(request);
-  const supabase = createSupabaseAdminClient();
+  const supabase = getSupabaseAdminClient();
   
   if (!params.id) {
     throw new Response('Invoice ID is required', { status: 400 });
@@ -92,7 +83,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const userId = await requireUserId(request);
-  const supabase = createSupabaseAdminClient();
+  const supabase = getSupabaseAdminClient();
   
   if (!params.id) {
     return json({ errors: { general: 'Invoice ID is required' } }, { status: 400 });

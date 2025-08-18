@@ -1,4 +1,4 @@
-import { createClient } from "~/utils/supabase.server";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { siteConfig } from "~/config/site";
 import { getScheduleInfo, getAgeRange, getOpeningHoursSpecification } from "~/utils/schedule";
 import type { Database } from "~/types/database.types";
@@ -109,10 +109,7 @@ export async function getSiteData(forceRefresh = false): Promise<SiteData> {
  * Fetch dynamic schedule and program data from database
  */
 async function fetchDynamicSiteData() {
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const supabase = getSupabaseAdminClient();
 
   // Fetch active classes with schedules and programs
   const { data: classes, error: classesError } = await supabase

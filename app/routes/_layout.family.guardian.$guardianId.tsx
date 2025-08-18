@@ -1,8 +1,7 @@
 import {useEffect, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
-import { createClient } from '@supabase/supabase-js'; // Import createClient
+import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {
@@ -150,15 +149,8 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     if (intent === "deleteGuardian") {
         console.log(`[Action/Delete] Attempting to delete guardian ID: ${guardianId} for user ID: ${user.id}`);
 
-        // Explicitly create an admin client to bypass RLS for deletion
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-        if (!supabaseUrl || !supabaseServiceKey) {
-            console.error("[Action/Delete] Missing Supabase URL or Service Role Key");
-            return json({ status: 'error', message: "Server configuration error." }, { status: 500, headers });
-        }
-        const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+        // Use the centralized admin client to bypass RLS for deletion
+        const supabaseAdmin = getSupabaseAdminClient();
 
         console.log(`[Action/Delete] Executing delete for guardian ID: ${guardianId}`);
         const deleteResult = await supabaseAdmin // Use explicit admin client

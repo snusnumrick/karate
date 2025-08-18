@@ -9,7 +9,8 @@ import {
     useRouteError,
     useSearchParams,
 } from "@remix-run/react";
-import {createClient, type SupabaseClient} from '@supabase/supabase-js';
+import {type SupabaseClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import type {ClassSession} from "~/types/multi-class";
 import {getClassSessions} from "~/services/class.server";
@@ -109,15 +110,7 @@ export async function loader({request}: LoaderFunctionArgs) {
         }
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin attendance record loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // Get all sessions for the selected date
@@ -240,15 +233,7 @@ export async function action({request}: ActionFunctionArgs) {
         return redirect("/admin/attendance");
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin attendance record action: Missing Supabase env variables.");
-        return json({error: "Server configuration error."}, {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         console.log(`Upserting ${recordsToUpsert.length} attendance records for session: ${sessionId}`);

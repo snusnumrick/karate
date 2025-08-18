@@ -1,7 +1,7 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, TypedResponse } from "@remix-run/node"; // Removed unused redirect
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 // Removed: import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { createClient } from '@supabase/supabase-js'; // Import createClient
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
@@ -68,15 +68,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
     }
     // Admin check happens in the parent _admin layout loader
     // Removed: const { supabaseServer, response } = getSupabaseServerClient(request);
-    // Initialize Supabase client directly using service role key
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin order detail loader: Missing Supabase URL or Service Role Key env variables.");
-        throw new Response("Server configuration error.", { status: 500 });
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    // Initialize Supabase admin client
+    const supabaseAdmin = getSupabaseAdminClient();
 
 
     // Fetch the order with all related details
@@ -137,15 +130,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     }
     // Admin check happens in the parent _admin layout loader
     // Use admin client for the action as well to ensure consistency and bypass RLS if needed for updates
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin order detail action: Missing Supabase URL or Service Role Key env variables.");
-        // Throwing an error here might be better than trying to return JSON without headers
-        throw new Response("Server configuration error.", { status: 500 });
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
     // Removed: const { supabaseServer, response } = getSupabaseServerClient(request);
     // Removed: const headers = response.headers;
 

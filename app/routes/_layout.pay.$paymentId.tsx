@@ -3,9 +3,8 @@ import { Link, useFetcher, useLoaderData, useRouteError } from "@remix-run/react
 import { useEffect, useMemo, useState } from "react";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import {PaymentElement, LinkAuthenticationElement, Elements, useElements, useStripe} from "@stripe/react-stripe-js";
-import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {siteConfig} from "~/config/site";
@@ -99,15 +98,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         return json({error: "Payment gateway configuration error.", stripePublishableKey: ""}, {status: 500});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        return json({error: "Server configuration error", stripePublishableKey: ""}, {status: 500});
-    }
-
     const {response} = getSupabaseServerClient(request);
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     // Fetch payment, family name, and associated student IDs in one go
     // Restore full select statement
@@ -153,15 +145,13 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     if (payment.status === 'pending' && payment.stripe_payment_intent_id) {
         console.log(`[Loader] DB status is pending for ${paymentId}. Checking Stripe PI status for ${payment.stripe_payment_intent_id}...`);
         const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!stripeSecretKey || !supabaseUrl || !supabaseServiceKey) {
-            console.error("[Loader] Missing Stripe Secret Key or Supabase Admin credentials for pending check.");
+        if (!stripeSecretKey) {
+            console.error("[Loader] Missing Stripe Secret Key for pending check.");
             // Proceed cautiously, maybe let the user try, but log the config error
         } else {
             const stripe = new Stripe(stripeSecretKey);
-            const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+            const supabaseAdmin = getSupabaseAdminClient();
 
             try {
                 const paymentIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id, {

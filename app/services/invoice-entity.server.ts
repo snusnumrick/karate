@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
 import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
@@ -9,18 +9,9 @@ import type {
   InvoiceEntityFilters,
   EntityType,
 } from "~/types/invoice";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
-// Helper to create admin client
-function createSupabaseAdminClient(): SupabaseClient<Database> {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("[Service/createSupabaseAdminClient] Missing Supabase URL or Service Role Key env vars.");
-    throw new Response("Server configuration error: Missing Supabase credentials.", { status: 500 });
-  }
-  return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
 
 /**
  * Create a new invoice entity
@@ -32,7 +23,7 @@ export async function createInvoiceEntity(
   invariant(entityData.name, "Missing entity name");
   invariant(entityData.entity_type, "Missing entity type");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log('[Service/createInvoiceEntity] Creating entity with data:', entityData);
 
@@ -78,7 +69,7 @@ export async function getInvoiceEntityById(
 ): Promise<InvoiceEntity> {
   invariant(entityId, "Missing entityId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/getInvoiceEntityById] Fetching entity details for ID: ${entityId}`);
 
@@ -112,7 +103,7 @@ export async function getInvoiceEntities(
   limit: number = 20,
   supabaseAdmin?: SupabaseClient<Database>
 ): Promise<{ entities: InvoiceEntity[]; total: number; totalPages: number }> {
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log('[Service/getInvoiceEntities] Fetching entities with filters:', filters);
 
@@ -164,7 +155,7 @@ export async function getInvoiceEntitiesWithStats(
   filters: InvoiceEntityFilters = {},
   supabaseAdmin?: SupabaseClient<Database>
 ): Promise<InvoiceEntityWithStats[]> {
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log('[Service/getInvoiceEntitiesWithStats] Fetching entities with stats');
 
@@ -269,7 +260,7 @@ export async function updateInvoiceEntity(
 ): Promise<InvoiceEntity> {
   invariant(entityId, "Missing entityId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/updateInvoiceEntity] Updating entity ${entityId} with data:`, updateData);
 
@@ -307,7 +298,7 @@ export async function deleteInvoiceEntity(
 ): Promise<void> {
   invariant(entityId, "Missing entityId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/deleteInvoiceEntity] Attempting to delete entity ${entityId}`);
 
@@ -350,7 +341,7 @@ export async function deactivateInvoiceEntity(
 ): Promise<InvoiceEntity> {
   invariant(entityId, "Missing entityId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/deactivateInvoiceEntity] Deactivating entity ${entityId}`);
 
@@ -394,7 +385,7 @@ export async function reactivateInvoiceEntity(
 ): Promise<InvoiceEntity> {
   invariant(entityId, "Missing entityId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/reactivateInvoiceEntity] Reactivating entity ${entityId}`);
 
@@ -426,7 +417,7 @@ export async function getOrCreateFamilyEntity(
 ): Promise<InvoiceEntity> {
   invariant(familyId, "Missing familyId parameter");
   
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/getOrCreateFamilyEntity] Getting or creating entity for family ${familyId}`);
 
@@ -490,7 +481,7 @@ export async function searchInvoiceEntities(
   limit: number = 10,
   supabaseAdmin?: SupabaseClient<Database>
 ): Promise<InvoiceEntity[]> {
-  const client = supabaseAdmin ?? createSupabaseAdminClient();
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log(`[Service/searchInvoiceEntities] Searching entities with term: ${searchTerm}`);
 

@@ -9,6 +9,7 @@ import type { Database } from "~/types/database.types";
 import { mergeMeta } from "~/utils/meta";
 import { useEffect, useState } from "react";
 import { getScheduleData } from "~/utils/site-data.client";
+import { formatTime } from "~/utils/schedule";
 // Server imports moved to loader function only
 
 type UpcomingEvent = Pick<Database['public']['Tables']['events']['Row'], 
@@ -376,17 +377,9 @@ export default function Index() {
                                                 <div className="flex items-center">
                                                     <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
                                                     <span>
-                                                        {event.start_time && new Date(`2000-01-01T${event.start_time}`).toLocaleTimeString('en-CA', {
-                                                            hour: 'numeric',
-                                                            minute: '2-digit',
-                                                            hour12: true
-                                                        })}
+                                                        {event.start_time && formatTime(event.start_time)}
                                                         {event.end_time && (
-                                                            <> - {new Date(`2000-01-01T${event.end_time}`).toLocaleTimeString('en-CA', {
-                                                                hour: 'numeric',
-                                                                minute: '2-digit',
-                                                                hour12: true
-                                                            })}</>
+                                                            <> - {formatTime(event.end_time)}</>
                                                         )}
                                                     </span>
                                                 </div>

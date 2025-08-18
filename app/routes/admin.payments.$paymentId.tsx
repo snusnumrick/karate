@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node"; // Add ActionFunctionArgs
 import { Link, useLoaderData, useRouteError, useParams, useFetcher } from "@remix-run/react"; // Add useFetcher
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { formatDate } from "~/utils/misc"; // Import formatDate utility
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -71,14 +71,7 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
 
     console.log(`[Admin Payment Detail Loader] Fetching details for payment ID: ${paymentId}`);
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin Payment Detail Loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", { status: 500 });
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     const MAX_RETRIES = 4;
     const RETRY_DELAY_MS = 250;
@@ -140,14 +133,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     console.log(`[Admin Payment Action] Attempting to update payment ${paymentId} to status: ${newStatus}`);
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin Payment Action: Missing Supabase env variables.");
-        return json({ error: "Server configuration error." }, { status: 500 });
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {

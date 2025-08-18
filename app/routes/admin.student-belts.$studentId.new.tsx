@@ -1,7 +1,7 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input"; // Keep Input for other fields
 import {Label} from "~/components/ui/label";
@@ -40,14 +40,7 @@ export async function loader({params}: LoaderFunctionArgs): Promise<TypedRespons
         throw new Response("Student ID is required", {status: 400});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     const {data: studentData, error: studentError} = await supabaseAdmin
         .from('students')
@@ -85,14 +78,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         return json({error: "Please correct the errors below.", fieldErrors}, {status: 400});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        return json({error: "Server configuration error."}, {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     // Cast the type from form data to the enum type
     const beltAwardData: BeltAwardInsert = {

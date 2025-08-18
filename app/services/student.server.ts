@@ -1,6 +1,7 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
 import type { Database } from "~/types/database.types";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 // Removed unused format import
 
 // Define types locally or import if shared
@@ -39,7 +40,7 @@ export async function getStudentDetails(
     invariant(studentId, "Missing studentId parameter");
     console.log(`[Service/getStudentDetails] Fetching student details for ID: ${studentId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     // Fetch student data and related family name
     const { data: studentData, error } = await client
@@ -130,7 +131,7 @@ export async function updateStudent(
     invariant(studentId, "Missing studentId parameter");
     console.log(`[Service/updateStudent] Updating student ${studentId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     const { error: updateError } = await client
         .from('students')
@@ -159,7 +160,7 @@ export async function deleteStudent(
     invariant(studentId, "Missing studentId parameter");
     console.log(`[Service/deleteStudent] Deleting student ${studentId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     const { error } = await client
         .from('students')
@@ -202,7 +203,7 @@ export async function recordIndividualSessionUsage(
     invariant(adminUserId, "Missing adminUserId parameter");
     console.log(`[Service/recordIndividualSessionUsage] Recording usage for session purchase ${sessionPurchaseId} by student ${studentId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient();
+    const client = supabaseAdmin ?? getSupabaseAdminClient();
 
     // 1. Fetch the session to ensure it exists and has quantity
     const { data: sessionData, error: fetchError } = await client
@@ -275,18 +276,4 @@ export async function recordIndividualSessionUsage(
 
     console.log(`[Service/recordIndividualSessionUsage] Successfully recorded usage for session ${sessionPurchaseId}. New family balance: ${newBalance}`);
     return newBalance;
-}
-
-
-// Helper to create admin client (consider moving to a shared utils if used elsewhere)
-function createSupabaseAdminClient(): SupabaseClient<Database> {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Service/createSupabaseAdminClient] Missing Supabase URL or Service Role Key env vars.");
-        // Throw standard Error here, let calling Remix function handle Response creation
-        throw new Error("Server configuration error: Missing Supabase credentials.");
-    }
-    return createClient<Database>(supabaseUrl, supabaseServiceKey);
 }

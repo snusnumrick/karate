@@ -1,4 +1,4 @@
-import { createClient } from '~/utils/supabase.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { siteConfig } from '~/config/site';
 import type {
   Class,
@@ -20,7 +20,7 @@ import { formatLocalDate, getTodayLocalDateString } from '~/components/calendar/
  * Get all instructors (profiles with instructor role)
  */
 export async function getInstructors(
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Array<{ id: string; first_name: string; last_name: string; email: string }>> {
   const { data, error } = await supabase
     .from('profiles')
@@ -42,7 +42,7 @@ export async function createClassSchedule(
   classId: string,
   dayOfWeek: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday',
   startTime: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<void> {
   const { error } = await supabase
     .from('class_schedules')
@@ -62,7 +62,7 @@ export async function createClassSchedule(
  */
 export async function getClassSchedules(
   classId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Array<{ id: string; day_of_week: string; start_time: string }>> {
   const { data, error } = await supabase
     .from('class_schedules')
@@ -83,7 +83,7 @@ export async function getClassSchedules(
 export async function updateClassSchedules(
   classId: string,
   schedules: Array<{ day_of_week: string; start_time: string }>,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<void> {
   // Delete existing schedules
   const { error: deleteError } = await supabase
@@ -118,7 +118,7 @@ export async function updateClassSchedules(
  */
 export async function deleteClassSchedule(
   scheduleId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<void> {
   const { error } = await supabase
     .from('class_schedules')
@@ -135,7 +135,7 @@ export async function deleteClassSchedule(
  */
 export async function createClass(
   classData: CreateClassData,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassWithDetails> {
   // First create the class
   const { data: newClass, error: classError } = await supabase
@@ -174,7 +174,7 @@ export async function createClass(
 export async function updateClass(
   id: string,
   updates: Partial<UpdateClassData>,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassWithDetails> {
   const updateData: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -215,7 +215,7 @@ export async function updateClass(
  */
 export async function deleteClass(
   id: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<void> {
   // Check if class has active enrollments
   const { data: activeEnrollments, error: enrollmentError } = await supabase
@@ -247,7 +247,7 @@ export async function deleteClass(
  */
 export async function getClasses(
   filters: ClassFilters = {},
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Class[]> {
   let query = supabase
     .from('classes')
@@ -292,7 +292,7 @@ export async function getClasses(
  */
 export async function getClassById(
   id: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassWithDetails | null> {
   const { data, error } = await supabase
     .from('classes')
@@ -414,7 +414,7 @@ export async function getClassById(
  */
 export async function getClassesByProgram(
   programId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<Class[]> {
   return getClasses({ program_id: programId, is_active: true }, supabase);
 }
@@ -424,7 +424,7 @@ export async function getClassesByProgram(
  */
 export async function generateClassSessions(
   data: BulkSessionGeneration,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<number> {
   const { data: result, error } = await supabase
     .rpc('generate_class_sessions', {
@@ -458,7 +458,7 @@ export async function generateClassSessions(
  */
 export async function createClassSession(
   sessionData: CreateSessionData,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassSession> {
   const { data, error } = await supabase
     .from('class_sessions')
@@ -486,7 +486,7 @@ export async function createClassSession(
 export async function updateClassSession(
   id: string,
   updates: Partial<UpdateSessionData>,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassSession> {
   const updateData: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -520,7 +520,7 @@ export async function updateClassSession(
  */
 export async function deleteClassSession(
   id: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<void> {
   // Check if session has attendance records
   const { data: attendance, error: attendanceError } = await supabase
@@ -556,7 +556,7 @@ export async function bulkDeleteClassSessions(
     class_id?: string;
     status?: 'scheduled' | 'completed' | 'cancelled';
   },
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<{ deletedCount: number; skippedCount: number; errors: string[] }> {
   // First, get all sessions that match the criteria
   let query = supabase
@@ -634,7 +634,7 @@ export async function bulkDeleteClassSessions(
  */
 export async function getClassSessionById(
   id: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassSession | null> {
   const { data, error } = await supabase
     .from('class_sessions')
@@ -660,7 +660,7 @@ export async function getClassSessionById(
  */
 export async function getClassSessions(
   filters: SessionFilters = {},
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<ClassSession[]> {
   let query = supabase
     .from('class_sessions')
@@ -706,7 +706,7 @@ export async function getCalendarEvents(
   startDate: string,
   endDate: string,
   classIds?: string[],
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<CalendarEvent[]> {
   let query = supabase
     .from('class_sessions')
@@ -792,7 +792,7 @@ export async function getCalendarEvents(
 export async function getWeeklySchedule(
   weekStartDate: string,
   classIds?: string[],
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<WeeklySchedule> {
   const weekEndDate = new Date(weekStartDate);
   weekEndDate.setDate(weekEndDate.getDate() + 6);
@@ -836,7 +836,7 @@ export async function getWeeklySchedule(
 export async function checkScheduleConflicts(
   studentId: string,
   newClassId: string,
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  supabase = getSupabaseAdminClient()
 ): Promise<{ hasConflicts: boolean; conflicts: Record<string, unknown>[] }> {
   // Get student's current active enrollments
   const { data: currentEnrollments, error: enrollmentError } = await supabase

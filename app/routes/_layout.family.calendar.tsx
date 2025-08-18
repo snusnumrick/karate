@@ -2,7 +2,7 @@ import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams, useRouteError } from "@remix-run/react";
 import { useState, useEffect, useRef } from "react";
 import type { Database } from "~/types/database.types";
-import { createClient, getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseAdminClient, getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -339,7 +339,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const visibleEventsWithEligibility: EventRowWithEligibility[] = [];
     
     // Create service role client for RPC calls
-    const supabaseService = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseService = getSupabaseAdminClient();
     
     for (const event of allEvents) {
       let shouldShowEvent = false;

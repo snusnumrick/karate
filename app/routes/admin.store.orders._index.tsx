@@ -1,7 +1,6 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
-// Removed: import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { createClient } from '@supabase/supabase-js'; // Import createClient
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
@@ -37,15 +36,7 @@ const statusColors: Record<OrderStatusEnum, string> = {
 export async function loader({ request }: LoaderFunctionArgs) {
     // Admin check happens in the parent _admin layout loader
 
-    // Initialize Supabase client directly using service role key (like in admin/families)
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin orders loader: Missing Supabase URL or Service Role Key env variables.");
-        throw new Response("Server configuration error.", { status: 500 });
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey); // Use Database type if needed
+    const supabaseAdmin = getSupabaseAdminClient();
 
     const url = new URL(request.url);
     const statusFilter = url.searchParams.get("status") as OrderStatusEnum | null;

@@ -3,7 +3,7 @@ import { Link, useLoaderData, useSearchParams, useNavigate } from "@remix-run/re
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { parseLocalDate, birthdaysToCalendarEvents, expandMultiDayEvents } from "~/components/calendar/utils";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -12,7 +12,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Calendar } from "~/components/calendar/Calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter, Plus } from "lucide-react";
-import {createClient} from "@supabase/supabase-js";
+
 
 // Enhanced admin calendar event interface
 interface AdminCalendarEvent {
@@ -86,15 +86,7 @@ type LoaderData = {
 export async function loader({ request }: LoaderFunctionArgs) {
 
   // Create a service role client directly for admin-level data fetching
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("Admin index loader: Missing Supabase URL or Service Role Key env variables.");
-    // Throw simple response, headers are handled by parent/Remix
-    throw new Response("Server configuration error.", { status: 500 });
-  }
-  // Use service role client for admin data access
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+  const supabaseAdmin = getSupabaseAdminClient();
 
 
 

@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { z } from "zod";
-import { createClient } from '@supabase/supabase-js'; // Import createClient
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { cn } from "~/lib/utils";
 import { Database, Tables } from "~/types/database.types";
 import { Button } from "~/components/ui/button";
@@ -66,16 +65,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
     }
 
     // --- Fetch families using an explicit Admin client to bypass RLS ---
-    // Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are in your .env
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin New Message Loader: Missing Supabase URL or Service Role Key env vars.");
-        return json({ families: [], userId, error: "Server configuration error." }, { status: 500, headers });
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     const { data: families, error: familiesError } = await supabaseAdmin
         .from('families')
@@ -95,7 +85,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     const { supabaseServer, response: { headers } } = getSupabaseServerClient(request);
 
     // Create admin client for push notification queries that need to bypass RLS
-    const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     const { data: { session }, error: sessionError } = await supabaseServer.auth.getSession();
 

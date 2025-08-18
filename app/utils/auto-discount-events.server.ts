@@ -1,4 +1,5 @@
 import { AutoDiscountService } from '~/services/auto-discount.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
 /**
  * Utility functions to record discount events from various parts of the application
@@ -156,10 +157,7 @@ export async function recordSeasonalPromotionEvent(
  */
 async function checkIfFirstPayment(familyId: string): Promise<boolean> {
   try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseUrl = process.env.SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = getSupabaseAdminClient();
     
     const { data, error } = await supabase
       .from('payments')
@@ -186,10 +184,7 @@ async function checkIfFirstPayment(familyId: string): Promise<boolean> {
  */
 export async function batchProcessExistingData(): Promise<void> {
   try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseUrl = process.env.SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = getSupabaseAdminClient();
     
     console.log('Starting batch processing of existing data...');
     

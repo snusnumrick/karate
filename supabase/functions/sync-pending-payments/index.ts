@@ -1,5 +1,5 @@
 import {serve} from "https://deno.land/std@0.177.0/http/server.ts";
-import {createClient, SupabaseClient} from 'https://esm.sh/@supabase/supabase-js@2';
+import {getSupabaseAdminClient, SupabaseClient} from '../_shared/supabase.ts';
 import Stripe from 'https://esm.sh/stripe@15.7.0?target=deno'; // Use specific version
 import {corsHeaders} from '../_shared/cors.ts'; // Assuming you have CORS setup
 import type {Database} from '../_shared/database.types.ts'; // Import Database types
@@ -10,16 +10,7 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   httpClient: Stripe.createFetchHttpClient(), // Use Fetch client for Deno
 });
 
-// Function to get Supabase admin client
-function getSupabaseAdmin(): SupabaseClient<Database> {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase URL or Service Role Key environment variables.');
-  }
-  // Ensure you use the SERVICE ROLE KEY for admin tasks
-  return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
+// Using shared Supabase admin client utility
 
 // Define the threshold for checking pending payments (e.g., 15 minutes)
 const PENDING_THRESHOLD_MINUTES = 15;
@@ -29,7 +20,7 @@ serve(async (req) => {
   // We might add a check here later to ensure it's triggered correctly if needed.
   console.log('Starting sync-pending-payments function run...');
 
-  const supabaseAdmin = getSupabaseAdmin();
+  const supabaseAdmin = getSupabaseAdminClient();
 
   // Calculate the cutoff time
   const cutoffDate = new Date();

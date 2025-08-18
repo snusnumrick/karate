@@ -49,16 +49,8 @@ export async function loader({request}: LoaderFunctionArgs) {
     const {response} = getSupabaseServerClient(request);
     const headers = response.headers;
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin new payment loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", {status: 500, headers: Object.fromEntries(headers)});
-    }
-
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // console.log("Admin new payment loader: Fetching families...");
@@ -189,19 +181,8 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     // Convert subtotal to cents
     const subtotalAmountInCents = Math.round(subtotalAmount * 100);
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin new payment action: Missing Supabase env variables.");
-        return json<ActionData>({error: "Server configuration error."}, {
-            status: 500,
-            headers: Object.fromEntries(headers)
-        });
-    }
-
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // --- Multi-Tax Calculation ---

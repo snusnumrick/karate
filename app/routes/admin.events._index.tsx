@@ -1,7 +1,7 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, Form, useNavigation } from "@remix-run/react";
 import { useState } from "react";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -198,16 +198,7 @@ export async function action({ request }: ActionFunctionArgs) {
     
     try {
       // Use service role client to bypass RLS for admin operations
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-      if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Missing Supabase URL or Service Role Key");
-        return json({ error: "Server configuration error" }, { status: 500, headers });
-      }
-
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+      const supabaseAdmin = getSupabaseAdminClient();
 
       const { error } = await supabaseAdmin
         .from('events')

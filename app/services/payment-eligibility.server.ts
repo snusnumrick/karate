@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
 import { checkStudentEligibility } from '~/utils/supabase.server';
 import { siteConfig } from '~/config/site';
@@ -43,7 +43,7 @@ export interface PaymentEligibilityData {
  */
 export async function getFamilyIndividualSessions(
   familyId: string,
-  supabaseClient: ReturnType<typeof createClient<Database>>
+  supabaseClient: ReturnType<typeof getSupabaseAdminClient>
 ): Promise<IndividualSessionInfo> {
   try {
     const { data: sessionsData, error: sessionsError } = await supabaseClient
@@ -93,7 +93,7 @@ export async function getFamilyIndividualSessions(
  */
 export async function getFamilyPaymentEligibilityData(
   familyId: string,
-  supabaseClient: ReturnType<typeof createClient<Database>>
+  supabaseClient: ReturnType<typeof getSupabaseAdminClient>
 ): Promise<PaymentEligibilityData> {
   try {
     // 1. Fetch Family Name
@@ -253,7 +253,7 @@ export async function getFamilyPaymentEligibilityData(
  */
 export async function getStudentPaymentEligibilityData(
   studentId: string,
-  supabaseClient: ReturnType<typeof createClient<Database>>
+  supabaseClient: ReturnType<typeof getSupabaseAdminClient>
 ): Promise<PaymentEligibilityData> {
   try {
     // 1. Fetch student and family information
@@ -316,7 +316,7 @@ export async function getStudentPaymentEligibilityData(
  */
 export async function getFamilyIdFromUser(
   userId: string,
-  supabaseClient: ReturnType<typeof createClient<Database>>
+  supabaseClient: ReturnType<typeof getSupabaseAdminClient>
 ): Promise<{ familyId: string | null; error?: string }> {
   try {
     const { data: profileData, error: profileError } = await supabaseClient

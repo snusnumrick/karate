@@ -1,7 +1,8 @@
 import {type ActionFunctionArgs, json, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useNavigation, useRouteError} from "@remix-run/react";
 import {useEffect, useRef} from "react";
-import {createClient, type SupabaseClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
+import {type SupabaseClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
 import {sendEmail} from '~/utils/email.server';
 import {Button} from "~/components/ui/button";
@@ -28,15 +29,7 @@ export async function action({request}: ActionFunctionArgs) {
         return json({error: "Title, Description, and Content are required."}, {status: 400});
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin waiver create action: Missing Supabase env variables.");
-        return json({error: "Server configuration error."}, {status: 500});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // Create the new waiver

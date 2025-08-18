@@ -1,8 +1,7 @@
 import {useEffect, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
-import { createClient } from '@supabase/supabase-js'; // Import createClient
+import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import { getStudentPaymentOptions, type StudentPaymentOptions } from '~/services/enrollment-payment.server';
 import { getFamilyIndividualSessions, type IndividualSessionInfo, getStudentPaymentEligibilityData, type PaymentEligibilityData } from '~/services/payment-eligibility.server';
 import {Button} from "~/components/ui/button";
@@ -237,14 +236,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         console.log(`[Action/DeleteStudent] Attempting to delete student ID: ${studentId} for user ID: ${user.id}`);
 
         // Explicitly create an admin client to bypass RLS for deletion
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-        if (!supabaseUrl || !supabaseServiceKey) {
-            console.error("[Action/DeleteStudent] Missing Supabase URL or Service Role Key");
-            return json({ error: "Server configuration error." }, { status: 500, headers });
-        }
-        const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+        const supabaseAdmin = getSupabaseAdminClient();
 
         console.log(`[Action/DeleteStudent] Executing delete for student ID: ${studentId}`);
         // Add checks for related data if necessary (e.g., attendance, payments) before deleting

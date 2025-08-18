@@ -1,6 +1,7 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
 import type { Database } from "~/types/database.types";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 // Define row types locally or import if shared
 type FamilyRow = Database['public']['Tables']['families']['Row'];
@@ -47,7 +48,7 @@ export async function getFamilyDetails(
     invariant(familyId, "Missing familyId parameter");
     console.log(`[Service/getFamilyDetails] Fetching family details for ID: ${familyId}`);
 
-    const client = supabaseAdmin ?? createSupabaseAdminClient(); // Use provided client or create one
+    const client = supabaseAdmin || getSupabaseAdminClient(); // Use provided client or create one
 
     console.log('[Service/getFamilyDetails] Supabase client obtained. Fetching data...');
     const { data: familyData, error: familyError } = await client
@@ -168,17 +169,4 @@ export async function getFamilyDetails(
     };
 
     return finalFamilyDetails;
-}
-
-
-// Helper to create admin client (consider moving to a shared utils if used elsewhere)
-function createSupabaseAdminClient(): SupabaseClient<Database> {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("[Service/createSupabaseAdminClient] Missing Supabase URL or Service Role Key env vars.");
-        throw new Response("Server configuration error: Missing Supabase credentials.", { status: 500 });
-    }
-    return createClient<Database>(supabaseUrl, supabaseServiceKey);
 }

@@ -1,6 +1,6 @@
 import {type ActionFunctionArgs, json, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useNavigation} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import {useRef, useEffect} from "react";
@@ -87,13 +87,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     }
 
     // --- Database Interaction ---
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        return json({error: "Server configuration error."}, {status: 500});
-    }
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         // 1. Insert Family

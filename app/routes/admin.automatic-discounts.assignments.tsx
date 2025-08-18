@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
@@ -13,10 +13,7 @@ import { ArrowLeft, Search, Filter, Users, CheckCircle, Clock, XCircle } from "l
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { formatDate } from "~/utils/misc";
 
-
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = getSupabaseAdminClient();
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);

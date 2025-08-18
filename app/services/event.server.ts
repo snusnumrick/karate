@@ -1,5 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~/types/database.types";
+import type { Event, CreateEventData, UpdateEventData } from "~/types/event";
+import type { ExtendedSupabaseClient } from "~/types/supabase-extensions";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 type Event = Database['public']['Tables']['events']['Row'];
 
@@ -14,17 +16,9 @@ type UpcomingEvent = Pick<Event,
 const eventCache = new Map<string, { data: UpcomingEvent[], timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
+const supabase = getSupabaseAdminClient();
+
 export class EventService {
-  private static getSupabaseClient() {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase environment variables');
-    }
-
-    return createClient<Database>(supabaseUrl, supabaseServiceKey);
-  }
 
   static async getUpcomingEvents(): Promise<UpcomingEvent[]> {
     const cacheKey = 'upcoming_events';
@@ -36,7 +30,7 @@ export class EventService {
       return cached.data;
     }
 
-    const supabase = this.getSupabaseClient();
+
     const today = new Date().toISOString().split('T')[0];
 
     const { data: events, error } = await supabase
@@ -76,7 +70,7 @@ export class EventService {
   }
 
   static async getEventById(id: string): Promise<Event | null> {
-    const supabase = this.getSupabaseClient();
+
 
     const { data: event, error } = await supabase
       .from('events')

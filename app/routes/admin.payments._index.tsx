@@ -1,7 +1,6 @@
 import {json, type LoaderFunctionArgs} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
-import {createClient} from '@supabase/supabase-js';
-import {getSupabaseServerClient} from "~/utils/supabase.server"; // Import the missing function
+import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server"; // Import the missing function
 import {Database} from "~/types/database.types"; // Assuming your generated types
 import {Button} from "~/components/ui/button";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
@@ -24,15 +23,7 @@ export async function loader({request}: LoaderFunctionArgs) {
     const {response} = getSupabaseServerClient(request); // Get headers via helper
     const headers = response.headers;
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin payments loader: Missing Supabase env variables.");
-        throw new Response("Server configuration error.", {status: 500, headers: Object.fromEntries(headers)});
-    }
-
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         console.log("Admin payments loader: Fetching payments with family names...");

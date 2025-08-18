@@ -1,7 +1,7 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClasses } from "~/services/class.server";
-import { createClient } from "~/utils/supabase.server";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -13,7 +13,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
   
   try {
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabase = getSupabaseAdminClient();
     
     // Get all active classes
     const classes = await getClasses();

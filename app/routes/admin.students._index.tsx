@@ -1,6 +1,6 @@
 import {json} from "@remix-run/node";
 import {Link, useLoaderData, useNavigate, useRouteError} from "@remix-run/react"; // Import useNavigate
-import {createClient} from '@supabase/supabase-js';
+import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import type {EligibilityStatus} from "~/types/payment";
 import {formatDate} from "~/utils/misc"; // Import formatDate utility
@@ -26,16 +26,7 @@ type StudentWithFamilyEligibilityAndBelt = StudentRow & {
 export async function loader() {
     console.log("Entering /admin/students loader...");
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error("Admin students loader: Missing Supabase URL or Service Role Key env variables.");
-        throw new Response("Server configuration error.", {status: 500});
-    }
-
-    // Use service role client for admin data access
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdminClient();
 
     try {
         console.log("Admin students loader - Fetching all students and related family names using service role...");

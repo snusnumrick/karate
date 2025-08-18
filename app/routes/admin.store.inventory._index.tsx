@@ -1,7 +1,6 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, TypedResponse } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { createClient } from "@supabase/supabase-js"; // For admin client
+import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 // Removed unused Label import
@@ -87,7 +86,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     }
 
     // Use admin client for updates
-    const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdmin = getSupabaseAdminClient();
     let updateErrors = 0;
 
     // Perform updates in a loop (consider transaction or bulk update if performance becomes an issue)

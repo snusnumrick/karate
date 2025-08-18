@@ -3,7 +3,7 @@ import { json } from "@vercel/remix";
 import Stripe from "stripe";
 import { updatePaymentStatus } from "~/utils/supabase.server";
 import type { Database } from "~/types/database.types"; // Removed unused Tables import
-import { createClient } from "@supabase/supabase-js"; // Import Supabase client for direct DB updates
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -153,7 +153,7 @@ export async function action({request}: ActionFunctionArgs) {
             // --- Handle Store Purchase Success ---
             if (type === 'store_purchase' && orderId) {
                 console.log(`[Webhook] Processing successful store purchase for order ${orderId}`);
-                const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+                const supabaseAdmin = getSupabaseAdminClient();
 
                 // 1. Update Order Status
                 console.log(`[Webhook] Updating order status for orderId: ${orderId}`);
@@ -268,7 +268,7 @@ export async function action({request}: ActionFunctionArgs) {
             // --- Handle Store Purchase Failure ---
             if (type === 'store_purchase' && orderId) {
                  console.log(`[Webhook PI Failed] Processing failed store purchase for order ${orderId}`);
-                 const supabaseAdmin = createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+                 const supabaseAdmin = getSupabaseAdminClient();
                  const { error: orderUpdateError } = await supabaseAdmin
                      .from('orders')
                      .update({ status: 'cancelled', updated_at: new Date().toISOString() }) // Update status to cancelled

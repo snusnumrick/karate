@@ -10,7 +10,7 @@ import {Database as DatabaseIcon, MessageSquare, PanelLeft, SendHorizontal, Spar
 import {Badge} from "~/components/ui/badge";
 // Separator removed as it's unused
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {createClient} from "@supabase/supabase-js";
+import {getSupabaseAdminClient} from "~/utils/supabase.server";
 import {
     FinishReason,
     GenerativeModel,
@@ -130,14 +130,7 @@ export async function action({request}: ActionFunctionArgs): Promise<Response> {
 
     try {
         // Create a direct database connection
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-        if (!supabaseUrl || !supabaseServiceKey) {
-            throw new Error('Missing Supabase environment variables required for database query.');
-        }
-
-        const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+        const supabaseAdmin = getSupabaseAdminClient();
 
         // 1. Get the (potentially cached) schema description
         const schemaDescription = await getAndCacheSchemaDescription();

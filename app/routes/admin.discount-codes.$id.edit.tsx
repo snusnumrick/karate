@@ -8,10 +8,9 @@ import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { DiscountService } from "~/services/discount.server";
 import type { PaymentTypeEnum } from "~/types/discount";
-import type { Database } from "~/types/database.types";
 import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 
 type FamilyInfo = {
@@ -62,14 +61,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 
   // Use service role client for admin data access (bypass RLS)
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Response("Server configuration error.", {status: 500});
-  }
-
-  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+  const supabaseAdmin = getSupabaseAdminClient();
   
   // Fetch the discount code and related data
   const [discountResult, familiesResult, studentsResult] = await Promise.all([
