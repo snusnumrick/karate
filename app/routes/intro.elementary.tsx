@@ -34,17 +34,61 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 export default function ElementaryIntroPage() {
     const [searchParams] = useSearchParams();
 
+    // Generate series names based on entered dates
+    const generateSeriesName = (dateString: string): string => {
+        if (!dateString.trim()) return "Program Series";
+        
+        // Extract month from various date formats
+        const monthRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)/i;
+        const match = dateString.match(monthRegex);
+        
+        if (match) {
+            return `${match[1]} Series`;
+        }
+        
+        // Fallback: try to extract month abbreviations
+        const monthAbbrevRegex = /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i;
+        const abbrevMatch = dateString.match(monthAbbrevRegex);
+        
+        if (abbrevMatch) {
+            const monthMap: { [key: string]: string } = {
+                'Jan': 'January', 'Feb': 'February', 'Mar': 'March', 'Apr': 'April',
+                'May': 'May', 'Jun': 'June', 'Jul': 'July', 'Aug': 'August',
+                'Sep': 'September', 'Oct': 'October', 'Nov': 'November', 'Dec': 'December'
+            };
+            return `${monthMap[abbrevMatch[1]]} Series`;
+        }
+        
+        // If no month found, return a generic name
+        return "Program Series";
+    };
+
     // Template variables from URL params or defaults
     const templateVars = {
-        startDates: {
-            september: searchParams.get('sept') || "September 9-26, 2024",
-            february: searchParams.get("feb") || "February 3-20, 2025"
-        },
         price: `$${searchParams.get("price") || "89"} + PST`,
         sessions: `${searchParams.get("sessions") || "8"} sessions`,
         duration: `${searchParams.get("duration") || "45"} minutes each`,
         frequency: `${searchParams.get("frequency") || "2"} classes per week`
     };
+
+    // Get dynamic series data from URL parameters
+    const seriesData = [];
+    let seriesIndex = 1;
+    while (searchParams.get(`series${seriesIndex}`)) {
+        seriesData.push({
+            id: `series${seriesIndex}`,
+            dates: searchParams.get(`series${seriesIndex}`) || ""
+        });
+        seriesIndex++;
+    }
+    
+    // If no series data from URL, use defaults
+    if (seriesData.length === 0) {
+        seriesData.push(
+            { id: "series1", dates: "September 9-26, 2024" },
+            { id: "series2", dates: "February 3-20, 2025" }
+        );
+    }
 
     return (
         <div className="page-background-styles">
@@ -82,7 +126,7 @@ export default function ElementaryIntroPage() {
                         Elementary School Program
                     </h1>
                     <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-6">
-                        Introductory Karate Program for Elementary Schools
+                        Introduction to Karate
                     </h2>
                     <div
                         className="flex flex-wrap justify-center gap-4 text-lg font-semibold text-gray-700 dark:text-gray-300">
@@ -189,16 +233,14 @@ export default function ElementaryIntroPage() {
                                 Available Start Dates:
                             </h3>
                             <div className="space-y-3">
-                                <div className="bg-white dark:bg-gray-800 p-4 rounded border-l-4 border-amber-500">
-                                    <h4 className="font-semibold text-amber-700 dark:text-amber-300">September
-                                        Series</h4>
-                                    <p className="text-gray-600 dark:text-gray-400">{templateVars.startDates.september}</p>
-                                </div>
-                                <div className="bg-white dark:bg-gray-800 p-4 rounded border-l-4 border-amber-500">
-                                    <h4 className="font-semibold text-amber-700 dark:text-amber-300">February
-                                        Series</h4>
-                                    <p className="text-gray-600 dark:text-gray-400">{templateVars.startDates.february}</p>
-                                </div>
+                                {seriesData.map((series, index) => (
+                                    <div key={series.id} className="bg-white dark:bg-gray-800 p-4 rounded border-l-4 border-amber-500">
+                                        <h4 className="font-semibold text-amber-700 dark:text-amber-300">
+                                            {generateSeriesName(series.dates)}
+                                        </h4>
+                                        <p className="text-gray-600 dark:text-gray-400">{series.dates}</p>
+                                    </div>
+                                ))}
                             </div>
                             <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 italic">
                                 We encourage continuous collaboration by offering two seasonal series each school year.
