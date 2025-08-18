@@ -158,7 +158,7 @@ export default function InvoiceDetailPage() {
   const isSubmitting = navigation.state === "submitting";
 
   const canEdit = invoice.status === "draft";
-  const canMarkPaid = invoice.status === "sent" || invoice.status === "overdue";
+  const canMarkPaid = invoice.status === "draft" || invoice.status === "sent" || invoice.status === "overdue";
   const canCancel = invoice.status === "sent" || invoice.status === "draft";
 
   return (
