@@ -493,7 +493,7 @@ export function EventRegistrationForm({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Existing Students Selection (for authenticated users) */}
         {isAuthenticated && familyData?.students && familyData.students.length > 0 && (
-          <Card className="form-card-styles">
+          <Card className="form-container-styles">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -534,7 +534,7 @@ export function EventRegistrationForm({
 
         {/* Parent Information (for guest users) */}
         {!isAuthenticated && (
-          <Card className="form-card-styles">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -604,7 +604,7 @@ export function EventRegistrationForm({
         )}
 
         {/* Student Information */}
-        <Card className="form-card-styles">
+        <Card>
           <CardHeader>
             <CardTitle>Student Information</CardTitle>
             <CardDescription>
@@ -786,7 +786,7 @@ export function EventRegistrationForm({
         </Card>
 
         {/* Additional Information */}
-        <Card className="form-card-styles">
+        <Card>
           <CardHeader>
             <CardTitle>Additional Information</CardTitle>
           </CardHeader>
