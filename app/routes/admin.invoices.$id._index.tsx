@@ -534,7 +534,7 @@ export default function InvoiceDetailPage() {
                       <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.tax_amount * 100)}</span>
                     </div>
                     <div className="mt-1 space-y-1">
-                      {invoice.line_items.map((item) => {
+                      {invoice.line_items.length > 1 && invoice.line_items.map((item) => {
                         const itemTax = calculateLineItemTax(item);
                         if (itemTax > 0) {
                           return (

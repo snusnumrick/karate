@@ -301,7 +301,7 @@ export default function PaymentSuccessPage() {
                             {/* Display amount breakdown */}
                             <p><span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
                             {/* Display Tax Breakdown */}
-                            {payment.payment_taxes && payment.payment_taxes.length > 0 && (
+                            {payment.payment_taxes && payment.payment_taxes.length > 1 && (
                                 payment.payment_taxes.map((tax, index) => (
                                     <p key={index}><span className="font-semibold">{tax.tax_name_snapshot}:</span> ${(tax.tax_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
                                 ))

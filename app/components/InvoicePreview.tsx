@@ -191,7 +191,7 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
                       <span className="text-gray-900">{formatCurrency(totalTax * 100)}</span>
                     </div>
                     <div className="mt-1 space-y-1">
-                      {invoiceData.line_items.map((item, index) => {
+                      {invoiceData.line_items.length > 1 && invoiceData.line_items.map((item, index) => {
                         const itemTax = calculateLineItemTax(item);
                         if (itemTax > 0) {
                           return (

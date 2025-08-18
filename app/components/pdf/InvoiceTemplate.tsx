@@ -546,7 +546,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
                   <Text style={styles.totalLabel}>Total Tax:</Text>
                   <Text style={styles.totalValue}>{formatCurrency(taxAmount)}</Text>
                 </View>
-                {invoice.line_items?.map((item, index) => {
+                {(invoice.line_items?.length || 0) > 1 && invoice.line_items?.map((item, index) => {
                   const itemTax = calculateLineItemTax(item);
                   if (itemTax > 0) {
                     return (

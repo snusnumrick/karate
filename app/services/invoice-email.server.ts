@@ -264,7 +264,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                                 <span>Total Tax:</span>
                                 <span>${formatCurrency(invoice.tax_amount)}</span>
                             </div>
-                            ${invoice.line_items.map(item => {
+                            ${invoice.line_items.length > 1 ? invoice.line_items.map(item => {
                                 const itemTax = calculateLineItemTax(item);
                                 if (itemTax > 0) {
                                     return `
@@ -274,7 +274,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                                      </div>`;
                                 }
                                 return '';
-                            }).join('')}
+                            }).join('') : ''}
                         </div>
                     </td>
                 </tr>
