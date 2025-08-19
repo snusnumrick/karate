@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
-import { getSupabaseServerClient, createInitialPaymentRecord, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, createInitialPaymentRecord, getSupabaseAdminClient, hasStudentsUnder15 } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
@@ -216,8 +216,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         .filter(p => p.product_variants.length > 0);
 
 
-    // Fetch active tax rates for display/calculation consistency
-    const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
+    // Fetch active tax rates for display/calculation consistency with PST exemption logic
+    let applicableTaxNames = siteConfig.pricing.applicableTaxNames;
+    
+    // Check if student is under 15 and apply PST exemption for store purchases
+    const isStudentUnder15 = await hasStudentsUnder15([studentId]);
+    if (isStudentUnder15) {
+        // Filter out PST_BC for students under 15 (karate uniform exemption)
+        applicableTaxNames = applicableTaxNames.filter(taxName => taxName !== 'PST_BC');
+    }
+    
     const { data: taxRatesData, error: taxRatesError } = await supabaseServer
         .from('tax_rates')
         .select('name, rate')
@@ -311,8 +319,16 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     const pricePerItem = variantData.price_in_cents;
     const subtotalAmount = pricePerItem * quantity;
 
-    // --- Calculate Taxes ---
-    const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
+    // --- Calculate Taxes with PST exemption logic ---
+    let applicableTaxNames = siteConfig.pricing.applicableTaxNames;
+    
+    // Check if student is under 15 and apply PST exemption for store purchases
+    const isStudentUnder15 = await hasStudentsUnder15([studentId]);
+    if (isStudentUnder15) {
+        // Filter out PST_BC for students under 15 (karate uniform exemption)
+        applicableTaxNames = applicableTaxNames.filter(taxName => taxName !== 'PST_BC');
+    }
+    
     const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
         .from('tax_rates')
         .select('name, rate, description') // Fetch description too if needed later, though not strictly for calc

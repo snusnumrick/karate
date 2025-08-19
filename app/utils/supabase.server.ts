@@ -28,6 +28,45 @@ export function getSupabaseAdminClient() {
 
 import { siteConfig } from "~/config/site"; // Import siteConfig for tax rate
 
+// Helper function to check if any students are under 15 years old
+export async function hasStudentsUnder15(studentIds: string[]): Promise<boolean> {
+    if (!studentIds || studentIds.length === 0) {
+        return false;
+    }
+
+    const supabaseAdmin = getSupabaseAdminClient();
+    const { data: students, error } = await supabaseAdmin
+        .from('students')
+        .select('birth_date')
+        .in('id', studentIds);
+
+    if (error || !students) {
+        console.error('Error fetching student birth dates:', error?.message);
+        return false; // If we can't determine age, don't apply exemption
+    }
+
+    const today = new Date();
+    
+    for (const student of students) {
+        if (student.birth_date) {
+            const birthDate = new Date(student.birth_date);
+            const age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            
+            let actualAge = age;
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                actualAge = age - 1;
+            }
+            
+            if (actualAge < 15) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
 // Initialize Stripe
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 if (!stripeSecretKey) {
@@ -137,7 +176,18 @@ export async function createInitialPaymentRecord(
 
     // --- Multi-Tax Calculation ---
     // 1. Fetch active tax rates applicable to this site/region
-    const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
+    let applicableTaxNames = siteConfig.pricing.applicableTaxNames;
+    
+    // 2. Check if this is a store purchase with students under 15 (GI exemption)
+    if (type === 'store_purchase' && studentIds && studentIds.length > 0) {
+        const hasUnder15 = await hasStudentsUnder15(studentIds);
+        if (hasUnder15) {
+            // Exclude PST_BC for GI purchases for students under 15
+            applicableTaxNames = applicableTaxNames.filter(name => name !== 'PST_BC');
+            console.log('PST_BC exemption applied for store purchase - student(s) under 15 years old');
+        }
+    }
+    
     const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
         .from('tax_rates')
         .select('id, name, rate')
@@ -153,7 +203,7 @@ export async function createInitialPaymentRecord(
         // Proceed without tax if none are configured/active
     }
 
-    // 2. Calculate individual taxes and total tax on the discounted subtotal
+    // 3. Calculate individual taxes and total tax on the discounted subtotal
     let totalTaxAmount = 0;
     const paymentTaxesToInsert: Array<{
         tax_rate_id: string;
