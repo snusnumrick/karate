@@ -317,13 +317,7 @@ export default function EventRegistration() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button and Breadcrumb Navigation */}
         <div className="mb-8">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link to={`/events/${event.id}`} className="inline-flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Event Details
-            </Link>
-          </Button>
-          
+
           <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
             <Link to="/" className="hover:text-green-600 dark:hover:text-green-400">Home</Link>
             <span>/</span>
