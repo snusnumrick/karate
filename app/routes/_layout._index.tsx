@@ -16,13 +16,18 @@ type UpcomingEventWithFormatted = UpcomingEvent & {
   formattedEventType: string;
 };
 
-// Loader for homepage - fetch upcoming events
+// Loader for homepage - fetch upcoming events and schedule data
 export async function loader({ request }: LoaderFunctionArgs) {
     const { getEventTypeConfigWithDarkMode, formatEventTypeName } = await import("~/utils/event-helpers.server");
+    const { getMainPageScheduleData } = await import("~/services/class.server");
     
     try {
-        const upcomingEvents = await EventService.getUpcomingEvents();
-        const eventTypeConfig = await getEventTypeConfigWithDarkMode(request);
+        // Fetch both upcoming events and schedule data in parallel
+        const [upcomingEvents, scheduleData, eventTypeConfig] = await Promise.all([
+            EventService.getUpcomingEvents(),
+            getMainPageScheduleData(),
+            getEventTypeConfigWithDarkMode(request)
+        ]);
         
         // Format event type names on the server side
         const upcomingEventsWithFormatted: UpcomingEventWithFormatted[] = upcomingEvents.map(event => ({
@@ -31,7 +36,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
         }));
         
         return json(
-            { upcomingEvents: upcomingEventsWithFormatted, eventTypeConfig },
+            { 
+                upcomingEvents: upcomingEventsWithFormatted, 
+                eventTypeConfig,
+                scheduleData
+            },
             {
                 headers: {
                     // Cache for 5 minutes (300 seconds) to match server-side cache duration
@@ -43,10 +52,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
             }
         );
     } catch (error) {
-        console.error('Error loading upcoming events:', error);
+        console.error('Error loading homepage data:', error);
         const eventTypeConfig = await getEventTypeConfigWithDarkMode(request);
         return json(
-            { upcomingEvents: [], eventTypeConfig },
+            { 
+                upcomingEvents: [], 
+                eventTypeConfig,
+                scheduleData: null
+            },
             {
                 headers: {
                     // Don't cache error responses
@@ -196,30 +209,35 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 };
 
 export default function Index() {
-    const { upcomingEvents, eventTypeConfig } = useLoaderData<typeof loader>();
-    const [scheduleData, setScheduleData] = useState<{
+    const { upcomingEvents, eventTypeConfig, scheduleData } = useLoaderData<typeof loader>();
+    const [clientScheduleData, setClientScheduleData] = useState<{
         days: string;
         times: string;
         ageRange: string;
     } | null>(null);
 
     useEffect(() => {
-        // Add a small delay to ensure setSiteData from _layout.tsx has populated the cache
-        const timer = setTimeout(() => {
-            const data = getScheduleData();
-            if (data) {
-                setScheduleData(data);
-            }
-        }, 100);
+        // Only use client-side data as fallback if server data is not available
+        if (!scheduleData) {
+            const timer = setTimeout(() => {
+                const data = getScheduleData();
+                if (data) {
+                    setClientScheduleData(data);
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [scheduleData]);
 
-        return () => clearTimeout(timer);
-    }, []);
-
-    // Use dynamic schedule data if available, otherwise fall back to static config
+    // Priority: server scheduleData > client scheduleData > static config
     const displaySchedule = scheduleData ? {
         days: scheduleData.days,
-        time: scheduleData.times, // Map 'times' to 'time' for consistency with existing UI
+        time: scheduleData.time,
         ageRange: scheduleData.ageRange
+    } : clientScheduleData ? {
+        days: clientScheduleData.days,
+        time: clientScheduleData.times, // Map 'times' to 'time' for consistency
+        ageRange: clientScheduleData.ageRange
     } : {
         days: siteConfig.classes.days,
         time: siteConfig.classes.time,

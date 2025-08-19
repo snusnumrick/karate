@@ -954,6 +954,110 @@ export async function getWeeklySchedule(
 /**
  * Check for schedule conflicts when enrolling a student
  */
+/**
+ * Get aggregated class schedule data for main page display
+ * Returns a summary of all active class schedules in a format suitable for the main page
+ */
+export async function getMainPageScheduleData(
+  supabase = getSupabaseAdminClient()
+): Promise<{
+  days: string;
+  time: string;
+  ageRange: string;
+  duration: string;
+  maxStudents: number;
+  minAge: number;
+  maxAge: number;
+} | null> {
+  try {
+    // Get all active classes with their schedules and programs
+    const { data: classesData, error } = await supabase
+      .from('classes')
+      .select(`
+        id,
+        name,
+        program:programs!inner(
+          min_age,
+          max_age,
+          duration_minutes,
+          max_capacity
+        )
+      `)
+      .eq('is_active', true);
+
+    if (error || !classesData || classesData.length === 0) {
+      return null;
+    }
+
+    // Get schedules for all active classes
+    const classIds = classesData.map(c => c.id);
+    const { data: schedulesData } = await supabase
+      .from('class_schedules')
+      .select('class_id, day_of_week, start_time')
+      .in('class_id', classIds)
+      .order('day_of_week')
+      .order('start_time');
+
+    if (!schedulesData || schedulesData.length === 0) {
+      return null;
+    }
+
+    // Aggregate the data
+    const uniqueDays = [...new Set(schedulesData.map(s => s.day_of_week))];
+    const uniqueTimes = [...new Set(schedulesData.map(s => s.start_time))];
+    
+    // Get age ranges from programs
+    const programs = classesData.map(c => c.program).filter(Boolean);
+    const minAge = Math.min(...programs.map(p => p.min_age || 0).filter(age => age > 0));
+    const maxAge = Math.max(...programs.map(p => p.max_age || 100));
+    const avgDuration = Math.round(programs.reduce((sum, p) => sum + (p.duration_minutes || 60), 0) / programs.length);
+    const maxCapacity = Math.max(...programs.map(p => p.max_capacity || 20));
+
+    // Format days (e.g., "Tuesday & Thursday")
+    const dayNames: Record<string, string> = {
+      'monday': 'Monday',
+      'tuesday': 'Tuesday', 
+      'wednesday': 'Wednesday',
+      'thursday': 'Thursday',
+      'friday': 'Friday',
+      'saturday': 'Saturday',
+      'sunday': 'Sunday'
+    };
+    
+    const formattedDays = uniqueDays.map(day => dayNames[day.toLowerCase()] || day).join(' & ');
+    
+    // Format times (e.g., "6:00 PM - 7:00 PM")
+    const earliestTime = uniqueTimes[0];
+    const latestTime = uniqueTimes[uniqueTimes.length - 1];
+    
+    // Convert time format (assuming HH:MM format from DB)
+    const formatTime = (time: string) => {
+      const [hours, minutes] = time.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      return `${displayHour}:${minutes} ${ampm}`;
+    };
+    
+    const timeRange = uniqueTimes.length === 1 
+      ? formatTime(earliestTime)
+      : `${formatTime(earliestTime)} - ${formatTime(latestTime)}`;
+
+    return {
+      days: formattedDays,
+      time: timeRange,
+      ageRange: `${minAge}-${maxAge} years`,
+      duration: `${avgDuration} minutes`,
+      maxStudents: maxCapacity,
+      minAge,
+      maxAge
+    };
+  } catch (error) {
+    console.error('Error fetching main page schedule data:', error);
+    return null;
+  }
+}
+
 export async function checkScheduleConflicts(
   studentId: string,
   newClassId: string,
