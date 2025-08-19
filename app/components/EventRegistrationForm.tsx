@@ -243,20 +243,40 @@ export function EventRegistrationForm({
       // Add existing student data to form
       const existingStudent = familyData?.students.find(s => s.id === studentId);
       if (existingStudent) {
-          setFormData(prev => ({
-            ...prev,
-            students: [...prev.students, {
-              id: existingStudent.id,
-              firstName: existingStudent.firstName,
-              lastName: existingStudent.lastName,
-              dateOfBirth: existingStudent.dateOfBirth,
-              beltRank: existingStudent.beltRank,
-              emergencyContactName: prev.parentFirstName + ' ' + prev.parentLastName,
-              emergencyContactPhone: prev.parentPhone || '',
-              emergencyContactRelation: 'Parent',
-              isExistingStudent: true
-            }]
-          }));
+        setFormData(prev => {
+          // Find the first empty student slot (where firstName is empty and not an existing student)
+          const firstEmptyIndex = prev.students.findIndex(student => 
+            !student.firstName && !student.isExistingStudent
+          );
+          
+          const newStudentData = {
+            id: existingStudent.id,
+            firstName: existingStudent.firstName,
+            lastName: existingStudent.lastName,
+            dateOfBirth: existingStudent.dateOfBirth,
+            beltRank: existingStudent.beltRank,
+            emergencyContactName: prev.parentFirstName + ' ' + prev.parentLastName,
+            emergencyContactPhone: prev.parentPhone || '',
+            emergencyContactRelation: 'Parent',
+            isExistingStudent: true
+          };
+          
+          if (firstEmptyIndex !== -1) {
+            // Fill the first empty student slot
+            const updatedStudents = [...prev.students];
+            updatedStudents[firstEmptyIndex] = newStudentData;
+            return {
+              ...prev,
+              students: updatedStudents
+            };
+          } else {
+            // If no empty slots, add as new student
+            return {
+              ...prev,
+              students: [...prev.students, newStudentData]
+            };
+          }
+        });
       }
     } else {
       newSelected.delete(studentId);
