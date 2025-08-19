@@ -4,7 +4,7 @@ import { useLoaderData, useActionData } from "@remix-run/react";
 import { InvoiceForm } from "~/components/InvoiceForm";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntities } from "~/services/invoice-entity.server";
-import { getInvoiceById, getInvoiceByNumber, updateInvoice } from "~/services/invoice.server";
+import { getInvoiceById, updateInvoice } from "~/services/invoice.server";
 import { getActiveTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
@@ -35,7 +35,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   try {
     // Get the invoice, entities, and tax rates
     const [invoice, entitiesResult, taxRates] = await Promise.all([
-      getInvoiceByNumber(id),
+      getInvoiceById(id),
       getInvoiceEntities(),
       getActiveTaxRates()
     ]);

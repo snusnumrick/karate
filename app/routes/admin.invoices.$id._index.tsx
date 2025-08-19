@@ -8,7 +8,6 @@ import { Alert, AlertDescription } from "~/components/ui/alert";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import {
   getInvoiceById,
-  getInvoiceByNumber,
   updateInvoiceStatus,
   deleteInvoice,
 } from "~/services/invoice.server";
@@ -41,7 +40,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
   
   try {
-    const invoice = await getInvoiceByNumber(id);
+    const invoice = await getInvoiceById(id);
     if (!invoice) {
       throw new Response("Invoice not found", { status: 404 });
     }
@@ -83,7 +82,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         return redirect("/admin/invoices");
         
       case "send_email": {
-        const invoice = await getInvoiceByNumber(id);
+        const invoice = await getInvoiceById(id);
         if (!invoice) {
           return json({ error: "Invoice not found" }, { status: 404 });
         }

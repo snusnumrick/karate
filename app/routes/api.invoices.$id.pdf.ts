@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from '@remix-run/node';
 import { json } from '@remix-run/node';
 import { requireAdminUser } from '~/utils/auth.server';
-import { getInvoiceById, getInvoiceByNumber } from '~/services/invoice.server';
+import { getInvoiceById } from '~/services/invoice.server';
 import { generateInvoicePDF, getDefaultCompanyInfo, generateInvoiceFilename } from '~/utils/pdf-generator';
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
