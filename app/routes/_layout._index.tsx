@@ -9,6 +9,7 @@ import { mergeMeta } from "~/utils/meta";
 import { useEffect, useState } from "react";
 import { getScheduleData } from "~/utils/site-data.client";
 import { formatTime } from "~/utils/schedule";
+import { formatDate } from "~/utils/misc";
 // Server imports moved to loader function only
 
 type UpcomingEventWithFormatted = UpcomingEvent & {
@@ -350,19 +351,9 @@ export default function Index() {
                                             <div className="flex items-center">
                                                 <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
                                                 <span>
-                                                    {new Date(event.start_date).toLocaleDateString('en-CA', {
-                                                        weekday: 'short',
-                                                        year: 'numeric',
-                                                        month: 'short',
-                                                        day: 'numeric'
-                                                    })}
+                                                    {formatDate(event.start_date)}
                                                     {event.end_date && event.end_date !== event.start_date && (
-                                                        <> - {new Date(event.end_date).toLocaleDateString('en-CA', {
-                                                            weekday: 'short',
-                                                            year: 'numeric',
-                                                            month: 'short',
-                                                            day: 'numeric'
-                                                        })}</>
+                                                        <> - {formatDate(event.end_date)}</>
                                                     )}
                                                 </span>
                                             </div>
@@ -398,12 +389,7 @@ export default function Index() {
                                         {event.status === 'registration_open' && event.registration_deadline && (
                                             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                                                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                                                    <strong>Registration deadline:</strong> {new Date(event.registration_deadline).toLocaleDateString('en-CA', {
-                                                        weekday: 'short',
-                                                        year: 'numeric',
-                                                        month: 'short',
-                                                        day: 'numeric'
-                                                    })}
+                                                    <strong>Registration deadline:</strong> {formatDate(event.registration_deadline)}
                                                 </p>
                                             </div>
                                         )}
