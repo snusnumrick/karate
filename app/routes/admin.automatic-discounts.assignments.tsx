@@ -54,7 +54,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       } else if (status === 'used') {
         query = query.gte('discount_codes.current_uses', 1);
       } else if (status === 'expired') {
-        query = query.lt('valid_until', new Date().toISOString());
+        query = query.lt('expires_at', new Date().toISOString());
       }
     }
 
@@ -82,7 +82,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       .select(`
         id,
         discount_codes!inner(current_uses, is_active),
-        valid_until
+        expires_at
       `);
 
     let totalAssignments = 0;
@@ -95,13 +95,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
       const now = new Date();
       
       stats.forEach(assignment => {
-        if ((assignment.discount_codes as { is_active?: boolean })?.is_active) {
+        const discountCode = assignment.discount_codes as { is_active?: boolean; current_uses?: number } | null;
+        if (discountCode?.is_active) {
           activeAssignments++;
         }
-        if ((assignment.discount_codes as { current_uses?: number })?.current_uses as number > 0) {
+        if (discountCode?.current_uses && discountCode.current_uses > 0) {
           usedAssignments++;
         }
-        if (assignment.valid_until && new Date(assignment.valid_until) < now) {
+        if (assignment.expires_at && new Date(assignment.expires_at) < now) {
           expiredAssignments++;
         }
       });
@@ -149,12 +150,15 @@ export default function DiscountAssignments() {
     setSearchParams(newParams);
   };
 
-  const getStatusBadge = (assignment: Record<string, unknown>) => {
+  const getStatusBadge = (assignment: {
+    expires_at?: string | null;
+    discount_codes?: { is_active?: boolean; current_uses?: number } | null;
+  }) => {
     const now = new Date();
-    const validUntil = assignment.valid_until ? new Date(assignment.valid_until as string) : null;
-    const isExpired = validUntil && validUntil < now;
-    const isUsed = (assignment.discount_codes as { current_uses?: number })?.current_uses as number > 0;
-    const isActive = (assignment.discount_codes as { is_active?: boolean })?.is_active;
+    const expiresAt = assignment.expires_at ? new Date(assignment.expires_at) : null;
+    const isExpired = expiresAt && expiresAt < now;
+    const isUsed = assignment.discount_codes?.current_uses && assignment.discount_codes.current_uses > 0;
+    const isActive = assignment.discount_codes?.is_active;
 
     if (isExpired) {
       return (
@@ -389,7 +393,7 @@ export default function DiscountAssignments() {
                           {assignment.discount_codes?.code}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Used: {assignment.discount_codes?.current_uses || 0}{assignment.discount_codes?.usage_type === 'one_time' ? '' : `/${assignment.discount_codes?.max_uses || '∞'}`}
+          Used: {assignment.discount_codes?.current_uses || 0}/{assignment.discount_codes?.max_uses || '∞'}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -414,8 +418,8 @@ export default function DiscountAssignments() {
                         {getStatusBadge(assignment)}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {assignment.valid_until 
-                          ? formatDate(assignment.valid_until, { formatString: 'MMM d, yyyy' })
+                        {assignment.expires_at 
+                          ? formatDate(assignment.expires_at, { formatString: 'MMM d, yyyy' })
                           : 'No expiration'
                         }
                       </TableCell>

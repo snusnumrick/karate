@@ -2,7 +2,6 @@ import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { getFamilyDetails } from "~/services/family.server";
 import { requireApiAuth } from "~/utils/api-auth.server"; // Import auth helper
-import type { Database } from "~/types/database.types"; // Import Database type
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 

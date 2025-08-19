@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useFetcher, useNavigate, useActionData } from '@remix-run/react';
+import { useFetcher, useNavigate } from '@remix-run/react';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
@@ -11,7 +11,7 @@ import { Separator } from '~/components/ui/separator';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { PaymentForm } from '~/components/PaymentForm';
 import { AlertCircle, User, Users, CreditCard, CheckCircle } from 'lucide-react';
-import type { StudentPaymentDetail, EligibilityStatus } from '~/types/payment';
+import type { StudentPaymentDetail } from '~/types/payment';
 
 // Event type definition
 interface Event {
@@ -36,6 +36,8 @@ interface StudentRegistration {
   lastName: string;
   dateOfBirth: string;
   beltRank: string;
+  gender?: string;
+  school?: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
   emergencyContactRelation: string;
@@ -119,7 +121,6 @@ export function EventRegistrationForm({
   onSuccess 
 }: EventRegistrationFormProps) {
   const fetcher = useFetcher<ActionResponse>();
-  const actionData = useActionData<any>();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<'registration' | 'payment' | 'success'>('registration');
   const [formData, setFormData] = useState<RegistrationFormData>({

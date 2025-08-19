@@ -1,12 +1,11 @@
 import {useEffect, useRef, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
 import {useFetcher, useLoaderData} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Database, Tables} from "~/types/database.types";
 import MessageView from "~/components/MessageView";
 import MessageInput from "~/components/MessageInput";
 import { REALTIME_SUBSCRIBE_STATES, type SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { notificationService } from "~/utils/notifications.client";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getSupabaseClient } from "~/utils/supabase.client";

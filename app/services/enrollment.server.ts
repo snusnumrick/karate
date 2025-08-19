@@ -11,6 +11,7 @@ import type {
 import { checkScheduleConflicts } from './class.server';
 import { checkProgramEligibility } from './program.server';
 import { recordStudentEnrollmentEvent } from '~/utils/auto-discount-events.server';
+import { mapEnrollmentClassNullToUndefined } from '~/utils/mappers';
 
 /**
  * Enroll a student in a class with validation
@@ -79,9 +80,8 @@ export async function enrollStudent(
       .select(`
         *,
         class:classes(
-          id,
-          name,
-          program:programs(name)
+          *,
+          program:programs(*)
         ),
         student:students(
           id,
@@ -107,7 +107,13 @@ export async function enrollStudent(
       await recordStudentEnrollmentEvent(data.student.id, data.student.family_id);
     }
 
-    return data;
+    return {
+    ...data,
+    completed_at: data.completed_at ?? undefined,
+    dropped_at: data.dropped_at ?? undefined,
+    notes: data.notes ?? undefined,
+    class: mapEnrollmentClassNullToUndefined(data.class),
+  };
   }
 
   // For new enrollments or existing active/waitlist enrollments, proceed with validation
@@ -153,9 +159,8 @@ export async function enrollStudent(
     .select(`
       *,
       class:classes(
-        id,
-        name,
-        program:programs(name)
+        *,
+        program:programs(*)
       ),
       student:students(
         id,
@@ -181,7 +186,39 @@ export async function enrollStudent(
     await recordStudentEnrollmentEvent(data.student.id, data.student.family_id);
   }
 
-  return data;
+  return {
+    ...data,
+    completed_at: data.completed_at || undefined,
+    dropped_at: data.dropped_at || undefined,
+    notes: data.notes || undefined,
+    class: {
+      ...data.class,
+      description: data.class.description || undefined,
+      max_capacity: data.class.max_capacity || undefined,
+      instructor_id: data.class.instructor_id || undefined,
+      program: {
+           ...data.class.program,
+            description: data.class.program.description || undefined,
+            max_capacity: data.class.program.max_capacity || undefined,
+            belt_rank_required: data.class.program.belt_rank_required || false,
+            gender_restriction: (data.class.program.gender_restriction as 'male' | 'female' | 'none') || undefined,
+            individual_session_fee: data.class.program.individual_session_fee || undefined,
+            yearly_fee: data.class.program.yearly_fee || undefined,
+            min_sessions_per_week: data.class.program.min_sessions_per_week || undefined,
+            max_sessions_per_week: data.class.program.max_sessions_per_week || undefined,
+            monthly_fee: data.class.program.monthly_fee || undefined,
+            registration_fee: data.class.program.registration_fee || undefined,
+            min_belt_rank: data.class.program.min_belt_rank || undefined,
+            max_belt_rank: data.class.program.max_belt_rank || undefined,
+            sessions_per_week: data.class.program.sessions_per_week || undefined,
+            min_age: data.class.program.min_age || undefined,
+            max_age: data.class.program.max_age || undefined,
+            special_needs_support: data.class.program.special_needs_support || undefined,
+            prerequisite_programs: data.class.program.prerequisite_programs || undefined,
+            duration_minutes: data.class.program.duration_minutes || undefined
+         }
+    }
+  };
 }
 
 /**
@@ -208,9 +245,8 @@ export async function updateEnrollment(
     .select(`
       *,
       class:classes(
-        id,
-        name,
-        program:programs(name)
+        *,
+        program:programs(*)
       ),
       student:students(
         id,
@@ -231,7 +267,39 @@ export async function updateEnrollment(
     await processWaitlist(data.class_id, supabase);
   }
 
-  return data;
+  return {
+    ...data,
+    completed_at: data.completed_at || undefined,
+    dropped_at: data.dropped_at || undefined,
+    notes: data.notes || undefined,
+    class: {
+      ...data.class,
+      description: data.class.description || undefined,
+      max_capacity: data.class.max_capacity || undefined,
+      instructor_id: data.class.instructor_id || undefined,
+      program: {
+        ...data.class.program,
+        description: data.class.program.description || undefined,
+        max_capacity: data.class.program.max_capacity || undefined,
+        belt_rank_required: data.class.program.belt_rank_required || false,
+        gender_restriction: (data.class.program.gender_restriction as 'male' | 'female' | 'none') || undefined,
+         individual_session_fee: data.class.program.individual_session_fee || undefined,
+         yearly_fee: data.class.program.yearly_fee || undefined,
+         min_sessions_per_week: data.class.program.min_sessions_per_week || undefined,
+         max_sessions_per_week: data.class.program.max_sessions_per_week || undefined,
+         monthly_fee: data.class.program.monthly_fee || undefined,
+         registration_fee: data.class.program.registration_fee || undefined,
+         min_belt_rank: data.class.program.min_belt_rank || undefined,
+         max_belt_rank: data.class.program.max_belt_rank || undefined,
+         sessions_per_week: data.class.program.sessions_per_week || undefined,
+         min_age: data.class.program.min_age || undefined,
+         max_age: data.class.program.max_age || undefined,
+         special_needs_support: data.class.program.special_needs_support || undefined,
+         prerequisite_programs: data.class.program.prerequisite_programs || undefined,
+         duration_minutes: data.class.program.duration_minutes || undefined
+      }
+    }
+  };
 }
 
 /**
@@ -277,9 +345,8 @@ export async function getEnrollments(
     .select(`
       *,
       class:classes(
-        id,
-        name,
-        program:programs(name)
+        *,
+        program:programs(*)
       ),
       student:students(
         id,
@@ -323,7 +390,13 @@ export async function getEnrollments(
     throw new Error(`Failed to fetch enrollments: ${error.message}`);
   }
 
-  return data || [];
+  return (data || []).map(enrollment => ({
+    ...enrollment,
+    completed_at: enrollment.completed_at ?? undefined,
+    dropped_at: enrollment.dropped_at ?? undefined,
+    notes: enrollment.notes ?? undefined,
+    class: mapEnrollmentClassNullToUndefined(enrollment.class),
+  }));
 }
 
 
@@ -671,9 +744,8 @@ export async function getEnrollmentById(
     .select(`
       *,
       class:classes(
-        id,
-        name,
-        program:programs(name)
+        *,
+        program:programs(*)
       ),
       student:students(
         id,
@@ -693,5 +765,37 @@ export async function getEnrollmentById(
     throw new Error(`Failed to fetch enrollment: ${error.message}`);
   }
 
-  return data;
+  return {
+    ...data,
+    completed_at: data.completed_at || undefined,
+    dropped_at: data.dropped_at || undefined,
+    notes: data.notes || undefined,
+    class: {
+      ...data.class,
+      description: data.class.description || undefined,
+      max_capacity: data.class.max_capacity || undefined,
+      instructor_id: data.class.instructor_id || undefined,
+      program: {
+        ...data.class.program,
+        description: data.class.program.description || undefined,
+        max_capacity: data.class.program.max_capacity || undefined,
+        belt_rank_required: data.class.program.belt_rank_required || false,
+        gender_restriction: (data.class.program.gender_restriction as 'male' | 'female' | 'none') || undefined,
+        individual_session_fee: data.class.program.individual_session_fee || undefined,
+        yearly_fee: data.class.program.yearly_fee || undefined,
+        min_sessions_per_week: data.class.program.min_sessions_per_week || undefined,
+        max_sessions_per_week: data.class.program.max_sessions_per_week || undefined,
+        monthly_fee: data.class.program.monthly_fee || undefined,
+        registration_fee: data.class.program.registration_fee || undefined,
+        min_belt_rank: data.class.program.min_belt_rank || undefined,
+        max_belt_rank: data.class.program.max_belt_rank || undefined,
+        sessions_per_week: data.class.program.sessions_per_week || undefined,
+        min_age: data.class.program.min_age || undefined,
+        max_age: data.class.program.max_age || undefined,
+        special_needs_support: data.class.program.special_needs_support || undefined,
+        prerequisite_programs: data.class.program.prerequisite_programs || undefined,
+        duration_minutes: data.class.program.duration_minutes || undefined
+      }
+    }
+  };
 }

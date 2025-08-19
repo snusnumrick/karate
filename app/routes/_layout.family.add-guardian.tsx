@@ -1,8 +1,7 @@
 import {useEffect, useRef} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
-import { getSupabaseAdminClient } from '~/utils/supabase.server';
+import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Input} from "~/components/ui/input";

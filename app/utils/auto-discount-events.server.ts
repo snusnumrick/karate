@@ -230,7 +230,7 @@ export async function batchProcessExistingData(): Promise<void> {
       try {
         const { data: firstPayment, error: paymentError } = await supabase
           .from('payments')
-          .select('id, amount, created_at')
+          .select('id, total_amount, created_at')
           .eq('family_id', family.id)
           .eq('status', 'succeeded')
           .order('created_at')
@@ -239,14 +239,14 @@ export async function batchProcessExistingData(): Promise<void> {
         
         if (!paymentError && firstPayment) {
           await AutoDiscountService.recordEvent({
-            event_type: 'first_payment',
-            family_id: family.id,
-            event_data: {
-              payment_amount: firstPayment.amount,
-              payment_date: firstPayment.created_at,
-              retroactive: true,
-            },
-          });
+              event_type: 'first_payment',
+              family_id: family.id,
+              event_data: {
+                payment_amount: firstPayment.total_amount,
+                payment_date: firstPayment.created_at,
+                retroactive: true,
+              },
+            });
         }
       } catch {
         // Ignore errors for families without payments

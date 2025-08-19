@@ -1,6 +1,84 @@
 import type {Database} from '~/types/database.types';
 import type {AttendanceRecord, Family, Guardian, Payment, Student, Waiver, WaiverSignature} from '~/types/models';
+import type {Program, Class, ClassSession} from '~/types/multi-class';
 import {PaymentStatus} from "~/types/models"; // Import the enum
+
+// Utility function to convert null values to undefined in an object
+export function nullToUndefined<T extends Record<string, unknown>>(obj: T): { [K in keyof T]: T[K] extends null ? undefined : T[K] } {
+  const result = {} as { [K in keyof T]: T[K] extends null ? undefined : T[K] };
+  for (const [key, value] of Object.entries(obj)) {
+    (result as Record<string, unknown>)[key] = value === null ? undefined : value;
+  }
+  return result;
+}
+
+// Utility function to map program object with null-to-undefined conversion
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapProgramNullToUndefined(program: any): Program {
+  return nullToUndefined(program) as Program;
+}
+
+// Utility function to map instructor object with null-to-undefined conversion
+export function mapInstructorNullToUndefined(instructor: { id: string; first_name: string | null; last_name: string | null; email: string }) {
+  return {
+    id: instructor.id,
+    first_name: instructor.first_name ?? '',
+    last_name: instructor.last_name ?? '',
+    email: instructor.email,
+  };
+}
+
+// Utility function to map session object with null-to-undefined conversion
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapSessionNullToUndefined(session: any): ClassSession {
+  const mapped = nullToUndefined(session);
+  return {
+    ...mapped,
+    status: session.status as 'completed' | 'cancelled' | 'scheduled'
+  } as ClassSession;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapClassNullToUndefined(classObj: any): Class & { program: Program } {
+  const mappedClass = nullToUndefined(classObj);
+  return {
+    ...mappedClass,
+    program: mapProgramNullToUndefined(classObj.program)
+  } as Class & { program: Program };
+}
+
+export function mapEnrollmentProgramNullToUndefined(program: Program) {
+  return {
+    ...program,
+    description: program.description ?? undefined,
+    max_capacity: program.max_capacity ?? undefined,
+    belt_rank_required: program.belt_rank_required ?? false,
+    gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') ?? undefined,
+    individual_session_fee: program.individual_session_fee ?? undefined,
+    yearly_fee: program.yearly_fee ?? undefined,
+    min_sessions_per_week: program.min_sessions_per_week ?? undefined,
+    max_sessions_per_week: program.max_sessions_per_week ?? undefined,
+    monthly_fee: program.monthly_fee ?? undefined,
+    registration_fee: program.registration_fee ?? undefined,
+    min_belt_rank: program.min_belt_rank ?? undefined,
+    max_belt_rank: program.max_belt_rank ?? undefined,
+    sessions_per_week: program.sessions_per_week ?? undefined,
+    min_age: program.min_age ?? undefined,
+    max_age: program.max_age ?? undefined,
+    special_needs_support: program.special_needs_support ?? undefined,
+    prerequisite_programs: program.prerequisite_programs ?? undefined,
+    duration_minutes: program.duration_minutes ?? undefined,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapEnrollmentClassNullToUndefined(classObj: any): Class & { program: Program } {
+  const mappedClass = nullToUndefined(classObj);
+  return {
+    ...mappedClass,
+    program: mapEnrollmentProgramNullToUndefined(classObj.program)
+  } as Class & { program: Program };
+}
 
 
 // Convert database student row to Student type

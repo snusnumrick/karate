@@ -70,7 +70,7 @@ export interface ClassEnrollment {
   class_id: string;
   student_id: string;
   program_id: string;
-  status: 'active' | 'dropped' | 'completed' | 'waitlist' | 'trial';
+  status: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial';
   enrolled_at: string;
   completed_at?: string;
   dropped_at?: string;
@@ -177,7 +177,7 @@ export interface UpdateEnrollmentData {
   id: string;
   class_id?: string;
   student_id?: string;
-  status?: 'active' | 'dropped' | 'completed' | 'waitlist' | 'trial';
+  status?: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial';
   notes?: string;
 }
 
@@ -212,7 +212,7 @@ export interface EnrollmentFilters {
   class_id?: string;
   student_id?: string;
   family_id?: string;
-  status?: 'active' | 'dropped' | 'completed' | 'waitlist' | 'trial';
+  status?: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial';
   enrollment_date_from?: string;
   enrollment_date_to?: string;
 }

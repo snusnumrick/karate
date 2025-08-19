@@ -1,9 +1,9 @@
-import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node';
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node';
 import { useLoaderData, Link } from '@remix-run/react';
 import { EventService } from '~/services/event.server';
 import { siteConfig } from '~/config/site';
 import { Button } from '~/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import {Card, CardContent} from '~/components/ui/card';
 import { EventRegistrationForm } from '~/components/EventRegistrationForm';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import type { Database, Tables, TablesInsert } from '~/types/database.types';
@@ -43,7 +43,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
   try {
     // Parse registration data
     const registrationData = JSON.parse(formData.get("registrationData") as string);
-    const { parentInfo, students, waiverAccepted, marketingOptIn } = registrationData;
+    const { parentInfo, students } = registrationData;
 
     // Get user session
     const { data: { user } } = await supabaseServer.auth.getUser();
@@ -102,8 +102,8 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
             first_name: student.firstName,
             last_name: student.lastName,
             birth_date: student.dateOfBirth,
-            gender: (student as any).gender || 'other',
-            school: (student as any).school || 'Not specified',
+            gender: student.gender || 'other',
+            school: student.school || 'Not specified',
             cell_phone: student.emergencyContactPhone || null,
             t_shirt_size: 'AM' as Database['public']['Enums']['t_shirt_size_enum'],
             allergies: student.allergies || null,

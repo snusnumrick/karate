@@ -7,6 +7,8 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
+import { getEventTypeColorWithBorder } from "~/utils/event-helpers.server";
+import {formatEventTypeName} from "~/utils/event-helpers.client";
 // Server-side imports moved to loader function
 
 
@@ -96,9 +98,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Event not found", { status: 404 });
   }
 
-  const eventHelpers = await import("~/utils/event-helpers.server");
-  const eventTypeColor = await eventHelpers.getEventTypeColorWithBorder(event.event_type_id, request);
-  const formattedEventType = eventHelpers.formatEventTypeName(event.event_type_id);
+  const eventTypeColor = await getEventTypeColorWithBorder(event.event_type?.name || 'other', request);
+  const formattedEventType = formatEventTypeName(event.event_type?.name || 'other');
 
   return json({ event, eventTypeColor, formattedEventType });
 }

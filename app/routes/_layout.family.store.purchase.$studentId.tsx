@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
-import { getSupabaseServerClient, createInitialPaymentRecord } from "~/utils/supabase.server";
-import { getSupabaseAdminClient } from '~/utils/supabase.server'; // Import admin client helper
+import { getSupabaseServerClient, createInitialPaymentRecord, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
@@ -14,7 +13,6 @@ import { formatCurrency } from "~/utils/misc"; // Assuming you have a currency f
 import { siteConfig } from "~/config/site"; // For tax calculation consistency
 import { Info } from 'lucide-react'; // Added Info icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { T_SHIRT_SIZE_VALUES } from "~/constants/tShirtSizes";
 
 // --- Helper Function for Size Recommendation ---
 const tShirtToUniformSizeMap: Record<Database['public']['Enums']['t_shirt_size_enum'], string> = {

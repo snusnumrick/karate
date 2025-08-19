@@ -6,7 +6,10 @@ import type {
   ApplyDiscountRequest,
   DiscountValidationResult,
   DiscountCodeWithUsage,
-  ApplicableTo
+  ApplicableTo,
+  DiscountType,
+  UsageType,
+  DiscountScope
 } from '~/types/discount';
 import type { ExtendedSupabaseClient } from '~/types/supabase-extensions';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
@@ -30,7 +33,20 @@ export class DiscountService {
       throw new Error(`Failed to fetch active discount codes: ${error.message}`);
     }
 
-    return data || [];
+    // Map null to undefined for optional properties
+    return (data || []).map(item => ({
+      ...item,
+      description: item.description ?? undefined,
+      max_uses: item.max_uses ?? undefined,
+      valid_until: item.valid_until ?? undefined,
+      created_by: item.created_by ?? undefined,
+      family_id: item.family_id ?? undefined,
+      student_id: item.student_id ?? undefined,
+      discount_type: item.discount_type as DiscountType,
+      usage_type: item.usage_type as UsageType,
+      applicable_to: item.applicable_to as ApplicableTo,
+      scope: item.scope as DiscountScope,
+    }));
   }
 
   /**
@@ -57,8 +73,9 @@ export class DiscountService {
 
     // Get creator information for codes that have created_by
     const creatorIds = codes
-      .filter((code: DiscountCode) => code.created_by)
-      .map((code: DiscountCode) => code.created_by);
+      .filter((code) => code.created_by)
+      .map((code) => code.created_by)
+      .filter((id): id is string => id !== null && id !== undefined);
 
     let creators: Array<{ id: string; email: string; first_name: string | null; last_name: string | null }> = [];
     if (creatorIds.length > 0) {
@@ -74,10 +91,16 @@ export class DiscountService {
     }
 
     // Map creators to codes
-     const codesWithCreators = codes.map((code: DiscountCode) => {
+     const codesWithCreators = codes.map((code) => {
        const creator = creators.find(c => c.id === code.created_by);
        const result = {
          ...code,
+         description: code.description ?? undefined,
+         max_uses: code.max_uses ?? undefined,
+         valid_until: code.valid_until ?? undefined,
+         created_by: code.created_by ?? undefined,
+         family_id: code.family_id ?? undefined,
+         student_id: code.student_id ?? undefined,
          creator: creator ? {
             ...creator,
             full_name: (() => {
@@ -105,7 +128,7 @@ export class DiscountService {
          final_amount,
          used_at
        `)
-       .in('discount_code_id', codesWithCreators.map((code: DiscountCodeWithUsage) => code.id))
+       .in('discount_code_id', codesWithCreators.map((code) => code.id))
        .order('used_at', { ascending: false });
 
      if (usageError) {
@@ -113,10 +136,13 @@ export class DiscountService {
      }
 
      // Combine the data
-     return codesWithCreators.map((code: DiscountCodeWithUsage) => {
-       const codeUsage = (usageData || []).filter((usage: DiscountCodeUsage) => usage.discount_code_id === code.id);
+     return codesWithCreators.map((code) => {
+       const codeUsage = (usageData || []).filter((usage) => usage.discount_code_id === code.id);
        return {
          ...code,
+         discount_type: code.discount_type as DiscountType,
+         usage_type: code.usage_type as UsageType,
+         scope: code.scope as DiscountScope,
          usage_count: codeUsage.length,
          recent_usage: codeUsage.slice(0, 5)
        };
@@ -140,7 +166,20 @@ export class DiscountService {
       throw new Error(`Failed to fetch discount code: ${error.message}`);
     }
 
-    return data;
+    // Map null to undefined for optional properties
+    return {
+      ...data,
+      description: data.description ?? undefined,
+      max_uses: data.max_uses ?? undefined,
+      valid_until: data.valid_until ?? undefined,
+      created_by: data.created_by ?? undefined,
+      family_id: data.family_id ?? undefined,
+      student_id: data.student_id ?? undefined,
+      discount_type: data.discount_type as DiscountType,
+      usage_type: data.usage_type as UsageType,
+      applicable_to: data.applicable_to as ApplicableTo,
+      scope: data.scope as DiscountScope,
+    };
   }
 
   /**
@@ -161,7 +200,20 @@ export class DiscountService {
       throw new Error(`Failed to fetch discount code: ${error.message}`);
     }
 
-    return data;
+    // Map null to undefined for optional properties
+    return {
+      ...data,
+      description: data.description ?? undefined,
+      max_uses: data.max_uses ?? undefined,
+      valid_until: data.valid_until ?? undefined,
+      created_by: data.created_by ?? undefined,
+      family_id: data.family_id ?? undefined,
+      student_id: data.student_id ?? undefined,
+      discount_type: data.discount_type as DiscountType,
+      usage_type: data.usage_type as UsageType,
+      applicable_to: data.applicable_to as ApplicableTo,
+      scope: data.scope as DiscountScope,
+    };
   }
 
   /**
@@ -200,7 +252,20 @@ export class DiscountService {
       throw new Error(`Failed to create discount code: ${error.message}`);
     }
 
-    return data;
+    // Map null to undefined for optional properties
+    return {
+      ...data,
+      description: data.description ?? undefined,
+      max_uses: data.max_uses ?? undefined,
+      valid_until: data.valid_until ?? undefined,
+      created_by: data.created_by ?? undefined,
+      family_id: data.family_id ?? undefined,
+      student_id: data.student_id ?? undefined,
+      discount_type: data.discount_type as DiscountType,
+      usage_type: data.usage_type as UsageType,
+      applicable_to: data.applicable_to as ApplicableTo,
+      scope: data.scope as DiscountScope,
+    };
   }
 
   /**
@@ -221,7 +286,20 @@ export class DiscountService {
       throw new Error(`Failed to update discount code: ${error.message}`);
     }
 
-    return data;
+    // Map null to undefined for optional properties
+    return {
+      ...data,
+      description: data.description ?? undefined,
+      max_uses: data.max_uses ?? undefined,
+      valid_until: data.valid_until ?? undefined,
+      created_by: data.created_by ?? undefined,
+      family_id: data.family_id ?? undefined,
+      student_id: data.student_id ?? undefined,
+      discount_type: data.discount_type as DiscountType,
+      usage_type: data.usage_type as UsageType,
+      applicable_to: data.applicable_to as ApplicableTo,
+      scope: data.scope as DiscountScope,
+    };
   }
 
   /**
@@ -276,7 +354,7 @@ export class DiscountService {
       .rpc('validate_discount_code', {
         p_code: request.code,
         p_family_id: request.family_id,
-        p_student_id: request.student_id || null,
+        p_student_id: request.student_id ?? undefined,
         p_subtotal_amount: request.subtotal_amount,
         p_applicable_to: request.applicable_to
       });
@@ -287,9 +365,17 @@ export class DiscountService {
 
     const result = data[0] || { is_valid: false, discount_amount: 0, error_message: 'Unknown error' };
     
+    // Create a properly typed result object
+    const validationResult: DiscountValidationResult = {
+      is_valid: result.is_valid,
+      discount_amount: result.discount_amount,
+      discount_code_id: result.discount_code_id ?? undefined,
+      error_message: result.error_message ?? undefined,
+    };
+    
     // Add the original code to the result for display purposes
     if (result.is_valid) {
-      result.code = request.code;
+      validationResult.code = request.code;
       
       // Fetch the discount name for display purposes
       const { data: discountData } = await supabase
@@ -299,11 +385,11 @@ export class DiscountService {
         .single();
       
       if (discountData) {
-        result.name = discountData.name;
+        validationResult.name = discountData.name;
       }
     }
     
-    return result;
+    return validationResult;
   }
 
   /**

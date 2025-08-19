@@ -1,7 +1,5 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "~/types/database.types"; // Removed unused TablesInsert
 import invariant from "tiny-invariant";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 

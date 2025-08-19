@@ -1,5 +1,7 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { siteConfig } from '~/config/site';
+import type { Database } from '~/types/database.types';
+import { mapProgramNullToUndefined, mapInstructorNullToUndefined, mapSessionNullToUndefined, mapClassNullToUndefined } from '~/utils/mappers';
 import type {
   Class,
   CreateClassData,
@@ -32,7 +34,12 @@ export async function getInstructors(
     throw new Error(`Failed to fetch instructors: ${error.message}`);
   }
 
-  return data || [];
+  return (data || []).map(instructor => ({
+    id: instructor.id,
+    first_name: instructor.first_name || '',
+    last_name: instructor.last_name || '',
+    email: instructor.email
+  }));
 }
 
 /**
@@ -74,7 +81,11 @@ export async function getClassSchedules(
     throw new Error(`Failed to fetch class schedules: ${error.message}`);
   }
 
-  return data || [];
+  return (data || []).map(schedule => ({
+    id: schedule.id,
+    day_of_week: schedule.day_of_week,
+    start_time: schedule.start_time
+  }));
 }
 
 /**
@@ -102,7 +113,7 @@ export async function updateClassSchedules(
       .insert(
         schedules.map(schedule => ({
           class_id: classId,
-          day_of_week: schedule.day_of_week,
+          day_of_week: schedule.day_of_week as Database['public']['Enums']['day_of_week'],
           start_time: schedule.start_time
         }))
       );
@@ -284,7 +295,14 @@ export async function getClasses(
     throw new Error(`Failed to fetch classes: ${error.message}`);
   }
 
-  return data || [];
+  return (data || []).map(item => ({
+    ...item,
+    description: item.description ?? undefined,
+    max_capacity: item.max_capacity ?? undefined,
+    instructor_id: item.instructor_id ?? undefined,
+    instructor: item.instructor ? mapInstructorNullToUndefined(item.instructor) : undefined,
+    program: item.program ? mapProgramNullToUndefined(item.program) : item.program
+  }));
 }
 
 /**
@@ -309,6 +327,10 @@ export async function getClassById(
       return null; // Not found
     }
     throw new Error(`Failed to fetch class: ${error.message}`);
+  }
+
+  if (!data.program) {
+    throw new Error(`Class ${id} has invalid program reference`);
   }
 
   // Get additional details
@@ -403,9 +425,14 @@ export async function getClassById(
 
   return {
     ...data,
+    description: data.description ?? undefined,
+    max_capacity: data.max_capacity ?? undefined,
+    instructor_id: data.instructor_id ?? undefined,
+    program: mapProgramNullToUndefined(data.program),
+    instructor: data.instructor ? mapInstructorNullToUndefined(data.instructor) : undefined,
     enrollment_count: enrollments.length,
-    next_session: nextSession || nextScheduledTime || undefined,
-    recent_sessions: sessions,
+    next_session: nextSession ? mapSessionNullToUndefined(nextSession) : undefined,
+    recent_sessions: sessions.map(session => mapSessionNullToUndefined(session)),
   };
 }
 
@@ -477,7 +504,12 @@ export async function createClassSession(
     throw new Error(`Failed to create session: ${error.message}`);
   }
 
-  return data;
+  return {
+    ...data,
+    status: data.status as 'scheduled' | 'completed' | 'cancelled',
+    notes: data.notes ?? undefined,
+    instructor_id: data.instructor_id ?? undefined,
+  };
 }
 
 /**
@@ -512,7 +544,12 @@ export async function updateClassSession(
     throw new Error(`Failed to update session: ${error.message}`);
   }
 
-  return data;
+  return {
+    ...data,
+    status: data.status as 'scheduled' | 'completed' | 'cancelled',
+    notes: data.notes ?? undefined,
+    instructor_id: data.instructor_id ?? undefined,
+  };
 }
 
 /**
@@ -640,7 +677,37 @@ export async function getClassSessionById(
     .from('class_sessions')
     .select(`
       *,
-      class:classes(id, name, program:programs(name))
+      class:classes(
+        id, 
+        name, 
+        description, 
+        program_id, 
+        instructor_id, 
+        max_capacity, 
+        is_active, 
+        created_at, 
+        updated_at,
+        program:programs(
+          id,
+          name,
+          description,
+          min_belt_rank,
+          max_belt_rank,
+          min_age,
+          max_age,
+          gender_restriction,
+          special_needs_support,
+          prerequisite_programs,
+          sessions_per_week,
+          duration_minutes,
+          max_capacity,
+          monthly_fee,
+          yearly_fee,
+          is_active,
+          created_at,
+          updated_at
+        )
+      )
     `)
     .eq('id', id)
     .single();
@@ -652,7 +719,13 @@ export async function getClassSessionById(
     throw new Error(`Failed to fetch class session: ${error.message}`);
   }
 
-  return data as ClassSession;
+  return {
+    ...data,
+    status: data.status as 'scheduled' | 'completed' | 'cancelled',
+    notes: data.notes ?? undefined,
+    instructor_id: data.instructor_id ?? undefined,
+    class: data.class ? mapClassNullToUndefined(data.class) : undefined,
+  };
 }
 
 /**
@@ -666,7 +739,37 @@ export async function getClassSessions(
     .from('class_sessions')
     .select(`
       *,
-      class:classes(id, name, program:programs(name))
+      class:classes(
+        id, 
+        name, 
+        description, 
+        program_id, 
+        instructor_id, 
+        max_capacity, 
+        is_active, 
+        created_at, 
+        updated_at,
+        program:programs(
+          id,
+          name,
+          description,
+          min_belt_rank,
+          max_belt_rank,
+          min_age,
+          max_age,
+          gender_restriction,
+          special_needs_support,
+          prerequisite_programs,
+          sessions_per_week,
+          duration_minutes,
+          max_capacity,
+          monthly_fee,
+          yearly_fee,
+          is_active,
+          created_at,
+          updated_at
+        )
+      )
     `);
 
   // Apply filters
@@ -696,7 +799,13 @@ export async function getClassSessions(
     throw new Error(`Failed to fetch sessions: ${error.message}`);
   }
 
-  return data || [];
+  return (data || []).map(session => ({
+    ...session,
+    status: session.status as 'scheduled' | 'completed' | 'cancelled',
+    notes: session.notes ?? undefined,
+    instructor_id: session.instructor_id ?? undefined,
+    class: session.class ? mapClassNullToUndefined(session.class) : undefined,
+  }));
 }
 
 /**
@@ -716,7 +825,14 @@ export async function getCalendarEvents(
         id,
         name,
         max_capacity,
-        program:programs(name)
+        program:programs(
+          id,
+          name,
+          description,
+          is_active,
+          created_at,
+          updated_at
+        )
       )
     `)
     .gte('session_date', startDate)
@@ -744,9 +860,14 @@ export async function getCalendarEvents(
     class?: {
       id: string;
       name: string;
-      max_capacity: number;
+      max_capacity: number | null;
       program?: {
+        id: string;
         name: string;
+        description: string | null;
+        is_active: boolean;
+        created_at: string;
+        updated_at: string;
       };
     };
     instructor?: {

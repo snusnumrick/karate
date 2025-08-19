@@ -18,6 +18,15 @@ type ConversationDetails = Tables<'conversations'> & {
     participant_display_names: string | null; // Comma-separated names of family participants
 };
 
+type ProfileWithFamily = {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    role: string | null;
+    family_id: string | null;
+    families: { name: string } | null;
+};
+
 interface LoaderData {
     conversation: ConversationDetails | null; // Updated type
     messages: MessageWithSender[];
@@ -260,7 +269,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     // Process participant names (focus on family names)
     const familyParticipantNames = profilesWithFamilies
         .filter(profile => !['admin', 'instructor'].includes(profile.role)) // Filter for non-admin/instructor profiles
-        .map((profile: any) => {
+        .map((profile: ProfileWithFamily) => {
             if (profile.families?.name) return profile.families.name;
             if (profile.first_name && profile.last_name) return `${profile.first_name} ${profile.last_name}`;
             return `User ${profile.id.substring(0, 6)}`; // Fallback
@@ -687,7 +696,7 @@ export default function AdminConversationView() {
                             supabase.rpc('mark_conversation_as_read', {
                                 p_conversation_id: conversation.id,
                                 p_user_id: userId,
-                            }).then(({ error: markReadError }: { error: any }) => {
+                            }).then(({ error: markReadError }: { error: Error | null }) => {
                                 if (markReadError) {
                                     console.error(`[Admin] Error marking conversation ${conversation.id} as read via RPC after realtime message:`, markReadError.message);
                                 } else {

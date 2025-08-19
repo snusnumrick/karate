@@ -1,23 +1,17 @@
 // Import types needed for merging parent meta
-import type { MetaFunction, MetaArgs, MetaDescriptor } from "@remix-run/node";
+import type { MetaFunction, MetaArgs, MetaDescriptor,  LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
-import { EventService } from "~/services/event.server";
-import type { Database } from "~/types/database.types";
+import { EventService, type UpcomingEvent } from "~/services/event.server";
 import { mergeMeta } from "~/utils/meta";
 import { useEffect, useState } from "react";
 import { getScheduleData } from "~/utils/site-data.client";
 import { formatTime } from "~/utils/schedule";
 // Server imports moved to loader function only
 
-type UpcomingEvent = Pick<Database['public']['Tables']['events']['Row'], 
-  'id' | 'title' | 'description' | 'event_type_id' | 'status' | 'start_date' | 
-  'end_date' | 'start_time' | 'end_time' | 'location' | 'address' | 
-  'max_participants' | 'registration_fee' | 'registration_deadline' | 
-  'external_url' | 'is_public'
-> & {
+type UpcomingEventWithFormatted = UpcomingEvent & {
   formattedEventType: string;
 };
 
@@ -30,13 +24,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
         const eventTypeConfig = await getEventTypeConfigWithDarkMode(request);
         
         // Format event type names on the server side
-        const upcomingEventsWithFormattedTypes = upcomingEvents.map(event => ({
-            ...event,
-            formattedEventType: formatEventTypeName(event.event_type_id || 'other')
+        const upcomingEventsWithFormatted: UpcomingEventWithFormatted[] = upcomingEvents.map(event => ({
+          ...event,
+          formattedEventType: formatEventTypeName(event.event_type?.name || 'other', event.event_type || undefined)
         }));
         
         return json(
-            { upcomingEvents: upcomingEventsWithFormattedTypes, eventTypeConfig },
+            { upcomingEvents: upcomingEventsWithFormatted, eventTypeConfig },
             {
                 headers: {
                     // Cache for 5 minutes (300 seconds) to match server-side cache duration
