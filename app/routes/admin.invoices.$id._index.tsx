@@ -28,7 +28,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Eye
 } from "lucide-react";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -226,8 +227,8 @@ export default function InvoiceDetailPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"
               >
-                <Download className="h-4 w-4" />
-                Download PDF
+                <Eye className="h-4 w-4" />
+                View PDF
               </a>
             </Button>
             <Form method="post" className="inline">

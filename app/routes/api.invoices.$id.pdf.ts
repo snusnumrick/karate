@@ -31,7 +31,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `inline; filename="${filename}"`,
         'Content-Length': pdfBuffer.length.toString(),
         'Cache-Control': 'private, no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
