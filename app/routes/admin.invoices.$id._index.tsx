@@ -402,7 +402,7 @@ export default function InvoiceDetailPage() {
                           </div>
                           <div className="text-right">
                             <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {formatCurrency((itemSubtotal - itemDiscount + itemTax) * 100)}
+                              {formatCurrency((itemSubtotal - itemDiscount + itemTax))}
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
                           </div>
@@ -416,11 +416,11 @@ export default function InvoiceDetailPage() {
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unit Price</div>
-                            <div className="font-medium text-gray-900 dark:text-white">{formatCurrency(item.unit_price * 100)}</div>
+                            <div className="font-medium text-gray-900 dark:text-white">{formatCurrency(item.unit_price)}</div>
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subtotal</div>
-                            <div className="font-medium text-gray-900 dark:text-white">{formatCurrency(itemSubtotal * 100)}</div>
+                            <div className="font-medium text-gray-900 dark:text-white">{formatCurrency(itemSubtotal)}</div>
                           </div>
                         </div>
                         
@@ -506,14 +506,14 @@ export default function InvoiceDetailPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-300">Subtotal:</span>
-                  <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.subtotal * 100)}</span>
+                  <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.subtotal)}</span>
                 </div>
                 
                 {/* Simple Discount Total */}
                 {invoice.discount_amount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-300">Total Discounts:</span>
-                    <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoice.discount_amount * 100)}</span>
+                    <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoice.discount_amount)}</span>
                   </div>
                 )}
                 
@@ -522,7 +522,7 @@ export default function InvoiceDetailPage() {
                   <div className="border-l-2 border-blue-200 dark:border-blue-700 pl-3 py-1 bg-blue-50 dark:bg-blue-900/20">
                     <div className="flex justify-between font-medium">
                       <span className="text-sm text-gray-700 dark:text-gray-200">Total Tax:</span>
-                      <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.tax_amount * 100)}</span>
+                      <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.tax_amount)}</span>
                     </div>
                     <div className="mt-1 space-y-1">
                       {invoice.line_items.length > 1 && invoice.line_items.map((item) => {

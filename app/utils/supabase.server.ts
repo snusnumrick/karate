@@ -221,7 +221,7 @@ export async function createInitialPaymentRecord(
                 continue; // Skip this tax rate
             }
             // Calculate tax on the discounted subtotal
-            const taxAmountForThisRate = Math.round(subtotalAmount * rate);
+            const taxAmountForThisRate = Math.round(subtotalAmount * rate / 100);
             totalTaxAmount += taxAmountForThisRate;
             paymentTaxesToInsert.push({
                 tax_rate_id: taxRate.id,
