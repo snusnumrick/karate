@@ -10,6 +10,40 @@ export type EntityType = 'family' | 'school' | 'government' | 'corporate' | 'oth
 
 export type PaymentTerms = 'Due on Receipt' | 'Net 15' | 'Net 30' | 'Net 60' | 'Net 90';
 
+// Tax Rate types
+export interface TaxRate {
+  id: string;
+  name: string;
+  rate: number;
+  description?: string;
+  region?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceLineItemTax {
+  id: string;
+  invoice_line_item_id: string;
+  tax_rate_id: string;
+  tax_amount: number;
+  tax_name_snapshot: string;
+  tax_rate_snapshot: number;
+  tax_description_snapshot?: string;
+  created_at: string;
+}
+
+export interface InvoicePaymentTax {
+  id: string;
+  payment_id: string;
+  tax_rate_id: string;
+  tax_amount: number;
+  tax_name_snapshot: string;
+  tax_rate_snapshot: number;
+  tax_description_snapshot?: string;
+  created_at: string;
+}
+
 export interface InvoiceEntity {
   id: string;
   name: string;
@@ -67,8 +101,9 @@ export interface InvoiceLineItem {
   quantity: number;
   unit_price: number;
   line_total: number;
-  tax_rate: number;
-  tax_amount: number;
+  // Deprecated fields - use taxes array instead
+  tax_rate?: number;
+  tax_amount?: number;
   discount_rate: number;
   discount_amount: number;
   enrollment_id?: string;
@@ -77,6 +112,10 @@ export interface InvoiceLineItem {
   service_period_end?: string;
   sort_order: number;
   created_at: string;
+  // New tax system
+  taxes?: InvoiceLineItemTax[];
+  total_tax_amount?: number;
+  tax_rate_ids?: string[];
 }
 
 export interface InvoicePayment {
@@ -90,6 +129,8 @@ export interface InvoicePayment {
   stripe_payment_intent_id?: string;
   created_at: string;
   updated_at: string;
+  taxes?: InvoicePaymentTax[];
+  total_tax_amount?: number;
 }
 
 export interface InvoiceStatusHistory {
@@ -179,7 +220,10 @@ export interface CreateInvoiceLineItemData {
   description: string;
   quantity: number;
   unit_price: number;
+  // Deprecated - use tax_rate_ids instead
   tax_rate?: number;
+  // New tax system
+  tax_rate_ids?: string[];
   discount_rate?: number;
   enrollment_id?: string;
   product_id?: string;
@@ -196,6 +240,13 @@ export interface CreateInvoicePaymentData {
   reference_number?: string;
   notes?: string;
   stripe_payment_intent_id?: string;
+  tax_breakdown?: {
+    tax_rate_id: string;
+    tax_amount: number;
+    tax_name_snapshot: string;
+    tax_rate_snapshot: number;
+    tax_description_snapshot?: string;
+  }[];
 }
 
 // Filter and search types

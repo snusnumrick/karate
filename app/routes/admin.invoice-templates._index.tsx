@@ -6,7 +6,7 @@ import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { formatCurrency } from '~/utils/misc';
-import { calculateLineItemTotal } from '~/utils/line-item-helpers';
+import { calculateLineItemTotalWithRates } from '~/utils/line-item-helpers';
 import { InvoiceTemplateService } from '~/services/invoice-template.server';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import type { InvoiceTemplate } from '~/types/invoice';
@@ -52,7 +52,7 @@ export default function InvoiceTemplatesIndex() {
     };
 
     const calculateTemplateTotal = (template: InvoiceTemplate): number => {
-        return template.lineItems.reduce((total, item) => total + calculateLineItemTotal(item), 0);
+        return template.lineItems.reduce((total, item) => total + calculateLineItemTotalWithRates(item, []), 0);
     };
 
     return (

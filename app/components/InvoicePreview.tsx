@@ -1,19 +1,21 @@
-import type { InvoiceEntity, CreateInvoiceData } from "~/types/invoice";
+import type { InvoiceEntity, CreateInvoiceData, TaxRate } from "~/types/invoice";
 import { siteConfig } from "~/config/site";
 import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
 import { formatCurrency } from "~/utils/misc";
 import { formatEntityAddress, getPaymentTermsLabel } from "~/utils/entity-helpers";
-import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, calculateLineItemTax } from "~/utils/line-item-helpers";
+import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, getLineItemTaxBreakdown } from "~/utils/line-item-helpers";
 
 interface InvoicePreviewProps {
   invoiceData: CreateInvoiceData;
   entity: InvoiceEntity;
   invoiceNumber?: string;
+  taxRates?: TaxRate[];
 }
 
-export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePreviewProps) {
-  const { subtotal, totalTax, totalDiscount, total } = useInvoiceCalculations(
-    invoiceData.line_items
+export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRates = [] }: InvoicePreviewProps) {
+  const { subtotal, tax_amount, discount_amount, total_amount } = useInvoiceCalculations(
+    invoiceData.line_items,
+    taxRates
   );
 
   const formatDate = (dateString: string) => {
@@ -89,7 +91,8 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
               {invoiceData.line_items.map((item, index) => {
                 const itemSubtotal = calculateLineItemSubtotal(item);
                 const itemDiscount = calculateLineItemDiscount(item);
-                const itemTax = calculateLineItemTax(item);
+                const taxBreakdown = getLineItemTaxBreakdown(item, taxRates);
+                const itemTaxTotal = taxBreakdown.reduce((sum, tax) => sum + tax.amount, 0);
                 
                 return (
                   <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -106,7 +109,7 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-semibold text-gray-900">
-                          {formatCurrency((itemSubtotal - itemDiscount + itemTax) * 100)}
+                          {formatCurrency((itemSubtotal - itemDiscount + itemTaxTotal) * 100)}
                         </div>
                         <div className="text-xs text-gray-500">Total</div>
                       </div>
@@ -127,23 +130,30 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
                         <div className="font-medium text-gray-900">{formatCurrency(itemSubtotal * 100)}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wider">After Adjustments</div>
-                        <div className="space-y-1">
-                          {itemDiscount > 0 && (
-                              <div className="flex justify-between">
-                                <span className="text-green-600">Discount ({Number(item.discount_rate).toFixed(2)}%):</span>
-                                <span className="text-green-600">-{formatCurrency(itemDiscount * 100)}</span>
-                              </div>
-                            )}
-                            {itemTax > 0 && (
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Tax ({Number(item.tax_rate).toFixed(2)}%):</span>
-                                <span className="text-gray-900">{formatCurrency(itemTax * 100)}</span>
-                              </div>
-                            )}
-                        </div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wider">Line Total</div>
+                        <div className="font-medium text-gray-900">{formatCurrency((itemSubtotal - itemDiscount + itemTaxTotal) * 100)}</div>
                       </div>
                     </div>
+                    
+                    {/* Discounts and Taxes under each item */}
+                    {(itemDiscount > 0 || taxBreakdown.length > 0) && (
+                      <div className="mt-4 pt-3 border-t border-gray-200">
+                        <div className="space-y-2">
+                          {itemDiscount > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-green-600">Discount ({Number(item.discount_rate).toFixed(2)}%):</span>
+                              <span className="text-green-600">-{formatCurrency(itemDiscount * 100)}</span>
+                            </div>
+                          )}
+                          {taxBreakdown.map((tax, taxIndex) => (
+                            <div key={taxIndex} className="flex justify-between text-sm">
+                              <span className="text-gray-600">{tax.taxRate.name} ({tax.taxRate.rate.toFixed(2)}%):</span>
+                              <span className="text-gray-900">{formatCurrency(tax.amount * 100)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -159,58 +169,24 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber }: InvoicePr
                   <span className="text-gray-900">{formatCurrency(subtotal * 100)}</span>
                 </div>
                 
-                {/* Detailed Discount Breakdown */}
-                {totalDiscount > 0 && (
-                  <div className="border-l-2 border-green-200 pl-3 py-1 bg-green-50">
-                    <div className="flex justify-between text-sm font-medium">
-                      <span className="text-gray-700">Total Discounts:</span>
-                      <span className="text-green-600">-{formatCurrency(totalDiscount * 100)}</span>
-                    </div>
-                    <div className="mt-1 space-y-1">
-                      {invoiceData.line_items.map((item, index) => {
-                        const itemDiscount = calculateLineItemDiscount(item);
-                        if (itemDiscount > 0) {
-                          return (
-                            <div key={index} className="flex justify-between text-xs text-gray-600">
-                              <span className="truncate max-w-48">{item.description} ({Number(item.discount_rate).toFixed(2)}%):</span>
-                              <span className="text-green-600 ml-2">-{formatCurrency(itemDiscount * 100)}</span>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
+                {discount_amount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600">Total Discounts:</span>
+                    <span className="text-green-600">-{formatCurrency(discount_amount * 100)}</span>
                   </div>
                 )}
                 
-                {/* Detailed Tax Breakdown */}
-                {totalTax > 0 && (
-                  <div className="border-l-2 border-blue-200 pl-3 py-1 bg-blue-50">
-                    <div className="flex justify-between text-sm font-medium">
-                      <span className="text-gray-700">Total Tax:</span>
-                      <span className="text-gray-900">{formatCurrency(totalTax * 100)}</span>
-                    </div>
-                    <div className="mt-1 space-y-1">
-                      {invoiceData.line_items.length > 1 && invoiceData.line_items.map((item, index) => {
-                        const itemTax = calculateLineItemTax(item);
-                        if (itemTax > 0) {
-                          return (
-                            <div key={index} className="flex justify-between text-xs text-gray-600">
-                              <span className="truncate max-w-48">{item.description} ({Number(item.tax_rate).toFixed(2)}%):</span>
-                              <span className="text-gray-900 ml-2">{formatCurrency(itemTax * 100)}</span>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
+                {tax_amount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Total Tax:</span>
+                    <span className="text-gray-900">{formatCurrency(tax_amount * 100)}</span>
                   </div>
                 )}
                 
                 <div className="border-t border-gray-200 pt-2">
                   <div className="flex justify-between text-lg font-semibold">
                     <span className="text-gray-900">Total:</span>
-                    <span className="text-gray-900">{formatCurrency(total * 100)}</span>
+                    <span className="text-gray-900">{formatCurrency(total_amount * 100)}</span>
                   </div>
                 </div>
               </div>

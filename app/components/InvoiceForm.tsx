@@ -11,7 +11,7 @@ import { InvoiceEntitySelector } from "~/components/InvoiceEntitySelector";
 import { InvoiceLineItemBuilder } from "~/components/InvoiceLineItemBuilder";
 import { InvoiceTemplates } from "~/components/InvoiceTemplates";
 import { InvoicePreview } from "~/components/InvoicePreview";
-import type { InvoiceEntity, CreateInvoiceData, CreateInvoiceLineItemData , InvoiceTemplate } from "~/types/invoice";
+import type { InvoiceEntity, CreateInvoiceData, CreateInvoiceLineItemData , InvoiceTemplate, TaxRate } from "~/types/invoice";
 import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
 import { formatCurrency } from "~/utils/misc";
 import { createEmptyLineItem } from "~/utils/line-item-helpers";
@@ -23,6 +23,7 @@ interface InvoiceFormProps {
   initialData?: Partial<CreateInvoiceData>;
   mode?: 'create' | 'edit';
   preSelectedEntity?: InvoiceEntity | null;
+  taxRates?: TaxRate[];
   errors?: {
     entity_id?: string;
     issue_date?: string;
@@ -52,7 +53,7 @@ interface ActionData {
   };
 }
 
-export function InvoiceForm({ entities, initialData, mode = 'create', preSelectedEntity, errors, values }: InvoiceFormProps) {
+export function InvoiceForm({ entities, initialData, mode = 'create', preSelectedEntity, taxRates = [], errors, values }: InvoiceFormProps) {
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -87,8 +88,9 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
   const [showPreview, setShowPreview] = useState(false);
 
   // Calculate totals
-  const { subtotal, totalTax, totalDiscount, total } = useInvoiceCalculations(
-    invoiceData.line_items
+  const { subtotal, tax_amount: totalTax, discount_amount: totalDiscount, total_amount: total } = useInvoiceCalculations(
+    invoiceData.line_items,
+    taxRates
   );
 
   // Initialize form with initial data
@@ -397,6 +399,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                     <InvoiceLineItemBuilder
                       lineItems={invoiceData.line_items}
                       onChange={handleLineItemsChange}
+                      availableTaxRates={taxRates}
                     />
                     {formErrors?.line_items && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.line_items}</p>
@@ -565,6 +568,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
               invoiceData={invoiceData}
               entity={selectedEntity}
               invoiceNumber="PREVIEW"
+              taxRates={taxRates}
             />
           </div>
         )}

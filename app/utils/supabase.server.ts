@@ -27,7 +27,6 @@ export function getSupabaseAdminClient() {
 }
 
 import { siteConfig } from "~/config/site"; // Import siteConfig for tax rate
-import { DiscountService } from "~/services/discount.server";
 
 // Initialize Stripe
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -259,6 +258,8 @@ export async function createInitialPaymentRecord(
 
     // If a discount was applied, record the usage
     if (discountCodeId && discountAmount) {
+        // imported locally to avoid circular deopendancy
+        const { DiscountService } = await import('~/services/discount.server');
         const discountResult = await DiscountService.applyDiscountCode(
             discountCodeId,
             paymentId,

@@ -4605,8 +4605,6 @@ CREATE TABLE IF NOT EXISTS invoice_line_items (
     quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
     unit_price DECIMAL(10,2) NOT NULL,
     line_total DECIMAL(10,2) NOT NULL,
-    tax_rate DECIMAL(5,4) DEFAULT 0,
-    tax_amount DECIMAL(10,2) DEFAULT 0,
     discount_rate DECIMAL(5,4) DEFAULT 0,
     discount_amount DECIMAL(10,2) DEFAULT 0,
     enrollment_id UUID REFERENCES enrollments(id),
@@ -4615,6 +4613,16 @@ CREATE TABLE IF NOT EXISTS invoice_line_items (
     service_period_end DATE,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create invoice_line_item_taxes junction table for multiple tax rates per line item
+CREATE TABLE IF NOT EXISTS invoice_line_item_taxes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    line_item_id UUID NOT NULL REFERENCES invoice_line_items(id) ON DELETE CASCADE,
+    tax_rate_id UUID NOT NULL REFERENCES tax_rates(id) ON DELETE CASCADE,
+    tax_amount DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(line_item_id, tax_rate_id)
 );
 
 -- Create invoice_payments table
@@ -4639,6 +4647,18 @@ CREATE TABLE IF NOT EXISTS invoice_status_history (
     new_status invoice_status NOT NULL,
     changed_by UUID,
     notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create invoice_payment_taxes table for tracking tax breakdown in invoice payments
+CREATE TABLE IF NOT EXISTS invoice_payment_taxes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_payment_id UUID NOT NULL REFERENCES invoice_payments(id) ON DELETE CASCADE,
+    tax_rate_id UUID NOT NULL REFERENCES tax_rates(id) ON DELETE RESTRICT,
+    tax_amount DECIMAL(10,2) NOT NULL CHECK (tax_amount >= 0),
+    tax_rate_snapshot DECIMAL(5,4) NOT NULL,
+    tax_name_snapshot VARCHAR NOT NULL,
+    tax_description_snapshot TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -4686,12 +4706,28 @@ BEGIN
         CREATE INDEX idx_invoice_line_items_enrollment_id ON invoice_line_items(enrollment_id);
     END IF;
     
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_line_item_taxes_line_item_id') THEN
+        CREATE INDEX idx_invoice_line_item_taxes_line_item_id ON invoice_line_item_taxes(line_item_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_line_item_taxes_tax_rate_id') THEN
+        CREATE INDEX idx_invoice_line_item_taxes_tax_rate_id ON invoice_line_item_taxes(tax_rate_id);
+    END IF;
+    
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_payments_invoice_id') THEN
         CREATE INDEX idx_invoice_payments_invoice_id ON invoice_payments(invoice_id);
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_payments_payment_date') THEN
         CREATE INDEX idx_invoice_payments_payment_date ON invoice_payments(payment_date);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_payment_taxes_payment_id') THEN
+        CREATE INDEX idx_invoice_payment_taxes_payment_id ON invoice_payment_taxes(invoice_payment_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_payment_taxes_tax_rate_id') THEN
+        CREATE INDEX idx_invoice_payment_taxes_tax_rate_id ON invoice_payment_taxes(tax_rate_id);
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_status_history_invoice_id') THEN

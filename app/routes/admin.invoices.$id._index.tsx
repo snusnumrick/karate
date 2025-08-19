@@ -6,10 +6,15 @@ import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { getInvoiceById, updateInvoiceStatus, deleteInvoice } from "~/services/invoice.server";
+import {
+  getInvoiceById,
+  getInvoiceByNumber,
+  updateInvoiceStatus,
+  deleteInvoice,
+} from "~/services/invoice.server";
 import { formatCurrency } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
-import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, calculateLineItemTax } from "~/utils/line-item-helpers";
+import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, getLineItemTaxBreakdown } from "~/utils/line-item-helpers";
 import { requireUserId } from "~/utils/auth.server";
 import { siteConfig } from "~/config/site";
 import { 
@@ -35,7 +40,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
   
   try {
-    const invoice = await getInvoiceById(id);
+    const invoice = await getInvoiceByNumber(id);
     if (!invoice) {
       throw new Response("Invoice not found", { status: 404 });
     }
@@ -77,7 +82,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         return redirect("/admin/invoices");
         
       case "send_email": {
-        const invoice = await getInvoiceById(id);
+        const invoice = await getInvoiceByNumber(id);
         if (!invoice) {
           return json({ error: "Invoice not found" }, { status: 404 });
         }
@@ -376,9 +381,11 @@ export default function InvoiceDetailPage() {
               <CardContent>
                 <div className="space-y-4">
                   {invoice.line_items.map((item) => {
+                    console.log("Line item: ", item);
+                    console.log("Line item taxes: ", item.taxes);
                     const itemSubtotal = calculateLineItemSubtotal(item);
                     const itemDiscount = calculateLineItemDiscount(item);
-                    const itemTax = calculateLineItemTax(item);
+                    const itemTax = item.taxes?.reduce((sum, tax) => sum + tax.tax_amount, 0) || 0;
                     
                     return (
                       <div key={item.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
@@ -428,12 +435,12 @@ export default function InvoiceDetailPage() {
                                   <span className="text-green-600 dark:text-green-400">-{formatCurrency(itemDiscount * 100)}</span>
                                 </div>
                               )}
-                              {itemTax > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600 dark:text-gray-300">Tax ({Number(item.tax_rate).toFixed(2)}%):</span>
-                                  <span className="text-gray-900 dark:text-white">{formatCurrency(itemTax * 100)}</span>
+                              {item.taxes && item.taxes.length > 0 && item.taxes.map((tax, taxIndex) => (
+                                <div key={taxIndex} className="flex justify-between">
+                                  <span className="text-gray-600 dark:text-gray-300">{tax.tax_name_snapshot} ({Number(tax.tax_rate_snapshot).toFixed(2)}%):</span>
+                                  <span className="text-gray-900 dark:text-white">{formatCurrency(tax.tax_amount * 100)}</span>
                                 </div>
-                              )}
+                              ))}
                             </div>
                           </div>
                         )}
@@ -502,27 +509,11 @@ export default function InvoiceDetailPage() {
                   <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.subtotal * 100)}</span>
                 </div>
                 
-                {/* Detailed Discount Breakdown */}
+                {/* Simple Discount Total */}
                 {invoice.discount_amount > 0 && (
-                  <div className="border-l-2 border-green-200 dark:border-green-700 pl-3 py-1 bg-green-50 dark:bg-green-900/20">
-                    <div className="flex justify-between font-medium">
-                      <span className="text-sm text-gray-700 dark:text-gray-200">Total Discounts:</span>
-                      <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoice.discount_amount * 100)}</span>
-                    </div>
-                    <div className="mt-1 space-y-1">
-                      {invoice.line_items.map((item) => {
-                        const itemDiscount = calculateLineItemDiscount(item);
-                        if (itemDiscount > 0) {
-                          return (
-                            <div key={item.id} className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
-                              <span className="truncate max-w-32">{item.description} ({Number(item.discount_rate).toFixed(2)}%):</span>
-                              <span className="text-green-600 dark:text-green-400 ml-2">-{formatCurrency(itemDiscount * 100)}</span>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Total Discounts:</span>
+                    <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoice.discount_amount * 100)}</span>
                   </div>
                 )}
                 
@@ -535,11 +526,11 @@ export default function InvoiceDetailPage() {
                     </div>
                     <div className="mt-1 space-y-1">
                       {invoice.line_items.length > 1 && invoice.line_items.map((item) => {
-                        const itemTax = calculateLineItemTax(item);
+                        const itemTax = item.taxes?.reduce((sum, tax) => sum + tax.tax_amount, 0) || 0;
                         if (itemTax > 0) {
                           return (
                             <div key={item.id} className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
-                              <span className="truncate max-w-32">{item.description} ({Number(item.tax_rate).toFixed(2)}%):</span>
+                              <span className="truncate max-w-32">{item.description}:</span>
                               <span className="text-gray-900 dark:text-white ml-2">{formatCurrency(itemTax * 100)}</span>
                             </div>
                           );

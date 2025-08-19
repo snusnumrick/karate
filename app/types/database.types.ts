@@ -1069,17 +1069,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "events_event_type_id_fkey"
-            columns: ["event_type_id"]
-            isOneToOne: false
-            referencedRelation: "event_types"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "events_instructor_id_fkey"
             columns: ["instructor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_events_event_type_id"
+            columns: ["event_type_id"]
+            isOneToOne: false
+            referencedRelation: "event_types"
             referencedColumns: ["id"]
           },
         ]
@@ -1256,6 +1256,61 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      invoice_line_item_taxes: {
+        Row: {
+          created_at: string | null
+          id: string
+          invoice_line_item_id: string
+          tax_amount: number
+          tax_description_snapshot: string | null
+          tax_name_snapshot: string
+          tax_rate_id: string
+          tax_rate_snapshot: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invoice_line_item_id: string
+          tax_amount?: number
+          tax_description_snapshot?: string | null
+          tax_name_snapshot: string
+          tax_rate_id: string
+          tax_rate_snapshot: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invoice_line_item_id?: string
+          tax_amount?: number
+          tax_description_snapshot?: string | null
+          tax_name_snapshot?: string
+          tax_rate_id?: string
+          tax_rate_snapshot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_item_taxes_invoice_line_item_id_fkey"
+            columns: ["invoice_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_line_item_tax_breakdown"
+            referencedColumns: ["line_item_id"]
+          },
+          {
+            foreignKeyName: "invoice_line_item_taxes_invoice_line_item_id_fkey"
+            columns: ["invoice_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_line_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_item_taxes_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_line_items: {
         Row: {
@@ -2446,6 +2501,27 @@ export type Database = {
           },
         ]
       }
+      invoice_line_item_tax_breakdown: {
+        Row: {
+          invoice_id: string | null
+          line_item_description: string | null
+          line_item_id: string | null
+          line_total: number | null
+          quantity: number | null
+          tax_details: Json | null
+          total_tax_amount: number | null
+          unit_price: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programs_with_belt_info: {
         Row: {
           belt_rank_required: boolean | null
@@ -2646,6 +2722,10 @@ export type Database = {
         Args: { p_family_id: string }
         Returns: number
       }
+      get_other_event_type_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_program_statistics: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -2760,7 +2840,6 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
-
       invoice_item_type:
         | "class_enrollment"
         | "individual_session"
@@ -3005,7 +3084,6 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
-
       invoice_item_type: [
         "class_enrollment",
         "individual_session",
@@ -3067,8 +3145,3 @@ export const Constants = {
     },
   },
 } as const
-
-// Specific type exports for event_types table
-export type EventType = Tables<"event_types">
-export type EventTypeInsert = TablesInsert<"event_types">
-export type EventTypeUpdate = TablesUpdate<"event_types">

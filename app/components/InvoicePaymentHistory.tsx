@@ -2,19 +2,10 @@ import { useState } from 'react';
 import { Link } from '@remix-run/react';
 import { Edit, Trash2, Download, Plus, DollarSign } from 'lucide-react';
 import { siteConfig } from '~/config/site';
-import { InvoicePaymentMethod } from '~/types/invoice';
+import { InvoicePayment, InvoicePaymentMethod } from '~/types/invoice';
 
-interface InvoicePayment {
-  id: string;
-  invoice_id: string;
-  amount: number; // in cents
-  payment_method: InvoicePaymentMethod;
-  payment_date: string;
-  reference_number?: string;
-  notes?: string;
+interface InvoicePaymentWithUser extends InvoicePayment {
   recorded_by?: string;
-  created_at: string;
-  updated_at: string;
   // Optional user info for recorded_by
   recorded_by_user?: {
     id: string;
@@ -26,7 +17,7 @@ interface InvoicePayment {
 
 interface InvoicePaymentHistoryProps {
   invoiceId: string;
-  payments: InvoicePayment[];
+  payments: InvoicePaymentWithUser[];
   totalAmount: number; // in cents
   amountPaid: number; // in cents
   canRecordPayments?: boolean;
@@ -72,7 +63,7 @@ export default function InvoicePaymentHistory({
     });
   };
 
-  const getRecordedByName = (payment: InvoicePayment): string => {
+  const getRecordedByName = (payment: InvoicePaymentWithUser): string => {
     if (payment.recorded_by_user) {
       const { first_name, last_name, email } = payment.recorded_by_user;
       if (first_name && last_name) {
@@ -191,6 +182,20 @@ export default function InvoicePaymentHistory({
                     {payment.notes && (
                       <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                         Notes: {payment.notes}
+                      </div>
+                    )}
+                    
+                    {payment.taxes && payment.taxes.length > 0 && (
+                      <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="font-medium">Tax Breakdown:</div>
+                        {payment.taxes.map((tax, index) => (
+                          <div key={index} className="ml-2">
+                            {tax.tax_name_snapshot}: {formatCurrency(tax.tax_amount)}
+                          </div>
+                        ))}
+                        <div className="ml-2 font-medium">
+                          Total Tax: {formatCurrency(payment.total_tax_amount || 0)}
+                        </div>
                       </div>
                     )}
                     

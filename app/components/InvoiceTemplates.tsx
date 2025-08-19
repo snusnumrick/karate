@@ -10,7 +10,7 @@ import {
 } from "~/data/invoice-templates";
 import type { InvoiceTemplate, CreateInvoiceLineItemData } from "~/types/invoice";
 import { formatCurrency } from "~/utils/misc";
-import { calculateLineItemTotal } from "~/utils/line-item-helpers";
+import { calculateLineItemTotalWithRates } from "~/utils/line-item-helpers";
 
 interface InvoiceTemplatesProps {
   onSelectTemplate: (template: InvoiceTemplate) => void;
@@ -30,7 +30,7 @@ export function InvoiceTemplates({ onSelectTemplate, onClose }: InvoiceTemplates
     : getTemplatesByCategory(selectedCategory as InvoiceTemplate['category']);
 
   const calculateTemplateTotal = (template: InvoiceTemplate): number => {
-    return template.lineItems.reduce((total: number, item: CreateInvoiceLineItemData) => total + calculateLineItemTotal(item), 0);
+    return template.lineItems.reduce((total: number, item: CreateInvoiceLineItemData) => total + calculateLineItemTotalWithRates(item, []), 0);
   };
 
   return (
@@ -147,7 +147,7 @@ export function InvoiceTemplates({ onSelectTemplate, onClose }: InvoiceTemplates
                             {item.description}
                           </span>
                           <span className="text-gray-900 dark:text-white font-medium ml-2">
-                            {formatCurrency(calculateLineItemTotal(item) * 100)}
+                            {formatCurrency(calculateLineItemTotalWithRates(item, []) * 100)}
                           </span>
                         </div>
                       ))}

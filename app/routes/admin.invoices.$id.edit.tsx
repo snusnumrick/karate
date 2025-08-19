@@ -4,7 +4,8 @@ import { useLoaderData, useActionData } from "@remix-run/react";
 import { InvoiceForm } from "~/components/InvoiceForm";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntities } from "~/services/invoice-entity.server";
-import { getInvoiceById, updateInvoice } from "~/services/invoice.server";
+import { getInvoiceById, getInvoiceByNumber, updateInvoice } from "~/services/invoice.server";
+import { getActiveTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
 
@@ -32,10 +33,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
   
   try {
-    // Get the invoice and entities
-    const [invoice, entitiesResult] = await Promise.all([
-      getInvoiceById(id),
-      getInvoiceEntities()
+    // Get the invoice, entities, and tax rates
+    const [invoice, entitiesResult, taxRates] = await Promise.all([
+      getInvoiceByNumber(id),
+      getInvoiceEntities(),
+      getActiveTaxRates()
     ]);
     
     // Check if invoice can be edited (only drafts)
@@ -62,6 +64,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         quantity: item.quantity,
         unit_price: item.unit_price,
         tax_rate: item.tax_rate,
+        tax_rate_ids: item.tax_rate_ids,
         discount_rate: item.discount_rate,
         enrollment_id: item.enrollment_id,
         product_id: item.product_id,
@@ -78,7 +81,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       invoice, 
       entities, 
       initialData, 
-      selectedEntity: selectedEntity || null 
+      selectedEntity: selectedEntity || null,
+      taxRates
     });
   } catch (error) {
     console.error("Error loading invoice for edit:", error);
@@ -227,7 +231,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function EditInvoicePage() {
-  const { invoice, entities, initialData, selectedEntity } = useLoaderData<typeof loader>();
+  const { invoice, entities, initialData, selectedEntity, taxRates } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
 
   return (
@@ -264,6 +268,7 @@ export default function EditInvoicePage() {
           preSelectedEntity={selectedEntity}
           errors={actionData?.errors}
           values={actionData?.values}
+          taxRates={taxRates}
         />
       </div>
     </div>

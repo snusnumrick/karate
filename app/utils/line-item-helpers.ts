@@ -1,4 +1,4 @@
-import type { InvoiceItemType, CreateInvoiceLineItemData } from "~/types/invoice";
+import type { InvoiceItemType, CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
 import { formatDate } from "~/utils/misc";
 
 /**
@@ -180,24 +180,83 @@ export function calculateLineItemDiscount(item: CreateInvoiceLineItemData): numb
   return subtotal * (discountRate / 100);
 }
 
+
+
+
+
 /**
- * Calculate line item tax amount
+ * Calculate line item tax amount with multiple tax rates
  */
-export function calculateLineItemTax(item: CreateInvoiceLineItemData): number {
-  const subtotal = calculateLineItemSubtotal(item);
-  const discount = calculateLineItemDiscount(item);
-  const taxableAmount = subtotal - discount;
-  const taxRate = item.tax_rate || 0;
-  return taxableAmount * (taxRate / 100);
+export function calculateLineItemTaxWithRates(
+  quantity: number,
+  unitPrice: number,
+  taxRateIds: string[],
+  taxRates: TaxRate[],
+  discountRate: number = 0
+): number {
+  if (!taxRateIds || taxRateIds.length === 0) {
+    return 0;
+  }
+
+  const subtotal = quantity * unitPrice;
+  const discountAmount = subtotal * (discountRate / 100);
+  const taxableAmount = subtotal - discountAmount;
+  
+  // Calculate total tax from all applicable tax rates
+  const totalTaxRate = taxRateIds.reduce((total, taxRateId) => {
+    const taxRate = taxRates.find(rate => rate.id === taxRateId);
+    return total + (taxRate?.rate || 0);
+  }, 0);
+  
+  return taxableAmount * (totalTaxRate / 100);
 }
 
 /**
- * Calculate line item total
+ * Get tax breakdown for a line item with multiple tax rates
  */
-export function calculateLineItemTotal(item: CreateInvoiceLineItemData): number {
+export function getLineItemTaxBreakdown(item: CreateInvoiceLineItemData, taxRates: TaxRate[]): Array<{ taxRate: TaxRate; amount: number }> {
+  if (!item.tax_rate_ids || item.tax_rate_ids.length === 0) {
+    return [];
+  }
+
   const subtotal = calculateLineItemSubtotal(item);
   const discount = calculateLineItemDiscount(item);
-  const tax = calculateLineItemTax(item);
+  const taxableAmount = subtotal - discount;
+  
+  return item.tax_rate_ids.map(taxRateId => {
+     const taxRate = taxRates.find(rate => rate.id === taxRateId);
+     if (!taxRate) {
+       const unknownTaxRate: TaxRate = {
+         id: taxRateId,
+         name: 'Unknown',
+         rate: 0,
+         is_active: false,
+         created_at: new Date().toISOString(),
+         updated_at: new Date().toISOString()
+       };
+       return { taxRate: unknownTaxRate, amount: 0 };
+     }
+     
+     const amount = taxableAmount * (taxRate.rate / 100);
+     return { taxRate, amount };
+   });
+}
+
+
+
+/**
+ * Calculate line item total with multiple tax rates
+ */
+export function calculateLineItemTotalWithRates(item: CreateInvoiceLineItemData, taxRates: TaxRate[]): number {
+  const subtotal = calculateLineItemSubtotal(item);
+  const discount = calculateLineItemDiscount(item);
+  const tax = calculateLineItemTaxWithRates(
+    item.quantity,
+    item.unit_price,
+    item.tax_rate_ids || [],
+    taxRates,
+    item.discount_rate || 0
+  );
   return subtotal - discount + tax;
 }
 
@@ -252,4 +311,88 @@ export function sortLineItems(items: CreateInvoiceLineItemData[]): CreateInvoice
     // Then by description
     return a.description.localeCompare(b.description);
   });
+}
+
+/**
+ * Calculate proportional tax breakdown for invoice payments
+ * Distributes payment amount proportionally across all tax rates based on invoice totals
+ */
+export function calculateInvoicePaymentTaxBreakdown(
+  paymentAmountCents: number,
+  invoiceTotalAmountCents: number,
+  invoiceTaxAmountCents: number,
+  lineItems: Array<{
+    id: string;
+    taxes?: Array<{
+      tax_rate_id: string;
+      tax_amount: number;
+      tax_name_snapshot: string;
+      tax_rate_snapshot: number;
+      tax_description_snapshot?: string;
+    }>;
+  }>
+): Array<{
+  tax_rate_id: string;
+  tax_amount: number;
+  tax_name_snapshot: string;
+  tax_rate_snapshot: number;
+  tax_description_snapshot?: string;
+}> {
+  if (paymentAmountCents <= 0 || invoiceTotalAmountCents <= 0 || invoiceTaxAmountCents <= 0) {
+    return [];
+  }
+
+  // Calculate payment proportion
+  const paymentProportion = paymentAmountCents / invoiceTotalAmountCents;
+  
+  // Aggregate all tax amounts by tax rate ID
+  const taxAggregation = new Map<string, {
+    total_amount: number;
+    tax_name_snapshot: string;
+    tax_rate_snapshot: number;
+    tax_description_snapshot?: string;
+  }>();
+
+  lineItems.forEach(item => {
+    if (item.taxes) {
+      item.taxes.forEach(tax => {
+        const existing = taxAggregation.get(tax.tax_rate_id);
+        if (existing) {
+          existing.total_amount += tax.tax_amount;
+        } else {
+          taxAggregation.set(tax.tax_rate_id, {
+            total_amount: tax.tax_amount,
+            tax_name_snapshot: tax.tax_name_snapshot,
+            tax_rate_snapshot: tax.tax_rate_snapshot,
+            tax_description_snapshot: tax.tax_description_snapshot
+          });
+        }
+      });
+    }
+  });
+
+  // Calculate proportional tax amounts for this payment
+  const paymentTaxBreakdown: Array<{
+    tax_rate_id: string;
+    tax_amount: number;
+    tax_name_snapshot: string;
+    tax_rate_snapshot: number;
+    tax_description_snapshot?: string;
+  }> = [];
+
+  taxAggregation.forEach((taxData, taxRateId) => {
+    const proportionalTaxAmount = Math.round(taxData.total_amount * paymentProportion);
+    
+    if (proportionalTaxAmount > 0) {
+      paymentTaxBreakdown.push({
+        tax_rate_id: taxRateId,
+        tax_amount: proportionalTaxAmount,
+        tax_name_snapshot: taxData.tax_name_snapshot,
+        tax_rate_snapshot: taxData.tax_rate_snapshot,
+        tax_description_snapshot: taxData.tax_description_snapshot
+      });
+    }
+  });
+
+  return paymentTaxBreakdown;
 }

@@ -1,7 +1,9 @@
 import { getSupabaseServerClient } from '~/utils/supabase.server';
-import type { EventType, EventTypeInsert, EventTypeUpdate } from '~/types/database.types';
+import type { Database } from '~/types/database.types';
 
-export type { EventType, EventTypeInsert, EventTypeUpdate };
+export type EventType = Database['public']['Tables']['event_types']['Row'];
+export type EventTypeInsert = Database['public']['Tables']['event_types']['Insert'];
+export type EventTypeUpdate = Database['public']['Tables']['event_types']['Update'];
 
 export class EventTypeService {
   private supabase;

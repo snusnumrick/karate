@@ -14,14 +14,15 @@ import type {
 import type { ExtendedSupabaseClient } from '~/types/supabase-extensions';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
-const supabase = getSupabaseAdminClient();
-
 export class DiscountService {
+  private static getSupabase() {
+    return getSupabaseAdminClient();
+  }
   /**
    * Get all active discount codes (for users)
    */
   static async getActiveDiscountCodes(): Promise<DiscountCode[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.getSupabase()
       .from('discount_codes')
       .select('*')
       .eq('is_active', true)
@@ -54,7 +55,7 @@ export class DiscountService {
    */
   static async getAllDiscountCodes(): Promise<DiscountCodeWithUsage[]> {
     // First get all discount codes with family and student data
-    const { data: codes, error: codesError } = await supabase
+    const { data: codes, error: codesError } = await this.getSupabase()
       .from('discount_codes')
       .select(`
         *,
@@ -79,7 +80,7 @@ export class DiscountService {
 
     let creators: Array<{ id: string; email: string; first_name: string | null; last_name: string | null }> = [];
     if (creatorIds.length > 0) {
-      const { data: creatorData, error: creatorError } = await supabase
+      const { data: creatorData, error: creatorError } = await this.getSupabase()
         .from('profiles')
         .select('id, email, first_name, last_name')
         .in('id', creatorIds);
@@ -115,7 +116,7 @@ export class DiscountService {
      });
  
      // Get usage data for all codes
-     const { data: usageData, error: usageError } = await supabase
+     const { data: usageData, error: usageError } = await this.getSupabase()
        .from('discount_code_usage')
        .select(`
          id,
@@ -153,7 +154,7 @@ export class DiscountService {
    * Get discount code by ID
    */
   static async getDiscountCodeById(id: string): Promise<DiscountCode | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.getSupabase()
       .from('discount_codes')
       .select('*')
       .eq('id', id)
@@ -186,7 +187,7 @@ export class DiscountService {
    * Get discount code by code string
    */
   static async getDiscountCodeByCode(code: string): Promise<DiscountCode | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.getSupabase()
       .from('discount_codes')
       .select('*')
       .eq('code', code)
@@ -237,7 +238,7 @@ export class DiscountService {
       throw new Error('Must specify either family_id or student_id');
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await this.getSupabase()
       .from('discount_codes')
       .insert({
         ...discountData,
@@ -275,7 +276,7 @@ export class DiscountService {
     id: string,
     updates: UpdateDiscountCodeData
   ): Promise<DiscountCode> {
-    const { data, error } = await supabase
+    const { data, error } = await this.getSupabase()
       .from('discount_codes')
       .update(updates)
       .eq('id', id)
@@ -306,7 +307,7 @@ export class DiscountService {
    * Deactivate a discount code
    */
   static async deactivateDiscountCode(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.getSupabase()
       .from('discount_codes')
       .update({ is_active: false })
       .eq('id', id);
@@ -320,7 +321,7 @@ export class DiscountService {
    * Activate a discount code
    */
   static async activateDiscountCode(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.getSupabase()
       .from('discount_codes')
       .update({ is_active: true })
       .eq('id', id);
@@ -334,7 +335,7 @@ export class DiscountService {
    * Delete a discount code (hard delete)
    */
   static async deleteDiscountCode(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.getSupabase()
       .from('discount_codes')
       .delete()
       .eq('id', id);
@@ -350,7 +351,7 @@ export class DiscountService {
   static async validateDiscountCode(
     request: ApplyDiscountRequest
   ): Promise<DiscountValidationResult> {
-    const { data, error } = await supabase
+    const { data, error } = await this.getSupabase()
       .rpc('validate_discount_code', {
         p_code: request.code,
         p_family_id: request.family_id,
@@ -378,7 +379,7 @@ export class DiscountService {
       validationResult.code = request.code;
       
       // Fetch the discount name for display purposes
-      const { data: discountData } = await supabase
+      const { data: discountData } = await this.getSupabase()
         .from('discount_codes')
         .select('name')
         .eq('code', request.code)
@@ -404,7 +405,7 @@ export class DiscountService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Get the discount code details
-      const { data: discountCode, error: fetchError } = await supabase
+      const { data: discountCode, error: fetchError } = await this.getSupabase()
         .from('discount_codes')
         .select('*')
         .eq('id', discountCodeId)
@@ -415,7 +416,7 @@ export class DiscountService {
       }
 
       // Record the usage
-      const { error: usageError } = await (supabase as ExtendedSupabaseClient)
+      const { error: usageError } = await (this.getSupabase() as ExtendedSupabaseClient)
         .from('discount_code_usage')
         .insert({
           discount_code_id: discountCodeId,
@@ -434,7 +435,7 @@ export class DiscountService {
       }
 
       // Increment the usage count
-      const { error: incrementError } = await supabase.rpc(
+      const { error: incrementError } = await this.getSupabase().rpc(
         'increment_discount_code_usage',
         { p_discount_code_id: discountCodeId }
       );
@@ -455,7 +456,7 @@ export class DiscountService {
    * Get discount usage history for a family
    */
   static async getFamilyDiscountUsage(familyId: string): Promise<DiscountCodeUsage[]> {
-    const { data, error } = await (supabase as ExtendedSupabaseClient)
+    const { data, error } = await (this.getSupabase() as ExtendedSupabaseClient)
       .from('discount_code_usage')
       .select(`
         *,
@@ -481,7 +482,7 @@ export class DiscountService {
    * Get discount usage history for a student
    */
   static async getStudentDiscountUsage(studentId: string): Promise<DiscountCodeUsage[]> {
-    const { data, error } = await (supabase as ExtendedSupabaseClient)
+    const { data, error } = await (this.getSupabase() as ExtendedSupabaseClient)
       .from('discount_code_usage')
       .select(`
         *,
@@ -518,7 +519,7 @@ export class DiscountService {
       }
 
       // Check if code already exists
-      const { error } = await supabase
+      const { error } = await this.getSupabase()
         .from('discount_codes')
         .select('id')
         .eq('code', code)

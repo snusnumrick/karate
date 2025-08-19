@@ -6,6 +6,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { createInvoice, getInvoiceById, updateInvoiceStatus } from "~/services/invoice.server";
 import { getInvoiceEntities } from "~/services/invoice-entity.server";
 import { sendInvoiceEmail } from "~/services/invoice-email.server";
+import { getActiveTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
 
@@ -32,16 +33,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const entityId = url.searchParams.get("entity_id");
   
   try {
-    const result = await getInvoiceEntities();
-    const entities = result?.entities || [];
+    const [entitiesResult, taxRates] = await Promise.all([
+      getInvoiceEntities(),
+      getActiveTaxRates()
+    ]);
+    
+    const entities = entitiesResult?.entities || [];
     
     // Find the pre-selected entity if entity_id is provided
     const preSelectedEntity = entityId ? entities.find(e => e.id === entityId) : null;
     
-    return json({ entities, preSelectedEntityId: entityId, preSelectedEntity });
+    return json({ entities, preSelectedEntityId: entityId, preSelectedEntity, taxRates });
   } catch (error) {
-    console.error("Error loading invoice entities:", error);
-    return json({ entities: [], preSelectedEntityId: null, preSelectedEntity: null });
+    console.error("Error loading invoice data:", error);
+    return json({ entities: [], preSelectedEntityId: null, preSelectedEntity: null, taxRates: [] });
   }
 }
 
@@ -213,7 +218,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function NewInvoicePage() {
-  const { entities, preSelectedEntity } = useLoaderData<typeof loader>();
+  const { entities, preSelectedEntity, taxRates } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
 
   return (
@@ -246,6 +251,7 @@ export default function NewInvoicePage() {
           preSelectedEntity={preSelectedEntity}
           errors={actionData?.errors}
           values={actionData?.values}
+          taxRates={taxRates}
         />
       </div>
     </div>

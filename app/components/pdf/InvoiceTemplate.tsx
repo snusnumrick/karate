@@ -8,7 +8,7 @@ import {
 } from '@react-pdf/renderer';
 import { siteConfig } from '~/config/site';
 import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
-import { calculateLineItemDiscount, calculateLineItemTax } from '~/utils/line-item-helpers';
+import { calculateLineItemDiscount, getLineItemTaxBreakdown, calculateLineItemTotalWithRates } from '~/utils/line-item-helpers';
 
 const styles = StyleSheet.create({
   page: {
@@ -302,6 +302,32 @@ const styles = StyleSheet.create({
     color: siteConfig.colors.primary,
     border: '1px solid #22c55e',
   },
+  lineItemAdjustments: {
+    paddingLeft: 6,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  adjustmentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 1,
+  },
+  adjustmentLabel: {
+    fontSize: 8,
+    color: '#6b7280',
+    fontStyle: 'italic',
+  },
+  adjustmentValue: {
+    fontSize: 8,
+    color: '#6b7280',
+    fontWeight: 'bold',
+  },
+  discountValue: {
+    color: '#059669',
+  },
+  taxValue: {
+    color: '#1f2937',
+  },
 });
 
 interface InvoiceTemplateProps {
@@ -491,22 +517,56 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
             </Text>
           </View>
 
-          {invoice.line_items?.map((item, index) => (
-            <View key={index} style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}>
-              <View style={styles.descriptionColumn}>
-                <Text style={styles.tableCell}>{safeText(item.description, 'Item')}</Text>
+          {invoice.line_items?.map((item, index) => {
+            const itemDiscount = calculateLineItemDiscount(item);
+            const itemTaxes = (item as any).taxes || [];
+            const hasAdjustments = itemDiscount > 0 || itemTaxes.length > 0;
+            
+            return (
+              <View key={index}>
+                <View style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}>
+                  <View style={styles.descriptionColumn}>
+                    <Text style={styles.tableCell}>{safeText(item.description, 'Item')}</Text>
+                  </View>
+                  <Text style={[styles.tableCell, styles.quantityColumn]}>
+                    {item.quantity || 0}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.priceColumn]}>
+                    {formatCurrency(item.unit_price)}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.amountColumn]}>
+                    {formatCurrency((item.quantity || 0) * (item.unit_price || 0))}
+                  </Text>
+                </View>
+                
+                {hasAdjustments && (
+                  <View style={[styles.lineItemAdjustments, ...(index % 2 === 1 ? [styles.tableRowAlt] : [])]}>
+                    {itemDiscount > 0 && (
+                      <View style={styles.adjustmentRow}>
+                        <Text style={styles.adjustmentLabel}>
+                          Discount ({Number(item.discount_rate).toFixed(2)}%):
+                        </Text>
+                        <Text style={[styles.adjustmentValue, styles.discountValue]}>
+                          -{formatCurrency(itemDiscount)}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {itemTaxes.map((tax: any, taxIndex: number) => (
+                      <View key={taxIndex} style={styles.adjustmentRow}>
+                        <Text style={styles.adjustmentLabel}>
+                          {tax.tax_description_snapshot || tax.tax_name_snapshot || 'Tax'} ({((tax.tax_rate_snapshot || 0) * 100).toFixed(2)}%):
+                        </Text>
+                        <Text style={[styles.adjustmentValue, styles.taxValue]}>
+                          {formatCurrency(tax.tax_amount || 0)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-              <Text style={[styles.tableCell, styles.quantityColumn]}>
-                {item.quantity || 0}
-              </Text>
-              <Text style={[styles.tableCell, styles.priceColumn]}>
-                {formatCurrency(item.unit_price)}
-              </Text>
-              <Text style={[styles.tableCell, styles.amountColumn]}>
-                {formatCurrency((item.quantity || 0) * (item.unit_price || 0))}
-              </Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Totals */}
@@ -517,53 +577,19 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
               <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
             </View>
             
-            {discountAmount > 0 ? (
-              <View>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total Discounts:</Text>
-                  <Text style={styles.totalValue}>-{formatCurrency(discountAmount)}</Text>
-                </View>
-                {invoice.line_items?.map((item, index) => {
-                  const itemDiscount = calculateLineItemDiscount(item);
-                  if (itemDiscount > 0) {
-                    return (
-                      <View key={`discount-${index}`} style={styles.breakdownRow}>
-                        <Text style={styles.breakdownLabel}>
-                          {item.description} ({Number(item.discount_rate).toFixed(2)}%):
-                        </Text>
-                        <Text style={styles.breakdownValue}>-{formatCurrency(itemDiscount)}</Text>
-                      </View>
-                    );
-                  }
-                  return null;
-                })}
+            {discountAmount > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total Discounts:</Text>
+                <Text style={styles.totalValue}>-{formatCurrency(discountAmount)}</Text>
               </View>
-            ) : null}
+            )}
             
-            {taxAmount > 0 ? (
-              <View>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total Tax:</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(taxAmount)}</Text>
-                </View>
-                {(invoice.line_items?.length || 0) > 1 && invoice.line_items?.map((item, index) => {
-                  const itemTax = calculateLineItemTax(item);
-                  if (itemTax > 0) {
-                    return (
-                      <View key={`tax-${index}`} style={styles.breakdownRow}>
-                        <Text style={styles.breakdownLabel}>
-                          {item.description} ({Number(item.tax_rate).toFixed(2)}%):
-                        </Text>
-                        <Text style={styles.breakdownValue}>
-                          {formatCurrency(itemTax)}
-                        </Text>
-                      </View>
-                    );
-                  }
-                  return null;
-                })}
+            {taxAmount > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total Tax:</Text>
+                <Text style={styles.totalValue}>{formatCurrency(taxAmount)}</Text>
               </View>
-            ) : null}
+            )}
             
             <View style={styles.grandTotalRow}>
               <Text style={styles.grandTotalLabel}>Total:</Text>

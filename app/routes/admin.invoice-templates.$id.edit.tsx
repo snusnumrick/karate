@@ -11,7 +11,7 @@ import { Plus, Trash2, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { CreateInvoiceLineItemData } from "~/types/invoice";
 import { formatCurrency } from "~/utils/misc";
-import { calculateLineItemTotal } from "~/utils/line-item-helpers";
+import { calculateLineItemTotalWithRates } from "~/utils/line-item-helpers";
 import { InvoiceTemplateService } from "~/services/invoice-template.server";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 
@@ -185,7 +185,7 @@ export default function EditInvoiceTemplate() {
 
     
     const calculateTotal = () => {
-        return lineItems.reduce((total, item) => total + calculateLineItemTotal(item), 0);
+        return lineItems.reduce((total, item) => total + calculateLineItemTotalWithRates(item, []), 0);
     };
 
     return (
@@ -404,7 +404,7 @@ export default function EditInvoiceTemplate() {
                                     <div className="space-y-2">
                                         <Label>Line Total</Label>
                                         <div className="h-10 px-3 py-2 border rounded-md bg-muted text-muted-foreground flex items-center">
-                                            {formatCurrency(calculateLineItemTotal(item) * 100)}
+                                            {formatCurrency(calculateLineItemTotalWithRates(item, []) * 100)}
                                         </div>
                                     </div>
                                 </div>

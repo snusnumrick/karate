@@ -14,23 +14,97 @@ import type {
   EntityType,
   PaymentTerms,
   InvoiceStatus,
+  TaxRate,
+  InvoicePaymentTax,
 } from "~/types/invoice";
 import {
-  calculateLineItemTax,
   calculateLineItemDiscount,
-  calculateLineItemSubtotal
+  calculateLineItemSubtotal,
+  calculateLineItemTaxWithRates,
+  calculateLineItemTotalWithRates,
+  getLineItemTaxBreakdown
 } from "~/utils/line-item-helpers";
+import { getActiveTaxRates } from "~/services/tax-rates.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 
 
+
+
 /**
- * Calculate line item totals including tax and discount
+ * Calculate invoice totals from line items
  */
-export function calculateLineItemTotals(
+export function calculateInvoiceTotals(lineItems: InvoiceLineItem[]): InvoiceCalculations {
+  const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
+  const taxAmount = lineItems.reduce((sum, item) => sum + (item.tax_amount ?? 0), 0);
+  const discountAmount = lineItems.reduce((sum, item) => sum + (item.discount_amount ?? 0), 0);
+  const totalAmount = subtotal + taxAmount - discountAmount;
+
+  return {
+    subtotal: Math.round(subtotal * 100) / 100,
+    tax_amount: Math.round(taxAmount * 100) / 100,
+    discount_amount: Math.round(discountAmount * 100) / 100,
+    total_amount: Math.round(totalAmount * 100) / 100,
+  };
+}
+
+/**
+ * Create line item tax associations for multiple tax rates
+ */
+export async function createLineItemTaxAssociations(
+  lineItemId: string,
+  taxRateIds: string[],
+  lineItemData: CreateInvoiceLineItemData,
+  taxRates: TaxRate[],
+  supabaseAdmin?: SupabaseClient<Database>
+): Promise<void> {
+  if (!taxRateIds || taxRateIds.length === 0) {
+    return;
+  }
+
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
+  const taxBreakdown = getLineItemTaxBreakdown(lineItemData, taxRates);
+
+  const taxAssociations = taxRateIds.map(taxRateId => {
+    const taxRate = taxRates.find(tr => tr.id === taxRateId);
+    const breakdown = taxBreakdown.find(tb => tb.taxRate.id === taxRateId);
+    
+    if (!taxRate || !breakdown) {
+      throw new Error(`Tax rate not found: ${taxRateId}`);
+    }
+
+    return {
+      invoice_line_item_id: lineItemId,
+      tax_rate_id: taxRateId,
+      tax_name_snapshot: taxRate.name,
+      tax_rate_snapshot: taxRate.rate,
+      tax_description_snapshot: taxRate.description,
+      tax_amount: breakdown.amount
+    };
+  });
+
+  console.log('[Service/createLineItemTaxAssociations] Tax associations prepared:', taxAssociations);
+  
+  const { error } = await client
+    .from('invoice_line_item_taxes')
+    .insert(taxAssociations);
+
+  if (error) {
+    console.error('[Service/createLineItemTaxAssociations] Error creating tax associations:', error);
+    throw new Response(`Error creating line item tax associations: ${error.message}`, { status: 500 });
+  }
+  
+  console.log('[Service/createLineItemTaxAssociations] Tax associations saved successfully');
+}
+
+/**
+ * Calculate line item totals with multiple tax rates support
+ */
+export function calculateLineItemTotalsWithRates(
   quantity: number,
   unitPrice: number,
-  taxRate: number = 0,
+  taxRateIds: string[] = [],
+  taxRates: TaxRate[] = [],
   discountRate: number = 0
 ): LineItemCalculations {
   // Create a temporary line item object to use with helper functions
@@ -39,13 +113,19 @@ export function calculateLineItemTotals(
     description: '',
     quantity,
     unit_price: unitPrice,
-    tax_rate: taxRate,
+    tax_rate_ids: taxRateIds,
     discount_rate: discountRate
   };
 
   // Use the centralized calculation functions
   const lineTotal = calculateLineItemSubtotal(tempItem);
-  const taxAmount = calculateLineItemTax(tempItem);
+  const taxAmount = calculateLineItemTaxWithRates(
+    tempItem.quantity,
+    tempItem.unit_price,
+    tempItem.tax_rate_ids || [],
+    taxRates,
+    tempItem.discount_rate || 0
+  );
   const discountAmount = calculateLineItemDiscount(tempItem);
 
   return {
@@ -53,23 +133,6 @@ export function calculateLineItemTotals(
     tax_amount: Math.round(taxAmount * 100) / 100,
     discount_amount: Math.round(discountAmount * 100) / 100,
     final_amount: Math.round(lineTotal * 100) / 100,
-  };
-}
-
-/**
- * Calculate invoice totals from line items
- */
-export function calculateInvoiceTotals(lineItems: InvoiceLineItem[]): InvoiceCalculations {
-  const subtotal = lineItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-  const taxAmount = lineItems.reduce((sum, item) => sum + item.tax_amount, 0);
-  const discountAmount = lineItems.reduce((sum, item) => sum + item.discount_amount, 0);
-  const totalAmount = subtotal + taxAmount - discountAmount;
-
-  return {
-    subtotal: Math.round(subtotal * 100) / 100,
-    tax_amount: Math.round(taxAmount * 100) / 100,
-    discount_amount: Math.round(discountAmount * 100) / 100,
-    total_amount: Math.round(totalAmount * 100) / 100,
   };
 }
 
@@ -128,12 +191,16 @@ export async function createInvoice(
     throw new Response(`Error creating invoice: ${invoiceError.message}`, { status: 500 });
   }
 
-  // Create line items with calculated totals
+  // Get tax rates for calculations
+  const taxRates = await getActiveTaxRates(client);
+
+  // Calculate line item totals with new tax system
   const lineItemsWithTotals = invoiceData.line_items.map((item, index) => {
-    const calculations = calculateLineItemTotals(
+    const calculations = calculateLineItemTotalsWithRates(
       item.quantity,
       item.unit_price,
-      item.tax_rate || 0,
+      item.tax_rate_ids || [],
+      taxRates,
       item.discount_rate || 0
     );
 
@@ -144,10 +211,9 @@ export async function createInvoice(
       quantity: item.quantity,
       unit_price: item.unit_price,
       line_total: calculations.line_total,
-      tax_rate: (item.tax_rate || 0) / 100, // Convert percentage to decimal for database
-      tax_amount: calculations.tax_amount,
+      tax_amount: calculations.tax_amount ?? 0,
       discount_rate: (item.discount_rate || 0) / 100, // Convert percentage to decimal for database
-      discount_amount: calculations.discount_amount,
+      discount_amount: calculations.discount_amount ?? 0,
       enrollment_id: item.enrollment_id,
       product_id: item.product_id,
       service_period_start: item.service_period_start,
@@ -156,15 +222,34 @@ export async function createInvoice(
     };
   });
 
-  const { error: lineItemsError } = await client
+  const { data: insertedLineItems, error: lineItemsError } = await client
     .from('invoice_line_items')
-    .insert(lineItemsWithTotals);
+    .insert(lineItemsWithTotals)
+    .select('id');
 
   if (lineItemsError) {
     console.error('[Service/createInvoice] Error creating line items:', lineItemsError);
     // Clean up the invoice if line items failed
     await client.from('invoices').delete().eq('id', invoice.id);
     throw new Response(`Error creating invoice line items: ${lineItemsError.message}`, { status: 500 });
+  }
+
+  // Create tax associations for each line item
+  if (insertedLineItems) {
+    for (let i = 0; i < insertedLineItems.length; i++) {
+      const lineItem = insertedLineItems[i];
+      const originalItem = invoiceData.line_items[i];
+      
+      if (originalItem.tax_rate_ids && originalItem.tax_rate_ids.length > 0) {
+        await createLineItemTaxAssociations(
+          lineItem.id,
+          originalItem.tax_rate_ids,
+          originalItem,
+          taxRates,
+          client
+        );
+      }
+    }
   }
 
   // Fetch the complete invoice with details
@@ -206,6 +291,47 @@ export async function getInvoiceById(
     throw new Response("Invoice not found", { status: 404 });
   }
 
+  // Fetch tax data for line items
+  const lineItemIds = (invoice.invoice_line_items || []).map(item => item.id);
+  console.log(`[Service/getInvoiceById] Fetching tax data for line items:`, lineItemIds);
+  
+  const { data: lineItemTaxes, error: taxError } = await client
+    .from('invoice_line_item_taxes')
+    .select('*')
+    .in('invoice_line_item_id', lineItemIds);
+
+  if (taxError) {
+    console.error(`[Service/getInvoiceById] Error fetching tax data:`, taxError);
+  }
+
+  console.log(`[Service/getInvoiceById] Found tax data:`, lineItemTaxes);
+
+  // Group tax data by line item ID
+  const taxesByLineItem = (lineItemTaxes || []).reduce((acc, tax) => {
+    if (!acc[tax.invoice_line_item_id]) {
+      acc[tax.invoice_line_item_id] = [];
+    }
+    acc[tax.invoice_line_item_id].push(tax);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  // Also group tax rate IDs for backward compatibility
+  const taxRatesByLineItem = (lineItemTaxes || []).reduce((acc, tax) => {
+    if (!acc[tax.invoice_line_item_id]) {
+      acc[tax.invoice_line_item_id] = [];
+    }
+    acc[tax.invoice_line_item_id].push(tax.tax_rate_id);
+    return acc;
+  }, {} as Record<string, string[]>);
+
+  console.log(`[Service/getInvoiceById] Grouped taxes by line item:`, taxesByLineItem);
+
+  // Fetch payment taxes separately
+  const { data: paymentTaxes } = await client
+    .from('payment_taxes')
+    .select('*')
+    .in('payment_id', (invoice.invoice_payments || []).map(p => p.id));
+
   return {
     ...invoice,
     service_period_start: invoice.service_period_start || undefined,
@@ -241,29 +367,81 @@ export async function getInvoiceById(
     },
     family: invoice.families || undefined,
     family_id: invoice.family_id || undefined,
-    line_items: (invoice.invoice_line_items || []).map(item => ({
-      ...item,
-      tax_rate: (item.tax_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
-      tax_amount: item.tax_amount ?? 0,
-      discount_rate: (item.discount_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
-      discount_amount: item.discount_amount ?? 0,
-      sort_order: item.sort_order ?? 0,
-      enrollment_id: item.enrollment_id || undefined,
-      product_id: item.product_id || undefined,
-      service_period_start: item.service_period_start || undefined,
-      service_period_end: item.service_period_end || undefined,
-      created_at: item.created_at || new Date().toISOString(),
-    })),
-    payments: (invoice.invoice_payments || []).map(payment => ({
-      ...payment,
-      reference_number: payment.reference_number || undefined,
-      notes: payment.notes || undefined,
-      stripe_payment_intent_id: payment.stripe_payment_intent_id || undefined,
-      created_at: payment.created_at || new Date().toISOString(),
-      updated_at: payment.updated_at || new Date().toISOString(),
-    })),
+    line_items: (invoice.invoice_line_items || []).map(item => {
+      const itemTaxes = taxesByLineItem[item.id] || [];
+      const totalTaxAmount = itemTaxes.reduce((sum, tax) => sum + (tax.tax_amount || 0), 0);
+      
+      return {
+        ...item,
+        tax_rate: (item.tax_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
+        tax_amount: item.tax_amount ?? 0,
+        tax_rate_ids: taxRatesByLineItem[item.id] || [], // Include tax rate IDs from associations
+        taxes: itemTaxes, // Include actual tax data
+        total_tax_amount: totalTaxAmount, // Calculate total tax amount
+        discount_rate: (item.discount_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
+        discount_amount: item.discount_amount ?? 0,
+        sort_order: item.sort_order ?? 0,
+        enrollment_id: item.enrollment_id || undefined,
+        product_id: item.product_id || undefined,
+        service_period_start: item.service_period_start || undefined,
+        service_period_end: item.service_period_end || undefined,
+        created_at: item.created_at || new Date().toISOString(),
+      };
+    }),
+    payments: (invoice.invoice_payments || []).map(payment => {
+      const taxes = (paymentTaxes || []).filter(tax => tax.payment_id === payment.id);
+      return {
+        ...payment,
+        reference_number: payment.reference_number || undefined,
+        notes: payment.notes || undefined,
+        stripe_payment_intent_id: payment.stripe_payment_intent_id || undefined,
+        created_at: payment.created_at || new Date().toISOString(),
+        updated_at: payment.updated_at || new Date().toISOString(),
+        taxes,
+        total_tax_amount: taxes.reduce((sum: number, tax) => sum + (tax.tax_amount || 0), 0),
+      };
+    }),
     status_history: invoice.invoice_status_history || [],
   } as InvoiceWithDetails;
+}
+
+/**
+ * Get invoice by invoice number with all related data
+ */
+export async function getInvoiceByNumber(
+  invoiceNumber: string,
+  supabaseAdmin?: SupabaseClient<Database>
+): Promise<InvoiceWithDetails> {
+  invariant(invoiceNumber, "Missing invoiceNumber parameter");
+  
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
+  
+  console.log(`[Service/getInvoiceByNumber] Fetching invoice details for number: ${invoiceNumber}`);
+
+  const { data: invoice, error: invoiceError } = await client
+    .from('invoices')
+    .select(`
+      *,
+      invoice_entities(*),
+      families(id, name),
+      invoice_line_items(*),
+      invoice_payments(*),
+      invoice_status_history(*)
+    `)
+    .eq('invoice_number', invoiceNumber)
+    .single();
+
+  if (invoiceError) {
+    console.error(`[Service/getInvoiceByNumber] Error fetching invoice ${invoiceNumber}:`, invoiceError);
+    throw new Response(`Database error: ${invoiceError.message}`, { status: 500 });
+  }
+
+  if (!invoice) {
+    throw new Response("Invoice not found", { status: 404 });
+  }
+
+  // Use the existing getInvoiceById function to get the complete data
+  return getInvoiceById(invoice.id, client);
 }
 
 /**
@@ -464,7 +642,7 @@ export async function updateInvoice(
 
   // Update line items if provided
   if (invoiceData.line_items) {
-    // Delete existing line items
+    // Delete existing line items and their tax associations
     const { error: deleteError } = await client
       .from('invoice_line_items')
       .delete()
@@ -475,12 +653,16 @@ export async function updateInvoice(
       throw new Response(`Error updating line items: ${deleteError.message}`, { status: 500 });
     }
 
-    // Create new line items with calculated totals
+    // Get tax rates for calculations
+    const taxRates = await getActiveTaxRates(client);
+
+    // Create new line items with calculated totals using new tax system
     const lineItemsWithTotals = invoiceData.line_items.map((item, index) => {
-      const calculations = calculateLineItemTotals(
+      const calculations = calculateLineItemTotalsWithRates(
         item.quantity,
         item.unit_price,
-        item.tax_rate || 0,
+        item.tax_rate_ids || [],
+        taxRates,
         item.discount_rate || 0
       );
 
@@ -491,10 +673,9 @@ export async function updateInvoice(
         quantity: item.quantity,
         unit_price: item.unit_price,
         line_total: calculations.line_total,
-        tax_rate: (item.tax_rate || 0) / 100, // Convert percentage to decimal for database
-        tax_amount: calculations.tax_amount,
+        tax_amount: calculations.tax_amount ?? 0,
         discount_rate: (item.discount_rate || 0) / 100, // Convert percentage to decimal for database
-        discount_amount: calculations.discount_amount,
+        discount_amount: calculations.discount_amount ?? 0,
         enrollment_id: item.enrollment_id,
         product_id: item.product_id,
         service_period_start: item.service_period_start,
@@ -503,13 +684,32 @@ export async function updateInvoice(
       };
     });
 
-    const { error: lineItemsError } = await client
+    const { data: insertedLineItems, error: lineItemsError } = await client
       .from('invoice_line_items')
-      .insert(lineItemsWithTotals);
+      .insert(lineItemsWithTotals)
+      .select('id');
 
     if (lineItemsError) {
       console.error(`[Service/updateInvoice] Error creating new line items:`, lineItemsError);
       throw new Response(`Error updating line items: ${lineItemsError.message}`, { status: 500 });
+    }
+
+    // Create tax associations for each line item
+    if (insertedLineItems) {
+      for (let i = 0; i < insertedLineItems.length; i++) {
+        const lineItem = insertedLineItems[i];
+        const originalItem = invoiceData.line_items[i];
+        
+        if (originalItem.tax_rate_ids && originalItem.tax_rate_ids.length > 0) {
+          await createLineItemTaxAssociations(
+            lineItem.id,
+            originalItem.tax_rate_ids,
+            originalItem,
+            taxRates,
+            client
+          );
+        }
+      }
     }
   }
 

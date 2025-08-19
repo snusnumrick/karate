@@ -11,7 +11,7 @@ import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { formatCurrency } from '~/utils/misc';
-import { calculateLineItemTotal } from '~/utils/line-item-helpers';
+import { calculateLineItemTotalWithRates } from '~/utils/line-item-helpers';
 import { InvoiceTemplateService } from '~/services/invoice-template.server';
 import { getTemplateCategories } from '~/data/invoice-templates';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
@@ -151,7 +151,7 @@ export default function NewInvoiceTemplate() {
 
     
     const calculateTotal = () => {
-        return lineItems.reduce((total, item) => total + calculateLineItemTotal(item), 0);
+        return lineItems.reduce((total, item) => total + calculateLineItemTotalWithRates(item, []), 0);
     };
 
     return (
@@ -328,7 +328,7 @@ export default function NewInvoiceTemplate() {
                                     <div className="space-y-2">
                                         <Label>Line Total</Label>
                                         <div className="h-10 px-3 py-2 border rounded-md bg-muted text-muted-foreground flex items-center">
-                                            {formatCurrency(calculateLineItemTotal(item) * 100)}
+                                            {formatCurrency(calculateLineItemTotalWithRates(item, []) * 100)}
                                         </div>
                                     </div>
                                 </div>

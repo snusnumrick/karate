@@ -1,7 +1,7 @@
 import { sendEmail } from "~/utils/email.server";
 import { formatCurrency } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
-import { getItemTypeLabel, formatServicePeriod, calculateLineItemDiscount, calculateLineItemTax } from "~/utils/line-item-helpers";
+import { getItemTypeLabel, formatServicePeriod, calculateLineItemDiscount, calculateLineItemTaxWithRates } from "~/utils/line-item-helpers";
 import { siteConfig } from "~/config/site";
 import { generateInvoicePDF, getDefaultCompanyInfo, generateInvoiceFilename } from "~/utils/pdf-generator";
 import type { InvoiceWithDetails } from "~/types/invoice";
@@ -265,7 +265,9 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                                 <span>${formatCurrency(invoice.tax_amount)}</span>
                             </div>
                             ${invoice.line_items.length > 1 ? invoice.line_items.map(item => {
-                                const itemTax = calculateLineItemTax(item);
+                                const itemSubtotal = item.quantity * item.unit_price;
+                                const itemDiscount = itemSubtotal * (item.discount_rate || 0) / 100;
+                                const itemTax = (itemSubtotal - itemDiscount) * (item.tax_rate || 0) / 100;
                                 if (itemTax > 0) {
                                     return `
                                      <div class="breakdown-item">

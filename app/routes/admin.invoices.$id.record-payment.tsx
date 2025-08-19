@@ -9,6 +9,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import type { Database } from '~/types/database.types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatDate } from '~/utils/misc';
+import { calculateInvoicePaymentTaxBreakdown } from '~/utils/line-item-helpers';
 
 
 
@@ -109,10 +110,25 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const validatedData = RecordPaymentSchema.parse(rawData);
 
-    // Fetch current invoice to validate payment amount
+    // Fetch current invoice with line items and tax details to validate payment amount and calculate tax breakdown
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('total_amount, amount_paid, status')
+      .select(`
+        total_amount, 
+        amount_paid, 
+        status,
+        tax_amount,
+        line_items:invoice_line_items(
+          id,
+          invoice_line_item_taxes(
+            tax_rate_id,
+            tax_amount,
+            tax_name_snapshot,
+            tax_rate_snapshot,
+            tax_description_snapshot
+          )
+        )
+      `)
       .eq('id', params.id)
       .single();
 
@@ -153,6 +169,49 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (paymentError) {
       console.error('Error recording payment:', paymentError);
       return json({ errors: { general: 'Failed to record payment' } }, { status: 500 });
+    }
+
+    // Calculate and store tax breakdown for this payment
+    if (invoice.tax_amount > 0 && invoice.line_items) {
+      // Transform the data structure to match what the helper function expects
+      const lineItemsWithTaxes = invoice.line_items.map(item => ({
+        id: item.id,
+        taxes: item.invoice_line_item_taxes?.map(tax => ({
+          tax_rate_id: tax.tax_rate_id,
+          tax_amount: tax.tax_amount,
+          tax_name_snapshot: tax.tax_name_snapshot,
+          tax_rate_snapshot: tax.tax_rate_snapshot,
+          tax_description_snapshot: tax.tax_description_snapshot || undefined
+        }))
+      }));
+
+      const taxBreakdown = calculateInvoicePaymentTaxBreakdown(
+        paymentAmountCents,
+        invoice.total_amount,
+        invoice.tax_amount,
+        lineItemsWithTaxes
+      );
+
+      if (taxBreakdown.length > 0) {
+        const taxRecords = taxBreakdown.map(tax => ({
+          payment_id: payment.id,
+          tax_rate_id: tax.tax_rate_id,
+          tax_amount: tax.tax_amount,
+          tax_rate_snapshot: tax.tax_rate_snapshot,
+          tax_name_snapshot: tax.tax_name_snapshot,
+          tax_description_snapshot: tax.tax_description_snapshot || undefined
+        }));
+
+        const { error: taxError } = await supabase
+          .from('payment_taxes')
+          .insert(taxRecords);
+
+        if (taxError) {
+          console.error('Error recording payment tax breakdown:', taxError);
+          // Continue with payment processing even if tax breakdown fails
+          // This is not critical enough to rollback the entire payment
+        }
+      }
     }
 
     // Update invoice amount_paid and status

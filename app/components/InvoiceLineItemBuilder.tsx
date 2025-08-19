@@ -1,22 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Card, CardContent } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Plus, Copy, Trash2 } from "lucide-react";
-import type { CreateInvoiceLineItemData } from "~/types/invoice";
-import { createEmptyLineItem, calculateLineItemTotal, getAvailableItemTypes, duplicateLineItem } from "~/utils/line-item-helpers";
+import type { CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
+import { createEmptyLineItem, getAvailableItemTypes, duplicateLineItem, calculateLineItemTotalWithRates } from "~/utils/line-item-helpers";
 import { formatCurrency } from "~/utils/misc";
+import { calculateInvoiceTotals } from "~/services/invoice.server";
+import { getActiveTaxRates } from "~/services/tax-rates.server";
 
 interface InvoiceLineItemBuilderProps {
   lineItems: CreateInvoiceLineItemData[];
   onChange: (lineItems: CreateInvoiceLineItemData[]) => void;
   errors?: Record<number, string[]>;
+  availableTaxRates?: TaxRate[];
 }
 
 export function InvoiceLineItemBuilder({ 
   lineItems, 
   onChange, 
-  errors = {} 
+  errors = {},
+  availableTaxRates = []
 }: InvoiceLineItemBuilderProps) {
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
@@ -69,7 +77,7 @@ export function InvoiceLineItemBuilder({
     });
   };
 
-  const handleUpdateLineItem = (index: number, field: keyof CreateInvoiceLineItemData, value: string | number) => {
+  const handleUpdateLineItem = (index: number, field: keyof CreateInvoiceLineItemData, value: string | number | string[]) => {
     const newLineItems = [...lineItems];
     newLineItems[index] = {
       ...newLineItems[index],
@@ -122,7 +130,7 @@ export function InvoiceLineItemBuilder({
         {lineItems.map((item, index) => {
           const isExpanded = expandedItems.has(index);
           const itemErrors = errors[index] || [];
-          const lineTotal = calculateLineItemTotal(item);
+          const lineTotal = calculateLineItemTotalWithRates(item, availableTaxRates);
 
           return (
             <div
@@ -298,26 +306,38 @@ export function InvoiceLineItemBuilder({
                     />
                   </div>
 
-                  {/* Tax Rate */}
+                  {/* Tax Rates */}
                   <div>
-                    <Label htmlFor={`tax-rate-${index}`} className="block text-sm font-medium mb-1">
-                      Tax Rate (%)
+                    <Label className="block text-sm font-medium mb-1">
+                      Tax Rates
                     </Label>
-                    <Input
-                      id={`tax-rate-${index}`}
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={item.tax_rate || 0}
-                      onChange={(e) => handleUpdateLineItem(index, 'tax_rate', parseFloat(e.target.value) || 0)}
-                      onClick={handleInputClick}
-                      className={`input-custom-styles ${
-                        itemErrors.length > 0 ? 'border-red-500' : ''
-                      }`}
-                      tabIndex={0}
-                      placeholder="0.00"
-                    />
+                    <div className="space-y-2 mt-2">
+                      {availableTaxRates.length > 0 ? (
+                        availableTaxRates.map((taxRate) => (
+                          <div key={taxRate.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`tax-${index}-${taxRate.id}`}
+                              checked={item.tax_rate_ids?.includes(taxRate.id) || false}
+                              onCheckedChange={(checked) => {
+                                const currentIds = item.tax_rate_ids || [];
+                                const newIds = checked
+                                  ? [...currentIds, taxRate.id]
+                                  : currentIds.filter(id => id !== taxRate.id);
+                                handleUpdateLineItem(index, 'tax_rate_ids', newIds);
+                              }}
+                            />
+                            <Label
+                              htmlFor={`tax-${index}-${taxRate.id}`}
+                              className="text-sm font-normal cursor-pointer"
+                            >
+                              {taxRate.name} ({(taxRate.rate * 100).toFixed(2)}%)
+                            </Label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No tax rates available</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Discount Rate */}

@@ -12,6 +12,29 @@ export const EntityTypeSchema = z.enum(['family', 'school', 'government', 'corpo
 
 export const PaymentTermsSchema = z.enum(['Due on Receipt', 'Net 15', 'Net 30', 'Net 60', 'Net 90']);
 
+// Tax Rate schemas
+export const TaxRateSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1, 'Tax rate name is required'),
+  rate: z.number().min(0).max(1, 'Tax rate must be between 0 and 1'),
+  description: z.string().optional(),
+  region: z.string().optional(),
+  is_active: z.boolean().default(true),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const InvoiceLineItemTaxSchema = z.object({
+  id: z.string().uuid(),
+  invoice_line_item_id: z.string().uuid(),
+  tax_rate_id: z.string().uuid(),
+  tax_amount: z.number().min(0),
+  tax_name_snapshot: z.string(),
+  tax_rate_snapshot: z.number().min(0).max(1),
+  tax_description_snapshot: z.string().optional(),
+  created_at: z.string(),
+});
+
 // Base schemas
 export const InvoiceEntitySchema = z.object({
   id: z.string().uuid(),
@@ -43,8 +66,9 @@ export const InvoiceLineItemSchema = z.object({
   quantity: z.number().min(0.01, 'Quantity must be greater than 0'),
   unit_price: z.number().min(0, 'Unit price must be non-negative'),
   line_total: z.number(),
-  tax_rate: z.number().min(0).max(1).default(0),
-  tax_amount: z.number().min(0).default(0),
+  // Deprecated fields - use taxes array instead
+  tax_rate: z.number().min(0).max(1).default(0).optional(),
+  tax_amount: z.number().min(0).default(0).optional(),
   discount_rate: z.number().min(0).max(1).default(0),
   discount_amount: z.number().min(0).default(0),
   enrollment_id: z.string().uuid().optional(),
@@ -53,6 +77,9 @@ export const InvoiceLineItemSchema = z.object({
   service_period_end: z.string().optional(),
   sort_order: z.number().default(0),
   created_at: z.string(),
+  // New tax system
+  taxes: z.array(InvoiceLineItemTaxSchema).optional(),
+  total_tax_amount: z.number().min(0).optional(),
 });
 
 export const InvoiceSchema = z.object({
@@ -123,7 +150,10 @@ export const CreateInvoiceLineItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   quantity: z.number().min(0.01, 'Quantity must be greater than 0'),
   unit_price: z.number().min(0, 'Unit price must be non-negative'),
-  tax_rate: z.number().min(0).max(1).default(0),
+  // Deprecated - use tax_rate_ids instead
+  tax_rate: z.number().min(0).max(1).default(0).optional(),
+  // New tax system
+  tax_rate_ids: z.array(z.string().uuid()).optional(),
   discount_rate: z.number().min(0).max(1).default(0),
   enrollment_id: z.string().uuid().optional(),
   product_id: z.string().uuid().optional(),
