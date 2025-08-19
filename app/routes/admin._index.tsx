@@ -100,8 +100,9 @@ export async function loader(_: LoaderFunctionArgs) {
             supabaseAdmin.from('students').select('id', {count: 'exact', head: true}), // Use admin client
             supabaseAdmin.from('payments').select('total_amount').eq('status', PaymentStatus.Succeeded), // Use total_amount
             supabaseAdmin.from('attendance')
-                .select('id, class_sessions!inner(session_date)', {count: 'exact', head: true})
+                .select('id, class_sessions!inner(session_date, status)', {count: 'exact', head: true})
                 .eq('class_sessions.session_date', getTodayLocalDateString()) // Today's date
+                .in('class_sessions.status', ['scheduled', 'completed']) // Exclude cancelled sessions
                 .eq('status', 'present'), // Use status instead of present
             supabaseAdmin.from('payments')
                 .select('family_id')
@@ -259,6 +260,7 @@ export async function loader(_: LoaderFunctionArgs) {
                 )
             `)
             .eq('session_date', today)
+            .in('status', ['scheduled', 'completed'])
             .order('start_time');
 
         if (sessionsError) {

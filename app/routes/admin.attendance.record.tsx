@@ -113,10 +113,11 @@ export async function loader({request}: LoaderFunctionArgs) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     try {
-        // Get all sessions for the selected date
+        // Get all sessions for the selected date, excluding cancelled sessions
         const sessions = await getClassSessions({
             session_date_from: attendanceDate,
-            session_date_to: attendanceDate
+            session_date_to: attendanceDate,
+            status: 'scheduled' // Only show scheduled sessions, not cancelled ones
         }, supabaseAdmin) as SessionWithClass[];
 
         let selectedSession: SessionWithClass | null = null;
