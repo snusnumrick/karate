@@ -92,9 +92,9 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     const studentIds = [];
     
     for (const student of students) {
-      if (student.existingStudentId) {
+      if (student.existingStudentId || student.id) {
         // Use existing student
-        studentIds.push(student.existingStudentId);
+        studentIds.push(student.existingStudentId || student.id);
       } else {
         // Create new student
         const studentData: StudentInsert = {

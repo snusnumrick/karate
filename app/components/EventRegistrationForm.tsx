@@ -244,6 +244,12 @@ export function EventRegistrationForm({
       const existingStudent = familyData?.students.find(s => s.id === studentId);
       if (existingStudent) {
         setFormData(prev => {
+          // Check if student is already added to prevent duplicates
+          const isAlreadyAdded = prev.students.some(student => student.id === studentId);
+          if (isAlreadyAdded) {
+            return prev; // Don't add duplicate
+          }
+          
           // Find the first empty student slot (where firstName is empty and not an existing student)
           const firstEmptyIndex = prev.students.findIndex(student => 
             !student.firstName && !student.isExistingStudent
