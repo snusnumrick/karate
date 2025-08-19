@@ -344,7 +344,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     const applicableTaxes = taxRatesData?.map(t => ({ name: t.name, rate: Number(t.rate) })) || [];
     const totalTaxAmount = applicableTaxes.reduce((acc, tax) => {
         // Ensure tax calculation matches createInitialPaymentRecord (e.g., rounding)
-        return acc + Math.round(subtotalAmount * tax.rate);
+        return acc + Math.round(subtotalAmount * tax.rate / 100);
     }, 0);
     const finalTotalAmountCents = subtotalAmount + totalTaxAmount;
 
@@ -398,7 +398,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     const { data: paymentData, error: paymentError } = await createInitialPaymentRecord(
         familyId,
         subtotalAmount,
-        [], // No student IDs needed for store purchase linking via payment_students
+        [studentId], // Pass student ID for PST exemption logic
         'store_purchase', // Payment type
         orderId // Pass the order ID to link
     );
@@ -482,7 +482,7 @@ export default function PurchaseGiPage() {
         let calculatedTax = 0;
         if (subtotal > 0 && applicableTaxes.length > 0) {
             calculatedTax = applicableTaxes.reduce((acc, tax) => {
-                return acc + Math.round(subtotal * tax.rate);
+                return acc + Math.round(subtotal * tax.rate / 100);
             }, 0);
         }
         return {
@@ -626,7 +626,7 @@ export default function PurchaseGiPage() {
                                 {applicableTaxes.map(tax => (
                                     <div key={tax.name} className="flex justify-between text-gray-600 dark:text-gray-400">
                                         <span>{tax.name} ({ (tax.rate * 100).toFixed(0) }%):</span>
-                                        <span>{formatCurrency(Math.round(subtotal * tax.rate))}</span>
+                                        <span>{formatCurrency(Math.round(subtotal * tax.rate / 100))}</span>
                                     </div>
                                 ))}
                                 <Separator className="my-1" />

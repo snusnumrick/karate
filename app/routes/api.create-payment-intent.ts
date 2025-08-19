@@ -161,68 +161,6 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         const totalAmountInCents = totalAmountFromForm;
         const totalTaxAmountInCents = totalAmountInCents - subtotalAmountInCents; // Calculate tax for metadata
 
-        // --- Fetch Tax Rate Details for Metadata/DB Insert (Still needed) ---
-        // This part remains necessary to store the breakdown correctly, even if we don't recalculate the total tax amount here.
-        const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
-        const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
-            .from('tax_rates')
-            .select('id, name, rate, description') // Fetch description
-            .in('name', applicableTaxNames)
-            .eq('is_active', true);
-
-        if (taxRatesError) {
-            console.error('[API Create PI] Error fetching tax rates for breakdown:', JSON.stringify(taxRatesError, null, 2));
-            throw new Error(`Failed to fetch tax rates for breakdown: ${taxRatesError.message}`);
-        }
-        // console.log('[API Create PI] Fetched tax rates data for breakdown:', JSON.stringify(taxRatesData, null, 2));
-
-        const paymentTaxesToInsert: Array<{
-            tax_rate_id: string;
-            tax_amount: number; // This will be recalculated based on fetched rates and FORM subtotal
-            tax_rate_snapshot: number;
-            tax_name_snapshot: string;
-            tax_description_snapshot: string | null; // Add description snapshot
-        }> = [];
-        const taxDetailsForMetadata: Array<{ name: string; description: string | null; amount: number; rate: number }> = [];
-        let recalculatedTaxCheck = 0; // For verification
-
-        if (taxRatesData && taxRatesData.length > 0) {
-            // console.log(`[API Create PI] Recalculating tax breakdown based on ${taxRatesData.length} rates and FORM subtotal ${subtotalAmountInCents}.`);
-            for (const taxRate of taxRatesData) {
-                const rate = Number(taxRate.rate);
-                if (isNaN(rate)) {
-                    console.error(`Invalid tax rate found for ${taxRate.name}: ${taxRate.rate}`);
-                    continue;
-                }
-                // Recalculate individual tax amount based on FORM subtotal and fetched rate
-                const taxAmountForThisRate = Math.round(subtotalAmountInCents * rate);
-                recalculatedTaxCheck += taxAmountForThisRate; // Sum for verification
-                paymentTaxesToInsert.push({
-                    tax_rate_id: taxRate.id,
-                    tax_amount: taxAmountForThisRate, // Use recalculated amount for DB
-                    tax_rate_snapshot: rate,
-                    tax_name_snapshot: taxRate.name,
-                    tax_description_snapshot: taxRate.description, // Store description
-                });
-                taxDetailsForMetadata.push({
-                    name: taxRate.name,
-                    description: taxRate.description, // Add description to metadata
-                    amount: taxAmountForThisRate, // Use recalculated amount for metadata
-                    rate: rate,
-                });
-            }
-            // Verification log: Compare recalculated total tax with tax derived from form amounts
-            if (recalculatedTaxCheck !== totalTaxAmountInCents) {
-                 console.warn(`[API Create PI] Tax amount mismatch during breakdown recalculation! Form-derived tax: ${totalTaxAmountInCents}, Recalculated tax sum: ${recalculatedTaxCheck}. Using form-derived total for Stripe, but storing recalculated breakdown.`);
-                 // This might indicate a rounding difference or an issue upstream. Proceeding, but needs monitoring.
-            } else {
-                 // console.log(`[API Create PI] Tax breakdown recalculation successful. Total tax: ${recalculatedTaxCheck}`);
-            }
-        } else {
-            console.log(`[API Create PI] No applicable tax rates found for breakdown. Tax amount is ${totalTaxAmountInCents}.`);
-        }
-        // --- End Fetch Tax Rate Details ---
-
 
         // --- Validation (using amounts from form) ---
         // console.log(`[API Create PI] Using amounts from form: Subtotal=${subtotalAmountInCents}, Total Tax=${totalTaxAmountInCents}, Total=${totalAmountInCents}`);
@@ -244,6 +182,65 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         // console.log(`[API Create PI] Using existing Supabase Payment ID: ${supabasePaymentId}`);
         // We no longer create a new record here, so remove the paymentData variable assignment.
         // paymentData = { id: supabasePaymentId }; // We just need the ID
+
+        // --- Use Existing Tax Records Instead of Recalculating ---
+        // Fetch existing tax records for this payment to preserve exemptions and correct calculations
+        const { data: existingTaxes, error: existingTaxesError } = await supabaseAdmin
+            .from('payment_taxes')
+            .select(`
+                tax_rate_id,
+                tax_amount,
+                tax_rate_snapshot,
+                tax_name_snapshot,
+                tax_description_snapshot,
+                tax_rates!inner(id, name, description)
+            `)
+            .eq('payment_id', supabasePaymentId);
+
+        if (existingTaxesError) {
+            console.error('[API Create PI] Error fetching existing tax records:', JSON.stringify(existingTaxesError, null, 2));
+            throw new Error(`Failed to fetch existing tax records: ${existingTaxesError.message}`);
+        }
+
+        const paymentTaxesToInsert: Array<{
+            tax_rate_id: string;
+            tax_amount: number;
+            tax_rate_snapshot: number;
+            tax_name_snapshot: string;
+            tax_description_snapshot: string | null;
+        }> = [];
+        const taxDetailsForMetadata: Array<{ name: string; description: string | null; amount: number; rate: number }> = [];
+        let existingTaxTotal = 0;
+
+        if (existingTaxes && existingTaxes.length > 0) {
+            console.log(`[API Create PI] Using existing tax records (${existingTaxes.length} taxes) to preserve exemptions.`);
+            for (const existingTax of existingTaxes) {
+                existingTaxTotal += existingTax.tax_amount;
+                paymentTaxesToInsert.push({
+                    tax_rate_id: existingTax.tax_rate_id,
+                    tax_amount: existingTax.tax_amount,
+                    tax_rate_snapshot: existingTax.tax_rate_snapshot,
+                    tax_name_snapshot: existingTax.tax_name_snapshot,
+                    tax_description_snapshot: existingTax.tax_description_snapshot,
+                });
+                taxDetailsForMetadata.push({
+                    name: existingTax.tax_name_snapshot,
+                    description: existingTax.tax_description_snapshot,
+                    amount: existingTax.tax_amount,
+                    rate: existingTax.tax_rate_snapshot,
+                });
+            }
+            
+            // Verify existing tax total matches form-derived tax
+            if (existingTaxTotal !== totalTaxAmountInCents) {
+                console.warn(`[API Create PI] Tax amount mismatch! Form-derived tax: ${totalTaxAmountInCents}, Existing tax total: ${existingTaxTotal}. Using form-derived total for Stripe.`);
+            } else {
+                console.log(`[API Create PI] Tax amounts match. Total tax: ${existingTaxTotal}`);
+            }
+        } else {
+            console.log(`[API Create PI] No existing tax records found. Tax amount is ${totalTaxAmountInCents}.`);
+        }
+        // --- End Use Existing Tax Records ---
 
         // 2. Create Stripe Payment Intent instead of Checkout Session
         // Build metadata object explicitly
