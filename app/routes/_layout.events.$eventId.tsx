@@ -8,7 +8,7 @@ import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, 
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
 import { getEventTypeColorWithBorder } from "~/utils/event-helpers.server";
-import {formatEventTypeName} from "~/utils/event-helpers.client";
+import {formatEventTypeName} from "~/utils/event-helpers.server";
 // Server-side imports moved to loader function
 
 
