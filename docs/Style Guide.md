@@ -25,7 +25,7 @@ Use these classes for consistent styling across the application:
 
 ```css
 .page-background-styles     /* Page backgrounds - uses theme-yellow */
-.page-header-styles        /* Main page headings - uses theme-text */
+.page-header-styles        /* Main page headings - uses text-gray-900 and dark:text-white */
 .page-subheader-styles     /* Subheadings with 70% opacity */
 .form-container-styles     /* Card containers - uses theme-surface */
 .form-card-styles         /* Inner cards - uses theme-yellow */
