@@ -34,6 +34,12 @@ export const formatTime = (time: string) => {
     return `${displayHour}:${minutes} ${ampm}`;
 };
 
+// Convert a 24-hour time string ("HH:MM") to minutes
+const timeStringToMinutes = (time: string) => {
+    const [h, m] = time.split(":").map(Number);
+    return h * 60 + m;
+};
+
 // Helper function to calculate end time from start time and duration
 export const calculateEndTime = (startTime: string, durationMinutes: number) => {
     const [hours, minutes] = startTime.split(':').map(Number);
@@ -148,10 +154,14 @@ export const getScheduleInfo = (classes: ClassWithSchedule[]) => {
     // Get the time range (earliest start to latest end)
     const allTimes = Object.values(sessionsByDay).flat();
     if (allTimes.length > 0) {
-        const earliestStart = allTimes.map(t => t.start).sort()[0];
-        const latestEnd = allTimes.map(t => t.end).sort().reverse()[0];
+        const earliestStart = allTimes
+            .map(t => t.start)
+            .sort((a, b) => timeStringToMinutes(a) - timeStringToMinutes(b))[0];
+        const latestEnd = allTimes
+            .map(t => t.end)
+            .sort((a, b) => timeStringToMinutes(b) - timeStringToMinutes(a))[0];
         const times = `${formatTime(earliestStart)} - ${formatTime(latestEnd)}`;
-        
+
         return {
             days: days || siteConfig.classes.days,
             times: times
@@ -234,10 +244,12 @@ export const getOpeningHoursSpecification = (classes: ClassWithSchedule[]) => {
     return Object.entries(sessionsByDay).map(([day, timeSlots]) => {
         const startTimes = timeSlots.map(slot => slot.start);
         const endTimes = timeSlots.map(slot => slot.end);
-        
-        const earliestStart = startTimes.sort()[0];
-        const latestEnd = endTimes.sort().reverse()[0];
-        
+
+        const earliestStart = startTimes
+            .sort((a, b) => timeStringToMinutes(a) - timeStringToMinutes(b))[0];
+        const latestEnd = endTimes
+            .sort((a, b) => timeStringToMinutes(b) - timeStringToMinutes(a))[0];
+
         return {
             "@type": "OpeningHoursSpecification",
             "dayOfWeek": [day],

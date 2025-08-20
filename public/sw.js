@@ -86,8 +86,13 @@ async function addQueuedReply(replyData) {
     const db = await openDb();
     const tx = db.transaction(REPLY_STORE_NAME, 'readwrite');
     const store = tx.objectStore(REPLY_STORE_NAME);
-    await store.add(replyData);
-    return tx.complete;
+    return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+
+        const request = store.add(replyData);
+        request.onerror = () => reject(request.error);
+    });
 }
 
 /**
@@ -97,10 +102,20 @@ async function getAndClearQueuedReplies() {
     const db = await openDb();
     const tx = db.transaction(REPLY_STORE_NAME, 'readwrite');
     const store = tx.objectStore(REPLY_STORE_NAME);
-    const replies = await store.getAll();
-    await store.clear();
-    await tx.complete;
-    return replies;
+    return new Promise((resolve, reject) => {
+        let replies;
+
+        tx.oncomplete = () => resolve(replies);
+        tx.onerror = () => reject(tx.error);
+
+        const getRequest = store.getAll();
+        getRequest.onerror = () => reject(getRequest.error);
+        getRequest.onsuccess = () => {
+            replies = getRequest.result;
+            const clearRequest = store.clear();
+            clearRequest.onerror = () => reject(clearRequest.error);
+        };
+    });
 }
 
 // --- Service Worker Lifecycle Events ---

@@ -22,7 +22,7 @@ import {
 import {Json} from "~/types/database.types";
 import {ClientOnly} from "~/components/client-only";
 import {cn} from "~/lib/utils";
-import retrieveDatabaseStructure, {DatabaseSchema, formatSchemaAsMarkdown} from "~/utils/retrieve.db.strructure"; // Import cn utility
+import retrieveDatabaseStructure, {DatabaseSchema, formatSchemaAsMarkdown} from "~/utils/retrieve.db.structure";
 import { formatCurrency as formatCurrencyUtil } from "~/utils/misc"; // Import the utility function
 import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
