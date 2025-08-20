@@ -370,6 +370,7 @@ export async function getClassById(
     .single();
 
   // If no actual session found, calculate next occurrence from schedule
+  let nextScheduledTime = null;
   if (!nextSession && schedules.length > 0) {
     const now = new Date();
     const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -431,6 +432,7 @@ export async function getClassById(
     instructor: data.instructor ? mapInstructorNullToUndefined(data.instructor) : undefined,
     enrollment_count: enrollments.length,
     next_session: nextSession ? mapSessionNullToUndefined(nextSession) : undefined,
+    next_scheduled_time: nextScheduledTime ? `${nextScheduledTime.session_date} ${nextScheduledTime.start_time}` : null,
     recent_sessions: sessions.map(session => mapSessionNullToUndefined(session)),
   };
 }

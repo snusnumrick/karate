@@ -91,5 +91,4 @@ export function clearSupabaseClient(): void {
     console.log('[Supabase] Clearing singleton client');
     delete window.__SUPABASE_SINGLETON_CLIENT;
   }
-  clientInstance = null;
 }

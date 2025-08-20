@@ -163,7 +163,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
   const registrationDeadline = formData.get("registration_deadline") as string;
   const instructorId = formData.get("instructor_id") as string;
   const externalUrl = formData.get("external_url") as string;
-  const isPublic = formData.get("is_public") === "on";
+  const visibility = formData.get("visibility") as Database["public"]["Enums"]["event_visibility_enum"] || "public";
   const requiresWaiver = formData.get("requires_waiver") === "on";
   const selectedWaivers = formData.getAll("waivers") as string[];
 
@@ -210,7 +210,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
         registration_deadline: registrationDeadline || null,
         instructor_id: (instructorId && instructorId !== 'none') ? instructorId : null,
         external_url: externalUrl?.trim() || null,
-        is_public: isPublic,
+        visibility,
         updated_at: new Date().toISOString()
       })
       .eq('id', eventId);
@@ -554,16 +554,21 @@ export default function EditEvent() {
             Settings
           </h2>
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="is_public" 
-                name="is_public" 
-                defaultChecked={event.is_public || false}
-                tabIndex={16}
-              />
-              <Label htmlFor="is_public" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Make this event publicly visible
-              </Label>
+            <div>
+              <Label htmlFor="visibility">Event Visibility *</Label>
+              <Select name="visibility" defaultValue={event.visibility || "public"}>
+                <SelectTrigger className="input-custom-styles" tabIndex={16}>
+                  <SelectValue placeholder="Select visibility" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public - Displayed on main page, everyone can register</SelectItem>
+                  <SelectItem value="limited">Limited - Not displayed, but accessible via link, everyone can register</SelectItem>
+                  <SelectItem value="internal">Internal - Only visible when logged in, only existing users can register</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Controls who can see and register for this event
+              </p>
             </div>
             
             <div className="flex items-center space-x-2">

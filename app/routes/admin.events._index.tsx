@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
-import { Calendar, Plus, Users, DollarSign, MapPin, Clock, Filter, Trash2 } from "lucide-react";
+import { Calendar, Plus, Users, DollarSign, MapPin, Clock, Filter, Trash2, ExternalLink } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { format, parseISO } from "date-fns";
 import type { Database } from "~/types/database.types";
@@ -224,6 +224,17 @@ export default function AdminEventsIndex() {
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
+  const copyPublicUrl = async (eventId: string) => {
+    const url = new URL(window.location.href);
+    const publicUrl = `${url.protocol}//${url.host}/events/${eventId}`;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       draft: { variant: "secondary" as const, label: "Draft" },
@@ -394,7 +405,7 @@ export default function AdminEventsIndex() {
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-xl">
                         <Link 
-                          to={`/admin/events/${event.id}`}
+                          to={`/admin/events/${event.id}/edit`}
                           className="hover:underline"
                         >
                           {event.title}
@@ -408,6 +419,14 @@ export default function AdminEventsIndex() {
                     )}
                   </div>
                   <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => copyPublicUrl(event.id)}
+                      title="Copy public URL"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
                     <Button variant="outline" size="sm" asChild>
                       <Link to={`/admin/events/${event.id}/edit`}>Edit</Link>
                     </Button>

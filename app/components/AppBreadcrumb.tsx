@@ -524,10 +524,16 @@ export const breadcrumbPatterns = {
     { label: "New Event", current: true },
   ],
 
+  adminEventDetail: (eventId: string, eventTitle: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Events", href: "/admin/events" },
+    { label: eventTitle, current: true },
+  ],
+
   adminEventEdit: (eventTitle: string, eventId: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Events", href: "/admin/events" },
-    { label: eventTitle, href: `/admin/events/${eventId}` },
+    { label: eventTitle, href: `/admin/events/${eventId}/edit` },
     { label: "Edit", current: true },
   ],
 

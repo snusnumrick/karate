@@ -133,6 +133,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const min_age = formData.get("min_age") as string;
   const max_age = formData.get("max_age") as string;
   const external_url = formData.get("external_url") as string;
+  const visibility = formData.get("visibility") as Database["public"]["Enums"]["event_visibility_enum"] || "public";
 
   // Extract selected waivers
   const selectedWaivers: Array<{waiverId: string, isRequired: boolean}> = [];
@@ -197,6 +198,7 @@ export async function action({ request }: ActionFunctionArgs) {
       status: "published",
       created_by: user.id,
       external_url: external_url || null,
+      visibility,
     };
 
     const { data: event, error: eventError } = await supabaseServer
@@ -346,6 +348,23 @@ export default function NewEvent() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Optional: Link to external registration or event information page
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="visibility">Event Visibility *</Label>
+                <Select name="visibility" defaultValue="public">
+                  <SelectTrigger className="input-custom-styles" tabIndex={6}>
+                    <SelectValue placeholder="Select visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Public - Displayed on main page, everyone can register</SelectItem>
+                    <SelectItem value="limited">Limited - Not displayed, but accessible via link, everyone can register</SelectItem>
+                    <SelectItem value="internal">Internal - Only visible when logged in, only existing users can register</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Controls who can see and register for this event
                 </p>
               </div>
             </div>

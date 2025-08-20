@@ -337,6 +337,7 @@ export type ClassWithDetails = Class & {
   enrollment_count: number;
   next_session?: ClassSession;
   recent_sessions: ClassSession[];
+  next_scheduled_time: string | null;
 };
 
 export type StudentWithEnrollments = {

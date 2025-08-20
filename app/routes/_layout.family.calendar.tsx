@@ -106,7 +106,7 @@ type EventRow = {
   end_time: string | null;
   location: string | null;
   status: string;
-  is_public: boolean;
+  visibility: 'public' | 'limited' | 'internal';
 };
 
 type EventRowWithEligibility = EventRow & { eligibilityInfo: EligibilityInfo };
@@ -319,11 +319,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
         end_time,
         location,
         status,
-        is_public
+        visibility
       `)
       .gte('start_date', formatLocalDate(calendarStart))
       .lte('start_date', formatLocalDate(calendarEnd))
       .in('status', ['published', 'registration_open'])
+      .in('visibility', ['public', 'internal']) // Logged-in users can see public and internal events
       .order('start_date', { ascending: true })
       .order('start_time', { ascending: true });
 

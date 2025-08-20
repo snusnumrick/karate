@@ -311,7 +311,10 @@ export async function getInvoiceById(
     if (!acc[tax.invoice_line_item_id]) {
       acc[tax.invoice_line_item_id] = [];
     }
-    acc[tax.invoice_line_item_id].push(tax);
+    // Ensure created_at is not null before pushing
+    if (tax.created_at) {
+      acc[tax.invoice_line_item_id].push(tax as InvoiceLineItemTax);
+    }
     return acc;
   }, {} as Record<string, InvoiceLineItemTax[]>);
 

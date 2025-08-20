@@ -5336,6 +5336,18 @@ BEGIN
     END IF;
 END $$;
 
+-- Create event_visibility enum
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'event_visibility_enum') THEN
+        CREATE TYPE event_visibility_enum AS ENUM (
+            'public',
+            'limited',
+            'internal'
+        );
+    END IF;
+END $$;
+
 -- Create events table
 CREATE TABLE IF NOT EXISTS events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -5387,7 +5399,7 @@ CREATE TABLE IF NOT EXISTS events (
     -- Additional metadata
     external_url text, -- For external registration or info
     notes text,
-    is_public boolean DEFAULT true -- Whether to show on public calendar
+    visibility event_visibility_enum NOT NULL DEFAULT 'public' -- Event visibility level
 );
 
 -- Create event registrations table
@@ -5483,9 +5495,14 @@ ALTER TABLE event_waivers ENABLE ROW LEVEL SECURITY;
 DO
 $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public events are viewable by everyone' AND tablename = 'events') THEN
-        CREATE POLICY "Public events are viewable by everyone" ON events
-            FOR SELECT USING (is_public = true);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public and limited events are viewable by everyone' AND tablename = 'events') THEN
+        CREATE POLICY "Public and limited events are viewable by everyone" ON events
+            FOR SELECT USING (visibility IN ('public', 'limited'));
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated users can view all events' AND tablename = 'events') THEN
+        CREATE POLICY "Authenticated users can view all events" ON events
+            FOR SELECT USING (auth.uid() IS NOT NULL);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin can manage all events' AND tablename = 'events') THEN
