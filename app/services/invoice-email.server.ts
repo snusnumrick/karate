@@ -1,16 +1,14 @@
 import { sendEmail } from "~/utils/email.server";
-import { formatCurrency } from "~/utils/misc";
+import { formatCurrency, formatDate } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod, calculateLineItemDiscount, calculateLineItemTaxWithRates } from "~/utils/line-item-helpers";
 import { siteConfig } from "~/config/site";
 import { generateInvoicePDF, getDefaultCompanyInfo, generateInvoiceFilename } from "~/utils/pdf-generator";
 import type { InvoiceWithDetails } from "~/types/invoice";
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString(siteConfig.localization.locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+const formatDateLocal = (dateString: string) => {
+  return formatDate(dateString, {
+    formatString: 'MMMM d, yyyy'
   });
 };
 
@@ -322,11 +320,11 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Date:</div>
-                    <div class="detail-value">${formatDate(invoice.issue_date)}</div>
+                    <div class="detail-value">${formatDateLocal(invoice.issue_date)}</div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Due Date:</div>
-                    <div class="detail-value">${formatDate(invoice.due_date)}</div>
+                    <div class="detail-value">${formatDateLocal(invoice.due_date)}</div>
                 </div>
                 ${invoice.service_period_start || invoice.service_period_end ? 
                   `<div class="detail-row">
@@ -484,7 +482,7 @@ export async function sendInvoiceEmail(invoice: InvoiceWithDetails): Promise<boo
       to: invoice.entity.email,
       subject,
       html,
-      from: siteConfig.contact.paymentsEmail,
+      from: `${siteConfig.legal.businessName} <${siteConfig.contact.paymentsEmail}>`,
       attachments: [
         {
           filename,
