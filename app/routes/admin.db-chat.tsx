@@ -4,6 +4,7 @@ import {ActionFunctionArgs, json} from "@vercel/remix";
 import {Form, useActionData, useNavigation, useSubmit} from "@remix-run/react";
 import {Button} from "~/components/ui/button";
 import {Textarea} from "~/components/ui/textarea";
+
 import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "~/components/ui/card";
 import {ScrollArea} from "~/components/ui/scroll-area";
 import {Database as DatabaseIcon, MessageSquare, PanelLeft, SendHorizontal, Sparkles} from "lucide-react";
@@ -18,7 +19,7 @@ import {
     HarmBlockThreshold,
     HarmCategory
 } from "@google/generative-ai";
-import {Database, Json} from "~/types/database.types";
+import {Json} from "~/types/database.types";
 import {ClientOnly} from "~/components/client-only";
 import {cn} from "~/lib/utils";
 import retrieveDatabaseStructure, {DatabaseSchema, formatSchemaAsMarkdown} from "~/utils/retrieve.db.strructure"; // Import cn utility

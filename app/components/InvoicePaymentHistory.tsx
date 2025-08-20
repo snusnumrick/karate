@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from '@remix-run/react';
 import { Edit, Trash2, Download, Plus, DollarSign } from 'lucide-react';
-import { siteConfig } from '~/config/site';
+
 import { InvoicePayment, InvoicePaymentMethod } from '~/types/invoice';
 import { formatDate } from '~/utils/misc';
 

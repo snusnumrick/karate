@@ -15,13 +15,13 @@ import type {
   PaymentTerms,
   InvoiceStatus,
   TaxRate,
-  InvoicePaymentTax,
+  InvoiceLineItemTax,
 } from "~/types/invoice";
 import {
   calculateLineItemDiscount,
   calculateLineItemSubtotal,
   calculateLineItemTaxWithRates,
-  calculateLineItemTotalWithRates,
+
   getLineItemTaxBreakdown
 } from "~/utils/line-item-helpers";
 import { getActiveTaxRates } from "~/services/tax-rates.server";
@@ -313,7 +313,7 @@ export async function getInvoiceById(
     }
     acc[tax.invoice_line_item_id].push(tax);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, InvoiceLineItemTax[]>);
 
   // Also group tax rate IDs for backward compatibility
   const taxRatesByLineItem = (lineItemTaxes || []).reduce((acc, tax) => {

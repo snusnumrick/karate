@@ -29,7 +29,7 @@ export interface InvoiceLineItemTax {
   tax_amount: number;
   tax_name_snapshot: string;
   tax_rate_snapshot: number;
-  tax_description_snapshot?: string;
+  tax_description_snapshot: string | null;
   created_at: string;
 }
 

@@ -7,7 +7,7 @@ import {Card, CardContent} from '~/components/ui/card';
 import { EventRegistrationForm } from '~/components/EventRegistrationForm';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import type { Database, Tables, TablesInsert } from '~/types/database.types';
-import { Calendar, Clock, MapPin, DollarSign, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
 import { formatDate } from '~/utils/misc';
 
 // Extended Event type for registration with additional properties

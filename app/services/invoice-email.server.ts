@@ -1,7 +1,7 @@
 import { sendEmail } from "~/utils/email.server";
 import { formatCurrency, formatDate } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
-import { getItemTypeLabel, formatServicePeriod, calculateLineItemDiscount, calculateLineItemTaxWithRates } from "~/utils/line-item-helpers";
+import { formatServicePeriod, calculateLineItemDiscount } from "~/utils/line-item-helpers";
 import { siteConfig } from "~/config/site";
 import { generateInvoicePDF, getDefaultCompanyInfo, generateInvoiceFilename } from "~/utils/pdf-generator";
 import type { InvoiceWithDetails } from "~/types/invoice";
@@ -357,7 +357,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                     ${invoice.line_items.map(item => {
                         const itemSubtotal = item.quantity * item.unit_price;
                         const itemDiscount = calculateLineItemDiscount(item);
-                        const itemTaxes = (item as any).taxes || [];
+                        const itemTaxes = item.taxes || [];
                         
                         return `
                         <tr>
@@ -373,7 +373,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                             <td></td>
                             <td style="text-align: right; color: #059669; font-size: 12px;">-${formatCurrency(itemDiscount * 100)}</td>
                         </tr>` : ''}
-                        ${itemTaxes.map((tax: any) => `
+                        ${itemTaxes.map((tax) => `
                         <tr>
                             <td style="padding-left: 20px; color: #6b7280; font-size: 12px;">${tax.tax_name_snapshot} (${(tax.tax_rate_snapshot * 100).toFixed(2)}%):</td>
                             <td></td>

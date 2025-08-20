@@ -1,6 +1,5 @@
 import { json } from '@remix-run/node';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
-import type { Database } from '~/types/database.types';
 
 export async function loader() {
     const supabase = getSupabaseAdminClient();

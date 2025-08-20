@@ -233,7 +233,7 @@ export default function ElementaryIntroPage() {
                                 Available Start Dates:
                             </h3>
                             <div className="space-y-3">
-                                {seriesData.map((series, index) => (
+                                {seriesData.map((series) => (
                                     <div key={series.id} className="bg-white dark:bg-gray-800 p-4 rounded border-l-4 border-amber-500">
                                         <h4 className="font-semibold text-amber-700 dark:text-amber-300">
                                             {generateSeriesName(series.dates)}

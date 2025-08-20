@@ -1,5 +1,4 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
-import type { Database } from '~/types/database.types';
 
 type AttendanceRecord = {
   id?: string;

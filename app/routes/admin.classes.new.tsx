@@ -150,7 +150,7 @@ export default function NewClass() {
   // Validate constraints in real-time
   useEffect(() => {
     if (selectedProgram) {
-      const currentSchedules = schedules.map((schedule, index) => ({
+      const currentSchedules = schedules.map((schedule) => ({
         day_of_week: scheduleDays[schedule.id] || '',
         start_time: scheduleTimes[schedule.id] || ''
       }));
@@ -360,12 +360,12 @@ export default function NewClass() {
 
                   {/* Schedule rows */}
                   <div className="space-y-2">
-                    {schedules.map((schedule, index) => (
+                    {schedules.map((schedule) => (
                       <div key={schedule.id} className="flex gap-4 items-start border rounded-lg p-4">
                         <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
                             <Select 
-                              name={`schedules[${index}][day_of_week]`}
+                              name={`schedules[${schedule.id}][day_of_week]`}
                               value={scheduleDays[schedule.id] || ''}
                               onValueChange={(value) => handleDayChange(schedule.id, value)}
                             >
@@ -387,7 +387,7 @@ export default function NewClass() {
                           <div className="space-y-2">
                             <Input
                               id={`start_time_${schedule.id}`}
-                              name={`schedules[${index}][start_time]`}
+                              name={`schedules[${schedule.id}][start_time]`}
                               type="text"
                               value={scheduleTimes[schedule.id] || ''}
                               onChange={(e) => handleTimeChange(schedule.id, e.target.value)}

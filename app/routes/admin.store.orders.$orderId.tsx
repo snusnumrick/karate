@@ -11,7 +11,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { formatDate, formatCurrency } from "~/utils/misc";
-import { Constants, type Database, type Tables, type Enums } from "~/types/database.types"; // Added Database type back
+import { Constants, type Tables, type Enums } from "~/types/database.types";
 import { CheckCircle, XCircle, Clock, PackageCheck, ShoppingCart } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 

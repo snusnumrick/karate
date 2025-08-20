@@ -6,7 +6,7 @@ import { Input } from "~/components/ui/input";
 // Removed unused Label import
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import type { Database, Tables } from "~/types/database.types"; // Removed TablesUpdate
+import type { Tables } from "~/types/database.types";
 import { Save } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 

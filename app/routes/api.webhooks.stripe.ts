@@ -1,9 +1,8 @@
 import type { ActionFunctionArgs } from "@vercel/remix";
 import { json } from "@vercel/remix";
 import Stripe from "stripe";
-import { updatePaymentStatus } from "~/utils/supabase.server";
+import { updatePaymentStatus, getSupabaseAdminClient } from "~/utils/supabase.server";
 import type { Database } from "~/types/database.types"; // Removed unused Tables import
-import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

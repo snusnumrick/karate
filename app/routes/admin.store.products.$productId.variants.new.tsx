@@ -1,14 +1,13 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
-import type { Database } from '~/types/database.types';
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { siteConfig } from "~/config/site";
-import type { Tables, TablesInsert } from "~/types/database.types"; // Removed unused Database
+import type { Tables, TablesInsert } from "~/types/database.types";
 import { ArrowLeft } from "lucide-react";
 // import { formatCurrency } from "~/utils/misc"; // Removed unused formatCurrency import
 

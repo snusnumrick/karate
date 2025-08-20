@@ -11,7 +11,6 @@ import { getPrograms } from "~/services/program.server";
 import { getEnrollmentStats } from "~/services/enrollment.server";
 import type { Program, EnrollmentStats, ClassWithDetails } from "~/types/multi-class";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
 
 type ClassWithStats = ClassWithDetails & {
@@ -121,9 +120,7 @@ export default function AdminClassesIndex() {
                     <Clock className="h-4 w-4" />
                     <span>
                       {classItem.next_session ? (
-                        (() => {
-                          const [year, month, day] = classItem.next_session.session_date.split('-').map(Number);
-                          const sessionDate = new Date(year, month - 1, day);
+(() => {
                           return `Next: ${formatDate(classItem.next_session.session_date, { formatString: 'EEE MMM d' })} at ${classItem.next_session.start_time.slice(0, 5)}`;
                         })()
                       ) : (

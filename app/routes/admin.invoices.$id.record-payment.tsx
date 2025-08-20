@@ -6,8 +6,7 @@ import { z } from 'zod';
 import { ArrowLeft } from 'lucide-react';
 import RecordPaymentForm from '~/components/RecordPaymentForm';
 import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
-import type { Database } from '~/types/database.types';
-import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { formatDate } from '~/utils/misc';
 import { calculateInvoicePaymentTaxBreakdown } from '~/utils/line-item-helpers';
 

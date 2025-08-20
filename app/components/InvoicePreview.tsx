@@ -1,5 +1,5 @@
 import type { InvoiceEntity, CreateInvoiceData, TaxRate } from "~/types/invoice";
-import { siteConfig } from "~/config/site";
+
 import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
 import { formatCurrency, formatDate } from "~/utils/misc";
 import { formatEntityAddress, getPaymentTermsLabel } from "~/utils/entity-helpers";

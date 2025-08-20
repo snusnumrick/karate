@@ -1,6 +1,4 @@
-import { getSupabaseAdminClient } from '~/utils/supabase.server';
-import type { Database } from '~/types/database.types';
-import { checkStudentEligibility } from '~/utils/supabase.server';
+import { getSupabaseAdminClient , checkStudentEligibility } from '~/utils/supabase.server';
 import { siteConfig } from '~/config/site';
 import {EligibilityStatus, StudentPaymentDetail} from '~/types/payment';
 
@@ -16,19 +14,7 @@ export interface IndividualSessionInfo {
   }>;
 }
 
-/*export interface StudentPaymentDetail {
-  studentId: string;
-  familyId: string;
-  firstName: string;
-  lastName: string;
-  eligibility: EligibilityStatus;
-  needsPayment: boolean;
-  nextPaymentAmount: number;
-  nextPaymentTierLabel: string;
-  // nextPaymentPriceId: string;
-  pastPaymentCount: number;
-  individualSessions?: IndividualSessionInfo;
-}*/
+
 
 export interface PaymentEligibilityData {
   familyId: string;

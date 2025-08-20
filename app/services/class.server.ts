@@ -1,5 +1,4 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
-import { siteConfig } from '~/config/site';
 import type { Database } from '~/types/database.types';
 import { mapProgramNullToUndefined, mapInstructorNullToUndefined, mapSessionNullToUndefined, mapClassNullToUndefined } from '~/utils/mappers';
 import type {
@@ -371,7 +370,6 @@ export async function getClassById(
     .single();
 
   // If no actual session found, calculate next occurrence from schedule
-  let nextScheduledTime = null;
   if (!nextSession && schedules.length > 0) {
     const now = new Date();
     const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.

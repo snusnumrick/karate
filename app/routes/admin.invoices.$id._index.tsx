@@ -14,11 +14,9 @@ import {
 } from "~/services/invoice.server";
 import { formatCurrency, formatDate } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
-import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, getLineItemTaxBreakdown } from "~/utils/line-item-helpers";
+import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount } from "~/utils/line-item-helpers";
 import { requireUserId } from "~/utils/auth.server";
-import { siteConfig } from "~/config/site";
 import { 
-  Download, 
   Send,
   Trash2, 
   Edit,

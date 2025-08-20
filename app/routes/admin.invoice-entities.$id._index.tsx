@@ -3,7 +3,7 @@ import { useLoaderData, Link, Outlet } from "@remix-run/react";
 
 import { FileText, Eye, Edit } from "lucide-react";
 import { getInvoiceEntityById, deactivateInvoiceEntity, reactivateInvoiceEntity } from "~/services/invoice-entity.server";
-import { siteConfig } from "~/config/site";
+
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { formatDate } from "~/utils/misc";
 

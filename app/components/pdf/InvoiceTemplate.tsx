@@ -8,7 +8,14 @@ import {
 } from '@react-pdf/renderer';
 import { siteConfig } from '~/config/site';
 import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
-import { calculateLineItemDiscount, getLineItemTaxBreakdown, calculateLineItemTotalWithRates } from '~/utils/line-item-helpers';
+import { calculateLineItemDiscount } from '~/utils/line-item-helpers';
+
+interface LineItemTax {
+  tax_description_snapshot?: string;
+  tax_name_snapshot?: string;
+  tax_rate_snapshot?: number;
+  tax_amount?: number;
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -519,7 +526,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
 
           {invoice.line_items?.map((item, index) => {
             const itemDiscount = calculateLineItemDiscount(item);
-            const itemTaxes = (item as any).taxes || [];
+            const itemTaxes = (item as InvoiceLineItem & { taxes?: LineItemTax[] }).taxes || [];
             const hasAdjustments = itemDiscount > 0 || itemTaxes.length > 0;
             
             return (
@@ -552,7 +559,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
                       </View>
                     )}
                     
-                    {itemTaxes.map((tax: any, taxIndex: number) => (
+                    {itemTaxes.map((tax: LineItemTax, taxIndex: number) => (
                       <View key={taxIndex} style={styles.adjustmentRow}>
                         <Text style={styles.adjustmentLabel}>
                           {tax.tax_description_snapshot || tax.tax_name_snapshot || 'Tax'} ({((tax.tax_rate_snapshot || 0) * 100).toFixed(2)}%):

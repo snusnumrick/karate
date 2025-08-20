@@ -1,13 +1,13 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { siteConfig } from "~/config/site";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { useState } from 'react';
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"; // Removed duplicate line above
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -17,12 +17,10 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "~/components/ui/alert-dialog"; // Added AlertDialog components
-import type { Database, Tables, TablesUpdate } from "~/types/database.types";
-import { Trash2 } from "lucide-react"; // Removed ArrowLeft
+} from "~/components/ui/alert-dialog";
+import type { Tables, TablesUpdate } from "~/types/database.types";
+import { Trash2 } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-// import { formatCurrency } from "~/utils/misc"; // Removed unused formatCurrency import
-import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 type ProductRow = Tables<'products'>;
 type ProductVariantRow = Tables<'product_variants'>;

@@ -1,5 +1,4 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
-import type { Database } from '~/types/database.types';
 
 // Types for enrollment-based payment system
 export interface EnrollmentPaymentOption {

@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-let clientInstance: SupabaseClient<Database> | null = null;
+
 
 export interface SupabaseClientConfig {
   url: string;

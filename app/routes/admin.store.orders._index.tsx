@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"; // For filtering
 import { formatDate, formatCurrency } from "~/utils/misc";
-import { Constants, type Tables, type Enums, type Database } from "~/types/database.types"; // Import Database type
+import { Constants, type Tables, type Enums } from "~/types/database.types";
 import { Eye } from "lucide-react"; // Import icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 

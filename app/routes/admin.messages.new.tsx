@@ -4,7 +4,7 @@ import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/re
 import { z } from "zod";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { cn } from "~/lib/utils";
-import { Database, Tables } from "~/types/database.types";
+import { Tables } from "~/types/database.types";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";

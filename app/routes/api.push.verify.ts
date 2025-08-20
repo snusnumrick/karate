@@ -1,7 +1,6 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { requireUserId } from '~/utils/auth.server';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
-import type { Database } from '~/types/database.types';
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') {

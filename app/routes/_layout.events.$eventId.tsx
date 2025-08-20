@@ -7,8 +7,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
-import { getEventTypeColorWithBorder } from "~/utils/event-helpers.server";
-import {formatEventTypeName} from "~/utils/event-helpers.server";
+import { getEventTypeColorWithBorder ,formatEventTypeName} from "~/utils/event-helpers.server";
 // Server-side imports moved to loader function
 
 

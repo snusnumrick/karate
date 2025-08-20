@@ -3,7 +3,6 @@ import type {CreateInvoiceLineItemData, TaxRate, InvoiceCalculations} from "~/ty
 import { 
   calculateLineItemSubtotal, 
   calculateLineItemDiscount,
-  calculateLineItemTotalWithRates,
   calculateLineItemTaxWithRates
 } from "~/utils/line-item-helpers";
 

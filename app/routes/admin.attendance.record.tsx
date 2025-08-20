@@ -10,13 +10,12 @@ import {
     useSearchParams,
 } from "@remix-run/react";
 import {type SupabaseClient} from '@supabase/supabase-js';
-import {getSupabaseAdminClient} from '~/utils/supabase.server';
+import {getSupabaseAdminClient,checkStudentEligibility} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import type {ClassSession} from "~/types/multi-class";
 import {getClassSessions} from "~/services/class.server";
 import {getEnrollmentsByClass} from "~/services/enrollment.server";
 import {getAttendanceBySession, recordSessionAttendance} from "~/services/attendance.server";
-import {checkStudentEligibility} from "~/utils/supabase.server";
 import {sendEmail} from '~/utils/email.server';
 import {Badge} from "~/components/ui/badge";
 import {Label} from "~/components/ui/label";

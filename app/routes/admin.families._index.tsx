@@ -1,7 +1,7 @@
 import {json} from "@remix-run/node";
 import {Link, useLoaderData, useRouteError} from "@remix-run/react";
 import {getSupabaseAdminClient} from '~/utils/supabase.server';
-import type {Database} from "~/types/database.types";
+
 import {Button} from "~/components/ui/button";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table"; // Assuming you have Table components
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";

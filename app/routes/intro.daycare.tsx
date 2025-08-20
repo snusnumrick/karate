@@ -252,7 +252,7 @@ export default function DaycareIntroPage() {
                                 Available Start Dates:
                             </h3>
                             <div className="space-y-3">
-                                {seriesData.map((series, index) => (
+                                {seriesData.map((series) => (
                                     <div key={series.id} className="bg-white dark:bg-gray-800 p-4 rounded border-l-4 border-orange-500">
                                         <h4 className="font-semibold text-orange-700 dark:text-orange-300">
                                             {generateSeriesName(series.dates)}

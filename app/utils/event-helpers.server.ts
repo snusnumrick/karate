@@ -1,4 +1,4 @@
-import { EventTypeService, type EventType } from "~/services/event-type.server";
+import { EventTypeService } from "~/services/event-type.server";
 
 /**
  * Converts event type enum values to user-friendly display names

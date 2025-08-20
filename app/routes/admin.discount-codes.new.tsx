@@ -8,13 +8,12 @@ import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { getSupabaseAdminClient } from '~/utils/supabase.server';
+import { getSupabaseServerClient , getSupabaseAdminClient } from "~/utils/supabase.server";
 import { DiscountService } from "~/services/discount.server";
 import { getDiscountTemplateById } from "~/services/discount-template.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { PaymentTypeEnum, DiscountTemplate } from "~/types/discount";
-import type { Database } from "~/types/database.types";
+
 import { FileText, X } from "lucide-react";
 
 type FamilyInfo = {
