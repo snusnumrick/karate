@@ -31,6 +31,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response('Invoice ID is required', { status: 400 });
   }
 
+  // Check if the id looks like an invoice number (INV-YYYY-NNNN format)
+  const isInvoiceNumber = /^INV-\d{4}-\d{4}$/.test(params.id);
+  
   // Fetch invoice details
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
@@ -46,7 +49,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         entity_type
       )
     `)
-    .eq('id', params.id)
+    .eq(isInvoiceNumber ? 'invoice_number' : 'id', params.id)
     .single();
 
   if (invoiceError || !invoice) {

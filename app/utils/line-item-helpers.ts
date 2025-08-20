@@ -208,7 +208,7 @@ export function calculateLineItemTaxWithRates(
     return total + (taxRate?.rate || 0);
   }, 0);
   
-  return taxableAmount * (totalTaxRate / 100);
+  return taxableAmount * totalTaxRate;
 }
 
 /**
@@ -237,7 +237,7 @@ export function getLineItemTaxBreakdown(item: CreateInvoiceLineItemData, taxRate
        return { taxRate: unknownTaxRate, amount: 0 };
      }
      
-     const amount = taxableAmount * (taxRate.rate / 100);
+     const amount = taxableAmount * taxRate.rate;
      return { taxRate, amount };
    });
 }

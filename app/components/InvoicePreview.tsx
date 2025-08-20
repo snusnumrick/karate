@@ -147,7 +147,7 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRates = 
                           )}
                           {taxBreakdown.map((tax, taxIndex) => (
                             <div key={taxIndex} className="flex justify-between text-sm">
-                              <span className="text-gray-600">{tax.taxRate.name} ({tax.taxRate.rate.toFixed(2)}%):</span>
+                              <span className="text-gray-600">{tax.taxRate.name} ({(tax.taxRate.rate * 100).toFixed(2)}%):</span>
                               <span className="text-gray-900">{formatCurrency(tax.amount * 100)}</span>
                             </div>
                           ))}
@@ -179,7 +179,7 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRates = 
                 {tax_amount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Total Tax:</span>
-                    <span className="text-gray-900">{formatCurrency(tax_amount * 100)}</span>
+                    <span className="text-gray-900">{formatCurrency(tax_amount)}</span>
                   </div>
                 )}
                 

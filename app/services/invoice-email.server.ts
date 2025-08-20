@@ -16,6 +16,7 @@ const formatDate = (dateString: string) => {
 
 function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
   const entityAddress = formatEntityAddress(invoice.entity);
+  const companyInfo = getDefaultCompanyInfo();
   
   return `
 <!DOCTYPE html>
@@ -26,42 +27,104 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
     <title>Invoice #${invoice.invoice_number}</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
+            font-family: Helvetica, Arial, sans-serif;
+            line-height: 1.3;
+            color: #1f2937;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
             background-color: #f9f9f9;
+            font-size: 14px;
         }
         .container {
             background-color: white;
-            padding: 40px;
+            padding: 30px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         .header {
-            text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid ${siteConfig.colors.primary};
         }
-        .header h1 {
-            color: #2563eb;
-            margin: 0;
-            font-size: 28px;
+        .company-info {
+            text-align: right;
+            max-width: 250px;
+        }
+        .company-logo {
+            width: 160px;
+            height: 30px;
+            margin-bottom: 6px;
+        }
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            margin-top: 12px;
+            letter-spacing: 0.3px;
+        }
+        .company-details {
+            font-size: 12px;
+            color: #4b5563;
+            line-height: 1.4;
+            margin-bottom: 3px;
+            margin-top: 2px;
+        }
+        .invoice-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 30px;
+            text-align: center;
+            letter-spacing: 0.8px;
         }
         .invoice-info {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+            gap: 20px;
+            margin-bottom: 20px;
         }
-        .info-section h3 {
-            color: #374151;
-            margin-bottom: 10px;
+        .invoice-details, .billing-info {
+            background-color: #f8fafc;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        .section-title {
             font-size: 16px;
-            font-weight: 600;
+            font-weight: bold;
+            color: ${siteConfig.colors.primary};
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 3px;
+        }
+        .detail-row {
+            display: flex;
+            margin-bottom: 4px;
+            align-items: flex-start;
+        }
+        .detail-label {
+            width: 80px;
+            font-size: 12px;
+            color: #64748b;
+            font-weight: bold;
+        }
+        .detail-value {
+            font-size: 12px;
+            color: #1f2937;
+            flex: 1;
+            line-height: 1.3;
+        }
+        .recipient-address {
+            font-size: 12px;
+            color: #1f2937;
+            line-height: 1.4;
+            margin-bottom: 2px;
         }
         .info-section p {
             margin: 5px 0;
@@ -81,40 +144,76 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
         .status-overdue { background-color: #fee2e2; color: #991b1b; }
         .status-cancelled { background-color: #f3f4f6; color: #374151; }
         .line-items {
-            margin: 30px 0;
+            margin: 20px 0;
         }
         .line-items table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
-        }
-        .line-items th,
-        .line-items td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 15px;
+            border: 1px solid #cbd5e1;
         }
         .line-items th {
-            background-color: #f9fafb;
-            font-weight: 600;
-            color: #374151;
+            background-color: ${siteConfig.colors.primary};
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .line-items th:last-child {
+            text-align: right;
+        }
+        .line-items td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #1f2937;
+            vertical-align: top;
+        }
+        .line-items td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+        .line-items tr:nth-child(even) {
+            background-color: #f8fafc;
         }
         .line-items .text-right {
             text-align: right;
         }
+        .item-description {
+            color: #64748b;
+            font-size: 11px;
+            margin-top: 2px;
+            line-height: 1.3;
+        }
         .totals {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #f0f0f0;
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
         }
         .totals-table {
-            width: 100%;
-            max-width: 300px;
-            margin-left: auto;
+            border-collapse: collapse;
+            min-width: 250px;
+            border: 1px solid #cbd5e1;
         }
         .totals-table td {
-            padding: 8px 0;
-            border: none;
+            padding: 6px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12px;
+        }
+        .totals-table .label {
+            text-align: right;
+            font-weight: bold;
+            color: #374151;
+            background-color: #f8fafc;
+        }
+        .totals-table .amount {
+            text-align: right;
+            color: #1f2937;
+            font-weight: bold;
+            min-width: 80px;
         }
         .totals-table .total-row {
             font-weight: 600;
@@ -122,23 +221,57 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
             border-top: 1px solid #e5e7eb;
             padding-top: 12px;
         }
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            text-align: center;
-            color: #6b7280;
+        .totals-table .total-row .label {
+            background-color: ${siteConfig.colors.primary};
+            color: white;
             font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .totals-table .total-row .amount {
+            background-color: ${siteConfig.colors.primary};
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .notes {
+            margin-top: 20px;
+            padding: 12px;
+            background-color: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        .notes-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .notes-content {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #cbd5e1;
+            text-align: center;
+            color: #64748b;
+            font-size: 11px;
         }
         .cta-button {
             display: inline-block;
-            background-color: #2563eb;
+            background-color: ${siteConfig.colors.primary};
             color: white;
-            padding: 12px 24px;
+            padding: 10px 20px;
             text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-            margin: 20px 0;
+            border-radius: 4px;
+            margin: 15px 8px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
         .discount-text {
             color: #059669;
@@ -170,59 +303,91 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
 <body>
     <div class="container">
         <div class="header">
-            <h1>Invoice #${invoice.invoice_number}</h1>
-            <p>From ${siteConfig.name}</p>
+            <div class="company-info">
+                <div class="company-name">${companyInfo.name}</div>
+                <div class="company-details">${companyInfo.address}</div>
+                <div class="company-details">${companyInfo.phone}</div>
+                <div class="company-details">${companyInfo.email}</div>
+            </div>
         </div>
-
+        
+        <div class="invoice-title">INVOICE</div>
+        
         <div class="invoice-info">
-            <div class="info-section">
-                <h3>Bill To:</h3>
-                <p><strong>${invoice.entity.name}</strong></p>
-                ${invoice.entity.contact_person ? `<p>${invoice.entity.contact_person}</p>` : ''}
-                ${entityAddress ? `<p>${entityAddress}</p>` : ''}
-                ${invoice.entity.phone ? `<p>Phone: ${invoice.entity.phone}</p>` : ''}
-                ${invoice.entity.email ? `<p>Email: ${invoice.entity.email}</p>` : ''}
+            <div class="invoice-details">
+                <div class="section-title">Invoice Details</div>
+                <div class="detail-row">
+                    <div class="detail-label">Number:</div>
+                    <div class="detail-value">${invoice.invoice_number}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Date:</div>
+                    <div class="detail-value">${formatDate(invoice.issue_date)}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Due Date:</div>
+                    <div class="detail-value">${formatDate(invoice.due_date)}</div>
+                </div>
+                ${invoice.service_period_start || invoice.service_period_end ? 
+                  `<div class="detail-row">
+                    <div class="detail-label">Service:</div>
+                    <div class="detail-value">${formatServicePeriod(invoice.service_period_start, invoice.service_period_end)}</div>
+                </div>` : ''}
             </div>
             
-            <div class="info-section">
-                <h3>Invoice Details:</h3>
-                <p><strong>Issue Date:</strong> ${formatDate(invoice.issue_date)}</p>
-                <p><strong>Due Date:</strong> ${formatDate(invoice.due_date)}</p>
-                ${invoice.service_period_start || invoice.service_period_end ? 
-                  `<p><strong>Service Period:</strong> ${formatServicePeriod(invoice.service_period_start, invoice.service_period_end)}</p>` : ''}
+            <div class="billing-info">
+                <div class="section-title">Bill To</div>
+                <div class="recipient-address"><strong>${invoice.entity.name}</strong></div>
+                ${invoice.entity.contact_person ? `<div class="recipient-address">${invoice.entity.contact_person}</div>` : ''}
+                ${entityAddress ? `<div class="recipient-address">${entityAddress.split('\n').map(line => line.trim()).filter(line => line).join('<br>')}</div>` : ''}
+                ${invoice.entity.phone ? `<div class="recipient-address">Phone: ${invoice.entity.phone}</div>` : ''}
+                ${invoice.entity.email ? `<div class="recipient-address">Email: ${invoice.entity.email}</div>` : ''}
             </div>
         </div>
 
         <div class="line-items">
-            <h3>Items & Services</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Description</th>
-                        <th>Type</th>
-                        <th class="text-right">Qty</th>
-                        <th class="text-right">Unit Price</th>
-                        <th class="text-right">Total</th>
+                        <th style="text-align: center; width: 80px;">Qty</th>
+                        <th style="text-align: right; width: 100px;">Rate</th>
+                        <th style="text-align: right; width: 100px;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${invoice.line_items.map(item => `
+                    ${invoice.line_items.map(item => {
+                        const itemSubtotal = item.quantity * item.unit_price;
+                        const itemDiscount = calculateLineItemDiscount(item);
+                        const itemTaxes = (item as any).taxes || [];
+                        
+                        return `
                         <tr>
-                            <td>
-                                <strong>${item.description}</strong>
-                                ${(item.service_period_start || item.service_period_end) ? 
-                                  `<br><small>Service Period: ${formatServicePeriod(item.service_period_start, item.service_period_end)}</small>` : ''}
-                                ${item.discount_rate && item.discount_rate > 0 ? 
-                                  `<br><small class="discount-text">Discount: ${(Number(item.discount_rate) * 100).toFixed(2)}%</small>` : ''}
-                                ${item.tax_rate && item.tax_rate > 0 ? 
-                                  `<br><small class="tax-text">Tax: ${(Number(item.tax_rate) * 100).toFixed(2)}%</small>` : ''}
-                            </td>
-                            <td>${getItemTypeLabel(item.item_type)}</td>
-                            <td class="text-right">${item.quantity}</td>
-                            <td class="text-right">${formatCurrency(item.unit_price)}</td>
-                            <td class="text-right"><strong>${formatCurrency(item.line_total)}</strong></td>
+                            <td><strong>${item.description}</strong></td>
+                            <td style="text-align: center;">${item.quantity}</td>
+                            <td style="text-align: right;">${formatCurrency(item.unit_price * 100)}</td>
+                            <td style="text-align: right;"><strong>${formatCurrency(itemSubtotal * 100)}</strong></td>
                         </tr>
-                    `).join('')}
+                        ${itemDiscount > 0 ? `
+                        <tr>
+                            <td style="padding-left: 20px; color: #059669; font-size: 12px;">Discount (${(Number(item.discount_rate)).toFixed(2)}%):</td>
+                            <td></td>
+                            <td></td>
+                            <td style="text-align: right; color: #059669; font-size: 12px;">-${formatCurrency(itemDiscount * 100)}</td>
+                        </tr>` : ''}
+                        ${itemTaxes.map((tax: any) => `
+                        <tr>
+                            <td style="padding-left: 20px; color: #6b7280; font-size: 12px;">${tax.tax_name_snapshot} (${(tax.tax_rate_snapshot * 100).toFixed(2)}%):</td>
+                            <td></td>
+                            <td></td>
+                            <td style="text-align: right; color: #6b7280; font-size: 12px;">${formatCurrency(tax.tax_amount * 100)}</td>
+                        </tr>`).join('')}
+                        ${(item.service_period_start || item.service_period_end) ? `
+                        <tr>
+                            <td colspan="4" style="padding-left: 20px; color: #64748b; font-size: 11px; font-style: italic;">Service Period: ${formatServicePeriod(item.service_period_start, item.service_period_end)}</td>
+                        </tr>` : ''}
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
@@ -230,28 +395,18 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
         <div class="totals">
             <table class="totals-table">
                 <tr>
-                    <td>Subtotal:</td>
-                    <td class="text-right">${formatCurrency(invoice.subtotal)}</td>
+                    <td class="label">Subtotal:</td>
+                    <td class="amount">${formatCurrency(invoice.subtotal * 100)}</td>
                 </tr>
                 ${invoice.discount_amount > 0 ? `
                 <tr>
                     <td colspan="2">
                         <div class="breakdown-section">
                             <div class="breakdown-item breakdown-total">
-                                <span>Total Discounts:</span>
-                                <span class="discount-text">-${formatCurrency(invoice.discount_amount)}</span>
+                                <span>Discounts:</span>
+                                
+                                <span class="discount-text">-${formatCurrency(invoice.discount_amount * 100)}</span>
                             </div>
-                            ${invoice.line_items.map(item => {
-                                const itemDiscount = calculateLineItemDiscount(item);
-                                if (itemDiscount > 0) {
-                                    return `
-                                    <div class="breakdown-item">
-                                        <span>${item.description} (${Number(item.discount_rate).toFixed(2)}%):</span>
-                                        <span class="discount-text">-${formatCurrency(itemDiscount)}</span>
-                                    </div>`;
-                                }
-                                return '';
-                            }).join('')}
                         </div>
                     </td>
                 </tr>
@@ -261,29 +416,16 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                     <td colspan="2">
                         <div class="breakdown-section">
                             <div class="breakdown-item breakdown-total">
-                                <span>Total Tax:</span>
-                                <span>${formatCurrency(invoice.tax_amount)}</span>
+                                <span>Tax:</span>
+                                <span>${formatCurrency(invoice.tax_amount * 100)}</span>
                             </div>
-                            ${invoice.line_items.length > 1 ? invoice.line_items.map(item => {
-                                const itemSubtotal = item.quantity * item.unit_price;
-                                const itemDiscount = itemSubtotal * (item.discount_rate || 0) / 100;
-                                const itemTax = (itemSubtotal - itemDiscount) * (item.tax_rate || 0) / 100;
-                                if (itemTax > 0) {
-                                    return `
-                                     <div class="breakdown-item">
-                                         <span>${item.description} (${Number(item.tax_rate).toFixed(2)}%):</span>
-                                         <span>${formatCurrency(itemTax)}</span>
-                                     </div>`;
-                                }
-                                return '';
-                            }).join('') : ''}
                         </div>
                     </td>
                 </tr>
                 ` : ''}
                 <tr class="total-row">
-                    <td><strong>Total:</strong></td>
-                    <td class="text-right"><strong>${formatCurrency(invoice.total_amount)}</strong></td>
+                    <td class="label">Total:</td>
+                    <td class="amount">${formatCurrency(invoice.total_amount * 100)}</td>
                 </tr>
             </table>
         </div>
@@ -296,15 +438,16 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
         ` : ''}
 
         ${invoice.notes ? `
-        <div style="margin-top: 20px;">
-            <h3>Notes</h3>
-            <p style="white-space: pre-wrap;">${invoice.notes}</p>
+        <div class="notes">
+            <div class="notes-title">Notes</div>
+            <div class="notes-content">${invoice.notes}</div>
         </div>
         ` : ''}
-
+        
         <div class="footer">
             <p>Thank you for your business!</p>
-            <p>If you have any questions about this invoice, please contact us.</p>
+            <p>If you have any questions about this invoice, please contact us at ${companyInfo.email} or ${companyInfo.phone}.</p>
+            
             <p><strong>${siteConfig.name}</strong></p>
         </div>
     </div>
