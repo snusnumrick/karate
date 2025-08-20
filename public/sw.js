@@ -87,12 +87,11 @@ async function addQueuedReply(replyData) {
     const tx = db.transaction(REPLY_STORE_NAME, 'readwrite');
     const store = tx.objectStore(REPLY_STORE_NAME);
     return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+
         const request = store.add(replyData);
         request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-            tx.oncomplete = () => resolve();
-        };
-        tx.onerror = () => reject(tx.error);
     });
 }
 
@@ -104,17 +103,18 @@ async function getAndClearQueuedReplies() {
     const tx = db.transaction(REPLY_STORE_NAME, 'readwrite');
     const store = tx.objectStore(REPLY_STORE_NAME);
     return new Promise((resolve, reject) => {
+        let replies;
+
+        tx.oncomplete = () => resolve(replies);
+        tx.onerror = () => reject(tx.error);
+
         const getRequest = store.getAll();
         getRequest.onerror = () => reject(getRequest.error);
         getRequest.onsuccess = () => {
-            const replies = getRequest.result;
+            replies = getRequest.result;
             const clearRequest = store.clear();
             clearRequest.onerror = () => reject(clearRequest.error);
-            clearRequest.onsuccess = () => {
-                tx.oncomplete = () => resolve(replies);
-            };
         };
-        tx.onerror = () => reject(tx.error);
     });
 }
 
