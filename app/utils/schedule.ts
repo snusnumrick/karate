@@ -1,6 +1,7 @@
 import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
 import { parseLocalDate } from "~/components/calendar/utils";
+import { formatDate } from "~/utils/misc";
 
 // Type definitions
 type Session = Database['public']['Tables']['class_sessions']['Row'];
@@ -122,7 +123,7 @@ export const getScheduleInfo = (classes: ClassWithSchedule[]) => {
     allSessions.forEach(session => {
         // Extract day of week from session_date - parse as local date to avoid timezone issues
         const sessionDate = parseLocalDate(session.session_date);
-        const dayName = sessionDate.toLocaleDateString('en-US', { weekday: 'long' });
+        const dayName = formatDate(sessionDate, { formatString: 'EEEE' });
         
         if (!sessionsByDay[dayName]) {
             sessionsByDay[dayName] = [];
@@ -215,7 +216,7 @@ export const getOpeningHoursSpecification = (classes: ClassWithSchedule[]) => {
     allSessions.forEach(session => {
         // Extract day of week from session_date - parse as local date to avoid timezone issues
         const sessionDate = parseLocalDate(session.session_date);
-        const dayName = sessionDate.toLocaleDateString('en-US', { weekday: 'long' });
+        const dayName = formatDate(sessionDate, { formatString: 'EEEE' });
         
         if (!sessionsByDay[dayName]) {
             sessionsByDay[dayName] = [];

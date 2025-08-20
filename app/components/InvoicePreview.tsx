@@ -1,7 +1,7 @@
 import type { InvoiceEntity, CreateInvoiceData, TaxRate } from "~/types/invoice";
 import { siteConfig } from "~/config/site";
 import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
-import { formatCurrency } from "~/utils/misc";
+import { formatCurrency, formatDate } from "~/utils/misc";
 import { formatEntityAddress, getPaymentTermsLabel } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, getLineItemTaxBreakdown } from "~/utils/line-item-helpers";
 
@@ -18,13 +18,7 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRates = 
     taxRates
   );
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(siteConfig.localization.locale, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
@@ -47,8 +41,8 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRates = 
             </div>
             <div className="text-right">
               <div className="text-sm text-gray-600">
-                <p><strong>Issue Date:</strong> {formatDate(invoiceData.issue_date)}</p>
-                <p><strong>Due Date:</strong> {formatDate(invoiceData.due_date)}</p>
+                <p><strong>Issue Date:</strong> {formatDate(invoiceData.issue_date, { formatString: 'MMMM d, yyyy' })}</p>
+                <p><strong>Due Date:</strong> {formatDate(invoiceData.due_date, { formatString: 'MMMM d, yyyy' })}</p>
                 {invoiceData.service_period_start && invoiceData.service_period_end && (
                   <p><strong>Service Period:</strong> {formatServicePeriod(invoiceData.service_period_start, invoiceData.service_period_end)}</p>
                 )}

@@ -12,6 +12,7 @@ import { getEnrollmentStats } from "~/services/enrollment.server";
 import type { Program, EnrollmentStats, ClassWithDetails } from "~/types/multi-class";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { siteConfig } from "~/config/site";
+import { formatDate } from "~/utils/misc";
 
 type ClassWithStats = ClassWithDetails & {
   enrollmentStats: EnrollmentStats;
@@ -123,7 +124,7 @@ export default function AdminClassesIndex() {
                         (() => {
                           const [year, month, day] = classItem.next_session.session_date.split('-').map(Number);
                           const sessionDate = new Date(year, month - 1, day);
-                          return `Next: ${sessionDate.toLocaleDateString(siteConfig.localization.locale, { weekday: 'short', month: 'short', day: 'numeric' })} at ${classItem.next_session.start_time.slice(0, 5)}`;
+                          return `Next: ${formatDate(classItem.next_session.session_date, { formatString: 'EEE MMM d' })} at ${classItem.next_session.start_time.slice(0, 5)}`;
                         })()
                       ) : (
                         'No upcoming sessions'

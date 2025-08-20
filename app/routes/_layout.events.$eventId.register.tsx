@@ -8,6 +8,7 @@ import { EventRegistrationForm } from '~/components/EventRegistrationForm';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import type { Database, Tables, TablesInsert } from '~/types/database.types';
 import { Calendar, Clock, MapPin, DollarSign, ArrowLeft, ExternalLink } from 'lucide-react';
+import { formatDate } from '~/utils/misc';
 
 // Extended Event type for registration with additional properties
 type EventWithRegistrationInfo = Tables<'events'> & {
@@ -294,14 +295,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 export default function EventRegistration() {
   const { event, isAuthenticated, familyData } = useLoaderData<typeof loader>();
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-CA', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+
 
   const formatTime = (time: string | null) => {
     if (!time) return null;
@@ -354,7 +348,7 @@ export default function EventRegistration() {
                   <div className="space-y-3 text-sm">
                     <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <Calendar className="h-4 w-4" />
-                      <span>{formatDate(event.start_date)}</span>
+                      <span>{formatDate(event.start_date, { formatString: 'EEEE, MMMM d, yyyy' })}</span>
                     </div>
                     {(event.start_time || event.end_time) && (
                       <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">

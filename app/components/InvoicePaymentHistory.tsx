@@ -3,6 +3,7 @@ import { Link } from '@remix-run/react';
 import { Edit, Trash2, Download, Plus, DollarSign } from 'lucide-react';
 import { siteConfig } from '~/config/site';
 import { InvoicePayment, InvoicePaymentMethod } from '~/types/invoice';
+import { formatDate } from '~/utils/misc';
 
 interface InvoicePaymentWithUser extends InvoicePayment {
   recorded_by?: string;
@@ -55,11 +56,9 @@ export default function InvoicePaymentHistory({
     return `$${(amountInCents / 100).toFixed(2)}`;
   };
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString(siteConfig.localization.locale, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+  const formatDateLocal = (dateString: string): string => {
+    return formatDate(dateString, {
+      formatString: 'MMM d, yyyy'
     });
   };
 
@@ -169,7 +168,7 @@ export default function InvoicePaymentHistory({
                         via {formatPaymentMethod(payment.payment_method)}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatDate(payment.payment_date)}
+                        {formatDateLocal(payment.payment_date)}
                       </div>
                     </div>
                     

@@ -17,6 +17,7 @@ import type {
   WeeklySchedule
 } from '~/types/multi-class';
 import { formatLocalDate, getTodayLocalDateString } from '~/components/calendar/utils';
+import { formatDate } from '~/utils/misc';
 
 /**
  * Get all instructors (profiles with instructor role)
@@ -936,7 +937,7 @@ export async function getWeeklySchedule(
   };
 
   events.forEach(event => {
-    const dayName = event.start.toLocaleDateString(siteConfig.localization.locale, { weekday: 'long' }).toLowerCase() as keyof WeeklySchedule;
+    const dayName = formatDate(event.start, { formatString: 'EEEE' }).toLowerCase() as keyof WeeklySchedule;
     if (schedule[dayName]) {
       schedule[dayName].push(event);
     }

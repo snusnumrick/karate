@@ -12,7 +12,7 @@ import {
   updateInvoiceStatus,
   deleteInvoice,
 } from "~/services/invoice.server";
-import { formatCurrency } from "~/utils/misc";
+import { formatCurrency, formatDate } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, getLineItemTaxBreakdown } from "~/utils/line-item-helpers";
 import { requireUserId } from "~/utils/auth.server";
@@ -155,11 +155,9 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString(siteConfig.localization.locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+const formatDateLocal = (dateString: string) => {
+  return formatDate(dateString, {
+    formatString: 'MMMM d, yyyy'
   });
 };
 
@@ -347,11 +345,11 @@ export default function InvoiceDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Issue Date</span>
-                    <p className="text-sm text-gray-900 dark:text-white">{formatDate(invoice.issue_date)}</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{formatDateLocal(invoice.issue_date)}</p>
                   </div>
                   <div>
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Due Date</span>
-                    <p className="text-sm text-gray-900 dark:text-white">{formatDate(invoice.due_date)}</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{formatDateLocal(invoice.due_date)}</p>
                   </div>
                 </div>
                 

@@ -5,6 +5,7 @@ import { FileText, Eye, Edit } from "lucide-react";
 import { getInvoiceEntityById, deactivateInvoiceEntity, reactivateInvoiceEntity } from "~/services/invoice-entity.server";
 import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { formatDate } from "~/utils/misc";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const { id } = params;
@@ -275,12 +276,8 @@ export default function InvoiceEntityDetail() {
                       Created
                     </dt>
                     <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
-                      {new Date(entity.created_at).toLocaleDateString(siteConfig.localization.locale, {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
+                      {formatDate(entity.created_at, {
+                        type: 'datetime'
                       })}
                     </dd>
                   </div>
@@ -289,12 +286,8 @@ export default function InvoiceEntityDetail() {
                       Last Updated
                     </dt>
                     <dd className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
-                      {new Date(entity.updated_at).toLocaleDateString(siteConfig.localization.locale, {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
+                      {formatDate(entity.updated_at, {
+                        type: 'datetime'
                       })}
                     </dd>
                   </div>
