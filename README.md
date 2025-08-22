@@ -324,7 +324,66 @@ for communication between families and administrators.
 - **Pricing Logic:** Payment tier calculation logic is within the payment initiation route (`/family/payment`). Payment completion happens on `/pay/:paymentId`. Pricing values (before tax) are in `app/config/site.ts`.
 - **Tax Logic:** Taxes are defined in the `tax_rates` database table (including name, description, rate). Which taxes apply is determined by `siteConfig.applicableTaxNames`. Calculation occurs server-side (in `app/routes/api.create-payment-intent.ts`, `app/routes/admin.payments.new.tsx`) based on the subtotal. The breakdown (including snapshots of name, description, rate, and calculated amount) is stored in `payment_taxes`. Receipts display the `tax_description_snapshot`.
 - **Eligibility Logic:** Student eligibility (Trial, Paid, Expired) based on payment history is handled in `app/utils/supabase.server.ts`.
-- **Email Templates:** Email content is generally defined within the server-side code that sends the email (e.g., routes, Supabase functions). Check `app/utils/email.server.ts` and `supabase/functions/`.
+- **Email Templates:** Email content is generally defined within the server-side code that sends the email (e.g., routes, Supabase functions). Check `app/utils/email.server.ts` and `supabase/functions/`. For Supabase authentication email templates, see the **Supabase Email Templates** section below.
+
+## Supabase Email Templates
+
+The project includes customized email templates for Supabase authentication flows. These templates are located in `supabase/email_templates/` and provide a consistent, branded experience for all authentication-related emails.
+
+### Available Templates
+
+- **Confirm signup** (`supabase-signup-email-template.html`) - Welcome email for new user registrations
+- **Invite user** (`supabase-invite-email-template.html`) - Invitation email for new users
+- **Magic Link** (`supabase-magiclink-email-template.html`) - Passwordless login email
+- **Change email address** (`supabase-changeemail-email-template.html`) - Email change confirmation
+- **Reset password** (`supabase-resetpassword-email-template.html`) - Password reset email
+- **Reauthentication** (`supabase-reauth-email-template.html`) - Reauthentication token email
+
+### Template Generation
+
+Email templates are generated from internal templates (`.internal.html` files) that contain placeholders for site configuration:
+
+```bash
+cd supabase/email_templates
+
+# Generate all templates
+./generate-supabase-template.sh
+
+# Generate a specific template
+./generate-supabase-template.sh signup
+./generate-supabase-template.sh invite
+./generate-supabase-template.sh magiclink
+./generate-supabase-template.sh changeemail
+./generate-supabase-template.sh resetpassword
+./generate-supabase-template.sh reauth
+```
+
+The generation script reads configuration from `app/config/site.ts` and replaces placeholders like `{{SITE_NAME}}`, `{{PRIMARY_COLOR}}`, `{{SITE_URL}}`, and `{{LOGO_URL}}`.
+
+### Supabase Dashboard Setup
+
+After generating the templates, copy their contents to your Supabase Email Templates dashboard:
+
+1. Go to your Supabase project dashboard
+2. Navigate to **Authentication** → **Email Templates**
+3. For each template type, paste the corresponding generated HTML:
+   - `supabase-signup-email-template.html` → **Confirm signup**
+   - `supabase-invite-email-template.html` → **Invite user**
+   - `supabase-magiclink-email-template.html` → **Magic Link**
+   - `supabase-changeemail-email-template.html` → **Change email address**
+   - `supabase-resetpassword-email-template.html` → **Reset password**
+   - `supabase-reauth-email-template.html` → **Reauthentication**
+
+### Customization
+
+To customize the email templates:
+
+1. **Site Configuration:** Update `app/config/site.ts` with your site details (name, colors, URLs)
+2. **Template Content:** Modify the `.internal.html` files in `supabase/email_templates/`
+3. **Regenerate:** Run `./generate-supabase-template.sh` to create updated templates
+4. **Deploy:** Copy the new HTML to your Supabase dashboard
+
+**Note:** Always edit the `.internal.html` files, not the generated `.html` files, as the latter are overwritten during generation.
 
 ## Local Development Setup
 

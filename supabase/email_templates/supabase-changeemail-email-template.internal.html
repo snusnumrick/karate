@@ -1,0 +1,248 @@
+<!--
+Internal Supabase Email Template - Change Email Address
+=======================================================
+
+This is an internal template that uses placeholders for site configuration.
+Use the generate-supabase-template.sh script to convert this to a Supabase-ready template.
+
+Placeholders:
+- {{SITE_NAME}} - Will be replaced with site name from site.ts
+- {{SITE_URL}} - Will be replaced with site URL from site.ts  
+- {{PRIMARY_COLOR}} - Will be replaced with primary color from site.ts
+- {{LOGO_URL}} - Will be replaced with full logo URL
+
+Supabase variables (keep as-is):
+- {{ .ConfirmationURL }} - The confirmation link for email change
+- {{ .SiteURL }} - Your application's site URL (configured in Supabase Auth settings)
+- {{ .Email }} - The user's current email address
+- {{ .NewEmail }} - The user's new email address
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Email Change - {{SITE_NAME}}</title>
+    <style>
+        :root {
+            --primary-color: {{PRIMARY_COLOR}};
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9fafb;
+            color: #374151;
+            line-height: 1.6;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #16a34a 100%);
+            padding: 48px 40px;
+            text-align: center;
+            color: white;
+            position: relative;
+        }
+        .logo {
+            width: 372px;
+            height: 60px;
+            margin-bottom: 24px;
+            filter: brightness(0) invert(1);
+        }
+        .welcome-title {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: -0.025em;
+        }
+        .content {
+            padding: 48px 40px;
+        }
+        .message {
+            font-size: 18px;
+            margin-bottom: 32px;
+            color: #4b5563;
+            line-height: 1.7;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #16a34a 100%);
+            color: white;
+            padding: 18px 40px;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 18px;
+            margin: 24px 0;
+            box-shadow: 0 10px 25px rgba(70, 154, 69, 0.3);
+            transition: all 0.3s ease;
+            letter-spacing: 0.025em;
+        }
+        .cta-button:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(70, 154, 69, 0.4);
+        }
+        .email-change-info {
+            background-color: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 24px 0;
+            color: #0c4a6e;
+        }
+        .email-change-info h4 {
+            margin: 0 0 16px 0;
+            color: #0c4a6e;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .email-display {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 8px 0;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #bae6fd;
+        }
+        .security-note {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+            color: #92400e;
+        }
+        .security-note h4 {
+            margin: 0 0 12px 0;
+            color: #92400e;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .footer {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #16a34a 100%);
+            padding: 40px;
+            text-align: center;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .footer a:hover {
+            color: #f0fdf4;
+            text-decoration: underline;
+        }
+        .contact-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 24px;
+            border-radius: 8px;
+            margin: 24px 0;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .contact-info h3 {
+            color: #ffffff;
+            margin-top: 0;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .contact-info strong {
+            color: #ffffff;
+            font-size: 18px;
+            display: block;
+            margin-bottom: 12px;
+        }
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+            }
+            .header, .content, .footer {
+                padding: 20px !important;
+            }
+            .welcome-title {
+                font-size: 24px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <img src="{{LOGO_URL}}" alt="{{SITE_NAME}} Logo" class="logo">
+            <h1 class="welcome-title">Confirm Change of Email</h1>
+        </div>
+        
+        <div class="content">
+            <p class="message">
+                You have requested to change the email address associated with your {{SITE_NAME}} account.
+            </p>
+            
+            <div class="email-change-info">
+                <h4>📧 Email Change Details</h4>
+                <p style="margin: 8px 0;"><strong>Current Email:</strong></p>
+                <div class="email-display">{{ .Email }}</div>
+                <p style="margin: 8px 0;"><strong>New Email:</strong></p>
+                <div class="email-display">{{ .NewEmail }}</div>
+            </div>
+            
+            <p class="message">
+                To confirm this email change and update your account, please click the button below:
+            </p>
+            
+            <div style="text-align: center;">
+                <a href="{{ .ConfirmationURL }}" class="cta-button">
+                    Change Email
+                </a>
+            </div>
+            
+            <div class="security-note">
+                <h4>🔒 Security Notice</h4>
+                <p style="margin: 0; font-size: 14px; line-height: 1.5;">
+                    This confirmation link will expire in 24 hours. If you didn't request this email change, please ignore this email and consider securing your account.
+                </p>
+            </div>
+            
+            <p class="message">
+                If the button above doesn't work, you can copy and paste this link into your browser:
+            </p>
+            
+            <p style="word-break: break-all; background: #f3f4f6; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 14px; color: #374151;">
+                {{ .ConfirmationURL }}
+            </p>
+            
+            <p class="message">
+                <strong>Need help?</strong><br>
+                If you have any questions about this email change or need assistance, please contact our support team.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="contact-info">
+                <strong>{{SITE_NAME}}</strong>
+                <div style="margin: 12px 0; line-height: 1.6;">
+                    Email: <a href="mailto:info@greenegin.ca" style="color: #ffffff; text-decoration: none;">info@greenegin.ca</a><br>
+                    Phone: <a href="tel:+1234567890" style="color: #ffffff; text-decoration: none;">(123) 456-7890</a><br>
+                    Website: <a href="{{SITE_URL}}" style="color: #ffffff; text-decoration: none;">{{SITE_URL}}</a>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px; font-size: 14px; color: rgba(255, 255, 255, 0.8); font-weight: 500;">
+                This email change confirmation was sent to {{ .Email }}. The new email address {{ .NewEmail }} will receive a confirmation once the change is complete.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
