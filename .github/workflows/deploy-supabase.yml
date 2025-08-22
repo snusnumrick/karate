@@ -1,0 +1,93 @@
+name: Deploy Supabase
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    paths:
+      - 'supabase/email_templates/**'
+      - 'supabase/functions/**'
+      - 'app/config/site.ts'
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'What to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - templates
+          - functions
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Create environment file
+        run: |
+          cat > scripts/.env << EOF
+          SUPABASE_ACCESS_TOKEN=${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF=${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          EOF
+
+      - name: Make deployment script executable
+        run: chmod +x scripts/deploy-supabase.sh
+
+      - name: Deploy All (Auto)
+        if: github.event_name == 'push'
+        run: |
+          cd scripts
+          ./deploy-supabase.sh --env .env
+
+      - name: Deploy All (Manual)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'all'
+        run: |
+          cd scripts
+          ./deploy-supabase.sh --env .env
+
+      - name: Deploy Templates Only
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'templates'
+        run: |
+          cd scripts
+          ./deploy-supabase.sh --only-templates --env .env
+
+      - name: Deploy Functions Only
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'functions'
+        run: |
+          cd scripts
+          ./deploy-supabase.sh --only-functions --env .env
+
+      - name: Cleanup environment file
+        if: always()
+        run: rm -f scripts/.env
