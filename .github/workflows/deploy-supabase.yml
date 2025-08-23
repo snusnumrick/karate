@@ -9,6 +9,7 @@ on:
       - 'supabase/email_templates/**'
       - 'supabase/functions/**'
       - 'app/config/site.ts'
+      - 'scripts/deploy-supabase.sh'
   workflow_dispatch:
     inputs:
       deploy_target:
