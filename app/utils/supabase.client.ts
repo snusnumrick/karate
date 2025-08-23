@@ -5,6 +5,7 @@ import type { Database } from '~/types/database.types';
 declare global {
   interface Window {
     __SUPABASE_SINGLETON_CLIENT?: SupabaseClient<Database>;
+    __SUPABASE_BROWSER_CLIENT?: SupabaseClient<Database>;
   }
 }
 
@@ -80,7 +81,16 @@ export function getExistingSupabaseClient(): SupabaseClient<Database> | null {
   if (typeof window === 'undefined') {
     return null;
   }
-  return window.__SUPABASE_SINGLETON_CLIENT || null;
+  return window.__SUPABASE_BROWSER_CLIENT || window.__SUPABASE_SINGLETON_CLIENT || null;
+}
+
+/**
+ * Store a browser client as singleton to prevent multiple instances
+ */
+export function storeBrowserClient(client: SupabaseClient<Database>): void {
+  if (typeof window !== 'undefined') {
+    window.__SUPABASE_BROWSER_CLIENT = client;
+  }
 }
 
 /**

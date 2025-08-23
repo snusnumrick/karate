@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from "react"; // Import useEffect, useRef, useState
 import {json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
-import {Link, useLoaderData, useRevalidator} from "@remix-run/react"; // Import useRevalidator
-import {createClient, SupabaseClient, RealtimeChannel} from "@supabase/supabase-js"; // Import createClient, SupabaseClient, RealtimeChannel
+import {Link, useLoaderData, useRevalidator, useOutletContext} from "@remix-run/react"; // Import useRevalidator, useOutletContext
+import {SupabaseClient, RealtimeChannel} from "@supabase/supabase-js"; // Import SupabaseClient, RealtimeChannel
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types"; // Import Database
 import ConversationList from "~/components/ConversationList";
@@ -102,42 +102,30 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
 
 export default function MessagesIndex() {
-    const {conversations, error, ENV, accessToken, refreshToken} = useLoaderData<typeof loader>();
+    const {conversations, error, accessToken, refreshToken} = useLoaderData<typeof loader>();
     const revalidator = useRevalidator();
-    const supabaseRef = useRef<SupabaseClient<Database> | null>(null); // Use ref for local client instance
+    const { supabase } = useOutletContext<{ supabase: SupabaseClient<Database> }>(); // Get Supabase client from context
     const channelRef = useRef<RealtimeChannel | null>(null); // Ref for the channel
     const isCleaningUpRef = useRef(false); // Ref to prevent race conditions during cleanup
     const [clientInitialized, setClientInitialized] = useState(false); // State to track initialization
 
     // Effect for Supabase Client Initialization
     useEffect(() => {
-        console.log("[FamilyMessagesIndex] Client initialization effect running.");
-        // Initialize local client instance if needed
-        if (!supabaseRef.current && ENV?.SUPABASE_URL && ENV?.SUPABASE_ANON_KEY) {
-            console.log("[FamilyMessagesIndex] Initializing Supabase client...");
-            supabaseRef.current = createClient<Database>(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
-                auth: {
-                    persistSession: true, // Allow client to manage session persistence
-                    autoRefreshToken: true, // Allow client to manage token refresh
-                },
-                realtime: { params: { eventsPerSecond: 10 } } // Keep existing realtime config
-            });
-            console.log("[FamilyMessagesIndex] Supabase client instance created.");
+        console.log("[FamilyMessagesIndex] Using Supabase client from context.");
+        if (supabase) {
+            console.log("[FamilyMessagesIndex] Supabase client available from context.");
             setClientInitialized(true); // Signal that the client object exists
-        } else if (supabaseRef.current) {
-            console.log("[FamilyMessagesIndex] Supabase client already initialized.");
-            if (!clientInitialized) setClientInitialized(true); // Ensure state is correct if ref exists but state was false
         } else {
-            console.warn("[FamilyMessagesIndex] Supabase ENV variables not found, cannot create client.");
+            console.warn("[FamilyMessagesIndex] Supabase client not available from context.");
         }
-    }, [clientInitialized, ENV]); // Only depends on ENV
+    }, [supabase]); // Depend on supabase from context
 
     // Effect to set/update the session on the initialized client
     useEffect(() => {
         console.log("[FamilyMessagesIndex] Session update effect running.");
-        if (supabaseRef.current && accessToken && refreshToken) {
+        if (supabase && accessToken && refreshToken) {
             console.log("[FamilyMessagesIndex] Setting session on Supabase client...");
-            supabaseRef.current.auth.setSession({
+            supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken,
             }).then(({error: sessionError}) => {
@@ -150,9 +138,9 @@ export default function MessagesIndex() {
         } else if (!accessToken || !refreshToken) {
             console.warn("[FamilyMessagesIndex] Access token or refresh token missing, cannot set session.");
         } else {
-            console.log("[FamilyMessagesIndex] Supabase client ref not ready for session setting.");
+            console.log("[FamilyMessagesIndex] Supabase client not ready for session setting.");
         }
-    }, [accessToken, refreshToken, clientInitialized]); // Depend on tokens and initialization state
+    }, [accessToken, refreshToken, supabase]); // Depend on tokens and supabase client
 
     // Effect for Supabase Realtime Subscription
     useEffect(() => {
@@ -160,7 +148,7 @@ export default function MessagesIndex() {
         isCleaningUpRef.current = false;
         console.log("[FamilyMessagesIndex] Subscription effect running.");
 
-        if (!clientInitialized || !supabaseRef.current) {
+        if (!clientInitialized || !supabase) {
             console.log("[FamilyMessagesIndex] Supabase client not ready for real-time. Skipping subscription setup.");
             return; // Exit if client is not initialized
         }
@@ -172,7 +160,6 @@ export default function MessagesIndex() {
         }
 
         console.log("[FamilyMessagesIndex] Setting up Supabase real-time subscription...");
-        const supabase = supabaseRef.current; // Get client from ref
         const channelName = 'family-messages-list-channel';
         console.log(`[FamilyMessagesIndex] Attempting to create/get channel: ${channelName}`);
 
@@ -188,7 +175,7 @@ export default function MessagesIndex() {
         console.log(`[FamilyMessagesIndex] Initial channel state before subscribe: ${channel.state}`);
 
         channel
-            .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, (payload) => {
+            .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, (payload: { new: Record<string, unknown>; old: Record<string, unknown> | null; eventType: string }) => {
                 console.log('[FamilyMessagesIndex] *** New message INSERT detected! ***:', payload);
                 if (!isCleaningUpRef.current) { // Check cleanup flag
                     console.log('[FamilyMessagesIndex] Revalidating conversation list due to new message...');
@@ -197,7 +184,7 @@ export default function MessagesIndex() {
                     console.log('[FamilyMessagesIndex] Cleanup in progress, skipping revalidation.');
                 }
             })
-            .subscribe((status, err) => {
+            .subscribe((status: string, err?: Error) => {
                 console.log(`[FamilyMessagesIndex] Channel ${channelName} subscription status update: ${status}`);
                 if (status === 'SUBSCRIBED') {
                     console.log(`[FamilyMessagesIndex] Successfully subscribed to channel: ${channelName}`);
@@ -218,8 +205,8 @@ export default function MessagesIndex() {
             if (currentChannel && supabase) { // Ensure supabase client still exists
                 console.log(`[FamilyMessagesIndex] Current state before removal: ${currentChannel.state}`);
                 supabase.removeChannel(currentChannel)
-                    .then(status => console.log(`[FamilyMessagesIndex] Removed channel ${channelName} status: ${status}`))
-                    .catch(error => console.error(`[FamilyMessagesIndex] Error removing channel ${channelName}:`, error))
+                    .then((status: string) => console.log(`[FamilyMessagesIndex] Removed channel ${channelName} status: ${status}`))
+                    .catch((error: Error) => console.error(`[FamilyMessagesIndex] Error removing channel ${channelName}:`, error))
                     .finally(() => {
                         // Only nullify if it's the same channel we intended to remove
                         if (channelRef.current === currentChannel) {
@@ -230,8 +217,8 @@ export default function MessagesIndex() {
                  console.log(`[FamilyMessagesIndex] Cleanup: No channel found in ref for ${channelName} or supabase client missing.`);
             }
         };
-        // Depend only on client initialization state and revalidator
-    }, [clientInitialized, revalidator]);
+        // Depend on client initialization state, revalidator, and supabase
+    }, [clientInitialized, revalidator, supabase]);
 
 
     if (error) {

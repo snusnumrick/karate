@@ -1,7 +1,8 @@
 import { json, type LoaderFunctionArgs } from "@vercel/remix";
 import {Outlet, useLoaderData, useLocation, useNavigate, useRevalidator} from "@remix-run/react";
 import * as React from "react";
-import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix";
+import { type SupabaseClient } from "@supabase/auth-helpers-remix";
+import { getSupabaseClient } from "~/utils/supabase.client";
 import PublicNavbar from "~/components/PublicNavbar";
 import FamilyNavbar from "~/components/FamilyNavbar";
 import AdminNavbar from "~/components/AdminNavbar";
@@ -27,9 +28,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 // --- 1. MODIFIED: AuthTokenSender now accepts the supabase client as a prop ---
-function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> }) {
+function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> | null }) {
     // console.log(`AuthTokenSender render ${supabase}`);
     React.useEffect(() => {
+        if (!supabase) return;
+        
         // console.log(`AuthTokenSender useEffect ${supabase}`);
         // We already know supabase exists because of the conditional render below
         const sendTokenToSw = (token: string | null) => {
@@ -87,14 +90,22 @@ export default function Layout() {
 
     // Use useMemo to ensure single client instance per environment
     const supabase = React.useMemo(() => {
-        return createBrowserClient<Database>(
-            ENV.SUPABASE_URL!,
-            ENV.SUPABASE_ANON_KEY!
-        );
-    }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
+        // Only create client on the browser side
+        if (typeof window === 'undefined') {
+            return null;
+        }
+        return getSupabaseClient({
+            url: ENV.SUPABASE_URL!,
+            anonKey: ENV.SUPABASE_ANON_KEY!,
+            accessToken: serverSession?.access_token,
+            refreshToken: serverSession?.refresh_token
+        });
+    }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, serverSession?.access_token, serverSession?.refresh_token]);
 
 
     React.useEffect(() => {
+        if (!supabase) return;
+        
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
                 if (event === 'PASSWORD_RECOVERY') {
@@ -133,7 +144,7 @@ export default function Layout() {
                 {renderNavbar()}
             </div>
             <main className="flex-grow">
-                <Outlet/>
+                <Outlet context={{ supabase }}/>
             </main>
             <div className={isReceiptPage ? 'print:hidden' : ''}>
                 <Footer user={user}/>
