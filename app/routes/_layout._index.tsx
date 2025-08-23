@@ -20,11 +20,17 @@ type UpcomingEventWithFormatted = UpcomingEvent & {
 export async function loader({ request }: LoaderFunctionArgs) {
     const { getEventTypeConfigWithDarkMode, formatEventTypeName } = await import("~/utils/event-helpers.server");
     const { getMainPageScheduleData } = await import("~/services/class.server");
+    const { getSupabaseServerClient } = await import("~/utils/supabase.server");
     
     try {
+        // Check if user is logged in to determine which events to show
+        const { supabaseServer } = getSupabaseServerClient(request);
+        const { data: { user } } = await supabaseServer.auth.getUser();
+        const isLoggedIn = !!user;
+        
         // Fetch both upcoming events and schedule data in parallel
         const [upcomingEvents, scheduleData, eventTypeConfig] = await Promise.all([
-            EventService.getUpcomingEvents(),
+            isLoggedIn ? EventService.getEventsForLoggedInUsers() : EventService.getUpcomingEvents(),
             getMainPageScheduleData(),
             getEventTypeConfigWithDarkMode(request)
         ]);
