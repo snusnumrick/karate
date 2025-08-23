@@ -208,24 +208,32 @@ deploy_templates() {
             # Read template content
             local template_content=$(cat "$template_file")
             
+            # Map template types to correct API field names
+            local api_field_name
+            case "$template_type" in
+                "signup") api_field_name="mailer_templates_confirmation_content" ;;
+                "invite") api_field_name="mailer_templates_invite_content" ;;
+                "magiclink") api_field_name="mailer_templates_magic_link_content" ;;
+                "changeemail") api_field_name="mailer_templates_email_change_content" ;;
+                "resetpassword") api_field_name="mailer_templates_recovery_content" ;;
+                "reauth") api_field_name="mailer_templates_reauthentication_content" ;;
+                *) log_error "Unknown template type: $template_type"; continue ;;
+            esac
+            
             # Deploy using Supabase Management API
             local response=$(curl -s -w "\n%{http_code}" \
-                -X PUT \
+                -X PATCH \
                 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
                 -H "Content-Type: application/json" \
                 "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
                 -d "{
-                    \"MAILER_TEMPLATES\": {
-                        \"$template_type\": {
-                            \"content\": $(echo "$template_content" | jq -Rs .)
-                        }
-                    }
+                    \"$api_field_name\": $(echo "$template_content" | jq -Rs .)
                 }")
             
             local http_code=$(echo "$response" | tail -n1)
             local response_body=$(echo "$response" | head -n -1)
             
-            if [ "$http_code" = "200" ]; then
+            if [ "$http_code" = "200" ] || [ "$http_code" = "204" ]; then
                 log_success "Template deployed: $template_type"
             else
                 log_error "Failed to deploy $template_type template (HTTP $http_code)"
