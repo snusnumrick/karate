@@ -132,7 +132,9 @@ load_env() {
 generate_templates() {
     log_info "Generating email templates..."
     
-    local email_templates_dir="$(dirname "$0")/../supabase/email_templates"
+    # Get script directory reliably
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local email_templates_dir="$script_dir/../supabase/email_templates"
     
     if [ ! -d "$email_templates_dir" ]; then
         log_error "Email templates directory not found: $email_templates_dir"
@@ -141,55 +143,102 @@ generate_templates() {
     
     cd "$email_templates_dir"
     
-    if [ ! -f "generate-supabase-template.sh" ]; then
-        log_error "Template generation script not found"
-        exit 1
-    fi
-    
-    if [ "$DRY_RUN" = "true" ]; then
-        log_info "[DRY RUN] Would generate email templates"
+    # Check if generation script exists and is executable
+    if [ -f "generate-supabase-template.sh" ]; then
+        if [ "$DRY_RUN" = "true" ]; then
+            log_info "[DRY RUN] Would generate email templates"
+        else
+            chmod +x generate-supabase-template.sh
+            ./generate-supabase-template.sh
+            log_success "Email templates generated"
+        fi
     else
-        ./generate-supabase-template.sh
-        log_success "Email templates generated"
+        log_warning "Template generation script not found, using existing templates"
     fi
     
     cd - > /dev/null
 }
 
-# Deploy email templates
+# Deploy email templates using Supabase Management API
 deploy_templates() {
     local templates=("$@")
     
     log_info "Deploying email templates..."
     
-    local email_templates_dir="$(dirname "$0")/../supabase/email_templates"
+    # Get script directory reliably
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local email_templates_dir="$script_dir/../supabase/email_templates"
     cd "$email_templates_dir"
     
-    if [ ! -f "deploy-supabase-templates.sh" ]; then
-        log_error "Template deployment script not found"
-        exit 1
-    fi
+    # Function to get template file by type
+    get_template_file() {
+        case "$1" in
+            "signup") echo "supabase-signup-email-template.html" ;;
+            "invite") echo "supabase-invite-email-template.html" ;;
+            "magiclink") echo "supabase-magiclink-email-template.html" ;;
+            "changeemail") echo "supabase-changeemail-email-template.html" ;;
+            "resetpassword") echo "supabase-resetpassword-email-template.html" ;;
+            "reauth") echo "supabase-reauth-email-template.html" ;;
+            *) echo "" ;;
+        esac
+    }
     
-    local deploy_args=()
-    deploy_args+=("--token" "$SUPABASE_ACCESS_TOKEN")
-    deploy_args+=("--project" "$SUPABASE_PROJECT_REF")
-    
-    if [ "$DRY_RUN" = "true" ]; then
-        deploy_args+=("--dry-run")
-    fi
-    
+    # Deploy specific templates or all if none specified
+    local templates_to_deploy=()
     if [ ${#templates[@]} -gt 0 ]; then
-        # Deploy specific templates
-        for template in "${templates[@]}"; do
-            log_info "Deploying template: $template"
-            ./deploy-supabase-templates.sh "${deploy_args[@]}" "$template"
-        done
+        templates_to_deploy=("${templates[@]}")
     else
-        # Deploy all templates
-        ./deploy-supabase-templates.sh "${deploy_args[@]}"
+        templates_to_deploy=("signup" "invite" "magiclink" "changeemail" "resetpassword" "reauth")
     fi
     
-    log_success "Email templates deployed"
+    for template_type in "${templates_to_deploy[@]}"; do
+        local template_file=$(get_template_file "$template_type")
+        
+        if [ -z "$template_file" ]; then
+            log_warning "Unknown template type: $template_type"
+            continue
+        fi
+        
+        if [ ! -f "$template_file" ]; then
+            log_warning "Template file not found: $template_file"
+            continue
+        fi
+        
+        log_info "Deploying template: $template_type ($template_file)"
+        
+        if [ "$DRY_RUN" = "true" ]; then
+            log_info "[DRY RUN] Would deploy $template_type template"
+        else
+            # Read template content
+            local template_content=$(cat "$template_file")
+            
+            # Deploy using Supabase Management API
+            local response=$(curl -s -w "\n%{http_code}" \
+                -X PUT \
+                -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+                -H "Content-Type: application/json" \
+                "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+                -d "{
+                    \"MAILER_TEMPLATES\": {
+                        \"$template_type\": {
+                            \"content\": $(echo "$template_content" | jq -Rs .)
+                        }
+                    }
+                }")
+            
+            local http_code=$(echo "$response" | tail -n1)
+            local response_body=$(echo "$response" | head -n -1)
+            
+            if [ "$http_code" = "200" ]; then
+                log_success "Template deployed: $template_type"
+            else
+                log_error "Failed to deploy $template_type template (HTTP $http_code)"
+                log_error "Response: $response_body"
+            fi
+        fi
+    done
+    
+    log_success "Email template deployment completed"
     cd - > /dev/null
 }
 

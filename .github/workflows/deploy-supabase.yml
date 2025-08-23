@@ -47,6 +47,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
@@ -80,13 +83,13 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'templates'
         run: |
           cd scripts
-          ./deploy-supabase.sh --only-templates --env .env
+          ./deploy-supabase.sh --templates-only --env .env
 
       - name: Deploy Functions Only
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'functions'
         run: |
           cd scripts
-          ./deploy-supabase.sh --only-functions --env .env
+          ./deploy-supabase.sh --functions-only --env .env
 
       - name: Cleanup environment file
         if: always()
