@@ -143,17 +143,13 @@ generate_templates() {
     
     cd "$email_templates_dir"
     
-    # Check if generation script exists and is executable
-    if [ -f "generate-supabase-template.sh" ]; then
-        if [ "$DRY_RUN" = "true" ]; then
-            log_info "[DRY RUN] Would generate email templates"
-        else
-            chmod +x generate-supabase-template.sh
-            ./generate-supabase-template.sh
-            log_success "Email templates generated"
-        fi
+    # Generate templates using the generation script
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would generate email templates"
     else
-        log_warning "Template generation script not found, using existing templates"
+        chmod +x generate-supabase-template.sh
+        ./generate-supabase-template.sh
+        log_success "Email templates generated"
     fi
     
     cd - > /dev/null
