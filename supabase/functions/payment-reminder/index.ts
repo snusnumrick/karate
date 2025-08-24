@@ -3,6 +3,7 @@ import {serve} from 'https://deno.land/std@0.177.0/http/server.ts';
 import {getSupabaseAdminClient, SupabaseClient} from '../_shared/supabase.ts';
 import {Database} from '../_shared/database.types.ts'; // Assuming you generate types for functions
 import {sendEmail} from '../_shared/email.ts'; // Shared email utility for functions
+import {createPaymentReminderEmail} from '../_shared/email-templates.ts'; // Email template system
 import {checkStudentEligibility, EligibilityStatus} from '../_shared/eligibility.ts'; // Shared eligibility logic for functions
 import {corsHeaders} from '../_shared/cors.ts';
 
@@ -149,55 +150,17 @@ expired list.`,
           const expiredStudents = studentsToExpire.filter((s) => !('daysUntilExpiration' in s));
           const expiringSoonStudents = studentsToExpire.filter((s) => 'daysUntilExpiration' in s);
 
-          const subject = `Action Required: Karate Payment Due for ${family.name}`;
-          const htmlBody = `
-            <p>Hello ${family.name},</p>
-            ${
-            expiredStudents.length > 0
-              ? `
-              <p>This is a reminder that the karate class payment is <strong>overdue</strong> for:</p>
-              <ul>
-                ${expiredStudents.map((s) => `<li><strong>${s.name}</strong></li>`).join('')}
-              </ul>
-            `
-              : ''
-          }
-            ${
-            expiringSoonStudents.length > 0
-              ? `
-              <p>The following students have payments expiring soon:</p>
-              <ul>
-                ${
-                expiringSoonStudents.map((s) =>
-                  `<li><strong>${s.name}</strong> - Expires in ${s.daysUntilExpiration} days</li>`
-                ).join('')
-              }
-              </ul>
-            `
-              : ''
-          }
-            ${
-            expiredStudents.length > 0
-              ? `
-              <p>Their current status is <strong>Expired</strong>. Please visit the family portal immediately to make a payment.</p>
-            `
-              : ''
-          }
-            ${
-            expiringSoonStudents.length > 0
-              ? `
-              <p>Payments will expire soon. Please renew before the due date to ensure continued participation.</p>
-            `
-              : ''
-          }
-            <p><a href="${siteUrl}/family/payment">Make Payment Now</a></p> {/* Use verified siteUrl variable */}
-            <p>Thank you,<br/>Sensei Negin's Karate Class</p>
-          `;
+          const emailTemplate = createPaymentReminderEmail({
+            familyName: family.name,
+            expiredStudents,
+            expiringSoonStudents,
+            siteUrl,
+          });
 
           const emailSent = await sendEmail({
             to: family.email,
-            subject: subject,
-            html: htmlBody,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html,
           });
 
           if (emailSent) {

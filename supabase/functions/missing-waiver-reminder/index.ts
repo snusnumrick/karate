@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { getSupabaseAdminClient, SupabaseClient } from '../_shared/supabase.ts';
 import { Database } from '../_shared/database.types.ts';
 import { sendEmail } from '../_shared/email.ts';
+import { createWaiverReminderEmail } from '../_shared/email-templates.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
 console.log('Missing Waiver Reminder Function Initializing');
@@ -118,26 +119,16 @@ serve(async (req: Request) => {
           `User ${profile.id} (Family: ${profile.families.name}) is missing ${missingWaivers.length} waivers.`,
         );
         try {
-          const waiverList = missingWaivers.map((w) => w.title).join(', ');
-          const subject = `Reminder: Please Sign Required Karate Waivers`;
-          const htmlBody =
-            `                                                                                                                                                                                             
-            <p>Hello ${profile.families.name},</p>                                                                                                                                                                       
-            <p>This is a friendly reminder to please sign the following required waiver(s) for participation in karate class:</p>                                                                                        
-            <ul>                                                                                                                                                                                                         
-              ${
-              missingWaivers.map((w) => `<li><strong>${w.title}</strong></li>`).join('')
-            }                                                                                                                                
-            </ul>
-            <p>You can sign these by logging into your family portal.</p>
-            <p><a href="${siteUrl}/waivers">Sign Waivers Now</a></p> {/* Use verified siteUrl variable */}
-            <p>Thank you,<br/>Sensei Negin's Karate Class</p>
-          `;
+          const emailTemplate = createWaiverReminderEmail({
+            familyName: profile.families.name,
+            missingWaivers,
+            siteUrl,
+          });
 
           const emailSent = await sendEmail({
             to: profile.families.email,
-            subject: subject,
-            html: htmlBody,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html,
           });
 
           if (emailSent) {
