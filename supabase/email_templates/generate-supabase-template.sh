@@ -20,6 +20,7 @@ magiclink:supabase-magiclink-email-template:Magic Link
 changeemail:supabase-changeemail-email-template:Change email address
 resetpassword:supabase-resetpassword-email-template:Reset password
 reauth:supabase-reauth-email-template:Reauthentication
+edgefunction:edge-function-email-template:Edge Function Email Template
 "
 
 # Function to get template file by type
@@ -79,8 +80,11 @@ template_exists() {
      # Generate the final template
      sed "s|{{SITE_NAME}}|${SITE_NAME}|g" "${template_file}.internal.html" | \
      sed "s|{{PRIMARY_COLOR}}|${PRIMARY_COLOR}|g" | \
+     sed "s|#469a45; /\* Will be replaced with {{PRIMARY_COLOR}} \*/|${PRIMARY_COLOR}|g" | \
      sed "s|{{SITE_URL}}|${SITE_URL}|g" | \
-     sed "s|{{LOGO_URL}}|${LOGO_URL}|g" > "${template_file}.html"
+     sed "s|{{LOGO_URL}}|${LOGO_URL}|g" | \
+     sed "s|{{CONTACT_PHONE}}|${CONTACT_PHONE}|g" | \
+     sed "s|{{CONTACT_EMAIL}}|${CONTACT_EMAIL}|g" > "${template_file}.html"
      
      # Add generation comment at the top
      echo "<!--" > temp_header.txt
@@ -150,6 +154,13 @@ const siteName = nameMatch ? nameMatch[1] : 'GREENEGIN KARATE';
 const colorMatch = siteContent.match(/colors:\s*{[^}]*primary:\s*["']([^"']+)["'][^}]*}/);
 const primaryColor = colorMatch ? colorMatch[1] : '#469a45';
 
+// Extract contact information
+const phoneMatch = siteContent.match(/contact:\s*{[^}]*phone:\s*["']([^"']+)["'][^}]*}/);
+const contactPhone = phoneMatch ? phoneMatch[1] : '(604) 123-4567';
+
+const emailMatch = siteContent.match(/contact:\s*{[^}]*email:\s*["']([^"']+)["'][^}]*}/);
+const contactEmail = emailMatch ? emailMatch[1] : 'info@greenegin.ca';
+
 // Extract site URL (look for siteUrl variable)
 const urlMatch = siteContent.match(/(?:const\s+)?siteUrl\s*=\s*["']([^"']+)["']/) || 
                 siteContent.match(/url:\s*["']([^"']+)["']/) ||
@@ -171,7 +182,9 @@ console.log(JSON.stringify({
     siteName,
     primaryColor,
     siteUrl,
-    logoUrl: `${siteUrl}/logo-light.svg`
+    logoUrl: `${siteUrl}/logo-light.svg`,
+    contactPhone,
+    contactEmail
 }));
 EOF
 
@@ -181,12 +194,16 @@ SITE_NAME=$(echo $CONFIG | node -e "console.log(JSON.parse(require('fs').readFil
 PRIMARY_COLOR=$(echo $CONFIG | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf8')).primaryColor)")
 SITE_URL=$(echo $CONFIG | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf8')).siteUrl)")
 LOGO_URL=$(echo $CONFIG | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf8')).logoUrl)")
+CONTACT_PHONE=$(echo $CONFIG | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf8')).contactPhone)")
+CONTACT_EMAIL=$(echo $CONFIG | node -e "console.log(JSON.parse(require('fs').readFileSync(0, 'utf8')).contactEmail)")
 
 echo -e "${GREEN}✅ Configuration extracted:${NC}"
 echo -e "   Site Name: ${SITE_NAME}"
 echo -e "   Primary Color: ${PRIMARY_COLOR}"
 echo -e "   Site URL: ${SITE_URL}"
 echo -e "   Logo URL: ${LOGO_URL}"
+echo -e "   Contact Phone: ${CONTACT_PHONE}"
+echo -e "   Contact Email: ${CONTACT_EMAIL}"
 echo ""
 
 # Generate templates
@@ -209,12 +226,15 @@ echo -e "${GREEN}🎉 Template(s) generated successfully!${NC}"
 echo -e "${YELLOW}💡 Copy the contents of the generated .html files to your Supabase Email Templates dashboard${NC}"
 echo -e "${YELLOW}🔗 Dashboard: Authentication > Email Templates${NC}"
 echo ""
-echo -e "${BLUE}📋 Template mapping for Supabase dashboard:${NC}"
+echo -e "${BLUE}📋 Template mapping:${NC}"
+echo -e "   ${YELLOW}Supabase dashboard templates:${NC}"
 echo -e "   supabase-signup-email-template.html     → Confirm signup"
 echo -e "   supabase-invite-email-template.html     → Invite user"
 echo -e "   supabase-magiclink-email-template.html  → Magic Link"
 echo -e "   supabase-changeemail-email-template.html → Change email address"
 echo -e "   supabase-resetpassword-email-template.html → Reset password"
 echo -e "   supabase-reauth-email-template.html     → Reauthentication"
+echo -e "   ${YELLOW}Edge function template:${NC}"
+echo -e "   edge-function-email-template.html       → Copy to supabase/functions/_shared/email-templates.ts"
 
 echo -e "\n${GREEN}✨ Done! Your Supabase email templates are ready to use.${NC}"

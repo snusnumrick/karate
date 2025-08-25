@@ -1,8 +1,112 @@
-// Email template system for generating styled HTML emails
-// Matches the styling of existing Supabase email templates
+// Email template system for generating clean, minimal HTML emails
+// This file uses a generated template from the email_templates directory
+// Run: cd supabase/email_templates && ./generate-supabase-template.sh edgefunction
+// Then copy the generated HTML template content here
+
+// Generated email template - DO NOT EDIT MANUALLY
+// This template is generated from edge-function-email-template.internal.html
+// To update: modify the internal template and regenerate
+const EMAIL_TEMPLATE = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GREENEGIN KARATE</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            padding: 32px 24px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .title {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #469a45;
+        }
+        .content {
+            padding: 32px 24px;
+        }
+        .message {
+            margin: 0 0 24px 0;
+            font-size: 16px;
+        }
+        .highlight {
+            background-color: #f1f5f9;
+            border-left: 4px solid #469a45;
+            padding: 16px;
+            margin: 24px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #469a45 !important;;
+            color: #ffffff !important;;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 16px 0;
+        }
+        .footer {
+            padding: 24px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+            font-size: 14px;
+            color: #64748b;
+        }
+        .footer a {
+            color: #469a45;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">GREENEGIN KARATE</h1>
+        </div>
+        
+        <div class="content">
+            <div class="message">
+                \${content}
+            </div>
+            
+            <div class="highlight">
+                <a href="\${ctaUrl}" class="cta-button">\${ctaText}</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>
+                GREENEGIN KARATE<br>
+                Phone: (604) 690-7121<br>
+                Email: <a href="mailto:info@karate.greenegin.ca">info@karate.greenegin.ca</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
 
 interface EmailTemplateData {
-  familyName: string;
+  familyName?: string;
+  subject?: string;
+  content?: string;
+  ctaText?: string;
+  ctaUrl?: string;
   siteUrl: string;
   [key: string]: any;
 }
@@ -12,193 +116,16 @@ interface EmailTemplate {
   html: string;
 }
 
-// Base email template with consistent styling
-function createBaseTemplate({
-  title,
-  content,
-  siteUrl,
-}: {
-  title: string;
-  content: string;
-  siteUrl: string;
-}): string {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title} - Greenegin Karate</title>
-    <style>
-        :root {
-            --primary-color: #469a45;
-        }
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f9fafb;
-            color: #374151;
-            line-height: 1.6;
-        }
-        .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-        .header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #16a34a 100%);
-            /*padding: 48px 20px;*/
-            text-align: center;
-            /*color: white;*/
-            position: relative;
-        }
-        .logo {
-            width: 120px;
-            height: 120px;
-            margin-bottom: 24px;
-            filter: brightness(0) invert(1);
-        }
-        .welcome-title {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            letter-spacing: -0.025em;
-        }
-        .content {
-            /*padding: 48px 40px;*/
-        }
-        .message {
-            font-size: 16px;
-            margin-bottom: 24px;
-            color: #4b5563;
-            line-height: 1.7;
-        }
-        .highlight-box {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border: 2px solid var(--primary-color);
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-            box-shadow: 0 4px 15px rgba(70, 154, 69, 0.1);
-        }
-        .student-list {
-            list-style: none;
-            padding: 0;
-            margin: 16px 0;
-        }
-        .student-list li {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin: 8px 0;
-            font-weight: 600;
-            color: #1f2937;
-        }
-        .student-list li.expired {
-            background: #fef2f2;
-            border-color: #fecaca;
-            color: #dc2626;
-        }
-        .student-list li.expiring {
-            background: #fffbeb;
-            border-color: #fed7aa;
-            color: #d97706;
-        }
-        .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--primary-color) 0%, #16a34a 100%);
-            /*color: white;*/
-            text-decoration: none;
-            /*padding: 16px 32px;*/
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            /*margin: 24px 0;*/
-            box-shadow: 0 4px 15px rgba(70, 154, 69, 0.3);
-            transition: all 0.2s ease;
-        }
-        .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(70, 154, 69, 0.4);
-        }
-        .footer {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #16a34a 100%);
-            padding: 40px;
-            text-align: center;
-            color: white;
-            font-size: 16px;
-            font-weight: 500;
-        }
-        .footer a {
-            color: #ffffff;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .footer a:hover {
-            color: #f0fdf4;
-            text-decoration: underline;
-        }
-        .contact-info {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 24px;
-            border-radius: 8px;
-            margin: 24px 0;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .contact-info h3 {
-            color: #ffffff;
-            margin-top: 0;
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .contact-info strong {
-            color: #ffffff;
-            font-size: 18px;
-            display: block;
-            margin-bottom: 12px;
-        }
-        @media only screen and (max-width: 600px) {
-            .email-container {
-                width: 100% !important;
-            }
-            .header, .content, .footer {
-                padding: 20px !important;
-            }
-            .welcome-title {
-                font-size: 24px !important;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="email-container">
-        <div class="header">
-<!--            <img src="${siteUrl}/logo-light.svg" alt="Greenegin Karate Logo" class="logo">-->
-            <h1 class="welcome-title">${title}</h1>
-        </div>
-        <div class="content">
-            ${content}
-        </div>
-        <div class="footer">
-            <div class="contact-info">
-                <h3>Contact Information</h3>
-                <strong>Sensei Negin's Karate Class</strong>
-                <p>Questions? Feel free to reach out to us!</p>
-                <a href="${siteUrl}/contact">Contact Us</a>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-`;
+// Base email template using the generated template
+function createBaseTemplate(data: EmailTemplateData): string {
+  // Use the generated EMAIL_TEMPLATE and replace placeholders
+  return EMAIL_TEMPLATE
+    .replace(/\$\{subject\}/g, data.subject || '')
+    .replace(/\$\{content\}/g, data.content || '')
+    .replace(/\$\{ctaText\}/g, data.ctaText || '')
+    .replace(/\$\{ctaUrl\}/g, data.ctaUrl || '')
+    .replace(/\$\{familyName\}/g, data.familyName)
+    .replace(/\$\{siteUrl\}/g, data.siteUrl);
 }
 
 // Payment reminder email template
@@ -210,49 +137,36 @@ export function createPaymentReminderEmail(data: {
 }): EmailTemplate {
   const { familyName, expiredStudents, expiringSoonStudents, siteUrl } = data;
   
-  const subject = `Action Required: Karate Payment Due for ${familyName}`;
+  const subject = `Payment Due`;
   
-  let content = `<p class="message">Hello ${familyName} family,</p>`;
+  let content = `<p>Hello ${familyName} family,</p>`;
   
   if (expiredStudents.length > 0) {
     content += `
-      <div class="highlight-box">
-        <p><strong>⚠️ Payment Overdue</strong></p>
-        <p>The karate class payment is <strong>overdue</strong> for:</p>
-        <ul class="student-list">
-          ${expiredStudents.map(s => `<li class="expired">${s.name}</li>`).join('')}
-        </ul>
-        <p>Their current status is <strong>Expired</strong>. Please visit the family portal immediately to make a payment.</p>
-      </div>
+      <p>Just a remineder, you are<strong> past due</strong> for the following students:</p>
+      <p>${expiredStudents.map(s => `• ${s.name}`).join('<br>')}</p>
+      <p>Please make payment to continue classes.</p>
     `;
   }
   
   if (expiringSoonStudents.length > 0) {
     content += `
-      <div class="highlight-box">
-        <p><strong>📅 Payment Expiring Soon</strong></p>
-        <p>The following students have payments expiring soon:</p>
-        <ul class="student-list">
-          ${expiringSoonStudents.map(s => 
-            `<li class="expiring">${s.name} - Expires in ${s.daysUntilExpiration || 0} days</li>`
-          ).join('')}
-        </ul>
-        <p>Please renew before the due date to ensure continued participation.</p>
-      </div>
+      <p><strong>Payment Expiring Soon</strong></p>
+      <p>${expiringSoonStudents.map(s => 
+        `• ${s.name} - ${s.daysUntilExpiration || 0} days remaining`
+      ).join('<br>')}</p>
+      <p>Please renew before expiration.</p>
     `;
   }
   
-  content += `
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${siteUrl}/family/payment" class="cta-button">Make Payment Now</a>
-    </div>
-    <p class="message">Thank you for your prompt attention to this matter.</p>
-    <p class="message"><strong>Sensei Negin's Karate Class</strong></p>
-  `;
+  content += `<p>Thank you.</p>`;
   
   const html = createBaseTemplate({
-    title: 'Payment Reminder',
+    familyName,
+    subject,
     content,
+    ctaText: 'Make Payment',
+    ctaUrl: `${siteUrl}/family/payment`,
     siteUrl,
   });
   
@@ -267,29 +181,22 @@ export function createWaiverReminderEmail(data: {
 }): EmailTemplate {
   const { familyName, missingWaivers, siteUrl } = data;
   
-  const subject = `Reminder: Please Sign Required Karate Waivers`;
+  const subject = `Waiver Required`;
   
   const content = `
-    <p class="message">Hello ${familyName},</p>
-    <div class="highlight-box">
-      <p><strong>📋 Required Waivers</strong></p>
-      <p>This is a friendly reminder to please sign the following required waiver(s) for participation in karate class:</p>
-      <ul class="student-list">
-        ${missingWaivers.map(w => `<li>${w.title}</li>`).join('')}
-      </ul>
-      <p>These waivers are required before students can participate in classes.</p>
-    </div>
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${siteUrl}/waivers" class="cta-button">Sign Waivers Now</a>
-    </div>
-    <p class="message">You can sign these by logging into your family portal.</p>
-    <p class="message">Thank you for your cooperation.</p>
-    <p class="message"><strong>Sensei Negin's Karate Class</strong></p>
+    <p>Hello ${familyName} family,</p>
+    <p>Just a reminder, you are missing <strong>Required Waivers</strong>:</p>
+    <p>${missingWaivers.map(w => `• ${w.title}`).join('<br>')}</p>
+    <p>Please sign to continue participation.</p>
+    <p>Thank you.</p>
   `;
   
   const html = createBaseTemplate({
-    title: 'Waiver Reminder',
+    familyName,
+    subject,
     content,
+    ctaText: 'Sign Waivers',
+    ctaUrl: `${siteUrl}/family/waivers`,
     siteUrl,
   });
   

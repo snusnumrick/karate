@@ -754,12 +754,15 @@ After deployment, you can verify push notifications are working by:
 9. **Supabase Edge Functions:**
     - **Set Secrets:** Edge Functions need their own environment variables (secrets). Set them using the Supabase CLI (
       recommended) or the Dashboard (Edge Functions -> Select Function -> Secrets). You need to set `VITE_SITE_URL`,
-      `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `RESEND_API_KEY`.
+      `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `FROM_EMAIL`, and `STRIPE_SECRET_KEY`.
         ```bash
         # Example using Supabase CLI (run for each secret)
         supabase secrets set VITE_SITE_URL=https://your-production-domain.com
         supabase secrets set RESEND_API_KEY=your_resend_api_key
-        # ... set others similarly ...
+        supabase secrets set FROM_EMAIL="Your Name <you@yourdomain.com>"
+        supabase secrets set STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key
+        supabase secrets set SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+        supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
         ```
     - **Deploy Functions:** Deploy the functions to your *linked* Supabase project:
    ```bash

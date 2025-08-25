@@ -172,6 +172,8 @@ supabase secrets list --project-ref YOUR_PROJECT_REF
 # Set missing secrets
 supabase secrets set VITE_SITE_URL=https://your-domain.com --project-ref YOUR_PROJECT_REF
 supabase secrets set RESEND_API_KEY=your_resend_key --project-ref YOUR_PROJECT_REF
+supabase secrets set FROM_EMAIL="Your Name <you@yourdomain.com>" --project-ref YOUR_PROJECT_REF
+supabase secrets set STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key --project-ref YOUR_PROJECT_REF
 supabase secrets set SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co --project-ref YOUR_PROJECT_REF
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key --project-ref YOUR_PROJECT_REF
 ```
