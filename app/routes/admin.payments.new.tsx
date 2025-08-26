@@ -11,12 +11,11 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/
 import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For displaying errors
 import {format} from 'date-fns'; // For default date
-import { siteConfig } from '~/config/site'; // Import siteConfig
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 type FamilyInfo = Pick<Database['public']['Tables']['families']['Row'], 'id' | 'name'>;
 type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name' | 'family_id'>;
-type TaxRateInfo = Pick<Database['public']['Tables']['tax_rates']['Row'], 'name' | 'rate' | 'description'>; // Add type for tax rates
+type TaxRateInfo = Pick<Database['public']['Tables']['tax_rates']['Row'], 'id' | 'name' | 'rate' | 'description'>; // Add type for tax rates
 
 type LoaderData = {
     families: FamilyInfo[];
@@ -78,14 +77,13 @@ export async function loader({request}: LoaderFunctionArgs) {
         }
         // console.log(`Admin new payment loader: Fetched ${students?.length ?? 0} students.`);
 
-        // Fetch active tax rates
+        // Fetch all active tax rates (admin should have choice of all available taxes)
         // console.log("Admin new payment loader: Fetching active tax rates...");
-        const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
         const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
             .from('tax_rates')
-            .select('name, rate, description') // Select fields needed for display/calculation
-            .in('name', applicableTaxNames)
-            .eq('is_active', true);
+            .select('id, name, rate, description') // Select fields needed for display/calculation
+            .eq('is_active', true)
+            .order('name', { ascending: true });
 
         if (taxRatesError) {
             console.error("Error fetching tax rates:", taxRatesError.message);
@@ -129,6 +127,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const notes = formData.get("notes") as string | null;
     const type = formData.get("type") as string || 'monthly_group'; // Use 'type' variable
     const quantityStr = formData.get("quantity") as string; // Get quantity for one_on_one session
+    const selectedTaxRateIdsString = formData.get("selectedTaxRateIds") as string; // Get selected tax rate IDs
 
     // --- Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
@@ -186,12 +185,21 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
     try {
         // --- Multi-Tax Calculation ---
-        const applicableTaxNames = siteConfig.pricing.applicableTaxNames;
-        const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
-            .from('tax_rates')
-            .select('id, name, rate, description') // Fetch description as well
-            .in('name', applicableTaxNames)
-            .eq('is_active', true);
+        const selectedTaxRateIds = selectedTaxRateIdsString ? selectedTaxRateIdsString.split(',').filter(id => id.trim() !== '') : [];
+        
+        let taxRatesData = null;
+        let taxRatesError = null;
+        
+        // Only fetch tax rates if some are selected
+        if (selectedTaxRateIds.length > 0) {
+            const result = await supabaseAdmin
+                .from('tax_rates')
+                .select('id, name, rate, description') // Fetch description as well
+                .in('id', selectedTaxRateIds)
+                .eq('is_active', true);
+            taxRatesData = result.data;
+            taxRatesError = result.error;
+        }
 
         if (taxRatesError) {
             throw new Error(`Failed to fetch tax rates: ${taxRatesError.message}`);
@@ -364,6 +372,7 @@ export default function AdminNewPaymentPage() {
     // selectedStatus state removed
     const [selectedType, setSelectedType] = useState<string>('monthly_group'); // Use selectedType state
     const [subtotalStr, setSubtotalStr] = useState<string>(''); // State for subtotal input string
+    const [selectedTaxRateIds, setSelectedTaxRateIds] = useState<Set<string>>(new Set()); // State for selected tax rates
 
     // Focus on family field when component mounts
     useEffect(() => {
@@ -410,18 +419,21 @@ export default function AdminNewPaymentPage() {
         let totalTaxCents = 0;
         const calculatedTaxes: Array<{ name: string; description: string | null; amount: number }> = [];
 
-        // Use taxRates from loader data
+        // Use only selected tax rates from loader data
         if (taxRates && taxRates.length > 0) {
             for (const taxRate of taxRates) {
-                const rate = Number(taxRate.rate);
-                if (!isNaN(rate)) {
-                    const taxAmountForThisRate = Math.round(subtotalCents * rate / 100);
-                    totalTaxCents += taxAmountForThisRate;
-                    calculatedTaxes.push({
-                        name: taxRate.name,
-                        description: taxRate.description,
-                        amount: taxAmountForThisRate,
-                    });
+                // Only calculate tax if this tax rate is selected
+                if (selectedTaxRateIds.has(taxRate.id)) {
+                    const rate = Number(taxRate.rate);
+                    if (!isNaN(rate)) {
+                        const taxAmountForThisRate = Math.round(subtotalCents * rate / 100);
+                        totalTaxCents += taxAmountForThisRate;
+                        calculatedTaxes.push({
+                            name: taxRate.name,
+                            description: taxRate.description,
+                            amount: taxAmountForThisRate,
+                        });
+                    }
                 }
             }
         }
@@ -576,6 +588,53 @@ export default function AdminNewPaymentPage() {
                             {actionData?.fieldErrors?.subtotalAmount && (
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.subtotalAmount}</p>
                             )}
+                        </div>
+
+                        {/* Tax Rates Selection */}
+                        <div>
+                            <Label className="block text-sm font-medium mb-1">
+                                Tax Rates
+                            </Label>
+                            <div className="space-y-2 mt-2">
+                                {taxRates.length > 0 ? (
+                                    taxRates.map((taxRate) => (
+                                        <div key={taxRate.id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`tax-${taxRate.id}`}
+                                                checked={selectedTaxRateIds.has(taxRate.id)}
+                                                onCheckedChange={(checked) => {
+                                                    setSelectedTaxRateIds(prev => {
+                                                        const newIds = new Set(prev);
+                                                        if (checked) {
+                                                            newIds.add(taxRate.id);
+                                                        } else {
+                                                            newIds.delete(taxRate.id);
+                                                        }
+                                                        return newIds;
+                                                    });
+                                                }}
+                                            />
+                                            <Label
+                                                htmlFor={`tax-${taxRate.id}`}
+                                                className="text-sm font-normal cursor-pointer"
+                                            >
+                                                {taxRate.name} ({(taxRate.rate * 100).toFixed(2)}%)
+                                                {taxRate.description && (
+                                                    <span className="text-muted-foreground ml-1">- {taxRate.description}</span>
+                                                )}
+                                            </Label>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No tax rates available</p>
+                                )}
+                            </div>
+                            {/* Hidden input to submit selected tax rate IDs */}
+                            <input
+                                type="hidden"
+                                name="selectedTaxRateIds"
+                                value={Array.from(selectedTaxRateIds).join(',')}
+                            />
                         </div>
 
                         {/* Display Calculated Tax and Total */}
