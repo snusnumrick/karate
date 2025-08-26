@@ -426,7 +426,7 @@ export default function AdminNewPaymentPage() {
                 if (selectedTaxRateIds.has(taxRate.id)) {
                     const rate = Number(taxRate.rate);
                     if (!isNaN(rate)) {
-                        const taxAmountForThisRate = Math.round(subtotalCents * rate / 100);
+                        const taxAmountForThisRate = Math.round(subtotalCents * rate);
                         totalTaxCents += taxAmountForThisRate;
                         calculatedTaxes.push({
                             name: taxRate.name,
