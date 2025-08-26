@@ -123,7 +123,7 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
                                         <SheetTitle className="px-4 mb-2">Navigation</SheetTitle>
                                         <div className="flex flex-col space-y-4 px-4">
                                             <MobileNavLink to="/classes" onClick={() => setIsOpen(false)}>
-                                                Classes
+                                                Programs
                                             </MobileNavLink>
                                             <MobileNavLink to="/about" onClick={() => setIsOpen(false)}>
                                                 About
