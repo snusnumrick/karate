@@ -215,22 +215,25 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Event ID is required", { status: 400 });
   }
 
-  const event = await EventService.getEventById(eventId);
+  // Check authentication first to determine event visibility access
+  const { supabaseServer } = getSupabaseServerClient(request);
+  const { data: { user } } = await supabaseServer.auth.getUser();
+  const isLoggedIn = !!user;
+
+  const event = await EventService.getEventById(eventId, isLoggedIn);
   
   if (!event) {
     throw new Response("Event not found", { status: 404 });
   }
 
-  // Check authentication and get family data
-  const { supabaseServer } = getSupabaseServerClient(request);
-  const { data: { user } } = await supabaseServer.auth.getUser();
+  // Get family data
   
   let familyData = undefined;
   let isAuthenticated = false;
 
   if (user) {
     isAuthenticated = true;
-    
+
     // Get user profile to find family_id
     const { data: profile } = await supabaseServer
       .from('profiles')

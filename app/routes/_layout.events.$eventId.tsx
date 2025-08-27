@@ -8,7 +8,7 @@ import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, 
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
 import { getEventTypeColorWithBorder ,formatEventTypeName} from "~/utils/event-helpers.server";
-// Server-side imports moved to loader function
+import { isLoggedIn as userIsLoggedIn } from "~/utils/auth.server";
 
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -91,7 +91,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Event ID is required", { status: 400 });
   }
 
-  const event = await EventService.getEventById(eventId);
+  // Check if user is logged in to determine event visibility access
+  const isLoggedIn = await userIsLoggedIn(request);
+
+  const event = await EventService.getEventById(eventId, isLoggedIn);
   
   if (!event) {
     throw new Response("Event not found", { status: 404 });
