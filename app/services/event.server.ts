@@ -126,6 +126,10 @@ export class EventService {
 
     if (error) {
       console.error('Error fetching event by ID:', error);
+      // PGRST116 means no rows returned - event doesn't exist or doesn't match visibility criteria
+      if (error.code === 'PGRST116') {
+        console.log(`Event ${id} not found or not visible for user (isLoggedIn: ${isLoggedIn})`);
+      }
       return null;
     }
 
