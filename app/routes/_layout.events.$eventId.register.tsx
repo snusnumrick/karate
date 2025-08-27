@@ -12,7 +12,6 @@ import { formatDate } from '~/utils/misc';
 
 // Extended Event type for registration with additional properties
 type EventWithRegistrationInfo = Tables<'events'> & {
-  fee: number;
   allow_registration: boolean;
 };
 
@@ -288,7 +287,6 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   // Add missing properties to event object
   const eventWithProperties: EventWithRegistrationInfo = {
     ...event,
-    fee: event.registration_fee || 0,
     allow_registration: event.status === 'registration_open'
   };
 
@@ -370,12 +368,6 @@ export default function EventRegistration() {
                       <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                         <DollarSign className="h-4 w-4" />
                         <span className="font-medium">${event.registration_fee}</span>
-                      </div>
-                    )}
-                    {event.fee && (
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <DollarSign className="h-4 w-4" />
-                        <span className="font-medium">${event.fee}</span>
                       </div>
                     )}
                   </div>

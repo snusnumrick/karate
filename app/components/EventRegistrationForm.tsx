@@ -23,7 +23,7 @@ interface Event {
   start_time: string | null;
   end_time: string | null;
   location: string | null;
-  fee: number | null;
+  registration_fee: number | null;
   max_participants: number | null;
   registration_deadline: string | null;
   status: string;
@@ -167,7 +167,7 @@ export function EventRegistrationForm({
             lastName: student.lastName,
             eligibility: { eligible: true, reason: 'Trial' },
             needsPayment: true,
-            nextPaymentAmount: event.fee || 0,
+            nextPaymentAmount: event.registration_fee || 0,
             nextPaymentTierLabel: 'Event Registration Fee',
             pastPaymentCount: 0
           }));
@@ -194,7 +194,7 @@ export function EventRegistrationForm({
         setErrors(response.fieldErrors);
       }
     }
-  }, [fetcher.data, formData.students, event.fee, onSuccess, familyData?.familyId]);
+  }, [fetcher.data, formData.students, event.registration_fee, onSuccess, familyData?.familyId]);
 
   // Add a new student to the registration
   const addStudent = () => {
@@ -446,7 +446,7 @@ export function EventRegistrationForm({
       lastName: student.lastName,
       eligibility: { eligible: true, reason: 'Trial' },
       needsPayment: true,
-      nextPaymentAmount: event.fee || 0,
+      nextPaymentAmount: event.registration_fee || 0,
       nextPaymentTierLabel: 'Event Registration',
       pastPaymentCount: 0,
     }));
@@ -474,7 +474,7 @@ export function EventRegistrationForm({
                   Students: {formData.students.map(s => `${s.firstName} ${s.lastName}`).join(', ')}
                 </p>
                 <p className="text-sm font-medium">
-                  Total: ${((event.fee || 0) * formData.students.length).toFixed(2)}
+                  Total: ${((event.registration_fee || 0) * formData.students.length).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -487,7 +487,7 @@ export function EventRegistrationForm({
               onSuccess={handlePaymentSuccess}
               appearance="simplified"
               enrollmentPricing={{
-                individualSessionAmount: (event.fee || 0) * formData.students.length
+                individualSessionAmount: (event.registration_fee || 0) * formData.students.length
               }}
               supportedPaymentTypes={['individual_session']}
               initialPaymentOption="individual"
