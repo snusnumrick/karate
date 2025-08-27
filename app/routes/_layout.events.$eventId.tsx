@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Link, useLoaderData, Outlet, useLocation } from "@remix-run/react";
+import { Link, useLoaderData, Outlet, useLocation, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { EventService } from "~/services/event.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -445,6 +445,53 @@ export default function EventDetail() {
                  </CardContent>
                </Card>
              )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Error Boundary for the event detail route
+export function ErrorBoundary() {
+  const error = useRouteError();
+  console.error("Event Detail Route Error:", error);
+
+  let title = "Event Not Found";
+  let message = "The event you're looking for doesn't exist or is no longer available.";
+  let status = 404;
+
+  if (isRouteErrorResponse(error)) {
+    title = `${error.status} ${error.statusText}`;
+    message = error.data?.message || error.data || "An error occurred processing your request.";
+    status = error.status;
+  } else if (error instanceof Error) {
+    title = "An Unexpected Error Occurred";
+    message = "We encountered an unexpected issue. Please try again later.";
+  }
+
+  return (
+    <div className="min-h-screen page-background-styles py-12 text-foreground flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md backdrop-blur-lg border dark:border-gray-700 text-center">
+          <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">
+            {title}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            {message}
+          </p>
+          <div className="space-y-3">
+            <Link 
+              to="/" 
+              className="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+            >
+              Return to Events
+            </Link>
+            {status === 404 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                If you believe this is an error, please contact us.
+              </p>
+            )}
           </div>
         </div>
       </div>
