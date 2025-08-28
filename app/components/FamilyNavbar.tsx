@@ -14,6 +14,7 @@ import {
     ShoppingBag,
     Sun,
     User,
+    Users,
     X
 } from "lucide-react";
 import {ClientOnly} from './client-only';
@@ -24,6 +25,7 @@ import {Button} from "~/components/ui/button";
 const familyNavItems = [
     {to: "/family", label: "Dashboard", icon: Home},
     {to: "/family/calendar", label: "Calendar", icon: Calendar},
+    {to: "/family/events", label: "Event Registrations", icon: Users},
     {to: "/family/account", label: "Account", icon: User},
     {to: "/family/attendance", label: "Attendance", icon: CalendarCheck},
     // {to: "/family/payment", label: "Payment", icon: CreditCard},
