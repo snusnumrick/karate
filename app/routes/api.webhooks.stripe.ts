@@ -203,6 +203,50 @@ export async function action({request}: ActionFunctionArgs) {
             }
             // --- End Handle Store Purchase Success ---
 
+            // --- Handle Event Registration Success ---
+            if (type === 'event_registration') {
+                console.log(`[Webhook] Processing successful event registration payment for paymentId: ${supabasePaymentId}`);
+                const supabaseAdmin = getSupabaseAdminClient();
+
+                // First, verify the payment exists and get associated registrations
+                console.log(`[Webhook] Checking for event registrations with paymentId: ${supabasePaymentId}`);
+                const { data: existingRegistrations, error: checkError } = await supabaseAdmin
+                    .from('event_registrations')
+                    .select('id, registration_status')
+                    .eq('payment_id', supabasePaymentId);
+
+                if (checkError) {
+                    console.error(`[Webhook] ERROR checking event registrations for payment ${supabasePaymentId}:`, checkError.message);
+                    return;
+                }
+
+                if (!existingRegistrations || existingRegistrations.length === 0) {
+                    console.warn(`[Webhook] No event registrations found for payment ${supabasePaymentId}`);
+                    return;
+                }
+
+                console.log(`[Webhook] Found ${existingRegistrations.length} event registration(s) for payment ${supabasePaymentId}:`, existingRegistrations);
+
+                // Update event registrations status to confirmed
+                console.log(`[Webhook] Updating event registrations status for paymentId: ${supabasePaymentId}`);
+                const { data: updatedData, error: registrationUpdateError, count } = await supabaseAdmin
+                    .from('event_registrations')
+                    .update({ 
+                        registration_status: 'confirmed'
+                    })
+                    .eq('payment_id', supabasePaymentId)
+                    .select();
+
+                if (registrationUpdateError) {
+                    console.error(`[Webhook] FAILED to update event registrations for payment ${supabasePaymentId}:`, registrationUpdateError.message);
+                    // Log error, but don't fail the webhook for this, payment is already processed. Needs monitoring.
+                } else {
+                    console.log(`[Webhook] Successfully updated ${count || updatedData?.length || 0} event registration(s) to confirmed for payment ${supabasePaymentId}`);
+                    console.log(`[Webhook] Updated registration data:`, updatedData);
+                }
+            }
+            // --- End Handle Event Registration Success ---
+
         } catch (updateError) {
             console.error(`[Webhook] Failed during post-payment processing for Supabase payment ${supabasePaymentId}: ${updateError instanceof Error ? updateError.message : updateError}`);
             // Return 500 so Stripe retries the webhook

@@ -794,7 +794,6 @@ export type Database = {
           payment_amount: number | null
           payment_id: string | null
           payment_required: boolean | null
-          payment_status: Database["public"]["Enums"]["payment_status"] | null
           registered_at: string | null
           registration_status:
             | Database["public"]["Enums"]["registration_status_enum"]
@@ -810,7 +809,6 @@ export type Database = {
           payment_amount?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
-          payment_status?: Database["public"]["Enums"]["payment_status"] | null
           registered_at?: string | null
           registration_status?:
             | Database["public"]["Enums"]["registration_status_enum"]
@@ -826,7 +824,6 @@ export type Database = {
           payment_amount?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
-          payment_status?: Database["public"]["Enums"]["payment_status"] | null
           registered_at?: string | null
           registration_status?:
             | Database["public"]["Enums"]["registration_status_enum"]
@@ -2878,6 +2875,7 @@ export type Database = {
         | "individual_session"
         | "other"
         | "store_purchase"
+        | "event_registration"
       registration_status_enum:
         | "pending"
         | "confirmed"
@@ -3127,6 +3125,7 @@ export const Constants = {
         "individual_session",
         "other",
         "store_purchase",
+        "event_registration",
       ],
       registration_status_enum: [
         "pending",

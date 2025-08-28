@@ -5,7 +5,7 @@ import type { Database } from "~/types/database.types"; // Removed unused Tables
 import { siteConfig } from "~/config/site";
 
 // Define expected form data structure
-type PaymentOption = 'monthly' | 'yearly' | 'individual' | 'store'; // Add 'store' option
+type PaymentOption = 'monthly' | 'yearly' | 'individual' | 'store' | 'event'; // Add 'store' and 'event' options
 type PaymentTypeEnum = Database['public']['Enums']['payment_type_enum'];
 
 
@@ -145,6 +145,12 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                     return json({ error: "Invalid quantity provided for Store Purchase." }, { status: 400, headers: response.headers });
                 }
                 quantityForMetadata = quantity; // Store quantity in metadata if needed
+                break;
+            }
+            case 'event': { // Handle event registration
+                type = 'event_registration';
+                // Event registrations typically have a fixed fee, no quantity needed
+                quantityForMetadata = 1; // Default to 1 for event registrations
                 break;
             }
             default:

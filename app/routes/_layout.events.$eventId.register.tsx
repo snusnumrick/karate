@@ -1,11 +1,11 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node';
-import { useLoaderData, Link } from '@remix-run/react';
+import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node';
+import { useLoaderData, Link, useNavigate } from '@remix-run/react';
 import { EventService } from '~/services/event.server';
 import { siteConfig } from '~/config/site';
 import { Button } from '~/components/ui/button';
 import {Card, CardContent} from '~/components/ui/card';
 import { EventRegistrationForm } from '~/components/EventRegistrationForm';
-import { getSupabaseServerClient } from '~/utils/supabase.server';
+import { getSupabaseServerClient, getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database, Tables, TablesInsert } from '~/types/database.types';
 import { Calendar, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
 import { formatDate } from '~/utils/misc';
@@ -25,6 +25,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
+  console.log("intent", intent);
 
   if (intent === "register") {
     return handleEventRegistration(formData, eventId, request);
@@ -39,6 +40,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
 async function handleEventRegistration(formData: FormData, eventId: string, request: Request) {
   const { supabaseServer } = getSupabaseServerClient(request);
+  const supabaseAdmin = getSupabaseAdminClient();
   
   try {
     // Parse registration data
@@ -126,30 +128,145 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       }
     }
 
+    // Check for existing registrations before creating new ones
+    const { data: existingRegistrations } = await supabaseServer
+      .from('event_registrations')
+      .select('student_id')
+      .eq('event_id', eventId)
+      .in('student_id', studentIds);
+
+    if (existingRegistrations && existingRegistrations.length > 0) {
+      const alreadyRegisteredIds = existingRegistrations.map(reg => reg.student_id);
+      return json({ 
+        error: 'One or more students are already registered for this event',
+        alreadyRegistered: alreadyRegisteredIds
+      }, { status: 400 });
+    }
+
+    // Get event details to check registration fee
+    const { data: eventDetails } = await supabaseServer
+      .from('events')
+      .select('registration_fee')
+      .eq('id', eventId)
+      .single();
+
+    const registrationFee = eventDetails?.registration_fee || 0;
+    const paymentRequired = registrationFee > 0;
+
     // Create event registrations
     const registrations = studentIds.map(studentId => ({
       event_id: eventId,
       student_id: studentId,
        family_id: familyId || '',
-       registration_status: 'pending' as Database['public']['Enums']['registration_status_enum'],
-       payment_status: 'pending' as Database['public']['Enums']['payment_status'],
+       registration_status: paymentRequired ? 'pending' as Database['public']['Enums']['registration_status_enum'] : 'confirmed' as Database['public']['Enums']['registration_status_enum'],
     }));
 
-    const { error: registrationError } = await supabaseServer
+    const { data: createdRegistrations, error: registrationError } = await supabaseServer
       .from('event_registrations')
-      .insert(registrations);
+      .insert(registrations)
+      .select('id');
 
     if (registrationError) {
       console.error('Error creating registrations:', registrationError);
       return json({ error: 'Failed to create event registrations' }, { status: 500 });
     }
 
-    return json({ 
-      success: true, 
-      message: 'Registration submitted successfully',
-      familyId,
-      studentIds 
-    });
+    const registrationId = createdRegistrations?.[0]?.id;
+
+    if (paymentRequired) {
+      // Create payment record for paid events using admin client
+      // Convert dollar amounts to cents for payment processing
+      const subtotalInCents = Math.round(registrationFee * studentIds.length * 100);
+      const totalInCents = Math.round(registrationFee * studentIds.length * 100);
+      
+      const { data: paymentRecord, error: paymentError } = await supabaseAdmin
+        .from('payments')
+        .insert({
+          family_id: familyId,
+          subtotal_amount: subtotalInCents,
+          total_amount: totalInCents,
+          type: 'event_registration',
+          status: 'pending'
+        })
+        .select('id')
+        .single();
+
+      if (paymentError) {
+        console.error('Error creating payment record:', paymentError);
+        return json({ error: 'Failed to create payment record' }, { status: 500 });
+      }
+
+      // Link payment to registrations
+      console.log('Linking payment to registrations:', {
+        paymentId: paymentRecord.id,
+        eventId,
+        familyId,
+        studentIds,
+        registrationFee
+      });
+      
+      // Small delay to ensure registrations are committed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const { data: updateResult, error: linkError } = await supabaseAdmin
+        .from('event_registrations')
+        .update({
+          payment_id: paymentRecord.id,
+          payment_amount: Math.round(registrationFee * 100), // Convert to cents
+          payment_required: true
+        })
+        .eq('event_id', eventId)
+        .eq('family_id', familyId)
+        .in('student_id', studentIds)
+        .select('id, payment_id');
+
+      if (linkError) {
+        console.error('Error linking payment to registrations:', linkError);
+        return json({ error: 'Failed to link payment to registrations' }, { status: 500 });
+      }
+      
+      console.log('Payment linking result:', updateResult);
+      
+      if (!updateResult || updateResult.length === 0) {
+        console.error('No registrations were updated with payment_id');
+        return json({ error: 'Failed to link payment - no registrations found to update' }, { status: 500 });
+      }
+
+      return json({ 
+        success: true,
+        paymentRequired: true,
+        registrationId,
+        paymentId: paymentRecord.id,
+        familyId,
+        studentIds 
+      });
+    } else {
+      // Free event - update registrations with payment info
+      const { error: updateError } = await supabaseServer
+        .from('event_registrations')
+        .update({
+          payment_amount: 0,
+          payment_required: false
+        })
+        .eq('event_id', eventId)
+        .eq('family_id', familyId)
+        .in('student_id', studentIds);
+
+      if (updateError) {
+        console.error('Error updating free event registrations:', updateError);
+        return json({ error: 'Failed to update registrations' }, { status: 500 });
+      }
+
+      // Free event - registration is complete
+      return json({ 
+        success: true,
+        paymentRequired: false,
+        registrationId,
+        message: 'Registration completed successfully!',
+        familyId,
+        studentIds 
+      });
+    }
 
   } catch (error) {
     console.error('Registration error:', error);
@@ -158,31 +275,52 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
 }
 
 async function handlePayment(formData: FormData, eventId: string, request: Request) {
-  // This would integrate with your existing payment processing logic
-  // For now, we'll just mark the registrations as paid
   const { supabaseServer } = getSupabaseServerClient(request);
+  const supabaseAdmin = getSupabaseAdminClient();
   
   try {
     const familyId = formData.get("familyId") as string;
-    const studentIds = JSON.parse(formData.get("studentIds") as string);
+    const studentIdsRaw = formData.get("studentIds") as string;
+    
+    console.log('handlePayment called with:', { eventId, familyId, studentIdsRaw });
+    
+    if (!familyId || !studentIdsRaw) {
+      console.error('Missing required form data:', { familyId, studentIdsRaw });
+      return json({ error: 'Missing required registration data' }, { status: 400 });
+    }
+    
+    const studentIds = JSON.parse(studentIdsRaw);
 
-    // Update payment status for all registrations
-    const { error } = await supabaseServer
+    // Find existing payment record linked to these registrations
+    const { data: existingRegistrations, error: registrationError } = await supabaseServer
       .from('event_registrations')
-      .update({ 
-        payment_status: 'succeeded' as Database['public']['Enums']['payment_status'],
-         registration_status: 'confirmed' as Database['public']['Enums']['registration_status_enum']
-      })
+      .select('payment_id')
       .eq('event_id', eventId)
       .eq('family_id', familyId)
-      .in('student_id', studentIds);
+      .in('student_id', studentIds)
+      .not('payment_id', 'is', null)
+      .limit(1);
 
-    if (error) {
-      console.error('Error updating payment status:', error);
-      return json({ error: 'Failed to process payment' }, { status: 500 });
+    if (registrationError) {
+      console.error('Database error finding existing payment record:', registrationError);
+      return json({ error: 'Database error occurred while finding payment record' }, { status: 500 });
     }
 
-    return json({ success: true, message: 'Payment processed successfully' });
+    if (!existingRegistrations || existingRegistrations.length === 0) {
+      console.log('No existing registrations found for:', { eventId, familyId, studentIds });
+      return json({ error: 'No registrations found. Please complete registration first.' }, { status: 404 });
+    }
+
+    if (!existingRegistrations[0]?.payment_id) {
+      console.log('Registration found but no payment_id:', existingRegistrations[0]);
+      return json({ error: 'No payment record linked to this registration' }, { status: 404 });
+    }
+
+    const paymentId = existingRegistrations[0].payment_id;
+    console.log(`Using existing payment record: ${paymentId}. Redirecting to Stripe payment page.`);
+    
+    // Redirect to Stripe payment page using existing payment record
+    return redirect(`/pay/${paymentId}`);
 
   } catch (error) {
     console.error('Payment error:', error);
@@ -264,6 +402,17 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
         `)
         .eq('family_id', profile.family_id);
 
+      // Get already registered students for this event
+      const { data: registeredStudents } = await supabaseServer
+        .from('event_registrations')
+        .select('student_id')
+        .eq('event_id', eventId)
+        .eq('family_id', profile.family_id);
+
+      const registeredStudentIds = new Set(
+        (registeredStudents || []).map(reg => reg.student_id)
+      );
+
       if (family) {
         const [firstName, ...lastNameParts] = (family.name || '').split(' ');
         familyData = {
@@ -272,13 +421,15 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
           parentLastName: lastNameParts.join(' ') || '',
           parentEmail: family.email || user.email || '',
           parentPhone: family.primary_phone || '',
-          students: (students || []).map(student => ({
-            id: student.id,
-            firstName: student.first_name,
-            lastName: student.last_name,
-            dateOfBirth: student.birth_date,
-            beltRank: 'White'
-          }))
+          students: (students || [])
+            .filter(student => !registeredStudentIds.has(student.id))
+            .map(student => ({
+              id: student.id,
+              firstName: student.first_name,
+              lastName: student.last_name,
+              dateOfBirth: student.birth_date,
+              beltRank: 'White'
+            }))
         };
       }
     }
@@ -295,6 +446,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
 export default function EventRegistration() {
   const { event, isAuthenticated, familyData } = useLoaderData<typeof loader>();
+  const navigate = useNavigate();
+
+  const handleRegistrationSuccess = (registrationId: string) => {
+    // Reload the page to show updated student list
+    window.location.reload();
+  };
 
 
 
@@ -386,6 +543,7 @@ export default function EventRegistration() {
                   event={event}
                   isAuthenticated={isAuthenticated}
                   familyData={familyData}
+                  onSuccess={handleRegistrationSuccess}
                 />
 
                 {/* External Registration Link - Only show if no internal registration */}

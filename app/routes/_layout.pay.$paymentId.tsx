@@ -75,6 +75,8 @@ function getPaymentProductDescription(type: Database['public']['Enums']['payment
             return 'Individual Session(s)';
         case 'store_purchase': // Add case for store purchase
             return 'Store Item Purchase';
+        case 'event_registration': // Add case for event registration
+            return 'Event Registration Fee';
         case 'other':
             return 'Other Payment';
         default:
@@ -89,6 +91,12 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         // Use json response for errors instead of throwing
         console.error("Payment ID is required");
         return json({error: "Payment ID is required", stripePublishableKey: ""}, {status: 400});
+    }
+
+    // Handle the special case where paymentId is the fallback string from event payments
+    if (paymentId === 'event-payment-success') {
+        console.log("Redirecting from event-payment-success to events page");
+        return redirect('/events');
     }
 
     const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
@@ -535,7 +543,7 @@ export default function PaymentPage() {
 
             // Determine paymentOption, priceId, quantity, studentIds based on payment.payment_type
             // This logic is CRUCIAL and depends heavily on how you store payment details
-            let paymentOption: 'monthly' | 'yearly' | 'individual' | 'store' | null = null; // Added 'store'
+            let paymentOption: 'monthly' | 'yearly' | 'individual' | 'store' | 'event' | null = null; // Added 'store' and 'event'
             let priceId: string | null = null; // Required for yearly/individual
             let quantity: string | null = null; // Required for individual
             const studentIds: string[] = payment.payment_students?.map(ps => ps.student_id) ?? []; // Get student IDs from loader data
@@ -577,6 +585,10 @@ export default function PaymentPage() {
                     break;
                 case 'store_purchase': // Add case for store purchase
                     paymentOption = 'store'; // Use a specific identifier or null if API handles it
+                    // No priceId, quantity, or studentIds needed here as amounts are passed directly
+                    break;
+                case 'event_registration': // Add case for event registration
+                    paymentOption = 'event'; // Use event-specific payment option
                     // No priceId, quantity, or studentIds needed here as amounts are passed directly
                     break;
                 default:

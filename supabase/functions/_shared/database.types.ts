@@ -794,7 +794,6 @@ export type Database = {
           payment_amount: number | null
           payment_id: string | null
           payment_required: boolean | null
-          payment_status: Database["public"]["Enums"]["payment_status"] | null
           registered_at: string | null
           registration_status:
             | Database["public"]["Enums"]["registration_status_enum"]
@@ -810,7 +809,6 @@ export type Database = {
           payment_amount?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
-          payment_status?: Database["public"]["Enums"]["payment_status"] | null
           registered_at?: string | null
           registration_status?:
             | Database["public"]["Enums"]["registration_status_enum"]
@@ -826,7 +824,6 @@ export type Database = {
           payment_amount?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
-          payment_status?: Database["public"]["Enums"]["payment_status"] | null
           registered_at?: string | null
           registration_status?:
             | Database["public"]["Enums"]["registration_status_enum"]
@@ -983,6 +980,7 @@ export type Database = {
           timezone: string | null
           title: string
           updated_at: string | null
+          visibility: Database["public"]["Enums"]["event_visibility_enum"]
         }
         Insert: {
           address?: string | null
@@ -1021,6 +1019,7 @@ export type Database = {
           timezone?: string | null
           title: string
           updated_at?: string | null
+          visibility?: Database["public"]["Enums"]["event_visibility_enum"]
         }
         Update: {
           address?: string | null
@@ -1059,6 +1058,7 @@ export type Database = {
           timezone?: string | null
           title?: string
           updated_at?: string | null
+          visibility?: Database["public"]["Enums"]["event_visibility_enum"]
         }
         Relationships: [
           {
@@ -2840,6 +2840,7 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
+      event_visibility_enum: "public" | "limited" | "internal"
       invoice_item_type:
         | "class_enrollment"
         | "individual_session"
@@ -2874,6 +2875,7 @@ export type Database = {
         | "individual_session"
         | "other"
         | "store_purchase"
+        | "event_registration"
       registration_status_enum:
         | "pending"
         | "confirmed"
@@ -3084,6 +3086,7 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      event_visibility_enum: ["public", "limited", "internal"],
       invoice_item_type: [
         "class_enrollment",
         "individual_session",
@@ -3122,6 +3125,7 @@ export const Constants = {
         "individual_session",
         "other",
         "store_purchase",
+        "event_registration",
       ],
       registration_status_enum: [
         "pending",

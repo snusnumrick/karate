@@ -9,7 +9,7 @@ import { Checkbox } from '~/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Separator } from '~/components/ui/separator';
 import { Alert, AlertDescription } from '~/components/ui/alert';
-import { PaymentForm } from '~/components/PaymentForm';
+import { EventPaymentForm } from '~/components/EventPaymentForm';
 import { AlertCircle, User, Users, CreditCard, CheckCircle } from 'lucide-react';
 import type { StudentPaymentDetail } from '~/types/payment';
 
@@ -86,6 +86,7 @@ interface ActionResponse {
   fieldErrors?: Record<string, string>;
   familyId?: string;
   studentIds?: string[];
+  message?: string;
 }
 
 const beltRanks = [
@@ -152,14 +153,27 @@ export function EventRegistrationForm({
   } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [registrationResult, setRegistrationResult] = useState<{ familyId: string; studentIds: string[] } | null>(null);
+  const [processedResponseId, setProcessedResponseId] = useState<string | null>(null);
 
   // Handle form submission response
   useEffect(() => {
     if (fetcher.data) {
       const response = fetcher.data;
+      console.log('Registration response received:', response);
+      
+      // Prevent processing the same response multiple times
+      const responseId = response.registrationId || response.paymentId || JSON.stringify(response);
+      if (processedResponseId === responseId) {
+        console.log('Response already processed, skipping');
+        return;
+      }
       
       if (response.success && response.registrationId) {
+        setProcessedResponseId(responseId);
         if (response.paymentRequired && response.paymentId) {
+          console.log('=== PAYMENT REQUIRED - SETTING UP PAYMENT STEP ===');
+          console.log('PaymentId:', response.paymentId);
+          console.log('RegistrationId:', response.registrationId);
           // Payment required - prepare payment data
           const studentPaymentDetails: StudentPaymentDetail[] = formData.students.map((student, index) => ({
             studentId: student.id || `temp-${index}`,
@@ -182,12 +196,24 @@ export function EventRegistrationForm({
             studentIds: response.studentIds || []
           });
           setCurrentStep('payment');
+          console.log('=== CURRENT STEP SET TO PAYMENT ===');
         } else {
-          // No payment required or free event
-          onSuccess?.(response.registrationId);
+          // No payment required or free event - show success step
+          setRegistrationResult({
+            familyId: response.familyId || familyData?.familyId || 'guest',
+            studentIds: response.studentIds || []
+          });
+          setCurrentStep('success');
         }
       } else if (response.error) {
-        setErrors({ general: response.error });
+        // Handle specific duplicate registration error
+        if (response.error.includes('already registered')) {
+          setErrors({ 
+            general: 'One or more students are already registered for this event. Please check your existing registrations or contact us if you need assistance.' 
+          });
+        } else {
+          setErrors({ general: response.error });
+        }
       }
       
       if (response.fieldErrors) {
@@ -369,9 +395,15 @@ export function EventRegistrationForm({
 
   // Handle payment success
   const handlePaymentSuccess = (paymentId: string, zeroPayment?: boolean) => {
-    if (zeroPayment || !paymentData) {
+    console.log('=== PAYMENT SUCCESS HANDLER CALLED ===');
+    console.log('PaymentId:', paymentId, 'ZeroPayment:', zeroPayment);
+    
+    if (zeroPayment || !paymentData || paymentId === 'event-payment-success') {
+      console.log('=== SETTING SUCCESS STEP ===');
+      setProcessedResponseId(null); // Clear processed response to allow success step
       setCurrentStep('success');
     } else {
+      console.log('=== NAVIGATING TO PAYMENT PAGE ===');
       navigate(`/pay/${paymentId}`);
     }
   };
@@ -400,15 +432,22 @@ export function EventRegistrationForm({
           <CardContent className="space-y-4">
             <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
               <h3 className="font-medium mb-2 text-green-800 dark:text-green-200">Registration Details</h3>
+              {fetcher.data?.message && (
+                <p className="text-sm text-green-700 dark:text-green-300 mb-2 font-medium">
+                  {fetcher.data.message}
+                </p>
+              )}
               <p className="text-sm text-green-700 dark:text-green-300">
                 Event: {event.title}
               </p>
               <p className="text-sm text-green-700 dark:text-green-300">
                 Students Registered: {formData.students.length}
               </p>
-              <p className="text-sm text-green-700 dark:text-green-300">
-                Registration ID: {paymentData?.registrationId}
-              </p>
+              {(paymentData?.registrationId || fetcher.data?.registrationId) && (
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  Registration ID: {paymentData?.registrationId || fetcher.data?.registrationId}
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -479,18 +518,17 @@ export function EventRegistrationForm({
               </div>
             </div>
             
-            <PaymentForm
+            <EventPaymentForm
+              eventId={event.id}
+              eventTitle={event.title}
+              registrationFee={event.registration_fee || 0}
+              studentCount={formData.students.length}
               familyId={registrationResult.familyId}
-              studentPaymentDetails={studentPaymentDetails}
-              hasAvailableDiscounts={false}
-              mode="student"
+              registrationId={paymentData?.registrationId || ''}
+              paymentId={paymentData?.paymentId || ''}
+              studentIds={registrationResult.studentIds || []}
+              actionEndpoint={`/events/${event.id}/register`}
               onSuccess={handlePaymentSuccess}
-              appearance="simplified"
-              enrollmentPricing={{
-                individualSessionAmount: (event.registration_fee || 0) * formData.students.length
-              }}
-              supportedPaymentTypes={['individual_session']}
-              initialPaymentOption="individual"
             />
           </CardContent>
         </Card>

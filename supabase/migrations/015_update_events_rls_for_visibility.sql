@@ -6,6 +6,10 @@ BEGIN;
 -- Drop the old policy that uses is_public
 DROP POLICY IF EXISTS "Public events are viewable by everyone" ON events;
 
+-- Drop existing policies if they exist to avoid conflicts
+DROP POLICY IF EXISTS "Public and limited events are viewable by everyone" ON events;
+DROP POLICY IF EXISTS "Authenticated users can view all visible events" ON events;
+
 -- Create new policies for the visibility field
 -- Policy for non-authenticated users: can only see public and limited events
 CREATE POLICY "Public and limited events are viewable by everyone" ON events
