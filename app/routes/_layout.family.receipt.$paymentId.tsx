@@ -55,6 +55,8 @@ function getPaymentProductDescription(type: Database['public']['Enums']['payment
             return quantity ? `Individual Session(s) (Qty: ${quantity})` : 'Individual Session(s)';
         case 'store_purchase': // Add case for store purchase
             return 'Store Item Purchase';
+        case 'event_registration':
+            return 'Event Registration Fee';
         case 'other':
             return 'Other Payment';
         default:
@@ -147,6 +149,9 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
          return json({ error: "A receipt is only available for successfully completed payments." }, { status: 400, headers: response.headers });
     }
 
+    // Type assertion to help TypeScript understand that paymentData is valid at this point
+    const validPaymentData = paymentData as ReceiptPaymentData;
+
     // Add business details from siteConfig
     const businessName = siteConfig.name;
     // Construct address string carefully, handling potential missing parts if needed
@@ -162,7 +167,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
 
 
     return json({
-        payment: paymentData as ReceiptPaymentData,
+        payment: validPaymentData,
         businessName,
         businessAddress,
         businessPhone,

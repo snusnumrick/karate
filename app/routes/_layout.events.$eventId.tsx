@@ -7,7 +7,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
-import { getEventTypeColorWithBorder ,formatEventTypeName} from "~/utils/event-helpers.server";
+import { formatEventTypeName} from "~/utils/event-helpers.server";
 import { isLoggedIn as userIsLoggedIn } from "~/utils/auth.server";
 
 
@@ -100,7 +100,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Event not found", { status: 404 });
   }
 
-  const eventTypeColor = await getEventTypeColorWithBorder(event.event_type?.name || 'other', request);
+  // Use dynamic color from event_types table instead of hardcoded colors
+  const eventTypeColor = event.event_type?.color_class 
+    ? `${event.event_type.color_class} ${event.event_type.border_class || ''}`.trim()
+    : 'bg-gray-100 text-gray-800 border-gray-200';
   const formattedEventType = formatEventTypeName(event.event_type?.name || 'other');
 
   return json({ event, eventTypeColor, formattedEventType });

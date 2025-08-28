@@ -101,6 +101,11 @@ export const breadcrumbPatterns = {
     { label: "Attendance", current: true },
   ],
   
+  familyEvents: () => [
+    { label: "Family Portal", href: "/family" },
+    { label: "Event Registrations", current: true },
+  ],
+  
   familyOrders: () => [
     { label: "Family Portal", href: "/family" },
     { label: "Orders", current: true },
