@@ -1,6 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/react";
-import { useState } from "react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -29,11 +28,16 @@ type Waiver = {
   required: boolean;
 };
 
+type EventWaiver = {
+  waiver_id: string;
+  is_required: boolean;
+};
+
 type LoaderData = {
   event: Event;
   instructors: Instructor[];
   waivers: Waiver[];
-  eventWaivers: string[]; // Array of waiver IDs associated with this event
+  eventWaivers: EventWaiver[]; // Array of waiver objects with requirement status
   eventTypeOptions: { value: string; label: string; }[];
 };
 
@@ -109,7 +113,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     // Fetch event waivers
     const { data: eventWaivers, error: eventWaiversError } = await supabaseServer
       .from('event_waivers')
-      .select('waiver_id')
+      .select('waiver_id, is_required')
       .eq('event_id', eventId);
 
     if (eventWaiversError) {
@@ -123,7 +127,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       event,
       instructors: instructors || [],
       waivers: waivers || [],
-      eventWaivers: eventWaivers?.map(ew => ew.waiver_id) || [],
+      eventWaivers: eventWaivers || [],
       eventTypeOptions
     }, { headers });
   } catch (error) {
@@ -164,8 +168,14 @@ export async function action({ params, request }: ActionFunctionArgs) {
   const instructorId = formData.get("instructor_id") as string;
   const externalUrl = formData.get("external_url") as string;
   const visibility = formData.get("visibility") as Database["public"]["Enums"]["event_visibility_enum"] || "public";
-  const requiresWaiver = formData.get("requires_waiver") === "on";
-  const selectedWaivers = formData.getAll("waivers") as string[];
+  // Extract selected waivers - if checked, they are required
+  const selectedWaivers: { waiverId: string; isRequired: boolean }[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith('waiver_') && value === 'on') {
+      const waiverId = key.replace('waiver_', '');
+      selectedWaivers.push({ waiverId, isRequired: true });
+    }
+  }
 
   // Validation
   const fieldErrors: ActionData['fieldErrors'] = {};
@@ -221,17 +231,18 @@ export async function action({ params, request }: ActionFunctionArgs) {
     }
 
     // Handle event waivers
-    if (requiresWaiver && selectedWaivers.length > 0) {
-      // First, delete existing event waivers
-      await supabaseServer
-        .from('event_waivers')
-        .delete()
-        .eq('event_id', eventId);
+    // First, delete existing event waivers
+    await supabaseServer
+      .from('event_waivers')
+      .delete()
+      .eq('event_id', eventId);
 
-      // Then insert new ones
-      const eventWaiverInserts = selectedWaivers.map(waiverId => ({
+    // Then insert new ones with requirement status if any are selected
+    if (selectedWaivers.length > 0) {
+      const eventWaiverInserts = selectedWaivers.map(({ waiverId, isRequired }) => ({
         event_id: eventId,
-        waiver_id: waiverId
+        waiver_id: waiverId,
+        is_required: isRequired
       }));
 
       const { error: waiversError } = await supabaseServer
@@ -242,12 +253,6 @@ export async function action({ params, request }: ActionFunctionArgs) {
         console.error('Error updating event waivers:', waiversError);
         // Don't fail the whole operation for waiver errors
       }
-    } else {
-      // Remove all waivers if not required
-      await supabaseServer
-        .from('event_waivers')
-        .delete()
-        .eq('event_id', eventId);
     }
 
     return redirect("/admin/events", { headers });
@@ -261,7 +266,7 @@ export default function EditEvent() {
   const { event, instructors, waivers, eventWaivers, eventTypeOptions } = useLoaderData<LoaderData>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
-  const [requiresWaiver, setRequiresWaiver] = useState(eventWaivers.length > 0);
+  // Removed requiresWaiver state - now using individual waiver selection
 
   const isSubmitting = navigation.state === "submitting";
 
@@ -570,39 +575,53 @@ export default function EditEvent() {
                 Controls who can see and register for this event
               </p>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="requires_waiver" 
-                name="requires_waiver" 
-                checked={requiresWaiver}
-                onCheckedChange={(checked) => setRequiresWaiver(checked as boolean)}
-                tabIndex={17}
-              />
-              <Label htmlFor="requires_waiver" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Require waiver for registration
-              </Label>
-            </div>
-            
-            {requiresWaiver && waivers.length > 0 && (
-              <div className="ml-6 space-y-2">
-                <Label className="text-sm font-medium">Required Waivers:</Label>
-                {waivers.map((waiver) => (
-                  <div key={waiver.id} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`waiver-${waiver.id}`}
-                      name="waivers"
-                      value={waiver.id}
-                      defaultChecked={eventWaivers.includes(waiver.id)}
-                    />
-                    <Label htmlFor={`waiver-${waiver.id}`} className="text-sm">
-                      {waiver.title}
-                      {waiver.required && <span className="text-red-500 ml-1">*</span>}
-                    </Label>
+          </div>
+        </div>
+
+        {/* Waiver Requirements */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Waiver Requirements
+          </h2>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Check the waivers that participants must sign before registering for this event. Checked waivers will be required.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <Label className="text-sm font-medium">Available Waivers</Label>
+                {waivers.length > 0 ? (
+                  <div className="space-y-3 max-h-48 overflow-y-auto border rounded-md p-3">
+                    {waivers.map((waiver) => {
+                      const eventWaiver = eventWaivers.find(ew => ew.waiver_id === waiver.id);
+                      return (
+                        <div key={waiver.id} className="flex items-start space-x-3 p-2 border rounded-md bg-gray-50 dark:bg-gray-700">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <Checkbox 
+                              id={`waiver_${waiver.id}`}
+                              name={`waiver_${waiver.id}`}
+                              defaultChecked={!!eventWaiver}
+                            />
+                            <div className="flex-1">
+                              <Label htmlFor={`waiver_${waiver.id}`} className="text-sm font-medium cursor-pointer">
+                                {waiver.title}
+                              </Label>
+                              {waiver.description && (
+                                <p className="text-xs text-muted-foreground mt-1">{waiver.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-sm text-muted-foreground p-3 border rounded-md bg-gray-50 dark:bg-gray-700">
+                    No waivers available. <a href="/admin/waivers/new" className="text-blue-600 hover:underline">Create a waiver</a> first.
+                  </div>
+                )}
               </div>
-            )}
           </div>
         </div>
 

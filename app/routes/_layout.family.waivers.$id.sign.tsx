@@ -71,11 +71,16 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         return redirect('/family/waivers');
     }
 
+    // Get redirectTo parameter from URL
+    const url = new URL(request.url);
+    const redirectTo = url.searchParams.get('redirectTo');
+
     return json({
         waiver,
         userId: user.id,
         firstName: guardian.first_name,
-        lastName: guardian.last_name
+        lastName: guardian.last_name,
+        redirectTo
     });
 }
 
@@ -93,6 +98,7 @@ export async function action({request, params}: ActionFunctionArgs) {
     const formData = await request.formData();
     const signature = formData.get('signature') as string;
     const agreement = formData.get('agreement') === 'on';
+    const redirectTo = formData.get('redirectTo') as string;
 
     if (!signature || !agreement) {
         return json({
@@ -119,11 +125,16 @@ export async function action({request, params}: ActionFunctionArgs) {
         return json({success: false, error: 'Failed to save signature'});
     }
 
+    // Check for redirectTo parameter from form data
+    if (redirectTo) {
+        return redirect(redirectTo);
+    }
+
     return redirect('/family/waivers');
 }
 
 export default function SignWaiver() {
-    const {waiver, firstName, lastName} = useLoaderData<typeof loader>();
+    const {waiver, firstName, lastName, redirectTo} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const submit = useSubmit();
 
@@ -346,6 +357,7 @@ export default function SignWaiver() {
                             </div>
 
                             <input type="hidden" name="signature" value={signatureData}/>
+                            {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo}/>}
 
                             <button
                                 type="button"

@@ -51,6 +51,48 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     // Get user session
     const { data: { user } } = await supabaseServer.auth.getUser();
 
+    // Check waiver requirements for authenticated users
+    if (user) {
+      // Get event's required waiver IDs
+      const { data: eventWaiverIds, error: eventWaiversError } = await supabaseServer
+        .from('event_waivers')
+        .select('waiver_id')
+        .eq('event_id', eventId);
+
+      if (eventWaiversError) {
+        console.error('Error fetching event waivers:', eventWaiversError);
+        return json({ error: 'Failed to check waiver requirements' }, { status: 500 });
+      }
+
+      if (eventWaiverIds && eventWaiverIds.length > 0) {
+        const requiredWaiverIds = eventWaiverIds.map(ew => ew.waiver_id);
+        
+        // Check which waivers the user has signed
+        const { data: signedWaivers } = await supabaseServer
+          .from('waiver_signatures')
+          .select('waiver_id')
+          .eq('user_id', user.id)
+          .in('waiver_id', requiredWaiverIds);
+
+        const signedWaiverIds = signedWaivers?.map(sw => sw.waiver_id) || [];
+        const missingWaiverIds = requiredWaiverIds.filter(id => !signedWaiverIds.includes(id));
+
+        if (missingWaiverIds.length > 0) {
+          // Get waiver details for missing waivers
+          const { data: missingWaiverDetails } = await supabaseServer
+            .from('waivers')
+            .select('id, title')
+            .in('id', missingWaiverIds);
+          
+          return json({ 
+            error: 'Required waivers must be signed before registration',
+            missingWaivers: missingWaiverDetails || [],
+            waiverValidationFailed: true
+          }, { status: 400 });
+        }
+      }
+    }
+
     let familyId = null;
     
     if (user) {
@@ -397,6 +439,23 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Event not found", { status: 404 });
   }
 
+  // Get required waivers for this event
+  const { data: eventWaivers } = await supabaseServer
+    .from('event_waivers')
+    .select(`
+      waiver_id,
+      is_required,
+      waivers (
+        id,
+        title,
+        content
+      )
+    `)
+    .eq('event_id', eventId)
+    .eq('is_required', true);
+
+  const requiredWaivers = eventWaivers?.map(ew => ew.waivers).filter(Boolean) || [];
+
   // Get family data
   
   let familyData = undefined;
@@ -469,17 +528,35 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     }
   }
 
+  // Check for existing waiver signatures if user is authenticated
+  let signedWaiverIds: string[] = [];
+  if (user && requiredWaivers.length > 0) {
+    const { data: signatures } = await supabaseServer
+      .from('waiver_signatures')
+      .select('waiver_id')
+      .eq('user_id', user.id)
+      .in('waiver_id', requiredWaivers.map(w => w.id));
+    
+    signedWaiverIds = signatures?.map(s => s.waiver_id) || [];
+  }
+
   // Add missing properties to event object
   const eventWithProperties: EventWithRegistrationInfo = {
     ...event,
     allow_registration: event.status === 'registration_open'
   };
 
-  return json({ event: eventWithProperties, isAuthenticated, familyData });
+  return json({ 
+    event: eventWithProperties, 
+    isAuthenticated, 
+    familyData,
+    requiredWaivers,
+    signedWaiverIds
+  });
 }
 
 export default function EventRegistration() {
-  const { event, isAuthenticated, familyData } = useLoaderData<typeof loader>();
+  const { event, isAuthenticated, familyData, requiredWaivers, signedWaiverIds } = useLoaderData<typeof loader>();
 
   const handleRegistrationSuccess = () => {
     // Reload the page to show updated student list
@@ -576,6 +653,8 @@ export default function EventRegistration() {
                   event={event}
                   isAuthenticated={isAuthenticated}
                   familyData={familyData}
+                  requiredWaivers={requiredWaivers}
+                  signedWaiverIds={signedWaiverIds}
                   onSuccess={handleRegistrationSuccess}
                 />
 

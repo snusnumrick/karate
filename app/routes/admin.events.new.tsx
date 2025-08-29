@@ -1,6 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/react";
-import { useState } from "react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -127,7 +126,6 @@ export async function action({ request }: ActionFunctionArgs) {
   const registration_fee = formData.get("registration_fee") as string;
   const registration_deadline = formData.get("registration_deadline") as string;
   const instructor_id = formData.get("instructor_id") as string;
-  const requires_waiver = formData.get("requires_waiver") === "on";
   const min_belt_rank = formData.get("min_belt_rank") as string;
   const max_belt_rank = formData.get("max_belt_rank") as string;
   const min_age = formData.get("min_age") as string;
@@ -135,13 +133,12 @@ export async function action({ request }: ActionFunctionArgs) {
   const external_url = formData.get("external_url") as string;
   const visibility = formData.get("visibility") as Database["public"]["Enums"]["event_visibility_enum"] || "public";
 
-  // Extract selected waivers
+  // Extract selected waivers (all selected waivers are required)
   const selectedWaivers: Array<{waiverId: string, isRequired: boolean}> = [];
   for (const [key] of formData.entries()) {
-    if (key.startsWith("waiver_")) {
+    if (key.startsWith("waiver_") && !key.includes("waiver_required_")) {
       const waiverId = key.replace("waiver_", "");
-      const isRequired = formData.get(`waiver_required_${waiverId}`) === "on";
-      selectedWaivers.push({ waiverId, isRequired });
+      selectedWaivers.push({ waiverId, isRequired: true });
     }
   }
 
@@ -190,7 +187,6 @@ export async function action({ request }: ActionFunctionArgs) {
       registration_fee: registration_fee ? parseFloat(registration_fee) : null,
       registration_deadline: registration_deadline || null,
       instructor_id: instructor_id || null,
-      requires_waiver,
       min_belt_rank: min_belt_rank ? (min_belt_rank as Database["public"]["Enums"]["belt_rank_enum"]) : null,
       max_belt_rank: max_belt_rank ? (max_belt_rank as Database["public"]["Enums"]["belt_rank_enum"]) : null,
       min_age: min_age ? parseInt(min_age) : null,
@@ -245,7 +241,7 @@ export default function NewEvent() {
   const { instructors, waivers, eventTypeOptions } = useLoaderData<LoaderData>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
-  const [requiresWaiver, setRequiresWaiver] = useState(false);
+  // Removed requiresWaiver state - now using individual waiver selection
 
   const isSubmitting = navigation.state === "submitting";
 
@@ -715,23 +711,11 @@ export default function NewEvent() {
               Waiver Requirements
             </h2>
             <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="requires_waiver"
-                  name="requires_waiver"
-                  checked={requiresWaiver}
-                  onCheckedChange={(checked) => setRequiresWaiver(checked as boolean)}
-                  tabIndex={27}
-                />
-                <Label htmlFor="requires_waiver">Requires Waiver</Label>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Participants will need to sign a waiver before registering for this event
+              <p className="text-sm text-muted-foreground">
+                Select which waivers are required for this event. Participants must sign all selected waivers before registering.
               </p>
-
-              {requiresWaiver && (
-                <div className="mt-4 space-y-3">
-                  <Label className="text-sm font-medium">Select Required Waivers</Label>
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Required Waivers</Label>
                   {waivers.length > 0 ? (
                     <div className="space-y-3 max-h-48 overflow-y-auto border rounded-md p-3">
                       {waivers.map((waiver, index) => (
@@ -740,30 +724,16 @@ export default function NewEvent() {
                             <Checkbox
                               id={`waiver_${waiver.id}`}
                               name={`waiver_${waiver.id}`}
-                              tabIndex={28 + index * 2}
+                              tabIndex={28 + index}
                             />
                             <div className="flex-1">
                               <Label htmlFor={`waiver_${waiver.id}`} className="text-sm font-medium cursor-pointer">
                                 {waiver.title}
-                                {waiver.required && (
-                                  <span className="ml-1 text-xs bg-red-100 text-red-800 px-1 rounded">Required</span>
-                                )}
                               </Label>
                               {waiver.description && (
                                 <p className="text-xs text-muted-foreground mt-1">{waiver.description}</p>
                               )}
                             </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`waiver_required_${waiver.id}`}
-                              name={`waiver_required_${waiver.id}`}
-                              defaultChecked={waiver.required}
-                              tabIndex={29 + index * 2}
-                            />
-                            <Label htmlFor={`waiver_required_${waiver.id}`} className="text-xs text-muted-foreground">
-                              Required
-                            </Label>
                           </div>
                         </div>
                       ))}
@@ -774,7 +744,6 @@ export default function NewEvent() {
                     </div>
                   )}
                 </div>
-              )}
             </div>
           </div>
         </div>

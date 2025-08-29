@@ -57,6 +57,12 @@ interface RegistrationFormData {
   specialRequests?: string;
 }
 
+interface Waiver {
+  id: string;
+  title: string;
+  content: string;
+}
+
 interface EventRegistrationFormProps {
   event: Event;
   isAuthenticated: boolean;
@@ -74,6 +80,8 @@ interface EventRegistrationFormProps {
       beltRank: string;
     }>;
   };
+  requiredWaivers?: Waiver[];
+  signedWaiverIds?: string[];
   onSuccess?: (registrationId: string) => void;
 }
 
@@ -95,6 +103,8 @@ interface ActionResponse {
   message?: string;
   taxes?: TaxInfo[];
   totalTaxAmount?: number;
+  waiverValidationFailed?: boolean;
+  missingWaivers?: Array<{ id: string; title: string }>;
 }
 
 const beltRanks = [
@@ -126,7 +136,9 @@ const emergencyContactRelations = [
 export function EventRegistrationForm({ 
   event, 
   isAuthenticated, 
-  familyData, 
+  familyData,
+  requiredWaivers = [],
+  signedWaiverIds = [],
   onSuccess 
 }: EventRegistrationFormProps) {
   const fetcher = useFetcher<ActionResponse>();
@@ -164,6 +176,10 @@ export function EventRegistrationForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [registrationResult, setRegistrationResult] = useState<{ familyId: string; studentIds: string[] } | null>(null);
   const [processedResponseId, setProcessedResponseId] = useState<string | null>(null);
+
+  // Check for missing waivers
+  const missingWaivers = requiredWaivers.filter(waiver => !signedWaiverIds.includes(waiver.id));
+  const hasAllRequiredWaivers = missingWaivers.length === 0;
 
   // Handle form submission response
   useEffect(() => {
@@ -218,10 +234,16 @@ export function EventRegistrationForm({
           setCurrentStep('success');
         }
       } else if (response.error) {
-        // Handle specific duplicate registration error
+        // Handle specific errors
         if (response.error.includes('already registered')) {
           setErrors({ 
             general: 'One or more students are already registered for this event. Please check your existing registrations or contact us if you need assistance.' 
+          });
+        } else if (response.waiverValidationFailed) {
+          // Handle waiver validation error - show specific message with missing waivers
+          const missingWaiverTitles = response.missingWaivers?.map((w: { id: string; title: string }) => w.title).join(', ') || 'required waivers';
+          setErrors({ 
+            general: `Please sign the following waivers before registering: ${missingWaiverTitles}. You can sign them in the waiver requirements section above.`
           });
         } else {
           setErrors({ general: response.error });
@@ -375,8 +397,9 @@ export function EventRegistrationForm({
     });
 
     // Validate waiver acceptance
-    if (!formData.waiverAccepted) {
-      newErrors.waiverAccepted = 'You must accept the waiver to register';
+    // Check if all required waivers are signed
+    if (requiredWaivers.length > 0 && !hasAllRequiredWaivers) {
+      newErrors.waiverAccepted = 'You must sign all required waivers before registering';
     }
 
     setErrors(newErrors);
@@ -869,28 +892,71 @@ export function EventRegistrationForm({
               />
             </div>
             
-            <div className="space-y-3">
-              <div className="flex items-start space-x-3">
-                <Checkbox
-                  id="waiverAccepted"
-                  checked={formData.waiverAccepted}
-                  onCheckedChange={(checked) => 
-                    setFormData(prev => ({ ...prev, waiverAccepted: checked as boolean }))
-                  }
-                  className={`checkbox-custom-styles ${errors.waiverAccepted ? 'border-red-500' : ''}`}
-                />
-                <div className="space-y-1">
-                  <Label htmlFor="waiverAccepted" className="text-sm font-medium">
-                    I accept the liability waiver and terms of participation *
-                  </Label>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    By checking this box, you acknowledge that martial arts training involves inherent risks and agree to the terms and conditions.
-                  </p>
-                  {errors.waiverAccepted && (
-                    <p className="text-sm text-red-500">{errors.waiverAccepted}</p>
-                  )}
+            {/* Waiver Requirements Section */}
+            {requiredWaivers.length > 0 && (
+              <div className="space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Required Waivers
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  The following waivers must be signed before you can register for this event:
+                </p>
+                
+                <div className="space-y-3">
+                  {requiredWaivers.map((waiver) => {
+                    const isSigned = signedWaiverIds.includes(waiver.id);
+                    return (
+                      <div key={waiver.id} className="flex items-center justify-between p-3 border rounded bg-white dark:bg-gray-700">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                            {waiver.title}
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            {isSigned ? (
+                              <span className="text-green-600 dark:text-green-400 flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                Signed
+                              </span>
+                            ) : (
+                              <span className="text-red-600 dark:text-red-400 flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                                Not signed
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        {!isSigned && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <a href={`/family/waivers/${waiver.id}/sign?redirectTo=${encodeURIComponent(`/events/${event.id}/register`)}`}>
+                              Sign Now
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+                
+                {!hasAllRequiredWaivers && (
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      <strong>Note:</strong> You must sign all required waivers before you can complete your event registration.
+                    </p>
+                  </div>
+                )}
               </div>
+            )}
+            
+            <div className="space-y-3">
               
               <div className="flex items-start space-x-3">
                 <Checkbox
@@ -915,14 +981,24 @@ export function EventRegistrationForm({
         </Card>
 
         {/* Submit Button */}
-        <div className="flex justify-end space-x-4">
-          <Button
-            type="submit"
-            disabled={fetcher.state === 'submitting'}
-            className="min-w-32"
-          >
-            {fetcher.state === 'submitting' ? 'Registering...' : 'Register for Event'}
-          </Button>
+        <div className="space-y-3">
+          {!hasAllRequiredWaivers && requiredWaivers.length > 0 && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                Please sign all required waivers above before proceeding with registration.
+              </p>
+            </div>
+          )}
+          
+          <div className="flex justify-end space-x-4">
+            <Button
+              type="submit"
+              disabled={fetcher.state === 'submitting' || !hasAllRequiredWaivers}
+              className="min-w-32"
+            >
+              {fetcher.state === 'submitting' ? 'Registering...' : 'Register for Event'}
+            </Button>
+          </div>
         </div>
       </form>
     </div>
