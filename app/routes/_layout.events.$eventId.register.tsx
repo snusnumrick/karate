@@ -1,5 +1,5 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node';
-import { useLoaderData, Link, useNavigate } from '@remix-run/react';
+import { useLoaderData, Link } from '@remix-run/react';
 import { EventService } from '~/services/event.server';
 import { siteConfig } from '~/config/site';
 import { Button } from '~/components/ui/button';
@@ -9,6 +9,7 @@ import { getSupabaseServerClient, getSupabaseAdminClient } from '~/utils/supabas
 import type { Database, Tables, TablesInsert } from '~/types/database.types';
 import { Calendar, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
 import { formatDate } from '~/utils/misc';
+import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 
 // Extended Event type for registration with additional properties
 type EventWithRegistrationInfo = Tables<'events'> & {
@@ -177,7 +178,15 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       // Create payment record for paid events using admin client
       // Convert dollar amounts to cents for payment processing
       const subtotalInCents = Math.round(registrationFee * studentIds.length * 100);
-      const totalInCents = Math.round(registrationFee * studentIds.length * 100);
+      
+      // Calculate taxes for the payment
+      const taxCalculation = await calculateTaxesForPayment({
+        subtotalAmount: subtotalInCents,
+        paymentType: 'event_registration',
+        studentIds
+      });
+      
+      const totalInCents = subtotalInCents + taxCalculation.totalTaxAmount;
       
       const { data: paymentRecord, error: paymentError } = await supabaseAdmin
         .from('payments')
@@ -194,6 +203,26 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       if (paymentError) {
         console.error('Error creating payment record:', paymentError);
         return json({ error: 'Failed to create payment record' }, { status: 500 });
+      }
+
+      // Create payment_taxes records
+      if (taxCalculation.paymentTaxes.length > 0) {
+        const paymentTaxes = taxCalculation.paymentTaxes.map(tax => ({
+          payment_id: paymentRecord.id,
+          tax_rate_id: tax.tax_rate_id,
+          tax_amount: tax.tax_amount,
+          tax_name_snapshot: tax.tax_name_snapshot,
+          tax_rate_snapshot: tax.tax_rate_snapshot
+        }));
+
+        const { error: taxError } = await supabaseAdmin
+          .from('payment_taxes')
+          .insert(paymentTaxes);
+
+        if (taxError) {
+          console.error('Error creating payment taxes:', taxError);
+          // Don't fail the entire process for tax record creation errors
+        }
       }
 
       // Link payment to registrations
@@ -238,7 +267,13 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         registrationId,
         paymentId: paymentRecord.id,
         familyId,
-        studentIds 
+        studentIds,
+        taxes: taxCalculation.paymentTaxes.map(tax => ({
+          taxName: tax.tax_name_snapshot,
+          taxAmount: tax.tax_amount,
+          taxRate: tax.tax_rate_snapshot
+        })),
+        totalTaxAmount: taxCalculation.totalTaxAmount
       });
     } else {
       // Free event - update registrations with payment info
@@ -276,8 +311,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
 
 async function handlePayment(formData: FormData, eventId: string, request: Request) {
   const { supabaseServer } = getSupabaseServerClient(request);
-  const supabaseAdmin = getSupabaseAdminClient();
-  
+
   try {
     const familyId = formData.get("familyId") as string;
     const studentIdsRaw = formData.get("studentIds") as string;
@@ -446,9 +480,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
 export default function EventRegistration() {
   const { event, isAuthenticated, familyData } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
 
-  const handleRegistrationSuccess = (registrationId: string) => {
+  const handleRegistrationSuccess = () => {
     // Reload the page to show updated student list
     window.location.reload();
   };

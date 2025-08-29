@@ -3,53 +3,14 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, Link, Form } from "@remix-run/react";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { requireUserId } from "~/utils/auth.server";
-import { AppBreadcrumb } from "~/components/AppBreadcrumb";
-import { breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Calendar, Clock, MapPin, DollarSign, Users, AlertCircle, CreditCard } from "lucide-react";
 import { formatDate } from "~/utils/misc";
 import type { Database } from "~/types/database.types";
-// Removed problematic import - using inline function instead
 
-type EventRegistration = {
-  id: string;
-  registration_status: 'pending' | 'confirmed' | 'cancelled' | 'waitlist';
-  payment_required: boolean;
-  payment_amount: number | null;
-  payment_id: string | null;
-  registered_at: string;
-  student: {
-    id: string;
-    first_name: string;
-    last_name: string;
-  };
-  event: {
-    id: string;
-    title: string;
-    description: string | null;
-    start_date: string;
-    end_date: string | null;
-    start_time: string | null;
-    end_time: string | null;
-    location: string | null;
-    registration_fee: number;
-    status: string;
-    event_type: {
-      id: string;
-      name: string;
-      color_class: string;
-      border_class: string | null;
-      dark_mode_class: string | null;
-    } | null;
-  };
-  payment: {
-    id: string;
-    status: 'pending' | 'succeeded' | 'failed';
-    total_amount: number;
-  } | null;
-};
 
 type EventWithStudents = {
   id: string;
@@ -113,7 +74,7 @@ export async function action({ request }: ActionFunctionArgs) {
     .from('profiles')
     .select('family_id')
     .eq('id', userId)
-    .single() as { data: { family_id: string } | null; error: any };
+    .single();
 
   if (!profile?.family_id) {
     return json({ error: "Family not found" }, { status: 404 });
@@ -124,7 +85,7 @@ export async function action({ request }: ActionFunctionArgs) {
     .from('payments')
     .select('id, family_id, total_amount')
     .in('id', paymentIds)
-    .eq('family_id', profile.family_id) as { data: { id: string; family_id: string; total_amount: number }[] | null; error: any };
+    .eq('family_id', profile.family_id);
     
   if (error || !payments || payments.length !== paymentIds.length) {
     return json({ error: "One or more payments not found" }, { status: 404 });
@@ -152,7 +113,7 @@ export async function action({ request }: ActionFunctionArgs) {
       notes: `Combined payment for ${paymentIds.length} event registrations: ${paymentIds.join(', ')}`
     })
     .select('id')
-    .single() as { data: { id: string } | null; error: any };
+    .single();
     
   if (createError || !combinedPayment) {
     console.error('Error creating combined payment:', createError);
@@ -160,7 +121,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
   
   // Update original payments to reference the combined payment
-  const { error: updateError } = await (supabaseServer as any)
+  const { error: updateError } = await supabaseServer
     .from('payments')
     .update({ 
       status: 'failed',
@@ -178,7 +139,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const { error: registrationUpdateError } = await supabaseAdmin
     .from('event_registrations')
     .update({ payment_id: combinedPayment.id })
-    .in('payment_id', paymentIds) as { error: any };
+    .in('payment_id', paymentIds);
     
   if (registrationUpdateError) {
     console.error('Error updating event registrations with combined payment ID:', registrationUpdateError);
@@ -198,7 +159,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .from('profiles')
     .select('family_id')
     .eq('id', userId)
-    .single() as { data: { family_id: string } | null; error: any };
+    .single();
 
   if (!profile?.family_id) {
     throw new Response("Family not found", { status: 404 });
@@ -209,13 +170,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .from('families')
     .select('name')
     .eq('id', profile.family_id)
-    .single() as { data: { name: string } | null; error: any };
+    .single();
 
   // Get all family students
   const { data: students } = await supabaseServer
     .from('students')
     .select('id, first_name, last_name')
-    .eq('family_id', profile.family_id) as { data: { id: string; first_name: string; last_name: string }[] | null; error: any };
+    .eq('family_id', profile.family_id);
 
   // Get events that have registrations from this family
   const { data: eventsWithRegistrations } = await supabaseServer
@@ -253,16 +214,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       )
     `)
     .eq('event_registrations.family_id', profile.family_id)
-    .order('start_date', { ascending: true }) as { data: any[] | null; error: any };
+    .order('start_date', { ascending: true });
 
   if (!eventsWithRegistrations || !students) {
     throw new Response("Failed to load data", { status: 500 });
   }
 
   // Group events with student registration status
-  const events: EventWithStudents[] = eventsWithRegistrations.map((event: any) => {
-    const eventStudents = students.map((student: any) => {
-      const registration = event.event_registrations.find((reg: any) => reg.student_id === student.id);
+  const events: EventWithStudents[] = eventsWithRegistrations.map((event) => {
+    const eventStudents = students.map((student) => {
+      const registration = event.event_registrations.find((reg) => reg.student_id === student.id);
       
       return {
         id: student.id,
@@ -308,7 +269,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       .from('payments')
       .select('total_amount')
       .in('id', pendingPaymentIds)
-      .eq('status', 'pending') as { data: { total_amount: number }[] | null; error: any };
+      .eq('status', 'pending');
     
     pendingPaymentTotal = pendingPayments?.reduce((sum, payment) => sum + payment.total_amount, 0) || 0;
   }
@@ -635,7 +596,7 @@ export default function FamilyEventsPage() {
                 No Event Registrations
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                You haven't registered for any events yet.
+                You haven&apos;t registered for any events yet.
               </p>
               <Button asChild>
                 <Link to="/family/calendar">

@@ -1,3 +1,4 @@
+/* global globalThis, process */
 import assert from 'node:assert';
 
 // Use the built-in fetch available in modern Node versions or fall back to
