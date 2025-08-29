@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
-import { getSupabaseServerClient, createInitialPaymentRecord, getSupabaseAdminClient, hasStudentsUnder15 } from "~/utils/supabase.server";
+import { getSupabaseServerClient, createInitialPaymentRecord, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { getApplicableTaxRatesForStorePurchase } from "~/services/tax-rates.server";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
@@ -9,8 +10,9 @@ import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import type { Database, Tables, TablesInsert } from "~/types/database.types";
+import type { TaxRate } from "~/types/invoice";
 import { formatCurrency } from "~/utils/misc"; // Assuming you have a currency formatter
-import { siteConfig } from "~/config/site"; // For tax calculation consistency
+// For tax calculation consistency
 import { Info } from 'lucide-react'; // Added Info icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
@@ -216,24 +218,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         .filter(p => p.product_variants.length > 0);
 
 
-    // Fetch active tax rates for display/calculation consistency with PST exemption logic
-    let applicableTaxNames = siteConfig.pricing.applicableTaxNames;
-    
-    // Check if student is under 15 and apply PST exemption for store purchases
-    const isStudentUnder15 = await hasStudentsUnder15([studentId]);
-    if (isStudentUnder15) {
-        // Filter out PST_BC for students under 15 (karate uniform exemption)
-        applicableTaxNames = applicableTaxNames.filter(taxName => taxName !== 'PST_BC');
-    }
-    
-    const { data: taxRatesData, error: taxRatesError } = await supabaseServer
-        .from('tax_rates')
-        .select('name, rate')
-        .in('name', applicableTaxNames)
-        .eq('is_active', true);
-
-    if (taxRatesError) {
-        console.error('Error fetching tax rates for purchase page:', taxRatesError.message);
+    // Fetch active tax rates using centralized exemption logic
+    // Store purchases use 'product' item type, but PST exemption is handled automatically
+    // for students under 15 in getApplicableTaxRatesForStorePurchase
+    let taxRatesData: TaxRate[] = [];
+    try {
+        taxRatesData = await getApplicableTaxRatesForStorePurchase(studentId, supabaseServer);
+    } catch (error) {
+        console.error('Error fetching tax rates for purchase page:', error);
+        taxRatesData = [];
         // Proceed without tax calculation on frontend if rates fail, backend will handle it
     }
 
@@ -319,25 +312,12 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     const pricePerItem = variantData.price_in_cents;
     const subtotalAmount = pricePerItem * quantity;
 
-    // --- Calculate Taxes with PST exemption logic ---
-    let applicableTaxNames = siteConfig.pricing.applicableTaxNames;
-    
-    // Check if student is under 15 and apply PST exemption for store purchases
-    const isStudentUnder15 = await hasStudentsUnder15([studentId]);
-    if (isStudentUnder15) {
-        // Filter out PST_BC for students under 15 (karate uniform exemption)
-        applicableTaxNames = applicableTaxNames.filter(taxName => taxName !== 'PST_BC');
-    }
-    
-    const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
-        .from('tax_rates')
-        .select('name, rate, description') // Fetch description too if needed later, though not strictly for calc
-        .in('name', applicableTaxNames)
-        .eq('is_active', true);
-
-    if (taxRatesError) {
-        console.error('[Purchase Action] Error fetching tax rates:', taxRatesError.message);
-        // Decide how to handle - fail? proceed without tax? For now, let's fail.
+    // --- Calculate Taxes using centralized exemption logic ---
+    let taxRatesData: TaxRate[] = [];
+    try {
+        taxRatesData = await getApplicableTaxRatesForStorePurchase(studentId, supabaseAdmin);
+    } catch (error) {
+        console.error('[Purchase Action] Error fetching tax rates:', error);
         return json({ error: "Could not retrieve tax information to calculate total." }, { status: 500, headers });
     }
 

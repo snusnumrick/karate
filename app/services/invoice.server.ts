@@ -24,7 +24,7 @@ import {
 
   getLineItemTaxBreakdown
 } from "~/utils/line-item-helpers";
-import { getActiveTaxRates } from "~/services/tax-rates.server";
+import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 
@@ -191,16 +191,24 @@ export async function createInvoice(
     throw new Response(`Error creating invoice: ${invoiceError.message}`, { status: 500 });
   }
 
-  // Get tax rates for calculations
-  const taxRates = await getActiveTaxRates(client);
+  // Pre-fetch applicable tax rates for all item types to avoid multiple DB calls
+  const uniqueItemTypes = [...new Set(invoiceData.line_items.map(item => item.item_type))];
+  const taxRatesByItemType: Record<string, TaxRate[]> = {};
+  
+  for (const itemType of uniqueItemTypes) {
+    taxRatesByItemType[itemType] = await getApplicableTaxRates(itemType, client);
+  }
 
-  // Calculate line item totals with new tax system
+  // Calculate line item totals with pre-fetched tax rates
   const lineItemsWithTotals = invoiceData.line_items.map((item, index) => {
+    // Use pre-fetched applicable tax rates based on item type
+    const applicableTaxRates = taxRatesByItemType[item.item_type];
+    
     const calculations = calculateLineItemTotalsWithRates(
       item.quantity,
       item.unit_price,
       item.tax_rate_ids || [],
-      taxRates,
+      applicableTaxRates,
       item.discount_rate || 0
     );
 
@@ -241,11 +249,12 @@ export async function createInvoice(
       const originalItem = invoiceData.line_items[i];
       
       if (originalItem.tax_rate_ids && originalItem.tax_rate_ids.length > 0) {
+        const applicableTaxRates = taxRatesByItemType[originalItem.item_type];
         await createLineItemTaxAssociations(
           lineItem.id,
           originalItem.tax_rate_ids,
           originalItem,
-          taxRates,
+          applicableTaxRates,
           client
         );
       }
@@ -656,16 +665,24 @@ export async function updateInvoice(
       throw new Response(`Error updating line items: ${deleteError.message}`, { status: 500 });
     }
 
-    // Get tax rates for calculations
-    const taxRates = await getActiveTaxRates(client);
+    // Pre-fetch applicable tax rates for all item types to avoid multiple DB calls
+    const uniqueItemTypes = [...new Set(invoiceData.line_items.map(item => item.item_type))];
+    const taxRatesByItemType: Record<string, TaxRate[]> = {};
+    
+    for (const itemType of uniqueItemTypes) {
+      taxRatesByItemType[itemType] = await getApplicableTaxRates(itemType, client);
+    }
 
-    // Create new line items with calculated totals using new tax system
+    // Create new line items with calculated totals using pre-fetched tax rates
     const lineItemsWithTotals = invoiceData.line_items.map((item, index) => {
+      // Use pre-fetched applicable tax rates based on item type
+      const applicableTaxRates = taxRatesByItemType[item.item_type];
+      
       const calculations = calculateLineItemTotalsWithRates(
         item.quantity,
         item.unit_price,
         item.tax_rate_ids || [],
-        taxRates,
+        applicableTaxRates,
         item.discount_rate || 0
       );
 
@@ -704,11 +721,12 @@ export async function updateInvoice(
         const originalItem = invoiceData.line_items[i];
         
         if (originalItem.tax_rate_ids && originalItem.tax_rate_ids.length > 0) {
+          const applicableTaxRates = taxRatesByItemType[originalItem.item_type];
           await createLineItemTaxAssociations(
             lineItem.id,
             originalItem.tax_rate_ids,
             originalItem,
-            taxRates,
+            applicableTaxRates,
             client
           );
         }

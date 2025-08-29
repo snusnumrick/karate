@@ -8,18 +8,25 @@ import type { CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
 import { createEmptyLineItem, getAvailableItemTypes, duplicateLineItem, calculateLineItemTotalWithRates } from "~/utils/line-item-helpers";
 import { formatCurrency } from "~/utils/misc";
 
+
 interface InvoiceLineItemBuilderProps {
   lineItems: CreateInvoiceLineItemData[];
   onChange: (lineItems: CreateInvoiceLineItemData[]) => void;
   errors?: Record<number, string[]>;
-  availableTaxRates?: TaxRate[];
+  availableTaxRatesByItemType?: {
+    class_enrollment: TaxRate[];
+    individual_session: TaxRate[];
+    product: TaxRate[];
+    fee: TaxRate[];
+    other: TaxRate[];
+  };
 }
 
 export function InvoiceLineItemBuilder({ 
   lineItems, 
   onChange, 
   errors = {},
-  availableTaxRates = []
+  availableTaxRatesByItemType = { class_enrollment: [], individual_session: [], product: [], fee: [], other: [] }
 }: InvoiceLineItemBuilderProps) {
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
@@ -74,10 +81,23 @@ export function InvoiceLineItemBuilder({
 
   const handleUpdateLineItem = (index: number, field: keyof CreateInvoiceLineItemData, value: string | number | string[]) => {
     const newLineItems = [...lineItems];
-    newLineItems[index] = {
+    const updatedItem = {
       ...newLineItems[index],
       [field]: value
     };
+    
+    // If item_type changed, filter out tax rates that are no longer applicable
+    if (field === 'item_type' && typeof value === 'string') {
+      const itemType = value as 'class_enrollment' | 'individual_session' | 'product' | 'fee' | 'other';
+      const applicableTaxRates = availableTaxRatesByItemType[itemType] || [];
+      const applicableTaxRateIds = applicableTaxRates.map(rate => rate.id);
+      const currentTaxRateIds = updatedItem.tax_rate_ids || [];
+      
+      // Keep only tax rates that are still applicable
+      updatedItem.tax_rate_ids = currentTaxRateIds.filter(id => applicableTaxRateIds.includes(id));
+    }
+    
+    newLineItems[index] = updatedItem;
     onChange(newLineItems);
   };
 
@@ -125,7 +145,9 @@ export function InvoiceLineItemBuilder({
         {lineItems.map((item, index) => {
           const isExpanded = expandedItems.has(index);
           const itemErrors = errors[index] || [];
-          const lineTotal = calculateLineItemTotalWithRates(item, availableTaxRates);
+          const itemType = item.item_type as 'class_enrollment' | 'individual_session' | 'product' | 'fee' | 'other';
+          const applicableTaxRates = availableTaxRatesByItemType[itemType] || [];
+          const lineTotal = calculateLineItemTotalWithRates(item, applicableTaxRates);
 
           return (
             <div
@@ -307,31 +329,36 @@ export function InvoiceLineItemBuilder({
                       Tax Rates
                     </Label>
                     <div className="space-y-2 mt-2">
-                      {availableTaxRates.length > 0 ? (
-                        availableTaxRates.map((taxRate) => (
-                          <div key={taxRate.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`tax-${index}-${taxRate.id}`}
-                              checked={item.tax_rate_ids?.includes(taxRate.id) || false}
-                              onCheckedChange={(checked) => {
-                                const currentIds = item.tax_rate_ids || [];
-                                const newIds = checked
-                                  ? [...currentIds, taxRate.id]
-                                  : currentIds.filter(id => id !== taxRate.id);
-                                handleUpdateLineItem(index, 'tax_rate_ids', newIds);
-                              }}
-                            />
-                            <Label
-                              htmlFor={`tax-${index}-${taxRate.id}`}
-                              className="text-sm font-normal cursor-pointer"
-                            >
-                              {taxRate.name} ({(taxRate.rate * 100).toFixed(2)}%)
-                            </Label>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No tax rates available</p>
-                      )}
+                      {(() => {
+                        const itemType = item.item_type as 'class_enrollment' | 'individual_session' | 'product' | 'fee' | 'other';
+                        const applicableTaxRates = availableTaxRatesByItemType[itemType] || [];
+                        return applicableTaxRates.length > 0 ? (
+                          applicableTaxRates.map((taxRate) => (
+                            <div key={taxRate.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`tax-${index}-${taxRate.id}`}
+                                checked={item.tax_rate_ids?.includes(taxRate.id) || false}
+                                onCheckedChange={(checked) => {
+                                  const currentIds = item.tax_rate_ids || [];
+                                  const newIds = checked
+                                    ? [...currentIds, taxRate.id]
+                                    : currentIds.filter(id => id !== taxRate.id);
+                                  handleUpdateLineItem(index, 'tax_rate_ids', newIds);
+                                }}
+                              />
+                              <Label
+                                htmlFor={`tax-${index}-${taxRate.id}`}
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                {taxRate.name} ({(taxRate.rate * 100).toFixed(2)}%)
+                              </Label>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No applicable tax rates for this item type</p>
+                        );
+                      })()
+                      }
                     </div>
                   </div>
 

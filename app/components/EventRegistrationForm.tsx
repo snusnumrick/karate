@@ -77,6 +77,12 @@ interface EventRegistrationFormProps {
   onSuccess?: (registrationId: string) => void;
 }
 
+interface TaxInfo {
+  taxName: string;
+  taxAmount: number;
+  taxRate: number;
+}
+
 interface ActionResponse {
   success?: boolean;
   registrationId?: string;
@@ -87,6 +93,8 @@ interface ActionResponse {
   familyId?: string;
   studentIds?: string[];
   message?: string;
+  taxes?: TaxInfo[];
+  totalTaxAmount?: number;
 }
 
 const beltRanks = [
@@ -150,6 +158,8 @@ export function EventRegistrationForm({
     registrationId: string;
     paymentId: string;
     studentPaymentDetails: StudentPaymentDetail[];
+    taxes?: TaxInfo[];
+    totalTaxAmount?: number;
   } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [registrationResult, setRegistrationResult] = useState<{ familyId: string; studentIds: string[] } | null>(null);
@@ -189,7 +199,9 @@ export function EventRegistrationForm({
           setPaymentData({
             registrationId: response.registrationId,
             paymentId: response.paymentId,
-            studentPaymentDetails
+            studentPaymentDetails,
+            taxes: response.taxes || [],
+            totalTaxAmount: response.totalTaxAmount || 0
           });
           setRegistrationResult({
             familyId: response.familyId || familyData?.familyId || 'guest',
@@ -220,7 +232,7 @@ export function EventRegistrationForm({
         setErrors(response.fieldErrors);
       }
     }
-  }, [fetcher.data, formData.students, event.registration_fee, onSuccess, familyData?.familyId]);
+  }, [fetcher.data, formData.students, event.registration_fee, onSuccess, familyData?.familyId, processedResponseId]);
 
   // Add a new student to the registration
   const addStudent = () => {
@@ -478,18 +490,6 @@ export function EventRegistrationForm({
 
   // Render payment step
   if (currentStep === 'payment' && registrationResult) {
-    // Prepare student payment details for the payment form
-    const studentPaymentDetails: StudentPaymentDetail[] = formData.students.map((student, index) => ({
-      studentId: registrationResult.studentIds[index] || `temp-${index}`,
-      firstName: student.firstName,
-      lastName: student.lastName,
-      eligibility: { eligible: true, reason: 'Trial' },
-      needsPayment: true,
-      nextPaymentAmount: event.registration_fee || 0,
-      nextPaymentTierLabel: 'Event Registration',
-      pastPaymentCount: 0,
-    }));
-
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Card className="form-container-styles">
@@ -525,10 +525,11 @@ export function EventRegistrationForm({
               studentCount={formData.students.length}
               familyId={registrationResult.familyId}
               registrationId={paymentData?.registrationId || ''}
-              paymentId={paymentData?.paymentId || ''}
               studentIds={registrationResult.studentIds || []}
               actionEndpoint={`/events/${event.id}/register`}
               onSuccess={handlePaymentSuccess}
+              taxes={paymentData?.taxes || []}
+              totalTaxAmount={paymentData?.totalTaxAmount || 0}
             />
           </CardContent>
         </Card>

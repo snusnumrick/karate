@@ -5,7 +5,7 @@ import { InvoiceForm } from "~/components/InvoiceForm";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntities } from "~/services/invoice-entity.server";
 import { getInvoiceById, getInvoiceByNumber, updateInvoice } from "~/services/invoice.server";
-import { getActiveTaxRates } from "~/services/tax-rates.server";
+import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
 
@@ -36,12 +36,24 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // Check if the id looks like an invoice number (INV-YYYY-NNNN format)
     const isInvoiceNumber = /^INV-\d{4}-\d{4}$/.test(id);
     
-    // Get the invoice, entities, and tax rates
-    const [invoice, entitiesResult, taxRates] = await Promise.all([
+    // Get the invoice, entities, and tax rates by item type
+    const [invoice, entitiesResult, classEnrollmentTaxRates, individualSessionTaxRates, productTaxRates, feeTaxRates, otherTaxRates] = await Promise.all([
       isInvoiceNumber ? getInvoiceByNumber(id) : getInvoiceById(id),
       getInvoiceEntities(),
-      getActiveTaxRates()
+      getApplicableTaxRates('class_enrollment'),
+      getApplicableTaxRates('individual_session'),
+      getApplicableTaxRates('product'),
+      getApplicableTaxRates('fee'),
+      getApplicableTaxRates('other')
     ]);
+
+    const taxRatesByItemType = {
+      class_enrollment: classEnrollmentTaxRates,
+      individual_session: individualSessionTaxRates,
+      product: productTaxRates,
+      fee: feeTaxRates,
+      other: otherTaxRates
+    };
     
     // Check if invoice can be edited (only drafts)
     if (invoice.status !== 'draft') {
@@ -85,7 +97,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       entities, 
       initialData, 
       selectedEntity: selectedEntity || null,
-      taxRates
+      taxRatesByItemType
     });
   } catch (error) {
     console.error("Error loading invoice for edit:", error);
@@ -234,7 +246,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function EditInvoicePage() {
-  const { invoice, entities, initialData, selectedEntity, taxRates } = useLoaderData<typeof loader>();
+  const { invoice, entities, initialData, selectedEntity, taxRatesByItemType } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
 
   return (
@@ -271,7 +283,7 @@ export default function EditInvoicePage() {
           preSelectedEntity={selectedEntity}
           errors={actionData?.errors}
           values={actionData?.values}
-          taxRates={taxRates}
+          taxRatesByItemType={taxRatesByItemType}
         />
       </div>
     </div>

@@ -2,6 +2,7 @@ import {createServerClient} from "@supabase/auth-helpers-remix";
 import {createClient} from "@supabase/supabase-js"; // Import standard client
 import type {Database} from "~/types/database.types";
 import type { EligibilityStatus } from '~/types/payment';
+import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 
 // Re-export EligibilityStatus for other modules
 export type { EligibilityStatus };
@@ -24,47 +25,6 @@ export function getSupabaseAdminClient() {
     }
 
     return createClient<Database>(supabaseUrl, supabaseServiceKey);
-}
-
-import { siteConfig } from "~/config/site"; // Import siteConfig for tax rate
-
-// Helper function to check if any students are under 15 years old
-export async function hasStudentsUnder15(studentIds: string[]): Promise<boolean> {
-    if (!studentIds || studentIds.length === 0) {
-        return false;
-    }
-
-    const supabaseAdmin = getSupabaseAdminClient();
-    const { data: students, error } = await supabaseAdmin
-        .from('students')
-        .select('birth_date')
-        .in('id', studentIds);
-
-    if (error || !students) {
-        console.error('Error fetching student birth dates:', error?.message);
-        return false; // If we can't determine age, don't apply exemption
-    }
-
-    const today = new Date();
-    
-    for (const student of students) {
-        if (student.birth_date) {
-            const birthDate = new Date(student.birth_date);
-            const age = today.getFullYear() - birthDate.getFullYear();
-            const monthDiff = today.getMonth() - birthDate.getMonth();
-            
-            let actualAge = age;
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                actualAge = age - 1;
-            }
-            
-            if (actualAge < 15) {
-                return true;
-            }
-        }
-    }
-    
-    return false;
 }
 
 // Initialize Stripe
@@ -175,64 +135,22 @@ export async function createInitialPaymentRecord(
     // No need to apply discount again here
 
     // --- Multi-Tax Calculation ---
-    // 1. Fetch active tax rates applicable to this site/region
-    let applicableTaxNames = siteConfig.pricing.applicableTaxNames;
-    
-    // 2. Check if this is a store purchase with students under 15 (GI exemption)
-    if (type === 'store_purchase' && studentIds && studentIds.length > 0) {
-        const hasUnder15 = await hasStudentsUnder15(studentIds);
-        if (hasUnder15) {
-            // Exclude PST_BC for GI purchases for students under 15
-            applicableTaxNames = applicableTaxNames.filter(name => name !== 'PST_BC');
-            console.log('PST_BC exemption applied for store purchase - student(s) under 15 years old');
-        }
-    }
-    
-    const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
-        .from('tax_rates')
-        .select('id, name, rate')
-        .in('name', applicableTaxNames)
-        .eq('is_active', true);
+    // Use the centralized tax calculation service
+    const taxCalculation = await calculateTaxesForPayment({
+        subtotalAmount,
+        paymentType: type,
+        studentIds,
+        supabaseClient: supabaseAdmin
+    });
 
-    if (taxRatesError) {
-        console.error('Error fetching tax rates:', taxRatesError.message);
-        return { data: null, error: `Failed to fetch tax rates: ${taxRatesError.message}` };
-    }
-    if (!taxRatesData || taxRatesData.length === 0) {
-        console.warn(`No active tax rates found for names: ${applicableTaxNames.join(', ')}. Proceeding without tax.`);
-        // Proceed without tax if none are configured/active
+    if (taxCalculation.error) {
+        console.error('Error calculating taxes:', taxCalculation.error);
+        return { data: null, error: taxCalculation.error };
     }
 
-    // 3. Calculate individual taxes and total tax on the discounted subtotal
-    let totalTaxAmount = 0;
-    const paymentTaxesToInsert: Array<{
-        tax_rate_id: string;
-        tax_amount: number;
-        tax_rate_snapshot: number;
-        tax_name_snapshot: string;
-    }> = [];
+    const { totalTaxAmount, paymentTaxes: paymentTaxesToInsert } = taxCalculation;
 
-    if (taxRatesData) {
-        for (const taxRate of taxRatesData) {
-            // Ensure rate is a number before calculation
-            const rate = Number(taxRate.rate);
-            if (isNaN(rate)) {
-                console.error(`Invalid tax rate found for ${taxRate.name}: ${taxRate.rate}`);
-                continue; // Skip this tax rate
-            }
-            // Calculate tax on the discounted subtotal
-            const taxAmountForThisRate = Math.round(subtotalAmount * rate);
-            totalTaxAmount += taxAmountForThisRate;
-            paymentTaxesToInsert.push({
-                tax_rate_id: taxRate.id,
-                tax_amount: taxAmountForThisRate,
-                tax_rate_snapshot: rate, // Store the rate used
-                tax_name_snapshot: taxRate.name, // Store the name used
-            });
-        }
-    }
-
-    // 3. Calculate final total amount (discounted subtotal + taxes)
+    // Calculate final total amount (subtotal + taxes)
     const totalAmount = subtotalAmount + totalTaxAmount;
     // --- End Multi-Tax Calculation ---
 

@@ -8,9 +8,19 @@ import {
 
 export function useInvoiceCalculations(
   lineItems: CreateInvoiceLineItemData[],
-  taxRates: TaxRate[] = []
+  taxRatesByItemType: {
+    class_enrollment: TaxRate[];
+    individual_session: TaxRate[];
+    product: TaxRate[];
+  } = { class_enrollment: [], individual_session: [], product: [] }
 ): InvoiceCalculations {
   return useMemo(() => {
+    // Flatten all tax rates into a single array for calculations
+    const allTaxRates = [
+      ...taxRatesByItemType.class_enrollment,
+      ...taxRatesByItemType.individual_session,
+      ...taxRatesByItemType.product
+    ];
     if (!lineItems || lineItems.length === 0) {
       return {
         subtotal: 0,
@@ -34,7 +44,7 @@ export function useInvoiceCalculations(
         item.quantity,
         item.unit_price,
         item.tax_rate_ids || [],
-        taxRates,
+        allTaxRates,
         item.discount_rate || 0
       );
     });
@@ -47,5 +57,5 @@ export function useInvoiceCalculations(
       discount_amount: Math.round(totalDiscount * 100) / 100,
       total_amount: Math.round(total * 100) / 100,
     };
-  }, [lineItems, taxRates]);
+  }, [lineItems, taxRatesByItemType]);
 }

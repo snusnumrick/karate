@@ -9,13 +9,17 @@ interface InvoicePreviewProps {
   invoiceData: CreateInvoiceData;
   entity: InvoiceEntity;
   invoiceNumber?: string;
-  taxRates?: TaxRate[];
+  taxRatesByItemType?: {
+    class_enrollment: TaxRate[];
+    individual_session: TaxRate[];
+    product: TaxRate[];
+  };
 }
 
-export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRates = [] }: InvoicePreviewProps) {
+export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByItemType = { class_enrollment: [], individual_session: [], product: [] } }: InvoicePreviewProps) {
   const { subtotal, tax_amount, discount_amount, total_amount } = useInvoiceCalculations(
     invoiceData.line_items,
-    taxRates
+    taxRatesByItemType
   );
 
 
@@ -85,7 +89,13 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRates = 
               {invoiceData.line_items.map((item, index) => {
                 const itemSubtotal = calculateLineItemSubtotal(item);
                 const itemDiscount = calculateLineItemDiscount(item);
-                const taxBreakdown = getLineItemTaxBreakdown(item, taxRates);
+                // Flatten all tax rates for calculations
+                const allTaxRates = [
+                  ...taxRatesByItemType.class_enrollment,
+                  ...taxRatesByItemType.individual_session,
+                  ...taxRatesByItemType.product
+                ];
+                const taxBreakdown = getLineItemTaxBreakdown(item, allTaxRates);
                 const itemTaxTotal = taxBreakdown.reduce((sum, tax) => sum + tax.amount, 0);
                 
                 return (

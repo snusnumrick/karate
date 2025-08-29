@@ -2,9 +2,15 @@ import { useFetcher } from '@remix-run/react';
 import { useRef, useState, useEffect } from 'react';
 import { Button } from '~/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
-import { CheckCircledIcon, ExclamationTriangleIcon, ReloadIcon } from '@radix-ui/react-icons';
+import { ExclamationTriangleIcon, ReloadIcon } from '@radix-ui/react-icons';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { CreditCard, DollarSign } from 'lucide-react';
+
+interface TaxInfo {
+  taxName: string;
+  taxAmount: number;
+  taxRate: number;
+}
 
 interface EventPaymentFormProps {
   eventId: string;
@@ -13,10 +19,11 @@ interface EventPaymentFormProps {
   studentCount: number;
   familyId: string;
   registrationId: string;
-  paymentId: string;
   studentIds?: string[];
   onSuccess?: (paymentId: string) => void;
   actionEndpoint?: string;
+  taxes?: TaxInfo[];
+  totalTaxAmount?: number;
 }
 
 interface ActionResponse {
@@ -33,17 +40,21 @@ export function EventPaymentForm({
   studentCount,
   familyId,
   registrationId,
-  paymentId,
   studentIds = [],
   onSuccess,
-  actionEndpoint = '/family/payment'
+  actionEndpoint = '/family/payment',
+  taxes = [],
+  totalTaxAmount = 0
 }: EventPaymentFormProps) {
   const fetcher = useFetcher<ActionResponse>();
   const formRef = useRef<HTMLFormElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const totalAmount = registrationFee * studentCount;
+  const subtotalAmount = registrationFee * studentCount;
+  const totalAmount = subtotalAmount + (totalTaxAmount / 100); // Convert cents to dollars
+  const formattedSubtotal = subtotalAmount.toFixed(2);
   const formattedTotal = totalAmount.toFixed(2);
+  const formattedTaxAmount = (totalTaxAmount / 100).toFixed(2);
 
   // Handle form submission response
   useEffect(() => {
@@ -143,8 +154,28 @@ export function EventPaymentForm({
               <span className="text-sm text-gray-600 dark:text-gray-400">Number of Students:</span>
               <span className="font-medium">{studentCount}</span>
             </div>
-            <div className="border-t pt-2 mt-2">
+            <div className="border-t pt-2 mt-2 space-y-2">
               <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Subtotal:</span>
+                <span className="font-medium">${formattedSubtotal}</span>
+              </div>
+              {taxes.length > 0 && (
+                <>
+                  {taxes.map((tax, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {tax.taxName} ({(tax.taxRate * 100).toFixed(1)}%):
+                      </span>
+                      <span className="font-medium">${(tax.taxAmount / 100).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Total Tax:</span>
+                    <span className="font-medium">${formattedTaxAmount}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex justify-between items-center border-t pt-2">
                 <span className="text-lg font-semibold">Total Amount:</span>
                 <span className="text-lg font-bold text-green-600 dark:text-green-400">
                   ${formattedTotal}
