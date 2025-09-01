@@ -143,9 +143,9 @@ function handleBrowserRequest(
                     const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:*' : '';
 
                     // MODIFIED: Added Google Analytics and Umami domains to connect-src
-                    const connectSrc = `'self' https://www.google-analytics.com https://stats.g.doubleclick.net https://api.stripe.com https://umami-two-lilac.vercel.app ${supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : ''} ${devWebSockets} ws://127.0.0.1:* wss://127.0.0.1:*`.trim();
+                    const connectSrc = `'self' https://*.google-analytics.com https://*.google.com https://stats.g.doubleclick.net https://api.stripe.com https://umami-two-lilac.vercel.app ${supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : ''} ${devWebSockets} ws://127.0.0.1:* wss://127.0.0.1:*`.trim();
                     const imgSrc = `'self' data: ${supabaseOrigin}`;
-                    // MODIFIED: Added Google Analytics, Tag Manager, and Umami domains to script-src
+// MODIFIED: Added Google Analytics, Tag Manager, and Umami domains to script-src
                     const scriptSrc = `'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://umami-two-lilac.vercel.app`;
                     const styleSrc = `'self' 'unsafe-inline' https://fonts.googleapis.com`;
                     const fontSrc = `'self' https://fonts.gstatic.com`;
