@@ -167,7 +167,7 @@ export function Layout() {
             <meta charSet="utf-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
             {/*Tracking*/}
-            {/*<script defer src="https://umami-two-lilac.vercel.app/script.js" data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"></script>*/}
+            <script defer src="https://umami-two-lilac.vercel.app/script.js" data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"></script>
             {/* Google tag (gtag.js) */}
             <script async src="https://www.googletagmanager.com/gtag/js?id=G-6LFRGZ2SNP"></script>
             <script dangerouslySetInnerHTML={{
