@@ -4,6 +4,26 @@ import {getSupabaseServerClient} from "~/utils/supabase.server";
 import { formatDate } from "~/utils/misc";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
+// Lightweight sanitizer to remove scripts, style tags, inline styles, event handlers, and javascript: URLs
+function sanitizeWaiverHtml(html: string | null | undefined): string {
+    if (!html) return "";
+    let clean = html;
+    // Remove script and style elements entirely
+    clean = clean.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
+    clean = clean.replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "");
+    // Remove inline event handlers (onclick, onload, etc.)
+    clean = clean.replace(/\s(on\w+)\s*=\s*"[^"]*"/gi, "");
+    clean = clean.replace(/\s(on\w+)\s*=\s*'[^']*'/gi, "");
+    clean = clean.replace(/\s(on\w+)\s*=\s*([^\s>]+)/gi, "");
+    // Remove inline style attributes
+    clean = clean.replace(/\sstyle\s*=\s*"[^"]*"/gi, "");
+    clean = clean.replace(/\sstyle\s*=\s*'[^']*'/gi, "");
+    // Neutralize javascript: URLs in href/src
+    clean = clean.replace(/\s(href|src)\s*=\s*"\s*javascript:[^"]*"/gi, ' $1="#"');
+    clean = clean.replace(/\s(href|src)\s*=\s*'\s*javascript:[^']*'/gi, " $1='#'");
+    return clean;
+}
+
 export async function loader({request, params}: LoaderFunctionArgs) {
     const {supabaseServer} = getSupabaseServerClient(request);
     const waiverId = params.waiverId;
@@ -52,6 +72,9 @@ export default function WaiverDetail() {
     const isSigned = !!userSignature;
     const signedDate = isSigned && userSignature?.signed_at ? formatDate(userSignature.signed_at, { formatString: 'P' }) : null;
 
+    // Sanitize waiver HTML content before injecting into DOM to comply with CSP
+    const safeWaiverHtml = sanitizeWaiverHtml(waiver?.content);
+
     return (
         <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -76,7 +99,7 @@ export default function WaiverDetail() {
                 
                 <div className="form-container-styles p-8 backdrop-blur-lg">
                     <div className="prose prose-gray dark:prose-invert max-w-none mb-8">
-                        <div dangerouslySetInnerHTML={{__html: waiver.content}} />
+                        <div dangerouslySetInnerHTML={{__html: safeWaiverHtml}} />
                     </div>
 
                     <div className="border-t pt-6">

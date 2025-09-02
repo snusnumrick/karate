@@ -248,8 +248,7 @@ export default function FamilyDetailPage() {
                                                                 <img 
                                                                     src={signature.signature_data} 
                                                                     alt={`Signature by ${signature.signer_name}`}
-                                                                    className="max-w-full h-auto max-h-24 object-contain dark:invert"
-                                                                    style={{ imageRendering: 'crisp-edges' }}
+                                                                    className="max-w-full h-auto max-h-24 object-contain dark:invert image-render-crisp"
                                                                 />
                                                             </div>
                                                         </div>

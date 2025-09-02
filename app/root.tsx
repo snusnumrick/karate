@@ -1,17 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
     Links,
     Meta,
     Outlet,
     Scripts,
     ScrollRestoration,
-    useLoaderData, // NEW: Import useLoaderData
+    useLoaderData,
     useRouteError,
 } from "@remix-run/react";
 import {
     json,
     LinksFunction,
-    LoaderFunctionArgs, // NEW: Import loader types
+    LoaderFunctionArgs,
     MetaFunction
 } from "@remix-run/node";
 import {ThemeProvider} from "~/components/theme-provider";
@@ -19,12 +19,17 @@ import {siteConfig} from "~/config/site";
 
 import "./tailwind.css";
 
-// NEW: Loader to get the nonce from the server context
-export async function loader({context}: LoaderFunctionArgs) {
-    // The nonce is passed from entry.server.tsx
-    return json({nonce: context.nonce as string});
+// Define global typing for GTM dataLayer to avoid any
+declare global {
+  interface Window {
+    dataLayer: Array<Record<string, unknown>>;
+  }
 }
 
+// Loader to get the nonce from the server context
+export async function loader({context}: LoaderFunctionArgs) {
+    return json({nonce: context.nonce as string});
+}
 
 // Error boundary wrapper can remain as is
 class ErrorBoundaryWrapper extends React.Component<
@@ -76,7 +81,8 @@ const parseClassTimesForSchema = (daysString: string, timeString: string) => {
     const convertTo24Hour = (time12h: string): string => {
         const [timePart, modifier] = time12h.toUpperCase().split(' ');
         if (!timePart || !modifier) return "";
-        let [hours, minutes] = timePart.split(':').map(Number);
+        const [_hours, minutes] = timePart.split(':').map(Number);
+        let hours = _hours;
         if (isNaN(hours) || isNaN(minutes)) return "";
         if (modifier === 'PM' && hours < 12) hours += 12;
         if (modifier === 'AM' && hours === 12) hours = 0;
@@ -93,7 +99,8 @@ export const links: LinksFunction = () => [
         href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
     },
     {rel: "manifest", href: "/manifest.webmanifest"},
-    {rel: "theme-color", href: "#2E7D32"},
+    // Canonical link should be provided via Links, not Meta
+    {rel: "canonical", href: siteConfig.url},
     {rel: "apple-touch-icon", href: "/apple-touch-icon.png"},
     {rel: "icon", href: "/favicon.ico", sizes: "any"},
     {rel: "icon", href: "/icon.svg", type: "image/svg+xml"},
@@ -120,12 +127,35 @@ export const meta: MetaFunction = () => {
         {name: "twitter:title", content: siteConfig.name},
         {name: "twitter:description", content: siteConfig.description},
         {name: "twitter:image", content: `${siteConfig.url}/android-chrome-512x512.png`},
-        {tagName: "link", rel: "canonical", href: siteConfig.url},
+        // Removed incorrect link tag from Meta
     ];
 };
 
+// Defer GTM injection to client after hydration to avoid head mutations before React hydrates
+function ClientGTM({ nonce }: { nonce?: string }) {
+    useEffect(() => {
+        try {
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+            const j = document.createElement('script');
+            j.async = true;
+            j.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-P7MZ2KL6';
+            if (nonce) j.setAttribute('nonce', nonce);
+            const firstScript = document.getElementsByTagName('script')[0];
+            if (firstScript && firstScript.parentNode) {
+                firstScript.parentNode.insertBefore(j, firstScript);
+            } else {
+                document.head.appendChild(j);
+            }
+        } catch (e: unknown) {
+            console.error('Failed to load GTM', e);
+        }
+    }, [nonce]);
+    return null;
+}
+
 export function Layout({children}: { children: React.ReactNode }) {
-    // NEW: Access the nonce provided by the loader
+    // Access the nonce provided by the loader
     const {nonce} = useLoaderData<typeof loader>();
     const classTimes = parseClassTimesForSchema(siteConfig.classes.days, siteConfig.classes.timeLong);
 
@@ -135,21 +165,10 @@ export function Layout({children}: { children: React.ReactNode }) {
             <meta charSet="utf-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
-            {/* MODIFIED: Updated all scripts to use the nonce */}
-            <script
-                nonce={nonce}
-                defer
-                src="https://umami-two-lilac.vercel.app/script.js"
-                data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"
-            ></script>
+            {/* Updated all scripts to use the nonce */}
+            {/* Umami analytics moved to end of body to avoid head hydration mismatches */}
 
-            {/* MODIFIED: Replaced gtag.js with the recommended Google Tag Manager container snippet */}
-            <script
-                nonce={nonce}
-                dangerouslySetInnerHTML={{
-                    __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;j.setAttribute('nonce','${nonce}');f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-P7MZ2KL6');`,
-                }}
-            />
+            {/* Google Tag Manager moved to client-side injection to prevent head DOM mutation during hydration */}
 
             <meta name="google-site-verification" content="u2fl3O-U-93ZYbncQ8drQwMBMNDWPY159eyNaoJO3Kk"/>
             <Meta/>
@@ -158,6 +177,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             {/* Add Organization Schema with nonce */}
             <script
                 nonce={nonce}
+                suppressHydrationWarning
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
@@ -201,6 +221,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             {/* Add FAQPage Schema with nonce */}
             <script
                 nonce={nonce}
+                suppressHydrationWarning
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
@@ -250,7 +271,15 @@ export function Layout({children}: { children: React.ReactNode }) {
                 {children} {/* This now correctly renders the nested routes */}
             </ErrorBoundaryWrapper>
         </ThemeProvider>
-        {/* MODIFIED: Add nonce to Remix's script components */}
+        {/* GTM injected after hydration to avoid SSR/CSR mismatch */}
+        <ClientGTM nonce={nonce} />
+        {/* Umami analytics (moved from head). No boolean attributes to avoid hydration mismatch */}
+        <script
+            nonce={nonce}
+            src="https://umami-two-lilac.vercel.app/script.js"
+            data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"
+        ></script>
+        {/* Add nonce to Remix's script components */}
         <ScrollRestoration nonce={nonce}/>
         <Scripts nonce={nonce}/>
         </body>
@@ -258,12 +287,10 @@ export function Layout({children}: { children: React.ReactNode }) {
     );
 }
 
-// NEW: Root component that renders the Layout and Outlet
+// Root component that renders the Layout and Outlet
 export default function App() {
     return (
-        <Layout>
-            <Outlet/>
-        </Layout>
+        <Outlet/>
     );
 }
 
@@ -287,17 +314,15 @@ export function ErrorBoundary() {
         message: errorMessage,
     };
     return (
-        <Layout> {/* NEW: Wrap ErrorBoundary in Layout to maintain page structure */}
-            <div
-                className="flex flex-col min-h-screen items-center justify-center gap-4 p-4 text-foreground page-background-styles">
-                <h1 className="text-4xl font-bold">{status} Error</h1>
-                <p className="text-lg text-muted-foreground">{errorMessage}</p>
-                {process.env.NODE_ENV === "development" && error && (
-                    <pre className="mt-4 p-4 bg-accent text-accent-foreground rounded-md max-w-2xl overflow-auto">
-                        {JSON.stringify(errorForDisplay, null, 2)}
-                    </pre>
-                )}
-            </div>
-        </Layout>
+        <div
+            className="flex flex-col min-h-screen items-center justify-center gap-4 p-4 text-foreground page-background-styles">
+            <h1 className="text-4xl font-bold">{status} Error</h1>
+            <p className="text-lg text-muted-foreground">{errorMessage}</p>
+            {process.env.NODE_ENV === "development" && error && (
+                <pre className="mt-4 p-4 bg-accent text-accent-foreground rounded-md max-w-2xl overflow-auto">
+                    {JSON.stringify(errorForDisplay, null, 2)}
+                </pre>
+            )}
+        </div>
     );
 }

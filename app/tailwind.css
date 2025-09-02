@@ -199,3 +199,7 @@
         @apply bg-background text-foreground;
     }
 }
+
+@layer utilities {
+  .image-render-crisp { image-rendering: crisp-edges; }
+}

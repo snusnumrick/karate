@@ -76,7 +76,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
           price: event.registration_fee,
           priceCurrency: "CAD",
           availability: "https://schema.org/InStock",
-          validFrom: new Date().toISOString(),
+          validFrom: event.registration_deadline || event.start_date,
           validThrough: event.registration_deadline || event.start_date,
         } : undefined,
       },
@@ -228,14 +228,25 @@ export default function EventDetail() {
                     {event.location || siteConfig.name}
                   </p>
                   {event.location ? (
-                    // Event has its own location
-                    event.address ? (
-                      <>
-                        <p className="text-gray-600 dark:text-gray-300 mb-3">
-                          {event.address}
-                        </p>
+                    <>
+                      {event.address ? (
+                        <>
+                          <p className="text-gray-600 dark:text-gray-300 mb-3">
+                            {event.address}
+                          </p>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                          >
+                            View on Google Maps
+                            <ExternalLink className="ml-1 h-4 w-4" />
+                          </a>
+                        </>
+                      ) : (
                         <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address)}`}
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
@@ -243,41 +254,23 @@ export default function EventDetail() {
                           View on Google Maps
                           <ExternalLink className="ml-1 h-4 w-4" />
                         </a>
-                      </>
-                    ) : (
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
-                      >
-                        View on Google Maps
-                        <ExternalLink className="ml-1 h-4 w-4" />
-                      </a>
-                    )
-                  ) : (
-                    // Use site default location
-                    <>
-                      <p className="text-gray-600 dark:text-gray-300 mb-3">
-                        {siteConfig.location.address}<br />
-                        {siteConfig.location.locality}, {siteConfig.location.region} {siteConfig.location.postalCode}
-                      </p>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
-                      >
-                        View on Google Maps
-                        <ExternalLink className="ml-1 h-4 w-4" />
-                      </a>
+                      )}
                     </>
+                  ) : (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                    >
+                      View on Google Maps
+                      <ExternalLink className="ml-1 h-4 w-4" />
+                    </a>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* External Event Info */}
             {event.external_url && (
               <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 shadow-xl">
                 <CardContent className="p-8">
@@ -297,9 +290,8 @@ export default function EventDetail() {
             )}
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-8">
-            {/* Registration Card */}
+
             <Card className="bg-white dark:bg-gray-700 shadow-xl">
               <CardContent className="p-8">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Registration</h2>
@@ -346,7 +338,6 @@ export default function EventDetail() {
               </CardContent>
             </Card>
 
-            {/* Event Info Card */}
             <Card className="bg-white dark:bg-gray-700 shadow-xl">
               <CardContent className="p-8">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Event Info</h2>
@@ -372,7 +363,6 @@ export default function EventDetail() {
               </CardContent>
             </Card>
 
-            {/* Eligibility Requirements Card */}
              {(event.min_age || event.max_age || event.min_belt_rank || event.max_belt_rank || event.requires_waiver || event.requires_equipment) && (
                <Card className="bg-white dark:bg-gray-700 shadow-xl">
                  <CardContent className="p-8">
@@ -381,7 +371,7 @@ export default function EventDetail() {
                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Eligibility Requirements</h2>
                    </div>
                    <div className="space-y-4">
-                     {/* Age Requirements */}
+
                      {(event.min_age || event.max_age) && (
                        <div className="flex items-start">
                          <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5" />
@@ -399,7 +389,6 @@ export default function EventDetail() {
                        </div>
                      )}
 
-                     {/* Belt Rank Requirements */}
                      {(event.min_belt_rank || event.max_belt_rank) && (
                        <div className="flex items-start">
                          <Shield className="h-5 w-5 text-green-600 dark:text-green-400 mr-3 mt-0.5" />
@@ -417,7 +406,6 @@ export default function EventDetail() {
                        </div>
                      )}
 
-                     {/* Waiver Requirements */}
                      {event.requires_waiver && (
                        <div className="flex items-start">
                          <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-3 mt-0.5" />
@@ -430,7 +418,6 @@ export default function EventDetail() {
                        </div>
                      )}
 
-                     {/* Equipment Requirements */}
                      {event.requires_equipment && event.requires_equipment.length > 0 && (
                        <div className="flex items-start">
                          <Package className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-3 mt-0.5" />

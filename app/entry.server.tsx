@@ -19,7 +19,8 @@ function generateCsp(nonce: string) {
     const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : '';
 
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:*' : '';
+    const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*' : '';
+    const devHttpOrigins = isDevelopment ? 'http://localhost:* http://127.0.0.1:*' : '';
 
     const connectSrc = [
         "'self'",
@@ -31,8 +32,7 @@ function generateCsp(nonce: string) {
         "https://umami-two-lilac.vercel.app",
         supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : '',
         devWebSockets,
-        "ws://127.0.0.1:*",
-        "wss://127.0.0.1:*"
+        devHttpOrigins,
     ].filter(Boolean).join(" ");
 
     const imgSrc = [
@@ -43,27 +43,50 @@ function generateCsp(nonce: string) {
         "https://*.google.ca",
         "https://*.g.doubleclick.net",
         "https://*.google-analytics.com",
+        isDevelopment ? 'blob:' : '',
     ].filter(Boolean).join(" ");
 
-    // SECURE: Replaced 'unsafe-inline' and 'unsafe-eval' with a nonce
-    const scriptSrc = [
-        "'self'",
-        `'nonce-${nonce}'`,
-        "https://js.stripe.com",
-        "https://www.googletagmanager.com",
-        "https://www.google-analytics.com",
-        "https://tagmanager.google.com", // Added for full GTM compatibility
-        "https://umami-two-lilac.vercel.app"
-    ].filter(Boolean).join(" ");
+    // In development, do NOT include a nonce for script-src because 'unsafe-inline' is ignored when nonce/hash present
+    const scriptSrcArr = isDevelopment
+        ? [
+            "'self'",
+            "'unsafe-inline'",
+            "'unsafe-eval'",
+            'blob:',
+            "https://js.stripe.com",
+            "https://www.googletagmanager.com",
+            "https://www.google-analytics.com",
+            "https://tagmanager.google.com",
+            "https://umami-two-lilac.vercel.app",
+        ]
+        : [
+            "'self'",
+            `'nonce-${nonce}'`,
+            "https://js.stripe.com",
+            "https://www.googletagmanager.com",
+            "https://www.google-analytics.com",
+            "https://tagmanager.google.com",
+            "https://umami-two-lilac.vercel.app",
+        ];
 
-    // SECURE: Replaced 'unsafe-inline' with a nonce
-    const styleSrc = [
-        "'self'",
-        `'nonce-${nonce}'`,
-        "https://fonts.googleapis.com"
-    ].filter(Boolean).join(" ");
+    const scriptSrc = scriptSrcArr.filter(Boolean).join(" ");
 
-    const fontSrc = "'self' https://fonts.gstatic.com";
+    // In development, do NOT include a nonce for style-src because 'unsafe-inline' is ignored when nonce/hash present
+    const styleSrcArr = isDevelopment
+        ? [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+        ]
+        : [
+            "'self'",
+            `'nonce-${nonce}'`,
+            "https://fonts.googleapis.com",
+        ];
+
+    const styleSrc = styleSrcArr.filter(Boolean).join(" ");
+
+    const fontSrc = "'self' https://fonts.gstatic.com data:";
 
     // FIXED: Added tagmanager.google.com to enable GTM Preview Mode
     const frameSrc = "https://js.stripe.com https://hooks.stripe.com https://tagmanager.google.com";

@@ -399,6 +399,8 @@ export default function RecordAttendancePage() {
     const navigation = useNavigation();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    // Track whether "Use individual session" is checked per student to drive highlight state without inline scripts
+    const [useIndividualSessionState, setUseIndividualSessionState] = React.useState<Record<string, boolean>>({});
 
     const isSubmitting = navigation.state === "submitting";
     const formattedDateForDisplay = formatDate(attendanceDate, { formatString: 'MMMM d, yyyy' });
@@ -541,11 +543,13 @@ export default function RecordAttendancePage() {
                                         paymentStatus = `Individual Sessions (${student.individualSessions?.totalRemaining})`;
                                     }
 
+                                    // Track checkbox UI state
+                                    const isUsingIndividualSession = !!useIndividualSessionState[student.id];
                                     // Determine if student should be highlighted in red
-                                    const shouldHighlight = !isPaid && !hasIndividualSessions;
+                                    const shouldHighlight = !isPaid && (!hasIndividualSessions ? true : !isUsingIndividualSession);
 
                                     return (
-                                        <div key={student.id} className={`border-b dark:border-gray-700 pb-4 last:border-b-0 ${shouldHighlight ? 'border-red-500 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg' : ''}`}>
+                                        <div key={student.id} className={`border-b dark:border-gray-700 pb-4 last:border-b-0 ${shouldHighlight ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
                                             <input type="hidden" name="studentId" value={student.id} />
 
                                             <div className="flex items-center justify-between mb-2">
@@ -576,6 +580,7 @@ export default function RecordAttendancePage() {
                                                                 type="checkbox" 
                                                                 name={`useIndividualSession_${student.id}`}
                                                                 className="rounded"
+                                                                onChange={(e) => setUseIndividualSessionState(prev => ({ ...prev, [student.id]: e.target.checked }))}
                                                             />
                                                             Use individual session for this attendance
                                                         </label>
@@ -685,52 +690,6 @@ export function ErrorBoundary() {
                     &larr; Go back to Attendance List
                 </Link>
             </div>
-
-            <script dangerouslySetInnerHTML={{
-                __html: `
-                    // Handle dynamic highlighting based on checkbox state
-                    document.addEventListener('change', function(e) {
-                        if (e.target.name && e.target.name.startsWith('useIndividualSession_')) {
-                            const studentId = e.target.name.replace('useIndividualSession_', '');
-                            const container = e.target.closest('.border-b, .border');
-                            const paymentStatusSpan = container.querySelector('span[class*="text-"]');
-
-                            if (container && paymentStatusSpan) {
-                                const isChecked = e.target.checked;
-                                const hasIndividualSessions = paymentStatusSpan.textContent.includes('Individual Sessions');
-                                const isPaid = paymentStatusSpan.textContent.includes('Paid (');
-
-                                // Update highlighting
-                                if (!isPaid && hasIndividualSessions) {
-                                    if (isChecked) {
-                                        container.classList.remove('border-red-500', 'bg-red-50', 'dark:bg-red-900/20');
-                                    } else {
-                                        container.classList.add('border-red-500', 'bg-red-50', 'dark:bg-red-900/20');
-                                    }
-                                }
-                            }
-                        }
-                    });
-
-                    // Initial highlighting on page load
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const checkboxes = document.querySelectorAll('input[name^="useIndividualSession_"]');
-                        checkboxes.forEach(checkbox => {
-                            const container = checkbox.closest('.border-b, .border');
-                            const paymentStatusSpan = container.querySelector('span[class*="text-"]');
-
-                            if (container && paymentStatusSpan) {
-                                const hasIndividualSessions = paymentStatusSpan.textContent.includes('Individual Sessions');
-                                const isPaid = paymentStatusSpan.textContent.includes('Paid (');
-
-                                if (!isPaid && hasIndividualSessions && !checkbox.checked) {
-                                    container.classList.add('border-red-500', 'bg-red-50', 'dark:bg-red-900/20');
-                                }
-                            }
-                        });
-                    });
-                `
-            }} />
         </div>
     );
 }
