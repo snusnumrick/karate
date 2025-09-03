@@ -141,6 +141,9 @@ export default function handleRequest(
 ) {
     // Derive the same per-request nonce used by getLoadContext
     const nonce = deriveNonceForRequest(request);
+    
+    // Debug logging for production
+    console.log('handleRequest nonce:', nonce, 'length:', nonce?.length, 'type:', typeof nonce);
 
     // Add nonce to the response headers via the CSP
     const csp = generateCsp(nonce);
@@ -181,7 +184,7 @@ function handleBotRequest(
             />,
             {
                 nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
-                bootstrapScriptContent: `window.__remixContext.nonce = ${JSON.stringify(nonce)};`,
+                bootstrapScriptContent: `console.log('Bootstrap setting nonce:', ${JSON.stringify(nonce)}); window.__remixContext = window.__remixContext || {}; window.__remixContext.nonce = ${JSON.stringify(nonce)};`,
                 onAllReady() {
                     shellRendered = true;
                     const body = new PassThrough();
@@ -221,7 +224,7 @@ function handleBrowserRequest(
             />,
             {
                 nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
-                bootstrapScriptContent: `window.__remixContext.nonce = ${JSON.stringify(nonce)};`,
+                bootstrapScriptContent: `console.log('Bootstrap setting nonce:', ${JSON.stringify(nonce)}); window.__remixContext = window.__remixContext || {}; window.__remixContext.nonce = ${JSON.stringify(nonce)};`,
                 onShellReady() {
                     shellRendered = true;
                     const body = new PassThrough();
