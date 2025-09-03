@@ -186,14 +186,14 @@ export function Layout({children}: { children: React.ReactNode }) {
         (window as { __remixContext?: { strictDev?: boolean; nonce?: string } }).__remixContext?.strictDev : 
         process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
     
-    // Get nonce from multiple sources during SSR
+    // Get nonce from multiple sources during SSR and client-side
     let nonce = loaderNonce;
     if (typeof window === 'undefined') {
         // During SSR, also try to get nonce from global context if loader hasn't provided it
         nonce = nonce || (global as { __remixContext?: { nonce?: string } }).__remixContext?.nonce;
     } else {
-        // On client, get from window context
-        nonce = nonce || (window as { __remixContext?: { nonce?: string } }).__remixContext?.nonce;
+        // On client, prioritize window context since loader data might not be hydrated yet
+        nonce = (window as { __remixContext?: { nonce?: string } }).__remixContext?.nonce || nonce;
     }
     
     // Use consistent nonce: prefer available nonce, fallback to dev-fixed-nonce in strict dev mode
