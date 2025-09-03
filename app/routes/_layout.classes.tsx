@@ -1,5 +1,5 @@
 import { Link, useLoaderData, useRouteLoaderData } from "@remix-run/react";
-import { json, type LoaderFunctionArgs, type MetaFunction, type MetaArgs, type MetaDescriptor } from "@remix-run/node";
+import { json, type MetaFunction, type MetaArgs, type MetaDescriptor } from "@remix-run/node";
 import { siteConfig } from "~/config/site";
 import { getPrograms } from "~/services/program.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
@@ -38,10 +38,6 @@ export const meta: MetaFunction = (args: MetaArgs) => {
     // Get the already computed meta tags from the parent route match
     const parentMeta = parentMatch?.meta || [];
 
-    // Get loader data for classes
-    const loaderData = args.data as { programs: Program[], classes: ClassWithSchedule[] } | undefined;
-    const classes = loaderData?.classes || [];
-
     // Define meta tags specific to this Classes page
     const classesPageTitle = "Karate Classes - Programs & Schedules";
     const classesPageDescription = `Explore our comprehensive karate programs at ${siteConfig.location.address}. Classes for children ages ${siteConfig.classes.ageRange} with experienced instructors. ${siteConfig.pricing.freeTrial} available!`;
@@ -65,7 +61,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
     return mergeMeta(parentMeta, classesMeta);
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader() {
     try {
         const supabase = getSupabaseAdminClient();
 
@@ -248,7 +244,12 @@ export default function ClassesPage() {
         "name": "Karate Classes",
         "description": `Programs and classes offered by ${siteConfig.name}`,
         "itemListElement": classes.map((c, index) => {
-            const offers: any[] = [];
+            const offers: Array<{
+                "@type": "Offer";
+                price: number;
+                priceCurrency: string;
+                category: string;
+            }> = [];
             const monthly = c.program?.monthly_fee;
             const yearly = c.program?.yearly_fee;
             if (monthly && monthly > 0) {

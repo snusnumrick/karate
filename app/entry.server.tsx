@@ -5,11 +5,16 @@
  */
 
 import {PassThrough} from "node:stream";
-import crypto from "node:crypto"; // NEW: Import crypto for nonce generation
+import crypto from "node:crypto"; // Import crypto for nonce generation
 import {RemixServer} from "@remix-run/react";
 import {isbot} from "isbot";
 import {renderToPipeableStream} from "react-dom/server";
 import {createReadableStreamFromReadable, EntryContext} from "@remix-run/node";
+
+// Extend EntryContext to include nonce property
+interface ExtendedEntryContext extends EntryContext {
+    nonce?: string;
+}
 
 export const streamTimeout = 5_000;
 
@@ -17,16 +22,24 @@ export const streamTimeout = 5_000;
 const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
 const DEV_FIXED_NONCE = 'dev-fixed-nonce';
 
-// Maintain per-request nonce so getLoadContext and handleRequest share the same value
-const requestNonceMap = new WeakMap<Request, string>();
+// Per-process secret to derive deterministic nonces per request (same within a single invocation)
+const NONCE_SECRET = crypto.randomBytes(32);
+
+function deriveNonceForRequest(request: Request) {
+    if (STRICT_DEV) return DEV_FIXED_NONCE;
+    const ua = request.headers.get('user-agent') || '';
+    const al = request.headers.get('accept-language') || '';
+    const xfwdHost = request.headers.get('x-forwarded-host') || '';
+    const xfwdProto = request.headers.get('x-forwarded-proto') || '';
+    const data = `${request.url}|${ua}|${al}|${xfwdHost}|${xfwdProto}`;
+    const digest = crypto.createHmac('sha256', NONCE_SECRET).update(data).digest('base64');
+    // Keep nonce reasonably short while remaining high entropy
+    return digest.slice(0, 22); // ~132 bits of entropy
+}
 
 // Provide load context to all loaders/actions
 export function getLoadContext({ request }: { request: Request }) {
-    const existing = requestNonceMap.get(request);
-    if (existing) return { nonce: existing };
-    // In strict dev, use a fixed nonce so Vite-injected tags and SSR CSP match
-    const nonce = STRICT_DEV ? DEV_FIXED_NONCE : crypto.randomBytes(16).toString("base64");
-    requestNonceMap.set(request, nonce);
+    const nonce = deriveNonceForRequest(request);
     return { nonce };
 }
 
@@ -58,63 +71,51 @@ function generateCsp(nonce: string) {
         "'self'",
         "data:",
         supabaseOrigin,
-        "https://*.google.com",
-        "https://*.google.ca",
-        "https://*.g.doubleclick.net",
+        isLenientDev ? 'blob:' : '',
         "https://*.google-analytics.com",
-        isDevelopment ? 'blob:' : '',
+        "https://*.googletagmanager.com",
+        "https://stats.g.doubleclick.net",
     ].filter(Boolean).join(" ");
 
-    // In lenient development, do NOT include a nonce for script-src because 'unsafe-inline' is ignored when nonce/hash present
-    const scriptSrcArr = isLenientDev
-        ? [
-            "'self'",
-            "'unsafe-inline'",
-            "'unsafe-eval'",
-            'blob:',
-            "https://js.stripe.com",
-            "https://www.googletagmanager.com",
-            "https://www.google-analytics.com",
-            "https://tagmanager.google.com",
-            "https://umami-two-lilac.vercel.app",
-        ]
-        : [
-            "'self'",
-            `'nonce-${nonce}'`,
-            "https://js.stripe.com",
-            "https://www.googletagmanager.com",
-            "https://www.google-analytics.com",
-            "https://tagmanager.google.com",
-            "https://umami-two-lilac.vercel.app",
-        ];
+    const styleSrc = [
+        "'self'",
+        `'nonce-${nonce}'`,
+        isLenientDev ? "'unsafe-inline'" : '',
+        // Add specific hashes for Vite HMR and Tailwind CSS in strict dev mode
+        strictDev ? "'sha256-EiOgLoAxcFRdVJdZFcHv/Yp+zfJ5omuJDkY/tMXzd10='" : '',
+        strictDev ? "'sha256-40oAvW7ca/qI/9rapLlXiO+wKrmLDJScrYFlb0ePVsU='" : '',
+        strictDev ? "'sha256-hT67pHEAagXZWXCR6f0OxilTM/BibRRnzdBjQgTnd5U='" : '',
+        "https://fonts.googleapis.com",
+    ].filter(Boolean).join(" ");
 
-    const scriptSrc = scriptSrcArr.filter(Boolean).join(" ");
+    const scriptSrc = [
+        "'self'",
+        `'nonce-${nonce}'`,
+        "https://js.stripe.com",
+        "https://www.googletagmanager.com",
+        "https://www.google-analytics.com",
+        "https://tagmanager.google.com",
+        "https://umami-two-lilac.vercel.app",
+        isLenientDev ? "'unsafe-eval' 'unsafe-inline'" : '',
+    ].filter(Boolean).join(" ");
 
-    // In lenient development, do NOT include a nonce for style-src because 'unsafe-inline' is ignored when nonce/hash present
-    const styleSrcArr = isLenientDev
-        ? [
-            "'self'",
-            "'unsafe-inline'",
-            "https://fonts.googleapis.com",
-        ]
-        : [
-            "'self'",
-            `'nonce-${nonce}'`,
-            "https://fonts.googleapis.com",
-        ];
+    const fontSrc = [
+        "'self'",
+        "https://fonts.gstatic.com",
+        "data:",
+    ].filter(Boolean).join(" ");
 
-    const styleSrc = styleSrcArr.filter(Boolean).join(" ");
+    const frameSrc = [
+        "'self'",
+        "https://js.stripe.com",
+        "https://hooks.stripe.com",
+        "https://www.youtube.com",
+        "https://player.vimeo.com",
+    ].filter(Boolean).join(" ");
 
-    const fontSrc = "'self' https://fonts.gstatic.com data:";
-
-    // FIXED: Added tagmanager.google.com to enable GTM Preview Mode
-    const frameSrc = "https://js.stripe.com https://hooks.stripe.com https://tagmanager.google.com";
-
-    const extraCspDirectives: string[] = [];
-    // Permit style attributes in strict dev to reduce dev-only noise without allowing inline <style> without nonce
-    if (strictDev) {
-        extraCspDirectives.push("style-src-attr 'unsafe-inline'");
-    }
+    const extraCspDirectives = [
+        isLenientDev ? "upgrade-insecure-requests" : '',
+    ].filter(Boolean);
 
     const cspDirectives = [
         "default-src 'self'",
@@ -138,19 +139,15 @@ export default function handleRequest(
     responseHeaders: Headers,
     remixContext: EntryContext
 ) {
-    // Generate or reuse per-request nonce
-    const existing = requestNonceMap.get(request);
-    // In strict dev, ensure we always use the fixed dev nonce
-    const generated = STRICT_DEV ? DEV_FIXED_NONCE : crypto.randomBytes(16).toString("base64");
-    const nonce = existing ?? generated;
-    if (!existing) requestNonceMap.set(request, nonce);
+    // Derive the same per-request nonce used by getLoadContext
+    const nonce = deriveNonceForRequest(request);
 
-    // NEW: Add nonce to the response headers via the CSP
+    // Add nonce to the response headers via the CSP
     const csp = generateCsp(nonce);
     responseHeaders.set("Content-Security-Policy", csp);
 
-    // NEW: Pass the nonce to the React application (for Scripts, etc.)
-    remixContext.nonce = nonce;
+    // Pass the nonce to the React application (for Scripts, etc.)
+    (remixContext as ExtendedEntryContext).nonce = nonce;
 
     return isbot(request.headers.get("user-agent"))
         ? handleBotRequest(
@@ -173,7 +170,7 @@ function handleBotRequest(
     responseHeaders: Headers,
     remixContext: EntryContext
 ) {
-    const nonce = (remixContext as any)?.nonce as string | undefined;
+    const nonce = (remixContext as ExtendedEntryContext)?.nonce;
     return new Promise((resolve, reject) => {
         let shellRendered = false;
         const {pipe, abort} = renderToPipeableStream(
@@ -183,7 +180,8 @@ function handleBotRequest(
                 abortDelay={streamTimeout}
             />,
             {
-                nonce, // Ensure React's inline runtime scripts get the CSP nonce
+                nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
+                bootstrapScriptContent: `window.__remixContext.nonce = ${JSON.stringify(nonce)};`,
                 onAllReady() {
                     shellRendered = true;
                     const body = new PassThrough();
@@ -212,7 +210,7 @@ function handleBrowserRequest(
     responseHeaders: Headers,
     remixContext: EntryContext
 ) {
-    const nonce = (remixContext as any)?.nonce as string | undefined;
+    const nonce = (remixContext as ExtendedEntryContext)?.nonce;
     return new Promise((resolve, reject) => {
         let shellRendered = false;
         const {pipe, abort} = renderToPipeableStream(
@@ -222,7 +220,8 @@ function handleBrowserRequest(
                 abortDelay={streamTimeout}
             />,
             {
-                nonce, // Ensure React's inline runtime scripts get the CSP nonce
+                nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
+                bootstrapScriptContent: `window.__remixContext.nonce = ${JSON.stringify(nonce)};`,
                 onShellReady() {
                     shellRendered = true;
                     const body = new PassThrough();

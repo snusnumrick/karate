@@ -35,6 +35,7 @@ export async function loader({context}: LoaderFunctionArgs) {
     if (!nonce && STRICT_DEV) {
         nonce = 'dev-fixed-nonce';
     }
+
     return json({nonce});
 }
 
@@ -171,7 +172,10 @@ function ClientGTM({ nonce }: { nonce?: string }) {
 export function Layout({children}: { children: React.ReactNode }) {
     // Access the nonce provided by the loader
     const loaderData = useLoaderData<typeof loader>();
-    const nonce = loaderData?.nonce || undefined;
+    const nonce = loaderData?.nonce;
+    // Always use dev-fixed-nonce for consistency in development
+    const safeNonce = nonce || 'dev-fixed-nonce';
+
     const classTimes = parseClassTimesForSchema(siteConfig.classes.days, siteConfig.classes.timeLong);
 
     return (
@@ -190,13 +194,12 @@ export function Layout({children}: { children: React.ReactNode }) {
             <Links/>
 
             {/* Provide CSP nonce to Vite dev client via meta tag (Vite reads from content attribute) */}
-            {nonce && <meta property="csp-nonce" content={nonce} />}
+            {safeNonce && <meta property="csp-nonce" content={safeNonce} />}
 
-            {/* Add Organization Schema with nonce */}
+            {/* Organization Schema */}
             <script
-                nonce={nonce}
-                suppressHydrationWarning
                 type="application/ld+json"
+                nonce={safeNonce}
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
@@ -236,11 +239,10 @@ export function Layout({children}: { children: React.ReactNode }) {
                     })
                 }}
             />
-            {/* Add FAQPage Schema with nonce */}
+            {/* FAQPage Schema */}
             <script
-                nonce={nonce}
-                suppressHydrationWarning
                 type="application/ld+json"
+                nonce={safeNonce}
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
@@ -284,23 +286,23 @@ export function Layout({children}: { children: React.ReactNode }) {
             />
         </head>
         <body className="h-full bg-background text-foreground" suppressHydrationWarning>
-        <NonceProvider value={nonce}>
+        <NonceProvider value={safeNonce}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <ErrorBoundaryWrapper>
                 {children} {/* This now correctly renders the nested routes */}
             </ErrorBoundaryWrapper>
         </ThemeProvider>
         {/* GTM injected after hydration to avoid SSR/CSR mismatch */}
-        <ClientGTM nonce={nonce} />
-        {/* Umami analytics (moved from head). No boolean attributes to avoid hydration mismatch */}
+        <ClientGTM nonce={safeNonce} />
+        {/* Umami Analytics */}
         <script
-            nonce={nonce}
             src="https://umami-two-lilac.vercel.app/script.js"
             data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"
-        ></script>
+            nonce={safeNonce}
+        />
         {/* Add nonce to Remix's script components */}
-        <ScrollRestoration nonce={nonce}/>
-        <Scripts nonce={nonce}/>
+        <ScrollRestoration nonce={safeNonce}/>
+        <Scripts nonce={safeNonce} key={`scripts-${safeNonce}`} />
         </NonceProvider>
         </body>
         </html>

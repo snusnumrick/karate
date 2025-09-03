@@ -11,7 +11,7 @@ const DEV_FIXED_NONCE = STRICT_DEV
   ? 'dev-fixed-nonce'
   : crypto.randomBytes(16).toString("base64");
 
-setRemixDevLoadContext((_request: Request) => ({
+setRemixDevLoadContext(() => ({
   nonce: DEV_FIXED_NONCE,
 }));
 
