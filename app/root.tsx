@@ -172,9 +172,46 @@ function ClientGTM({ nonce }: { nonce?: string }) {
 export function Layout({children}: { children: React.ReactNode }) {
     // Access the nonce provided by the loader
     const loaderData = useLoaderData<typeof loader>();
-    const nonce = loaderData?.nonce;
-    // Always use dev-fixed-nonce for consistency in development
-    const safeNonce = nonce || 'dev-fixed-nonce';
+    const loaderNonce = loaderData?.nonce;
+    
+    // Check if we're in strict dev mode
+    const STRICT_DEV = typeof window !== 'undefined' ? 
+        (window as any).__remixContext?.strictDev : 
+        process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
+    
+    // Get nonce from multiple sources during SSR
+    let nonce = loaderNonce;
+    if (typeof window === 'undefined') {
+        // During SSR, also try to get nonce from global context if loader hasn't provided it
+        nonce = nonce || (global as any).__remixContext?.nonce;
+    } else {
+        // On client, get from window context
+        nonce = nonce || (window as any).__remixContext?.nonce;
+    }
+    
+    // Use consistent nonce: prefer available nonce, fallback to dev-fixed-nonce in strict dev mode
+    let safeNonce = nonce || (STRICT_DEV ? 'dev-fixed-nonce' : undefined);
+    
+    // Debug: log nonce values during development
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
+        const renderId = Math.random().toString(36).substr(2, 9);
+        const globalNonce = (global as any).__remixContext?.nonce;
+        console.log(`SSR Layout nonce [${renderId}]:`, { 
+            loaderNonce, 
+            globalNonce,
+            finalNonce: nonce,
+            STRICT_DEV, 
+            safeNonce,
+            safeNonceType: typeof safeNonce,
+            safeNonceLength: safeNonce?.length
+        });
+        // Force nonce during SSR in strict dev mode if it's missing or empty
+        if (STRICT_DEV && (!safeNonce || safeNonce === '')) {
+            safeNonce = 'dev-fixed-nonce';
+            console.log(`Forced safeNonce [${renderId}] to:`, safeNonce);
+        }
+        console.log(`About to render scripts with nonce [${renderId}]:`, safeNonce);
+    }
 
     const classTimes = parseClassTimesForSchema(siteConfig.classes.days, siteConfig.classes.timeLong);
 
@@ -194,12 +231,12 @@ export function Layout({children}: { children: React.ReactNode }) {
             <Links/>
 
             {/* Provide CSP nonce to Vite dev client via meta tag (Vite reads from content attribute) */}
-            {safeNonce && <meta property="csp-nonce" content={safeNonce} />}
+            {safeNonce && <meta name="csp-nonce" content={safeNonce} />}
 
             {/* Organization Schema */}
             <script
                 type="application/ld+json"
-                nonce={safeNonce}
+                suppressHydrationWarning
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
@@ -242,7 +279,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             {/* FAQPage Schema */}
             <script
                 type="application/ld+json"
-                nonce={safeNonce}
+                suppressHydrationWarning
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
@@ -298,11 +335,12 @@ export function Layout({children}: { children: React.ReactNode }) {
         <script
             src="https://umami-two-lilac.vercel.app/script.js"
             data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"
-            nonce={safeNonce}
+            {...(safeNonce ? { nonce: safeNonce } : {})}
+            suppressHydrationWarning
         />
         {/* Add nonce to Remix's script components */}
-        <ScrollRestoration nonce={safeNonce}/>
-        <Scripts nonce={safeNonce} key={`scripts-${safeNonce}`} />
+        <ScrollRestoration {...(safeNonce ? { nonce: safeNonce } : {})}/>
+        <Scripts {...(safeNonce ? { nonce: safeNonce } : {})} key={safeNonce ? `scripts-${safeNonce}` : 'scripts'} />
         </NonceProvider>
         </body>
         </html>
