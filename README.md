@@ -365,6 +365,156 @@ for communication between families and administrators.
   indicators, installation prompts, and comprehensive push notification support for messaging with customizable
   notification settings.
 
+### Content Security Policy (CSP) & Nonce Implementation
+
+This application implements a robust Content Security Policy with cryptographic nonces to prevent XSS attacks while maintaining functionality for legitimate scripts.
+
+#### Overview
+
+CSP nonces are cryptographically secure random values that allow specific inline scripts and styles to execute while blocking unauthorized code injection. Each request generates a unique nonce that must match between the CSP header and script/style tags.
+
+#### Implementation Architecture
+
+**1. Nonce Generation (`app/entry.server.tsx`)**
+
+```typescript
+// Generate deterministic nonce per request using HMAC
+function deriveNonceForRequest(request: Request): string {
+  const url = new URL(request.url);
+  const requestId = `${request.method}:${url.pathname}:${Date.now()}`;
+  return crypto.createHmac('sha256', NONCE_SECRET)
+    .update(requestId)
+    .digest('base64')
+    .slice(0, 16);
+}
+```
+
+**2. CSP Header Configuration**
+
+The CSP policy is dynamically generated with environment-specific rules:
+- **Production/Strict Dev**: Requires nonce for all scripts and styles
+- **Lenient Dev**: Allows `'unsafe-inline'` for development convenience
+- **Script Sources**: Includes trusted domains (Stripe, Google Analytics, Umami)
+- **Style Sources**: Supports nonce-based inline styles and external fonts
+
+**3. Nonce Context Provider (`app/context/nonce.tsx`)**
+
+```typescript
+export function NonceProvider({ value, children }) {
+  return <NonceContext.Provider value={value}>{children}</NonceContext.Provider>;
+}
+
+export function useNonce() {
+  return useContext(NonceContext);
+}
+```
+
+**4. Root Layout Integration (`app/root.tsx`)**
+
+The nonce is:
+- Retrieved from server context in the loader
+- Passed to all child components via `NonceProvider`
+- Applied to Remix's `Scripts` and `ScrollRestoration` components
+- Used for third-party scripts (GTM, Umami Analytics)
+
+#### Development Modes
+
+**Strict Development Mode**
+Enable with `CSP_STRICT_DEV=1` in `.env`:
+- Enforces nonce requirements in development
+- Uses fixed nonce `'dev-fixed-nonce'` for consistency
+- Helps catch CSP violations early
+
+**Lenient Development Mode (Default)**
+- Allows `'unsafe-inline'` for easier development
+- Still generates nonces for production compatibility
+- Automatically switches to strict mode in production
+
+#### Usage Guidelines
+
+**✅ Correct Usage**
+
+```typescript
+// In components, use the useNonce hook
+import { useNonce } from '~/context/nonce';
+
+function MyComponent() {
+  const nonce = useNonce();
+  
+  return (
+    <script 
+      nonce={nonce}
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: 'console.log("Safe script");' }}
+    />
+  );
+}
+```
+
+```typescript
+// For JSON-LD structured data (no nonce needed)
+<script
+  type="application/ld+json"
+  suppressHydrationWarning
+  dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+/>
+```
+
+**❌ Avoid These Patterns**
+
+```typescript
+// Don't use inline event handlers
+<button onClick="alert('XSS')">Bad</button>
+
+// Don't use inline styles without nonce
+<div style="color: red;">Bad</div>
+
+// Don't access nonce from useRouteLoaderData
+const { nonce } = useRouteLoaderData('root'); // Incorrect
+```
+
+#### Hydration Considerations
+
+- Use `suppressHydrationWarning` on script tags with nonces
+- JSON-LD scripts don't need nonces (they're not executable)
+- Client-side injected scripts (GTM) receive nonce via props
+
+#### Testing
+
+The application includes E2E tests to verify:
+- CSP headers contain proper nonce directives
+- Server-rendered HTML includes nonce attributes
+- No hydration mismatches occur
+
+Run CSP-specific tests:
+```bash
+npx playwright test tests/e2e/jsonld-nonce.spec.ts
+```
+
+#### Security Benefits
+
+1. **XSS Prevention**: Blocks unauthorized script execution
+2. **Data Injection Protection**: Prevents malicious style injection
+3. **Third-party Security**: Controls which external resources can load
+4. **Audit Trail**: CSP violation reports help identify attacks
+
+#### Environment Variables
+
+- `CSP_STRICT_DEV`: Enable strict CSP in development (default: false)
+- `SUPABASE_URL`: Used to whitelist Supabase domains in CSP
+
+#### Troubleshooting
+
+**CSP Violations in Development:**
+- Check browser console for CSP violation reports
+- Ensure `useNonce()` is used instead of manual nonce retrieval
+- Verify `suppressHydrationWarning` is added to nonce-bearing elements
+
+**Hydration Mismatches:**
+- Add `suppressHydrationWarning` to script tags
+- Ensure nonce values match between server and client
+- Check that client-side scripts receive nonce via props
+
 ## Technology Stack
 
 - **Frontend**: Remix framework for optimal user experience, server-side rendering, and modern web practices.
