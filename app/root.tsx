@@ -176,17 +176,17 @@ export function Layout({children}: { children: React.ReactNode }) {
     
     // Check if we're in strict dev mode
     const STRICT_DEV = typeof window !== 'undefined' ? 
-        (window as any).__remixContext?.strictDev : 
+        (window as { __remixContext?: { strictDev?: boolean; nonce?: string } }).__remixContext?.strictDev : 
         process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
     
     // Get nonce from multiple sources during SSR
     let nonce = loaderNonce;
     if (typeof window === 'undefined') {
         // During SSR, also try to get nonce from global context if loader hasn't provided it
-        nonce = nonce || (global as any).__remixContext?.nonce;
+        nonce = nonce || (global as { __remixContext?: { nonce?: string } }).__remixContext?.nonce;
     } else {
         // On client, get from window context
-        nonce = nonce || (window as any).__remixContext?.nonce;
+        nonce = nonce || (window as { __remixContext?: { nonce?: string } }).__remixContext?.nonce;
     }
     
     // Use consistent nonce: prefer available nonce, fallback to dev-fixed-nonce in strict dev mode
@@ -195,7 +195,7 @@ export function Layout({children}: { children: React.ReactNode }) {
     // Debug: log nonce values during development
     if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
         const renderId = Math.random().toString(36).substr(2, 9);
-        const globalNonce = (global as any).__remixContext?.nonce;
+        const globalNonce = (global as { __remixContext?: { nonce?: string } }).__remixContext?.nonce;
         console.log(`SSR Layout nonce [${renderId}]:`, { 
             loaderNonce, 
             globalNonce,
@@ -237,6 +237,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
+                {...(safeNonce ? { nonce: safeNonce } : {})}
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
@@ -280,6 +281,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
+                {...(safeNonce ? { nonce: safeNonce } : {})}
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
