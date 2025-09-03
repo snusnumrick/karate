@@ -16,6 +16,7 @@ import {
 } from "@remix-run/node";
 import {ThemeProvider} from "~/components/theme-provider";
 import {siteConfig} from "~/config/site";
+import { NonceProvider } from "~/context/nonce";
 
 import "./tailwind.css";
 
@@ -28,7 +29,13 @@ declare global {
 
 // Loader to get the nonce from the server context
 export async function loader({context}: LoaderFunctionArgs) {
-    return json({nonce: context.nonce as string});
+    // Prefer nonce from server context; in strict dev fallback to fixed dev nonce
+    let nonce = (context as { nonce?: string } | undefined)?.nonce;
+    const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
+    if (!nonce && STRICT_DEV) {
+        nonce = 'dev-fixed-nonce';
+    }
+    return json({nonce});
 }
 
 // Error boundary wrapper can remain as is
@@ -135,12 +142,19 @@ export const meta: MetaFunction = () => {
 function ClientGTM({ nonce }: { nonce?: string }) {
     useEffect(() => {
         try {
+            const gtmId = 'GTM-P7MZ2KL6';
+            // Guard: avoid injecting multiple GTM scripts during HMR or re-mounts
+            const hasExisting = Array.from(document.querySelectorAll<HTMLScriptElement>('script[src^="https://www.googletagmanager.com/gtm.js"]'))
+                .some((s) => s.src.includes(`id=${gtmId}`));
+            if (hasExisting) return;
+
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
             const j = document.createElement('script');
             j.async = true;
-            j.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-P7MZ2KL6';
+            j.src = `https://www.googletagmanager.com/gtm.js?id=${gtmId}`;
             if (nonce) j.setAttribute('nonce', nonce);
+            j.setAttribute('data-gtm-injected', 'true');
             const firstScript = document.getElementsByTagName('script')[0];
             if (firstScript && firstScript.parentNode) {
                 firstScript.parentNode.insertBefore(j, firstScript);
@@ -156,7 +170,8 @@ function ClientGTM({ nonce }: { nonce?: string }) {
 
 export function Layout({children}: { children: React.ReactNode }) {
     // Access the nonce provided by the loader
-    const {nonce} = useLoaderData<typeof loader>();
+    const loaderData = useLoaderData<typeof loader>();
+    const nonce = loaderData?.nonce || undefined;
     const classTimes = parseClassTimesForSchema(siteConfig.classes.days, siteConfig.classes.timeLong);
 
     return (
@@ -173,6 +188,9 @@ export function Layout({children}: { children: React.ReactNode }) {
             <meta name="google-site-verification" content="u2fl3O-U-93ZYbncQ8drQwMBMNDWPY159eyNaoJO3Kk"/>
             <Meta/>
             <Links/>
+
+            {/* Provide CSP nonce to Vite dev client via meta tag (Vite reads from content attribute) */}
+            {nonce && <meta property="csp-nonce" content={nonce} />}
 
             {/* Add Organization Schema with nonce */}
             <script
@@ -266,6 +284,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             />
         </head>
         <body className="h-full bg-background text-foreground" suppressHydrationWarning>
+        <NonceProvider value={nonce}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <ErrorBoundaryWrapper>
                 {children} {/* This now correctly renders the nested routes */}
@@ -282,6 +301,7 @@ export function Layout({children}: { children: React.ReactNode }) {
         {/* Add nonce to Remix's script components */}
         <ScrollRestoration nonce={nonce}/>
         <Scripts nonce={nonce}/>
+        </NonceProvider>
         </body>
         </html>
     );

@@ -1,9 +1,11 @@
-import {Link} from "@remix-run/react"; // Import Link for the button
+import {Link, useRouteLoaderData} from "@remix-run/react"; // Import Link for the button
 import {siteConfig} from "~/config/site"; // Import site config
 // Import types needed for merging parent meta
 import type {MetaArgs, MetaDescriptor, MetaFunction} from "@remix-run/node";
 import {Button} from "~/components/ui/button"; // Import Button component
 import {mergeMeta} from "~/utils/meta";
+import type { loader as rootLoader } from "~/root";
+import { useNonce } from "~/context/nonce";
 
 
 export const meta: MetaFunction = (args: MetaArgs) => {
@@ -25,29 +27,6 @@ export const meta: MetaFunction = (args: MetaArgs) => {
         {property: "og:description", content: "Learn about Sensei Negin, a 5th Dan Black Belt karate instructor."},
         {property: "og:type", content: "profile"}, // Specific OG type for this page
         {property: "og:url", content: `${siteConfig.url}/about`}, // Specific OG URL for this page
-
-        // Add Person Schema for Sensei Negin
-        {
-            "script:ld+json": {
-                "@context": "https://schema.org",
-                "@type": "Person",
-                "name": "Sensei Negin",
-                "jobTitle": "Karate Instructor",
-                "alumniOf": { // Example if applicable, adjust as needed
-                    "@type": "EducationalOrganization",
-                    "name": "University/Institution for Sport Psychology" // Replace with actual institution if known
-                },
-                "knowsAbout": ["Karate", "Martial Arts", "Sport Psychology", "Child Development"],
-                "description": "5th Dan Black Belt karate instructor with a Master's in Sport Psychology, specializing in teaching children.",
-                "url": `${siteConfig.url}/about`, // Use siteConfig
-                // "image": "URL_TO_SENSEI_NEGIN_PHOTO.jpg", // Optional: Add a URL to a photo
-                "worksFor": {
-                    "@type": "Organization",
-                    "name": siteConfig.name,
-                    "url": siteConfig.url // Use siteConfig
-                }
-            }
-        },
         // Override canonical link for this page
         {tagName: "link", rel: "canonical", href: `${siteConfig.url}/about`},
     ];
@@ -57,8 +36,37 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 };
 
 export default function AboutPage() {
+    // Use nonce from NonceContext to ensure availability even if route loader data changes
+    const nonce = useNonce();
+
     return (
         <div className="page-background-styles py-12">
+            {/* JSON-LD Person schema moved from meta() to a nonced script for CSP compliance */}
+            <script
+                nonce={nonce}
+                suppressHydrationWarning
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "Person",
+                        "name": "Sensei Negin",
+                        "jobTitle": "Karate Instructor",
+                        "alumniOf": {
+                            "@type": "EducationalOrganization",
+                            "name": "University/Institution for Sport Psychology"
+                        },
+                        "knowsAbout": ["Karate", "Martial Arts", "Sport Psychology", "Child Development"],
+                        "description": "5th Dan Black Belt karate instructor with a Master's in Sport Psychology, specializing in teaching children.",
+                        "url": `${siteConfig.url}/about`,
+                        "worksFor": {
+                            "@type": "Organization",
+                            "name": siteConfig.name,
+                            "url": siteConfig.url
+                        }
+                    })
+                }}
+            />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">
                     <h1 className="text-3xl font-extrabold page-header-styles sm:text-4xl">
@@ -84,7 +92,7 @@ export default function AboutPage() {
                                 principles with the next generation.
                             </p>
                             <p className="text-gray-600 dark:text-gray-300 mb-6">
-                                With a Master&apos;s degree in Sport Psychology, Sensei Negin brings a unique
+                                With a Master\'s degree in Sport Psychology, Sensei Negin brings a unique
                                 perspective to her teaching,
                                 focusing not just on physical techniques but also on mental strength, discipline, and
                                 personal growth. She has applied this expertise directly, serving as a sport

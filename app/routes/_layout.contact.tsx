@@ -3,7 +3,7 @@ import {Mail, MapPin, Phone} from 'lucide-react'; // Import icons
 // Import types needed for merging parent meta
 import type {MetaDescriptor, MetaFunction, LoaderFunctionArgs} from "@remix-run/node";
 import {json} from "@remix-run/node";
-import {useLoaderData} from "@remix-run/react";
+import {useLoaderData, useRouteLoaderData} from "@remix-run/react";
 // Import shadcn components
 import {Card, CardContent} from "~/components/ui/card";
 import {Input} from "~/components/ui/input";
@@ -141,41 +141,6 @@ export const meta: MetaFunction<typeof loader> = ({matches, data}) => {
         {property: "og:title", content: contactPageTitle},
         {property: "og:description", content: contactPageDescription},
         {property: "og:url", content: `${siteConfig.url}/contact`},
-
-        // Add SportsOrganization Schema with dynamic data
-        {
-            "script:ld+json": {
-                "@context": "https://schema.org",
-                "@type": siteConfig.seo.structuredData.organizationType,
-                "name": siteConfig.name,
-                "description": `Kids Karate Classes (ages ${ageRange}) in Colwood. Classes ${scheduleInfo.days} ${scheduleInfo.times}.`,
-                "address": {
-                    "@type": "PostalAddress",
-                    "streetAddress": siteConfig.location.address,
-                    "addressLocality": siteConfig.location.locality,
-                    "addressRegion": siteConfig.location.region,
-                    "postalCode": siteConfig.location.postalCode,
-                    "addressCountry": siteConfig.location.country
-                },
-                "telephone": siteConfig.contact.phone,
-                "email": siteConfig.contact.email,
-                "url": siteConfig.url,
-                "sport": "Karate",
-                "openingHoursSpecification": getOpeningHoursSpecification(classes),
-                "location": {
-                    "@type": "Place",
-                    "name": "Greenegin Karate Class Location",
-                    "address": {
-                        "@type": "PostalAddress",
-                        "streetAddress": siteConfig.location.address,
-                        "addressLocality": siteConfig.location.locality,
-                        "addressRegion": siteConfig.location.region,
-                        "postalCode": siteConfig.location.postalCode,
-                        "addressCountry": siteConfig.location.country
-                    }
-                }
-            }
-        },
         // Override canonical link for this page
         {tagName: "link", rel: "canonical", href: `${siteConfig.url}/contact`},
     ];
@@ -196,8 +161,51 @@ export default function ContactPage() {
     const ageRange = getAgeRange(programs);
     // console.log('[ContactPage] ageRange', ageRange);
 
+    const rootData = useRouteLoaderData('root') as { nonce?: string } | undefined;
+    const nonce = rootData?.nonce;
+
+    const contactStructuredData = {
+        "@context": "https://schema.org",
+        "@type": siteConfig.seo.structuredData.organizationType,
+        "name": siteConfig.name,
+        "description": `Kids Karate Classes (ages ${ageRange}) in Colwood. Classes ${scheduleInfo.days} ${scheduleInfo.times}.`,
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": siteConfig.location.address,
+            "addressLocality": siteConfig.location.locality,
+            "addressRegion": siteConfig.location.region,
+            "postalCode": siteConfig.location.postalCode,
+            "addressCountry": siteConfig.location.country
+        },
+        "telephone": siteConfig.contact.phone,
+        "email": siteConfig.contact.email,
+        "url": siteConfig.url,
+        "sport": "Karate",
+        "openingHoursSpecification": getOpeningHoursSpecification(classes),
+        "location": {
+            "@type": "Place",
+            "name": "Greenegin Karate Class Location",
+            "address": {
+                "@type": "PostalAddress",
+                "streetAddress": siteConfig.location.address,
+                "addressLocality": siteConfig.location.locality,
+                "addressRegion": siteConfig.location.region,
+                "postalCode": siteConfig.location.postalCode,
+                "addressCountry": siteConfig.location.country
+            }
+        }
+    };
+
     return (
         <div className="min-h-screen page-background-styles py-12 text-foreground">
+            {nonce && (
+                <script
+                    type="application/ld+json"
+                    nonce={nonce}
+                    suppressHydrationWarning
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(contactStructuredData) }}
+                />
+            )}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">
                     <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">

@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "@remix-run/react";
+import { Link, useLoaderData, useRouteLoaderData } from "@remix-run/react";
 import { json, type LoaderFunctionArgs, type MetaFunction, type MetaArgs, type MetaDescriptor } from "@remix-run/node";
 import { siteConfig } from "~/config/site";
 import { getPrograms } from "~/services/program.server";
@@ -59,89 +59,13 @@ export const meta: MetaFunction = (args: MetaArgs) => {
         { tagName: "link", rel: "canonical", href: `${siteConfig.url}/classes` },
     ];
 
-    // Add Course structured data for each active class (only if data is available and stable)
-    if (classes && classes.length > 0) {
-        try {
-            const courseStructuredDataArray = classes
-                .filter(classItem => classItem && classItem.id && classItem.name) // Ensure required fields exist
-                .map((classItem, index) => {
-                    const scheduleData = (classItem.schedules || [])
-                        .filter(schedule => schedule && schedule.day_of_week && schedule.start_time)
-                        .map((schedule) => ({
-                            "@type": "Schedule",
-                            "byDay": schedule.day_of_week.toUpperCase().slice(0, 2),
-                            "startTime": schedule.start_time,
-                            "endTime": "18:00"
-                        }));
-
-                    // Use index-based course code to avoid ID-based hydration issues
-                    const courseCode = `KARATE-${(index + 1).toString().padStart(3, '0')}`;
-
-                    return {
-                        "@context": "https://schema.org",
-                        "@type": "Course",
-                        "name": classItem.name,
-                        "description": classItem.description || "Traditional karate training focusing on technique, discipline, and personal development.",
-                        "provider": {
-                            "@type": "Organization",
-                            "name": siteConfig.name,
-                            "url": siteConfig.url,
-                            "address": {
-                                "@type": "PostalAddress",
-                                "streetAddress": siteConfig.location.address,
-                                "addressLocality": siteConfig.location.locality,
-                                "addressRegion": siteConfig.location.region,
-                                "postalCode": siteConfig.location.postalCode,
-                                "addressCountry": siteConfig.location.country
-                            },
-                            "telephone": siteConfig.contact.phone,
-                            "email": siteConfig.contact.email
-                        },
-                        "courseCode": courseCode,
-                        "educationalLevel": classItem.program?.name || "All Levels",
-                        "teaches": [
-                            "Karate techniques",
-                            "Self-defense",
-                            "Discipline and respect",
-                            "Physical fitness",
-                            "Mental focus"
-                        ],
-                        "timeRequired": "P3M",
-                        "courseSchedule": scheduleData,
-                        "offers": {
-                            "@type": "Offer",
-                            "price": siteConfig.pricing.monthly.toString(),
-                            "priceCurrency": siteConfig.localization.currency,
-                            "category": "Monthly"
-                        },
-                        "audience": {
-                            "@type": "EducationalAudience",
-                            "educationalRole": "student",
-                            "audienceType": classItem.program?.min_age && classItem.program?.max_age
-                                ? `Ages ${classItem.program.min_age}-${classItem.program.max_age}`
-                                : "Children and Adults"
-                        }
-                    };
-                });
-
-            // Add each course as structured data
-            courseStructuredDataArray.forEach((courseData) => {
-                classesMeta.push({
-                    "script:ld+json": courseData
-                });
-            });
-        } catch (error) {
-            console.warn('Error generating course structured data:', error);
-            // Continue without structured data to prevent hydration errors
-        }
-    }
+    // Remove script:ld+json; we'll render JSON-LD scripts in the component with nonce
 
     // Merge parent defaults with specific tags for this page
     return mergeMeta(parentMeta, classesMeta);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function loader(_: LoaderFunctionArgs) {
+export async function loader({ request }: LoaderFunctionArgs) {
     try {
         const supabase = getSupabaseAdminClient();
 
@@ -231,6 +155,8 @@ export async function loader(_: LoaderFunctionArgs) {
 
 export default function ClassesPage() {
     const { programs, classes } = useLoaderData<typeof loader>();
+    const rootData = useRouteLoaderData('root') as { nonce?: string } | undefined;
+    const nonce = rootData?.nonce;
 
     // Helper function to format day names
     const formatDayName = (day: string) => {
@@ -244,6 +170,12 @@ export default function ClassesPage() {
             'sunday': 'Sunday'
         };
         return dayMap[day.toLowerCase()] || day;
+    };
+
+    // Helper to format time for schema (HH:MM)
+    const formatTimeForSchema = (time: string) => {
+        const parts = time.split(':');
+        return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : time;
     };
 
     // Helper function to format time
@@ -300,42 +232,81 @@ export default function ClassesPage() {
             const maxYearly = Math.max(...yearlyFees);
 
             if (minYearly === maxYearly) {
-                tiers.push({ label: "Yearly Membership", description: `$${minYearly} - Paid Annually` });
+                tiers.push({ label: "Yearly", description: `$${minYearly} - Best value` });
             } else {
-                tiers.push({ label: "Yearly Membership", description: `$${minYearly}-$${maxYearly} - Paid Annually` });
+                tiers.push({ label: "Yearly", description: `$${minYearly}-$${maxYearly} - Best value` });
             }
-        }
-
-        // Individual session pricing - only for 1:1 programs (max_capacity = 1)
-        const sessionPrograms = programs.filter(p =>
-            p.individual_session_fee &&
-            p.individual_session_fee > 0 &&
-            p.max_capacity === 1
-        );
-        if (sessionPrograms.length > 0) {
-            const sessionFees = sessionPrograms.map(p => p.individual_session_fee!);
-            const minSession = Math.min(...sessionFees);
-            const maxSession = Math.max(...sessionFees);
-
-            if (minSession === maxSession) {
-                tiers.push({ label: "1:1 Session", description: `$${minSession} - Per Session` });
-            } else {
-                tiers.push({ label: "1:1 Session", description: `$${minSession}-$${maxSession} - Per Session` });
-            }
-        }
-
-        // Fallback to static config if no programs found
-        if (tiers.length === 1) {
-            return siteConfig.pricing.tiers;
         }
 
         return tiers;
     };
 
-    console.log('classes', classes);
+    // Build JSON-LD for classes list
+    const classesStructuredData = classes && classes.length > 0 ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Karate Classes",
+        "description": `Programs and classes offered by ${siteConfig.name}`,
+        "itemListElement": classes.map((c, index) => {
+            const offers: any[] = [];
+            const monthly = c.program?.monthly_fee;
+            const yearly = c.program?.yearly_fee;
+            if (monthly && monthly > 0) {
+                offers.push({
+                    "@type": "Offer",
+                    "price": monthly,
+                    "priceCurrency": siteConfig.localization.currency,
+                    "category": "Monthly",
+                });
+            }
+            if (yearly && yearly > 0) {
+                offers.push({
+                    "@type": "Offer",
+                    "price": yearly,
+                    "priceCurrency": siteConfig.localization.currency,
+                    "category": "Yearly",
+                });
+            }
+
+            return {
+                "@type": "Course",
+                "position": index + 1,
+                "name": c.name,
+                "description": c.description || undefined,
+                "provider": {
+                    "@type": "Organization",
+                    "name": siteConfig.name,
+                    "url": siteConfig.url,
+                },
+                "audience": c.program?.min_age && c.program?.max_age ? {
+                    "@type": "EducationalAudience",
+                    "audienceType": `Ages ${c.program.min_age}-${c.program.max_age}`,
+                } : undefined,
+                "timeRequired": c.program?.duration_minutes ? `PT${c.program.duration_minutes}M` : undefined,
+                "hasCourseInstance": (c.schedules || []).map(s => ({
+                    "@type": "CourseInstance",
+                    "courseMode": "InPerson",
+                    "courseSchedule": {
+                        "@type": "Schedule",
+                        "byDay": [formatDayName(s.day_of_week)],
+                        "startTime": formatTimeForSchema(s.start_time),
+                    }
+                })),
+                "offers": offers.length > 0 ? offers : undefined,
+            };
+        }),
+    } : null;
 
     return (
-        <div className="page-background-styles py-12" suppressHydrationWarning>
+        <div className="min-h-screen page-background-styles py-12">
+            {nonce && classesStructuredData && (
+                <script
+                    type="application/ld+json"
+                    nonce={nonce}
+                    suppressHydrationWarning
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(classesStructuredData) }}
+                />
+            )}
             {/* Hero Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">

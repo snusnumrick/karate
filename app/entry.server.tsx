@@ -13,12 +13,31 @@ import {createReadableStreamFromReadable, EntryContext} from "@remix-run/node";
 
 export const streamTimeout = 5_000;
 
+// Determine strict CSP dev mode and a fixed dev nonce used across SSR/CSR
+const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
+const DEV_FIXED_NONCE = 'dev-fixed-nonce';
+
+// Maintain per-request nonce so getLoadContext and handleRequest share the same value
+const requestNonceMap = new WeakMap<Request, string>();
+
+// Provide load context to all loaders/actions
+export function getLoadContext({ request }: { request: Request }) {
+    const existing = requestNonceMap.get(request);
+    if (existing) return { nonce: existing };
+    // In strict dev, use a fixed nonce so Vite-injected tags and SSR CSP match
+    const nonce = STRICT_DEV ? DEV_FIXED_NONCE : crypto.randomBytes(16).toString("base64");
+    requestNonceMap.set(request, nonce);
+    return { nonce };
+}
+
 // REFACTORED: Moved CSP generation to its own function to avoid duplication
 function generateCsp(nonce: string) {
     const supabaseHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : '';
     const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : '';
 
     const isDevelopment = process.env.NODE_ENV === 'development';
+    const strictDev = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
+    const isLenientDev = isDevelopment && !strictDev;
     const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*' : '';
     const devHttpOrigins = isDevelopment ? 'http://localhost:* http://127.0.0.1:*' : '';
 
@@ -46,8 +65,8 @@ function generateCsp(nonce: string) {
         isDevelopment ? 'blob:' : '',
     ].filter(Boolean).join(" ");
 
-    // In development, do NOT include a nonce for script-src because 'unsafe-inline' is ignored when nonce/hash present
-    const scriptSrcArr = isDevelopment
+    // In lenient development, do NOT include a nonce for script-src because 'unsafe-inline' is ignored when nonce/hash present
+    const scriptSrcArr = isLenientDev
         ? [
             "'self'",
             "'unsafe-inline'",
@@ -71,8 +90,8 @@ function generateCsp(nonce: string) {
 
     const scriptSrc = scriptSrcArr.filter(Boolean).join(" ");
 
-    // In development, do NOT include a nonce for style-src because 'unsafe-inline' is ignored when nonce/hash present
-    const styleSrcArr = isDevelopment
+    // In lenient development, do NOT include a nonce for style-src because 'unsafe-inline' is ignored when nonce/hash present
+    const styleSrcArr = isLenientDev
         ? [
             "'self'",
             "'unsafe-inline'",
@@ -91,6 +110,12 @@ function generateCsp(nonce: string) {
     // FIXED: Added tagmanager.google.com to enable GTM Preview Mode
     const frameSrc = "https://js.stripe.com https://hooks.stripe.com https://tagmanager.google.com";
 
+    const extraCspDirectives: string[] = [];
+    // Permit style attributes in strict dev to reduce dev-only noise without allowing inline <style> without nonce
+    if (strictDev) {
+        extraCspDirectives.push("style-src-attr 'unsafe-inline'");
+    }
+
     const cspDirectives = [
         "default-src 'self'",
         `script-src ${scriptSrc}`,
@@ -101,6 +126,7 @@ function generateCsp(nonce: string) {
         `frame-src ${frameSrc}`,
         "base-uri 'self'",
         "form-action 'self'",
+        ...extraCspDirectives,
     ];
 
     return cspDirectives.join('; ').trim();
@@ -112,14 +138,18 @@ export default function handleRequest(
     responseHeaders: Headers,
     remixContext: EntryContext
 ) {
-    // NEW: Generate a nonce for each request
-    const nonce = crypto.randomBytes(16).toString("base64");
+    // Generate or reuse per-request nonce
+    const existing = requestNonceMap.get(request);
+    // In strict dev, ensure we always use the fixed dev nonce
+    const generated = STRICT_DEV ? DEV_FIXED_NONCE : crypto.randomBytes(16).toString("base64");
+    const nonce = existing ?? generated;
+    if (!existing) requestNonceMap.set(request, nonce);
 
     // NEW: Add nonce to the response headers via the CSP
     const csp = generateCsp(nonce);
     responseHeaders.set("Content-Security-Policy", csp);
 
-    // NEW: Pass the nonce to the React application
+    // NEW: Pass the nonce to the React application (for Scripts, etc.)
     remixContext.nonce = nonce;
 
     return isbot(request.headers.get("user-agent"))

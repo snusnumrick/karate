@@ -1,6 +1,6 @@
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor,  LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData } from "@remix-run/react";
+import { Link, useLoaderData, useRouteLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
@@ -104,50 +104,87 @@ export const meta: MetaFunction = (args: MetaArgs) => {
         { tagName: "link", rel: "canonical", href: siteConfig.url },
     ];
 
-    // Add structured data for events if we have any
-    if (upcomingEvents.length > 0) {
-        const eventsStructuredData = {
-            "@context": "https://schema.org",
-            "@type": "ItemList",
-            "name": "Upcoming Karate Events",
-            "description": "Upcoming karate events and workshops at Sensei Negin's dojo",
-            "itemListElement": upcomingEvents.map((event, index) => ({
-                "@type": "Event",
-                "position": index + 1,
-                "name": event.title,
-                "description": event.description || `${event.event_type_id} event at our karate dojo`,
-                "startDate": event.start_date + (event.start_time ? `T${event.start_time}` : ''),
-                "endDate": event.end_date ? (event.end_date + (event.end_time ? `T${event.end_time}` : '')) : undefined,
-                "location": {
-                     "@type": "Place",
-                     "name": event.location || siteConfig.name,
-                     "address": {
-                         "@type": "PostalAddress",
-                         "streetAddress": event.address || siteConfig.location.address
-                     }
-                 },
-                "organizer": {
-                    "@type": "Organization",
-                    "name": siteConfig.name,
-                    "url": siteConfig.url
-                },
-                "offers": event.registration_fee ? {
-                    "@type": "Offer",
-                    "price": event.registration_fee,
-                    "priceCurrency": "CAD",
-                    "availability": "https://schema.org/InStock"
-                } : undefined,
-                "eventStatus": "https://schema.org/EventScheduled",
-                "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode"
-            }))
-        };
+    // Remove script:ld+json entries; we'll render JSON-LD scripts in the component with nonce
 
-        indexMeta.push({
-            "script:ld+json": eventsStructuredData
-        });
-    }
+    // Merge parent defaults with specific tags for this page
+    return mergeMeta(parentMeta, indexMeta);
+};
 
-    // Add Course structured data for karate classes
+export default function Index() {
+    const { upcomingEvents, eventTypeConfig, scheduleData } = useLoaderData<typeof loader>();
+    const rootData = useRouteLoaderData('root') as { nonce?: string } | undefined;
+    const nonce = rootData?.nonce;
+    const [clientScheduleData, setClientScheduleData] = useState<{
+        days: string;
+        times: string;
+        ageRange: string;
+    } | null>(null);
+
+    useEffect(() => {
+        // Only use client-side data as fallback if server data is not available
+        if (!scheduleData) {
+            const timer = setTimeout(() => {
+                const data = getScheduleData();
+                if (data) {
+                    setClientScheduleData(data);
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [scheduleData]);
+
+    // Priority: server scheduleData > client scheduleData > static config
+    const displaySchedule = scheduleData ? {
+        days: scheduleData.days,
+        time: scheduleData.time,
+        ageRange: scheduleData.ageRange
+    } : clientScheduleData ? {
+        days: clientScheduleData.days,
+        time: clientScheduleData.times, // Map 'times' to 'time' for consistency
+        ageRange: clientScheduleData.ageRange
+    } : {
+        days: siteConfig.classes.days,
+        time: siteConfig.classes.time,
+        ageRange: siteConfig.classes.ageRange
+    };
+
+    // Build JSON-LD structured data objects here and render with nonce
+    const eventsStructuredData = upcomingEvents && upcomingEvents.length > 0 ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Upcoming Karate Events",
+        "description": "Upcoming karate events and workshops at Sensei Negin's dojo",
+        "itemListElement": upcomingEvents.map((event, index) => ({
+            "@type": "Event",
+            "position": index + 1,
+            "name": event.title,
+            "description": event.description || `${event.event_type_id} event at our karate dojo`,
+            "startDate": event.start_date + (event.start_time ? `T${event.start_time}` : ''),
+            "endDate": event.end_date ? (event.end_date + (event.end_time ? `T${event.end_time}` : '')) : undefined,
+            "location": {
+                 "@type": "Place",
+                 "name": event.location || siteConfig.name,
+                 "address": {
+                     "@type": "PostalAddress",
+                     "streetAddress": event.address || siteConfig.location.address
+                 }
+             },
+            "organizer": {
+                "@type": "Organization",
+                "name": siteConfig.name,
+                "url": siteConfig.url
+            },
+            "offers": event.registration_fee ? {
+                "@type": "Offer",
+                "price": event.registration_fee,
+                "priceCurrency": "CAD",
+                "availability": "https://schema.org/InStock"
+            } : undefined,
+            "eventStatus": "https://schema.org/EventScheduled",
+            "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode"
+        }))
+    } : null;
+
     const courseStructuredData = {
         "@context": "https://schema.org",
         "@type": "Course",
@@ -206,52 +243,25 @@ export const meta: MetaFunction = (args: MetaArgs) => {
         }
     };
 
-    indexMeta.push({
-        "script:ld+json": courseStructuredData
-    });
-
-    // Merge parent defaults with specific tags for this page
-    return mergeMeta(parentMeta, indexMeta);
-};
-
-export default function Index() {
-    const { upcomingEvents, eventTypeConfig, scheduleData } = useLoaderData<typeof loader>();
-    const [clientScheduleData, setClientScheduleData] = useState<{
-        days: string;
-        times: string;
-        ageRange: string;
-    } | null>(null);
-
-    useEffect(() => {
-        // Only use client-side data as fallback if server data is not available
-        if (!scheduleData) {
-            const timer = setTimeout(() => {
-                const data = getScheduleData();
-                if (data) {
-                    setClientScheduleData(data);
-                }
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [scheduleData]);
-
-    // Priority: server scheduleData > client scheduleData > static config
-    const displaySchedule = scheduleData ? {
-        days: scheduleData.days,
-        time: scheduleData.time,
-        ageRange: scheduleData.ageRange
-    } : clientScheduleData ? {
-        days: clientScheduleData.days,
-        time: clientScheduleData.times, // Map 'times' to 'time' for consistency
-        ageRange: clientScheduleData.ageRange
-    } : {
-        days: siteConfig.classes.days,
-        time: siteConfig.classes.time,
-        ageRange: siteConfig.classes.ageRange
-    };
-
     return (
         <div className="page-background-styles">
+            {nonce && eventsStructuredData && (
+                <script
+                    type="application/ld+json"
+                    nonce={nonce}
+                    suppressHydrationWarning
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsStructuredData) }}
+                />
+            )}
+            {nonce && (
+                <script
+                    type="application/ld+json"
+                    nonce={nonce}
+                    suppressHydrationWarning
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(courseStructuredData) }}
+                />
+            )}
+
             {/* Hero Section with Background Image */}
             <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
                 {/* Background Image */}

@@ -7,6 +7,7 @@
   "scripts": {
     "build": "vite build && vite build --ssr",
     "dev": "vite dev",
+    "dev:strict": "CSP_STRICT_DEV=1 vite dev",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "start": "remix-serve ./build/server/index.js",
     "typecheck": "tsc",

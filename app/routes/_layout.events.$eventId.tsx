@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Link, useLoaderData, Outlet, useLocation, useRouteError, isRouteErrorResponse } from "@remix-run/react";
+import { Link, useLoaderData, Outlet, useLocation, useRouteError, isRouteErrorResponse, useRouteLoaderData } from "@remix-run/react";
 import { EventService } from "~/services/event.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -23,26 +23,6 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const title = `${event.title} | ${siteConfig.name}`;
   const description = event.description || `Join us for ${event.title} at ${siteConfig.name}`;
 
-  // Determine location for metadata - prioritize event's structured location or basic address
-  const hasEventLocation = event.location_name || event.street_address || event.locality || event.address;
-  const locationName = hasEventLocation 
-    ? (event.location_name || event.location || siteConfig.name)
-    : siteConfig.name;
-  
-  const locationAddress = hasEventLocation ? {
-    streetAddress: event.street_address || event.address || siteConfig.location.address,
-    addressLocality: event.locality || siteConfig.location.locality,
-    addressRegion: event.region || siteConfig.location.region,
-    postalCode: event.postal_code || siteConfig.location.postalCode,
-    addressCountry: event.country || siteConfig.location.country,
-  } : {
-    streetAddress: siteConfig.location.address,
-    addressLocality: siteConfig.location.locality,
-    addressRegion: siteConfig.location.region,
-    postalCode: siteConfig.location.postalCode,
-    addressCountry: siteConfig.location.country,
-  };
-
   return [
     { title },
     { name: "description", content: description },
@@ -50,37 +30,6 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     { property: "og:description", content: description },
     { property: "og:type", content: "event" },
     { property: "og:url", content: `${siteConfig.url}/events/${event.id}` },
-    {
-      "script:ld+json": {
-        "@context": "https://schema.org",
-        "@type": "Event",
-        name: event.title,
-        description: event.description,
-        startDate: `${event.start_date}T${event.start_time || "00:00"}`,
-        endDate: event.end_date ? `${event.end_date}T${event.end_time || "23:59"}` : undefined,
-        location: {
-          "@type": "Place",
-          name: locationName,
-          address: {
-            "@type": "PostalAddress",
-            ...locationAddress,
-          },
-        },
-        organizer: {
-          "@type": "Organization",
-          name: siteConfig.name,
-          url: siteConfig.url,
-        },
-        offers: event.registration_fee ? {
-          "@type": "Offer",
-          price: event.registration_fee,
-          priceCurrency: "CAD",
-          availability: "https://schema.org/InStock",
-          validFrom: event.registration_deadline || event.start_date,
-          validThrough: event.registration_deadline || event.start_date,
-        } : undefined,
-      },
-    },
   ];
 };
 
@@ -112,6 +61,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 export default function EventDetail() {
   const { event, eventTypeColor, formattedEventType } = useLoaderData<typeof loader>();
   const location = useLocation();
+  const rootData = useRouteLoaderData('root') as { nonce?: string } | undefined;
+  const nonce = rootData?.nonce;
 
   // Helper function to format date with weekday using the centralized utility
   const formatDateWithWeekday = (dateString: string) => {
@@ -138,6 +89,56 @@ export default function EventDetail() {
   // Registration is available if event is open AND (no deadline OR deadline hasn't passed)
   const canRegister = isRegistrationOpen && !registrationDeadlinePassed;
 
+  // Build JSON-LD structured data for the event using the same logic as before
+  const hasEventLocation = event.location_name || event.street_address || event.locality || event.address;
+  const locationName = hasEventLocation 
+    ? (event.location_name || event.location || siteConfig.name)
+    : siteConfig.name;
+
+  const locationAddress = hasEventLocation ? {
+    streetAddress: event.street_address || event.address || siteConfig.location.address,
+    addressLocality: event.locality || siteConfig.location.locality,
+    addressRegion: event.region || siteConfig.location.region,
+    postalCode: event.postal_code || siteConfig.location.postalCode,
+    addressCountry: event.country || siteConfig.location.country,
+  } : {
+    streetAddress: siteConfig.location.address,
+    addressLocality: siteConfig.location.locality,
+    addressRegion: siteConfig.location.region,
+    postalCode: siteConfig.location.postalCode,
+    addressCountry: siteConfig.location.country,
+  };
+
+  const eventStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    description: event.description,
+    startDate: `${event.start_date}T${event.start_time || "00:00"}`,
+    endDate: event.end_date ? `${event.end_date}T${event.end_time || "23:59"}` : undefined,
+    location: {
+      "@type": "Place",
+      name: locationName,
+      address: {
+        "@type": "PostalAddress",
+        ...locationAddress,
+      },
+    },
+    organizer: {
+      "@type": "Organization",
+      name: siteConfig.name,
+      url: siteConfig.url,
+    },
+    offers: event.registration_fee ? {
+      "@type": "Offer",
+      price: event.registration_fee,
+      priceCurrency: "CAD",
+      availability: "https://schema.org/InStock",
+      validFrom: event.registration_deadline || event.start_date,
+      validThrough: event.registration_deadline || event.start_date,
+    } : undefined,
+  };
+
   // Check if we're on a nested route (like /register)
   const isNestedRoute = location.pathname !== `/events/${event.id}`;
 
@@ -148,6 +149,14 @@ export default function EventDetail() {
 
   return (
     <div className="min-h-screen page-background-styles py-12">
+      {nonce && (
+        <script
+          type="application/ld+json"
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(eventStructuredData) }}
+        />
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb Navigation */}
         <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-8">

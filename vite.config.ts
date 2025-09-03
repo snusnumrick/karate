@@ -1,6 +1,19 @@
 import { vitePlugin as remix } from "@remix-run/dev";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import crypto from "node:crypto";
+import { setRemixDevLoadContext } from "@remix-run/dev/dist/vite/plugin";
+
+// Ensure loaders/actions receive a consistent nonce during Vite development
+// In strict dev CSP, use a fixed dev nonce to avoid SSR/CSR mismatches
+const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
+const DEV_FIXED_NONCE = STRICT_DEV
+  ? 'dev-fixed-nonce'
+  : crypto.randomBytes(16).toString("base64");
+
+setRemixDevLoadContext((_request: Request) => ({
+  nonce: DEV_FIXED_NONCE,
+}));
 
 // Add type declaration for future flags
 declare module "@remix-run/node" {
@@ -11,6 +24,10 @@ declare module "@remix-run/node" {
 }
 
 export default defineConfig({
+  html: {
+    // Let Vite add nonce to its injected <script>, <style> and <link> tags
+    cspNonce: DEV_FIXED_NONCE,
+  },
   plugins: [
     remix({
       future: {
