@@ -173,6 +173,7 @@ function handleBotRequest(
     responseHeaders: Headers,
     remixContext: EntryContext
 ) {
+    const nonce = (remixContext as any)?.nonce as string | undefined;
     return new Promise((resolve, reject) => {
         let shellRendered = false;
         const {pipe, abort} = renderToPipeableStream(
@@ -182,6 +183,7 @@ function handleBotRequest(
                 abortDelay={streamTimeout}
             />,
             {
+                nonce, // Ensure React's inline runtime scripts get the CSP nonce
                 onAllReady() {
                     shellRendered = true;
                     const body = new PassThrough();
@@ -210,6 +212,7 @@ function handleBrowserRequest(
     responseHeaders: Headers,
     remixContext: EntryContext
 ) {
+    const nonce = (remixContext as any)?.nonce as string | undefined;
     return new Promise((resolve, reject) => {
         let shellRendered = false;
         const {pipe, abort} = renderToPipeableStream(
@@ -219,6 +222,7 @@ function handleBrowserRequest(
                 abortDelay={streamTimeout}
             />,
             {
+                nonce, // Ensure React's inline runtime scripts get the CSP nonce
                 onShellReady() {
                     shellRendered = true;
                     const body = new PassThrough();
