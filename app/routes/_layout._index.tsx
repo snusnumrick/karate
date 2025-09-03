@@ -1,6 +1,6 @@
 // Import types needed for merging parent meta
 import type { MetaFunction, MetaArgs, MetaDescriptor,  LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData, useRouteLoaderData } from "@remix-run/react";
+import { Link, useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { getScheduleData } from "~/utils/site-data.client";
 import { formatTime } from "~/utils/schedule";
 import { formatDate } from "~/utils/misc";
+import { useNonce } from "~/context/nonce";
 // Server imports moved to loader function only
 
 type UpcomingEventWithFormatted = UpcomingEvent & {
@@ -84,10 +85,6 @@ export const meta: MetaFunction = (args: MetaArgs) => {
     // Get the already computed meta tags from the parent route match
     const parentMeta = parentMatch?.meta || [];
 
-    // Get loader data for events
-    const loaderData = args.data as { upcomingEvents: UpcomingEvent[] } | undefined;
-    const upcomingEvents = loaderData?.upcomingEvents || [];
-
     // Define meta tags specific to this Index page
     const indexPageTitle = "Karate Classes - Sensei Negin";
     // Use siteConfig.location.address for consistency in description
@@ -112,8 +109,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
 export default function Index() {
     const { upcomingEvents, eventTypeConfig, scheduleData } = useLoaderData<typeof loader>();
-    const rootData = useRouteLoaderData('root') as { nonce?: string } | undefined;
-    const nonce = rootData?.nonce;
+    const nonce = useNonce();
     const [clientScheduleData, setClientScheduleData] = useState<{
         days: string;
         times: string;
@@ -256,7 +252,6 @@ export default function Index() {
             {nonce && (
                 <script
                     type="application/ld+json"
-                    nonce={nonce}
                     suppressHydrationWarning
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(courseStructuredData) }}
                 />

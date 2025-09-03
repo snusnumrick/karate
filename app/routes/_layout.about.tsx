@@ -1,10 +1,9 @@
-import {Link, useRouteLoaderData} from "@remix-run/react"; // Import Link for the button
+import {Link} from "@remix-run/react"; // Import Link for the button
 import {siteConfig} from "~/config/site"; // Import site config
 // Import types needed for merging parent meta
 import type {MetaArgs, MetaDescriptor, MetaFunction} from "@remix-run/node";
 import {Button} from "~/components/ui/button"; // Import Button component
 import {mergeMeta} from "~/utils/meta";
-import type { loader as rootLoader } from "~/root";
 import { useNonce } from "~/context/nonce";
 
 
@@ -92,7 +91,7 @@ export default function AboutPage() {
                                 principles with the next generation.
                             </p>
                             <p className="text-gray-600 dark:text-gray-300 mb-6">
-                                With a Master\'s degree in Sport Psychology, Sensei Negin brings a unique
+                                With a Master&apos;s degree in Sport Psychology, Sensei Negin brings a unique
                                 perspective to her teaching,
                                 focusing not just on physical techniques but also on mental strength, discipline, and
                                 personal growth. She has applied this expertise directly, serving as a sport
