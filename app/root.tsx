@@ -237,7 +237,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
-                {...(safeNonce ? { nonce: safeNonce } : {})}
+                nonce={safeNonce}
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
@@ -281,7 +281,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
-                {...(safeNonce ? { nonce: safeNonce } : {})}
+                nonce={safeNonce}
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
@@ -337,12 +337,12 @@ export function Layout({children}: { children: React.ReactNode }) {
         <script
             src="https://umami-two-lilac.vercel.app/script.js"
             data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"
-            {...(safeNonce ? { nonce: safeNonce } : {})}
+            nonce={safeNonce}
             suppressHydrationWarning
         />
         {/* Add nonce to Remix's script components */}
-        <ScrollRestoration {...(safeNonce ? { nonce: safeNonce } : {})}/>
-        <Scripts {...(safeNonce ? { nonce: safeNonce } : {})} key={safeNonce ? `scripts-${safeNonce}` : 'scripts'} />
+        <ScrollRestoration nonce={safeNonce}/>
+        <Scripts nonce={safeNonce} key={safeNonce ? `scripts-${safeNonce}` : 'scripts'} />
         </NonceProvider>
         </body>
         </html>
