@@ -29,11 +29,18 @@ declare global {
 
 // Loader to get the nonce from the server context
 export async function loader({context}: LoaderFunctionArgs) {
-    // Prefer nonce from server context; in strict dev fallback to fixed dev nonce
+    // Get nonce from server context (provided by getLoadContext in entry.server.tsx)
     let nonce = (context as { nonce?: string } | undefined)?.nonce;
+    
+    // In strict dev mode, fallback to fixed dev nonce if no nonce is provided
     const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
     if (!nonce && STRICT_DEV) {
         nonce = 'dev-fixed-nonce';
+    }
+    
+    // Debug logging in development
+    if (process.env.NODE_ENV === 'development') {
+        console.log('Root loader nonce:', { nonce, STRICT_DEV, contextNonce: (context as any)?.nonce });
     }
 
     return json({nonce});
