@@ -173,8 +173,16 @@ function ClientGTM({ nonce }: { nonce?: string }) {
                 .some((s) => s.src.includes(`id=${gtmId}`));
             if (hasExisting) return;
 
-            window.dataLayer = window.dataLayer || [];
-            window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+            // Initialize dataLayer with a nonce-compliant inline script
+            const initScript = document.createElement('script');
+            if (nonce) initScript.setAttribute('nonce', nonce);
+            initScript.textContent = `
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push({ 'gtm.start': ${Date.now()}, event: 'gtm.js' });
+            `;
+            document.head.appendChild(initScript);
+
+            // Load GTM script with nonce
             const j = document.createElement('script');
             j.async = true;
             j.src = `https://www.googletagmanager.com/gtm.js?id=${gtmId}`;
