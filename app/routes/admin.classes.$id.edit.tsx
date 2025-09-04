@@ -1,5 +1,7 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Form, useNavigation, useActionData, Link, useSubmit } from "@remix-run/react";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -56,6 +58,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const classId = params.id;
   if (!classId) {
     throw new Response("Class ID is required", { status: 400 });
+  }
+
+  try {
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ error: 'Security validation failed. Please try again.' }, { status: 403 });
   }
 
   try {
@@ -230,6 +239,7 @@ export default function EditClass() {
           </CardHeader>
           <CardContent className="space-y-6">
           <Form method="post" className="space-y-8">
+            <AuthenticityTokenInput />
             <input type="hidden" name="intent" value="update" />
 
             {/* Basic Information Section */}

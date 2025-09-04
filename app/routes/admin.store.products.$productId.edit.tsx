@@ -1,5 +1,7 @@
 import { Form, Link, useActionData, useLoaderData, useNavigation, useSubmit } from "@remix-run/react"; // Added useSubmit
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button, buttonVariants } from "~/components/ui/button"; // Import buttonVariants
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -72,6 +74,14 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     // Admin check happens in the parent _admin layout loader
     const { response } = getSupabaseServerClient(request);
     const headers = response.headers;
+    
+    try {
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json({ error: 'Security validation failed. Please try again.' }, { status: 403, headers });
+    }
+    
     const formData = await request.formData();
     const intent = formData.get('intent') as string; // Get intent first
 
@@ -350,6 +360,7 @@ export default function EditProductPage() {
             )}
 
             <Form method="post" className="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <AuthenticityTokenInput />
                 {/* Hidden input for edit intent */}
                 <input type="hidden" name="intent" value="edit" />
                 {/* Product Name */}

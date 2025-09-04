@@ -1,9 +1,11 @@
 import {siteConfig} from "~/config/site"; // Import site config
 import {Mail, MapPin, Phone} from 'lucide-react'; // Import icons
 // Import types needed for merging parent meta
-import type {MetaDescriptor, MetaFunction, LoaderFunctionArgs} from "@remix-run/node";
+import type {MetaDescriptor, MetaFunction, LoaderFunctionArgs, ActionFunctionArgs} from "@remix-run/node";
 import {json} from "@remix-run/node";
-import {useLoaderData, useRouteLoaderData} from "@remix-run/react";
+import {useLoaderData, useRouteLoaderData, Form, useActionData} from "@remix-run/react";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 // Import shadcn components
 import {Card, CardContent} from "~/components/ui/card";
 import {Input} from "~/components/ui/input";
@@ -20,6 +22,17 @@ import {
     getOpeningHoursSpecification
 } from "~/utils/schedule";
 
+type ActionData = {
+    success?: boolean;
+    error?: string;
+    fieldErrors?: {
+        name?: string;
+        email?: string;
+        subject?: string;
+        message?: string;
+    };
+};
+
 // Type definitions
 type Session = Database['public']['Tables']['class_sessions']['Row'];
 type PartialSession = Pick<Session, 'class_id' | 'session_date' | 'start_time' | 'end_time'>;
@@ -32,6 +45,53 @@ type LoaderData = {
   programs: Program[];
   classes: ClassWithSchedule[];
 };
+
+export async function action({request}: ActionFunctionArgs): Promise<Response> {
+    try {
+        // Validate CSRF token
+        await csrf.validate(request);
+        
+        const formData = await request.formData();
+        const name = formData.get("name")?.toString();
+        const email = formData.get("email")?.toString();
+        const phone = formData.get("phone")?.toString();
+        const subject = formData.get("subject")?.toString();
+        const message = formData.get("message")?.toString();
+        
+        // Basic validation
+        const fieldErrors: ActionData["fieldErrors"] = {};
+        
+        if (!name || name.trim().length < 2) {
+            fieldErrors.name = "Name must be at least 2 characters long";
+        }
+        
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            fieldErrors.email = "Please enter a valid email address";
+        }
+        
+        if (!subject || subject.trim().length < 3) {
+            fieldErrors.subject = "Subject must be at least 3 characters long";
+        }
+        
+        if (!message || message.trim().length < 10) {
+            fieldErrors.message = "Message must be at least 10 characters long";
+        }
+        
+        if (Object.keys(fieldErrors).length > 0) {
+            return json<ActionData>({ fieldErrors }, { status: 400 });
+        }
+        
+        // Here you would typically send the email or save to database
+        // For now, we'll just simulate success
+        console.log("Contact form submission:", { name, email, phone, subject, message });
+        
+        return json<ActionData>({ success: true });
+        
+    } catch (error) {
+        console.error("Contact form error:", error);
+        return json<ActionData>({ error: "Failed to send message. Please try again." }, { status: 500 });
+    }
+}
 
 // Loader function to fetch dynamic data
 export async function loader({request}: LoaderFunctionArgs) {
@@ -153,6 +213,7 @@ export const meta: MetaFunction<typeof loader> = ({matches, data}) => {
 
 export default function ContactPage() {
     const {programs, classes} = useLoaderData<LoaderData>();
+    const actionData = useActionData<ActionData>();
     // console.log('[ContactPage] classes', classes);
 
     // Use dynamic data from database
@@ -342,7 +403,21 @@ export default function ContactPage() {
                     <div className="border-t border-border pt-8">
                         <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">SEND A
                             MESSAGE</h2>
-                        <form className="space-y-4">
+                        
+                        {actionData?.success && (
+                            <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                                <p className="text-green-800 dark:text-green-200">Thank you! Your message has been sent successfully.</p>
+                            </div>
+                        )}
+                        
+                        {actionData?.error && (
+                            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                                <p className="text-red-800 dark:text-red-200">{actionData.error}</p>
+                            </div>
+                        )}
+                        
+                        <Form method="post" className="space-y-4">
+                            <AuthenticityTokenInput />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="name" className="text-sm font-medium mb-1">Your Name</Label>
@@ -355,6 +430,9 @@ export default function ContactPage() {
                                         placeholder="Your full name"
                                         className="input-custom-styles"
                                     />
+                                    {actionData?.fieldErrors?.name && (
+                                        <p className="text-sm text-red-600 dark:text-red-400">{actionData.fieldErrors.name}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -368,6 +446,9 @@ export default function ContactPage() {
                                         placeholder="your.email@example.com"
                                         className="input-custom-styles"
                                     />
+                                    {actionData?.fieldErrors?.email && (
+                                        <p className="text-sm text-red-600 dark:text-red-400">{actionData.fieldErrors.email}</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -391,6 +472,9 @@ export default function ContactPage() {
                                     placeholder="Enter subject"
                                     className="input-custom-styles"
                                 />
+                                {actionData?.fieldErrors?.subject && (
+                                    <p className="text-sm text-red-600 dark:text-red-400">{actionData.fieldErrors.subject}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -403,6 +487,9 @@ export default function ContactPage() {
                                     placeholder="Enter your message"
                                     className="input-custom-styles"
                                 />
+                                {actionData?.fieldErrors?.message && (
+                                    <p className="text-sm text-red-600 dark:text-red-400">{actionData.fieldErrors.message}</p>
+                                )}
                             </div>
 
                             <div>
@@ -410,7 +497,7 @@ export default function ContactPage() {
                                     Send Message
                                 </Button>
                             </div>
-                        </form>
+                        </Form>
                     </div>
                 </div>
             </div>

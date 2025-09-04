@@ -1,5 +1,7 @@
 import { type ActionFunctionArgs, json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { csrf } from "~/utils/csrf.server";
 import { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -102,6 +104,8 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!user) {
     throw new Response('Unauthorized', { status: 401 });
   }
+
+  await csrf.validate(request);
 
   const formData = await request.formData();
 
@@ -345,6 +349,7 @@ export default function AdminNewDiscountCodePage() {
       )}
 
       <Form method="post">
+        <AuthenticityTokenInput />
         {/* Basic Information Section */}
         <section className="mb-6">
           <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Basic Information</h2>

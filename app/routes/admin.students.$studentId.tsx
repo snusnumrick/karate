@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 // Response is globally available or comes from web fetch API, not @remix-run/node
 import { type ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation, useRouteError, isRouteErrorResponse } from "@remix-run/react"; // Added isRouteErrorResponse
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 // createClient is only needed for admin actions until fully refactored
 // Removed unused createClient import
 import { getSupabaseServerClient } from "~/utils/supabase.server";
@@ -88,6 +90,13 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     const studentId = params.studentId;
     if (!studentId) {
         return json({error: "Student ID is required"}, {status: 400});
+    }
+
+    try {
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json({ error: 'Security validation failed. Please try again.' }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -261,6 +270,7 @@ export default function AdminStudentDetailPage() {
             {isEditing ? (
                 // --- Edit Form ---
                 <Form method="post" className="space-y-6">
+                    <AuthenticityTokenInput />
                     <input type="hidden" name="intent" value="edit"/>
 
                     {/* Information Section */}
@@ -496,6 +506,7 @@ export default function AdminStudentDetailPage() {
                         <h2 className="text-xl font-semibold mb-4 border-b pb-2">Record Individual Session Usage</h2>
                         {student.familyIndividualSessionBalance > 0 ? ( // Use renamed field
                             <Form method="post" id="record-usage-form" className="space-y-4"> {/* Add form ID */}
+                                <AuthenticityTokenInput />
                                 <input type="hidden" name="intent" value="recordUsage"/>
                                 <div>
                                     <Label htmlFor="sessionPurchaseId">Session Batch</Label>

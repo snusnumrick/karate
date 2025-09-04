@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link, useSearchParams, useFetcher, useRouteError } from "@remix-run/react";
+import { csrf } from "~/utils/csrf.server";
 import { Building2, FileText, Trash2, Search, Plus, Users, Landmark, Briefcase, HelpCircle, CheckCircle, AlertCircle } from "lucide-react";
 import { getInvoiceEntitiesWithStats, deleteInvoiceEntity } from "~/services/invoice-entity.server";
 import type { EntityType, InvoiceEntityWithStats } from "~/types/invoice";
@@ -52,7 +53,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   try {
     const entities = await getInvoiceEntitiesWithStats(filters);
-    return json({ entities, filters: { search, entityType, isActive } });
+    const csrfToken = await csrf.commitToken(request);
+    return json({ entities, totalCount: entities.length, entityTypes: [], filters: { search, entityType, isActive }, csrfToken });
   } catch (error) {
     console.error("Error loading invoice entities:", error);
     throw new Response("Failed to load invoice entities", { status: 500 });
@@ -60,6 +62,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
+  try {
+    // Validate CSRF token
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ error: 'Security validation failed. Please try again.' }, { status: 403 });
+  }
+  
   const formData = await request.formData();
   const action = formData.get("action");
   const entityId = formData.get("entityId");
@@ -119,7 +129,8 @@ const entityTypeColors = {
 };
 
 export default function InvoiceEntitiesIndexPage() {
-  const { entities, filters } = useLoaderData<typeof loader>();
+  const { entities, filters: initialFilters, csrfToken } = useLoaderData<typeof loader>();
+  const filters = initialFilters;
   const [searchParams, setSearchParams] = useSearchParams();
   const fetcher = useFetcher();
   const [optimisticUpdates, setOptimisticUpdates] = useState<Record<string, boolean>>({});
@@ -149,6 +160,10 @@ export default function InvoiceEntitiesIndexPage() {
     
     // Submit the change
     const formData = new FormData();
+    const tokenValue = Array.isArray(csrfToken) ? csrfToken[1] : csrfToken;
+    if (tokenValue) {
+      formData.append("csrf", tokenValue);
+    }
     formData.append("is_active", newStatus.toString());
     
     fetcher.submit(formData, {
@@ -178,6 +193,10 @@ export default function InvoiceEntitiesIndexPage() {
       setFeedback({ type: null, message: '' });
       
       const formData = new FormData();
+      const tokenValue = Array.isArray(csrfToken) ? csrfToken[1] : csrfToken;
+      if (tokenValue) {
+        formData.append("csrf", tokenValue);
+      }
       formData.append("action", "delete");
       formData.append("entityId", entityToDelete.id);
       

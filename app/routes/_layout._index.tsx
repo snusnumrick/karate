@@ -252,7 +252,6 @@ export default function Index() {
             {nonce && (
                 <script
                     type="application/ld+json"
-                    nonce={nonce}
                     suppressHydrationWarning
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(courseStructuredData) }}
                 />

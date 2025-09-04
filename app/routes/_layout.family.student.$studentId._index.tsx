@@ -1,6 +1,8 @@
 import {useEffect, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import { getStudentPaymentOptions, type StudentPaymentOptions } from '~/services/enrollment-payment.server';
 import { getFamilyIndividualSessions, type IndividualSessionInfo, getStudentPaymentEligibilityData, type PaymentEligibilityData } from '~/services/payment-eligibility.server';
@@ -56,6 +58,7 @@ type LoaderData = {
     paymentOptions: StudentPaymentOptions | null; // Add payment options
     individualSessions: IndividualSessionInfo | null; // Add individual session info
     paymentEligibilityData: PaymentEligibilityData | null; // Add payment eligibility data
+    csrfToken: string; // Add CSRF token
 };
 
 // Define potential action data structure
@@ -179,6 +182,12 @@ export async function loader({request, params}: LoaderFunctionArgs) {
     }
     console.log('eligibility', paymentEligibilityData?.studentPaymentDetails[0]?.eligibility);
 
+    // Generate CSRF token
+    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+    if (csrfCookieHeader) {
+        headers.append('Set-Cookie', csrfCookieHeader);
+    }
+
     // Return the student data, belt awards, derived current rank, enrollments, payment options, individual sessions, and payment eligibility data
     return json({
         student: studentData as StudentRow,
@@ -187,7 +196,8 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         enrollments: enrollments,
         paymentOptions: paymentOptions,
         individualSessions: individualSessions,
-        paymentEligibilityData: paymentEligibilityData
+        paymentEligibilityData: paymentEligibilityData,
+        csrfToken: csrfToken
     }, {headers});
 }
 
@@ -199,6 +209,13 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     }
 
     const formData = await request.formData();
+    
+    // CSRF protection
+    try {
+        await csrf.validate(formData, request.headers);
+    } catch {
+        return json({error: "Invalid CSRF token"}, {status: 403});
+    }
     const intent = formData.get("intent");
     console.log(`[Action/EditStudent] Received form submission for student ID: ${studentId} with intent: ${intent}`);
     const {supabaseServer, response} = getSupabaseServerClient(request);
@@ -330,7 +347,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
 export default function StudentDetailPage() {
     // Update to use the extended LoaderData type including currentBeltRank and enrollments
-    const {student, beltAwards, currentBeltRank, enrollments, paymentOptions, individualSessions, paymentEligibilityData} = useLoaderData<LoaderData>();
+    const {student, beltAwards, currentBeltRank, enrollments, paymentOptions, individualSessions, paymentEligibilityData, csrfToken} = useLoaderData<LoaderData>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const submit = useSubmit(); // Get submit hook
@@ -517,6 +534,7 @@ export default function StudentDetailPage() {
                 // --- Edit Form ---
                 <Form method="post" className="space-y-6">
                     <input type="hidden" name="intent" value="edit"/>
+                    <AuthenticityTokenInput />
 
                     {/* Information Section */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
@@ -998,6 +1016,7 @@ export default function StudentDetailPage() {
                                     onClick={() => {
                                         const formData = new FormData();
                                         formData.append('intent', 'delete');
+                                        formData.append('csrf', csrfToken);
                                         submit(formData, { method: 'post', replace: true });
                                     }}
                                     disabled={isSubmitting && formIntent === 'delete'}

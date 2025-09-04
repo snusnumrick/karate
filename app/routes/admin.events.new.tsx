@@ -1,5 +1,7 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/react";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { csrf } from "~/utils/csrf.server";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -103,6 +105,8 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!user) {
     return redirect("/login", { headers });
   }
+
+  await csrf.validate(request);
 
   const formData = await request.formData();
   
@@ -262,6 +266,7 @@ export default function NewEvent() {
       )}
 
       <Form method="post" className="space-y-6">
+        <AuthenticityTokenInput />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Basic Information */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">

@@ -64,6 +64,16 @@ npm run dev
 - **Notifications**: Web Push API with VAPID
 - **Deployment**: Vercel with Edge Functions
 
+## 🔒 Security Features
+
+- **CSRF Protection**: Comprehensive Cross-Site Request Forgery protection on all forms
+- **Content Security Policy**: Strict CSP with nonce-based script execution
+- **Authentication**: Secure JWT-based authentication via Supabase Auth
+- **Authorization**: Role-based access control for admin and family users
+- **Payment Security**: PCI-compliant payment processing through Stripe
+- **Data Protection**: Row Level Security (RLS) policies and input validation
+- **HTTPS Enforcement**: SSL/TLS encryption for all communications
+
 ## 📋 System Requirements
 
 - Node.js 18+ 

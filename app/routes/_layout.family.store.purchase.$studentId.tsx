@@ -15,6 +15,8 @@ import { formatCurrency } from "~/utils/misc"; // Assuming you have a currency f
 // For tax calculation consistency
 import { Info } from 'lucide-react'; // Added Info icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
 
 // --- Helper Function for Size Recommendation ---
 const tShirtToUniformSizeMap: Record<Database['public']['Enums']['t_shirt_size_enum'], string> = {
@@ -155,6 +157,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     if (!user) {
         return redirect(`/login?redirectTo=/family/store/purchase/${studentId}`, { headers });
     }
+
+    // CSRF validation
+    await csrf.validate(request);
 
     // Fetch student data (only needed fields)
     const { data: studentData, error: studentError } = await supabaseServer
@@ -507,6 +512,7 @@ export default function PurchaseGiPage() {
             {/* Render form only if there are products */}
             {products.length > 0 && (
                  <Form method="post" action={`/family/store/purchase/${params.studentId}`}>
+                    <AuthenticityTokenInput />
                     {/* Map over each product */}
                     {products.map((product) => (
                         <Card key={product.id} className="mb-6"> {/* Added margin-bottom */}

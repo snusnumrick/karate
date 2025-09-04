@@ -1,5 +1,7 @@
 import {type ActionFunctionArgs, json, redirect, TypedResponse} from "@remix-run/node";
 import {Form, Link, useActionData, useNavigation} from "@remix-run/react";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
@@ -24,6 +26,9 @@ type ActionData = {
 
 // Action function to handle admin family creation
 export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
+    // Validate CSRF token
+    await csrf.validate(request);
+    
     const formData = await request.formData();
 
     // --- Data Extraction ---
@@ -288,6 +293,7 @@ export default function AdminNewFamilyPage() {
             )}
 
             <Form method="post" className="space-y-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <AuthenticityTokenInput />
 
                 {/* Referral Information Section */}
                 <section>

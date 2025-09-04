@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData } from "@remix-run/react";
+import { csrf } from "~/utils/csrf.server";
 import { InvoiceForm } from "~/components/InvoiceForm";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { createInvoice, getInvoiceById, updateInvoiceStatus } from "~/services/invoice.server";
@@ -64,6 +65,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireUserId(request);
+  await csrf.validate(request);
   
   const formData = await request.formData();
   const action = formData.get("action") as string;

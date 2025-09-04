@@ -5,6 +5,7 @@ import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 import { Send } from 'lucide-react';
 import { type ActionData } from '~/routes/_layout.family.messages.$conversationId'; // Import action data type
+import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
 
 interface MessageInputProps {
     fetcher: FetcherWithComponents<ActionData>; // Use the specific fetcher type
@@ -44,6 +45,7 @@ const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
 
         return (
             <fetcher.Form ref={formRef} method="post" className="flex items-start space-x-2 p-2 border-t border-border"> {/* Use border-border */}
+                <AuthenticityTokenInput />
                 <Textarea
                     ref={ref} // Pass the forwarded ref here
                     name="content"

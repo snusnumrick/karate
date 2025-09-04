@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData } from "@remix-run/react";
+import { csrf } from "~/utils/csrf.server";
 import { InvoiceForm } from "~/components/InvoiceForm";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntities } from "~/services/invoice-entity.server";
@@ -114,6 +115,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const { id } = params;
   if (!id) {
     throw new Response("Invoice ID is required", { status: 400 });
+  }
+  
+  try {
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ errors: { general: 'Security validation failed. Please try again.' } }, { status: 403 });
   }
   
   const formData = await request.formData();

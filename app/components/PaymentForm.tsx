@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import type { AvailableDiscountCode, AvailableDiscountsResponse } from '~/routes/api.available-discounts.$familyId';
 import type { DiscountValidationResult } from '~/types/discount';
 import {StudentPaymentDetail} from "~/types/payment";
+import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
 
 // Payment options type
 type PaymentOption = 'monthly' | 'yearly' | 'individual';
@@ -672,6 +673,7 @@ export function PaymentForm({
 
           {/* Payment Form */}
           <fetcher.Form method="post" ref={formRef} id="payment-setup-form" action={actionEndpoint}>
+            <AuthenticityTokenInput />
             <input type="hidden" name="familyId" value={familyId}/>
             <input type="hidden" name="paymentOption" value={paymentOption}/>
             <input type="hidden" name="studentIds" value={Array.from(selectedStudentIds).join(',')}/>

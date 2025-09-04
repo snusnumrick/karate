@@ -1,11 +1,20 @@
 import {Resend} from 'resend';
 import invariant from 'tiny-invariant';
 
-invariant(process.env.RESEND_API_KEY, 'RESEND_API_KEY must be set');
-invariant(process.env.FROM_EMAIL, 'FROM_EMAIL must be set for sending emails');
+// Lazy initialization to avoid startup failures when env vars are missing
+let resend: Resend | null = null;
+let fromEmail: string | null = null;
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const fromEmail = process.env.FROM_EMAIL;
+function initializeEmailService() {
+    if (!resend) {
+        invariant(process.env.RESEND_API_KEY, 'RESEND_API_KEY must be set');
+        invariant(process.env.FROM_EMAIL, 'FROM_EMAIL must be set for sending emails');
+        
+        resend = new Resend(process.env.RESEND_API_KEY);
+        fromEmail = process.env.FROM_EMAIL;
+    }
+    return { resend, fromEmail };
+}
 
 interface EmailAttachment {
     filename: string;
@@ -31,6 +40,9 @@ interface SendEmailOptions {
  */
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
     try {
+        // Initialize email service (lazy loading)
+        const { resend: emailClient, fromEmail: defaultFromEmail } = initializeEmailService();
+        
         console.log(`Attempting to send email to: ${options.to} with subject: "${options.subject}"`);
         
         // Prepare email data
@@ -45,7 +57,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
                 type: string;
             }>;
         } = {
-            from: options.from || fromEmail, // Use custom from email or default FROM_EMAIL
+            from: options.from || defaultFromEmail!, // Use custom from email or default FROM_EMAIL
             to: options.to,
             subject: options.subject,
             html: options.html,
@@ -61,7 +73,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
             }));
         }
 
-        const {data, error} = await resend.emails.send(emailData);
+        const {data, error} = await emailClient!.emails.send(emailData);
 
         if (error) {
             console.error(`Resend API Error sending email to ${options.to}:`, error);

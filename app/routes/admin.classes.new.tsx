@@ -1,6 +1,8 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Form, useNavigation, useActionData, Link } from "@remix-run/react";
 import { useState, useEffect } from "react";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { csrf } from "~/utils/csrf.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -31,6 +33,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  await csrf.validate(request);
 
   try {
     const formData = await request.formData();
@@ -234,6 +237,7 @@ export default function NewClass() {
         </CardHeader>
         <CardContent>
           <Form method="post" className="space-y-4">
+            <AuthenticityTokenInput />
             {/* Compact grid layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">

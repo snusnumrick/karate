@@ -1,6 +1,8 @@
 import {ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node"; // Added redirect
 import {Form, useActionData, useLoaderData, useNavigation} from "@remix-run/react"; // Added useActionData, useNavigation
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Database} from "~/types/database.types"; // Import Database type
@@ -184,6 +186,14 @@ type ActionResponse = {
 };
 
 export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
+    try {
+        // Validate CSRF token
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json({ status: 'error', message: 'Security validation failed. Please try again.' }, { status: 403 });
+    }
+    
     const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
     const formData = await request.formData();
@@ -404,6 +414,7 @@ export default function AccountSettingsPage() {
                                 <Form method="post" className="space-y-8">
                                     <div>
                                         <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">FAMILY INFORMATION</h2>
+                                        <AuthenticityTokenInput />
                                         <input type="hidden" name="intent" value="updateFamily"/>
 
                                 {/* Display field-specific errors for family form */}
@@ -603,6 +614,7 @@ export default function AccountSettingsPage() {
                                 <Form method="post" className="space-y-8">
                                     <div>
                                         <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">ACCOUNT PREFERENCES</h2>
+                                        <AuthenticityTokenInput />
                                         <input type="hidden" name="intent" value="updatePreferences"/>
 
                                 {actionData?.intent === 'updatePreferences' && actionData.errors && (

@@ -2,6 +2,8 @@ import {type ActionFunctionArgs, json, type MetaFunction, redirect} from "@remix
 import {Form, Link, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {Database} from "~/types/database.types";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { csrf } from "~/utils/csrf.server";
 
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
@@ -42,6 +44,7 @@ export const meta: MetaFunction = () => {
 
 // Action function to handle adding the student
 export async function action({request}: ActionFunctionArgs) {
+    await csrf.validate(request);
     const formData = await request.formData();
 
     const supabaseServer = getSupabaseAdminClient();
@@ -178,6 +181,7 @@ export default function AdminAddStudentPage() {
                     )}
 
                     <Form method="post" className="space-y-4">
+                        <AuthenticityTokenInput />
                         {/* Family Selection */}
                         <div className="space-y-2">
                             <Label htmlFor="familyId">Family *</Label>

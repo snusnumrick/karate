@@ -1,8 +1,10 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {useEffect, useRef} from "react";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
-import type { Database } from "~/types/database.types";
+import type {Database} from "~/types/database.types";
 
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
@@ -10,8 +12,8 @@ import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
+import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import {T_SHIRT_SIZE_OPTIONS} from "~/constants/tShirtSizes";
 
 type ActionData = {
     success?: boolean;
@@ -56,13 +58,27 @@ export async function loader({request}: LoaderFunctionArgs) {
         // Non-critical error, proceed without family name if needed
     }
 
-    return json({familyId: profileData.family_id, familyName: familyData?.name || 'Your Family'}, {headers});
+    // Generate CSRF token
+    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+    if (csrfCookieHeader) {
+        headers.append('Set-Cookie', csrfCookieHeader);
+    }
+
+    return json({familyId: profileData.family_id, familyName: familyData?.name || 'Your Family', csrfToken}, {headers});
 }
 
 
 // Action function to handle adding the student
 export async function action({request}: ActionFunctionArgs): Promise<Response> {
     const formData = await request.formData();
+
+    // Validate CSRF token
+    try {
+        await csrf.validate(formData, request.headers);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+        throw new Response("Invalid CSRF token", {status: 403});
+    }
     const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
     const {data: {user}} = await supabaseServer.auth.getUser();
 
@@ -152,7 +168,6 @@ export async function action({request}: ActionFunctionArgs): Promise<Response> {
         }
 
 
-
         // Redirect back to the family portal on success
         return redirect("/family", {headers});
 
@@ -169,10 +184,10 @@ export default function AddStudentPage() {
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
-    
+
     // Ref for the first input field to enable focus
     const firstInputRef = useRef<HTMLInputElement>(null);
-    
+
     // Focus on the first input field when the component mounts
     useEffect(() => {
         if (firstInputRef.current) {
@@ -185,13 +200,14 @@ export default function AddStudentPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyAddStudent()} className="mb-6" />
+            <AppBreadcrumb items={breadcrumbPatterns.familyAddStudent()} className="mb-6"/>
 
             <h1 className="text-3xl font-bold mb-2">Add Student to {familyName}</h1>
             <p className="text-muted-foreground mb-6">Enter the details for the new student.</p>
 
             <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md border dark:border-gray-700">
                 <Form method="post" className="space-y-6">
+                    <AuthenticityTokenInput/>
                     {/* Hidden input for familyId might not be needed if fetched in action */}
                     {/* <input type="hidden" name="familyId" value={familyId} /> */}
 
@@ -214,14 +230,16 @@ export default function AddStudentPage() {
                             </Label>
                             <Input type="text" id="lastName" name="lastName" required
                                    autoComplete="family-name"
-                                   className="input-custom-styles focus:ring-green-500" tabIndex={2} /* defaultValue={studentLastName} */ />
+                                   className="input-custom-styles focus:ring-green-500"
+                                   tabIndex={2} /* defaultValue={studentLastName} */ />
                         </div>
                         <div>
                             <Label htmlFor="birthDate" className="block text-sm font-medium mb-1">
                                 Birth Date<span className="text-red-500">*</span>
                             </Label>
                             <Input type="date" id="birthDate" name="birthDate" required
-                                   className="input-custom-styles focus:ring-green-500 dark:[color-scheme:dark]" tabIndex={3}/>
+                                   className="input-custom-styles focus:ring-green-500 dark:[color-scheme:dark]"
+                                   tabIndex={3}/>
                         </div>
                         <div>
                             <Label htmlFor="gender" className="block text-sm font-medium mb-1">
@@ -229,7 +247,8 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="gender" required>
                                 <SelectTrigger id="gender"
-                                               className="input-custom-styles w-full" tabIndex={4}> {/* Applied custom style, removed redundant */}
+                                               className="input-custom-styles w-full"
+                                               tabIndex={4}> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select gender"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -246,7 +265,8 @@ export default function AddStudentPage() {
                             </Label>
                             <Select name="tShirtSize" required>
                                 <SelectTrigger id="tShirtSize"
-                                               className="input-custom-styles w-full" tabIndex={5}> {/* Applied custom style, removed redundant */}
+                                               className="input-custom-styles w-full"
+                                               tabIndex={5}> {/* Applied custom style, removed redundant */}
                                     <SelectValue placeholder="Select size"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -262,13 +282,13 @@ export default function AddStudentPage() {
                             <Label htmlFor="height" className="block text-sm font-medium mb-1">
                                 Height (cm)
                             </Label>
-                            <Input 
-                                type="number" 
-                                id="height" 
-                                name="height" 
-                                min="50" 
-                                max="250" 
-                                className="input-custom-styles focus:ring-green-500" 
+                            <Input
+                                type="number"
+                                id="height"
+                                name="height"
+                                min="50"
+                                max="250"
+                                className="input-custom-styles focus:ring-green-500"
                                 tabIndex={6}
                                 placeholder="e.g., 150"
                             />
@@ -280,7 +300,8 @@ export default function AddStudentPage() {
                             <Label htmlFor="school" className="block text-sm font-medium mb-1">
                                 School<span className="text-red-500">*</span>
                             </Label>
-                            <Input type="text" id="school" name="school" required className="input-custom-styles focus:ring-green-500" tabIndex={7}/>
+                            <Input type="text" id="school" name="school" required
+                                   className="input-custom-styles focus:ring-green-500" tabIndex={7}/>
                         </div>
                         <div>
                             <Label htmlFor="gradeLevel" className="block text-sm font-medium mb-1">
@@ -323,31 +344,36 @@ export default function AddStudentPage() {
                             <Label htmlFor="email" className="block text-sm font-medium mb-1">
                                 Student Email
                             </Label>
-                            <Input type="email" id="email" name="email" autoComplete="email" className="input-custom-styles focus:ring-green-500" tabIndex={8}/>
+                            <Input type="email" id="email" name="email" autoComplete="email"
+                                   className="input-custom-styles focus:ring-green-500" tabIndex={8}/>
                         </div>
                         <div>
                             <Label htmlFor="cellPhone" className="block text-sm font-medium mb-1">
                                 Student Cell #
                             </Label>
-                            <Input type="tel" id="cellPhone" name="cellPhone" autoComplete="mobile tel" className="input-custom-styles focus:ring-green-500" tabIndex={9}/>
+                            <Input type="tel" id="cellPhone" name="cellPhone" autoComplete="mobile tel"
+                                   className="input-custom-styles focus:ring-green-500" tabIndex={9}/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="specialNeeds" className="block text-sm font-medium mb-1">
                                 Special Needs (Leave blank if NONE)
                             </Label>
-                            <Input type="text" id="specialNeeds" name="specialNeeds" className="input-custom-styles focus:ring-green-500" tabIndex={10}/>
+                            <Input type="text" id="specialNeeds" name="specialNeeds"
+                                   className="input-custom-styles focus:ring-green-500" tabIndex={10}/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="allergies" className="block text-sm font-medium mb-1">
                                 Allergies (Leave blank if NONE)
                             </Label>
-                            <Textarea id="allergies" name="allergies" rows={3} className="input-custom-styles focus:ring-green-500" tabIndex={11}/>
+                            <Textarea id="allergies" name="allergies" rows={3}
+                                      className="input-custom-styles focus:ring-green-500" tabIndex={11}/>
                         </div>
                         <div className="md:col-span-2">
                             <Label htmlFor="medications" className="block text-sm font-medium mb-1">
                                 Medications (Leave blank if NONE)
                             </Label>
-                            <Textarea id="medications" name="medications" rows={3} className="input-custom-styles focus:ring-green-500" tabIndex={12}/>
+                            <Textarea id="medications" name="medications" rows={3}
+                                      className="input-custom-styles focus:ring-green-500" tabIndex={12}/>
                         </div>
                         <div>
                             <Label htmlFor="immunizationsUpToDate" className="block text-sm font-medium mb-1">
@@ -405,7 +431,7 @@ export function ErrorBoundary() {
     // For now, a simple one:
     return (
         <div className="container mx-auto px-4 py-8">
-            <AppBreadcrumb items={breadcrumbPatterns.familyAddStudent()} className="mb-6" />
+            <AppBreadcrumb items={breadcrumbPatterns.familyAddStudent()} className="mb-6"/>
             <Alert variant="destructive">
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>

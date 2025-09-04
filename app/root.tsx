@@ -17,6 +17,8 @@ import {
 import {ThemeProvider} from "~/components/theme-provider";
 import {siteConfig} from "~/config/site";
 import { NonceProvider } from "~/context/nonce";
+import { AuthenticityTokenProvider } from "remix-utils/csrf/react";
+import { csrf } from "~/utils/csrf.server";
 
 import "./tailwind.css";
 
@@ -27,8 +29,8 @@ declare global {
   }
 }
 
-// Loader to get the nonce from the server context
-export async function loader({context}: LoaderFunctionArgs) {
+// Loader to get the nonce from the server context and generate CSRF token
+export async function loader({context, request}: LoaderFunctionArgs) {
     // Get nonce from server context (provided by getLoadContext in entry.server.tsx)
     let nonce = (context as { nonce?: string } | undefined)?.nonce;
     
@@ -42,8 +44,23 @@ export async function loader({context}: LoaderFunctionArgs) {
     if (process.env.NODE_ENV === 'development') {
         console.log('Root loader nonce:', { nonce, STRICT_DEV, contextNonce: context?.nonce });
     }
-
-    return json({nonce});
+    
+    // Ensure we always have a nonce in production
+    if (!nonce) {
+        console.error('No nonce provided in context! This will cause CSP violations.');
+        // Generate a fallback nonce to prevent CSP errors
+        nonce = 'fallback-' + Math.random().toString(36).substring(2, 15);
+    }
+    
+    // Generate CSRF token
+    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+    
+    return json(
+        { nonce, csrfToken },
+        {
+            headers: csrfCookieHeader ? { "Set-Cookie": csrfCookieHeader } : {},
+        }
+    );
 }
 
 // Error boundary wrapper can remain as is
@@ -188,6 +205,7 @@ export function Layout({children}: { children: React.ReactNode }) {
     // Fix nonce attributes after hydration to avoid hydration mismatch
     useEffect(() => {
         if (typeof window !== 'undefined' && safeNonce) {
+            // Fix JSON-LD scripts
             const scripts = document.querySelectorAll('script[type="application/ld+json"]');
             console.log('Found JSON-LD scripts for nonce fix:', scripts.length);
             scripts.forEach((script, index) => {
@@ -195,6 +213,18 @@ export function Layout({children}: { children: React.ReactNode }) {
                 console.log(`Script ${index + 1} current nonce:`, currentNonce);
                 if (!currentNonce || currentNonce === '') {
                     script.setAttribute('nonce', safeNonce);
+                    console.log(`Set nonce to: ${safeNonce}`);
+                }
+            });
+            
+            // Fix inline style elements
+            const styles = document.querySelectorAll('style');
+            console.log('Found inline style elements for nonce fix:', styles.length);
+            styles.forEach((style, index) => {
+                const currentNonce = style.getAttribute('nonce');
+                console.log(`Style ${index + 1} current nonce:`, currentNonce);
+                if (!currentNonce || currentNonce === '') {
+                    style.setAttribute('nonce', safeNonce);
                     console.log(`Set nonce to: ${safeNonce}`);
                 }
             });
@@ -230,6 +260,17 @@ export function Layout({children}: { children: React.ReactNode }) {
 
             {/* Provide CSP nonce to Vite dev client via meta tag (Vite reads from content attribute) */}
             {safeNonce && <meta name="csp-nonce" content={safeNonce} />}
+            
+            {/* Set global nonce for Vite's dynamic CSS injection (similar to webpack's __webpack_nonce__) */}
+            {safeNonce && (
+                <script
+                    nonce={safeNonce}
+                    suppressHydrationWarning
+                    dangerouslySetInnerHTML={{
+                        __html: `window.__vite_nonce__ = ${JSON.stringify(safeNonce)};`
+                    }}
+                />
+            )}
 
             {/* Organization Schema */}
             {safeNonce ? (
@@ -280,6 +321,7 @@ export function Layout({children}: { children: React.ReactNode }) {
                 <script
                      type="application/ld+json"
                      suppressHydrationWarning
+                     nonce={safeNonce}
                      dangerouslySetInnerHTML={{
                          __html: JSON.stringify({
                              '@context': 'https://schema.org',
@@ -324,7 +366,7 @@ export function Layout({children}: { children: React.ReactNode }) {
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
-                nonce={safeNonce || undefined}
+                nonce={safeNonce}
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
@@ -369,11 +411,13 @@ export function Layout({children}: { children: React.ReactNode }) {
         </head>
         <body className="h-full bg-background text-foreground" suppressHydrationWarning>
         <NonceProvider value={safeNonce}>
+        <AuthenticityTokenProvider token={loaderData?.csrfToken}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <ErrorBoundaryWrapper>
                 {children} {/* This now correctly renders the nested routes */}
             </ErrorBoundaryWrapper>
         </ThemeProvider>
+        </AuthenticityTokenProvider>
         {/* GTM injected after hydration to avoid SSR/CSR mismatch */}
         <ClientGTM nonce={safeNonce} />
         {/* Umami Analytics */}

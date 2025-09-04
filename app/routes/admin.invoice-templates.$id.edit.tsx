@@ -1,5 +1,7 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -56,6 +58,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const { id } = params;
     if (!id) {
         throw new Response('Template ID is required', { status: 400 });
+    }
+    
+    try {
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json({ errors: { general: 'Security validation failed. Please try again.' } }, { status: 403 });
     }
     
     const formData = await request.formData();
@@ -201,6 +210,7 @@ export default function EditInvoiceTemplate() {
                 </div>
 
             <Form method="post" className="space-y-6">
+                <AuthenticityTokenInput />
                 <Card className="bg-white dark:bg-gray-900 shadow-sm">
                     <CardHeader>
                         <CardTitle>Template Details</CardTitle>

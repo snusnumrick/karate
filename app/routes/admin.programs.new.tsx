@@ -2,6 +2,8 @@ import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useNavigation, Link } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { createProgram } from "~/services/program.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { csrf } from "~/utils/csrf.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -28,6 +30,7 @@ type ActionData = {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  await csrf.validate(request);
   const formData = await request.formData();
 
   const name = formData.get("name") as string;
@@ -183,6 +186,7 @@ export default function NewProgram() {
         </CardHeader>
         <CardContent className="pt-0">
           <Form method="post" className="space-y-8">
+            <AuthenticityTokenInput />
             {actionData?.errors?.general && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                 {actionData.errors.general}

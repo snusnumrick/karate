@@ -2,6 +2,8 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type 
 import { Form, useActionData, useLoaderData, useNavigation, Link } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getProgramById, updateProgram } from "~/services/program.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -56,6 +58,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  
+  try {
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ errors: { general: 'Security validation failed. Please try again.' } }, { status: 403 });
+  }
+  
   const programId = params.id;
   
   if (!programId) {
@@ -199,6 +209,7 @@ export default function EditProgram() {
       </div>
 
       <Form method="post" className="space-y-6">
+        <AuthenticityTokenInput />
         {actionData?.errors?.general && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
             {actionData.errors.general}

@@ -261,6 +261,40 @@ Versioned REST API for external consumption:
 - **Database Performance**: Query performance monitoring via Supabase
 - **Real-time Monitoring**: Connection and message delivery tracking
 
+## Security Architecture
+
+### CSRF Protection
+The application implements comprehensive Cross-Site Request Forgery (CSRF) protection using `remix-utils/csrf`:
+
+- **Server-side Implementation**: `app/utils/csrf.server.ts` provides CSRF token generation and validation
+- **Cookie-based Tokens**: Secure, HTTP-only cookies with proper SameSite and Secure flags
+- **Form Protection**: All forms include `AuthenticityTokenInput` components for token submission
+- **Action Validation**: All mutation actions validate CSRF tokens before processing
+- **Global Provider**: `AuthenticityTokenProvider` in `root.tsx` makes tokens available throughout the app
+
+### Authentication & Authorization
+- **Supabase Auth**: JWT-based authentication with secure token handling
+- **Role-based Access**: Admin and family user roles with appropriate route protection
+- **Session Management**: Secure session handling with automatic token refresh
+- **Route Guards**: Protected routes with authentication checks
+
+### Data Security
+- **Input Validation**: Server-side validation for all user inputs
+- **SQL Injection Prevention**: Parameterized queries through Supabase client
+- **XSS Protection**: React's built-in XSS protection with proper data sanitization
+- **Content Security Policy**: CSP headers with nonce-based script execution
+
+### Payment Security
+- **Stripe Integration**: PCI-compliant payment processing
+- **Webhook Verification**: Stripe webhook signature validation
+- **Secure Tokens**: Payment intents and setup intents for secure transactions
+
+### Infrastructure Security
+- **HTTPS Enforcement**: SSL/TLS encryption for all communications
+- **Environment Variables**: Secure secret management
+- **Database Security**: Supabase Row Level Security (RLS) policies
+- **API Rate Limiting**: Protection against abuse and DoS attacks
+
 ## Future Architecture Considerations
 
 ### Scalability

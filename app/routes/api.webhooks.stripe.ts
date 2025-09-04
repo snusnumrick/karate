@@ -4,18 +4,30 @@ import Stripe from "stripe";
 import { updatePaymentStatus, getSupabaseAdminClient } from "~/utils/supabase.server";
 import type { Database } from "~/types/database.types"; // Removed unused Tables import
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+let stripe: Stripe | null = null;
+let webhookSecret: string | null = null;
 
-if (!stripeSecretKey || !webhookSecret) {
-    console.error("Stripe secret key or webhook secret is not set.");
-    // Consider throwing an error or handling this more gracefully depending on deployment strategy
+function initializeStripe() {
+    if (stripe && webhookSecret !== null) {
+        return { stripe, webhookSecret };
+    }
+    
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || null;
+    
+    if (!stripeSecretKey || !webhookSecret) {
+        console.error("Stripe secret key or webhook secret is not set.");
+        return { stripe: null, webhookSecret: null };
+    }
+    
+    stripe = new Stripe(stripeSecretKey);
+    return { stripe, webhookSecret };
 }
 
-const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
-
 export async function action({request}: ActionFunctionArgs) {
-    if (!stripe || !webhookSecret) {
+    const { stripe: stripeClient, webhookSecret: secret } = initializeStripe();
+    
+    if (!stripeClient || !secret) {
         console.error("Stripe not initialized or webhook secret missing in handler.");
         return json({error: "Server configuration error."}, {status: 500});
     }
@@ -32,7 +44,7 @@ export async function action({request}: ActionFunctionArgs) {
 
     try {
         // Verify the event signature
-        event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+        event = stripeClient.webhooks.constructEvent(payload, signature, secret);
         // console.log(`Received Stripe event: ${event.type}`);
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
@@ -86,7 +98,7 @@ export async function action({request}: ActionFunctionArgs) {
         // --- Retrieve PI again with expanded payment_method to get card details ---
         try {
             // console.log(`[Webhook PI Succeeded] Retrieving Payment Intent ${paymentIntent.id} with expanded payment_method and latest_charge...`);
-            const retrievedPI = await stripe.paymentIntents.retrieve(paymentIntent.id, {
+            const retrievedPI = await stripeClient.paymentIntents.retrieve(paymentIntent.id, {
                 // Expand both payment_method and latest_charge
                 expand: ['payment_method', 'latest_charge']
             });
@@ -279,7 +291,7 @@ export async function action({request}: ActionFunctionArgs) {
             let failedCardBrand: string | null = null;
             let failedPaymentMethodString = paymentIntent.payment_method_types?.[0] ?? null;
             try {
-                 const retrievedPI = await stripe.paymentIntents.retrieve(paymentIntent.id, { expand: ['payment_method'] });
+                 const retrievedPI = await stripeClient.paymentIntents.retrieve(paymentIntent.id, { expand: ['payment_method'] });
                  if (retrievedPI.payment_method && typeof retrievedPI.payment_method === 'object' && retrievedPI.payment_method.card) {
                      failedCardLast4 = retrievedPI.payment_method.card.last4;
                      failedCardBrand = retrievedPI.payment_method.card.brand;

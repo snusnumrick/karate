@@ -13,11 +13,10 @@ import { ArrowLeft, Search, Filter, Users, CheckCircle, Clock, XCircle } from "l
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { formatDate } from "~/utils/misc";
 
-const supabase = getSupabaseAdminClient();
-
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
   
+  const supabase = getSupabaseAdminClient();
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get('page') || '1');
   const limit = 50;

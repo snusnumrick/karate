@@ -1,5 +1,7 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, Form, useNavigation, useActionData, Link } from "@remix-run/react";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -46,6 +48,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const sessionId = params.id;
   if (!sessionId) {
     throw new Response("Session ID is required", { status: 400 });
+  }
+
+  try {
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ errors: { general: 'Security validation failed. Please try again.' } }, { status: 403 });
   }
 
   try {
@@ -129,6 +138,7 @@ export default function EditSession() {
       
       <div className="mt-6">
         <Form method="post" className="space-y-6">
+          <AuthenticityTokenInput />
           <AdminCard>
             <AdminCardHeader>
               <AdminCardTitle>Session Details</AdminCardTitle>

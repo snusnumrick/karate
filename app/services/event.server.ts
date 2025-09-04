@@ -35,7 +35,14 @@ export type EventWithEventType = Event & {
 const eventCache = new Map<string, { data: UpcomingEvent[], timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-const supabase = getSupabaseAdminClient();
+let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
+
+function getSupabase() {
+  if (!supabase) {
+    supabase = getSupabaseAdminClient();
+  }
+  return supabase;
+}
 
 export class EventService {
 
@@ -51,7 +58,7 @@ export class EventService {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: events, error } = await supabase
+    const { data: events, error } = await getSupabase()
       .from('events')
       .select(`
         id,
@@ -98,7 +105,7 @@ export class EventService {
   }
 
   static async getEventById(id: string, isLoggedIn: boolean = false): Promise<EventWithEventType | null> {
-    let query = supabase
+    let query = getSupabase()
       .from('events')
       .select(`
         *,
@@ -148,7 +155,7 @@ export class EventService {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: events, error } = await supabase
+    const { data: events, error } = await getSupabase()
       .from('events')
       .select(`
         id,
@@ -195,7 +202,7 @@ export class EventService {
   }
 
   static async canUserRegister(eventId: string, isLoggedIn: boolean): Promise<boolean> {
-    const { data: event, error } = await supabase
+    const { data: event, error } = await getSupabase()
       .from('events')
       .select('visibility')
       .eq('id', eventId)

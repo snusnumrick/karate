@@ -1,6 +1,8 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/react";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -141,6 +143,13 @@ export async function action({ params, request }: ActionFunctionArgs) {
   
   if (!eventId) {
     throw new Response("Event ID is required", { status: 400 });
+  }
+
+  try {
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ error: 'Security validation failed. Please try again.' }, { status: 403 });
   }
 
   const { supabaseServer, response } = getSupabaseServerClient(request);
@@ -287,6 +296,7 @@ export default function EditEvent() {
       )}
 
       <Form method="post" className="space-y-6">
+        <AuthenticityTokenInput />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Basic Information */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">

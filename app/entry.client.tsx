@@ -17,7 +17,8 @@ import {RemixBrowser} from "@remix-run/react";
 import {startTransition, StrictMode} from "react";
 import {hydrateRoot} from "react-dom/client";
 
-if (process.env.NODE_ENV === 'development') {
+// Only set dev tools in development (check for window to ensure client-side)
+if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     window.__REMIX_DEV_TOOLS = {
         suppressHydrationWarning: true,
         suppressExtraHydrationErrors: true

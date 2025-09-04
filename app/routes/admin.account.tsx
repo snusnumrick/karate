@@ -1,6 +1,8 @@
 import {ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Database} from "~/types/database.types";
@@ -136,6 +138,14 @@ type ActionResponse = {
 };
 
 export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
+    try {
+        // Validate CSRF token
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json({ status: 'error', message: 'Security validation failed. Please try again.' }, { status: 403 });
+    }
+    
     const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
     const formData = await request.formData();
@@ -337,6 +347,7 @@ export default function AdminAccountSettingsPage() {
                         <UIForm {...profileForm}>
                             <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                                 <h2 className="text-xl font-semibold mb-4 border-b pb-2">Profile Information</h2>
+                                <AuthenticityTokenInput />
                                 <input type="hidden" name="intent" value="updateProfile"/>
 
                                 {/* Display field-specific errors for profile form */}
@@ -407,6 +418,7 @@ export default function AdminAccountSettingsPage() {
                         <UIForm {...preferencesForm}>
                             <Form method="post" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
                                 <h2 className="text-xl font-semibold mb-4">Account Preferences</h2>
+                                <AuthenticityTokenInput />
                                 <input type="hidden" name="intent" value="updatePreferences"/>
 
                                 {actionData?.intent === 'updatePreferences' && actionData.errors && (

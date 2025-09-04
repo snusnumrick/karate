@@ -1,6 +1,8 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, useLoaderData, useNavigation , Link } from "@remix-run/react";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { AutoDiscountService } from "~/services/auto-discount.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
 import { requireAdminUser } from "~/utils/auth.server";
@@ -102,6 +104,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
     throw new Response("Rule ID is required", { status: 400 });
   }
 
+  try {
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ error: 'Security validation failed. Please try again.' }, { status: 403 });
+  }
+
   const formData = await request.formData();
   const intent = formData.get("intent");
 
@@ -194,6 +203,7 @@ export default function EditAutomationRule() {
           </CardHeader>
           <CardContent>
             <Form method="post" className="space-y-4">
+              <AuthenticityTokenInput />
               <input type="hidden" name="intent" value="update" />
               
               <div className="space-y-2">

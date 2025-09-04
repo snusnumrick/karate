@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Form, useActionData, useNavigation } from "@remix-run/react";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -247,6 +248,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
         {/* Form Section */}
         <div className={`space-y-6 ${showPreview ? 'xl:col-span-2' : ''}`}>
           <Form method="post" className="space-y-6">
+            <AuthenticityTokenInput />
             {/* Hidden fields for form submission */}
             <input type="hidden" name="entity_id" value={invoiceData.entity_id} />
             <input type="hidden" name="issue_date" value={invoiceData.issue_date} />

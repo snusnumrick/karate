@@ -14,6 +14,7 @@ import {CreditCardIcon, Link} from "lucide-react";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import {useLoaderData, useRouteError, useSearchParams} from "@remix-run/react";
 import {PaymentForm} from "~/components/PaymentForm";
+import {csrf} from "~/utils/csrf.server";
 
 // Payment Calculation (Flat Monthly Rate)
 //
@@ -82,6 +83,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     paymentId?: string
 }>> {
     const {supabaseServer, response} = getSupabaseServerClient(request);
+    
+    // CSRF validation
+    await csrf.validate(request);
+    
     const formData = await request.formData();
 
     const familyId = formData.get('familyId') as string;

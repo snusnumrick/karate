@@ -11,6 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { cn } from "~/lib/utils";
 
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
 
 // Define types for loader and action data
 
@@ -59,6 +61,9 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     if (!user) {
         return json({ error: "User not authenticated" }, { status: 401, headers });
     }
+
+    // CSRF validation
+    await csrf.validate(request);
 
     // --- Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
@@ -159,6 +164,7 @@ export default function NewMessageRoute() {
 
             <div className="form-container-styles p-8 backdrop-blur-lg">
                 <Form method="post" className="space-y-6">
+                    <AuthenticityTokenInput />
                     {/* Recipient Selection Removed */}
 
                     {/* Subject Input */}

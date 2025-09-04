@@ -5,11 +5,11 @@
  */
 
 import {PassThrough} from "node:stream";
-import { deriveNonceForRequest } from "~/utils/nonce.server";
 import {RemixServer} from "@remix-run/react";
 import {isbot} from "isbot";
 import {renderToPipeableStream} from "react-dom/server";
-import {createReadableStreamFromReadable, EntryContext} from "@remix-run/node";
+import {createReadableStreamFromReadable, EntryContext, AppLoadContext} from "@remix-run/node";
+import {deriveNonceForRequest} from "./utils/nonce.server";
 
 // Extend EntryContext to include nonce property
 interface ExtendedEntryContext extends EntryContext {
@@ -18,13 +18,10 @@ interface ExtendedEntryContext extends EntryContext {
 
 export const streamTimeout = 5_000;
 
-// Nonce generation is now handled by the shared utility
+// Nonce generation function that handles Remix Request objects
+// Nonce derivation is now handled by the shared utility
 
-// Provide load context to all loaders/actions
-export function getLoadContext({ request }: { request: Request }) {
-    const nonce = deriveNonceForRequest(request);
-    return { nonce };
-}
+// Note: getLoadContext is now handled by server.js to ensure single nonce generation
 
 // REFACTORED: Moved CSP generation to its own function to avoid duplication
 function generateCsp(nonce: string) {
@@ -63,11 +60,12 @@ function generateCsp(nonce: string) {
     const styleSrc = [
         "'self'",
         `'nonce-${nonce}'`,
-        isLenientDev ? "'unsafe-inline'" : '',
-        // Add specific hashes for Vite HMR and Tailwind CSS in strict dev mode
-        strictDev ? "'sha256-EiOgLoAxcFRdVJdZFcHv/Yp+zfJ5omuJDkY/tMXzd10='" : '',
-        strictDev ? "'sha256-40oAvW7ca/qI/9rapLlXiO+wKrmLDJScrYFlb0ePVsU='" : '',
-        strictDev ? "'sha256-hT67pHEAagXZWXCR6f0OxilTM/BibRRnzdBjQgTnd5U='" : '',
+        // Add Vite's development nonce to allow HMR styles
+        isDevelopment ? "'nonce-dev-vite-nonce'" : '',
+        // Add specific hashes for Vite HMR and Tailwind CSS in development mode
+        isDevelopment ? "'sha256-EiOgLoAxcFRdVJdZFcHv/Yp+zfJ5omuJDkY/tMXzd10='" : '',
+        isDevelopment ? "'sha256-40oAvW7ca/qI/9rapLlXiO+wKrmLDJScrYFlb0ePVsU='" : '',
+        isDevelopment ? "'sha256-hT67pHEAagXZWXCR6f0OxilTM/BibRRnzdBjQgTnd5U='" : '',
         "https://fonts.googleapis.com",
     ].filter(Boolean).join(" ");
 
@@ -117,16 +115,16 @@ function generateCsp(nonce: string) {
 }
 
 export default function handleRequest(
-    request: Request,
-    responseStatusCode: number,
-    responseHeaders: Headers,
-    remixContext: EntryContext
+  request: Request,
+  responseStatusCode: number,
+  responseHeaders: Headers,
+  remixContext: EntryContext,
+  loadContext?: AppLoadContext,
 ) {
-    // Derive the same per-request nonce used by getLoadContext
-    const nonce = deriveNonceForRequest(request);
-    
-    // Debug logging for production
-    console.log('handleRequest nonce:', nonce, 'length:', nonce?.length, 'type:', typeof nonce);
+    console.log('handleRequest called with request URL:', request.url);
+    // Get nonce from loadContext (passed from server.js getLoadContext)
+  const nonce = (loadContext as { nonce?: string })?.nonce || deriveNonceForRequest(request);
+  console.log('handleRequest nonce:', nonce, 'from context or derivation, length:', nonce?.length, 'type:', typeof nonce);
 
     // Add nonce to the response headers via the CSP
     const csp = generateCsp(nonce);
@@ -164,6 +162,7 @@ function handleBotRequest(
                 context={remixContext}
                 url={request.url}
                 abortDelay={streamTimeout}
+                nonce={nonce}
             />,
             {
                 nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
@@ -204,6 +203,7 @@ function handleBrowserRequest(
                 context={remixContext}
                 url={request.url}
                 abortDelay={streamTimeout}
+                nonce={nonce}
             />,
             {
                 nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce

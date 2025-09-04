@@ -2,6 +2,8 @@ import invariant from "tiny-invariant";
 import type {ActionFunctionArgs, LoaderFunctionArgs, MetaFunction} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import {Database, TablesUpdate} from "~/types/database.types"; // Import TablesUpdate
 import {Button} from "~/components/ui/button";
@@ -82,6 +84,14 @@ export async function loader({params}: LoaderFunctionArgs) {
 
 // Action to handle form submission for updating guardians
 export async function action({request, params}: ActionFunctionArgs) {
+    try {
+        // Validate CSRF token
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json({ error: 'Security validation failed. Please try again.' }, { status: 403 });
+    }
+    
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
     const formData = await request.formData();
@@ -241,6 +251,7 @@ export default function EditGuardiansPage() {
                         <ClientOnly fallback={<div className="text-center p-8">Loading form...</div>}>
                             {() => (
                                 <Form method="post" className="space-y-6">
+                                    <AuthenticityTokenInput />
                                     {guardians.map((guardian, index) => {
                                         const guardianId = guardian.id;
                                 const errors = actionData?.fieldErrors?.[guardianId];

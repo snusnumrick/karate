@@ -3,6 +3,8 @@ import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLocation, us
 import type {ActionFunctionArgs} from "@remix-run/node"; // or cloudflare/deno
 import {json, redirect} from "@remix-run/node"; // or cloudflare/deno
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
@@ -11,10 +13,41 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { siteConfig } from "~/config/site";
+
+type ActionData = {
+  errors?: {
+    _form?: string;
+    referralSource?: string;
+    familyName?: string;
+    address?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    primaryPhone?: string;
+    contact1FirstName?: string;
+    contact1LastName?: string;
+    contact1Type?: string;
+    contact1CellPhone?: string;
+    contact1Email?: string;
+    contact1EmailConfirm?: string;
+    portalPassword?: string;
+    portalPasswordConfirm?: string;
+    [key: string]: string | undefined;
+  };
+  error?: string;
+};
 // Removed unused BELT_RANKS import
 
 // Action function to handle form submission
 export async function action({request}: ActionFunctionArgs) {
+    try {
+        // Validate CSRF token
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json({ errors: { _form: 'Security validation failed. Please try again.' } }, { status: 403 });
+    }
+    
     const formData = await request.formData();
     // console.log(formData);
     const {supabaseServer} = getSupabaseServerClient(request);
@@ -143,7 +176,7 @@ export async function action({request}: ActionFunctionArgs) {
 
 
 export default function RegisterPage() {
-    const actionData = useActionData<typeof action>();
+    const actionData = useActionData<ActionData>();
     const errors = actionData && "errors" in actionData ? actionData.errors : null;
     const error = actionData && "error" in actionData ? actionData.error : null;
     // Removed multi-step state: const [currentStep, setCurrentStep] = useState(1);
@@ -198,6 +231,7 @@ export default function RegisterPage() {
                         {/* Removed Step Indicator */}
 
                         <Form method="post" noValidate className="space-y-8">
+                            <AuthenticityTokenInput />
                             {/* Form sections are now rendered sequentially */}
                             <div> {/* Wrap sections for structure if needed */}
                                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL

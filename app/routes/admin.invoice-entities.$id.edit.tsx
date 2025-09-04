@@ -1,5 +1,7 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, useRouteError, useSearchParams , Link } from "@remix-run/react";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -45,6 +47,14 @@ export async function loader({ params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
+  try {
+    // Validate CSRF token
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ error: 'Security validation failed. Please try again.' }, { status: 403 });
+  }
+  
   const entityId = params.id;
   if (!entityId) {
     throw new Response("Entity ID is required", { status: 400 });
@@ -145,6 +155,7 @@ export default function EditInvoiceEntityPage() {
       )}
 
       <Form method="post" className="space-y-6">
+        <AuthenticityTokenInput />
         <Card>
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>

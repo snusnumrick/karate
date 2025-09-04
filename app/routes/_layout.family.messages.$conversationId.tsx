@@ -9,6 +9,7 @@ import { REALTIME_SUBSCRIBE_STATES, type SupabaseClient } from "@supabase/supaba
 import { notificationService } from "~/utils/notifications.client";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getSupabaseClient } from "~/utils/supabase.client";
+import { csrf } from "~/utils/csrf.server";
 
 // Define Profile type for sender details
 type SenderProfile = Pick<Tables<'profiles'>, 'id' | 'email' | 'first_name' | 'last_name'>;
@@ -232,6 +233,9 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     if (!user) {
         return json({error: "User not authenticated"}, {status: 401, headers});
     }
+
+    // CSRF validation
+    await csrf.validate(request);
     if (!conversationId || conversationId === 'undefined') {
         console.error("[FamilyConversationView Action] Invalid conversationId:", conversationId);
         return json({error: "Invalid conversation ID"}, {status: 400, headers});

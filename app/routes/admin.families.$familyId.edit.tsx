@@ -3,6 +3,8 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node"; /
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
 import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
@@ -81,6 +83,14 @@ export async function loader({params}: LoaderFunctionArgs) {
 
 // Action to handle form submission for updating family data
 export async function action({request, params}: ActionFunctionArgs) {
+    try {
+        // Validate CSRF token
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json({ error: 'Security validation failed. Please try again.' }, { status: 403 });
+    }
+    
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
     const formData = await request.formData();
@@ -177,6 +187,7 @@ export default function EditFamilyPage() {
             </div>
 
         <Form method="post" className="space-y-6">
+            <AuthenticityTokenInput />
             {actionData?.error && !actionData.fieldErrors && (
                 <Alert variant="destructive">
                     <ExclamationTriangleIcon className="h-4 w-4"/>

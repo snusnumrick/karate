@@ -11,11 +11,18 @@ import type {
 import { DiscountService } from './discount.server';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
-const supabase = getSupabaseAdminClient();
+let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
+
+function getSupabase() {
+  if (!supabase) {
+    supabase = getSupabaseAdminClient();
+  }
+  return supabase;
+}
 
 export class DiscountTemplateService {
   static async getAllTemplates(): Promise<DiscountTemplate[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('discount_templates')
       .select('*')
       .order('created_at', { ascending: false });
@@ -36,7 +43,7 @@ export class DiscountTemplateService {
   }
 
   static async getActiveTemplates(): Promise<DiscountTemplate[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('discount_templates')
       .select('*')
       .eq('is_active', true)
@@ -58,7 +65,7 @@ export class DiscountTemplateService {
   }
 
   static async getTemplateById(id: string): Promise<DiscountTemplate | null> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('discount_templates')
       .select('*')
       .eq('id', id)
@@ -86,7 +93,7 @@ export class DiscountTemplateService {
     templateData: CreateDiscountTemplateData,
     createdBy?: string
   ): Promise<DiscountTemplate> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('discount_templates')
       .insert({
         ...templateData,
@@ -114,7 +121,7 @@ export class DiscountTemplateService {
     id: string,
     updates: UpdateDiscountTemplateData
   ): Promise<DiscountTemplate> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('discount_templates')
       .update(updates)
       .eq('id', id)
@@ -137,7 +144,7 @@ export class DiscountTemplateService {
   }
 
   static async deleteTemplate(id: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('discount_templates')
       .delete()
       .eq('id', id);

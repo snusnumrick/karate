@@ -497,3 +497,84 @@ npx supabase gen types typescript --linked --schema public > app/types/database.
 - **CSP**: Maintain strict Content Security Policy
 - **HTTPS**: Always use HTTPS in production
 - **API Keys**: Rotate keys regularly and use least privilege principle
+
+#### CSRF Protection Implementation
+
+The application implements comprehensive CSRF protection. Here's how to work with it:
+
+**Server-side Setup** (`app/utils/csrf.server.ts`):
+```typescript
+import { CSRF } from "remix-utils/csrf/server";
+import { createCookie } from "@remix-run/node";
+
+// CSRF instance is already configured with secure cookies
+export const csrf = new CSRF({
+  cookie: csrfCookie, // HTTP-only, secure, SameSite=lax
+});
+```
+
+**Adding CSRF to Forms**:
+1. Import the AuthenticityTokenInput component:
+```typescript
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+```
+
+2. Add the token input to your form:
+```tsx
+<form method="post">
+  <AuthenticityTokenInput />
+  {/* Your form fields */}
+</form>
+```
+
+**Validating CSRF in Actions**:
+```typescript
+import { csrf } from "~/utils/csrf.server";
+
+export async function action({ request }: ActionFunctionArgs) {
+  try {
+    // Validate CSRF token first
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    throw new Response("Invalid CSRF token", { status: 403 });
+  }
+  
+  // Process your form data
+  const formData = await request.formData();
+  // ... rest of your action logic
+}
+```
+
+**Providing CSRF Tokens in Loaders** (when needed):
+```typescript
+export async function loader({ request }: LoaderFunctionArgs) {
+  const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+  
+  return json(
+    { data: yourData, csrfToken },
+    { headers: csrfCookieHeader ? { "Set-Cookie": csrfCookieHeader } : {} }
+  );
+}
+```
+
+**JavaScript Form Submissions**:
+For dynamic form submissions, include the CSRF token:
+```typescript
+const { csrfToken } = useLoaderData<typeof loader>();
+
+const handleSubmit = async (formData: FormData) => {
+  // Add CSRF token to form data
+  const tokenValue = Array.isArray(csrfToken) ? csrfToken[1] : csrfToken;
+  formData.append("csrf", tokenValue);
+  
+  // Submit form
+  submit(formData, { method: "post" });
+};
+```
+
+**Testing CSRF Protection**:
+- All forms should include `<AuthenticityTokenInput />`
+- All actions should call `await csrf.validate(request)`
+- Test with browser dev tools by removing/modifying CSRF tokens
+- Verify 403 responses for invalid tokens

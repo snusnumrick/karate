@@ -13,6 +13,7 @@ export { createClient };
 /**
  * Creates a Supabase admin client with service role privileges.
  * This is a centralized function to avoid code duplication across the codebase.
+ * Uses lazy initialization to avoid throwing errors during module import.
  * @returns SupabaseClient<Database> with admin privileges
  * @throws {Error} If Supabase URL or Service Role Key are missing
  */
@@ -21,6 +22,7 @@ export function getSupabaseAdminClient() {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
+        console.warn('Missing Supabase URL or Service Role Key environment variables. Admin client functionality will be disabled.');
         throw new Error('Missing Supabase URL or Service Role Key environment variables.');
     }
 

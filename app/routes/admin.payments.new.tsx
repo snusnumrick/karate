@@ -1,6 +1,8 @@
 import {useEffect, useRef, useState} from 'react';
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, type TypedResponse,} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useNavigation, useRouteError} from "@remix-run/react";
+import {AuthenticityTokenInput} from "remix-utils/csrf/react";
+import {csrf} from "~/utils/csrf.server";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
@@ -113,6 +115,9 @@ export async function loader({request}: LoaderFunctionArgs) {
 }
 
 export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
+    // Validate CSRF token
+    await csrf.validate(request);
+    
     // console.log("Entering /admin/payments/new action...");
     const {response} = getSupabaseServerClient(request); // Get headers
     const headers = response.headers;
@@ -467,6 +472,7 @@ export default function AdminNewPaymentPage() {
 
             <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg p-6">
                 <Form method="post">
+                    <AuthenticityTokenInput />
                     <div className="space-y-6">
                         {/* Family Selection */}
                         <div>

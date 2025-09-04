@@ -1,5 +1,7 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
 import { Button } from "~/components/ui/button";
@@ -55,6 +57,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  
+  try {
+    await csrf.validate(request);
+  } catch (error) {
+    console.error('CSRF validation failed:', error);
+    return json({ errors: { general: 'Security validation failed. Please try again.' } }, { status: 403 });
+  }
+  
   const templateId = params.id;
   
   if (!templateId) {
@@ -179,6 +189,7 @@ export default function EditDiscountTemplate() {
           </CardHeader>
           <CardContent>
             <Form method="post" className="space-y-8">
+              <AuthenticityTokenInput />
             {actionData?.errors?.general && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                 {actionData.errors.general}
