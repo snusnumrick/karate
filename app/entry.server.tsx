@@ -77,6 +77,13 @@ function generateCsp(nonce: string) {
         "https://www.google-analytics.com",
         "https://tagmanager.google.com",
         "https://umami-two-lilac.vercel.app",
+        // Add specific hashes for inline scripts that can't use nonces
+        "'sha256-3dTU0G2n5jPOl/gOrkhDgGEh+0GeIQalbkFe4tHA1ew='",
+        "'sha256-gqA0c0llTtLkfJMQkYd1sUTZ2kNn6uD4Y0x0UEoHEJc='",
+        "'sha256-fmySb+u5jpNYrcx5ZgjnAMitfujCUUm8UxuMCIhvwaE='",
+        "'sha256-oxs7G4Bdgf//0+Apuv2tUsq21T3jVJVnpNSTxJ0omOw='",
+        "'sha256-71Vh0PBf5kW2lMfGNu8hTY2X7nlwR+Tqg7X2sG3EXPs='",
+        "'sha256-L35HO5yvEItEFOlKA+tdtn6nWAcWGRWNMnpxGCmXFFs='",
         isLenientDev ? "'unsafe-eval' 'unsafe-inline'" : '',
     ].filter(Boolean).join(" ");
 
