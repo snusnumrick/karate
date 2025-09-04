@@ -77,17 +77,6 @@ function generateCsp(nonce: string) {
         "https://www.google-analytics.com",
         "https://tagmanager.google.com",
         "https://umami-two-lilac.vercel.app",
-        // Add specific hashes for inline scripts that can't use nonces
-        "'sha256-3dTU0G2n5jPOl/gOrkhDgGEh+0GeIQalbkFe4tHA1ew='",
-        "'sha256-gqA0c0llTtLkfJMQkYd1sUTZ2kNn6uD4Y0x0UEoHEJc='",
-        "'sha256-fmySb+u5jpNYrcx5ZgjnAMitfujCUUm8UxuMCIhvwaE='",
-        "'sha256-oxs7G4Bdgf//0+Apuv2tUsq21T3jVJVnpNSTxJ0omOw='",
-        "'sha256-71Vh0PBf5kW2lMfGNu8hTY2X7nlwR+Tqg7X2sG3EXPs='",
-        "'sha256-L35HO5yvEItEFOlKA+tdtn6nWAcWGRWNMnpxGCmXFFs='",
-        "'sha256-6a9J68AKZk7YF6PI3eKH4wCPLtwgOwhKQp477E8/xT0='",
-        "'sha256-mMjLhxBSmilTSHBDTMu6gm3eYds1ZV4oZ0n3IJKdR2M='",
-        "'sha256-DhAl2n6svO4R22uOfW60+GyTG4MUOShOfQYaRCW8B0s='",
-        "'sha256-82yOmiRBKWIOCVpo+kjM74uz5C+tEB6cbwzqL3rrPz4='",
         isLenientDev ? "'unsafe-eval' 'unsafe-inline'" : '',
     ].filter(Boolean).join(" ");
 
@@ -177,7 +166,7 @@ function handleBotRequest(
             />,
             {
                 nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
-                bootstrapScriptContent: `console.log('Bootstrap setting nonce:', ${JSON.stringify(nonce)}); window.__remixContext = window.__remixContext || {}; window.__remixContext.nonce = ${JSON.stringify(nonce)};`,
+                // Removed bootstrapScriptContent as it creates inline scripts without nonces
                 onAllReady() {
                     shellRendered = true;
                     const body = new PassThrough();
@@ -218,7 +207,7 @@ function handleBrowserRequest(
             />,
             {
                 nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
-                bootstrapScriptContent: `console.log('Bootstrap setting nonce:', ${JSON.stringify(nonce)}); window.__remixContext = window.__remixContext || {}; window.__remixContext.nonce = ${JSON.stringify(nonce)};`,
+                // Removed bootstrapScriptContent as it creates inline scripts without nonces
                 onShellReady() {
                     shellRendered = true;
                     const body = new PassThrough();
