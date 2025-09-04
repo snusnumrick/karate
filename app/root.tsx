@@ -40,7 +40,7 @@ export async function loader({context}: LoaderFunctionArgs) {
     
     // Debug logging in development
     if (process.env.NODE_ENV === 'development') {
-        console.log('Root loader nonce:', { nonce, STRICT_DEV, contextNonce: (context as any)?.nonce });
+        console.log('Root loader nonce:', { nonce, STRICT_DEV, contextNonce: context?.nonce });
     }
 
     return json({nonce});
@@ -181,43 +181,34 @@ export function Layout({children}: { children: React.ReactNode }) {
     const loaderData = useLoaderData<typeof loader>();
     const loaderNonce = loaderData?.nonce;
     
-    // Check if we're in strict dev mode
-    const STRICT_DEV = typeof window !== 'undefined' ? 
-        (window as { __remixContext?: { strictDev?: boolean; nonce?: string } }).__remixContext?.strictDev : 
-        process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
+    // Simplified nonce handling to prevent hydration mismatch
+    // Use a consistent approach that works on both server and client
+    const safeNonce = loaderNonce || 'dev-fixed-nonce';
     
-    // Get nonce from multiple sources during SSR and client-side
-    let nonce = loaderNonce;
+    // Fix nonce attributes after hydration to avoid hydration mismatch
+    useEffect(() => {
+        if (typeof window !== 'undefined' && safeNonce) {
+            const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+            console.log('Found JSON-LD scripts for nonce fix:', scripts.length);
+            scripts.forEach((script, index) => {
+                const currentNonce = script.getAttribute('nonce');
+                console.log(`Script ${index + 1} current nonce:`, currentNonce);
+                if (!currentNonce || currentNonce === '') {
+                    script.setAttribute('nonce', safeNonce);
+                    console.log(`Set nonce to: ${safeNonce}`);
+                }
+            });
+        }
+    }, [safeNonce]);
+    
+    // Debug: log nonce values during development (server-side only)
     if (typeof window === 'undefined') {
-        // During SSR, also try to get nonce from global context if loader hasn't provided it
-        nonce = nonce || (global as { __remixContext?: { nonce?: string } }).__remixContext?.nonce;
-    } else {
-        // On client, prioritize window context since loader data might not be hydrated yet
-        nonce = (window as { __remixContext?: { nonce?: string } }).__remixContext?.nonce || nonce;
-    }
-    
-    // Use consistent nonce: prefer available nonce, fallback to dev-fixed-nonce in strict dev mode
-    let safeNonce = nonce || (STRICT_DEV ? 'dev-fixed-nonce' : undefined);
-    
-    // Debug: log nonce values during development
-    if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
-        const renderId = Math.random().toString(36).substr(2, 9);
-        const globalNonce = (global as { __remixContext?: { nonce?: string } }).__remixContext?.nonce;
-        console.log(`SSR Layout nonce [${renderId}]:`, { 
+        console.log('SSR Layout nonce:', { 
             loaderNonce, 
-            globalNonce,
-            finalNonce: nonce,
-            STRICT_DEV, 
             safeNonce,
             safeNonceType: typeof safeNonce,
             safeNonceLength: safeNonce?.length
         });
-        // Force nonce during SSR in strict dev mode if it's missing or empty
-        if (STRICT_DEV && (!safeNonce || safeNonce === '')) {
-            safeNonce = 'dev-fixed-nonce';
-            console.log(`Forced safeNonce [${renderId}] to:`, safeNonce);
-        }
-        console.log(`About to render scripts with nonce [${renderId}]:`, safeNonce);
     }
 
     const classTimes = parseClassTimesForSchema(siteConfig.classes.days, siteConfig.classes.timeLong);
@@ -241,54 +232,99 @@ export function Layout({children}: { children: React.ReactNode }) {
             {safeNonce && <meta name="csp-nonce" content={safeNonce} />}
 
             {/* Organization Schema */}
-            <script
-                type="application/ld+json"
-                suppressHydrationWarning
-                nonce={safeNonce}
-                dangerouslySetInnerHTML={{
-                    __html: JSON.stringify({
-                        "@context": "https://schema.org",
-                        "@type": "Organization",
-                        "name": siteConfig.name,
-                        "url": siteConfig.url,
-                        "logo": `${siteConfig.url}/apple-touch-icon.png`,
-                        "contactPoint": {
-                            "@type": "ContactPoint",
-                            "telephone": siteConfig.contact.phone,
-                            "contactType": "Customer Service",
-                            "email": siteConfig.contact.email
-                        },
-                        "location": {
-                            "@type": "SportsActivityLocation",
-                            "name": siteConfig.location.description || siteConfig.name,
-                            "description": `Karate classes for children aged ${siteConfig.classes.ageRange}. Days: ${siteConfig.classes.days}. Time: ${siteConfig.classes.timeLong}. Located at ${siteConfig.location.address}.`,
-                            "url": `${siteConfig.url}/contact`,
-                            "telephone": siteConfig.contact.phone,
-                            "address": {
-                                "@type": "PostalAddress",
-                                "streetAddress": siteConfig.location.address,
-                                "addressLocality": siteConfig.location.locality,
-                                "addressRegion": siteConfig.location.region,
-                                "postalCode": siteConfig.location.postalCode,
-                                "addressCountry": siteConfig.location.country
+            {safeNonce ? (
+                <script
+                    type="application/ld+json"
+                    suppressHydrationWarning
+                    nonce={safeNonce}
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify({
+                            '@context': 'https://schema.org',
+                            '@type': 'Organization',
+                            name: siteConfig.name,
+                            url: siteConfig.url,
+                            logo: `${siteConfig.url}/apple-touch-icon.png`,
+                            contactPoint: {
+                                '@type': 'ContactPoint',
+                                telephone: siteConfig.contact.phone,
+                                contactType: 'Customer Service',
+                                email: siteConfig.contact.email,
                             },
-                            "openingHoursSpecification": [{
-                                "@type": "OpeningHoursSpecification",
-                                "dayOfWeek": classTimes.dayOfWeek,
-                                "opens": classTimes.opens,
-                                "closes": classTimes.closes
-                            }]
-                        },
-                        "sameAs": [siteConfig.socials.instagram, siteConfig.socials.facebook],
-                        "description": siteConfig.description
-                    })
-                }}
-            />
+                            location: {
+                                '@type': 'SportsActivityLocation',
+                                name: siteConfig.location.description,
+                                description: `Karate classes for children aged ${siteConfig.classes.ageRange}. Days: ${siteConfig.classes.days}. Time: ${siteConfig.classes.timeLong}. Located at ${siteConfig.location.address}.`,
+                                url: `${siteConfig.url}/contact`,
+                                telephone: siteConfig.contact.phone,
+                                address: {
+                                    '@type': 'PostalAddress',
+                                    streetAddress: siteConfig.location.address,
+                                    addressLocality: siteConfig.location.locality,
+                                    addressRegion: siteConfig.location.region,
+                                    postalCode: siteConfig.location.postalCode,
+                                    addressCountry: siteConfig.location.country,
+                                },
+                                openingHoursSpecification: [{
+                                    '@type': 'OpeningHoursSpecification',
+                                    dayOfWeek: classTimes.dayOfWeek,
+                                    opens: classTimes.opens,
+                                    closes: classTimes.closes,
+                                }],
+                            },
+                            sameAs: Object.values(siteConfig.socials).filter(Boolean),
+                            description: siteConfig.description,
+                        }),
+                    }}
+                />
+            ) : (
+                <script
+                     type="application/ld+json"
+                     suppressHydrationWarning
+                     dangerouslySetInnerHTML={{
+                         __html: JSON.stringify({
+                             '@context': 'https://schema.org',
+                             '@type': 'Organization',
+                             name: siteConfig.name,
+                             url: siteConfig.url,
+                             logo: `${siteConfig.url}/apple-touch-icon.png`,
+                             contactPoint: {
+                                 '@type': 'ContactPoint',
+                                 telephone: siteConfig.contact.phone,
+                                 contactType: 'Customer Service',
+                                 email: siteConfig.contact.email,
+                             },
+                             location: {
+                                    '@type': 'SportsActivityLocation',
+                                    name: siteConfig.location.description,
+                                    description: `Karate classes for children aged ${siteConfig.classes.ageRange}. Days: ${siteConfig.classes.days}. Time: ${siteConfig.classes.timeLong}. Located at ${siteConfig.location.address}.`,
+                                    url: `${siteConfig.url}/contact`,
+                                    telephone: siteConfig.contact.phone,
+                                    address: {
+                                        '@type': 'PostalAddress',
+                                        streetAddress: siteConfig.location.address,
+                                        addressLocality: siteConfig.location.locality,
+                                        addressRegion: siteConfig.location.region,
+                                        postalCode: siteConfig.location.postalCode,
+                                        addressCountry: siteConfig.location.country,
+                                    },
+                                 openingHoursSpecification: [{
+                                    '@type': 'OpeningHoursSpecification',
+                                    dayOfWeek: classTimes.dayOfWeek,
+                                    opens: classTimes.opens,
+                                    closes: classTimes.closes,
+                                }],
+                             },
+                             sameAs: Object.values(siteConfig.socials).filter(Boolean),
+                             description: siteConfig.description,
+                         }),
+                     }}
+                 />
+            )}
             {/* FAQPage Schema */}
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
-                nonce={safeNonce}
+                nonce={safeNonce || undefined}
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
