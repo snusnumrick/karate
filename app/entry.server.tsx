@@ -46,6 +46,7 @@ function generateCsp(nonce: string) {
         "https://*.google-analytics.com",
         "https://*.googletagmanager.com",
         "https://stats.g.doubleclick.net",
+        "https://www.google.ca",
     ].filter(Boolean).join(" ");
 
     const styleSrc = [
