@@ -2,6 +2,7 @@ import { vitePlugin as remix } from "@remix-run/dev";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { deriveNonceForRequest, STRICT_DEV, DEV_FIXED_NONCE } from "./app/utils/nonce.server";
+import { vercelPreset } from "@vercel/remix/vite";
 import type { Plugin } from "vite";
 
 // Only set dev load context in development mode
@@ -58,6 +59,7 @@ export default defineConfig({
         v3_relativeSplatPath: true,
         v3_throwAbortReason: true,
       },
+      presets: [vercelPreset()],
     }),
     tsconfigPaths(),
     cspNoncePlugin(),
