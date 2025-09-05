@@ -35,8 +35,7 @@ const build = viteDevServer
   : await import("./build/server/index.js");
 
 // Nonce generation logic (copied from nonce.server.ts)
-const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
-const DEV_FIXED_NONCE = 'dev-fixed-nonce';
+
 const NONCE_SECRET = process.env.NONCE_SECRET ? 
     Buffer.from(process.env.NONCE_SECRET, 'hex') : 
     crypto.createHash('sha256').update(process.env.NODE_ENV + (process.env.SESSION_SECRET || 'default-fallback')).digest();

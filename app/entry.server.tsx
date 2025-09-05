@@ -4,39 +4,30 @@
  * For more information, see https://remix.run/file-conventions/entry.server
  */
 
-import {PassThrough} from "node:stream";
-import {RemixServer} from "@remix-run/react";
-import {isbot} from "isbot";
-import {renderToPipeableStream} from "react-dom/server";
-import {createReadableStreamFromReadable, EntryContext, AppLoadContext} from "@remix-run/node";
-import {deriveNonceForRequest} from "./utils/nonce.server";
+import { PassThrough } from "node:stream";
+import { RemixServer } from "@remix-run/react";
+import { isbot } from "isbot";
+import { renderToPipeableStream } from "react-dom/server";
+import { createReadableStreamFromReadable, EntryContext } from "@remix-run/node";
+import { deriveNonceForRequest } from "./utils/nonce.server";
 
 // Extend EntryContext to include nonce property
 interface ExtendedEntryContext extends EntryContext {
     nonce?: string;
 }
 
-export const streamTimeout = 5_000;
+const ABORT_DELAY = 5_000;
 
-// Nonce generation function that handles Remix Request objects
-// Nonce derivation is now handled by the shared utility
-
-// Note: getLoadContext is now handled by server.js to ensure single nonce generation
-
-// REFACTORED: Moved CSP generation to its own function to avoid duplication
 function generateCsp(nonce: string) {
     const supabaseHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : '';
     const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : '';
 
     const isDevelopment = process.env.NODE_ENV === 'development';
-    // Always use strict CSP, even in development
-    const isLenientDev = false;
     const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*' : '';
     const devHttpOrigins = isDevelopment ? 'http://localhost:* http://127.0.0.1:*' : '';
 
     const connectSrc = [
         "'self'",
-        // Keep essential API endpoints
         "https://*.google-analytics.com",
         "https://*.analytics.google.com",
         "https://*.google.com",
@@ -44,7 +35,6 @@ function generateCsp(nonce: string) {
         "https://api.stripe.com",
         "https://umami-two-lilac.vercel.app",
         supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : '',
-        // Development websockets
         devWebSockets,
         devHttpOrigins,
     ].filter(Boolean).join(" ");
@@ -53,8 +43,6 @@ function generateCsp(nonce: string) {
         "'self'",
         "data:",
         supabaseOrigin,
-        // Remove blob: allowlist for stricter CSP
-        // isLenientDev ? 'blob:' : '',
         "https://*.google-analytics.com",
         "https://*.googletagmanager.com",
         "https://stats.g.doubleclick.net",
@@ -63,9 +51,7 @@ function generateCsp(nonce: string) {
     const styleSrc = [
         "'self'",
         `'nonce-${nonce}'`,
-        // Add Vite's development nonce to allow HMR styles
         isDevelopment ? "'nonce-dev-vite-nonce'" : '',
-        // Add specific hashes for Vite HMR and Tailwind CSS in development mode
         isDevelopment ? "'sha256-EiOgLoAxcFRdVJdZFcHv/Yp+zfJ5omuJDkY/tMXzd10='" : '',
         isDevelopment ? "'sha256-40oAvW7ca/qI/9rapLlXiO+wKrmLDJScrYFlb0ePVsU='" : '',
         isDevelopment ? "'sha256-hT67pHEAagXZWXCR6f0OxilTM/BibRRnzdBjQgTnd5U='" : '',
@@ -76,14 +62,7 @@ function generateCsp(nonce: string) {
         "'self'",
         `'nonce-${nonce}'`,
         "'strict-dynamic'",
-        // With strict-dynamic, only keep domains for scripts that can't use nonces
-        // Most third-party scripts loaded dynamically will inherit the nonce
-        "https://js.stripe.com", // Stripe requires explicit domain for initial load
-        // Remove other domains - they'll work with strict-dynamic if loaded with nonce
-        // "https://www.googletagmanager.com",
-        // "https://www.google-analytics.com", 
-        // "https://tagmanager.google.com",
-        // "https://umami-two-lilac.vercel.app",
+        "https://js.stripe.com",
     ].filter(Boolean).join(" ");
 
     const fontSrc = [
@@ -101,11 +80,8 @@ function generateCsp(nonce: string) {
     ].filter(Boolean).join(" ");
 
     const extraCspDirectives = [
-        // CSP Reporting - configure endpoint as needed
         process.env.CSP_REPORT_URI ? `report-uri ${process.env.CSP_REPORT_URI}` : '',
         process.env.CSP_REPORT_TO ? `report-to ${process.env.CSP_REPORT_TO}` : '',
-        // Remove upgrade-insecure-requests for stricter CSP
-        // isLenientDev ? "upgrade-insecure-requests" : '',
     ].filter(Boolean);
 
     const cspDirectives = [
@@ -116,7 +92,6 @@ function generateCsp(nonce: string) {
         `img-src ${imgSrc}`,
         `connect-src ${connectSrc}`,
         `frame-src ${frameSrc}`,
-        // Security hardening directives
         "object-src 'none'",
         "base-uri 'none'",
         "form-action 'self'",
@@ -130,39 +105,23 @@ export default function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
-  remixContext: EntryContext,
-  loadContext?: AppLoadContext,
+  remixContext: EntryContext
 ) {
-    console.log('handleRequest called with request URL:', request.url);
-    // Get nonce from loadContext (passed from server.js getLoadContext in development)
-    // In production (Vercel), loadContext may not have nonce, so we derive it directly
-    let nonce = (loadContext as { nonce?: string })?.nonce;
-    
-    // If no nonce in context (typical in Vercel deployment), generate one
-    if (!nonce) {
-        nonce = deriveNonceForRequest(request);
-        console.log('Generated nonce directly in handleRequest for Vercel deployment');
-    }
-    
-    console.log('handleRequest nonce:', nonce, 'from context or derivation, length:', nonce?.length, 'type:', typeof nonce);
+    const nonce = deriveNonceForRequest();
 
-    // Add nonce to the response headers via the CSP
     const csp = generateCsp(nonce);
     responseHeaders.set("Content-Security-Policy", csp);
     
-    // Add additional security headers
     responseHeaders.set("X-Frame-Options", "DENY");
     responseHeaders.set("X-Content-Type-Options", "nosniff");
     responseHeaders.set("X-XSS-Protection", "1; mode=block");
     responseHeaders.set("Referrer-Policy", "strict-origin-when-cross-origin");
     responseHeaders.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     
-    // Add HSTS header for production (HTTPS)
     if (process.env.NODE_ENV === 'production') {
         responseHeaders.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
     }
 
-    // Pass the nonce to the React application (for Scripts, etc.)
     (remixContext as ExtendedEntryContext).nonce = nonce;
 
     return isbot(request.headers.get("user-agent"))
@@ -193,12 +152,11 @@ function handleBotRequest(
             <RemixServer
                 context={remixContext}
                 url={request.url}
-                abortDelay={streamTimeout}
+                abortDelay={ABORT_DELAY}
                 nonce={nonce}
             />,
             {
-                nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
-                // Removed bootstrapScriptContent as it creates inline scripts without nonces
+                nonce: nonce || undefined,
                 onAllReady() {
                     shellRendered = true;
                     const body = new PassThrough();
@@ -217,7 +175,7 @@ function handleBotRequest(
                 },
             }
         );
-        setTimeout(abort, streamTimeout + 1_000);
+        setTimeout(abort, ABORT_DELAY);
     });
 }
 
@@ -234,12 +192,11 @@ function handleBrowserRequest(
             <RemixServer
                 context={remixContext}
                 url={request.url}
-                abortDelay={streamTimeout}
+                abortDelay={ABORT_DELAY}
                 nonce={nonce}
             />,
             {
-                nonce: nonce || undefined, // Ensure React's inline runtime scripts get the CSP nonce
-                // Removed bootstrapScriptContent as it creates inline scripts without nonces
+                nonce: nonce || undefined,
                 onShellReady() {
                     shellRendered = true;
                     const body = new PassThrough();
@@ -258,6 +215,6 @@ function handleBrowserRequest(
                 },
             }
         );
-        setTimeout(abort, streamTimeout + 1_000);
+        setTimeout(abort, ABORT_DELAY);
     });
 }
