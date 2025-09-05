@@ -27,12 +27,12 @@ declare global {
   }
 }
 
-export async function loader({context}: LoaderFunctionArgs) {
+export async function loader({context, request}: LoaderFunctionArgs) {
     let nonce = (context as { nonce?: string } | undefined)?.nonce;
     
     if (!nonce) {
         const { deriveNonceForRequest } = await import('~/utils/nonce.server');
-        nonce = deriveNonceForRequest();
+        nonce = deriveNonceForRequest(request);
     }
     
     const [csrfToken, csrfCookieHeader] = await csrf.commitToken();

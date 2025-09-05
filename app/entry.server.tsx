@@ -63,6 +63,7 @@ function generateCsp(nonce: string) {
         `'nonce-${nonce}'`,
         "'strict-dynamic'",
         "https://js.stripe.com",
+        "https://umami-two-lilac.vercel.app",
     ].filter(Boolean).join(" ");
 
     const fontSrc = [
@@ -107,7 +108,7 @@ export default function handleRequest(
   responseHeaders: Headers,
   remixContext: EntryContext
 ) {
-    const nonce = deriveNonceForRequest();
+    const nonce = deriveNonceForRequest(request);
 
     const csp = generateCsp(nonce);
     responseHeaders.set("Content-Security-Policy", csp);

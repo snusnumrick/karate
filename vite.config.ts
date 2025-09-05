@@ -5,15 +5,14 @@ import { deriveNonceForRequest } from "./app/utils/nonce.server";
 import { vercelPreset } from "@vercel/remix/vite";
 import type { Plugin } from "vite";
 
-// @ts-ignore
 import { setRemixDevLoadContext } from "@remix-run/dev/dist/vite/plugin";
 
 // Only set dev load context in development mode
 // In production (Vercel), this is handled by the server adapter
 if (process.env.NODE_ENV === 'development') {
   try {
-    setRemixDevLoadContext(() => ({
-      nonce: deriveNonceForRequest(),
+    setRemixDevLoadContext((request: Request) => ({
+      nonce: deriveNonceForRequest(request),
     }));
   } catch (error: unknown) {
     console.warn('Could not set dev load context:', error instanceof Error ? error.message : String(error));
