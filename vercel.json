@@ -2,18 +2,10 @@
   "routes": [
     {
       "src": "/manifest.webmanifest",
+      "headers": {
+        "Access-Control-Allow-Origin": "*"
+      },
       "dest": "/manifest.webmanifest"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/manifest.webmanifest",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
-      ]
     }
   ]
 }
