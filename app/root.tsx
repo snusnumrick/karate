@@ -31,24 +31,29 @@ declare global {
 
 // Loader to get the nonce from the server context and generate CSRF token
 export async function loader({context, request}: LoaderFunctionArgs) {
-    // Get nonce from server context (provided by getLoadContext in entry.server.tsx)
+    console.log("root loader context", context);
+
+    // Get nonce from server context (provided by getLoadContext in development)
+    // In production (Vercel), context may not have nonce, so we import and derive it
     let nonce = (context as { nonce?: string } | undefined)?.nonce;
     
-    // In strict dev mode, fallback to fixed dev nonce if no nonce is provided
-    const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
-    // if (!nonce && STRICT_DEV) {
-    //     nonce = 'dev-fixed-nonce';
-    // }
-
+    // If no nonce in context (typical in Vercel deployment), generate one directly
+    if (!nonce) {
+        // Import the nonce utility dynamically to avoid issues in different environments
+        const { deriveNonceForRequest } = await import('~/utils/nonce.server');
+        nonce = deriveNonceForRequest(request);
+        console.log('Generated nonce directly in root loader for Vercel deployment');
+    }
+    
     // Debug logging in development
     if (process.env.NODE_ENV === 'development') {
+        const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
         console.log('Root loader nonce:', { nonce, STRICT_DEV, contextNonce: context?.nonce });
     }
     
-    // Ensure we always have a nonce in production
+    // Ensure we always have a nonce
     if (!nonce) {
-        console.error('No nonce provided in context! This will cause CSP violations.');
-        // Generate a fallback nonce to prevent CSP errors
+        console.error('Failed to generate nonce! Using fallback.');
         nonce = 'fallback-' + Math.random().toString(36).substring(2, 15);
     }
     

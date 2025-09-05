@@ -122,9 +122,17 @@ export default function handleRequest(
   loadContext?: AppLoadContext,
 ) {
     console.log('handleRequest called with request URL:', request.url);
-    // Get nonce from loadContext (passed from server.js getLoadContext)
-  const nonce = (loadContext as { nonce?: string })?.nonce || deriveNonceForRequest(request);
-  console.log('handleRequest nonce:', nonce, 'from context or derivation, length:', nonce?.length, 'type:', typeof nonce);
+    // Get nonce from loadContext (passed from server.js getLoadContext in development)
+    // In production (Vercel), loadContext may not have nonce, so we derive it directly
+    let nonce = (loadContext as { nonce?: string })?.nonce;
+    
+    // If no nonce in context (typical in Vercel deployment), generate one
+    if (!nonce) {
+        nonce = deriveNonceForRequest(request);
+        console.log('Generated nonce directly in handleRequest for Vercel deployment');
+    }
+    
+    console.log('handleRequest nonce:', nonce, 'from context or derivation, length:', nonce?.length, 'type:', typeof nonce);
 
     // Add nonce to the response headers via the CSP
     const csp = generateCsp(nonce);

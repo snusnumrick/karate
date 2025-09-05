@@ -1,16 +1,21 @@
 import { vitePlugin as remix } from "@remix-run/dev";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { setRemixDevLoadContext } from "@remix-run/dev/dist/vite/plugin";
 import { deriveNonceForRequest, STRICT_DEV, DEV_FIXED_NONCE } from "./app/utils/nonce.server";
 import type { Plugin } from "vite";
 
-// Ensure loaders/actions receive a consistent nonce during Vite development
-// Nonce generation is now handled by the shared utility
-
-setRemixDevLoadContext((request) => ({
-  nonce: deriveNonceForRequest(request),
-}));
+// Only set dev load context in development mode
+// In production (Vercel), this is handled by the server adapter
+if (process.env.NODE_ENV === 'development') {
+  try {
+    const { setRemixDevLoadContext } = require("@remix-run/dev/dist/vite/plugin");
+    setRemixDevLoadContext((request: Request) => ({
+      nonce: deriveNonceForRequest(request),
+    }));
+  } catch (error: unknown) {
+    console.warn('Could not set dev load context:', error instanceof Error ? error.message : String(error));
+  }
+}
 
 // Custom plugin to enhance CSP nonce handling for Vite's injected styles
 function cspNoncePlugin(): Plugin {
