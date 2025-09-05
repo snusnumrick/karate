@@ -29,13 +29,14 @@ function generateCsp(nonce: string) {
     const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : '';
 
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const strictDev = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
-    const isLenientDev = isDevelopment && !strictDev;
+    // Always use strict CSP, even in development
+    const isLenientDev = false;
     const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*' : '';
     const devHttpOrigins = isDevelopment ? 'http://localhost:* http://127.0.0.1:*' : '';
 
     const connectSrc = [
         "'self'",
+        // Keep essential API endpoints
         "https://*.google-analytics.com",
         "https://*.analytics.google.com",
         "https://*.google.com",
@@ -43,6 +44,7 @@ function generateCsp(nonce: string) {
         "https://api.stripe.com",
         "https://umami-two-lilac.vercel.app",
         supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : '',
+        // Development websockets
         devWebSockets,
         devHttpOrigins,
     ].filter(Boolean).join(" ");
@@ -51,7 +53,8 @@ function generateCsp(nonce: string) {
         "'self'",
         "data:",
         supabaseOrigin,
-        isLenientDev ? 'blob:' : '',
+        // Remove blob: allowlist for stricter CSP
+        // isLenientDev ? 'blob:' : '',
         "https://*.google-analytics.com",
         "https://*.googletagmanager.com",
         "https://stats.g.doubleclick.net",
@@ -72,12 +75,15 @@ function generateCsp(nonce: string) {
     const scriptSrc = [
         "'self'",
         `'nonce-${nonce}'`,
-        "https://js.stripe.com",
-        "https://www.googletagmanager.com",
-        "https://www.google-analytics.com",
-        "https://tagmanager.google.com",
-        "https://umami-two-lilac.vercel.app",
-        isLenientDev ? "'unsafe-eval' 'unsafe-inline'" : '',
+        "'strict-dynamic'",
+        // With strict-dynamic, only keep domains for scripts that can't use nonces
+        // Most third-party scripts loaded dynamically will inherit the nonce
+        "https://js.stripe.com", // Stripe requires explicit domain for initial load
+        // Remove other domains - they'll work with strict-dynamic if loaded with nonce
+        // "https://www.googletagmanager.com",
+        // "https://www.google-analytics.com", 
+        // "https://tagmanager.google.com",
+        // "https://umami-two-lilac.vercel.app",
     ].filter(Boolean).join(" ");
 
     const fontSrc = [
@@ -95,7 +101,11 @@ function generateCsp(nonce: string) {
     ].filter(Boolean).join(" ");
 
     const extraCspDirectives = [
-        isLenientDev ? "upgrade-insecure-requests" : '',
+        // CSP Reporting - configure endpoint as needed
+        process.env.CSP_REPORT_URI ? `report-uri ${process.env.CSP_REPORT_URI}` : '',
+        process.env.CSP_REPORT_TO ? `report-to ${process.env.CSP_REPORT_TO}` : '',
+        // Remove upgrade-insecure-requests for stricter CSP
+        // isLenientDev ? "upgrade-insecure-requests" : '',
     ].filter(Boolean);
 
     const cspDirectives = [
@@ -106,7 +116,9 @@ function generateCsp(nonce: string) {
         `img-src ${imgSrc}`,
         `connect-src ${connectSrc}`,
         `frame-src ${frameSrc}`,
-        "base-uri 'self'",
+        // Security hardening directives
+        "object-src 'none'",
+        "base-uri 'none'",
         "form-action 'self'",
         ...extraCspDirectives,
     ];
@@ -137,6 +149,18 @@ export default function handleRequest(
     // Add nonce to the response headers via the CSP
     const csp = generateCsp(nonce);
     responseHeaders.set("Content-Security-Policy", csp);
+    
+    // Add additional security headers
+    responseHeaders.set("X-Frame-Options", "DENY");
+    responseHeaders.set("X-Content-Type-Options", "nosniff");
+    responseHeaders.set("X-XSS-Protection", "1; mode=block");
+    responseHeaders.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    responseHeaders.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    
+    // Add HSTS header for production (HTTPS)
+    if (process.env.NODE_ENV === 'production') {
+        responseHeaders.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+    }
 
     // Pass the nonce to the React application (for Scripts, etc.)
     (remixContext as ExtendedEntryContext).nonce = nonce;
