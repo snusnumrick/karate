@@ -36,10 +36,10 @@ export async function loader({context, request}: LoaderFunctionArgs) {
     
     // In strict dev mode, fallback to fixed dev nonce if no nonce is provided
     const STRICT_DEV = process.env.CSP_STRICT_DEV === '1' || process.env.CSP_STRICT_DEV === 'true';
-    if (!nonce && STRICT_DEV) {
-        nonce = 'dev-fixed-nonce';
-    }
-    
+    // if (!nonce && STRICT_DEV) {
+    //     nonce = 'dev-fixed-nonce';
+    // }
+
     // Debug logging in development
     if (process.env.NODE_ENV === 'development') {
         console.log('Root loader nonce:', { nonce, STRICT_DEV, contextNonce: context?.nonce });
@@ -208,8 +208,9 @@ export function Layout({children}: { children: React.ReactNode }) {
     
     // Simplified nonce handling to prevent hydration mismatch
     // Use a consistent approach that works on both server and client
-    const safeNonce = loaderNonce || 'dev-fixed-nonce';
-    
+    // const safeNonce = loaderNonce || 'dev-fixed-nonce';
+    const safeNonce = loaderNonce;
+
     // Fix nonce attributes after hydration to avoid hydration mismatch
     useEffect(() => {
         if (typeof window !== 'undefined' && safeNonce) {

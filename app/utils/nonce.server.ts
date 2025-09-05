@@ -11,7 +11,7 @@ const NONCE_SECRET = process.env.NONCE_SECRET ?
     crypto.createHash('sha256').update(process.env.NODE_ENV + (process.env.SESSION_SECRET || 'default-fallback')).digest();
 
 export function deriveNonceForRequest(request: Request): string {
-    if (STRICT_DEV) return DEV_FIXED_NONCE;
+    // if (STRICT_DEV) return DEV_FIXED_NONCE;
     
     // For production, generate nonce based on session-level data, not request-specific URL
     // This ensures the same nonce is used for the main page and all its assets
