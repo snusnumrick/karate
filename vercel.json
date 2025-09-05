@@ -5,7 +5,6 @@
   "framework": null,
   "functions": {
     "build/server/index.js": {
-      "runtime": "edge",
       "maxDuration": 60
     }
   },
@@ -21,10 +20,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/build/server/index.js"
-    },
     {
       "source": "/(.*)",
       "destination": "/build/server/index.js"
