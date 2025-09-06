@@ -292,13 +292,3 @@ BEGIN
     RETURN jsonb_build_object('eligible', true, 'reason', 'Eligible for registration');
 END;
 $$ LANGUAGE plpgsql;
-
--- Add some sample data (optional)
-INSERT INTO events (title, description, event_type_id, start_date, start_time, end_time, max_participants, registration_fee, status, visibility)
-VALUES 
-('Spring Tournament', 'Annual spring karate tournament for all belt levels', (SELECT id FROM event_types WHERE name = 'tournament' LIMIT 1), '2024-04-15', '09:00', '17:00', 100, 25.00, 'published', 'public'),
-('Self-Defense Workshop', 'Basic self-defense techniques workshop', (SELECT id FROM event_types WHERE name = 'workshop' LIMIT 1), '2024-03-20', '18:00', '20:00', 20, 15.00, 'published', 'public');
-
--- Update dates to be in the future for testing
-UPDATE events SET start_date = CURRENT_DATE + INTERVAL '30 days' WHERE title = 'Spring Tournament';
-UPDATE events SET start_date = CURRENT_DATE + INTERVAL '15 days' WHERE title = 'Self-Defense Workshop';}]}}
