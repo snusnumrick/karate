@@ -49,15 +49,17 @@ function generateCsp(nonce: string) {
         "https://www.google.ca",
     ].filter(Boolean).join(" ");
 
-    const styleSrc = [
-        "'self'",
-        `'nonce-${nonce}'`,
-        isDevelopment ? "'nonce-dev-vite-nonce'" : '',
-        isDevelopment ? "'sha256-EiOgLoAxcFRdVJdZFcHv/Yp+zfJ5omuJDkY/tMXzd10='" : '',
-        isDevelopment ? "'sha256-40oAvW7ca/qI/9rapLlXiO+wKrmLDJScrYFlb0ePVsU='" : '',
-        isDevelopment ? "'sha256-hT67pHEAagXZWXCR6f0OxilTM/BibRRnzdBjQgTnd5U='" : '',
-        "https://fonts.googleapis.com",
-    ].filter(Boolean).join(" ");
+    const styleSrc = isDevelopment
+        ? [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+          ].join(" ")
+        : [
+            "'self'",
+            `'nonce-${nonce}'`,
+            "https://fonts.googleapis.com",
+          ].filter(Boolean).join(" ");
 
     const scriptSrc = [
         "'self'",
