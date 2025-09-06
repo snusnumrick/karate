@@ -476,10 +476,10 @@ export function getEligibilityEventColors(eligibilityStatus?: string): {
     default:
       // Gray for events where no students are eligible
       return {
-        background: 'bg-gray-100 dark:bg-gray-900/30',
-        border: 'border-gray-500 dark:border-gray-400',
-        text: 'text-gray-900 dark:text-gray-100',
-        hover: 'hover:bg-gray-200 dark:hover:bg-gray-900/50'
+        background: 'bg-muted',
+        border: 'border-muted-foreground',
+        text: 'text-foreground',
+        hover: 'hover:bg-muted/80'
       };
   }
 }
@@ -494,7 +494,7 @@ export function getEligibilityIconColor(eligibilityStatus?: string): string {
     case 'all_registered':
       return 'bg-blue-500';
     case 'not_eligible':
-      return 'bg-gray-400';
+      return 'bg-muted-foreground';
     default:
       return 'bg-purple-500';
   }
@@ -507,7 +507,7 @@ export function getEligibilityBorderColor(eligibilityStatus?: string): string {
     case 'all_registered':
       return 'border-blue-500';
     case 'not_eligible':
-      return 'border-gray-400';
+      return 'border-muted-foreground';
     default:
       return 'border-purple-500 dark:border-purple-400';
   }

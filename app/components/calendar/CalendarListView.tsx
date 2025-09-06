@@ -1,4 +1,5 @@
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { formatDate } from '~/utils/misc';
 import { Calendar as CalendarIcon, Clock, Users, MapPin } from 'lucide-react';
 import { Card, CardContent } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
@@ -35,7 +36,7 @@ export function CalendarListView({ events, currentDate, onEventClick }: Calendar
       case 'event':
         return 'bg-purple-100 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700 text-purple-800 dark:text-purple-200';
       default:
-        return 'bg-gray-100 dark:bg-gray-900/30 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200';
+        return 'bg-muted border-border text-muted-foreground';
     }
   };
 
@@ -57,11 +58,11 @@ export function CalendarListView({ events, currentDate, onEventClick }: Calendar
   if (eventsByDay.length === 0) {
     return (
       <div className="text-center py-12">
-        <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+        <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-foreground mb-2">
           No events this month
         </h3>
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-muted-foreground">
           Check other months or add new events to your calendar.
         </p>
       </div>
@@ -71,28 +72,28 @@ export function CalendarListView({ events, currentDate, onEventClick }: Calendar
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          {format(monthStart, 'MMMM yyyy')}
+        <h3 className="text-lg font-semibold text-foreground">
+          {formatDate(monthStart, { formatString: 'MMMM yyyy' })}
         </h3>
       </div>
 
       {eventsByDay.map(({ date, events: dayEvents }) => (
-        <div key={format(date, 'yyyy-MM-dd')} className="space-y-3">
+        <div key={formatDate(date, { formatString: 'yyyy-MM-dd' })} className="space-y-3">
           {/* Day header */}
-          <div className="flex items-center space-x-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center space-x-3 pb-2 border-b border-border">
             <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold ${
               isSameDay(date, new Date()) 
                 ? 'bg-blue-600 text-white' 
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                : 'bg-muted text-muted-foreground'
             }`}>
-              {format(date, 'd')}
+              {formatDate(date, { formatString: 'd' })}
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                {format(date, 'EEEE')}
+              <h4 className="font-semibold text-foreground">
+                {formatDate(date, { formatString: 'EEEE' })}
               </h4>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {format(date, 'MMMM d, yyyy')}
+              <p className="text-sm text-muted-foreground">
+                {formatDate(date, { formatString: 'MMMM d, yyyy' })}
               </p>
             </div>
             <div className="flex-1" />

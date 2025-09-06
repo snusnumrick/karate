@@ -1,4 +1,5 @@
 import { Badge } from '~/components/ui/badge';
+import { Link } from '@remix-run/react';
 import {
   formatEventTime,
   getAttendanceStatusVariant,
@@ -71,13 +72,13 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
             {compact ? event.status?.charAt(0).toUpperCase() : event.status?.toUpperCase()}
           </Badge>
           {!compact && (
-            <span className="text-xs text-gray-600 dark:text-gray-300 truncate text-clip leading-tight">
+            <span className="text-xs text-muted-foreground truncate text-clip leading-tight">
               {event.studentName}
             </span>
           )}
         </div>
         {!compact && (
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-tight">
+          <div className="text-xs text-muted-foreground mt-0.5 leading-tight opacity-80">
             {event.className}
           </div>
         )}
@@ -130,21 +131,14 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
       hover: 'hover:bg-purple-200 dark:hover:bg-purple-900/50'
     };
     
-    // Get icon color based on eligibility status
-    // const iconColor = getEligibilityIconColor(event.eligibilityStatus);
-    
     return (
-      <div
-        className={`p-0.5 sm:p-1 landscape-tablet:p-0.5 mb-0.5 sm:mb-1 landscape-tablet:mb-0 ${colors.background} border-l-2 sm:border-l-4 landscape-tablet:border-l-2 ${colors.border} rounded cursor-pointer ${colors.hover} transition-colors`}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        role="button"
-        tabIndex={0}
-        aria-label={`Event: ${event.title}${event.eligibilityStatus ? ` (${event.eligibilityStatus.replace('_', ' ')})` : ''}`}
+      <Link
+        to={`/events/${event.id}`}
+        className={`block p-0.5 sm:p-1 landscape-tablet:p-0.5 mb-0.5 sm:mb-1 landscape-tablet:mb-0 ${colors.background} border-l-2 sm:border-l-4 landscape-tablet:border-l-2 ${colors.border} rounded ${colors.hover} transition-colors`}
+        aria-label={`View event: ${event.title}${event.eligibilityStatus ? ` (${event.eligibilityStatus.replace('_', ' ')})` : ''}`}
       >
         <div className="flex items-center gap-1">
-          {/*<div className={`w-2 h-2 rounded-full flex-shrink-0 ${iconColor}`}></div>*/}
-          <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'break-words truncate text-clip\n' : ''}`} title={event.title}>
+          <div className={`font-medium ${colors.text} text-xs leading-tight ${compact ? 'break-words truncate text-clip' : ''}`} title={event.title}>
             {event.title}
           </div>
         </div>
@@ -165,7 +159,7 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
             {event.eligibilityStatus === 'not_eligible' && 'Not eligible'}
           </div>
         )}
-      </div>
+      </Link>
     );
   }
 

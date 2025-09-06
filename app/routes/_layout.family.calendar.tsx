@@ -8,7 +8,6 @@ import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { 
-  format, 
   startOfMonth, 
   endOfMonth, 
   startOfWeek, 
@@ -22,6 +21,7 @@ import { CalendarFilters } from "~/components/calendar/CalendarFilters";
 import { CalendarLegend } from "~/components/calendar/CalendarLegend";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents } from "~/components/calendar/utils";
+import { formatDate } from "~/utils/misc";
 import { requireUserId } from "~/utils/auth.server";
 import { breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
@@ -151,7 +151,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const familyId = profile.family_id;
     const url = new URL(request.url);
     const monthParam = url.searchParams.get('month');
-    const currentMonth = monthParam || format(new Date(), 'yyyy-MM');
+    const currentMonth = monthParam || formatDate(new Date(), { formatString: 'yyyy-MM' });
     // console.log('Family Calendar Loader: Current month:', currentMonth);
 
     // Fetch family name
@@ -565,7 +565,7 @@ export default function FamilyCalendarPage() {
     scrollPositionRef.current = window.scrollY;
     
     setCurrentDate(newDate);
-    const newMonth = format(newDate, 'yyyy-MM');
+    const newMonth = formatDate(newDate, { formatString: 'yyyy-MM' });
     
     // Update URL and trigger navigation to reload events
     const newParams = new URLSearchParams(searchParams);
@@ -588,8 +588,10 @@ export default function FamilyCalendarPage() {
   };
 
   const handleEventClick = (event: CalendarEvent) => {
-    // Show details for session, attendance, and event types, not birthdays
-    if (event.type === 'session' || event.type === 'attendance' || event.type === 'event') {
+    // Show details for session and attendance types only
+    // Event types now navigate directly to event page via Link component
+    // Birthday types don't show details
+    if (event.type === 'session' || event.type === 'attendance') {
       setSelectedEvent(event);
       setIsModalOpen(true);
     }
@@ -646,11 +648,11 @@ export default function FamilyCalendarPage() {
           {selectedEvent && (
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">
-                  {format(selectedEvent.date, 'EEEE, MMMM d, yyyy')}
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(selectedEvent.date, { formatString: 'EEEE, MMMM d, yyyy' })}
                 </p>
                 {selectedEvent.startTime && (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     {selectedEvent.startTime}
                     {selectedEvent.endTime && ` - ${selectedEvent.endTime}`}
                   </p>
@@ -674,21 +676,21 @@ export default function FamilyCalendarPage() {
               {selectedEvent.location && (
                 <div>
                   <p className="text-sm font-medium">Location:</p>
-                  <p className="text-sm text-gray-600">{selectedEvent.location}</p>
+                  <p className="text-sm text-muted-foreground">{selectedEvent.location}</p>
                 </div>
               )}
               
               {selectedEvent.description && (
                 <div>
                   <p className="text-sm font-medium">Description:</p>
-                  <p className="text-sm text-gray-600">{selectedEvent.description}</p>
+                  <p className="text-sm text-muted-foreground">{selectedEvent.description}</p>
                 </div>
               )}
               
               {selectedEvent.studentName && (
                 <div>
                   <p className="text-sm font-medium">Student:</p>
-                  <p className="text-sm text-gray-600">{selectedEvent.studentName}</p>
+                  <p className="text-sm text-muted-foreground">{selectedEvent.studentName}</p>
                 </div>
               )}
             </div>

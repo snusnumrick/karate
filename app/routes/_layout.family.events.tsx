@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Calendar, Clock, MapPin, DollarSign, Users, AlertCircle, CreditCard } from "lucide-react";
 import { formatDate } from "~/utils/misc";
+import { formatEventTypeName } from "~/utils/event-helpers.server";
 import type { Database } from "~/types/database.types";
 
 
@@ -26,6 +27,7 @@ type EventWithStudents = {
   event_type: {
     id: string;
     name: string;
+    display_name: string | null;
     color_class: string;
     border_class: string | null;
     dark_mode_class: string | null;
@@ -195,6 +197,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       event_type:event_types (
         id,
         name,
+        display_name,
         color_class,
         border_class,
         dark_mode_class
@@ -305,21 +308,6 @@ export default function FamilyEventsPage() {
   };
 
   const EventCard = ({ event }: { event: EventWithStudents }) => {
-    // Define helper functions inline to avoid import issues
-    const formatEventTypeName = (eventType: string): string => {
-      const formatMap: Record<string, string> = {
-        competition: "Competition",
-        seminar: "Seminar",
-        testing: "Testing",
-        tournament: "Tournament",
-        workshop: "Workshop",
-        social_event: "Social Event",
-        fundraiser: "Fundraiser",
-        other: "Other",
-        "belt exam": "Belt Exam"
-      };
-      return formatMap[eventType] || eventType;
-    };
     
     // Use dynamic color from event_types table instead of hardcoded colors
     const eventTypeColor = event.event_type?.color_class 
@@ -381,7 +369,7 @@ export default function FamilyEventsPage() {
               </div>
               {event.event_type && (
                 <Badge className={`${eventTypeColor} text-xs font-medium px-2 py-1 rounded`}>
-                  {formatEventTypeName(event.event_type.name)}
+                  {formatEventTypeName(event.event_type.name, event.event_type)}
                 </Badge>
               )}
             </div>

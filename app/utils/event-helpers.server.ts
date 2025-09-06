@@ -4,7 +4,7 @@ import { EventTypeService } from "~/services/event-type.server";
  * Converts event type enum values to user-friendly display names
  * Falls back to database display_name if available
  */
-export function formatEventTypeName(eventType: string, eventTypeData?: { display_name: string } | null): string {
+export function formatEventTypeName(eventType: string, eventTypeData?: { display_name: string | null } | null): string {
   if (eventTypeData?.display_name) {
     return eventTypeData.display_name;
   }

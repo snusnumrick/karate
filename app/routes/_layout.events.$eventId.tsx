@@ -53,7 +53,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const eventTypeColor = event.event_type?.color_class 
     ? `${event.event_type.color_class} ${event.event_type.border_class || ''}`.trim()
     : 'bg-gray-100 text-gray-800 border-gray-200';
-  const formattedEventType = formatEventTypeName(event.event_type?.name || 'other');
+  const formattedEventType = formatEventTypeName(event.event_type?.name || 'other', event.event_type);
 
   return json({ event, eventTypeColor, formattedEventType });
 }
@@ -353,7 +353,9 @@ export default function EventDetail() {
                 <dl className="space-y-4">
                   <div>
                     <dt className="text-sm text-gray-600 dark:text-gray-300">Event Type</dt>
-                    <dd className="font-semibold text-gray-900 dark:text-white capitalize">{event.event_type_id.replace('_', ' ')}</dd>
+                    <dd className="font-semibold text-gray-900 dark:text-white capitalize">
+                        {formattedEventType}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-sm text-gray-600 dark:text-gray-300">Status</dt>

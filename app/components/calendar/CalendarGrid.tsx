@@ -1,5 +1,5 @@
-import { format } from 'date-fns';
 import { useState, useEffect, useRef } from 'react';
+import { formatDate } from '~/utils/misc';
 import { CalendarEvent } from './CalendarEvent';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { Button } from '~/components/ui/button';
@@ -28,12 +28,12 @@ const DayEventsModal = ({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col p-0">
           {/* Header */}
-          <DialogHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <DialogHeader className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {format(date, 'MMMM d, yyyy')}
+                <DialogTitle className="text-lg font-semibold text-foreground">
+                  {formatDate(date, { formatString: 'MMMM d, yyyy' })}
                 </DialogTitle>
               </div>
             </div>
@@ -42,7 +42,7 @@ const DayEventsModal = ({
           {/* Events list */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {events.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div className="text-center py-8 text-muted-foreground">
                   No events scheduled for this day
                 </div>
             ) : (
@@ -81,7 +81,7 @@ const DayEventsModal = ({
                                     ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200'
                                     : event.status === 'absent'
                                         ? 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200'
-                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+                                        : 'bg-muted text-muted-foreground'
                         }`}>
                     {event.type === 'session' ? 'Session' : event.status?.toUpperCase()}
                   </span>
@@ -131,7 +131,7 @@ const DayEventsModal = ({
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-t border-border">
             <Button onClick={onClose} className="w-full">
               Close
             </Button>
@@ -215,14 +215,14 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
   return (
       <>
         <div
-            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm"
+            className="bg-background rounded-lg border border-border overflow-hidden shadow-sm"
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
         >
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-7 bg-muted border-b border-border">
             {WEEKDAYS.map(day => (
-                <div key={day} className="p-1.5 sm:p-2 md:p-3 landscape-tablet:p-1.5 text-center text-xs sm:text-sm landscape-tablet:text-xs font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                <div key={day} className="p-1.5 sm:p-2 md:p-3 landscape-tablet:p-1.5 text-center text-xs sm:text-sm landscape-tablet:text-xs font-semibold text-muted-foreground border-r border-border last:border-r-0">
                   <span className="hidden sm:inline landscape-tablet:hidden">{day}</span>
                   <span className="sm:hidden landscape-tablet:inline text-xs font-bold">{day.slice(0, 2)}</span>
                 </div>
@@ -232,15 +232,15 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
           {/* Calendar grid */}
           <div className="grid grid-cols-7">
             {days.map((day) => {
-              const dayKey = format(day.date, 'yyyy-MM-dd');
+              const dayKey = formatDate(day.date, { formatString: 'yyyy-MM-dd' });
               const maxVisible = isMobile ? 1 : 3;
               const hasMoreEvents = day.events.length > maxVisible;
 
               return (
                   <div
                       key={dayKey}
-                      className={`min-h-[70px] sm:min-h-[100px] md:min-h-[120px] landscape-tablet:min-h-[65px] p-1.5 sm:p-2 landscape-tablet:p-1 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors active:bg-gray-100 dark:active:bg-gray-600 ${
-                          !day.isCurrentMonth ? 'bg-gray-50/50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-500' : 'bg-white dark:bg-gray-800'
+                      className={`min-h-[70px] sm:min-h-[100px] md:min-h-[120px] landscape-tablet:min-h-[65px] p-1.5 sm:p-2 landscape-tablet:p-1 border-r border-b border-border last:border-r-0 cursor-pointer hover:bg-muted/50 transition-colors active:bg-muted ${
+                          !day.isCurrentMonth ? 'bg-muted/30 text-muted-foreground/60' : 'bg-background'
                       } ${
                           day.isToday ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400 border-2 shadow-inner' : ''
                       }`}
@@ -248,14 +248,14 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
                       onKeyDown={(e) => handleKeyDown(e, day.date)}
                       role="button"
                       tabIndex={0}
-                      aria-label={`${format(day.date, 'MMMM d, yyyy')} - ${day.events.length} events`}
+                      aria-label={`${formatDate(day.date, { formatString: 'MMMM d, yyyy' })} - ${day.events.length} events`}
                   >
                     {/* Day number */}
                     <div className={`text-sm sm:text-sm landscape-tablet:text-xs mb-1 landscape-tablet:mb-0.5 flex items-center justify-between ${
-                        day.isToday ? 'font-bold' : day.isCurrentMonth ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-400 dark:text-gray-500 font-medium'
+                        day.isToday ? 'font-bold' : day.isCurrentMonth ? 'text-foreground font-medium' : 'text-muted-foreground/60 font-medium'
                     }`}>
                       <span className={day.isToday ? 'bg-blue-600 dark:bg-blue-500 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 landscape-tablet:w-5 landscape-tablet:h-5 flex items-center justify-center text-xs sm:text-sm landscape-tablet:text-xs font-bold' : ''}>
-                        {format(day.date, 'd')}
+                        {formatDate(day.date, { formatString: 'd' })}
                       </span>
                       {day.events.length > 0 && (
                         <span className="text-xs bg-red-500 text-white rounded-full w-4 h-4 landscape-tablet:w-3 landscape-tablet:h-3 flex items-center justify-center font-bold landscape-tablet:text-xs">
@@ -278,7 +278,7 @@ export function CalendarGrid({ days, onEventClick, onDayClick, onSwipeLeft, onSw
                           <button
                               onClick={(e) => handleMoreClick(e, day.date, day.events)}
                               className="w-full text-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-1 landscape-tablet:py-0.5 rounded transition-colors text-xs landscape-tablet:text-xs font-medium bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700"
-                              aria-label={`Show ${day.events.length - maxVisible} more events for ${format(day.date, 'MMMM d')}`}
+                              aria-label={`Show ${day.events.length - maxVisible} more events for ${formatDate(day.date, { formatString: 'MMMM d' })}`}
                           >
                             +{day.events.length - maxVisible} more
                           </button>
