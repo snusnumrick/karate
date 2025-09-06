@@ -5,7 +5,7 @@ import { csrf } from "~/utils/csrf.server";
 import { InvoiceForm } from "~/components/InvoiceForm";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { createInvoice, getInvoiceById, updateInvoiceStatus } from "~/services/invoice.server";
-import { getInvoiceEntities } from "~/services/invoice-entity.server";
+import { getInvoiceEntities, getInvoiceEntityById } from "~/services/invoice-entity.server";
 import { sendInvoiceEmail } from "~/services/invoice-email.server";
 import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
@@ -169,8 +169,24 @@ export async function action({ request }: ActionFunctionArgs) {
       return json<ActionData>({ errors, values });
     }
 
+    // Get entity information to determine family_id
+    let family_id: string | undefined;
+    if (entity_id) {
+      try {
+        const entity = await getInvoiceEntityById(entity_id);
+        if (entity.entity_type === 'family') {
+          // For family entities, use the originalFamilyId if available
+          family_id = entity.originalFamilyId || undefined;
+        }
+      } catch (error) {
+        console.error("Error fetching entity information:", error);
+        // Continue without family_id if entity fetch fails
+      }
+    }
+
     const invoiceData: CreateInvoiceData = {
       entity_id: entity_id || '',
+      family_id: family_id,
       issue_date: issue_date || new Date().toISOString().split('T')[0],
       due_date: due_date || new Date().toISOString().split('T')[0],
       service_period_start: formData.get("service_period_start") as string || undefined,

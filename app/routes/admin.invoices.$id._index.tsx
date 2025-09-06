@@ -70,9 +70,39 @@ export async function action({ request, params }: ActionFunctionArgs) {
   
   try {
     switch (action) {
-      case "mark_paid":
+      case "mark_paid": {
+        // First get the invoice to calculate remaining balance
+        const invoice = await getInvoiceById(id);
+        if (!invoice) {
+          return json({ error: "Invoice not found" }, { status: 404 });
+        }
+        
+        const remainingBalance = invoice.total_amount - invoice.amount_paid;
+        
+        if (remainingBalance > 0) {
+          // Create a payment record for the remaining balance
+          const { getSupabaseAdminClient } = await import("~/utils/supabase.server");
+          const supabase = getSupabaseAdminClient();
+          
+          const { error: paymentError } = await supabase
+            .from('invoice_payments')
+            .insert({
+              invoice_id: id,
+              amount: remainingBalance,
+              payment_date: new Date().toISOString().split('T')[0], // Today's date
+              payment_method: 'other', // Default method when marked as paid
+              notes: 'Marked as paid via admin interface'
+            });
+            
+          if (paymentError) {
+            console.error('Error creating payment record:', paymentError);
+            return json({ error: "Failed to create payment record" }, { status: 500 });
+          }
+        }
+        
         await updateInvoiceStatus(id, "paid");
         return json({ success: true, message: "Invoice marked as paid" });
+      }
         
       case "mark_pending":
         await updateInvoiceStatus(id, "sent");

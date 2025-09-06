@@ -14,8 +14,27 @@ type PaymentWithFamily = Database['public']['Tables']['payments']['Row'] & {
     families: { name: string } | null; // Supabase relation type
 };
 
+type InvoicePaymentFormatted = {
+    id: string;
+    family_id: string;
+    payment_date: string | null;
+    total_amount: number;
+    payment_method: string | null;
+    status: 'succeeded';
+    notes: string | null;
+    reference_number: string | null;
+    familyName: string;
+    source: 'invoice_payment';
+    invoice_number?: string;
+};
+
+type RegularPaymentFormatted = Omit<PaymentWithFamily, 'families'> & { 
+    familyName: string;
+    source: 'payment';
+};
+
 type LoaderData = {
-    payments: Array<Omit<PaymentWithFamily, 'families'> & { familyName: string }>; // Flattened structure for component
+    payments: Array<RegularPaymentFormatted | InvoicePaymentFormatted>;
 };
 
 export async function loader({request}: LoaderFunctionArgs) {
@@ -27,24 +46,68 @@ export async function loader({request}: LoaderFunctionArgs) {
 
     try {
         console.log("Admin payments loader: Fetching payments with family names...");
-        const {data, error} = await supabaseAdmin
+        
+        // Fetch regular payments
+        const {data: paymentsData, error: paymentsError} = await supabaseAdmin
             .from('payments')
             .select(`*, family:family_id (name)`)
-            .order('payment_date', {ascending: false}); // Show most recent first
+            .order('payment_date', {ascending: false});
 
-        if (error) {
-            console.error("Error fetching payments:", error.message);
+        if (paymentsError) {
+            console.error("Error fetching payments:", paymentsError.message);
             throw new Response("Failed to load payment data.", {status: 500, headers: Object.fromEntries(headers)});
         }
 
-        // Format data for easier use in the component
-        const formattedPayments = data?.map(p => ({
-            ...p,
-            familyName: p.family?.name ?? 'N/A' // Access `family.name`, handling potential nulls
-        })) || []; // Ensure at least an empty array if `data` is null
+        // Fetch invoice payments with invoice and family information
+        const {data: invoicePaymentsData, error: invoicePaymentsError} = await supabaseAdmin
+            .from('invoice_payments')
+            .select(`
+                *,
+                invoice:invoice_id (
+                    family_id,
+                    invoice_number,
+                    families(id, name)
+                )
+            `)
+            .order('payment_date', {ascending: false});
 
-        console.log(`Admin payments loader: Fetched ${formattedPayments.length} payments.`);
-        return json<LoaderData>({payments: formattedPayments}, {headers: Object.fromEntries(headers)});
+        if (invoicePaymentsError) {
+            console.error("Error fetching invoice payments:", invoicePaymentsError.message);
+            throw new Response("Failed to load invoice payment data.", {status: 500, headers: Object.fromEntries(headers)});
+        }
+
+        // Format regular payments
+        const formattedPayments = paymentsData?.map(p => ({
+            ...p,
+            familyName: p.family?.name ?? 'N/A',
+            source: 'payment' as const
+        })) || [];
+
+        // Format invoice payments to match the payment structure
+        const formattedInvoicePayments = invoicePaymentsData?.map(ip => ({
+            id: ip.id,
+            family_id: ip.invoice?.family_id || '',
+            payment_date: ip.payment_date,
+            total_amount: ip.amount * 100, // invoice_payments stores amount in dollars, convert to cents for consistency
+            payment_method: ip.payment_method,
+            status: 'succeeded' as const, // invoice payments are always successful when recorded
+            notes: ip.notes,
+            reference_number: ip.reference_number,
+            familyName: ip.invoice?.families?.name ?? 'N/A',
+            source: 'invoice_payment' as const,
+            invoice_number: ip.invoice?.invoice_number
+        })) || [];
+
+        // Combine and sort all payments by date
+        const allPayments = [...formattedPayments, ...formattedInvoicePayments]
+            .sort((a, b) => {
+                const dateA = new Date(a.payment_date || 0).getTime();
+                const dateB = new Date(b.payment_date || 0).getTime();
+                return dateB - dateA; // Most recent first
+            });
+
+        console.log(`Admin payments loader: Fetched ${formattedPayments.length} regular payments and ${formattedInvoicePayments.length} invoice payments.`);
+        return json<LoaderData>({payments: allPayments}, {headers: Object.fromEntries(headers)});
 
     } catch (error) {
         if (error instanceof Error) {
@@ -105,11 +168,13 @@ export default function AdminPaymentsPage() {
                                             {payment.familyName}
                                         </Link>
                                     </TableCell>
-                                    {/* Use total_amount */}
                                     <TableCell
                                         className="text-right">${(payment.total_amount / 100).toFixed(2)}</TableCell>
-                                    <TableCell className="capitalize"> {/* Added Type Cell */}
-                                        {payment.type?.replace(/_/g, ' ') ?? 'N/A'} {/* Use global replace */}
+                                    <TableCell className="capitalize">
+                                        {payment.source === 'invoice_payment' 
+                                            ? `Invoice Payment${payment.invoice_number ? ` (${payment.invoice_number})` : ''}` 
+                                            : (payment as RegularPaymentFormatted).type?.replace(/_/g, ' ') ?? 'N/A'
+                                        }
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant={getStatusVariant(payment.status as PaymentStatus)}
@@ -120,10 +185,15 @@ export default function AdminPaymentsPage() {
                                     <TableCell
                                         className="capitalize">{payment.payment_method?.replace('_', ' ') ?? 'N/A'}</TableCell>
                                     <TableCell>
-                                        {/* Add view/edit links here if needed later */}
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link to={`/admin/payments/${payment.id}`}>View</Link>
-                                        </Button>
+                                        {payment.source === 'invoice_payment' ? (
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link to={`/admin/invoices/${(payment as InvoicePaymentFormatted).invoice_number?.split('-')[0]}`}>View Invoice</Link>
+                                            </Button>
+                                        ) : (
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link to={`/admin/payments/${payment.id}`}>View</Link>
+                                            </Button>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))}

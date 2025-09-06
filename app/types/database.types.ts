@@ -1202,6 +1202,7 @@ export type Database = {
           credit_limit: number | null
           email: string | null
           entity_type: Database["public"]["Enums"]["entity_type_enum"]
+          family_id: string | null
           id: string
           is_active: boolean | null
           name: string
@@ -1223,6 +1224,7 @@ export type Database = {
           credit_limit?: number | null
           email?: string | null
           entity_type: Database["public"]["Enums"]["entity_type_enum"]
+          family_id?: string | null
           id?: string
           is_active?: boolean | null
           name: string
@@ -1244,6 +1246,7 @@ export type Database = {
           credit_limit?: number | null
           email?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type_enum"]
+          family_id?: string | null
           id?: string
           is_active?: boolean | null
           name?: string

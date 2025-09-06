@@ -162,7 +162,7 @@ export default function InvoicePaymentHistory({
                   <div className="flex-1">
                     <div className="flex items-center space-x-4">
                       <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                        {formatCurrency(payment.amount * 100)}
+                        {formatCurrency(payment.amount)}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
                         via {formatPaymentMethod(payment.payment_method)}

@@ -66,7 +66,7 @@ export async function createInvoiceEntity(
 export async function getInvoiceEntityById(
   entityId: string,
   supabaseAdmin?: SupabaseClient<Database>
-): Promise<InvoiceEntity> {
+): Promise<InvoiceEntity & { originalFamilyId?: string }> {
   invariant(entityId, "Missing entityId parameter");
   
   const client = supabaseAdmin ?? getSupabaseAdminClient();
@@ -91,7 +91,8 @@ export async function getInvoiceEntityById(
   return {
     ...entity,
     entity_type: entity.entity_type as EntityType,
-  } as InvoiceEntity;
+    originalFamilyId: entity.family_id || undefined,
+  } as InvoiceEntity & { originalFamilyId?: string };
 }
 
 /**
@@ -414,7 +415,7 @@ export async function reactivateInvoiceEntity(
 export async function getOrCreateFamilyEntity(
   familyId: string,
   supabaseAdmin?: SupabaseClient<Database>
-): Promise<InvoiceEntity> {
+): Promise<InvoiceEntity & { originalFamilyId?: string }> {
   invariant(familyId, "Missing familyId parameter");
   
   const client = supabaseAdmin ?? getSupabaseAdminClient();
@@ -422,20 +423,19 @@ export async function getOrCreateFamilyEntity(
   console.log(`[Service/getOrCreateFamilyEntity] Getting or creating entity for family ${familyId}`);
 
   // First, try to find existing entity for this family
-  const { data: existingInvoices } = await client
-    .from('invoices')
-    .select('entity_id, invoice_entities(*)')
+  const { data: existingEntity } = await client
+    .from('invoice_entities')
+    .select('*')
+    .eq('entity_type', 'family')
     .eq('family_id', familyId)
-    .limit(1);
+    .single();
 
-  if (existingInvoices && existingInvoices.length > 0) {
-    const entity = existingInvoices[0].invoice_entities;
-    if (entity) {
-      return {
-        ...entity,
-        entity_type: entity.entity_type as EntityType,
-      } as InvoiceEntity;
-    }
+  if (existingEntity) {
+    return {
+      ...existingEntity,
+      entity_type: existingEntity.entity_type as EntityType,
+      originalFamilyId: existingEntity.family_id || familyId,
+    } as InvoiceEntity & { originalFamilyId: string };
   }
 
   // Get family details to create entity
@@ -459,18 +459,33 @@ export async function getOrCreateFamilyEntity(
     ? `${primaryGuardian.first_name || ''} ${primaryGuardian.last_name || ''}`.trim()
     : 'Family Contact';
 
-  // Create entity for family
-  const entityData: CreateInvoiceEntityData = {
-    name: family.name,
-    entity_type: 'family',
-    contact_person: contactName,
-    email: primaryGuardian?.email,
-    phone: primaryGuardian?.cell_phone,
-    payment_terms: 'Net 30',
-    notes: `Auto-created entity for family: ${family.name}`,
-  };
+  // Create entity for family with family_id
+  const { data: newEntity, error } = await client
+    .from('invoice_entities')
+    .insert({
+      name: family.name,
+      entity_type: 'family',
+      family_id: familyId,
+      contact_person: contactName,
+      email: primaryGuardian?.email || null,
+      phone: primaryGuardian?.cell_phone,
+      country: siteConfig.localization.country,
+      payment_terms: 'Net 30',
+      notes: `Auto-created entity for family: ${family.name}`,
+    })
+    .select()
+    .single();
 
-  return createInvoiceEntity(entityData, client);
+  if (error) {
+    console.error('[Service/getOrCreateFamilyEntity] Error creating entity:', error);
+    throw new Response(`Error creating invoice entity: ${error.message}`, { status: 500 });
+  }
+
+  return {
+    ...newEntity,
+    entity_type: newEntity.entity_type as EntityType,
+    originalFamilyId: familyId,
+  } as InvoiceEntity & { originalFamilyId: string };
 }
 
 /**

@@ -4575,6 +4575,7 @@ CREATE TABLE IF NOT EXISTS invoice_entities (
     tax_id VARCHAR,
     payment_terms VARCHAR DEFAULT 'Net 30' CHECK (payment_terms IN ('Due on Receipt', 'Net 15', 'Net 30', 'Net 60', 'Net 90')),
     credit_limit DECIMAL(10,2),
+    family_id UUID REFERENCES families(id),
     is_active BOOLEAN DEFAULT true,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -4685,6 +4686,10 @@ BEGIN
     
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_entities_is_active') THEN
         CREATE INDEX idx_invoice_entities_is_active ON invoice_entities(is_active);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoice_entities_family_id') THEN
+        CREATE INDEX idx_invoice_entities_family_id ON invoice_entities(family_id);
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_invoices_entity_id') THEN
