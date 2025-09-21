@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Calendar, Clock, MapPin, DollarSign, Users, AlertCircle, CreditCard } from "lucide-react";
 import { formatDate } from "~/utils/misc";
-import { formatEventTypeName } from "~/utils/event-helpers.server";
+// Avoid server-only imports in client components; implement a local formatter
+// to prevent SSR bundling issues.
 import type { Database } from "~/types/database.types";
 
 
@@ -369,7 +370,7 @@ export default function FamilyEventsPage() {
               </div>
               {event.event_type && (
                 <Badge className={`${eventTypeColor} text-xs font-medium px-2 py-1 rounded`}>
-                  {formatEventTypeName(event.event_type.name, event.event_type)}
+                  {event.event_type.display_name || event.event_type.name || 'Other'}
                 </Badge>
               )}
             </div>
