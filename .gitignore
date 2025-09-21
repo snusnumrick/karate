@@ -22,3 +22,4 @@ db-tools/
 playwright-report/
 test-results/
 build/
+/.claude
