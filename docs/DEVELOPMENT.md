@@ -107,6 +107,38 @@ STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 STRIPE_ENVIRONMENT=test
 ```
 
+### Square Configuration (Optional)
+
+If you plan to test the Square provider locally, add the following values. All keys can be generated from the Square developer dashboard.
+
+```env
+# Square Configuration
+SQUARE_ACCESS_TOKEN=EAAAExxxxxxxxxxxxxxxxxxxxxxxx  # Sandbox access token
+SQUARE_LOCATION_ID=LRxxxxxxxxxxxxxxx              # Sandbox location ID
+SQUARE_APPLICATION_ID=sandbox-sq0idb-xxxxxxxxxx   # Sandbox application ID
+SQUARE_ENVIRONMENT=sandbox                        # Must be "sandbox" for development
+```
+
+**Currency Configuration:**
+Currency is automatically configured from `app/config/site.ts` → `localization.currency` (currently set to `CAD`). Ensure your Square merchant account supports CAD payments.
+
+**Getting Square Credentials:**
+1. Create a Square Developer account at https://developer.squareup.com/
+2. Create a new application in the Square Developer Dashboard
+3. Navigate to your application → Credentials
+4. Copy the **Sandbox** Application ID and Access Token
+5. Find your **Sandbox** Location ID in the Locations section
+
+**Important Notes:**
+- Always use **sandbox** credentials for development
+- Production credentials (`sq0idp-*` Application IDs) should only be used in production
+- Switch the active provider by updating `siteConfig.payments.provider` in `app/config/site.ts`
+
+**Validate Configuration:**
+```bash
+npm run validate:square
+```
+
 ### Email Configuration (Optional for Local Development)
 
 ```env
@@ -201,6 +233,16 @@ cp supabase/functions/_shared/database.types.ts app/types/database.types.ts
 
 ## Third-Party Services
 
+### Square Setup (Optional)
+
+1. Create a Square developer account and create an application.
+2. Generate a Sandbox Access Token and Webhook Signature Key.
+3. Create or locate a Sandbox Location and copy its ID.
+4. **Important**: If using OAuth, ensure the access token is generated for the specific location you plan to use (OAuth tokens are location-specific).
+5. Update the `.env` file with the values listed in the [Square Configuration](#square-configuration-optional) section.
+6. Register a webhook endpoint (e.g., `https://your-domain.com/api/webhooks/square`) in the Square developer dashboard so payment confirmations reach the app.
+7. Set `siteConfig.payments.provider` to `'square'` when you want the app to use Square.
+
 ### Stripe Setup (Optional for Local Development)
 
 1. Create account at [stripe.com](https://stripe.com)
@@ -262,6 +304,22 @@ npm run typecheck
 npm run typecheck:deno
 ```
 
+### SEO & Structured Data (JSON‑LD)
+
+- Use the `JsonLd` utility to render structured data with CSP nonce automatically.
+- Example:
+
+```tsx
+import { JsonLd } from "~/components/JsonLd";
+
+export default function Page() {
+    const data = { "@context": "https://schema.org", "@type": "Organization", name: "GREENEGIN KARATE" };
+    return <JsonLd data={data} />; // Nonce is taken from NonceProvider
+}
+```
+
+- If needed, override nonce: `<JsonLd data={data} nonce={myNonce} />`.
+
 ## Available Scripts
 
 ### Development Scripts
@@ -281,6 +339,9 @@ npm run typecheck
 
 # Type check Supabase functions
 npm run typecheck:deno
+
+# Validate Square Web Payments SDK configuration
+npm run validate:square
 ```
 
 ### Build Scripts
@@ -365,26 +426,26 @@ karate/
 ### Manual Testing
 
 1. **Authentication Flow**:
-   - Sign up new users
-   - Login/logout functionality
-   - Password reset
+    - Sign up new users
+    - Login/logout functionality
+    - Password reset
 
 2. **Family Portal**:
-   - Student registration
-   - Payment processing
-   - Waiver submission
-   - Messaging system
+    - Student registration
+    - Payment processing
+    - Waiver submission
+    - Messaging system
 
 3. **Admin Dashboard**:
-   - Student management
-   - Class scheduling
-   - Payment tracking
-   - Messaging
+    - Student management
+    - Class scheduling
+    - Payment tracking
+    - Messaging
 
 4. **PWA Features**:
-   - Installation prompts
-   - Offline functionality
-   - Push notifications
+    - Installation prompts
+    - Offline functionality
+    - Push notifications
 
 ### Automated Testing
 
@@ -452,6 +513,96 @@ npx supabase gen types typescript --linked --schema public > app/types/database.
 - Check domain verification in Resend
 - Review Supabase Edge Function logs
 
+#### 7. Square Payment Issues
+
+**Problem**: Square Web SDK not loading or payments failing
+**Solution**:
+```bash
+# Validate Square configuration
+npm run validate:square
+```
+- Verify all environment variables are set correctly
+- Ensure using sandbox credentials for development
+- Check browser console for CSP violations
+- Verify HTTPS is used (required for Square Web SDK)
+- Test with Square test card: 4111 1111 1111 1111
+
+**Problem**: Square configuration validation errors
+**Solution**:
+- Sandbox Application ID must start with `sandbox-`
+- Production Application ID must start with `sq0idp-`
+- Access tokens should start with `EAAAE`
+- Environment must be exactly `sandbox` or `production`
+
+**Problem**: `InvalidApplicationIdError: The Payment 'applicationId' option is not in the correct format`
+**Solution**:
+- This is a known issue with newer Square Web SDK versions (2.1.0+)
+- **Downgrade Square API version**: Use `2025-02-20` or earlier in package.json
+- Check application ID type mismatch:
+  - Backend API calls: `sandbox-sq0idb-...` (server-side)
+  - Web Payments SDK: `sandbox-sq0idp-...` (client-side)
+- You may need separate application IDs for different Square services
+
+**Problem**: Multiple card input elements appearing
+**Solution**:
+- This can occur after fixing application ID issues
+- Refresh the page to clear duplicate elements
+- Check for React component re-rendering issues
+
+**Problem**: `Not authorized to take payments with location_id=...`
+**Solution**:
+- **OAuth Access Tokens are Location-Specific**: Square OAuth generates different access tokens for different locations
+- Access token and location ID are from different Square applications
+- **Check Square OAuth Flow**: If using OAuth, ensure the access token was generated for the specific location you're trying to use
+- Verify all credentials (Application ID, Access Token, Location ID) are from the **same Square application**
+- Ensure all credentials are from the same environment (sandbox vs production)
+- **Generate location-specific credentials**: Each location may require its own access token when using OAuth
+
+**Problem**: Payment redirects to home page instead of success page
+**Solution**:
+- Check payment provider success URL configuration
+- For Stripe: Ensure `return_url` includes `payment_intent={PAYMENT_INTENT_ID}` parameter
+- For Square: Verify payment completion redirects to appropriate success route
+- **Smart Payment Success Routing**: The system uses dual routing for success pages:
+  - `/payment/success` - General success page for non-family users (event registrations, etc.)
+  - `/family/payment/success/{paymentId}` - Family-specific success page with enhanced UX
+  - The general route automatically redirects family payments to the family route for better experience
+
+#### 8. Payment Success Page Routing
+
+The application implements a smart payment success routing system to handle both family and non-family payment flows:
+
+**Route Structure**:
+- **General Route**: `/payment/success?payment_intent=pi_xxx`
+  - Used for non-family payments (public event registrations, guest purchases)
+  - Automatically detects if payment belongs to a family
+  - Redirects family payments to family-specific route for better UX
+
+- **Family Route**: `/family/payment/success/{paymentId}?payment_intent=pi_xxx`
+  - Enhanced family-specific success page
+  - Shows family context and additional family-related information
+  - Direct route for family-initiated payments
+
+**Implementation Logic**:
+```typescript
+// In _layout.payment.success.tsx
+if (payment.family_id) {
+  // Redirect family payments to family-specific success page
+  throw redirect(`/family/payment/success/${payment.id}?payment_intent=${paymentIntentId}`);
+}
+// Otherwise, show general success page for non-family users
+```
+
+**When to Use Each Route**:
+- **Family Route**: Family store purchases, family event registrations, family membership payments
+- **General Route**: Public event registrations, guest purchases, non-family transactions
+
+**Provider Configuration**:
+- **Stripe**: Configure `return_url` to point to `/payment/success?payment_intent={PAYMENT_INTENT_ID}`
+- **Square**: Configure success redirect to `/family/payment/success/{payment.id}` for family payments
+- Both providers support the smart routing system through the general route
+- Check that the location is active and configured for payment processing
+
 ### Development Tips
 
 1. **Use Browser DevTools**: Essential for debugging React components and network requests
@@ -509,7 +660,7 @@ import { createCookie } from "@remix-run/node";
 
 // CSRF instance is already configured with secure cookies
 export const csrf = new CSRF({
-  cookie: csrfCookie, // HTTP-only, secure, SameSite=lax
+    cookie: csrfCookie, // HTTP-only, secure, SameSite=lax
 });
 ```
 
@@ -522,8 +673,8 @@ import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 2. Add the token input to your form:
 ```tsx
 <form method="post">
-  <AuthenticityTokenInput />
-  {/* Your form fields */}
+    <AuthenticityTokenInput />
+    {/* Your form fields */}
 </form>
 ```
 
@@ -532,29 +683,29 @@ import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { csrf } from "~/utils/csrf.server";
 
 export async function action({ request }: ActionFunctionArgs) {
-  try {
-    // Validate CSRF token first
-    await csrf.validate(request);
-  } catch (error) {
-    console.error('CSRF validation failed:', error);
-    throw new Response("Invalid CSRF token", { status: 403 });
-  }
-  
-  // Process your form data
-  const formData = await request.formData();
-  // ... rest of your action logic
+    try {
+        // Validate CSRF token first
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        throw new Response("Invalid CSRF token", { status: 403 });
+    }
+
+    // Process your form data
+    const formData = await request.formData();
+    // ... rest of your action logic
 }
 ```
 
 **Providing CSRF Tokens in Loaders** (when needed):
 ```typescript
 export async function loader({ request }: LoaderFunctionArgs) {
-  const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
-  
-  return json(
-    { data: yourData, csrfToken },
-    { headers: csrfCookieHeader ? { "Set-Cookie": csrfCookieHeader } : {} }
-  );
+    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+
+    return json(
+        { data: yourData, csrfToken },
+        { headers: csrfCookieHeader ? { "Set-Cookie": csrfCookieHeader } : {} }
+    );
 }
 ```
 
@@ -564,12 +715,12 @@ For dynamic form submissions, include the CSRF token:
 const { csrfToken } = useLoaderData<typeof loader>();
 
 const handleSubmit = async (formData: FormData) => {
-  // Add CSRF token to form data
-  const tokenValue = Array.isArray(csrfToken) ? csrfToken[1] : csrfToken;
-  formData.append("csrf", tokenValue);
-  
-  // Submit form
-  submit(formData, { method: "post" });
+    // Add CSRF token to form data
+    const tokenValue = Array.isArray(csrfToken) ? csrfToken[1] : csrfToken;
+    formData.append("csrf", tokenValue);
+
+    // Submit form
+    submit(formData, { method: "post" });
 };
 ```
 

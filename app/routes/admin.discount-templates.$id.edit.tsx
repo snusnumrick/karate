@@ -4,6 +4,7 @@ import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
+import { fromDollars, toDollars, type Money } from "~/utils/money";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -52,7 +53,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Template not found", { status: 404 });
   }
 
-  return json({ template });
+  // Normalize discount_value to a JSON-serializable number (dollars or percentage)
+  const normalizedTemplate = {
+    ...template,
+    discount_value: template.discount_type === 'fixed_amount'
+      ? (typeof template.discount_value === 'number' ? template.discount_value : toDollars(template.discount_value as Money))
+      : (template.discount_value as number)
+  };
+
+  return json({ template: normalizedTemplate });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -144,7 +153,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       name,
       description: description || undefined,
       discount_type: discountType,
-      discount_value: discountValue,
+      discount_value: discountType === 'fixed_amount' ? fromDollars(discountValue) : discountValue,
       usage_type: usageType,
       max_uses: maxUses,
       applicable_to: applicableTo,

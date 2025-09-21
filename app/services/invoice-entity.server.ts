@@ -10,6 +10,8 @@ import type {
   EntityType,
 } from "~/types/invoice";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
+import { toCents, fromCents, addMoney, subtractMoney } from "~/utils/money";
+import { convertRowToMoney, convertRowsToMoney, convertMoneyToRow, moneyFromRow } from "~/services/database-money.server";
 
 
 
@@ -43,7 +45,7 @@ export async function createInvoiceEntity(
       country: entityData.country || siteConfig.localization.country,
       tax_id: entityData.tax_id,
       payment_terms: entityData.payment_terms || 'Net 30',
-      credit_limit: entityData.credit_limit,
+      credit_limit: entityData.credit_limit ? toCents(entityData.credit_limit) : null,
       notes: entityData.notes,
     })
     .select()
@@ -54,10 +56,10 @@ export async function createInvoiceEntity(
     throw new Response(`Error creating invoice entity: ${error.message}`, { status: 500 });
   }
 
-  return {
+  return convertRowToMoney('invoice_entities', {
     ...entity,
     entity_type: entity.entity_type as EntityType,
-  } as InvoiceEntity;
+  }) as unknown as InvoiceEntity;
 }
 
 /**
@@ -88,11 +90,11 @@ export async function getInvoiceEntityById(
     throw new Response("Invoice entity not found", { status: 404 });
   }
 
-  return {
+  return convertRowToMoney('invoice_entities', {
     ...entity,
     entity_type: entity.entity_type as EntityType,
     originalFamilyId: entity.family_id || undefined,
-  } as InvoiceEntity & { originalFamilyId?: string };
+  }) as unknown as (InvoiceEntity & { originalFamilyId?: string });
 }
 
 /**
@@ -143,7 +145,7 @@ export async function getInvoiceEntities(
   const totalPages = Math.ceil(total / limit);
 
   return {
-    entities: (entities || []) as InvoiceEntity[],
+    entities: (convertRowsToMoney('invoice_entities', entities || []) as unknown as InvoiceEntity[]) || [],
     total,
     totalPages,
   };
@@ -195,7 +197,7 @@ export async function getInvoiceEntitiesWithStats(
   
   const { data: invoiceStats, error: statsError } = await client
     .from('invoices')
-    .select('entity_id, total_amount, amount_paid, created_at')
+    .select('entity_id, total_amount, total_amount_cents, amount_paid, amount_paid_cents, created_at')
     .in('entity_id', entityIds)
     .neq('status', 'cancelled');
 
@@ -205,26 +207,28 @@ export async function getInvoiceEntitiesWithStats(
   }
 
   // Group stats by entity
-  const statsByEntity = new Map();
+  const statsByEntity = new Map<string, { total_invoices: number; total_amount: import('~/utils/money').Money; outstanding_amount: import('~/utils/money').Money; last_invoice_date: string | null }>();
   
   if (invoiceStats) {
-    invoiceStats.forEach(invoice => {
-      if (!statsByEntity.has(invoice.entity_id)) {
-        statsByEntity.set(invoice.entity_id, {
+    invoiceStats.forEach((invoice: unknown) => {
+      const entityId = (invoice as { entity_id: string }).entity_id;
+      if (!statsByEntity.has(entityId)) {
+        statsByEntity.set(entityId, {
           total_invoices: 0,
-          total_amount: 0,
-          outstanding_amount: 0,
+          total_amount: fromCents(0),
+          outstanding_amount: fromCents(0),
           last_invoice_date: null,
         });
       }
-      
-      const stats = statsByEntity.get(invoice.entity_id);
+      const stats = statsByEntity.get(entityId)!;
       stats.total_invoices++;
-      stats.total_amount += invoice.total_amount;
-      stats.outstanding_amount += (invoice.total_amount - invoice.amount_paid);
-      
-      if (!stats.last_invoice_date || (invoice.created_at && invoice.created_at > stats.last_invoice_date)) {
-        stats.last_invoice_date = invoice.created_at;
+      const total = moneyFromRow('invoices', 'total_amount', invoice as unknown as Record<string, unknown>);
+      const paid = moneyFromRow('invoices', 'amount_paid', invoice as unknown as Record<string, unknown>);
+      stats.total_amount = addMoney(stats.total_amount, total);
+      stats.outstanding_amount = addMoney(stats.outstanding_amount, subtractMoney(total, paid));
+      const createdAt = (invoice as Record<string, string | null | undefined>)['created_at'] || null;
+      if (!stats.last_invoice_date || (createdAt && createdAt > stats.last_invoice_date)) {
+        stats.last_invoice_date = createdAt;
       }
     });
   }
@@ -239,13 +243,13 @@ export async function getInvoiceEntitiesWithStats(
     };
 
     return {
-      ...entity,
+      ...convertRowToMoney('invoice_entities', entity),
       entity_type: entity.entity_type as EntityType,
       total_invoices: stats.total_invoices,
-      total_amount: Math.round(stats.total_amount * 100) / 100,
-      outstanding_amount: Math.round(stats.outstanding_amount * 100) / 100,
-      last_invoice_date: stats.last_invoice_date,
-    } as InvoiceEntityWithStats;
+      total_amount: stats.total_amount,
+      outstanding_amount: stats.outstanding_amount,
+      last_invoice_date: stats.last_invoice_date || undefined,
+    } as unknown as InvoiceEntityWithStats;
   });
 
   return entitiesWithStats;
@@ -265,12 +269,15 @@ export async function updateInvoiceEntity(
   
   console.log(`[Service/updateInvoiceEntity] Updating entity ${entityId} with data:`, updateData);
 
+  const updateDataForDb = convertMoneyToRow('invoice_entities', {
+    ...updateData,
+    email: updateData.email || null, // Handle empty string as null
+  }) || {};
+
+  type EntityUpdate = Partial<Database['public']['Tables']['invoice_entities']['Update']>;
   const { data: entity, error } = await client
     .from('invoice_entities')
-    .update({
-      ...updateData,
-      email: updateData.email || null, // Handle empty string as null
-    })
+    .update(updateDataForDb as EntityUpdate)
     .eq('id', entityId)
     .select()
     .single();
@@ -284,10 +291,10 @@ export async function updateInvoiceEntity(
     throw new Response("Invoice entity not found", { status: 404 });
   }
 
-  return {
+  return convertRowToMoney('invoice_entities', {
     ...entity,
     entity_type: entity.entity_type as EntityType,
-  } as InvoiceEntity;
+  }) as unknown as InvoiceEntity;
 }
 
 /**
@@ -374,7 +381,7 @@ export async function deactivateInvoiceEntity(
     throw new Response("Invoice entity not found", { status: 404 });
   }
 
-  return entity as InvoiceEntity;
+  return convertRowToMoney('invoice_entities', entity) as unknown as InvoiceEntity;
 }
 
 /**
@@ -406,7 +413,7 @@ export async function reactivateInvoiceEntity(
     throw new Response("Invoice entity not found", { status: 404 });
   }
 
-  return entity as InvoiceEntity;
+  return convertRowToMoney('invoice_entities', entity) as unknown as InvoiceEntity;
 }
 
 /**
@@ -432,10 +439,10 @@ export async function getOrCreateFamilyEntity(
 
   if (existingEntity) {
     return {
-      ...existingEntity,
+      ...convertRowToMoney('invoice_entities', existingEntity),
       entity_type: existingEntity.entity_type as EntityType,
       originalFamilyId: existingEntity.family_id || familyId,
-    } as InvoiceEntity & { originalFamilyId: string };
+    } as unknown as (InvoiceEntity & { originalFamilyId: string });
   }
 
   // Get family details to create entity
@@ -481,11 +488,11 @@ export async function getOrCreateFamilyEntity(
     throw new Response(`Error creating invoice entity: ${error.message}`, { status: 500 });
   }
 
-  return {
+  return convertRowToMoney('invoice_entities', {
     ...newEntity,
     entity_type: newEntity.entity_type as EntityType,
     originalFamilyId: familyId,
-  } as InvoiceEntity & { originalFamilyId: string };
+  }) as unknown as (InvoiceEntity & { originalFamilyId: string });
 }
 
 /**
@@ -513,5 +520,5 @@ export async function searchInvoiceEntities(
     throw new Response(`Error searching invoice entities: ${error.message}`, { status: 500 });
   }
 
-  return (entities || []) as InvoiceEntity[];
+  return (convertRowsToMoney('invoice_entities', entities || []) as unknown as InvoiceEntity[]) || [];
 }

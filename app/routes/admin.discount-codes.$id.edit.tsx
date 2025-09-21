@@ -11,6 +11,9 @@ import { getSupabaseServerClient , getSupabaseAdminClient } from "~/utils/supaba
 import { DiscountService } from "~/services/discount.server";
 import type { PaymentTypeEnum } from "~/types/discount";
 import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
+import { fromDollars } from "~/utils/money";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 type FamilyInfo = {
   id: string;
@@ -89,6 +92,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
+  await csrf.validate(request);
   const formData = await request.formData();
   const discountId = params.id;
   
@@ -141,7 +145,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       name,
       description: description || undefined,
       discount_type: discountType as 'fixed_amount' | 'percentage',
-      discount_value: value,
+      discount_value: (discountType === 'fixed_amount') ? fromDollars(value) : value,
       usage_type: usageType as 'one_time' | 'ongoing',
       max_uses: maxUses || undefined,
       applicable_to: applicableTo as PaymentTypeEnum[],
@@ -229,6 +233,7 @@ export default function AdminEditDiscountCodePage() {
       )}
 
       <Form method="post">
+        <AuthenticityTokenInput />
         {/* Basic Information Section */}
         <section className="mb-6">
           <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Basic Information</h2>

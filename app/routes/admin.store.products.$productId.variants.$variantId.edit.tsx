@@ -1,6 +1,8 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { siteConfig } from "~/config/site";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -86,6 +88,9 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     // Admin check happens in the parent _admin layout loader
     const { supabaseServer, response } = getSupabaseServerClient(request);
     const headers = response.headers;
+
+    // CSRF validation
+    await csrf.validate(request);
 
     const formData = await request.formData();
     const size = formData.get('size') as string;
@@ -282,6 +287,7 @@ export default function EditProductVariantPage() {
             )}
 
             <Form method="post" className="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <AuthenticityTokenInput />
                 <input type="hidden" name="intent" value="edit" />
                  {/* Size */}
                 <div>
@@ -398,6 +404,7 @@ export default function EditProductVariantPage() {
                         <AlertDialogCancel disabled={isSubmitting && formIntent === 'delete'} tabIndex={7}>Cancel</AlertDialogCancel>
                         {/* Use a Form inside the dialog for submission */}
                         <Form method="post" onSubmit={() => setIsDeleteDialogOpen(false)}>
+                            <AuthenticityTokenInput />
                             <input type="hidden" name="intent" value="delete" />
                             <AlertDialogAction
                                 type="submit" // Submit the form

@@ -1,15 +1,14 @@
-import { json, type LoaderFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
 import { Link, useFetcher, useLoaderData, useRouteError } from "@remix-run/react";
-import { useEffect, useMemo, useState } from "react";
-import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
-import {PaymentElement, LinkAuthenticationElement, Elements, useElements, useStripe} from "@stripe/react-stripe-js";
-import Stripe from "stripe";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import PaymentForm from "~/components/payment/PaymentForm";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
-import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {siteConfig} from "~/config/site";
 import type {Database} from "~/types/database.types";
-import { ClientOnly } from "~/components/client-only";
+import { formatMoney, fromCents } from "~/utils/money";
+import { getPaymentProvider } from '~/services/payments/index.server';
+import type { ClientRenderConfig, PaymentProviderId } from '~/services/payments/types.server';
 
 // Import types for payment table columns
 type PaymentColumns = Database['public']['Tables']['payments']['Row'];
@@ -27,8 +26,8 @@ type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount'> & { // O
     // Update payment_taxes to include the related tax rate description
     payment_taxes: Array<
         Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_amount'> & {
-            tax_rates: Pick<TaxRateRow, 'description'> | null; // Fetch description from related tax_rates
-        }
+        tax_rates: Pick<TaxRateRow, 'description'> | null; // Fetch description from related tax_rates
+    }
     >;
     payment_students: Array<Pick<PaymentStudentRow, 'student_id'>>;
     // quantity?: number | null; // Keep if needed
@@ -36,7 +35,8 @@ type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount'> & { // O
 
 type LoaderData = {
     payment?: PaymentWithDetails; // Use the more detailed type
-    stripePublishableKey: string;
+    paymentProviderId: PaymentProviderId;
+    providerConfig: ClientRenderConfig;
     error?: string; // Add error field for loader errors
     // paymentStatus is implicitly included in the payment object
 };
@@ -49,6 +49,7 @@ type ActionSuccessResponse = {
     subtotalAmount: number; // Amount before tax in cents
     taxAmount: number;      // Calculated tax amount in cents (can be 0)
     totalAmount: number;    // Total amount in cents (subtotal + tax)
+    provider: PaymentProviderId;
     error?: never; // Ensure error is not present on success
 };
 
@@ -86,36 +87,43 @@ function getPaymentProductDescription(type: Database['public']['Enums']['payment
 
 // --- Loader ---
 export async function loader({request, params}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    const paymentId = params.paymentId;
-    if (!paymentId) {
-        // Use json response for errors instead of throwing
-        console.error("Payment ID is required");
-        return json({error: "Payment ID is required", stripePublishableKey: ""}, {status: 400});
+    const paymentProvider = getPaymentProvider();
+    const paymentProviderId = paymentProvider.id as PaymentProviderId;
+    const renderConfig = paymentProvider.getClientRenderConfig();
+
+    if (!paymentProvider.isConfigured()) {
+        return json({
+            error: "Payment gateway configuration error.",
+            paymentProviderId,
+            providerConfig: renderConfig,
+        }, { status: 500 });
     }
 
-    // Handle the special case where paymentId is the fallback string from event payments
+    const paymentId = params.paymentId;
+    if (!paymentId) {
+        console.error("Payment ID is required");
+        return json({
+            error: "Payment ID is required",
+            paymentProviderId,
+            providerConfig: renderConfig,
+        }, {status: 400});
+    }
+
     if (paymentId === 'event-payment-success') {
         console.log("Redirecting from event-payment-success to events page");
         return redirect('/events');
-    }
-
-    const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
-    if (!stripePublishableKey) {
-        console.error("Stripe publishable key is not configured.");
-        // Use json response for errors
-        return json({error: "Payment gateway configuration error.", stripePublishableKey: ""}, {status: 500});
     }
 
     const {response} = getSupabaseServerClient(request);
     const supabaseAdmin = getSupabaseAdminClient();
 
     // Fetch payment, family name, and associated student IDs in one go
-    // Restore full select statement
+    // TODO: Migrate database fields to be provider-neutral (stripe_* -> payment_*)
     // Fetch payment, including new amount columns and related taxes
     const {data: payment, error} = await supabaseAdmin
         .from('payments')
         .select(`
-            id, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, stripe_payment_intent_id, receipt_url, notes, type, order_id,
+            id, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, payment_intent_id, receipt_url, notes, type, order_id,
             family:family_id (name, email, postal_code),
             payment_students ( student_id ),
             payment_taxes (
@@ -126,7 +134,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         `)
         .eq('id', paymentId)
         .maybeSingle(); // Use maybeSingle to handle not found
-    
+
     // console.log(`[Loader] Fetching payment details for ID ${paymentId}... - ${payment}, ${error}`);
 
     if (error) {
@@ -135,7 +143,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         // Return a more specific error message including the DB error
         return json<LoaderData>({
             error: `Failed to load payment details: ${error.message}`,
-            stripePublishableKey
+            paymentProviderId,
+            providerConfig: renderConfig,
         }, {status: 500, headers: response.headers});
     }
     // console.log('paymentId loader payment: ', payment);
@@ -143,96 +152,77 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     if (!payment) {
         // Return error in JSON to handle in component
         console.error("Payment not found:", paymentId);
-        return json<LoaderData>({error: "Payment record not found.", stripePublishableKey}, {
+        return json<LoaderData>({
+            error: "Payment record not found.",
+            paymentProviderId,
+            providerConfig: renderConfig,
+        }, {
             status: 404,
             headers: response.headers
         });
     }
 
-    // --- Check Stripe Status if DB status is 'pending' ---
-    if (payment.status === 'pending' && payment.stripe_payment_intent_id) {
-        console.log(`[Loader] DB status is pending for ${paymentId}. Checking Stripe PI status for ${payment.stripe_payment_intent_id}...`);
-        const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    // --- Check provider status if DB status is 'pending' ---
+    const paymentIntentId = payment.payment_intent_id; // Generic payment intent ID for all providers
+    if (payment.status === 'pending' && paymentIntentId) {
+        console.log(`[Loader] DB status is pending for ${paymentId}. Checking provider intent status for ${paymentIntentId}...`);
+        const supabaseAdmin = getSupabaseAdminClient();
 
-        if (!stripeSecretKey) {
-            console.error("[Loader] Missing Stripe Secret Key for pending check.");
-            // Proceed cautiously, maybe let the user try, but log the config error
-        } else {
-            const stripe = new Stripe(stripeSecretKey);
-            const supabaseAdmin = getSupabaseAdminClient();
+        try {
+            const providerIntent = await paymentProvider.retrievePaymentIntent(paymentIntentId, {
+                includeLatestCharge: true,
+                includePaymentMethod: true,
+            });
 
-            try {
-                const paymentIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id, {
-                    expand: ['latest_charge'] // Expand charge to potentially get receipt URL
-                });
-                // console.log(`[Loader] Stripe PI status for ${paymentIntent.id}: ${paymentIntent.status}`);
+            if (providerIntent.status === 'succeeded') {
+                console.log(`[Loader] Provider intent ${providerIntent.id} already succeeded. Updating Supabase record ${paymentId} and redirecting.`);
+                const receiptUrl = providerIntent.receiptUrl ?? null;
+                const paymentMethod = providerIntent.paymentMethodType ?? null;
 
-                if (paymentIntent.status === 'succeeded') {
-                    console.log(`[Loader] Stripe PI ${paymentIntent.id} already succeeded. Updating Supabase record ${paymentId} and redirecting.`);
-                    // Update Supabase record (mimic webhook logic, but only for success)
-                    const receiptUrl = (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object') ? paymentIntent.latest_charge.receipt_url : null;
-                    const paymentMethod = paymentIntent.payment_method_types?.[0] ?? null;
+                const { error: updateError } = await supabaseAdmin
+                    .from('payments')
+                    .update({
+                        status: 'succeeded',
+                        payment_date: new Date().toISOString(),
+                        receipt_url: receiptUrl,
+                        payment_method: paymentMethod,
+                    })
+                    .eq('id', paymentId);
 
-                    const { error: updateError } = await supabaseAdmin
-                        .from('payments')
-                        .update({
-                            status: 'succeeded',
-                            payment_date: new Date().toISOString(), // Set payment date
-                            receipt_url: receiptUrl,
-                            payment_method: paymentMethod,
-                            // No need to update stripe_payment_intent_id again
-                        })
-                        .eq('id', paymentId);
-
-                    if (updateError) {
-                        console.error(`[Loader] Failed to update Supabase record ${paymentId} to succeeded after Stripe check:`, updateError.message);
-                        // Proceed to payment page, but log the error
-                    } else {
-                        // Redirect to success page - THIS PREVENTS DOUBLE PAYMENT
-                        throw redirect(`/payment/success?payment_intent=${paymentIntent.id}`, { headers: response.headers });
-                    }
-                    // Only mark as failed in DB if Stripe status is definitively canceled
-                } else if (paymentIntent.status === 'canceled') {
-                    console.log(`[Loader] Stripe PI ${paymentIntent.id} status is terminal failure: ${paymentIntent.status}. Updating Supabase record ${paymentId} to failed.`);
-                    // Update Supabase record to 'failed'
-                    const { error: updateError } = await supabaseAdmin
-                        .from('payments')
-                        .update({
-                            status: 'failed',
-                            payment_date: new Date().toISOString(), // Set date of failure
-                        })
-                        .eq('id', paymentId);
-
-                    if (updateError) {
-                        console.error(`[Loader] Failed to update Supabase record ${paymentId} to failed after Stripe check:`, updateError.message);
-                    }
-                    // DO NOT update the local payment object here.
-                    // The component should reflect the DB state as fetched initially or after a successful update+refetch.
-                    // If the DB update fails, the component should still show 'pending'.
-                    // If the DB update succeeds, the component will show 'failed' because the loader refetches or the page reloads.
-
-                    // Proceed to load the payment page allowing retry
+                if (updateError) {
+                    console.error(`[Loader] Failed to update Supabase record ${paymentId} to succeeded after provider check:`, updateError.message);
+                } else {
+                    throw redirect(`/payment/success?payment_intent=${providerIntent.id}`, { headers: response.headers });
                 }
-                // For other statuses ('processing', 'requires_action', 'requires_confirmation'),
-                // DO NOTHING to the DB status. Let the page load with 'pending'.
-                // The user can wait, complete an action, or the webhook will eventually update.
+            } else if (providerIntent.status === 'canceled') {
+                console.log(`[Loader] Provider intent ${providerIntent.id} status is terminal failure. Updating Supabase record ${paymentId} to failed.`);
+                const { error: updateError } = await supabaseAdmin
+                    .from('payments')
+                    .update({
+                        status: 'failed',
+                        payment_date: new Date().toISOString(),
+                    })
+                    .eq('id', paymentId);
 
-            } catch (stripeError) {
-                console.error(`[Loader] Error retrieving Stripe Payment Intent ${payment.stripe_payment_intent_id}:`, stripeError instanceof Error ? stripeError.message : stripeError);
-                // Proceed to load the payment page, but log the error
+                if (updateError) {
+                    console.error(`[Loader] Failed to update Supabase record ${paymentId} to failed after provider check:`, updateError.message);
+                }
             }
+            // For other statuses we leave the record as pending and allow the UI to render the existing state.
+        } catch (providerError) {
+            console.error(`[Loader] Error retrieving payment intent ${paymentIntentId}:`, providerError instanceof Error ? providerError.message : providerError);
         }
     }
-    // --- End Stripe Status Check ---
+    // --- End provider status check ---
 
 
     // Ensure payment is not already successfully completed (check status *again* in case it was updated by the check above)
     if (payment.status === 'succeeded') {
         console.warn(`Attempted to access payment page for already succeeded payment ${paymentId}`);
         // Redirect to success page if already succeeded
-        if (payment.stripe_payment_intent_id) {
+        if (paymentIntentId) {
             console.log(`Payment ${paymentId} already succeeded. Redirecting to success page.`);
-            throw redirect(`/payment/success?payment_intent=${payment.stripe_payment_intent_id}`, {headers: response.headers});
+            throw redirect(`/payment/success?payment_intent=${paymentIntentId}`, {headers: response.headers});
         } else {
             // Should not happen if succeeded, but handle defensively
             console.warn(`Payment ${paymentId} succeeded but missing Payment Intent ID. Redirecting to family portal.`);
@@ -243,8 +233,9 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     // Prepare the data object to be returned
     const loaderReturnData: LoaderData = {
-        payment: payment as PaymentWithDetails, // Status is included within payment object
-        stripePublishableKey
+        payment: payment as PaymentWithDetails,
+        paymentProviderId,
+        providerConfig: renderConfig,
     };
     // console.log('[Loader] Data prepared for return:', loaderReturnData);
 
@@ -252,150 +243,99 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     return json<LoaderData>(loaderReturnData, {headers: response.headers});
 }
 
-// Remove top-level stripePromise initialization - it will be done inside the component
+// --- Action Handler for Payment Confirmation ---
+export async function action({ request, params }: ActionFunctionArgs) {
+    const paymentId = params.paymentId;
+    if (!paymentId) {
+        return json({ success: false, error: "Payment ID is required" }, { status: 400 });
+    }
 
-// --- CheckoutForm Component (Handles Card Element and Submission) ---
-interface CheckoutFormProps {
-    payment: PaymentWithDetails;
-    // clientSecret is passed via Elements options, not needed here
-    defaultEmail?: string | null;
-    defaultPostalCode?: string | null;
-}
+    const formData = await request.formData();
+    const actionType = formData.get('action');
 
-function CheckoutForm({payment, defaultEmail, defaultPostalCode}: CheckoutFormProps) {
-    const stripe = useStripe();
-    const elements = useElements();
-    // const navigate = useNavigate(); // Not used, Stripe handles redirect
-    // const [email, setEmail] = useState(''); // Not used, LinkAuthenticationElement handles email internally
-    const [paymentError, setPaymentError] = useState<string | null>(null);
-    const [isProcessing, setIsProcessing] = useState(false);
-    // console.log('Checkout Form, payment: ', payment);
+    if (actionType === 'confirm_payment') {
+        const paymentMethodId = formData.get('payment_method_id') as string;
+        const paymentIntentId = formData.get('payment_intent_id') as string;
 
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setPaymentError(null); // Clear previous errors
-
-        if (!stripe || !elements) {
-            // Stripe.js has not yet loaded.
-            console.error("Stripe.js has not loaded yet.");
-            setPaymentError("Payment system is not ready. Please wait a moment and try again.");
-            return;
+        if (!paymentMethodId || !paymentIntentId) {
+            return json({ 
+                success: false, 
+                error: "Missing payment method or payment intent ID" 
+            }, { status: 400 });
         }
 
-        // No need to get CardElement explicitly when using PaymentElement
+        try {
+            const paymentProvider = getPaymentProvider();
+            
+            // Confirm payment with the payment provider
+            const result = await paymentProvider.confirmPaymentIntent({
+                payment_intent_id: paymentIntentId,
+                payment_method_id: paymentMethodId,
+            });
 
-        setIsProcessing(true);
-
-        // Use confirmPayment with the clientSecret obtained earlier
-        // paymentIntent is not needed here as success redirects automatically
-        const {error} = await stripe.confirmPayment({
-            elements, // Pass the elements provider instance
-            confirmParams: {
-                // Make sure to change this to your payment completion page
-                return_url: `${window.location.origin}/payment/success`,
-                // Optional: Add payment_method_data like billing_details if needed
-                // payment_method_data: {
-                //   billing_details: {
-                //     // name: 'Jenny Rosen', // Example - Link Auth Element often handles this
-                //   },
-                // }
-            },
-            // Optional: redirect: 'if_required' (default) or 'always'
-            // redirect: 'if_required'
-        });
-
-        // If `confirmPayment` fails or requires user action, it will throw an error.
-        // If it succeeds, it redirects the user to the `return_url` you specified.
-        // Therefore, you only need to handle the error case here.
-        // The success case (navigation) is handled by Stripe.js based on the return_url.
-
-        if (error) {
-            // This error could be either a type='card_error' or type='validation_error'
-            // or another type like 'api_error'.
-            console.error("Stripe confirmCardPayment error:", error);
-            // Handle specific error types if needed (e.g., card errors vs. API errors)
-            console.error("Stripe confirmPayment error:", error);
-            setPaymentError(error.message || "An unexpected error occurred. Please try again.");
-            setIsProcessing(false); // Allow user to retry
+            if (result.status === 'succeeded') {
+                // Store Square payment ID for webhook correlation
+                // Note: Status update will be handled by Square webhook
+                try {
+                    const { supabaseServer } = getSupabaseServerClient(request);
+                    console.log(`[Square] Storing Square payment ID ${result.id} for webhook correlation`);
+                    
+                    await supabaseServer
+                        .from('payments')
+                        .update({ 
+                            payment_intent_id: result.id
+                        })
+                        .eq('id', paymentIntentId);
+                } catch (dbError) {
+                    console.error('Failed to store Square payment ID:', dbError);
+                    // Don't fail the payment if ID storage fails
+                }
+                
+                return json({ 
+                    success: true, 
+                    payment: result 
+                });
+            } else if (result.status === 'failed') {
+                return json({ 
+                    success: false, 
+                    error: "Payment was declined. Please try a different payment method." 
+                });
+            } else {
+                return json({ 
+                    success: false, 
+                    error: "Payment is still processing. Please wait a moment and check your payment status." 
+                });
+            }
+        } catch (error) {
+            console.error('Payment confirmation failed:', error);
+            return json({ 
+                success: false, 
+                error: error instanceof Error ? error.message : "Payment failed. Please try again." 
+            }, { status: 500 });
         }
-        // No need for `else if (paymentIntent?.status === 'succeeded')` because
-        // `confirmPayment` automatically redirects on success based on `return_url`.
-        // If we reach here after the await, it means there was an error or redirection didn't happen (which shouldn't occur for standard flows).
-        // If redirection *doesn't* happen for some reason (e.g., popup blocker, unusual payment method flow),
-        // Stripe.js might still update the PaymentIntent status. You *could* add logic here to check
-        // paymentIntent.status again, but it's generally not required for typical card/wallet payments.
-        // The primary path is: success -> redirect; failure -> error message.
-    };
+    }
 
-    // Remove cardElementOptions - Styling is handled by Appearance API via Elements options
-
-    // Define Payment Element options including wallets and default values
-    const paymentElementOptions = useMemo(() => ({
-        layout: "tabs" as const, // Use const assertion for layout type
-        wallets: {
-            applePay: 'auto' as const, // Show Apple Pay if available
-            googlePay: 'auto' as const // Show Google Pay if available
-        },
-        // Add defaultValues to prefill form fields
-        defaultValues: {
-            billingDetails: {
-                email: defaultEmail ?? undefined, // Use fetched email or undefined
-                address: {
-                    postal_code: defaultPostalCode ?? undefined, // Use fetched postal code or undefined
-                    country: siteConfig.localization.country, // Set country from site config
-                },
-            },
-        },
-    }), [defaultEmail, defaultPostalCode]); // Recompute options if defaults change
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Add Link Authentication Element */}
-            <LinkAuthenticationElement
-                id="link-authentication-element"
-                // Prefill the email if it's available from user data (optional)
-                // defaultValue={userEmail}
-                // onChange={(e) => setEmail(e.value.email)} // setEmail was removed, remove handler
-                className="mb-4" // Add some spacing
-            />
-
-            {/* Pass options to PaymentElement */}
-            <PaymentElement id="payment-element" options={paymentElementOptions}/>
-
-            {paymentError && (
-                <Alert variant="destructive" className="mt-4"> {/* Add margin top */}
-                    <AlertTitle>Payment Error</AlertTitle>
-                    <AlertDescription>{paymentError}</AlertDescription>
-                </Alert>
-            )}
-
-            <Button
-                type="submit"
-                // Disable button if Stripe.js hasn't loaded, elements aren't available, or payment is processing.
-                disabled={!stripe || !elements || isProcessing}
-                className="w-full"
-            >
-                {/* Display FINAL total amount on button */}
-                {isProcessing ? 'Processing...' : `Pay $${(payment.total_amount / 100).toFixed(2)}`}
-            </Button>
-        </form>
-    );
+    return json({ success: false, error: "Invalid action" }, { status: 400 });
 }
-
 
 // --- Main Payment Page Component ---
 export default function PaymentPage() {
     // console.log("[PaymentPage] Component rendering started.");
     // payment object now contains the status
-    const {payment, stripePublishableKey, error: loaderError} = useLoaderData<LoaderData>();
+    const {
+        payment,
+        error: loaderError,
+        providerConfig,
+    } = useLoaderData<LoaderData>();
     // Use the combined type for the fetcher
     const paymentIntentFetcher = useFetcher<ApiActionResponse>();
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [fetcherError, setFetcherError] = useState<string | null>(null);
-    // State to hold the loaded Stripe promise/instance
-    const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
-    // State to hold the detected theme ('light' or 'dark')
-    const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light'); // Default to light initially
+
+    // Memoize the onError callback to prevent unnecessary re-renders
+    const handleError = useCallback((message: string) => {
+        setFetcherError(message);
+    }, []);
 
     // --- Helper to Group Taxes ---
     const groupedTaxes = useMemo(() => {
@@ -420,102 +360,9 @@ export default function PaymentPage() {
         }));
     }, [payment?.payment_taxes]); // Recalculate if taxes change
 
-    // Options for Stripe Elements provider - Memoize to prevent unnecessary re-renders
-    // Moved to top level before early returns to satisfy Rules of Hooks
-    const options = useMemo<StripeElementsOptions | undefined>(() => {
-        if (!clientSecret) return undefined;
-
-        // Define appearance based on common UI elements (Tailwind/shadcn defaults)
-        // Determine effective theme (handle 'system')
-        // Note: This assumes your ThemeProvider resolves 'system' correctly.
-        // If using next-themes, it might return 'system' initially.
-        // A robust solution might involve checking resolvedTheme if available,
-        // or defaulting to light/dark based on media query if theme is 'system'.
-        // For simplicity here, we'll treat 'system' like 'light' initially,
-        // Define appearance based on the detected theme state
-        const appearance: StripeElementsOptions['appearance'] = {
-            theme: currentTheme === 'dark' ? 'night' : 'stripe', // Use 'night' for dark, 'stripe' for light/auto
-            variables: {
-                // --- Common Variables (Apply to both themes unless overridden) ---
-                colorPrimary: '#22c55e',     // Focus ring/border (green-500)
-                colorDanger: '#ef4444',     // Error text (red-500)
-                borderRadius: '0.375rem',   // Match form inputs (rounded-md)
-
-                // --- Theme-Specific Overrides ---
-                ...(currentTheme === 'dark'
-                    ? { // Dark Theme Variables (match your existing dark mode)
-                        colorBackground: '#374151', // Input background (gray-700)
-                        colorText: '#ffffff',       // Input text (white)
-                        colorTextSecondary: '#d1d5db', // Labels etc (gray-300)
-                        colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
-                        colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
-                        // colorBorder: '#4b5563',     // Input border (gray-600) - Removed invalid variable
-                    }
-                    : { // Light Theme Variables (match typical light mode)
-                        colorBackground: '#ffffff', // Input background (white)
-                        colorText: '#1f2937',       // Input text (gray-800)
-                        colorTextSecondary: '#6b7280', // Labels etc (gray-500)
-                        colorTextPlaceholder: '#9ca3af', // Placeholder text (gray-400)
-                        colorIcon: '#9ca3af',       // Icons in inputs (gray-400)
-                        // colorBorder: '#d1d5db',     // Input border (gray-300) - Removed invalid variable
-                    }),
-            },
-            rules: {
-                // --- Focus State (Common) ---
-                 // Focus styling is primarily handled by the 'colorPrimary' variable now.
-                // Removed invalid rule: '.Input--focus'
-
-                // Add other rules if variables aren't sufficient for specific elements
-                // e.g., Tab styling if variables don't cover it adequately
-                '.Tab': {
-                    // Base tab styles if needed
-                },
-                '.Tab:hover': {
-                    // Hover styles
-                },
-                 '.Tab--selected': {
-                    // Selected tab styles - variables might handle this
-                 },
-            }
-        };
-
-        return {clientSecret, appearance};
-
-    }, [clientSecret, currentTheme]); // Recreate options when clientSecret OR currentTheme changes
 
     // console.log('PaymentPage, payment: ', payment);
 
-    // --- Effect to Detect Theme ---
-    useEffect(() => {
-        // Function to check and set theme
-        const checkTheme = () => {
-            const isDarkMode = document.documentElement.classList.contains('dark');
-            // console.log("[PaymentPage Theme Effect] Checking theme. Is dark mode?", isDarkMode);
-            setCurrentTheme(isDarkMode ? 'dark' : 'light');
-        };
-
-        // Check theme on initial mount
-        checkTheme();
-
-        // Optional: Observe changes to the class attribute of the html element
-        // This is more robust if the theme can change while the page is open
-        const observer = new MutationObserver((mutationsList) => {
-            for (const mutation of mutationsList) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                    console.log("[PaymentPage Theme Effect] Detected class change on <html>.");
-                    checkTheme(); // Re-check theme on class change
-                }
-            }
-        });
-
-        observer.observe(document.documentElement, { attributes: true });
-
-        // Cleanup observer on component unmount
-        return () => {
-            console.log("[PaymentPage Theme Effect] Cleaning up theme observer.");
-            observer.disconnect();
-        };
-    }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount
 
     // --- Restore Fetcher Logic ---
     // Fetch the Payment Intent clientSecret when the component mounts or payment data changes
@@ -535,7 +382,7 @@ export default function PaymentPage() {
             formData.append('familyId', payment.family_id);
             formData.append('familyName', payment.family?.name ?? 'Unknown Family'); // Need family name
             formData.append('supabasePaymentId', payment.id); // Pass Supabase ID for linking/update
-            
+
             // The database now stores the discounted subtotal, so use it directly
             formData.append('subtotalAmount', payment.subtotal_amount.toString());
             formData.append('totalAmount', payment.total_amount.toString());
@@ -544,7 +391,7 @@ export default function PaymentPage() {
             // Determine paymentOption, priceId, quantity, studentIds based on payment.payment_type
             // This logic is CRUCIAL and depends heavily on how you store payment details
             let paymentOption: 'monthly' | 'yearly' | 'individual' | 'store' | 'event' | null = null; // Added 'store' and 'event'
-            let priceId: string | null = null; // Required for yearly/individual
+            const priceId: string | null = null; // Required for yearly/individual
             let quantity: string | null = null; // Required for individual
             const studentIds: string[] = payment.payment_students?.map(ps => ps.student_id) ?? []; // Get student IDs from loader data
 
@@ -563,11 +410,11 @@ export default function PaymentPage() {
                     break;
                 case 'yearly_group':
                     paymentOption = 'yearly';
-                    priceId = siteConfig.stripe.priceIds.yearly; // Use configured yearly price ID
+                    // Price ID will be determined by the payment provider based on the payment option
                     break;
                 case 'individual_session':
                     paymentOption = 'individual';
-                    priceId = siteConfig.stripe.priceIds.oneOnOneSession; // Use correct property name: oneOnOneSession
+                    // Price ID will be determined by the payment provider based on the payment option
                     // Determine quantity: This depends on how you created the payment record.
                     // If the quantity is stored on the payment record itself (e.g., in a 'quantity' column), use that.
                     // Otherwise, calculate based on subtotal_amount / price.
@@ -616,11 +463,7 @@ export default function PaymentPage() {
             }
 
 
-            if ((paymentOption === 'yearly' || paymentOption === 'individual') && !priceId) {
-                console.error(`Price ID missing for ${paymentOption} payment ${payment.id}.`);
-                setFetcherError(`Configuration error: Price ID missing for ${paymentOption}.`);
-                return;
-            }
+            // Price ID validation is handled by the payment provider
             if (priceId) formData.append('priceId', priceId);
 
 
@@ -684,7 +527,7 @@ export default function PaymentPage() {
                         setClientSecret(null); // Prevent payment attempt with wrong amount
                     }
                 }
-            // Check if it's an error response
+                // Check if it's an error response
             } else if ('error' in paymentIntentFetcher.data && paymentIntentFetcher.data.error) {
                 console.error("[PaymentPage Effect] Error fetching clientSecret:", paymentIntentFetcher.data.error);
                 setFetcherError(paymentIntentFetcher.data.error);
@@ -694,16 +537,6 @@ export default function PaymentPage() {
     }, [paymentIntentFetcher.data, payment, clientSecret]); // Add clientSecret to dependency array
     // --- End Restore Fetcher Logic ---
 
-    // --- Effect to Load Stripe ---
-    useEffect(() => {
-        if (stripePublishableKey) {
-            console.log("[PaymentPage Effect] Loading Stripe.js...");
-            setStripePromise(loadStripe(stripePublishableKey));
-        } else {
-            console.error("[PaymentPage Effect] Stripe Publishable Key is missing from loader data. Cannot load Stripe.");
-            // Optionally set an error state here
-        }
-    }, [stripePublishableKey]); // Run only when the key changes (initially)
 
 
     // --- Render Logic ---
@@ -737,9 +570,6 @@ export default function PaymentPage() {
     }
 
 
-    // Options object creation moved to top level
-
-    // console.log('PaymentPage, memoized options: ', options); // Keep log before return
     return (
         <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">Complete Your Payment</h1>
@@ -763,7 +593,7 @@ export default function PaymentPage() {
                 </p>
                 {/* Display Subtotal (already discounted) */}
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)}
+                    <span className="font-semibold">Subtotal:</span> {formatMoney(fromCents(payment.subtotal_amount))}
                     {payment.discount_amount && payment.discount_amount > 0 && (
                         <span className="text-green-600 dark:text-green-400 ml-2">
                             (discount applied)
@@ -776,13 +606,13 @@ export default function PaymentPage() {
                         <p key={index} className="text-sm text-gray-700 dark:text-gray-300">
                             <span className="font-semibold">
                                 {tax.description}:
-                            </span> ${(tax.amount / 100).toFixed(2)}
+                            </span> {formatMoney(fromCents(tax.amount))}
                         </p>
                     ))
                 )}
                 <p className="text-lg font-bold text-gray-800 dark:text-gray-100 mt-2 border-t pt-2 dark:border-gray-600">
                     {/* Display the final total amount */}
-                    <span className="font-semibold">Total Amount:</span> ${(payment.total_amount / 100).toFixed(2)} {siteConfig.localization.currency}
+                    <span className="font-semibold">Total Amount:</span> {formatMoney(fromCents(payment.total_amount))}
                 </p>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span
@@ -801,27 +631,13 @@ export default function PaymentPage() {
                 </Alert>
             )}
 
-            {/* Wrap Stripe Elements Form in ClientOnly */}
-            <ClientOnly fallback={<p className="text-center text-gray-600 dark:text-gray-400 py-8">Loading payment form...</p>}>
-                {() => (
-                    // Ensure stripePromise state is loaded and we have options (clientSecret)
-                    stripePromise && options && !fetcherError ? (
-                        // Add key={clientSecret} to force remount when secret changes
-                        <Elements key={clientSecret} stripe={stripePromise} options={options}>
-                            <CheckoutForm
-                                payment={payment} // clientSecret removed from CheckoutForm props
-                                defaultEmail={payment.family?.email} // Pass family email
-                                defaultPostalCode={payment.family?.postal_code} // Pass family postal code
-                            />
-                        </Elements>
-                    ) : (
-                        // Show loading only if no error and not already initializing inside ClientOnly
-                        !fetcherError && paymentIntentFetcher.state !== 'submitting' &&
-                        <p className="text-center text-gray-600 dark:text-gray-400 py-8">Initializing payment form...</p>
-                    )
-                )}
-            </ClientOnly>
-            {/* End Stripe Elements Form Wrapper */}
+            <PaymentForm
+                payment={payment}
+                providerConfig={providerConfig}
+                clientSecret={clientSecret}
+                providerData={undefined} // No provider-specific data needed in this flow
+                onError={handleError}
+            />
 
 
             {/* Cancel Link - Use standard <a> tag for full page navigation */}

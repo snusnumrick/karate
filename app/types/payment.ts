@@ -3,6 +3,7 @@
 // Import Database type for EligibilityStatus
 import type { Database } from './database.types';
 import {IndividualSessionInfo} from "~/services/payment-eligibility.server";
+import {Money} from "~/utils/money";
 
 // Eligibility status for students
 export type EligibilityStatus = {
@@ -20,7 +21,7 @@ export interface StudentPaymentDetail {
   lastName: string;
   eligibility?: EligibilityStatus; // Current status (Trial, Paid, Expired)
   needsPayment: boolean; // True if status is Trial or Expired
-  nextPaymentAmount: number; // Amount in dollars for monthly payment
+  nextPaymentAmount: Money; // Amount in dollars for monthly payment
   nextPaymentTierLabel: string; // Label for payment (Monthly)
   pastPaymentCount: number; // Kept for historical tracking
   individualSessions?: IndividualSessionInfo;

@@ -5,6 +5,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 interface ActionResponse {
     error?: string;
@@ -12,6 +14,7 @@ interface ActionResponse {
 }
 
 export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
+    await csrf.validate(request);
     const formData = await request.formData();
     const email = formData.get("email") as string;
     const { supabaseServer, response } = getSupabaseServerClient(request);
@@ -59,6 +62,7 @@ export default function ForgotPasswordPage() {
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="form-container-styles py-8 px-4 sm:px-10">
                         <form className="space-y-6" method="post">
+                            <AuthenticityTokenInput />
                             {/* Display success message */}
                             {actionData?.message && (
                                 <Alert variant="default">

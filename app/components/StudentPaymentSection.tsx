@@ -2,10 +2,11 @@ import { useMemo } from 'react';
 import { useNavigate } from '@remix-run/react';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { ExclamationTriangleIcon, InfoCircledIcon } from '@radix-ui/react-icons';
-import { PaymentForm } from '~/components/PaymentForm';
+import { PaymentSetupForm } from '~/components/PaymentSetupForm';
 import { PaymentEligibilityData } from '~/services/payment-eligibility.server';
 import {EligibilityStatus, StudentPaymentDetail} from '~/types/payment';
 import type { StudentPaymentOptions } from '~/services/enrollment-payment.server';
+import {isPositive, ZERO_MONEY, toMoney} from "~/utils/money";
 
 interface StudentPaymentSectionProps {
   familyId: string;
@@ -44,13 +45,23 @@ export function StudentPaymentSection({ familyId, enrollmentId, appearance = 'de
   // Memoize studentPaymentDetails to prevent infinite re-renders (must be at top level)
   const memoizedStudentPaymentDetails : StudentPaymentDetail[] = useMemo(() => {
     if (!selectedEnrollment) return [];
+
+    let nextPaymentAmount = ZERO_MONEY;
+    const monthlyAmount = selectedEnrollment.monthlyAmount ? toMoney(selectedEnrollment.monthlyAmount as unknown) : undefined;
+    const individualAmount = selectedEnrollment.individualSessionAmount ? toMoney(selectedEnrollment.individualSessionAmount as unknown) : undefined;
+    if(monthlyAmount && isPositive(monthlyAmount)) {
+        nextPaymentAmount = monthlyAmount;
+    } else if (individualAmount && isPositive(individualAmount)) {
+        nextPaymentAmount = individualAmount;
+    }
+
     return [{
       studentId: selectedEnrollment.studentId,
       firstName: selectedEnrollment.studentName.split(' ')[0],
       lastName: selectedEnrollment.studentName.split(' ').slice(1).join(' '),
       eligibility: eligibilityStatus,
       needsPayment: !selectedEnrollment.hasActiveSubscription,
-      nextPaymentAmount: selectedEnrollment.monthlyAmount || selectedEnrollment.individualSessionAmount || 0,
+      nextPaymentAmount: nextPaymentAmount,
       nextPaymentTierLabel: selectedEnrollment.monthlyAmount ? 'Monthly' : 'Individual Session',
       // nextPaymentPriceId: "", // TODO: Map to actual price IDs
       pastPaymentCount: 0,
@@ -62,9 +73,9 @@ export function StudentPaymentSection({ familyId, enrollmentId, appearance = 'de
   const memoizedEnrollmentPricing = useMemo(() => {
     if (!selectedEnrollment) return {};
     return {
-      monthlyAmount: selectedEnrollment.monthlyAmount,
-      yearlyAmount: selectedEnrollment.yearlyAmount,
-      individualSessionAmount: selectedEnrollment.individualSessionAmount
+      monthlyAmount: selectedEnrollment.monthlyAmount ? toMoney(selectedEnrollment.monthlyAmount as unknown) : undefined,
+      yearlyAmount: selectedEnrollment.yearlyAmount ? toMoney(selectedEnrollment.yearlyAmount as unknown) : undefined,
+      individualSessionAmount: selectedEnrollment.individualSessionAmount ? toMoney(selectedEnrollment.individualSessionAmount as unknown) : undefined
     };
   }, [selectedEnrollment]);
 
@@ -93,7 +104,7 @@ export function StudentPaymentSection({ familyId, enrollmentId, appearance = 'de
     return (
       <div className="space-y-6">
         {/* Payment Form - Clean integration */}
-      <PaymentForm 
+      <PaymentSetupForm 
         familyId={familyId}
         enrollmentId={enrollmentId}
         mode="student"
@@ -165,7 +176,7 @@ export function StudentPaymentSection({ familyId, enrollmentId, appearance = 'de
       )}
 
       {/* Payment Form - Clean integration */}
-      <PaymentForm 
+      <PaymentSetupForm 
         familyId={familyId}
         enrollmentId={enrollmentId}
         mode="student"

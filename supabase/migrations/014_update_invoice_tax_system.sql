@@ -2,7 +2,7 @@
 -- This migration changes from percentage-based tax to multiple tax rate selection
 
 -- Create junction table for invoice line item taxes
-CREATE TABLE invoice_line_item_taxes (
+CREATE TABLE IF NOT EXISTS invoice_line_item_taxes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     invoice_line_item_id UUID NOT NULL REFERENCES invoice_line_items(id) ON DELETE CASCADE,
     tax_rate_id UUID NOT NULL REFERENCES tax_rates(id) ON DELETE RESTRICT,
@@ -12,12 +12,13 @@ CREATE TABLE invoice_line_item_taxes (
     tax_rate_snapshot DECIMAL(5,4) NOT NULL,
     tax_description_snapshot TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(invoice_line_item_id, tax_rate_id)
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_invoice_line_item_taxes_line_item_id ON invoice_line_item_taxes(invoice_line_item_id);
-CREATE INDEX idx_invoice_line_item_taxes_tax_rate_id ON invoice_line_item_taxes(tax_rate_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_line_item_taxes_line_item_id ON invoice_line_item_taxes(invoice_line_item_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_line_item_taxes_tax_rate_id ON invoice_line_item_taxes(tax_rate_id);
 
 -- Migrate existing tax data from invoice_line_items to the new junction table
 -- This will create entries in the junction table for line items that have tax_rate > 0
@@ -52,6 +53,7 @@ COMMENT ON COLUMN invoice_line_items.tax_amount IS 'DEPRECATED: Use invoice_line
 ALTER TABLE invoice_line_item_taxes ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can view tax details for invoices they have access to
+DROP POLICY IF EXISTS "Users can view invoice line item taxes for accessible invoices" ON invoice_line_item_taxes;
 CREATE POLICY "Users can view invoice line item taxes for accessible invoices" 
 ON invoice_line_item_taxes FOR SELECT 
 USING (
@@ -72,6 +74,7 @@ USING (
 );
 
 -- Policy: Admins can manage all invoice line item taxes
+DROP POLICY IF EXISTS "Admins can manage invoice line item taxes" ON invoice_line_item_taxes;
 CREATE POLICY "Admins can manage invoice line item taxes" 
 ON invoice_line_item_taxes FOR ALL 
 USING (
@@ -79,6 +82,7 @@ USING (
 );
 
 -- Add trigger to update updated_at timestamp
+DROP TRIGGER IF EXISTS update_invoice_line_item_taxes_updated_at ON invoice_line_item_taxes;
 CREATE TRIGGER update_invoice_line_item_taxes_updated_at
     BEFORE UPDATE ON invoice_line_item_taxes
     FOR EACH ROW

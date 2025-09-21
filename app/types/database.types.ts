@@ -544,6 +544,7 @@ export type Database = {
           description: string | null
           discount_type: string
           discount_value: number
+          discount_value_cents: number
           family_id: string | null
           id: string
           is_active: boolean
@@ -566,6 +567,7 @@ export type Database = {
           description?: string | null
           discount_type: string
           discount_value: number
+          discount_value_cents?: number
           family_id?: string | null
           id?: string
           is_active?: boolean
@@ -588,6 +590,7 @@ export type Database = {
           description?: string | null
           discount_type?: string
           discount_value?: number
+          discount_value_cents?: number
           family_id?: string | null
           id?: string
           is_active?: boolean
@@ -792,6 +795,7 @@ export type Database = {
           id: string
           notes: string | null
           payment_amount: number | null
+          payment_amount_cents: number | null
           payment_id: string | null
           payment_required: boolean | null
           registered_at: string | null
@@ -807,6 +811,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_amount?: number | null
+          payment_amount_cents?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
           registered_at?: string | null
@@ -822,6 +827,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_amount?: number | null
+          payment_amount_cents?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
           registered_at?: string | null
@@ -957,6 +963,7 @@ export type Database = {
           instructor_id: string | null
           is_public: boolean | null
           late_registration_fee: number | null
+          late_registration_fee_cents: number | null
           locality: string | null
           location: string | null
           location_name: string | null
@@ -970,6 +977,7 @@ export type Database = {
           region: string | null
           registration_deadline: string | null
           registration_fee: number | null
+          registration_fee_cents: number
           required_waiver_ids: string[] | null
           requires_equipment: string[] | null
           requires_waiver: boolean | null
@@ -996,6 +1004,7 @@ export type Database = {
           instructor_id?: string | null
           is_public?: boolean | null
           late_registration_fee?: number | null
+          late_registration_fee_cents?: number | null
           locality?: string | null
           location?: string | null
           location_name?: string | null
@@ -1009,6 +1018,7 @@ export type Database = {
           region?: string | null
           registration_deadline?: string | null
           registration_fee?: number | null
+          registration_fee_cents?: number
           required_waiver_ids?: string[] | null
           requires_equipment?: string[] | null
           requires_waiver?: boolean | null
@@ -1035,6 +1045,7 @@ export type Database = {
           instructor_id?: string | null
           is_public?: boolean | null
           late_registration_fee?: number | null
+          late_registration_fee_cents?: number | null
           locality?: string | null
           location?: string | null
           location_name?: string | null
@@ -1048,6 +1059,7 @@ export type Database = {
           region?: string | null
           registration_deadline?: string | null
           registration_fee?: number | null
+          registration_fee_cents?: number
           required_waiver_ids?: string[] | null
           requires_equipment?: string[] | null
           requires_waiver?: boolean | null
@@ -1200,6 +1212,7 @@ export type Database = {
           country: string | null
           created_at: string | null
           credit_limit: number | null
+          credit_limit_cents: number | null
           email: string | null
           entity_type: Database["public"]["Enums"]["entity_type_enum"]
           family_id: string | null
@@ -1222,6 +1235,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           credit_limit?: number | null
+          credit_limit_cents?: number | null
           email?: string | null
           entity_type: Database["public"]["Enums"]["entity_type_enum"]
           family_id?: string | null
@@ -1244,6 +1258,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           credit_limit?: number | null
+          credit_limit_cents?: number | null
           email?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type_enum"]
           family_id?: string | null
@@ -1258,7 +1273,15 @@ export type Database = {
           tax_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invoice_entities_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_line_item_taxes: {
         Row: {
@@ -1266,6 +1289,7 @@ export type Database = {
           id: string
           invoice_line_item_id: string
           tax_amount: number
+          tax_amount_cents: number
           tax_description_snapshot: string | null
           tax_name_snapshot: string
           tax_rate_id: string
@@ -1276,6 +1300,7 @@ export type Database = {
           id?: string
           invoice_line_item_id: string
           tax_amount?: number
+          tax_amount_cents?: number
           tax_description_snapshot?: string | null
           tax_name_snapshot: string
           tax_rate_id: string
@@ -1286,6 +1311,7 @@ export type Database = {
           id?: string
           invoice_line_item_id?: string
           tax_amount?: number
+          tax_amount_cents?: number
           tax_description_snapshot?: string | null
           tax_name_snapshot?: string
           tax_rate_id?: string
@@ -1320,58 +1346,70 @@ export type Database = {
           created_at: string | null
           description: string
           discount_amount: number | null
+          discount_amount_cents: number | null
           discount_rate: number | null
           enrollment_id: string | null
           id: string
           invoice_id: string
           item_type: Database["public"]["Enums"]["invoice_item_type"]
           line_total: number
+          line_total_cents: number
           product_id: string | null
           quantity: number
           service_period_end: string | null
           service_period_start: string | null
           sort_order: number | null
           tax_amount: number | null
+          tax_amount_cents: number | null
           tax_rate: number | null
           unit_price: number
+          unit_price_cents: number
         }
         Insert: {
           created_at?: string | null
           description: string
           discount_amount?: number | null
+          discount_amount_cents?: number | null
           discount_rate?: number | null
           enrollment_id?: string | null
           id?: string
           invoice_id: string
           item_type: Database["public"]["Enums"]["invoice_item_type"]
           line_total: number
+          line_total_cents: number
           product_id?: string | null
           quantity?: number
           service_period_end?: string | null
           service_period_start?: string | null
           sort_order?: number | null
           tax_amount?: number | null
+          tax_amount_cents?: number | null
           tax_rate?: number | null
           unit_price: number
+          unit_price_cents: number
         }
         Update: {
           created_at?: string | null
           description?: string
           discount_amount?: number | null
+          discount_amount_cents?: number | null
           discount_rate?: number | null
           enrollment_id?: string | null
           id?: string
           invoice_id?: string
           item_type?: Database["public"]["Enums"]["invoice_item_type"]
           line_total?: number
+          line_total_cents?: number
           product_id?: string | null
           quantity?: number
           service_period_end?: string | null
           service_period_start?: string | null
           sort_order?: number | null
           tax_amount?: number | null
+          tax_amount_cents?: number | null
           tax_rate?: number | null
           unit_price?: number
+          unit_price_cents?: number
         }
         Relationships: [
           {
@@ -1393,6 +1431,7 @@ export type Database = {
       invoice_payments: {
         Row: {
           amount: number
+          amount_cents: number
           created_at: string | null
           id: string
           invoice_id: string
@@ -1400,11 +1439,13 @@ export type Database = {
           payment_date: string
           payment_method: Database["public"]["Enums"]["invoice_payment_method"]
           reference_number: string | null
+          receipt_url: string | null
           stripe_payment_intent_id: string | null
           updated_at: string | null
         }
         Insert: {
           amount: number
+          amount_cents: number
           created_at?: string | null
           id?: string
           invoice_id: string
@@ -1412,11 +1453,13 @@ export type Database = {
           payment_date?: string
           payment_method: Database["public"]["Enums"]["invoice_payment_method"]
           reference_number?: string | null
+          receipt_url?: string | null
           stripe_payment_intent_id?: string | null
           updated_at?: string | null
         }
         Update: {
           amount?: number
+          amount_cents?: number
           created_at?: string | null
           id?: string
           invoice_id?: string
@@ -1424,6 +1467,7 @@ export type Database = {
           payment_date?: string
           payment_method?: Database["public"]["Enums"]["invoice_payment_method"]
           reference_number?: string | null
+          receipt_url?: string | null
           stripe_payment_intent_id?: string | null
           updated_at?: string | null
         }
@@ -1489,6 +1533,7 @@ export type Database = {
           tax_rate: number | null
           template_id: string
           unit_price: number | null
+          unit_price_cents: number | null
         }
         Insert: {
           created_at?: string | null
@@ -1503,6 +1548,7 @@ export type Database = {
           tax_rate?: number | null
           template_id: string
           unit_price?: number | null
+          unit_price_cents?: number | null
         }
         Update: {
           created_at?: string | null
@@ -1517,6 +1563,7 @@ export type Database = {
           tax_rate?: number | null
           template_id?: string
           unit_price?: number | null
+          unit_price_cents?: number | null
         }
         Relationships: [
           {
@@ -1584,10 +1631,13 @@ export type Database = {
       invoices: {
         Row: {
           amount_due: number
+          amount_due_cents: number
           amount_paid: number
+          amount_paid_cents: number
           created_at: string | null
           currency: string | null
           discount_amount: number
+          discount_amount_cents: number
           due_date: string
           entity_id: string
           family_id: string | null
@@ -1602,18 +1652,24 @@ export type Database = {
           service_period_start: string | null
           status: Database["public"]["Enums"]["invoice_status"] | null
           subtotal: number
+          subtotal_cents: number
           tax_amount: number
+          tax_amount_cents: number
           terms: string | null
           total_amount: number
+          total_amount_cents: number
           updated_at: string | null
           viewed_at: string | null
         }
         Insert: {
           amount_due?: number
+          amount_due_cents?: number
           amount_paid?: number
+          amount_paid_cents?: number
           created_at?: string | null
           currency?: string | null
           discount_amount?: number
+          discount_amount_cents?: number
           due_date: string
           entity_id: string
           family_id?: string | null
@@ -1628,18 +1684,24 @@ export type Database = {
           service_period_start?: string | null
           status?: Database["public"]["Enums"]["invoice_status"] | null
           subtotal?: number
+          subtotal_cents?: number
           tax_amount?: number
+          tax_amount_cents?: number
           terms?: string | null
           total_amount?: number
+          total_amount_cents?: number
           updated_at?: string | null
           viewed_at?: string | null
         }
         Update: {
           amount_due?: number
+          amount_due_cents?: number
           amount_paid?: number
+          amount_paid_cents?: number
           created_at?: string | null
           currency?: string | null
           discount_amount?: number
+          discount_amount_cents?: number
           due_date?: string
           entity_id?: string
           family_id?: string | null
@@ -1654,9 +1716,12 @@ export type Database = {
           service_period_start?: string | null
           status?: Database["public"]["Enums"]["invoice_status"] | null
           subtotal?: number
+          subtotal_cents?: number
           tax_amount?: number
+          tax_amount_cents?: number
           terms?: string | null
           total_amount?: number
+          total_amount_cents?: number
           updated_at?: string | null
           viewed_at?: string | null
         }
@@ -2220,6 +2285,7 @@ export type Database = {
           gender_restriction: string | null
           id: string
           individual_session_fee: number | null
+          individual_session_fee_cents: number
           is_active: boolean
           max_age: number | null
           max_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
@@ -2229,13 +2295,16 @@ export type Database = {
           min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
           min_sessions_per_week: number | null
           monthly_fee: number | null
+          monthly_fee_cents: number
           name: string
           prerequisite_programs: string[] | null
           registration_fee: number | null
+          registration_fee_cents: number
           sessions_per_week: number
           special_needs_support: boolean | null
           updated_at: string
           yearly_fee: number | null
+          yearly_fee_cents: number
         }
         Insert: {
           belt_rank_required?: boolean | null
@@ -2245,6 +2314,7 @@ export type Database = {
           gender_restriction?: string | null
           id?: string
           individual_session_fee?: number | null
+          individual_session_fee_cents?: number
           is_active?: boolean
           max_age?: number | null
           max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
@@ -2254,13 +2324,16 @@ export type Database = {
           min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           min_sessions_per_week?: number | null
           monthly_fee?: number | null
+          monthly_fee_cents?: number
           name: string
           prerequisite_programs?: string[] | null
           registration_fee?: number | null
+          registration_fee_cents?: number
           sessions_per_week?: number
           special_needs_support?: boolean | null
           updated_at?: string
           yearly_fee?: number | null
+          yearly_fee_cents?: number
         }
         Update: {
           belt_rank_required?: boolean | null
@@ -2270,6 +2343,7 @@ export type Database = {
           gender_restriction?: string | null
           id?: string
           individual_session_fee?: number | null
+          individual_session_fee_cents?: number
           is_active?: boolean
           max_age?: number | null
           max_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
@@ -2279,13 +2353,16 @@ export type Database = {
           min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
           min_sessions_per_week?: number | null
           monthly_fee?: number | null
+          monthly_fee_cents?: number
           name?: string
           prerequisite_programs?: string[] | null
           registration_fee?: number | null
+          registration_fee_cents?: number
           sessions_per_week?: number
           special_needs_support?: boolean | null
           updated_at?: string
           yearly_fee?: number | null
+          yearly_fee_cents?: number
         }
         Relationships: []
       }

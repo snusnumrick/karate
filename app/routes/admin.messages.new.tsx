@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // Define the schema for form validation using Zod
 const messageSchema = z.object({
@@ -108,6 +110,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         return json({ error: "Access Denied." }, { status: 403, headers });
     }
 
+    await csrf.validate(request);
     const formData = await request.formData();
     const rawData = Object.fromEntries(formData);
 
@@ -320,6 +323,7 @@ export default function AdminNewMessage() {
                 )}
 
                 <Form method="post" className="space-y-6">
+                <AuthenticityTokenInput />
                 <div>
                     <Label htmlFor="familyId">To Family</Label>
                     <Select

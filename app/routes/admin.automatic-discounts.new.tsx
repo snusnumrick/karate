@@ -12,9 +12,12 @@ import { DiscountTemplateService } from "~/services/discount-template.server";
 import { requireAdminUser } from "~/utils/auth.server";
 import type { Json } from "~/types/database.types";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { toMoney, formatDollars } from "~/utils/money";
 
 import { useState } from "react";
 import { Badge } from "~/components/ui/badge";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -32,6 +35,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  await csrf.validate(request);
   const formData = await request.formData();
 
   const name = formData.get('name') as string;
@@ -143,6 +147,7 @@ export default function NewAutomationRule() {
       )}
 
       <Form method="post" className="space-y-6">
+        <AuthenticityTokenInput />
         <Card>
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
@@ -205,8 +210,7 @@ export default function NewAutomationRule() {
                     {templates.map((template) => (
                       <SelectItem key={template.id} value={template.id}>
                         {template.name} - {template.discount_type === 'percentage' ? 
-                          `${template.discount_value}%` : 
-                          `$${template.discount_value}`
+                          `${template.discount_value}%` : `$${formatDollars(toMoney(template.discount_value as unknown))}`
                         } off
                       </SelectItem>
                     ))}
@@ -234,8 +238,7 @@ export default function NewAutomationRule() {
                       />
                       <Label htmlFor={`template_${template.id}`} className="flex-1 cursor-pointer">
                         {template.name} - {template.discount_type === 'percentage' ? 
-                          `${template.discount_value}%` : 
-                          `$${template.discount_value}`
+                          `${template.discount_value}%` : `$${formatDollars(toMoney(template.discount_value as unknown))}`
                         } off
                       </Label>
                     </div>

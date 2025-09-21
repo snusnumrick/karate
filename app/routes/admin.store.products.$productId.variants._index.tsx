@@ -4,7 +4,8 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
-import { formatCurrency, formatDate } from "~/utils/misc"; // Import formatDate utility
+import { formatDate } from "~/utils/misc"; // Import formatDate utility
+import { fromCents, formatMoney } from "~/utils/money";
 import type { Tables } from "~/types/database.types";
 import { PlusCircle, Edit } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -89,7 +90,7 @@ export default function AdminProductVariantListPage() {
                             {variants.map((variant) => (
                                 <TableRow key={variant.id}>
                                     <TableCell className="font-medium">{variant.size}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(variant.price_in_cents)}</TableCell>
+                                    <TableCell className="text-right">{formatMoney(fromCents(variant.price_in_cents))}</TableCell>
                                     <TableCell className="text-center">{variant.stock_quantity}</TableCell>
                                     <TableCell className="text-center">
                                         <Badge variant={variant.is_active ? "default" : "secondary"}>

@@ -10,6 +10,7 @@ import type { Database, Tables, TablesInsert } from '~/types/database.types';
 import { Calendar, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
 import { formatDate } from '~/utils/misc';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
+import {fromDollars, multiplyMoney, type Money, addMoney, isPositive, toCents} from '~/utils/money';
 
 // Extended Event type for registration with additional properties
 type EventWithRegistrationInfo = Tables<'events'> & {
@@ -187,14 +188,14 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     }
 
     // Get event details to check registration fee
-    const { data: eventDetails } = await supabaseServer
+    const { data: eventDetails_db } = await supabaseServer
       .from('events')
       .select('registration_fee')
       .eq('id', eventId)
       .single();
 
-    const registrationFee = eventDetails?.registration_fee || 0;
-    const paymentRequired = registrationFee > 0;
+    const registrationFee : Money = fromDollars(eventDetails_db?.registration_fee || 0);
+    const paymentRequired = isPositive(registrationFee);
 
     // Create event registrations
     const registrations = studentIds.map(studentId => ({
@@ -204,7 +205,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
        registration_status: paymentRequired ? 'pending' as Database['public']['Enums']['registration_status_enum'] : 'confirmed' as Database['public']['Enums']['registration_status_enum'],
     }));
 
-    const { data: createdRegistrations, error: registrationError } = await supabaseServer
+    const { data: createdRegistrations_db, error: registrationError } = await supabaseServer
       .from('event_registrations')
       .insert(registrations)
       .select('id');
@@ -214,28 +215,27 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       return json({ error: 'Failed to create event registrations' }, { status: 500 });
     }
 
-    const registrationId = createdRegistrations?.[0]?.id;
+    const registrationId = createdRegistrations_db?.[0]?.id;
 
     if (paymentRequired) {
       // Create payment record for paid events using admin client
-      // Convert dollar amounts to cents for payment processing
-      const subtotalInCents = Math.round(registrationFee * studentIds.length * 100);
+      const subtotal = multiplyMoney(registrationFee, studentIds.length);
       
       // Calculate taxes for the payment
       const taxCalculation = await calculateTaxesForPayment({
-        subtotalAmount: subtotalInCents,
+        subtotalAmount: subtotal,
         paymentType: 'event_registration',
         studentIds
       });
       
-      const totalInCents = subtotalInCents + taxCalculation.totalTaxAmount;
+      const total = addMoney(subtotal, taxCalculation.totalTaxAmount);
       
       const { data: paymentRecord, error: paymentError } = await supabaseAdmin
         .from('payments')
         .insert({
           family_id: familyId,
-          subtotal_amount: subtotalInCents,
-          total_amount: totalInCents,
+          subtotal_amount: toCents(subtotal),
+          total_amount: toCents(total),
           type: 'event_registration',
           status: 'pending'
         })
@@ -249,17 +249,17 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
 
       // Create payment_taxes records
       if (taxCalculation.paymentTaxes.length > 0) {
-        const paymentTaxes = taxCalculation.paymentTaxes.map(tax => ({
+        const paymentTaxes_db1 = taxCalculation.paymentTaxes.map(tax => ({
           payment_id: paymentRecord.id,
           tax_rate_id: tax.tax_rate_id,
-          tax_amount: tax.tax_amount,
+          tax_amount: toCents(tax.tax_amount),
           tax_name_snapshot: tax.tax_name_snapshot,
           tax_rate_snapshot: tax.tax_rate_snapshot
         }));
 
         const { error: taxError } = await supabaseAdmin
           .from('payment_taxes')
-          .insert(paymentTaxes);
+          .insert(paymentTaxes_db1);
 
         if (taxError) {
           console.error('Error creating payment taxes:', taxError);
@@ -283,7 +283,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         .from('event_registrations')
         .update({
           payment_id: paymentRecord.id,
-          payment_amount: Math.round(registrationFee * 100), // Convert to cents
+          payment_amount: toCents(registrationFee), // Convert to cents
           payment_required: true
         })
         .eq('event_id', eventId)
@@ -393,9 +393,9 @@ async function handlePayment(formData: FormData, eventId: string, request: Reque
     }
 
     const paymentId = existingRegistrations[0].payment_id;
-    console.log(`Using existing payment record: ${paymentId}. Redirecting to Stripe payment page.`);
+    console.log(`Using existing payment record: ${paymentId}. Redirecting to Provider payment page.`);
     
-    // Redirect to Stripe payment page using existing payment record
+    // Redirect to payment page using existing payment record
     return redirect(`/pay/${paymentId}`);
 
   } catch (error) {
@@ -558,6 +558,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 export default function EventRegistration() {
   const { event, isAuthenticated, familyData, requiredWaivers, signedWaiverIds } = useLoaderData<typeof loader>();
 
+  // Convert registration_fee from number to Money type for the component
+  const eventWithMoney = {
+    ...event,
+    registration_fee: event.registration_fee ? fromDollars(event.registration_fee) : null
+  };
+
   const handleRegistrationSuccess = () => {
     // Reload the page to show updated student list
     window.location.reload();
@@ -650,7 +656,7 @@ export default function EventRegistration() {
 
                 {/* Registration Form */}
                 <EventRegistrationForm 
-                  event={event}
+                  event={eventWithMoney}
                   isAuthenticated={isAuthenticated}
                   familyData={familyData}
                   requiredWaivers={requiredWaivers}

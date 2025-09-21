@@ -10,6 +10,7 @@ import type {
 } from '~/types/discount';
 import { DiscountService } from './discount.server';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
+import {fromDollars, toDollars, type Money} from '~/utils/money';
 
 let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
 
@@ -33,6 +34,9 @@ export class DiscountTemplateService {
 
     return (data || []).map(template => ({
       ...template,
+      discount_value: (template.discount_type as DiscountType) === 'fixed_amount'
+        ? fromDollars(template.discount_value || 0)
+        : (template.discount_value || 0),
       description: template.description ?? undefined,
       max_uses: template.max_uses ?? undefined,
       created_by: template.created_by ?? undefined,
@@ -55,6 +59,9 @@ export class DiscountTemplateService {
 
     return (data || []).map(template => ({
       ...template,
+      discount_value: (template.discount_type as DiscountType) === 'fixed_amount'
+        ? fromDollars(template.discount_value || 0)
+        : (template.discount_value || 0),
       description: template.description ?? undefined,
       max_uses: template.max_uses ?? undefined,
       created_by: template.created_by ?? undefined,
@@ -80,6 +87,9 @@ export class DiscountTemplateService {
 
     return {
       ...data,
+      discount_value: data.discount_type === 'fixed_amount'
+        ? fromDollars(data.discount_value || 0) // Convert from cents stored in DB
+        : data.discount_value || 0, // Keep percentage as number
       description: data.description ?? undefined,
       max_uses: data.max_uses ?? undefined,
       created_by: data.created_by ?? undefined,
@@ -97,6 +107,9 @@ export class DiscountTemplateService {
       .from('discount_templates')
       .insert({
         ...templateData,
+        discount_value: templateData.discount_type === 'fixed_amount' 
+          ? toDollars(templateData.discount_value as Money)
+          : templateData.discount_value as number, // Convert to cents for DB storage only for fixed amounts
         created_by: createdBy
       })
       .select()
@@ -108,6 +121,9 @@ export class DiscountTemplateService {
 
     return {
       ...data,
+      discount_value: (data.discount_type as DiscountType) === 'fixed_amount'
+        ? fromDollars(data.discount_value || 0)
+        : (data.discount_value || 0),
       description: data.description ?? undefined,
       max_uses: data.max_uses ?? undefined,
       created_by: data.created_by ?? undefined,
@@ -121,9 +137,19 @@ export class DiscountTemplateService {
     id: string,
     updates: UpdateDiscountTemplateData
   ): Promise<DiscountTemplate> {
+    const updateData: Record<string, unknown> = {
+      ...updates
+    };
+    
+    if (updates.discount_value !== undefined) {
+      updateData.discount_value = updates.discount_type === 'fixed_amount'
+        ? toDollars(updates.discount_value as Money) // Convert to cents for DB storage
+        : updates.discount_value as number; // Keep percentage as number
+    }
+    
     const { data, error } = await getSupabase()
       .from('discount_templates')
-      .update(updates)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
@@ -134,6 +160,9 @@ export class DiscountTemplateService {
 
     return {
       ...data,
+      discount_value: (data.discount_type as DiscountType) === 'fixed_amount'
+        ? fromDollars(data.discount_value || 0)
+        : (data.discount_value || 0),
       description: data.description ?? undefined,
       max_uses: data.max_uses ?? undefined,
       created_by: data.created_by ?? undefined,

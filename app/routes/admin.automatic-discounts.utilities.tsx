@@ -11,6 +11,8 @@ import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { ArrowLeft, Play, TestTube, BookOpen, AlertTriangle } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 
 
@@ -22,6 +24,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  await csrf.validate(request);
   
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
@@ -131,6 +134,7 @@ export default function AutoDiscountUtilities() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Form method="post">
+              <AuthenticityTokenInput />
               <input type="hidden" name="intent" value="batch_process" />
               <Button
                 type="submit"
@@ -173,6 +177,7 @@ export default function AutoDiscountUtilities() {
               </CardHeader>
               <CardContent>
                 <Form method="post" className="space-y-3">
+                  <AuthenticityTokenInput />
                   <input type="hidden" name="intent" value="test_student_enrollment" />
                   <div className="grid grid-cols-2 gap-2">
                     <Input
@@ -213,6 +218,7 @@ export default function AutoDiscountUtilities() {
               </CardHeader>
               <CardContent>
                 <Form method="post" className="space-y-3">
+                  <AuthenticityTokenInput />
                   <input type="hidden" name="intent" value="test_first_payment" />
                   <div className="grid grid-cols-2 gap-2">
                     <Input
@@ -253,6 +259,7 @@ export default function AutoDiscountUtilities() {
               </CardHeader>
               <CardContent>
                 <Form method="post" className="space-y-3">
+                  <AuthenticityTokenInput />
                   <input type="hidden" name="intent" value="test_belt_promotion" />
                   <div className="grid grid-cols-2 gap-2">
                     <Input
@@ -307,6 +314,7 @@ export default function AutoDiscountUtilities() {
               </CardHeader>
               <CardContent>
                 <Form method="post" className="space-y-3">
+                  <AuthenticityTokenInput />
                   <input type="hidden" name="intent" value="test_attendance_milestone" />
                   <div className="grid grid-cols-3 gap-2">
                     <Input

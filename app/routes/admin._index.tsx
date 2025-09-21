@@ -5,6 +5,8 @@ import { PaymentStatus } from "~/types/models"; // Import the enum
 import { getTodayLocalDateString } from "~/components/calendar/utils";
 import { getInvoiceStats } from "~/services/invoice.server";
 import { getInvoiceEntities } from "~/services/invoice-entity.server";
+import { formatMoney, fromCents, ZERO_MONEY, toMoney, type Money } from "~/utils/money";
+import { centsFromRow } from "~/utils/database-money";
 
 
 // Loader now only fetches data, assumes auth handled by parent layout (_admin.tsx)
@@ -84,7 +86,7 @@ export async function loader(_: LoaderFunctionArgs) {
         const [
             {count: familyCount, error: familiesError},
             {count: studentCount, error: studentsError},
-            {data: completedPayments, error: paymentsError},
+            {data: completedPayments_db, error: paymentsError},
             {count: attendanceToday, error: attendanceError},
             {data: pendingPaymentsFamilies, error: pendingPaymentsError},
             // Fetch users who haven't signed *all* required waivers
@@ -98,7 +100,7 @@ export async function loader(_: LoaderFunctionArgs) {
         ] = await Promise.all([
             supabaseAdmin.from('families').select('id', {count: 'exact', head: true}), // Use admin client
             supabaseAdmin.from('students').select('id', {count: 'exact', head: true}), // Use admin client
-            supabaseAdmin.from('payments').select('total_amount').eq('status', PaymentStatus.Succeeded), // Use total_amount
+            supabaseAdmin.from('payments').select('total_amount').eq('status', PaymentStatus.Succeeded),
             supabaseAdmin.from('attendance')
                 .select('id, class_sessions!inner(session_date, status)', {count: 'exact', head: true})
                 .eq('class_sessions.session_date', getTodayLocalDateString()) // Today's date
@@ -147,15 +149,16 @@ export async function loader(_: LoaderFunctionArgs) {
         // We'll use the pending payment count directly. Missing waivers needs refinement.
 
         // --- Data Processing ---
-        // Use total_amount from the fetched payments
-        const totalPaymentAmount = completedPayments?.reduce((sum, payment) => sum + (payment.total_amount || 0), 0) || 0;
+        // Sum payments in cents using robust helper
+        const totalPaymentCents = completedPayments_db?.reduce((sum, payment) => sum + centsFromRow('payments', 'total_amount', payment as unknown as Record<string, unknown>), 0) || 0;
+        const totalPaymentAmount : Money = fromCents(totalPaymentCents);
 
         // Count distinct families with pending payments
         const uniqueFamilyIds = new Set(pendingPaymentsFamilies?.map(p => p.family_id) || []);
         const pendingPaymentsCount = uniqueFamilyIds.size;
 
         // Calculate discount usage stats
-        const totalDiscountAmount = discountUsageData?.reduce((sum, usage) => sum + (usage.discount_amount || 0), 0) || 0;
+        const totalDiscountAmount : Money = fromCents(discountUsageData?.reduce((sum, usage) => sum + (usage.discount_amount || 0), 0) || 0);
         const discountUsageCount = discountUsageData?.length || 0;
 
         // Calculate total enrollment from actual enrollment count
@@ -324,12 +327,18 @@ export async function loader(_: LoaderFunctionArgs) {
             upcomingSessions,
             todaysSessions: todaysSessions || [],
             // Invoice statistics
-            invoiceStats: invoiceStats || {
+            invoiceStats: invoiceStats ? {
+                total_invoices: invoiceStats.total_invoices,
+                total_amount: invoiceStats.total_amount,
+                paid_amount: invoiceStats.paid_amount,
+                outstanding_amount: invoiceStats.outstanding_amount,
+                overdue_count: invoiceStats.overdue_count,
+            } : {
                 total_invoices: 0,
-                total_amount: 0,
-                paid_amount: 0,
-                outstanding_amount: 0,
-                overdue_count: 0,
+                total_amount: ZERO_MONEY,
+                paid_amount: ZERO_MONEY,
+          outstanding_amount: ZERO_MONEY,
+          overdue_count: 0,
             },
             totalInvoiceEntities: invoiceEntities.length || 0,
             // Events statistics
@@ -353,7 +362,20 @@ export async function loader(_: LoaderFunctionArgs) {
 // Temporarily simplified for debugging
 export default function AdminDashboard() {
     // Re-add useLoaderData
-    const data = useLoaderData<typeof loader>();
+    const loaderData = useLoaderData<typeof loader>();
+    
+    // Convert serialized Money data back to Money objects
+    const data = {
+        ...loaderData,
+        totalPayments: toMoney(loaderData.totalPayments as unknown),
+        totalDiscountAmount: toMoney(loaderData.totalDiscountAmount as unknown),
+        invoiceStats: {
+            ...loaderData.invoiceStats,
+            total_amount: toMoney(loaderData.invoiceStats.total_amount as unknown),
+            paid_amount: toMoney(loaderData.invoiceStats.paid_amount as unknown),
+            outstanding_amount: toMoney(loaderData.invoiceStats.outstanding_amount as unknown),
+        },
+    };
     // console.log("Rendering AdminDashboard component, loader data:", data);
 
     return (
@@ -433,7 +455,7 @@ export default function AdminDashboard() {
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
                     <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Payments (Completed)</h2>
                     {/* Divide by 100 to convert cents to dollars */}
-                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">${(data.totalPayments / 100).toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{formatMoney(data.totalPayments)}</p>
                     <Link to="/admin/payments"
                           className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
                         View payment history →
@@ -445,7 +467,7 @@ export default function AdminDashboard() {
                     <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Active Discount Codes</h2>
                     <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.activeDiscountCodes}</p>
                     <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        ${(data.totalDiscountAmount / 100).toFixed(2)} saved this month
+                        {formatMoney(data.totalDiscountAmount)} saved this month
                     </div>
                     <Link to="/admin/discount-codes"
                           className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
@@ -471,7 +493,7 @@ export default function AdminDashboard() {
                     <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Invoices</h2>
                     <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.invoiceStats.total_invoices}</p>
                     <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        ${(data.invoiceStats.total_amount / 100).toFixed(2)} total value
+                        {formatMoney(data.invoiceStats.total_amount)} total value
                     </div>
                     <Link to="/admin/invoices"
                           className="text-blue-600 dark:text-blue-400 text-sm hover:underline mt-2 inline-block">
@@ -482,7 +504,7 @@ export default function AdminDashboard() {
                 {/* Outstanding Invoices Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-orange-600">
                     <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Outstanding Amount</h2>
-                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">${(data.invoiceStats.outstanding_amount / 100).toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{formatMoney(data.invoiceStats.outstanding_amount)}</p>
                     <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         {data.invoiceStats.overdue_count} overdue invoices
                     </div>
@@ -622,7 +644,7 @@ export default function AdminDashboard() {
                         <div>
                             <h3 className="font-medium text-gray-700 dark:text-gray-300">Invoice Status</h3>
                             <p className="text-gray-600 dark:text-gray-400">
-                                ${(data.invoiceStats.paid_amount / 100).toFixed(2)} collected, ${(data.invoiceStats.outstanding_amount / 100).toFixed(2)} outstanding
+                                {formatMoney(data.invoiceStats.paid_amount)} collected, {formatMoney(data.invoiceStats.outstanding_amount)} outstanding
                             </p>
                             <Link to="/admin/invoices"
                                   className="text-green-600 dark:text-green-400 text-sm hover:underline">

@@ -1,13 +1,13 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, useLoaderData, Outlet, useLocation, useRouteError, isRouteErrorResponse, useRouteLoaderData } from "@remix-run/react";
+import { JsonLd } from "~/components/JsonLd";
 import { EventService } from "~/services/event.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
-import { formatEventTypeName} from "~/utils/event-helpers.server";
 import { isLoggedIn as userIsLoggedIn } from "~/utils/auth.server";
 
 
@@ -53,7 +53,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const eventTypeColor = event.event_type?.color_class 
     ? `${event.event_type.color_class} ${event.event_type.border_class || ''}`.trim()
     : 'bg-gray-100 text-gray-800 border-gray-200';
-  const formattedEventType = formatEventTypeName(event.event_type?.name || 'other', event.event_type);
+  const formattedEventType = event.event_type?.display_name || event.event_type?.name || 'Other';
 
   return json({ event, eventTypeColor, formattedEventType });
 }
@@ -149,14 +149,7 @@ export default function EventDetail() {
 
   return (
     <div className="min-h-screen page-background-styles py-12">
-      {nonce && (
-        <script
-          type="application/ld+json"
-          nonce={nonce}
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(eventStructuredData) }}
-        />
-      )}
+      {nonce && (<JsonLd data={eventStructuredData} nonce={nonce} />)}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb Navigation */}
         <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-8">

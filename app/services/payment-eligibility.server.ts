@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient , checkStudentEligibility } from '~/utils/supabase.server';
 import { siteConfig } from '~/config/site';
 import {EligibilityStatus, StudentPaymentDetail} from '~/types/payment';
+import {fromDollars} from "~/utils/money";
 
 // Types for the reusable payment eligibility service
 export interface IndividualSessionInfo {
@@ -183,7 +184,7 @@ export async function getFamilyPaymentEligibilityData(
 
       // Determine next payment amount - using flat monthly rate
       const pastPaymentCount = paymentStudentLinks.filter(link => link.student_id === student.id).length;
-      const nextPaymentAmount = siteConfig.pricing.monthly;
+      const nextPaymentAmount = fromDollars(siteConfig.pricing.monthly);
       const nextPaymentTierLabel = 'Monthly';
       // const nextPaymentPriceId = siteConfig.stripe.priceIds.monthly;
 

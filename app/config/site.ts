@@ -194,14 +194,10 @@ export const siteConfig = {
             ];
         }
     },
-    stripe: {
-        // Replace with your actual Stripe Price IDs from your Stripe Dashboard (Test or Live)
-        priceIds: {
-            monthly: 'price_1RA2PJPbU9pROzQRbfS2BBcw', // Replace with the actual ID for $121 price
-            yearly: 'price_1RA2RnPbU9pROzQRdATPqVhf', // Replace with the actual ID for $1200 price
-            oneOnOneSession: 'price_1RA2TNPbU9pROzQRdxViZv5P', // Replace with the actual ID for $80 price
-        }
+    payments: {
+        provider: 'square' as 'stripe' | 'square' | 'mock',
     },
+
     // Define province options centrally
     provinces: [
         {value: "AB", label: "Alberta"},

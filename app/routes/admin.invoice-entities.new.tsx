@@ -13,6 +13,9 @@ import { createInvoiceEntity } from "~/services/invoice-entity.server";
 import type { CreateInvoiceEntityData, EntityType, PaymentTerms } from "~/types/invoice";
 import { Save } from "lucide-react";
 import { Constants } from "~/types/database.types";
+import { fromDollars } from "~/utils/money";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { csrf } from "~/utils/csrf.server";
 
 interface ActionData {
   errors?: {
@@ -30,6 +33,7 @@ interface ActionData {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
+  await csrf.validate(request);
   const formData = await request.formData();
   
   const entityData: CreateInvoiceEntityData = {
@@ -46,7 +50,7 @@ export async function action({ request }: ActionFunctionArgs) {
     country: formData.get("country") as string || siteConfig.localization.country,
     tax_id: formData.get("tax_id") as string || undefined,
     payment_terms: formData.get("payment_terms") as PaymentTerms || "Net 30",
-    credit_limit: formData.get("credit_limit") ? parseFloat(formData.get("credit_limit") as string) : undefined,
+    credit_limit: formData.get("credit_limit") ? fromDollars(parseFloat(formData.get("credit_limit") as string)) : undefined,
     notes: formData.get("notes") as string || undefined,
   };
 
@@ -117,6 +121,7 @@ export default function NewInvoiceEntityPage() {
       )}
 
       <Form method="post" className="space-y-6">
+        <AuthenticityTokenInput />
         <Card>
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
@@ -152,7 +157,7 @@ export default function NewInvoiceEntityPage() {
                     <SelectValue placeholder="Select entity type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Constants.public.Enums.entity_type_enum.map((type) => (
+                    {(Constants.public.Enums.entity_type_enum as unknown as readonly string[]).map((type) => (
                       <SelectItem key={type} value={type}>
                         {type.charAt(0).toUpperCase() + type.slice(1)}
                       </SelectItem>

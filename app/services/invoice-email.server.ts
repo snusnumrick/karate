@@ -1,5 +1,6 @@
 import { sendEmail } from "~/utils/email.server";
-import { formatCurrency, formatDate } from "~/utils/misc";
+import { formatDate } from "~/utils/misc";
+import {formatMoney, multiplyMoney, isPositive} from "~/utils/money";
 import { formatEntityAddress } from "~/utils/entity-helpers";
 import { formatServicePeriod, calculateLineItemDiscount } from "~/utils/line-item-helpers";
 import { siteConfig } from "~/config/site";
@@ -355,7 +356,8 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                 </thead>
                 <tbody>
                     ${invoice.line_items.map(item => {
-                        const itemSubtotal = item.quantity * item.unit_price;
+                        const unitPrice = item.unit_price;
+                        const itemSubtotalMoney = multiplyMoney(unitPrice, item.quantity);
                         const itemDiscount = calculateLineItemDiscount(item);
                         const itemTaxes = item.taxes || [];
                         
@@ -363,22 +365,22 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                         <tr>
                             <td><strong>${item.description}</strong></td>
                             <td style="text-align: center;">${item.quantity}</td>
-                            <td style="text-align: right;">${formatCurrency(item.unit_price * 100)}</td>
-                            <td style="text-align: right;"><strong>${formatCurrency(itemSubtotal * 100)}</strong></td>
+                            <td style="text-align: right;">${formatMoney(unitPrice)}</td>
+                            <td style="text-align: right;"><strong>${formatMoney(itemSubtotalMoney)}</strong></td>
                         </tr>
-                        ${itemDiscount > 0 ? `
+                        ${isPositive(itemDiscount) ? `
                         <tr>
                             <td style="padding-left: 20px; color: #059669; font-size: 12px;">Discount (${(Number(item.discount_rate)).toFixed(2)}%):</td>
                             <td></td>
                             <td></td>
-                            <td style="text-align: right; color: #059669; font-size: 12px;">-${formatCurrency(itemDiscount * 100)}</td>
+                            <td style="text-align: right; color: #059669; font-size: 12px;">-${formatMoney(itemDiscount)}</td>
                         </tr>` : ''}
                         ${itemTaxes.map((tax) => `
                         <tr>
                             <td style="padding-left: 20px; color: #6b7280; font-size: 12px;">${tax.tax_name_snapshot} (${(tax.tax_rate_snapshot * 100).toFixed(2)}%):</td>
                             <td></td>
                             <td></td>
-                            <td style="text-align: right; color: #6b7280; font-size: 12px;">${formatCurrency(tax.tax_amount * 100)}</td>
+                            <td style="text-align: right; color: #6b7280; font-size: 12px;">${formatMoney(tax.tax_amount)}</td>
                         </tr>`).join('')}
                         ${(item.service_period_start || item.service_period_end) ? `
                         <tr>
@@ -394,28 +396,28 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
             <table class="totals-table">
                 <tr>
                     <td class="label">Subtotal:</td>
-                    <td class="amount">${formatCurrency(invoice.subtotal * 100)}</td>
+                    <td class="amount">${formatMoney(invoice.subtotal)}</td>
                 </tr>
-                ${invoice.discount_amount > 0 ? `
+                ${isPositive(invoice.discount_amount) ? `
                 <tr>
                     <td colspan="2">
                         <div class="breakdown-section">
                             <div class="breakdown-item breakdown-total">
                                 <span>Discounts:</span>
                                 
-                                <span class="discount-text">-${formatCurrency(invoice.discount_amount * 100)}</span>
+                                <span class="discount-text">-${formatMoney(invoice.discount_amount)}</span>
                             </div>
                         </div>
                     </td>
                 </tr>
                 ` : ''}
-                ${invoice.tax_amount > 0 ? `
+                ${isPositive(invoice.tax_amount) ? `
                 <tr>
                     <td colspan="2">
                         <div class="breakdown-section">
                             <div class="breakdown-item breakdown-total">
                                 <span>Tax:</span>
-                                <span>${formatCurrency(invoice.tax_amount * 100)}</span>
+                                <span>${formatMoney(invoice.tax_amount)}</span>
                             </div>
                         </div>
                     </td>
@@ -423,7 +425,7 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
                 ` : ''}
                 <tr class="total-row">
                     <td class="label">Total:</td>
-                    <td class="amount">${formatCurrency(invoice.total_amount * 100)}</td>
+                    <td class="amount">${formatMoney(invoice.total_amount)}</td>
                 </tr>
             </table>
         </div>

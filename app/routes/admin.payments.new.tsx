@@ -14,6 +14,8 @@ import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For displaying errors
 import {format} from 'date-fns'; // For default date
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import { formatMoney, fromCents } from "~/utils/money";
+import { getPaymentProvider } from '~/services/payments/index.server';
 
 type FamilyInfo = Pick<Database['public']['Tables']['families']['Row'], 'id' | 'name'>;
 type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name' | 'family_id'>;
@@ -23,6 +25,10 @@ type LoaderData = {
     families: FamilyInfo[];
     students: StudentInfo[];
     taxRates: TaxRateInfo[]; // Add tax rates to loader data
+    paymentProvider: {
+        id: string;
+        name: string;
+    };
 };
 
 type ActionData = {
@@ -95,10 +101,17 @@ export async function loader({request}: LoaderFunctionArgs) {
         // console.log(`Admin new payment loader: Fetched ${taxRatesData?.length ?? 0} active tax rates.`);
 
 
+        // Get payment provider info for the frontend
+        const paymentProvider = getPaymentProvider();
+        
         return json<LoaderData>({
             families: families || [],
             students: students || [],
-            taxRates: taxRatesData || [] // Return fetched tax rates (or empty array)
+            taxRates: taxRatesData || [], // Return fetched tax rates (or empty array)
+            paymentProvider: {
+                id: paymentProvider.id,
+                name: paymentProvider.displayName
+            }
         }, {headers: Object.fromEntries(headers)});
 
     } catch (error) {
@@ -128,7 +141,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const subtotalAmountStr = formData.get("subtotalAmount") as string; // Changed from amount
     let paymentDate = formData.get("paymentDate") as string | null;
     const paymentMethod = formData.get("paymentMethod") as string;
-    const status = paymentMethod === 'stripe' ? 'pending' : 'succeeded';
+    // Get payment provider to determine if payment method requires online processing
+    const paymentProvider = getPaymentProvider();
+    const requiresOnlineProcessing = paymentMethod === paymentProvider.id;
+    const status = requiresOnlineProcessing ? 'pending' : 'succeeded';
     const notes = formData.get("notes") as string | null;
     const type = formData.get("type") as string || 'monthly_group'; // Use 'type' variable
     const quantityStr = formData.get("quantity") as string; // Get quantity for one_on_one session
@@ -149,13 +165,13 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         subtotalAmount = parseFloat(subtotalAmountStr); // Keep as float for now
     }
 
-    if (paymentMethod !== 'stripe') {
+    if (!requiresOnlineProcessing) {
         if (!paymentDate) {
-            // Default the date if it's a non-Stripe payment and date is missing.
+            // Default the date if it's not an online payment and date is missing.
             paymentDate = getTodayDateString();
         }
     } else {
-        paymentDate = null; // Stripe payments are pending, date will be set on success
+        paymentDate = null; // Online payments are pending, date will be set on success
     }
 
     if (!paymentMethod) fieldErrors.paymentMethod = "Payment method is required.";
@@ -243,6 +259,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             .from('payments')
             .insert({
                 family_id: familyId,
+                // Payments numeric columns are INT4 cents in this schema
                 subtotal_amount: subtotalAmountInCents,
                 // tax_amount removed
                 total_amount: totalAmountInCents,
@@ -291,6 +308,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         if (paymentTaxesToInsert.length > 0) {
             const taxesWithPaymentId = paymentTaxesToInsert.map(tax => ({
                 ...tax,
+                tax_amount_cents: tax.tax_amount,
                 payment_id: paymentId,
             }));
             const { error: insertTaxesError } = await supabaseAdmin
@@ -334,9 +352,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             console.log(`Individual Session purchase recorded for payment ${paymentId}.`);
         }
 
-        // If it's a Stripe payment, redirect to the payment page to handle it.
-        if (paymentMethod === 'stripe') {
-            console.log(`Stripe payment initiated. Redirecting to payment page for payment ${paymentId}.`);
+        // If it's an online payment, redirect to the payment page to handle it.
+        if (requiresOnlineProcessing) {
+            console.log(`Online payment initiated with ${paymentProvider.id}. Redirecting to payment page for payment ${paymentId}.`);
             return redirect(`/pay/${paymentId}`, { headers: Object.fromEntries(headers) });
         }
 
@@ -360,7 +378,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
 export default function AdminNewPaymentPage() {
     // Combined declaration for loader data
-    const {families, students, taxRates} = useLoaderData<typeof loader>(); // Get families and taxRates
+    const {families, students, taxRates, paymentProvider} = useLoaderData<typeof loader>(); // Get families, taxRates, and paymentProvider
     // Single declaration for action data
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
@@ -648,23 +666,23 @@ export default function AdminNewPaymentPage() {
                             <div className="mt-4 p-4 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600 space-y-1">
                                 <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
                                     <span>Subtotal:</span>
-                                    <span>${(calculatedSubtotalCents / 100).toFixed(2)}</span>
+                                    <span>{formatMoney(fromCents(calculatedSubtotalCents))}</span>
                                 </p>
                                 {calculatedTaxes.map((tax, index) => (
                                     <p key={index} className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
                                         <span>{tax.description || tax.name}:</span>
-                                        <span>${(tax.amount / 100).toFixed(2)}</span>
+                                        <span>{formatMoney(fromCents(tax.amount))}</span>
                                     </p>
                                 ))}
                                 <p className="text-md font-semibold text-gray-800 dark:text-gray-100 flex justify-between border-t pt-2 mt-2 dark:border-gray-500">
                                     <span>Total Amount:</span>
-                                    <span>${(calculatedTotalCents / 100).toFixed(2)}</span>
+                                    <span>{formatMoney(fromCents(calculatedTotalCents))}</span>
                                 </p>
                             </div>
                         )}
 
-                        {/* Payment Date (hidden for Stripe) */}
-                        {selectedMethod !== 'stripe' && (
+                        {/* Payment Date (hidden for online payments) */}
+                        {selectedMethod !== paymentProvider.id && (
                             <div>
                                 <Label htmlFor="paymentDate">Payment Date</Label>
                                 <Input
@@ -672,7 +690,7 @@ export default function AdminNewPaymentPage() {
                                     name="paymentDate"
                                     type="date"
                                     defaultValue={getTodayDateString()}
-                                    required={selectedMethod !== 'stripe'}
+                                    required={selectedMethod !== paymentProvider.id}
                                     className="mt-1"
                                     tabIndex={5}
                                 />
@@ -698,7 +716,7 @@ export default function AdminNewPaymentPage() {
                                     <SelectItem value="cash">Cash</SelectItem>
                                     <SelectItem value="cheque">Cheque</SelectItem>
                                     <SelectItem value="etransfer">E-Transfer</SelectItem>
-                                    <SelectItem value="stripe">Stripe (Online)</SelectItem>
+                                    <SelectItem value={paymentProvider.id}>{paymentProvider.name} (Online)</SelectItem>
                                     <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -709,12 +727,12 @@ export default function AdminNewPaymentPage() {
 
                         {/* Status field removed */}
 
-                        {/* Stripe Info Message */}
-                        {selectedMethod === 'stripe' && (
+                        {/* Online Payment Info Message */}
+                        {selectedMethod === paymentProvider.id && (
                             <Alert variant="default" className="bg-blue-50 dark:bg-gray-700 border-blue-200 dark:border-gray-600">
-                                <AlertTitle className="text-blue-800 dark:text-blue-200">Stripe Payment</AlertTitle>
+                                <AlertTitle className="text-blue-800 dark:text-blue-200">{paymentProvider.name} Payment</AlertTitle>
                                 <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
-                                    After submitting, you will be redirected to a secure Stripe payment page to complete the transaction. The payment will be marked as &apos;pending&apos; until completed.
+                                    After submitting, you will be redirected to a secure {paymentProvider.name} payment page to complete the transaction. The payment will be marked as &apos;pending&apos; until completed.
                                 </AlertDescription>
                             </Alert>
                         )}

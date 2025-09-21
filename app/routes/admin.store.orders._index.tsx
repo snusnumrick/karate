@@ -5,7 +5,8 @@ import { Button } from "~/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"; // For filtering
-import { formatDate, formatCurrency } from "~/utils/misc";
+import { formatDate } from "~/utils/misc";
+import { fromCents, formatMoney } from "~/utils/money";
 import { Constants, type Tables, type Enums } from "~/types/database.types";
 import { Eye } from "lucide-react"; // Import icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -148,7 +149,7 @@ export default function AdminOrderListPage() {
                                             {order.status.replace(/_/g, ' ')}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">{formatCurrency(order.total_amount_cents)}</TableCell>
+                                    <TableCell className="text-right">{formatMoney(fromCents(order.total_amount_cents))}</TableCell>
                                     <TableCell className="text-right">
                                         <Button asChild variant="outline" size="sm">
                                             <Link to={`${order.id}`}>

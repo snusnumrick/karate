@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import { Form, useActionData, useNavigation } from '@remix-run/react';
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { InvoicePaymentMethod } from '~/types/invoice';
+import { subtractMoney, formatMoney, toDollars, fromDollars, compareMoney, type Money } from '~/utils/money';
 
 interface RecordPaymentFormProps {
   invoiceId: string;
-  invoiceTotal: number;
-  amountPaid: number;
-  remainingBalance: number;
+  invoiceTotal: Money;
+  amountPaid: Money;
+  remainingBalance: Money;
   onCancel?: () => void;
 }
 
 interface PaymentFormData {
-  amount: number;
+  amount: number; // dollars for form input
   payment_method: InvoicePaymentMethod;
   payment_date: string;
   reference_number?: string;
   notes?: string;
+  receipt_url?: string;
 }
 
 interface ActionData {
@@ -24,6 +27,7 @@ interface ActionData {
     payment_method?: string;
     payment_date?: string;
     reference_number?: string;
+    receipt_url?: string;
     general?: string;
   };
   success?: boolean;
@@ -41,11 +45,12 @@ export default function RecordPaymentForm({
   const isSubmitting = navigation.state === 'submitting';
 
   const [formData, setFormData] = useState<PaymentFormData>({
-    amount: remainingBalance / 100, // Convert from cents to dollars
+    amount: toDollars(remainingBalance),
     payment_method: 'cash',
     payment_date: new Date().toISOString().split('T')[0],
     reference_number: '',
-    notes: ''
+    notes: '',
+    receipt_url: ''
   });
 
   const handleInputChange = (field: keyof PaymentFormData, value: string | number) => {
@@ -64,8 +69,8 @@ export default function RecordPaymentForm({
     { value: 'other', label: 'Other' }
   ];
 
-  const maxAmount = remainingBalance / 100;
-  const isPartialPayment = formData.amount < maxAmount;
+  const maxAmountDollars = toDollars(remainingBalance);
+  const isPartialPayment = formData.amount > 0 && compareMoney(fromDollars(formData.amount), remainingBalance) < 0;
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
@@ -79,19 +84,19 @@ export default function RecordPaymentForm({
           <div>
             <span className="text-gray-600 dark:text-gray-400">Invoice Total:</span>
             <span className="ml-2 font-medium text-gray-800 dark:text-gray-100">
-              ${(invoiceTotal / 100).toFixed(2)}
+              {formatMoney(invoiceTotal)}
             </span>
           </div>
           <div>
             <span className="text-gray-600 dark:text-gray-400">Amount Paid:</span>
             <span className="ml-2 font-medium text-gray-800 dark:text-gray-100">
-              ${(amountPaid / 100).toFixed(2)}
+              {formatMoney(amountPaid)}
             </span>
           </div>
           <div>
             <span className="text-gray-600 dark:text-gray-400">Remaining Balance:</span>
             <span className="ml-2 font-medium text-red-600 dark:text-red-400">
-              ${(remainingBalance / 100).toFixed(2)}
+              {formatMoney(remainingBalance)}
             </span>
           </div>
           <div>
@@ -104,6 +109,7 @@ export default function RecordPaymentForm({
       </div>
 
       <Form method="post" className="space-y-4">
+        <AuthenticityTokenInput />
         <input type="hidden" name="invoice_id" value={invoiceId} />
         <input type="hidden" name="action" value="record_payment" />
 
@@ -119,7 +125,7 @@ export default function RecordPaymentForm({
               id="amount"
               name="amount"
               min="0.01"
-              max={maxAmount}
+              max={maxAmountDollars}
               step="0.01"
               value={formData.amount}
               onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
@@ -132,7 +138,7 @@ export default function RecordPaymentForm({
           )}
           {isPartialPayment && (
             <p className="mt-1 text-sm text-yellow-600 dark:text-yellow-400">
-              This is a partial payment. Remaining balance will be ${(maxAmount - formData.amount).toFixed(2)}
+              This is a partial payment. Remaining balance will be {formatMoney(subtractMoney(remainingBalance, fromDollars(formData.amount)))}
             </p>
           )}
         </div>
@@ -200,6 +206,27 @@ export default function RecordPaymentForm({
           )}
         </div>
 
+        {/* Receipt URL */}
+        <div>
+          <label htmlFor="receipt_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Receipt URL
+            <span className="text-gray-500 text-xs ml-1">(Optional link to hosted receipt)</span>
+          </label>
+          <input
+            type="url"
+            id="receipt_url"
+            name="receipt_url"
+            value={formData.receipt_url}
+            onChange={(e) => handleInputChange('receipt_url', e.target.value)}
+            placeholder="https://..."
+            className="input-custom-styles"
+            pattern="https?://.*"
+          />
+          {actionData?.errors?.receipt_url && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{actionData.errors.receipt_url}</p>
+          )}
+        </div>
+
         {/* Notes */}
         <div>
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -237,7 +264,7 @@ export default function RecordPaymentForm({
           )}
           <button
             type="submit"
-            disabled={isSubmitting || formData.amount <= 0 || formData.amount > maxAmount}
+            disabled={isSubmitting || formData.amount <= 0 || formData.amount > maxAmountDollars}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Recording...' : 'Record Payment'}

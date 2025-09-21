@@ -7,9 +7,10 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { createInvoice, getInvoiceById, updateInvoiceStatus } from "~/services/invoice.server";
 import { getInvoiceEntities, getInvoiceEntityById } from "~/services/invoice-entity.server";
 import { sendInvoiceEmail } from "~/services/invoice-email.server";
-import { getApplicableTaxRates } from "~/services/tax-rates.server";
+import { getActiveTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
+import {isNegative, ZERO_MONEY, toCents, fromCents} from "~/utils/money";
 
 interface ActionData {
   errors?: {
@@ -34,21 +35,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const entityId = url.searchParams.get("entity_id");
   
   try {
-    const [entitiesResult, taxRatesByItemType] = await Promise.all([
+    const [entitiesResult, allRates] = await Promise.all([
       getInvoiceEntities(),
-      Promise.all([
-        getApplicableTaxRates('class_enrollment'),
-        getApplicableTaxRates('individual_session'),
-        getApplicableTaxRates('product'),
-        getApplicableTaxRates('fee'),
-        getApplicableTaxRates('other')
-      ]).then(([classEnrollment, individualSession, product, fee, other]) => ({
-        class_enrollment: classEnrollment,
-        individual_session: individualSession,
-        product: product,
-        fee: fee,
-        other: other
-      }))
+      getActiveTaxRates()
     ]);
     
     const entities = entitiesResult?.entities || [];
@@ -56,7 +45,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // Find the pre-selected entity if entity_id is provided
     const preSelectedEntity = entityId ? entities.find(e => e.id === entityId) : null;
     
-    return json({ entities, preSelectedEntityId: entityId, preSelectedEntity, taxRatesByItemType });
+    // Serialize Money types for entities
+    const serializedEntities = entities.map(entity => ({
+      ...entity,
+      credit_limit: entity.credit_limit ? toCents(entity.credit_limit) : undefined
+    }));
+    
+    const serializedPreSelectedEntity = preSelectedEntity ? {
+      ...preSelectedEntity,
+      credit_limit: preSelectedEntity.credit_limit ? toCents(preSelectedEntity.credit_limit) : undefined
+    } : null;
+    
+    const taxRatesByItemType = {
+      class_enrollment: allRates,
+      individual_session: allRates,
+      product: allRates,
+      fee: allRates,
+      other: allRates
+    };
+
+    return json({ entities: serializedEntities, preSelectedEntityId: entityId, preSelectedEntity: serializedPreSelectedEntity, taxRatesByItemType });
   } catch (error) {
     console.error("Error loading invoice data:", error);
     return json({ entities: [], preSelectedEntityId: null, preSelectedEntity: null, taxRatesByItemType: { class_enrollment: [], individual_session: [], product: [], fee: [], other: [] } });
@@ -140,7 +148,7 @@ export async function action({ request }: ActionFunctionArgs) {
               errors.line_items = "All line items must have a positive quantity";
               break;
             }
-            if (item.unit_price < 0) {
+            if (isNegative(item.unit_price)) {
               errors.line_items = "Line item prices cannot be negative";
               break;
             }
@@ -153,7 +161,7 @@ export async function action({ request }: ActionFunctionArgs) {
             errors.line_items = "Line items with descriptions must have a positive quantity";
             break;
           }
-          if (item.description?.trim() && item.unit_price < 0) {
+          if (item.description?.trim() && isNegative(item.unit_price)) {
             errors.line_items = "Line item prices cannot be negative";
             break;
           }
@@ -198,7 +206,7 @@ export async function action({ request }: ActionFunctionArgs) {
         item_type: 'fee', 
         description: '', 
         quantity: 1, 
-        unit_price: 0, 
+        unit_price: ZERO_MONEY,
         tax_rate: 0, 
         sort_order: 0 
       }]
@@ -248,7 +256,18 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function NewInvoicePage() {
-  const { entities, preSelectedEntity, taxRatesByItemType } = useLoaderData<typeof loader>();
+  const { entities: rawEntities, preSelectedEntity: rawPreSelectedEntity, taxRatesByItemType } = useLoaderData<typeof loader>();
+  
+  // Deserialize Money types for entities
+  const entities = rawEntities.map(entity => ({
+    ...entity,
+    credit_limit: entity.credit_limit ? fromCents(entity.credit_limit) : undefined
+  }));
+  
+  const preSelectedEntity = rawPreSelectedEntity ? {
+    ...rawPreSelectedEntity,
+    credit_limit: rawPreSelectedEntity.credit_limit ? fromCents(rawPreSelectedEntity.credit_limit) : undefined
+  } : null;
   const actionData = useActionData<ActionData>();
 
   return (
@@ -276,7 +295,7 @@ export default function NewInvoicePage() {
 
         {/* Invoice Form */}
         <InvoiceForm 
-          entities={entities} 
+          entities={entities}
           initialData={preSelectedEntity ? { entity_id: preSelectedEntity.id } : undefined}
           preSelectedEntity={preSelectedEntity}
           errors={actionData?.errors}

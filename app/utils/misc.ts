@@ -1,42 +1,65 @@
 import { parseISO, format as fnsFormat } from 'date-fns'; // Import parseISO and format
 import { enCA } from 'date-fns/locale'; // Import specific date-fns locale
 import { siteConfig } from '~/config/site'; // Import siteConfig
+import { type Money, formatMoney, toDollars, fromCents } from './money'; // Import dinero.js utilities
 
 /**
- * Formats a number (representing cents) into a currency string (e.g., $12.34).
- * @param amountInCents The amount in cents.
- * @param currencyCode The ISO currency code (default: 'CAD').
- * @param locale The locale for formatting (default: 'en-CA').
- * @returns The formatted currency string, or an empty string if input is invalid.
+ * Formats monetary values into a currency string (e.g., $12.34).
+ * Supports both legacy number inputs and new dinero.js Money objects.
+ * @param amount The amount - can be a Money object, number in cents, or null/undefined
+ * @param currencyCode The ISO currency code (default: 'CAD')
+ * @param locale The locale for formatting (default: 'en-CA')
+ * @returns The formatted currency string, or an empty string if input is invalid
  */
 export function formatCurrency(
-    amountInCents: number | null | undefined,
+    amount: Money | number | null | undefined,
     currencyCode?: string,
     locale?: string
 ): string {
-    if (amountInCents === null || amountInCents === undefined || isNaN(amountInCents)) {
-        // console.warn('formatCurrency received invalid input:', amountInCents);
-        return ''; // Or return a default like '$0.00' or 'N/A'
+    // Handle null/undefined inputs
+    if (amount === null || amount === undefined) {
+        return '';
     }
 
-    // Use safe defaults and fallback to siteConfig if available
-    const safeCurrencyCode = currencyCode || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.currency) || 'CAD';
-    const safeLocale = locale || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.locale) || 'en-CA';
-
-    const amountInDollars = amountInCents / 100;
-
-    try {
-        return new Intl.NumberFormat(safeLocale, {
-            style: 'currency',
-            currency: safeCurrencyCode,
+    // Handle Money objects (dinero.js)
+    if (typeof amount === 'object' && 'getAmount' in amount) {
+        const safeCurrencyCode = currencyCode || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.currency) || 'CAD';
+        
+        return formatMoney(amount, {
+            showCurrency: true,
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
-        }).format(amountInDollars);
-    } catch (error) {
-        console.error('Error formatting currency:', error);
-        // Fallback to simple formatting if Intl fails
-        return `${safeCurrencyCode} ${(amountInDollars).toFixed(2)}`;
+        }).replace('$', safeCurrencyCode === 'CAD' ? 'CA$' : '$');
     }
+
+    // Handle legacy number inputs (cents)
+    if (typeof amount === 'number') {
+        if (isNaN(amount)) {
+            return '';
+        }
+
+        // Use safe defaults and fallback to siteConfig if available
+        const safeCurrencyCode = currencyCode || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.currency) || 'CAD';
+        const safeLocale = locale || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.locale) || 'en-CA';
+
+        // Assume number is in cents, convert to dollars using money utilities
+        const amountInDollars = toDollars(fromCents(amount));
+
+        try {
+            return new Intl.NumberFormat(safeLocale, {
+                style: 'currency',
+                currency: safeCurrencyCode,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(amountInDollars);
+        } catch (error) {
+            console.error('Error formatting currency:', error);
+            // Fallback to simple formatting if Intl fails
+            return `${safeCurrencyCode} ${amountInDollars.toFixed(2)}`;
+        }
+    }
+
+    return '';
 }
 
 

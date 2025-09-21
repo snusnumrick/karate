@@ -7,6 +7,7 @@ import { Badge } from "~/components/ui/badge";
 import { AppBreadcrumb } from "~/components/AppBreadcrumb";
 import { Users, DollarSign, FileText, ArrowLeft } from "lucide-react";
 import type { Database } from "~/types/database.types";
+import { fromCents, formatMoney } from "~/utils/money";
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventRegistration = Database['public']['Tables']['event_registrations']['Row'] & {
@@ -106,12 +107,7 @@ function getStatusBadgeVariant(status: string | null) {
   }
 }
 
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount / 100); // Assuming amounts are stored in cents
-}
+
 
 function formatDate(dateString: string | null) {
   if (!dateString) return 'N/A';
@@ -197,7 +193,7 @@ export default function EventRegistrationsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+            <div className="text-2xl font-bold">{formatMoney(fromCents(totalRevenue))}</div>
             <p className="text-xs text-muted-foreground mt-1">
               From confirmed payments only
             </p>
@@ -245,7 +241,7 @@ export default function EventRegistrationsPage() {
                     <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
                       <span>Registered: {formatDate(registration.registered_at)}</span>
                       {registration.payment_amount && (
-                        <span>Amount: {formatCurrency(registration.payment_amount)}</span>
+                        <span>Amount: {formatMoney(fromCents(registration.payment_amount))}</span>
                       )}
                       {registration.emergency_contact && (
                         <span>Emergency: {registration.emergency_contact}</span>

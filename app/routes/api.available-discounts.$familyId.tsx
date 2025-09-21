@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { DiscountService } from "~/services/discount.server";
 import type { DiscountCode, PaymentTypeEnum } from "~/types/discount";
 import type { ExtendedSupabaseClient } from "~/types/supabase-extensions";
+import {createMoney, calculatePercentage, type Money, formatMoney, compareMoney, toMoney} from "~/utils/money";
 
 export interface AvailableDiscountCode extends DiscountCode {
   formatted_display: string; // "name discount [%|$] (description)"
@@ -63,7 +64,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const url = new URL(request.url);
     const studentId = url.searchParams.get('studentId');
     const applicableTo = url.searchParams.get('applicableTo') as PaymentTypeEnum || 'monthly_group';
-    const subtotalAmount = parseInt(url.searchParams.get('subtotalAmount') || '0'); // in cents
+    const subtotalParam = url.searchParams.get('subtotalAmount');
+    
+    // toMoney handles all parsing including JSON strings
+    const subtotalMoney = toMoney(subtotalParam);
 
     // Get all active discount codes
     const allDiscountCodes = await DiscountService.getActiveDiscountCodes();
@@ -139,8 +143,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       // Format display string: "name discount [%|$] (description)"
       const discountSymbol = discount.discount_type === 'percentage' ? '%' : '$';
       const discountValueDisplay = discount.discount_type === 'percentage' 
-        ? discount.discount_value.toString()
-        : discount.discount_value.toFixed(2);
+        ? (discount.discount_value as number).toString()
+        : (formatMoney(discount.discount_value as Money));
       
       const formatted_display = `${discount.name} ${discountValueDisplay}${discountSymbol}${discount.description ? ` (${discount.description})` : ''}`;
       console.log(`  Discount is valid. Display: ${formatted_display}`);
@@ -153,16 +157,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
     // Sort by decreasing actual discount amount (most rewarding at top)
     const sortedDiscounts = applicableDiscounts.sort((a, b) => {
-      // Calculate actual discount amount in cents for proper comparison
+
       const aDiscountAmount = a.discount_type === 'percentage' 
-        ? Math.round((subtotalAmount * a.discount_value) / 100)
-        : Math.round(a.discount_value * 100); // Convert dollars to cents
+        ? calculatePercentage(subtotalMoney, a.discount_value as number)
+        : a.discount_value as Money;
       
       const bDiscountAmount = b.discount_type === 'percentage'
-        ? Math.round((subtotalAmount * b.discount_value) / 100)
-        : Math.round(b.discount_value * 100); // Convert dollars to cents
+        ? calculatePercentage(subtotalMoney, b.discount_value as number)
+        : b.discount_value as Money;
       
-      return bDiscountAmount - aDiscountAmount;
+      return compareMoney(bDiscountAmount, aDiscountAmount);
     });
 
     console.log(`Found ${sortedDiscounts.length} applicable discounts.`);

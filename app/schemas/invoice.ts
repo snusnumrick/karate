@@ -1,5 +1,30 @@
 import { z } from 'zod';
 import { siteConfig } from '~/config/site';
+import { type Money } from '~/utils/money';
+
+// Custom Zod schema for Money objects
+const MoneySchema = z.custom<Money>(
+  (val) => {
+    // Accept Money objects
+    if (typeof val === 'object' && val !== null && 'getAmount' in val) {
+      return true;
+    }
+    return false;
+  },
+  {
+    message: 'Expected a Money object',
+  }
+);
+
+// Helper to create Money schema with validation
+const createMoneySchema = (minAmount = 0, message?: string) => {
+  return MoneySchema.refine(
+    (money) => money.getAmount() >= minAmount,
+    {
+      message: message || `Amount must be at least ${minAmount} cents`,
+    }
+  );
+};
 
 // Enum schemas
 export const InvoiceStatusSchema = z.enum(['draft', 'sent', 'viewed', 'paid', 'partially_paid', 'overdue', 'cancelled']);
@@ -64,7 +89,7 @@ export const InvoiceLineItemSchema = z.object({
   item_type: InvoiceItemTypeSchema,
   description: z.string().min(1, 'Description is required'),
   quantity: z.number().min(0.01, 'Quantity must be greater than 0'),
-  unit_price: z.number().min(0, 'Unit price must be non-negative'),
+  unit_price: createMoneySchema(0, 'Unit price must be non-negative'),
   line_total: z.number(),
   // Deprecated fields - use taxes array instead
   tax_rate: z.number().min(0).max(1).default(0).optional(),
@@ -117,7 +142,7 @@ export const InvoicePaymentSchema = z.object({
   payment_date: z.string(),
   reference_number: z.string().max(100).optional(),
   notes: z.string().optional(),
-  stripe_payment_intent_id: z.string().optional(),
+  payment_intent_id: z.string().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -149,7 +174,7 @@ export const CreateInvoiceLineItemSchema = z.object({
   item_type: InvoiceItemTypeSchema,
   description: z.string().min(1, 'Description is required'),
   quantity: z.number().min(0.01, 'Quantity must be greater than 0'),
-  unit_price: z.number().min(0, 'Unit price must be non-negative'),
+  unit_price: createMoneySchema(0, 'Unit price must be non-negative'),
   // Deprecated - use tax_rate_ids instead
   tax_rate: z.number().min(0).max(1).default(0).optional(),
   // New tax system
@@ -220,7 +245,7 @@ export const CreateInvoicePaymentSchema = z.object({
   payment_date: z.string(),
   reference_number: z.string().max(100).optional(),
   notes: z.string().optional(),
-  stripe_payment_intent_id: z.string().optional(),
+  payment_intent_id: z.string().optional(),
 });
 
 // Filter schemas
@@ -256,7 +281,7 @@ export const BulkDeleteInvoicesSchema = z.object({
 export const InvoiceLineItemTemplateSchema = z.object({
   item_type: InvoiceItemTypeSchema,
   description: z.string().min(1, 'Description is required'),
-  unit_price: z.number().min(0, 'Unit price must be non-negative'),
+  unit_price: createMoneySchema(0, 'Unit price must be non-negative'),
   tax_rate: z.number().min(0).max(1).default(0),
   sort_order: z.number().default(0),
 });

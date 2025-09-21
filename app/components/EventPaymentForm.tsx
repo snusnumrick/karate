@@ -5,17 +5,18 @@ import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { ExclamationTriangleIcon, ReloadIcon } from '@radix-ui/react-icons';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { CreditCard, DollarSign } from 'lucide-react';
+import {addMoney, formatMoney, Money, multiplyMoney, ZERO_MONEY} from '~/utils/money';
 
 interface TaxInfo {
   taxName: string;
-  taxAmount: number;
+  taxAmount: Money;
   taxRate: number;
 }
 
 interface EventPaymentFormProps {
   eventId: string;
   eventTitle: string;
-  registrationFee: number;
+  registrationFee: Money;
   studentCount: number;
   familyId: string;
   registrationId: string;
@@ -23,7 +24,7 @@ interface EventPaymentFormProps {
   onSuccess?: (paymentId: string) => void;
   actionEndpoint?: string;
   taxes?: TaxInfo[];
-  totalTaxAmount?: number;
+  totalTaxAmount?: Money;
 }
 
 interface ActionResponse {
@@ -44,17 +45,14 @@ export function EventPaymentForm({
   onSuccess,
   actionEndpoint = '/family/payment',
   taxes = [],
-  totalTaxAmount = 0
+  totalTaxAmount = ZERO_MONEY
 }: EventPaymentFormProps) {
   const fetcher = useFetcher<ActionResponse>();
   const formRef = useRef<HTMLFormElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const subtotalAmount = registrationFee * studentCount;
-  const totalAmount = subtotalAmount + (totalTaxAmount / 100); // Convert cents to dollars
-  const formattedSubtotal = subtotalAmount.toFixed(2);
-  const formattedTotal = totalAmount.toFixed(2);
-  const formattedTaxAmount = (totalTaxAmount / 100).toFixed(2);
+  const subtotalAmount = multiplyMoney(registrationFee, studentCount);
+  const totalAmount = addMoney(subtotalAmount, totalTaxAmount);
 
   // Handle form submission response
   useEffect(() => {
@@ -148,7 +146,7 @@ export function EventPaymentForm({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">Registration Fee:</span>
-              <span className="font-medium">${registrationFee.toFixed(2)} per student</span>
+              <span className="font-medium">${formatMoney(registrationFee)} per student</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">Number of Students:</span>
@@ -157,7 +155,7 @@ export function EventPaymentForm({
             <div className="border-t pt-2 mt-2 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Subtotal:</span>
-                <span className="font-medium">${formattedSubtotal}</span>
+                <span className="font-medium">${formatMoney(subtotalAmount)}</span>
               </div>
               {taxes.length > 0 && (
                 <>
@@ -166,26 +164,26 @@ export function EventPaymentForm({
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         {tax.taxName} ({(tax.taxRate * 100).toFixed(1)}%):
                       </span>
-                      <span className="font-medium">${(tax.taxAmount / 100).toFixed(2)}</span>
+                      <span className="font-medium">{formatMoney(tax.taxAmount)}</span>
                     </div>
                   ))}
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Total Tax:</span>
-                    <span className="font-medium">${formattedTaxAmount}</span>
+                    <span className="font-medium">${formatMoney(totalTaxAmount)}</span>
                   </div>
                 </>
               )}
               <div className="flex justify-between items-center border-t pt-2">
                 <span className="text-lg font-semibold">Total Amount:</span>
                 <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                  ${formattedTotal}
+                  ${formatMoney(totalAmount)}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            <p>• Payment will be processed securely through Stripe</p>
+            <p>• Payment will be processed securely through our payment gateway</p>
             <p>• You will receive a confirmation email after successful payment</p>
             <p>• Registration will be confirmed once payment is complete</p>
           </div>
@@ -214,7 +212,7 @@ export function EventPaymentForm({
             ) : (
               <>
                 <CreditCard className="mr-2 h-5 w-5" />
-                Pay ${formattedTotal}
+                Pay ${formatMoney(totalAmount)}
               </>
             )}
           </Button>
@@ -222,7 +220,7 @@ export function EventPaymentForm({
       </form>
 
       <div className="text-xs text-center text-gray-500 dark:text-gray-400">
-        Secure payment processing powered by Stripe
+        Secure payment processing with enterprise-grade encryption
       </div>
     </div>
   );

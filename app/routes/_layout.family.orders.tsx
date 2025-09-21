@@ -4,7 +4,8 @@ import { createServerClient } from "@supabase/auth-helpers-remix";
 import { Database, Tables } from "~/types/database.types";
 // Removed Card components, using div with classes instead
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { formatCurrency, formatDate } from "~/utils/misc";
+import { formatDate } from "~/utils/misc";
+import { fromCents, formatMoney } from "~/utils/money";
 import { Badge } from "~/components/ui/badge";
 // Removed Button import as it's not used
 import { AlertCircle } from "lucide-react";
@@ -155,7 +156,7 @@ export default function FamilyOrders() {
                                                     {order.status.replace(/_/g, ' ').replace('paid pending', 'pending')}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="whitespace-nowrap text-right">{formatCurrency(order.total_amount_cents)}</TableCell>
+                                            <TableCell className="whitespace-nowrap text-right">{formatMoney(fromCents(order.total_amount_cents))}</TableCell>
                                             <TableCell className="whitespace-normal">
                                                 <ul className="list-disc list-inside">
                                                     {order.order_items.map(item => (

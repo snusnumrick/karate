@@ -2,6 +2,7 @@ import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-r
 import { requireApiAuth, requireApiRole } from '~/utils/api-auth.server';
 import { DiscountService } from '~/services/discount.server';
 import type { CreateDiscountCodeData, UpdateDiscountCodeData, PaymentTypeEnum } from '~/types/discount';
+import { fromDollars } from '~/utils/money';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
@@ -40,12 +41,14 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     switch (intent) {
       case 'create': {
+        const discountValueNum = parseFloat(formData.get('discount_value') as string);
+        const discountType = formData.get('discount_type') as 'fixed_amount' | 'percentage';
         const createData: CreateDiscountCodeData = {
           code: formData.get('code') as string,
           name: formData.get('name') as string,
           description: formData.get('description') as string || undefined,
-          discount_type: formData.get('discount_type') as 'fixed_amount' | 'percentage',
-          discount_value: parseFloat(formData.get('discount_value') as string),
+          discount_type: discountType,
+          discount_value: discountType === 'fixed_amount' ? fromDollars(discountValueNum) : discountValueNum,
           usage_type: formData.get('usage_type') as 'one_time' | 'ongoing',
           max_uses: formData.get('max_uses') ? parseInt(formData.get('max_uses') as string) : undefined,
           applicable_to: formData.getAll('applicable_to') as PaymentTypeEnum[],
@@ -65,7 +68,7 @@ export async function action({ request }: ActionFunctionArgs) {
         }
 
         // Validate discount value
-        if (createData.discount_value <= 0) {
+        if (discountValueNum <= 0) {
           return json(
             { error: 'Discount value must be greater than 0' },
             { status: 400 }
@@ -73,7 +76,7 @@ export async function action({ request }: ActionFunctionArgs) {
         }
 
         // Validate percentage discount
-        if (createData.discount_type === 'percentage' && createData.discount_value > 100) {
+        if (createData.discount_type === 'percentage' && discountValueNum > 100) {
           return json(
             { error: 'Percentage discount cannot exceed 100%' },
             { status: 400 }
@@ -97,7 +100,11 @@ export async function action({ request }: ActionFunctionArgs) {
         
         if (formData.get('name')) updateData.name = formData.get('name') as string;
         if (formData.get('description')) updateData.description = formData.get('description') as string;
-        if (formData.get('discount_value')) updateData.discount_value = parseFloat(formData.get('discount_value') as string);
+        if (formData.get('discount_type')) updateData.discount_type = formData.get('discount_type') as 'fixed_amount' | 'percentage';
+        if (formData.get('discount_value')) {
+          const v = parseFloat(formData.get('discount_value') as string);
+          updateData.discount_value = updateData.discount_type === 'fixed_amount' ? fromDollars(v) : v;
+        }
         if (formData.get('max_uses')) updateData.max_uses = parseInt(formData.get('max_uses') as string);
         if (formData.get('is_active') !== null) updateData.is_active = formData.get('is_active') === 'true';
         if (formData.get('valid_until')) updateData.valid_until = formData.get('valid_until') as string;

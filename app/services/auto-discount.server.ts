@@ -2,6 +2,7 @@ import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database, Json } from '~/types/database.types';
 import { DiscountService } from './discount.server';
 import type { DiscountType, UsageType, DiscountScope, CreateDiscountCodeData, ApplicableTo } from '~/types/discount';
+import { fromDollars } from '~/utils/money';
 
 
 let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
@@ -208,34 +209,34 @@ export class AutoDiscountService {
   ): Promise<void> {
     try {
       // Determine which templates to use
-      let templatesToProcess: Array<{ template: Database['public']['Tables']['discount_templates']['Row']; sequence: number }> = [];
+      let templatesToProcess: Array<{ template_db: Database['public']['Tables']['discount_templates']['Row']; sequence: number }> = [];
       
       if (rule.uses_multiple_templates && rule.automation_rule_discount_templates) {
         // Use multiple templates from junction table
         templatesToProcess = rule.automation_rule_discount_templates
           .sort((a, b) => a.sequence_order - b.sequence_order)
           .map(rt => ({
-            template: rt.discount_templates,
+            template_db: rt.discount_templates,
             sequence: rt.sequence_order
           }));
       } else {
         // Use single template (backward compatibility)
-        const { data: template, error: templateError } = await getSupabase()
+        const { data: template_db, error: templateError } = await getSupabase()
           .from('discount_templates')
           .select('*')
           .eq('id', rule.discount_template_id)
           .single();
 
-        if (templateError || !template) {
+        if (templateError || !template_db) {
           throw new Error('Discount template not found');
         }
         
-        templatesToProcess = [{ template, sequence: 1 }];
+        templatesToProcess = [{ template_db: template_db, sequence: 1 }];
       }
 
       // Create discount codes for each template
-      for (const { template } of templatesToProcess) {
-        await this.createDiscountFromTemplate(rule, event, template);
+      for (const { template_db } of templatesToProcess) {
+        await this.createDiscountFromTemplate(rule, event, template_db);
       }
     } catch (error) {
       console.error('Error assigning discounts:', error);
@@ -249,29 +250,31 @@ export class AutoDiscountService {
   static async createDiscountFromTemplate(
     rule: DiscountAutomationRule,
     event: DiscountEvent,
-    template: Database['public']['Tables']['discount_templates']['Row']
+    template_db: Database['public']['Tables']['discount_templates']['Row']
   ): Promise<void> {
     try {
       // Create a discount code based on the template
       // Determine which ID to use based on template scope
       const discountData: CreateDiscountCodeData = {
         code: await DiscountService.generateUniqueCode('AUTO', 8),
-        name: `${template.name} - Auto Assigned`,
-        description: `Automatically assigned: ${template.description || template.name}`,
-        discount_type: template.discount_type as DiscountType,
-        discount_value: template.discount_value,
-        usage_type: template.usage_type as UsageType,
-        applicable_to: template.applicable_to as ApplicableTo,
-        scope: template.scope as DiscountScope,
-        max_uses: template.max_uses || undefined,
+        name: `${template_db.name} - Auto Assigned`,
+        description: `Automatically assigned: ${template_db.description || template_db.name}`,
+        discount_type: template_db.discount_type as DiscountType,
+        discount_value: (template_db.discount_type as DiscountType) === 'fixed_amount'
+          ? fromDollars(template_db.discount_value || 0)
+          : (template_db.discount_value || 0),
+        usage_type: template_db.usage_type as UsageType,
+        applicable_to: template_db.applicable_to as ApplicableTo,
+        scope: template_db.scope as DiscountScope,
+        max_uses: template_db.max_uses || undefined,
         valid_from: new Date().toISOString(),
         valid_until: this.calculateValidUntil(rule),
       };
 
       // Only set the appropriate ID based on scope
-      if (template.scope === 'per_student' && event.student_id) {
+      if (template_db.scope === 'per_student' && event.student_id) {
         discountData.student_id = event.student_id;
-      } else if (template.scope === 'per_family' && event.family_id) {
+      } else if (template_db.scope === 'per_family' && event.family_id) {
         discountData.family_id = event.family_id;
       } else if (event.family_id) {
         // Default to family scope if unclear

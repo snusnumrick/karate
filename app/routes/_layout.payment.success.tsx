@@ -6,6 +6,7 @@ import {formatDate} from "~/utils/misc";
 import {useEffect} from "react";
 import {Database} from "~/types/database.types";
 import {PostgrestError} from "@supabase/supabase-js";
+import { formatMoney, fromCents } from "~/utils/money";
 
 export async function loader({ request }: LoaderFunctionArgs) {
     const url = new URL(request.url);
@@ -25,6 +26,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     const { supabaseServer } = getSupabaseServerClient(request);
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const isUuid = uuidRegex.test(paymentIntentId);
+
     type PaymentWithRelations =
         Database["public"]["Tables"]["payments"]["Row"] & {
         family: {
@@ -36,14 +40,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     };
 
-    const { data: payment, error }: { data: PaymentWithRelations | null; error: PostgrestError | null; } = await supabaseServer
+    // Find payment by either payment_intent_id (external provider ID) or id (local UUID)
+    // This handles both Stripe (uses external payment_intent_id) and Square (may use local id)
+    const baseQuery = supabaseServer
         .from('payments')
         .select(`
             *,
             family:family_id (name),
             one_on_one_sessions ( quantity_purchased )
-        `)
-        .eq('stripe_payment_intent_id', paymentIntentId)
+        `);
+
+    const filterQuery = isUuid
+        ? baseQuery.or(`payment_intent_id.eq.${paymentIntentId},id.eq.${paymentIntentId}`)
+        : baseQuery.eq('payment_intent_id', paymentIntentId);
+
+    const { data: payment, error }: { data: PaymentWithRelations | null; error: PostgrestError | null; } = await filterQuery
         .maybeSingle(); // Use maybeSingle to handle 0 rows gracefully
 
     // Handle potential errors or payment not found
@@ -52,7 +63,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         return json({
             payment: null,
             is_processing: false,
-            error: "Error retrieving payment details. Please check your payment history later or contact support."
+            error: "Error retrieving payment details. Please check your payment history later or contact support.",
+            familyPortalUrl: null
         }, { status: 500 });
     }
 
@@ -61,12 +73,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
         return json({
             payment: null,
             is_processing: true,
-            error: "Payment details not yet available. This page will update automatically."
+            error: "Payment details not yet available. This page will update automatically.",
+            familyPortalUrl: null
         });
+    }
+
+    if (payment.family_id) {
+        console.log(`Payment ${payment.id} belongs to family ${payment.family_id}.`);
     }
 
     const paymentDateFormatted = payment.payment_date ? formatDate(payment.payment_date, { formatString: 'PPP' }) : null;
     const isPending = payment.status === 'pending';
+    const familyPortalUrl = payment.family_id ? '/family' : null;
 
     return json({
         payment: {
@@ -74,12 +92,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
             formatted_payment_date: paymentDateFormatted,
         },
         is_processing: isPending,
-        error: null
+        error: null,
+        familyPortalUrl
     });
 }
 
 export default function PaymentSuccess() {
-    const { payment, is_processing, error } = useLoaderData<typeof loader>();
+    const { payment, is_processing, error, familyPortalUrl } = useLoaderData<typeof loader>();
     const revalidator = useRevalidator();
 
 
@@ -186,8 +205,8 @@ export default function PaymentSuccess() {
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
                     {isSucceeded
-                        ? `Thank you for your payment of $${(payment.total_amount / 100).toFixed(2)}`
-                        : `Your payment of $${(payment.total_amount / 100).toFixed(2)} is being processed.`
+                        ? `Thank you for your payment of ${formatMoney(fromCents(payment.total_amount))}`
+                        : `Your payment of ${formatMoney(fromCents(payment.total_amount))} is being processed.`
                     }
                 </p>
 
@@ -225,6 +244,15 @@ export default function PaymentSuccess() {
                         >
                             View Receipt
                         </a>
+                    )}
+
+                    {familyPortalUrl && (
+                        <Link
+                            to={familyPortalUrl}
+                            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                        >
+                            Go to Family Portal
+                        </Link>
                     )}
 
                     <Link

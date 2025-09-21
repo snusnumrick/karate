@@ -4,6 +4,7 @@ import {siteConfig} from "~/config/site"; // Import site config
 import type {MetaArgs, MetaDescriptor, MetaFunction} from "@remix-run/node";
 import {Button} from "~/components/ui/button"; // Import Button component
 import {mergeMeta} from "~/utils/meta";
+import { JsonLd } from "~/components/JsonLd";
 import { useNonce } from "~/context/nonce";
 
 
@@ -41,29 +42,25 @@ export default function AboutPage() {
     return (
         <div className="page-background-styles py-12">
             {/* JSON-LD Person schema moved from meta() to a nonced script for CSP compliance */}
-            <script
+            <JsonLd
                 nonce={nonce}
-                suppressHydrationWarning
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                    __html: JSON.stringify({
-                        "@context": "https://schema.org",
-                        "@type": "Person",
-                        "name": "Sensei Negin",
-                        "jobTitle": "Karate Instructor",
-                        "alumniOf": {
-                            "@type": "EducationalOrganization",
-                            "name": "University/Institution for Sport Psychology"
-                        },
-                        "knowsAbout": ["Karate", "Martial Arts", "Sport Psychology", "Child Development"],
-                        "description": "5th Dan Black Belt karate instructor with a Master's in Sport Psychology, specializing in teaching children.",
-                        "url": `${siteConfig.url}/about`,
-                        "worksFor": {
-                            "@type": "Organization",
-                            "name": siteConfig.name,
-                            "url": siteConfig.url
-                        }
-                    })
+                data={{
+                    "@context": "https://schema.org",
+                    "@type": "Person",
+                    "name": "Sensei Negin",
+                    "jobTitle": "Karate Instructor",
+                    "alumniOf": {
+                        "@type": "EducationalOrganization",
+                        "name": "University/Institution for Sport Psychology"
+                    },
+                    "knowsAbout": ["Karate", "Martial Arts", "Sport Psychology", "Child Development"],
+                    "description": "5th Dan Black Belt karate instructor with a Master's in Sport Psychology, specializing in teaching children.",
+                    "url": `${siteConfig.url}/about`,
+                    "worksFor": {
+                        "@type": "Organization",
+                        "name": siteConfig.name,
+                        "url": siteConfig.url
+                    }
                 }}
             />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

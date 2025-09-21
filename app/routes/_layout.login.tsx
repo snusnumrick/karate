@@ -7,6 +7,8 @@ import {Label} from "~/components/ui/label";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import type {ResendActionData} from "~/routes/api.resend-confirmation"; // Import the type
 
 interface ActionResponse {
@@ -16,6 +18,12 @@ interface ActionResponse {
 
 export async function action({request}: ActionFunctionArgs)
     : Promise<TypedResponse<ActionResponse>> {
+    try {
+        await csrf.validate(request);
+    } catch (error) {
+        console.error("CSRF validation failed:", error);
+        return json({error: "Security token validation failed. Please refresh the page and try again."}, {status: 403});
+    }
     const formData = await request.formData();
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
@@ -134,6 +142,7 @@ export default function LoginPage() {
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="form-container-styles py-8 px-4 sm:px-10">
                         <form className="space-y-6" method="post">
+                            <AuthenticityTokenInput />
                             {/* Display success message from URL params */}
                             {successMessage && (
                                 <Alert variant="default">
@@ -154,6 +163,7 @@ export default function LoginPage() {
                                         {isUnconfirmedEmailError && actionData.email && (
                                             <fetcher.Form method="post" action="/api/resend-confirmation"
                                                           className="mt-2">
+                                                <AuthenticityTokenInput />
                                                 <input type="hidden" name="email" value={actionData.email}/>
                                                 <Button
                                                     type="submit"

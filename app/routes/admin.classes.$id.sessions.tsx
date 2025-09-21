@@ -26,6 +26,8 @@ import type { ClassSession, BulkSessionGeneration } from "~/types/multi-class";
 import { useState } from "react";
 import { formatDate } from "~/utils/misc";
 import { getTodayLocalDateString, formatLocalDate } from "~/components/calendar/utils";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 type ActionData = {
   error?: string;
@@ -54,6 +56,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  await csrf.validate(request);
 
   const classId = params.id;
   if (!classId) {
@@ -128,16 +131,6 @@ export default function ClassSessions() {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (sessionToDelete) {
-      fetcher.submit(
-        { intent: "delete_session", session_id: sessionToDelete.id },
-        { method: "post" }
-      );
-      setIsDeleteDialogOpen(false);
-      setSessionToDelete(null);
-    }
-  };
 
 
 
@@ -234,6 +227,7 @@ export default function ClassSessions() {
               </Button>
             ) : (
               <Form method="post" className="space-y-4">
+                <AuthenticityTokenInput />
                 <input type="hidden" name="intent" value="generate" />
 
                 <div className="space-y-2">
@@ -406,14 +400,21 @@ export default function ClassSessions() {
             >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={isSubmitting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              tabIndex={0}
-            >
-              {isSubmitting ? 'Deleting...' : 'Delete Session'}
-            </AlertDialogAction>
+            <Form method="post" onSubmit={() => setIsDeleteDialogOpen(false)}>
+              <AuthenticityTokenInput />
+              <input type="hidden" name="intent" value="delete_session" />
+              {sessionToDelete && (
+                <input type="hidden" name="session_id" value={sessionToDelete.id} />
+              )}
+              <AlertDialogAction
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                tabIndex={0}
+              >
+                {isSubmitting ? 'Deleting...' : 'Delete Session'}
+              </AlertDialogAction>
+            </Form>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

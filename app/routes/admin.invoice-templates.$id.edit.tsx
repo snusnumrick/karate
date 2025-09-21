@@ -12,7 +12,7 @@ import { AppBreadcrumb , breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Plus, Trash2, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { CreateInvoiceLineItemData } from "~/types/invoice";
-import { formatCurrency } from "~/utils/misc";
+import { fromDollars, formatMoney, toDollars, ZERO_MONEY, type Money, addMoney, toCents, fromCents } from "~/utils/money";
 import { calculateLineItemTotalWithRates } from "~/utils/line-item-helpers";
 import { InvoiceTemplateService } from "~/services/invoice-template.server";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
@@ -47,7 +47,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
             throw new Response('Template not found', { status: 404 });
         }
         
-        return json({ template });
+        // Convert Money types to serializable format
+        const serializedTemplate = {
+            ...template,
+            lineItems: template.lineItems.map(item => ({
+                ...item,
+                unit_price: toCents(item.unit_price)
+            }))
+        };
+        
+        return json({ template: serializedTemplate });
     } catch (error) {
         console.error('Failed to load template:', error);
         throw new Response('Failed to load template', { status: 500 });
@@ -124,7 +133,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
             item_type: item.item_type,
             description: item.description,
             quantity: item.quantity,
-            unit_price: item.unit_price,
+            // Write legacy numeric as dollars and *_cents as cents
+            unit_price: toDollars(item.unit_price),
+            unit_price_cents: toCents(item.unit_price),
             tax_rate: item.tax_rate || 0,
             discount_rate: item.discount_rate || 0,
             service_period_start: item.service_period_start || null,
@@ -145,7 +156,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function EditInvoiceTemplate() {
-    const { template } = useLoaderData<typeof loader>();
+    const { template: rawTemplate } = useLoaderData<typeof loader>();
+    
+    // Convert serialized data back to proper types
+    const template = {
+        ...rawTemplate,
+        lineItems: rawTemplate.lineItems.map(item => ({
+            ...item,
+            unit_price: fromCents(item.unit_price)
+        }))
+    };
     const navigation = useNavigation();
     const actionData = useActionData<ActionData>();
     const isSubmitting = navigation.state === "submitting";
@@ -156,11 +176,11 @@ export default function EditInvoiceTemplate() {
     const [defaultTerms, setDefaultTerms] = useState(template.defaultTerms || '');
     const [defaultNotes, setDefaultNotes] = useState(template.defaultNotes || '');
     const [defaultFooter, setDefaultFooter] = useState(template.defaultFooter || '');
-    const [lineItems, setLineItems] = useState<CreateInvoiceLineItemData[]>(template.lineItems || []);
-    
+    const [lineItems, setLineItems] = useState(template.lineItems);
+
     // Reset line items when template changes
     useEffect(() => {
-        setLineItems(template.lineItems || []);
+        setLineItems(template.lineItems);
     }, [template.lineItems]);
     
     const addLineItem = () => {
@@ -168,7 +188,7 @@ export default function EditInvoiceTemplate() {
             item_type: 'fee',
             description: '',
             quantity: 1,
-            unit_price: 0,
+            unit_price: ZERO_MONEY,
             tax_rate: 0,
             discount_rate: 0,
             service_period_start: undefined,
@@ -181,7 +201,7 @@ export default function EditInvoiceTemplate() {
         setLineItems(lineItems.filter((_, i) => i !== index));
     };
     
-    const updateLineItem = (index: number, field: keyof CreateInvoiceLineItemData, value: string | number) => {
+    const updateLineItem = (index: number, field: keyof CreateInvoiceLineItemData, value: string | number | Money) => {
         setLineItems(lineItems.map((item, i) => 
             i === index ? { ...item, [field]: value } : item
         ));
@@ -193,8 +213,8 @@ export default function EditInvoiceTemplate() {
     
 
     
-    const calculateTotal = () => {
-        return lineItems.reduce((total, item) => total + calculateLineItemTotalWithRates(item, []), 0);
+    const calculateTotal = (): Money => {
+        return lineItems.reduce((total : Money, item) => addMoney(total, calculateLineItemTotalWithRates(item, [])), ZERO_MONEY);
     };
 
     return (
@@ -384,8 +404,8 @@ export default function EditInvoiceTemplate() {
                                             type="number"
                                             min="0"
                                             step="0.01"
-                                            value={item.unit_price}
-                                            onChange={(e) => updateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                            value={toDollars(item.unit_price)}
+                                            onChange={(e) => updateLineItem(index, 'unit_price', fromDollars(parseFloat(e.target.value) || 0))}
                                             onClick={handleInputClick}
                                             className="input-custom-styles"
                                             tabIndex={0}
@@ -414,7 +434,7 @@ export default function EditInvoiceTemplate() {
                                     <div className="space-y-2">
                                         <Label>Line Total</Label>
                                         <div className="h-10 px-3 py-2 border rounded-md bg-muted text-muted-foreground flex items-center">
-                                            {formatCurrency(calculateLineItemTotalWithRates(item, []) * 100)}
+                                            {formatMoney(calculateLineItemTotalWithRates(item, []))}
                                         </div>
                                     </div>
                                 </div>
@@ -428,7 +448,7 @@ export default function EditInvoiceTemplate() {
                         <div className="border-t pt-4">
                             <div className="flex justify-between items-center text-lg font-semibold">
                                 <span>Template Total:</span>
-                                <span>{formatCurrency(calculateTotal() * 100)}</span>
+                                <span>{formatMoney(calculateTotal())}</span>
                             </div>
                         </div>
                     </CardContent>

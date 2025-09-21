@@ -1,4 +1,5 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
+import { fromCents, type Money } from '~/utils/money';
 
 // Types for enrollment-based payment system
 export interface EnrollmentPaymentOption {
@@ -11,9 +12,9 @@ export interface EnrollmentPaymentOption {
   className: string;
   supportedPaymentTypes: PaymentType[];
   currentStatus: 'trial' | 'active_monthly' | 'active_yearly' | 'expired';
-  monthlyAmount?: number;
-  yearlyAmount?: number;
-  individualSessionAmount?: number;
+  monthlyAmount?: Money;
+  yearlyAmount?: Money;
+  individualSessionAmount?: Money;
   hasActiveSubscription: boolean;
   paidUntil?: string;
 }
@@ -61,16 +62,16 @@ export function calculatePaymentAmount(
     individual_session_fee?: number | null;
   },
   quantity: number = 1
-): number {
+): Money {
   switch (paymentType) {
     case 'trial':
-      return 0;
+      return fromCents(0);
     case 'individual_session':
-      return (program.individual_session_fee || 0) * quantity;
+      return fromCents((program.individual_session_fee || 0) * quantity);
     case 'monthly_subscription':
-      return program.monthly_fee || 0;
+      return fromCents(program.monthly_fee || 0);
     case 'yearly_subscription':
-      return program.yearly_fee || 0;
+      return fromCents(program.yearly_fee || 0);
     default:
       throw new Error(`Unsupported payment type: ${paymentType}`);
   }
@@ -93,7 +94,7 @@ export async function getStudentPaymentOptions(
   }
 
   // Fetch active enrollments with program and class details
-  const { data: enrollments, error: enrollmentsError } = await supabaseClient
+  const { data: enrollments_db, error: enrollmentsError } = await supabaseClient
     .from('enrollments')
     .select(`
       id,
@@ -138,9 +139,9 @@ export async function getStudentPaymentOptions(
   const hasAnyActiveSubscription = hasActiveMonthly || hasActiveYearly;
 
   // Process enrollments into payment options
-  const enrollmentOptions: EnrollmentPaymentOption[] = (enrollments || []).map(enrollment => {
-    const program = enrollment.class.program;
-    const supportedPaymentTypes = getSupportedPaymentTypes(program);
+  const enrollmentOptions: EnrollmentPaymentOption[] = (enrollments_db || []).map(enrollment_db => {
+    const program_db = enrollment_db.class.program;
+    const supportedPaymentTypes = getSupportedPaymentTypes(program_db);
 
     // Determine current status
     let currentStatus: EnrollmentPaymentOption['currentStatus'] = 'trial';
@@ -154,20 +155,20 @@ export async function getStudentPaymentOptions(
     }
 
     return {
-      enrollmentId: enrollment.id,
+      enrollmentId: enrollment_db.id,
       studentId: studentId,
       studentName: `${student.first_name} ${student.last_name}`,
-      programId: program.id,
-      programName: program.name,
-      classId: enrollment.class.id,
-      className: enrollment.class.name,
+      programId: program_db.id,
+      programName: program_db.name,
+      classId: enrollment_db.class.id,
+      className: enrollment_db.class.name,
       supportedPaymentTypes,
       currentStatus,
-      monthlyAmount: program.monthly_fee || undefined,
-      yearlyAmount: program.yearly_fee || undefined,
-      individualSessionAmount: program.individual_session_fee || undefined,
+      monthlyAmount: program_db.monthly_fee? fromCents(program_db.monthly_fee) : undefined,
+      yearlyAmount: program_db.yearly_fee ? fromCents(program_db.yearly_fee) : undefined,
+      individualSessionAmount: program_db.individual_session_fee ? fromCents(program_db.individual_session_fee) : undefined,
       hasActiveSubscription: hasAnyActiveSubscription,
-      paidUntil: (hasActiveYearly || hasActiveMonthly) ? (enrollment.paid_until || undefined) : undefined
+      paidUntil: (hasActiveYearly || hasActiveMonthly) ? (enrollment_db.paid_until || undefined) : undefined
     };
   });
 

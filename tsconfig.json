@@ -10,7 +10,7 @@
   ],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["@remix-run/node", "vite/client"],
+    "types": ["@remix-run/node", "vite/client", "vitest/globals"],
     "isolatedModules": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
@@ -30,5 +30,5 @@
     // Vite takes care of building everything, not tsc.
     "noEmit": true
   },
-  "exclude": ["node_modules", "supabase/functions", "db-tools"] // Exclude Deno functions from tsc
+  "exclude": ["node_modules", "supabase/functions", "db-tools", "_scratch"] // Exclude Deno functions from tsc
 }

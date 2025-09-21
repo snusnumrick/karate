@@ -33,6 +33,7 @@ import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { Class, CreateSessionData } from "~/types/multi-class";
 import { useState, useEffect } from "react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
 
 type ActionData = {
   error?: string;
@@ -66,23 +67,27 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const dateFrom = url.searchParams.get("date_from") || undefined;
   const dateTo = url.searchParams.get("date_to") || undefined;
 
-  const [sessions, classes] = await Promise.all([
+  const [sessions, classes, csrfTuple] = await Promise.all([
     getClassSessions({
       class_id: classId,
       status,
       session_date_from: dateFrom,
       session_date_to: dateTo,
     }),
-    getClasses({ is_active: true })
+    getClasses({ is_active: true }),
+    csrf.commitToken(request)
   ]);
+  const [csrfToken, csrfCookieHeader] = csrfTuple as unknown as [string, string | null];
 
   return json({ 
     sessions: sessions as SessionWithClass[], 
-    classes: classes as Class[]
-  });
+    classes: classes as Class[],
+    csrfToken
+  }, { headers: csrfCookieHeader ? { 'Set-Cookie': csrfCookieHeader } : {} });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
+  await csrf.validate(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
 
@@ -183,7 +188,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function AdminSessions() {
-  const { sessions, classes } = useLoaderData<typeof loader>();
+  const { sessions, classes, csrfToken } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<ActionData>();
   const [searchParams] = useSearchParams();
 
@@ -258,7 +263,7 @@ export default function AdminSessions() {
   const confirmDelete = () => {
     if (sessionToDelete) {
       fetcher.submit(
-        { intent: "delete", sessionId: sessionToDelete.id },
+        { intent: "delete", sessionId: sessionToDelete.id, csrf: csrfToken },
         { method: "post" }
       );
       setIsDeleteDialogOpen(false);
@@ -287,6 +292,7 @@ export default function AdminSessions() {
         start_time: makeupSessionForm.startTime,
         end_time: makeupSessionForm.endTime,
         notes: makeupSessionForm.notes,
+        csrf: csrfToken,
       },
       { method: "post" }
     );
@@ -307,7 +313,8 @@ export default function AdminSessions() {
         bulk_date_from: bulkDeleteForm.dateFrom,
         bulk_date_to: bulkDeleteForm.dateTo,
         bulk_class_id: bulkDeleteForm.classId,
-        bulk_status: bulkDeleteForm.status
+        bulk_status: bulkDeleteForm.status,
+        csrf: csrfToken,
       },
       { method: "post" }
     );

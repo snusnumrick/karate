@@ -9,7 +9,7 @@ import {
   searchTemplates
 } from "~/data/invoice-templates";
 import type { InvoiceTemplate, CreateInvoiceLineItemData } from "~/types/invoice";
-import { formatCurrency } from "~/utils/misc";
+import {addMoney, formatMoney, isPositive, Money, ZERO_MONEY} from "~/utils/money";
 import { calculateLineItemTotalWithRates } from "~/utils/line-item-helpers";
 
 interface InvoiceTemplatesProps {
@@ -29,8 +29,8 @@ export function InvoiceTemplates({ onSelectTemplate, onClose }: InvoiceTemplates
     ? invoiceTemplates
     : getTemplatesByCategory(selectedCategory as InvoiceTemplate['category']);
 
-  const calculateTemplateTotal = (template: InvoiceTemplate): number => {
-    return template.lineItems.reduce((total: number, item: CreateInvoiceLineItemData) => total + calculateLineItemTotalWithRates(item, []), 0);
+  const calculateTemplateTotal = (template: InvoiceTemplate): Money => {
+    return template.lineItems.reduce((total: Money, item: CreateInvoiceLineItemData) => addMoney(total, calculateLineItemTotalWithRates(item, [])), ZERO_MONEY);
   };
 
   return (
@@ -147,7 +147,7 @@ export function InvoiceTemplates({ onSelectTemplate, onClose }: InvoiceTemplates
                             {item.description}
                           </span>
                           <span className="text-gray-900 dark:text-white font-medium ml-2">
-                            {formatCurrency(calculateLineItemTotalWithRates(item, []) * 100)}
+                            {formatMoney(calculateLineItemTotalWithRates(item, []))}
                           </span>
                         </div>
                       ))}
@@ -158,11 +158,11 @@ export function InvoiceTemplates({ onSelectTemplate, onClose }: InvoiceTemplates
                       )}
                     </div>
 
-                    {templateTotal > 0 && (
+                    {isPositive(templateTotal) && (
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
                         <div className="flex justify-between text-sm font-medium">
                           <span>Template Total:</span>
-                          <span>{formatCurrency(templateTotal * 100)}</span>
+                          <span>{formatMoney(templateTotal)}</span>
                         </div>
                       </div>
                     )}

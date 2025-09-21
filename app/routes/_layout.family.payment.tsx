@@ -13,8 +13,20 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {CreditCardIcon, Link} from "lucide-react";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import {useLoaderData, useRouteError, useSearchParams} from "@remix-run/react";
-import {PaymentForm} from "~/components/PaymentForm";
+import {PaymentSetupForm} from "~/components/PaymentSetupForm";
 import {csrf} from "~/utils/csrf.server";
+import {
+    fromDollars,
+    fromCents,
+    Money,
+    ZERO_MONEY,
+    multiplyMoney,
+    subtractMoney,
+    maxMoney,
+    createMoney,
+    isPositive,
+    toMoney
+} from "~/utils/money";
 
 // Payment Calculation (Flat Monthly Rate)
 //
@@ -66,7 +78,18 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         throw new Response(paymentData.error, {status: 500, headers});
     }
 
-    return json(paymentData, {headers});
+    // Convert nextPaymentAmount from serialized number back to Money type
+    const convertedPaymentData = {
+      ...paymentData,
+      studentPaymentDetails: paymentData.studentPaymentDetails.map(detail => ({
+        ...detail,
+        nextPaymentAmount: typeof detail.nextPaymentAmount === 'number' 
+          ? fromCents(detail.nextPaymentAmount)
+          : detail.nextPaymentAmount
+      }))
+    };
+
+    return json(convertedPaymentData, {headers});
 }
 
 
@@ -126,13 +149,13 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
 
     // --- Server-Side Calculation & Payment Record Creation ---
-    let totalAmountInCents = 0;
+    let totalAmount : Money = ZERO_MONEY;
     let type: Database['public']['Enums']['payment_type_enum']; // Use 'type' variable
 
     try {
-        let monthlyAmount = siteConfig.pricing.monthly;
-        let yearlyAmount = siteConfig.pricing.yearly;
-        let individualSessionAmount = siteConfig.pricing.oneOnOneSession;
+        let monthlyAmount : Money = fromDollars(siteConfig.pricing.monthly);
+        let yearlyAmount : Money = fromDollars(siteConfig.pricing.yearly);
+        let individualSessionAmount : Money = fromDollars(siteConfig.pricing.oneOnOneSession);
 
         // If an enrollmentId is provided, fetch its specific pricing
         if (enrollmentId && studentIds.length > 0) {
@@ -142,41 +165,41 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             const enrollmentDetails = paymentOptions?.enrollments.find(e => e.enrollmentId === enrollmentId);
 
             if (enrollmentDetails) {
-                monthlyAmount = enrollmentDetails.monthlyAmount ?? monthlyAmount;
-                yearlyAmount = enrollmentDetails.yearlyAmount ?? yearlyAmount;
-                individualSessionAmount = enrollmentDetails.individualSessionAmount ?? individualSessionAmount;
+                monthlyAmount = enrollmentDetails.monthlyAmount || monthlyAmount;
+                yearlyAmount = enrollmentDetails.yearlyAmount || yearlyAmount;
+                individualSessionAmount = enrollmentDetails.individualSessionAmount || individualSessionAmount;
             }
         }
 
         // --- Restore Original Logic ---
         if (paymentOption === 'individual') {
             type = 'individual_session'; // Assign to 'type'
-            totalAmountInCents = individualSessionAmount * oneOnOneQuantity * 100;
+            totalAmount = multiplyMoney(individualSessionAmount, oneOnOneQuantity);
         } else if (paymentOption === 'yearly') {
             type = 'yearly_group'; // Assign to 'type'
-            totalAmountInCents = yearlyAmount * studentIds.length * 100;
+            totalAmount = multiplyMoney(yearlyAmount, studentIds.length);
         } else { // Monthly
             type = 'monthly_group'; // Assign to 'type'
             // Use flat monthly rate for all students - automatic discounts will handle reduced pricing
-            totalAmountInCents = monthlyAmount * studentIds.length * 100;
+            totalAmount = multiplyMoney(monthlyAmount, studentIds.length);
         }
-        // Rename totalAmountInCents to subtotalAmountInCents for clarity
-        const subtotalAmountInCents = totalAmountInCents;
+        // Rename totalAmount to subtotalAmount for clarity
+        const subtotalAmount = totalAmount;
 
         // Parse discount amount
-        const discountAmount = discountAmountStr ? parseInt(discountAmountStr, 10) : 0;
+        const discountAmount : Money = discountAmountStr ? createMoney(discountAmountStr, true) : ZERO_MONEY;
 
         // Apply discount to subtotal
-        const finalSubtotalInCents = Math.max(0, subtotalAmountInCents - discountAmount);
+        const finalSubtotal : Money = maxMoney(ZERO_MONEY,subtractMoney(subtotalAmount, discountAmount));
 
         // Handle zero payment case - create a succeeded payment record directly
-        if (finalSubtotalInCents <= 0) {
+        if (!isPositive(finalSubtotal)) {
             console.log("[Action] Zero payment detected. Creating succeeded payment record directly.");
 
             // Create the initial payment record with zero amount
             const {data: paymentRecord, error: createError} = await createInitialPaymentRecord(
                 familyId,
-                finalSubtotalInCents, // This will be 0
+                finalSubtotal, // This will be 0
                 studentIds,
                 type,
                 null, // orderId
@@ -225,7 +248,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         // console.log("[Action] Calling createInitialPaymentRecord with subtotal...");
         const {data: paymentRecord, error: createError} = await createInitialPaymentRecord(
             familyId,
-            finalSubtotalInCents, // Pass the final subtotal after discount
+            finalSubtotal, // Pass the final subtotal after discount
             studentIds, // Pass selected student IDs (empty for individual)
             type, // Pass 'type' variable
             null, // orderId
@@ -257,12 +280,21 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 }
 
 export default function FamilyPaymentPage() {
+    const loaderData = useLoaderData<typeof loader>();
     const {
         familyId,
-        studentPaymentDetails,
         hasAvailableDiscounts,
         error: loaderError
-    } = useLoaderData<typeof loader>();
+    } = loaderData;
+    
+    // Convert serialized data back to proper types
+    const studentPaymentDetails = loaderData.studentPaymentDetails.map(detail => ({
+        ...detail,
+        nextPaymentAmount: typeof detail.nextPaymentAmount === 'number' 
+            ? fromCents(detail.nextPaymentAmount)
+            : toMoney(detail.nextPaymentAmount as unknown)
+    }));
+    
     const [searchParams] = useSearchParams();
 
     // Handle case where loader found no students
@@ -344,7 +376,7 @@ export default function FamilyPaymentPage() {
 
                 {/* Content Container */}
                 <div className="form-container-styles p-8 backdrop-blur-lg max-w-lg mx-auto">
-                    <PaymentForm
+                    <PaymentSetupForm
                         familyId={familyId}
                         studentPaymentDetails={studentPaymentDetails}
                         hasAvailableDiscounts={hasAvailableDiscounts}

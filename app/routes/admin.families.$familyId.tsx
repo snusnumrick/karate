@@ -21,6 +21,8 @@ import { deleteStudent } from "~/services/student.server";
 import { requireAdminUser } from "~/utils/auth.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { Database } from "~/types/database.types";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
 
@@ -75,6 +77,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 export async function action({request, params}: ActionFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId; // Keep familyId for potential redirects/context
+    await csrf.validate(request);
     const formData = await request.formData();
     const intent = formData.get("intent") as string; // Use 'as string' for simplicity here
 
@@ -124,6 +127,7 @@ function DeleteStudentButton({studentId, studentName}: { studentId: string, stud
 
     return (
         <fetcher.Form method="post">
+            <AuthenticityTokenInput />
             <input type="hidden" name="intent" value="deleteStudent"/>
             <input type="hidden" name="studentId" value={studentId}/>
             <Button

@@ -4,6 +4,8 @@ import { Edit, Trash2, Download, Plus, DollarSign } from 'lucide-react';
 
 import { InvoicePayment, InvoicePaymentMethod } from '~/types/invoice';
 import { formatDate } from '~/utils/misc';
+import { formatMoney, subtractMoney, getAmount, ZERO_MONEY } from '~/utils/money';
+import type { Money } from '~/utils/money';
 
 interface InvoicePaymentWithUser extends InvoicePayment {
   recorded_by?: string;
@@ -19,8 +21,8 @@ interface InvoicePaymentWithUser extends InvoicePayment {
 interface InvoicePaymentHistoryProps {
   invoiceId: string;
   payments: InvoicePaymentWithUser[];
-  totalAmount: number; // in cents
-  amountPaid: number; // in cents
+  totalAmount: Money;
+  amountPaid: Money;
   canRecordPayments?: boolean;
   canEditPayments?: boolean;
   canDeletePayments?: boolean;
@@ -37,8 +39,8 @@ export default function InvoicePaymentHistory({
 }: InvoicePaymentHistoryProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-  const remainingBalance = totalAmount - amountPaid;
-  const isFullyPaid = remainingBalance <= 0;
+  const remainingBalance = subtractMoney(totalAmount, amountPaid);
+  const isFullyPaid = getAmount(remainingBalance) <= 0;
 
   const formatPaymentMethod = (method: InvoicePaymentMethod): string => {
     const methodMap: Record<InvoicePaymentMethod, string> = {
@@ -52,9 +54,7 @@ export default function InvoicePaymentHistory({
     return methodMap[method] || method;
   };
 
-  const formatCurrency = (amountInCents: number): string => {
-    return `$${(amountInCents / 100).toFixed(2)}`;
-  };
+
 
   const formatDateLocal = (dateString: string): string => {
     return formatDate(dateString, {
@@ -103,13 +103,13 @@ export default function InvoicePaymentHistory({
           <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
             <div className="text-sm text-gray-600 dark:text-gray-400">Total Amount</div>
             <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-              {formatCurrency(totalAmount * 100)}
+              {formatMoney(totalAmount)}
             </div>
           </div>
           <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
             <div className="text-sm text-green-600 dark:text-green-400">Amount Paid</div>
             <div className="text-lg font-semibold text-green-800 dark:text-green-100">
-              {formatCurrency(amountPaid * 100)}
+              {formatMoney(amountPaid)}
             </div>
           </div>
           <div className={`p-3 rounded-lg ${
@@ -129,7 +129,7 @@ export default function InvoicePaymentHistory({
                 ? 'text-green-800 dark:text-green-100' 
                 : 'text-red-800 dark:text-red-100'
             }`}>
-              {isFullyPaid ? '✓ Complete' : formatCurrency(remainingBalance * 100)}
+              {isFullyPaid ? '✓ Complete' : formatMoney(remainingBalance)}
             </div>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function InvoicePaymentHistory({
                   <div className="flex-1">
                     <div className="flex items-center space-x-4">
                       <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                        {formatCurrency(payment.amount)}
+                        {formatMoney(payment.amount)}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
                         via {formatPaymentMethod(payment.payment_method)}
@@ -189,11 +189,11 @@ export default function InvoicePaymentHistory({
                         <div className="font-medium">Tax Breakdown:</div>
                         {payment.taxes.map((tax, index) => (
                           <div key={index} className="ml-2">
-                            {tax.tax_name_snapshot}: {formatCurrency(tax.tax_amount)}
+                            {tax.tax_name_snapshot}: {formatMoney(tax.tax_amount)}
                           </div>
                         ))}
                         <div className="ml-2 font-medium">
-                          Total Tax: {formatCurrency(payment.total_tax_amount || 0)}
+                          Total Tax: {formatMoney(payment.total_tax_amount || ZERO_MONEY)}
                         </div>
                       </div>
                     )}

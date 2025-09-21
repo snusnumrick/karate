@@ -6,10 +6,14 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
 import { PaymentStatus } from "~/types/models"; // Import the enum
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { formatMoney, fromCents } from "~/utils/money";
+import { centsFromRow } from "~/utils/database-money";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { getPaymentProvider } from '~/services/payments/index.server';
 
 // Define the detailed payment type expected by the loader
 type PaymentColumns = Database['public']['Tables']['payments']['Row'];
@@ -32,6 +36,8 @@ type PaymentDetail = Omit<PaymentColumns, 'amount' | 'tax_amount'> & {
 
 type LoaderData = {
     payment: PaymentDetail;
+    paymentDashboardUrl: string | null;
+    providerDisplayName: string;
 };
 
 // Type for the action response
@@ -102,7 +108,17 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
 
         if (payment) {
             console.log(`[Admin Payment Detail Loader] Successfully fetched payment ${paymentId} on attempt ${attempt}.`);
-            return json({ payment: payment as PaymentDetail });
+            
+            // Get payment provider information
+            const paymentProvider = getPaymentProvider();
+            const paymentDashboardUrl = paymentProvider.getDashboardUrl(payment.payment_intent_id || '');
+            const providerDisplayName = paymentProvider.displayName;
+            
+            return json({ 
+                payment: payment as PaymentDetail,
+                paymentDashboardUrl,
+                providerDisplayName
+            });
         }
 
         // If payment is not found, wait and retry
@@ -124,6 +140,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         return json({ error: "Payment ID missing from request." }, { status: 400 });
     }
 
+    await csrf.validate(request);
     const formData = await request.formData();
     const newStatus = formData.get("newStatus") as string;
 
@@ -166,14 +183,11 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
 
 export default function AdminPaymentDetailPage() {
-    const { payment } = useLoaderData<LoaderData>();
+    const { payment, paymentDashboardUrl, providerDisplayName } = useLoaderData<LoaderData>();
     const fetcher = useFetcher<ActionData>(); // Add fetcher for status updates
     const isUpdating = fetcher.state !== 'idle';
 
-    // Construct Stripe dashboard link if PI ID exists
-    const stripePaymentIntentUrl = payment.stripe_payment_intent_id
-        ? `https://dashboard.stripe.com/${process.env.NODE_ENV === 'production' ? '' : 'test/'}payments/${payment.stripe_payment_intent_id}`
-        : null;
+    // Payment dashboard URL and provider name are now provided by the loader
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -188,6 +202,7 @@ export default function AdminPaymentDetailPage() {
                     {(payment.status === PaymentStatus.Pending || payment.status === PaymentStatus.Failed) && (
                         <>
                             <fetcher.Form method="post">
+                                <AuthenticityTokenInput />
                                 <input type="hidden" name="newStatus" value={PaymentStatus.Succeeded} />
                                 <Button type="submit" variant="default" size="sm" disabled={isUpdating}>
                                     {isUpdating ? 'Updating...' : 'Mark as Succeeded'}
@@ -196,6 +211,7 @@ export default function AdminPaymentDetailPage() {
                             {/* Only show Mark as Failed if current status is Pending */}
                             {payment.status === PaymentStatus.Pending && (
                                 <fetcher.Form method="post">
+                                    <AuthenticityTokenInput />
                                     <input type="hidden" name="newStatus" value={PaymentStatus.Failed} />
                                     <Button type="submit" variant="destructive" size="sm" disabled={isUpdating}>
                                         {isUpdating ? 'Updating...' : 'Mark as Failed'}
@@ -238,15 +254,15 @@ export default function AdminPaymentDetailPage() {
                             <p><span className="font-semibold">Type:</span> {getPaymentProductDescription(payment.type)}</p>
                         </div>
                         <div className="text-right">
-                            <p><span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)}</p>
+                            <p><span className="font-semibold">Subtotal:</span> {formatMoney(fromCents(centsFromRow('payments', 'subtotal_amount', payment as unknown as Record<string, unknown>)))}</p>
                             {payment.payment_taxes && payment.payment_taxes.length > 0 && (
                                 payment.payment_taxes.map((tax, index) => (
                                     <p key={index} className="text-sm text-gray-600 dark:text-gray-400">
-                                        <span className="font-semibold">{tax.tax_rates?.description || tax.tax_name_snapshot}:</span> ${(tax.tax_amount / 100).toFixed(2)}
+                                        <span className="font-semibold">{tax.tax_rates?.description || tax.tax_name_snapshot}:</span> {formatMoney(fromCents(centsFromRow('payment_taxes', 'tax_amount', tax as unknown as Record<string, unknown>)))}
                                     </p>
                                 ))
                             )}
-                            <p className="font-bold text-lg border-t pt-2 mt-2 dark:border-gray-600"><span className="font-semibold">Total Amount:</span> ${(payment.total_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
+                            <p className="font-bold text-lg border-t pt-2 mt-2 dark:border-gray-600"><span className="font-semibold">Total Amount:</span> {formatMoney(fromCents(centsFromRow('payments', 'total_amount', payment as unknown as Record<string, unknown>)))}</p>
                         </div>
                     </div>
 
@@ -274,21 +290,21 @@ export default function AdminPaymentDetailPage() {
                         </div>
                     )}
 
-                    {(payment.receipt_url || stripePaymentIntentUrl) && (
+                    {(payment.receipt_url || paymentDashboardUrl) && (
                          <div className="mt-4 border-t pt-4 dark:border-gray-600">
-                            <h3 className="font-semibold mb-2">Stripe Information:</h3>
-                            {payment.receipt_url && (
+                            <h3 className="font-semibold mb-2">Receipt & Payment Information:</h3>
+                            {payment.status === 'succeeded' && (
                                 <p>
-                                    <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                        View Receipt
-                                    </a>
+                                    <Link to={`/family/receipt/${payment.id}`} className="text-blue-600 hover:underline">
+                                        View Custom Receipt
+                                    </Link>
                                 </p>
                             )}
-                            {stripePaymentIntentUrl && (
+                            {paymentDashboardUrl && (
                                 <p>
-                                    <a href={stripePaymentIntentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                        View Payment Intent in Stripe
-                                    </a> ({payment.stripe_payment_intent_id})
+                                    <a href={paymentDashboardUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                        View Payment Intent in {providerDisplayName}
+                                    </a> ({payment.payment_intent_id})
                                 </p>
                             )}
                         </div>

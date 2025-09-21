@@ -12,9 +12,23 @@ import {
   updateInvoiceStatus,
   deleteInvoice,
 } from "~/services/invoice.server";
-import { formatCurrency, formatDate } from "~/utils/misc";
+import { formatDate } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount } from "~/utils/line-item-helpers";
+import {
+    formatMoney,
+    subtractMoney,
+    addMoney,
+    isPositive,
+    isZero,
+    ZERO_MONEY,
+    fromCents,
+    fromDollars,
+    toDollars,
+    toMoney,
+    type Money
+} from "~/utils/money";
+import type { InvoiceWithDetails, InvoiceLineItem, InvoiceLineItemTax } from "~/types/invoice";
 import { requireUserId } from "~/utils/auth.server";
 import { 
   Send,
@@ -29,6 +43,36 @@ import {
   AlertTriangle,
   Eye
 } from "lucide-react";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+
+// Raw database types for deserialization
+interface RawTaxItem {
+  tax_amount: number;
+  tax_name_snapshot: string;
+}
+
+interface RawInvoiceLineItem {
+  id: string;
+  description: string;
+  unit_price: number;
+  line_total: number;
+  tax_amount?: number;
+  discount_amount: number;
+  total_tax_amount?: number;
+  taxes?: RawTaxItem[];
+  quantity: number;
+  item_type: string;
+}
+
+interface RawPayment {
+  id: string;
+  amount: number;
+  total_tax_amount?: number;
+  taxes?: RawTaxItem[];
+  payment_date: string;
+  payment_method: string;
+}
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   await requireUserId(request);
@@ -42,7 +86,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // Check if the id looks like an invoice number (INV-YYYY-NNNN format)
     const isInvoiceNumber = /^INV-\d{4}-\d{4}$/.test(id);
     
-    const invoice = isInvoiceNumber 
+    const invoice : InvoiceWithDetails = isInvoiceNumber
       ? await getInvoiceByNumber(id)
       : await getInvoiceById(id);
       
@@ -65,6 +109,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ error: "Invoice ID is required" }, { status: 400 });
   }
   
+  await csrf.validate(request);
   const formData = await request.formData();
   const action = formData.get("action");
   
@@ -77,9 +122,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
           return json({ error: "Invoice not found" }, { status: 404 });
         }
         
-        const remainingBalance = invoice.total_amount - invoice.amount_paid;
+        const remainingBalance = subtractMoney(invoice.total_amount, invoice.amount_paid);
         
-        if (remainingBalance > 0) {
+        if (isPositive(remainingBalance)) {
           // Create a payment record for the remaining balance
           const { getSupabaseAdminClient } = await import("~/utils/supabase.server");
           const supabase = getSupabaseAdminClient();
@@ -88,7 +133,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
             .from('invoice_payments')
             .insert({
               invoice_id: id,
-              amount: remainingBalance,
+              amount: toDollars(remainingBalance),
+              amount_cents: remainingBalance.getAmount(),
               payment_date: new Date().toISOString().split('T')[0], // Today's date
               payment_method: 'other', // Default method when marked as paid
               notes: 'Marked as paid via admin interface'
@@ -190,7 +236,44 @@ const formatDateLocal = (dateString: string) => {
 };
 
 export default function InvoiceDetailPage() {
-  const { invoice } = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
+  const rawInvoice = loaderData.invoice;
+  
+  // Convert serialized money values (numbers in cents or Money JSON) back to Money
+  const invoice: InvoiceWithDetails = {
+    ...rawInvoice,
+    subtotal: typeof rawInvoice.subtotal === 'number' ? fromCents(rawInvoice.subtotal as number) : toMoney(rawInvoice.subtotal as unknown),
+    tax_amount: typeof rawInvoice.tax_amount === 'number' ? fromCents(rawInvoice.tax_amount as number) : toMoney(rawInvoice.tax_amount as unknown),
+    discount_amount: typeof rawInvoice.discount_amount === 'number' ? fromCents(rawInvoice.discount_amount as number) : toMoney(rawInvoice.discount_amount as unknown),
+    total_amount: typeof rawInvoice.total_amount === 'number' ? fromCents(rawInvoice.total_amount as number) : toMoney(rawInvoice.total_amount as unknown),
+    amount_paid: typeof rawInvoice.amount_paid === 'number' ? fromCents(rawInvoice.amount_paid as number) : toMoney(rawInvoice.amount_paid as unknown),
+    amount_due: typeof rawInvoice.amount_due === 'number' ? fromCents(rawInvoice.amount_due as number) : toMoney(rawInvoice.amount_due as unknown),
+    entity: {
+      ...rawInvoice.entity,
+      credit_limit: rawInvoice.entity.credit_limit ? (typeof rawInvoice.entity.credit_limit === 'number' ? fromCents(rawInvoice.entity.credit_limit as number) : toMoney(rawInvoice.entity.credit_limit as unknown)) : undefined,
+    },
+    line_items: (rawInvoice.line_items as unknown as RawInvoiceLineItem[]).map((item) => ({
+      ...item,
+      unit_price: typeof item.unit_price === 'number' ? fromCents(item.unit_price as number) : toMoney(item.unit_price as unknown),
+      line_total: typeof item.line_total === 'number' ? fromCents(item.line_total as number) : toMoney(item.line_total as unknown),
+      tax_amount: item.tax_amount ? (typeof item.tax_amount === 'number' ? fromCents(item.tax_amount as number) : toMoney(item.tax_amount as unknown)) : undefined,
+      discount_amount: typeof item.discount_amount === 'number' ? fromCents(item.discount_amount as number) : toMoney(item.discount_amount as unknown),
+      total_tax_amount: item.total_tax_amount ? (typeof item.total_tax_amount === 'number' ? fromCents(item.total_tax_amount as number) : toMoney(item.total_tax_amount as unknown)) : undefined,
+      taxes: item.taxes?.map((tax: RawTaxItem) => ({
+        ...tax,
+        tax_amount: typeof tax.tax_amount === 'number' ? fromCents(tax.tax_amount as number) : toMoney(tax.tax_amount as unknown),
+      })) || [],
+    })),
+    payments: (rawInvoice.payments as unknown as RawPayment[]).map((payment) => ({
+      ...payment,
+      amount: typeof payment.amount === 'number' ? fromDollars(payment.amount as number) : toMoney(payment.amount as unknown),
+      total_tax_amount: payment.total_tax_amount ? (typeof payment.total_tax_amount === 'number' ? fromCents(payment.total_tax_amount as number) : toMoney(payment.total_tax_amount as unknown)) : undefined,
+      taxes: payment.taxes?.map((tax: RawTaxItem) => ({
+        ...tax,
+        tax_amount: typeof tax.tax_amount === 'number' ? fromCents(tax.tax_amount as number) : toMoney(tax.tax_amount as unknown),
+      })) || [],
+    })),
+  } as InvoiceWithDetails;
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -264,6 +347,7 @@ export default function InvoiceDetailPage() {
               </a>
             </Button>
             <Form method="post" className="inline">
+              <AuthenticityTokenInput />
               <input type="hidden" name="action" value="send_email" />
               <Button 
                 type="submit" 
@@ -289,6 +373,7 @@ export default function InvoiceDetailPage() {
             <div className="flex flex-wrap gap-2">
               {canMarkPaid && (
                 <Form method="post" className="inline">
+                  <AuthenticityTokenInput />
                   <input type="hidden" name="action" value="mark_paid" />
                   <Button 
                     type="submit" 
@@ -304,6 +389,7 @@ export default function InvoiceDetailPage() {
               
               {invoice.status === "paid" && (
                 <Form method="post" className="inline">
+                  <AuthenticityTokenInput />
                   <input type="hidden" name="action" value="mark_pending" />
                   <Button 
                     type="submit" 
@@ -320,6 +406,7 @@ export default function InvoiceDetailPage() {
               
               {canCancel && (
                 <Form method="post" className="inline">
+                  <AuthenticityTokenInput />
                   <input type="hidden" name="action" value="cancel" />
                   <Button 
                     type="submit" 
@@ -336,6 +423,7 @@ export default function InvoiceDetailPage() {
               
               {invoice.status === "draft" && (
                 <Form method="post" className="inline">
+                  <AuthenticityTokenInput />
                   <input type="hidden" name="action" value="delete" />
                   <Button 
                     type="submit" 
@@ -413,12 +501,10 @@ export default function InvoiceDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {invoice.line_items.map((item) => {
-                    console.log("Line item: ", item);
-                    console.log("Line item taxes: ", item.taxes);
+                  {invoice.line_items.map((item: InvoiceLineItem) => {
                     const itemSubtotal = calculateLineItemSubtotal(item);
                     const itemDiscount = calculateLineItemDiscount(item);
-                    const itemTax = item.taxes?.reduce((sum, tax) => sum + tax.tax_amount, 0) || 0;
+                    const itemTax = item.taxes?.reduce((sum: Money, tax: InvoiceLineItemTax) => addMoney(sum, tax.tax_amount), ZERO_MONEY) || ZERO_MONEY;
                     
                     return (
                       <div key={item.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
@@ -435,7 +521,7 @@ export default function InvoiceDetailPage() {
                           </div>
                           <div className="text-right">
                             <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {formatCurrency((itemSubtotal - itemDiscount + itemTax) * 100)}
+                              {formatMoney(addMoney(subtractMoney(itemSubtotal, itemDiscount), itemTax))}
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
                           </div>
@@ -449,32 +535,32 @@ export default function InvoiceDetailPage() {
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unit Price</div>
-                            <div className="font-medium text-gray-900 dark:text-white">{formatCurrency(item.unit_price * 100)}</div>
+                            <div className="font-medium text-gray-900 dark:text-white">{formatMoney(item.unit_price)}</div>
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subtotal</div>
-                            <div className="font-medium text-gray-900 dark:text-white">{formatCurrency(itemSubtotal * 100)}</div>
+                            <div className="font-medium text-gray-900 dark:text-white">{formatMoney(itemSubtotal)}</div>
                           </div>
                         </div>
                         
                         {/* Adjustments */}
-                        {(itemDiscount > 0 || itemTax > 0) && (
+                        {(!isZero(itemDiscount) || !isZero(itemTax)) && (
                           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
                             <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Adjustments</div>
                             <div className="space-y-1 text-sm">
-                              {itemDiscount > 0 && (
+                              {isPositive(itemDiscount) && (
                                 <div className="flex justify-between">
                                   <span className="text-green-600 dark:text-green-400">Discount ({Number(item.discount_rate).toFixed(2)}%):</span>
-                                  <span className="text-green-600 dark:text-green-400">-{formatCurrency(itemDiscount * 100)}</span>
+                                  <span className="text-green-600 dark:text-green-400">-{formatMoney(itemDiscount)}</span>
                                 </div>
                               )}
-                              {item.taxes && item.taxes.length > 0 && item.taxes.map((tax, taxIndex) => (
+                              {item.taxes && item.taxes.length > 0 && item.taxes.map((tax: InvoiceLineItemTax, taxIndex: number) => (
                                 <div key={taxIndex} className="flex justify-between">
                                   <span className="text-gray-600 dark:text-gray-300">{tax.tax_name_snapshot}
                                       ({(Number(tax.tax_rate_snapshot) * 100).toFixed(2)}%):
                                   </span>
                                   <span className="text-gray-900 dark:text-white">
-                                      {formatCurrency(tax.tax_amount * 100)}
+                                      {formatMoney(tax.tax_amount)}
                                   </span>
                                 </div>
                               ))}
@@ -543,32 +629,33 @@ export default function InvoiceDetailPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-300">Subtotal:</span>
-                  <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.subtotal * 100)}</span>
+                  <span className="text-sm text-gray-900 dark:text-white">{formatMoney(invoice.subtotal)}</span>
                 </div>
                 
                 {/* Simple Discount Total */}
-                {invoice.discount_amount > 0 && (
+                {isPositive(invoice.discount_amount) && (
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-300">Total Discounts:</span>
-                    <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoice.discount_amount * 100)}</span>
+                    <span className="text-sm text-green-600 dark:text-green-400">-{formatMoney(invoice.discount_amount)}</span>
                   </div>
                 )}
                 
                 {/* Detailed Tax Breakdown */}
-                {invoice.tax_amount > 0 && (
+                {isPositive(invoice.tax_amount) && (
                   <div className="border-l-2 border-blue-200 dark:border-blue-700 pl-3 py-1 bg-blue-50 dark:bg-blue-900/20">
                     <div className="flex justify-between font-medium">
                       <span className="text-sm text-gray-700 dark:text-gray-200">Total Tax:</span>
-                      <span className="text-sm text-gray-900 dark:text-white">{formatCurrency(invoice.tax_amount * 100)}</span>
+                      <span className="text-sm text-gray-900 dark:text-white">{formatMoney(invoice.tax_amount)}</span>
                     </div>
                     <div className="mt-1 space-y-1">
-                      {invoice.line_items.length > 1 && invoice.line_items.map((item) => {
-                        const itemTax = item.taxes?.reduce((sum, tax) => sum + tax.tax_amount, 0) || 0;
-                        if (itemTax > 0) {
+                      {invoice.line_items.length > 1 && invoice.line_items.map((item: InvoiceLineItem) => {
+                        const itemTax : Money = item.taxes?.reduce((sum: Money, tax: InvoiceLineItemTax) =>
+                            addMoney(sum, tax.tax_amount || ZERO_MONEY), ZERO_MONEY) || ZERO_MONEY;
+                        if (!isZero(itemTax)) {
                           return (
                             <div key={item.id} className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
                               <span className="truncate max-w-32">{item.description}:</span>
-                              <span className="text-gray-900 dark:text-white ml-2">{formatCurrency(itemTax * 100)}</span>
+                              <span className="text-gray-900 dark:text-white ml-2">{formatMoney(itemTax)}</span>
                             </div>
                           );
                         }
@@ -582,7 +669,7 @@ export default function InvoiceDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">Total:</span>
                     <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {formatCurrency(invoice.total_amount * 100)}
+                      {formatMoney(invoice.total_amount)}
                     </span>
                   </div>
                 </div>

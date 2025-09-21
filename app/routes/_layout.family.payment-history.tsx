@@ -3,6 +3,32 @@ import {Link, useLoaderData} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {formatDate} from "~/utils/misc";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import {Database} from "~/types/database.types";
+import { formatMoney, fromCents } from "~/utils/money";
+import { centsFromRow } from "~/utils/database-money";
+
+// Define types for combined payment data
+type RegularPayment = Database['public']['Tables']['payments']['Row'] & {
+    source: 'payment';
+};
+
+type InvoicePaymentFormatted = {
+    id: string;
+    family_id: string;
+    payment_date: string | null;
+    total_amount: number;
+    payment_method: string | null;
+    status: 'succeeded';
+    notes: string | null;
+    reference_number: string | null;
+    source: 'invoice_payment';
+    invoice_number?: string;
+    invoice_id?: string;
+    receipt_url?: string | null;
+    type?: string;
+};
+
+type CombinedPayment = RegularPayment | InvoicePaymentFormatted;
 
 
 export async function loader({request}: LoaderFunctionArgs) {
@@ -29,21 +55,71 @@ export async function loader({request}: LoaderFunctionArgs) {
 
     const familyId = profileData.family_id;
 
-    // Fetch all payments for the family, ordered by date descending
-    const {data: payments, error: paymentsError} = await supabaseServer
+    // Fetch regular payments for the family
+    const {data: paymentsData, error: paymentsError} = await supabaseServer
         .from('payments')
-        .select('*') // Select all payment columns
+        .select('*')
         .eq('family_id', familyId)
-        // Order by creation date descending primarily, then payment date descending
         .order('created_at', { ascending: false })
-        .order('payment_date', { ascending: false, nullsFirst: true }); // Keep nulls (pending) near the top after sorting by created_at
+        .order('payment_date', { ascending: false, nullsFirst: true });
 
     if (paymentsError) {
         console.error("Payment History Loader Error: Failed to load payments", paymentsError.message);
         throw new Response("Could not load payment history.", {status: 500});
     }
 
-    return json({payments: payments ?? []}, {headers});
+    // Fetch invoice payments for the family
+    const {data: invoicePaymentsData, error: invoicePaymentsError} = await supabaseServer
+        .from('invoice_payments')
+        .select(`
+            *,
+            invoice:invoice_id (
+                id,
+                family_id,
+                invoice_number
+            )
+        `)
+        .eq('invoice.family_id', familyId)
+        .order('payment_date', { ascending: false });
+
+    if (invoicePaymentsError) {
+        console.error("Payment History Loader Error: Failed to load invoice payments", invoicePaymentsError.message);
+        throw new Response("Could not load invoice payment history.", {status: 500});
+    }
+
+    // Format regular payments (normalize to cents)
+    const formattedPayments: RegularPayment[] = (paymentsData || []).map(p => ({
+        ...p,
+        total_amount: centsFromRow('payments', 'total_amount', p as unknown as Record<string, unknown>),
+        source: 'payment' as const
+    }));
+
+    // Format invoice payments to match the payment structure
+    const formattedInvoicePayments: InvoicePaymentFormatted[] = (invoicePaymentsData || []).map(ip => ({
+        id: ip.id,
+        family_id: familyId,
+        payment_date: ip.payment_date,
+        total_amount: centsFromRow('invoice_payments', 'amount', ip as unknown as Record<string, unknown>),
+        payment_method: ip.payment_method,
+        status: 'succeeded' as const,
+        notes: ip.notes,
+        reference_number: ip.reference_number,
+        source: 'invoice_payment' as const,
+        invoice_number: ip.invoice?.invoice_number,
+        invoice_id: ip.invoice?.id,
+        receipt_url: (ip as unknown as { receipt_url?: string | null }).receipt_url ?? null,
+        type: 'invoice_payment'
+    }));
+
+    // Combine and sort all payments by date
+    const allPayments: CombinedPayment[] = [...formattedPayments, ...formattedInvoicePayments]
+        .sort((a, b) => {
+            const dateA = new Date(a.payment_date || 0).getTime();
+            const dateB = new Date(b.payment_date || 0).getTime();
+            return dateB - dateA; // Most recent first
+        });
+
+    return json({payments: allPayments}, {headers});
 }
 
 
@@ -102,10 +178,13 @@ export default function PaymentHistoryPage() {
                                             {payment.payment_date ? formatDate(payment.payment_date, { formatString: 'P' }) : 'N/A'}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                            ${(payment.total_amount / 100).toFixed(2)}
+                                            {formatMoney(fromCents(payment.total_amount))}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">
-                                            {payment.type?.replace(/_/g, ' ') ?? 'N/A'}
+                                            {payment.source === 'invoice_payment' 
+                                                ? `Invoice Payment${payment.invoice_number ? ` (${payment.invoice_number})` : ''}` 
+                                                : (payment as RegularPayment).type?.replace(/_/g, ' ') ?? 'N/A'
+                                            }
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -120,29 +199,60 @@ export default function PaymentHistoryPage() {
                                             {payment.payment_method || 'N/A'}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            {payment.receipt_url ? (
-                                                <a
-                                                    href={payment.receipt_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline"
-                                                >
-                                                    View
-                                                </a>
+                                            {payment.source === 'invoice_payment' ? (
+                                                (payment as InvoicePaymentFormatted).receipt_url ? (
+                                                    <a
+                                                        href={(payment as InvoicePaymentFormatted).receipt_url!}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline"
+                                                    >
+                                                        View
+                                                    </a>
+                                                ) : payment.invoice_id ? (
+                                                    <Link
+                                                        to={`/family/invoices/${payment.invoice_id}`}
+                                                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline"
+                                                    >
+                                                        Invoice
+                                                    </Link>
+                                                ) : 'N/A'
                                             ) : (
-                                                'N/A'
+                                                payment.receipt_url ? (
+                                                    <a
+                                                        href={payment.receipt_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline"
+                                                    >
+                                                        View
+                                                    </a>
+                                                ) : (
+                                                    'N/A'
+                                                )
                                             )}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            {(payment.status === 'pending' || payment.status === 'failed') ? (
-                                                <Link
-                                                    to={`/pay/${payment.id}`}
-                                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline font-medium"
-                                                >
-                                                    {payment.status === 'pending' ? 'Complete Payment' : 'Retry Payment'}
-                                                </Link>
+                                            {payment.source === 'invoice_payment' ? (
+                                                payment.invoice_id ? (
+                                                    <Link
+                                                        to={`/family/invoices/${payment.invoice_id}`}
+                                                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline font-medium"
+                                                    >
+                                                        View Invoice
+                                                    </Link>
+                                                ) : 'N/A'
                                             ) : (
-                                                'N/A'
+                                                (payment.status === 'pending' || payment.status === 'failed') ? (
+                                                    <Link
+                                                        to={`/pay/${payment.id}`}
+                                                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline font-medium"
+                                                    >
+                                                        {payment.status === 'pending' ? 'Complete Payment' : 'Retry Payment'}
+                                                    </Link>
+                                                ) : (
+                                                    'N/A'
+                                                )
                                             )}
                                         </td>
                                     </tr>

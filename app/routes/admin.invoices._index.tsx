@@ -9,7 +9,7 @@ import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoices, getInvoiceStats } from "~/services/invoice.server";
-import { formatCurrency } from "~/utils/misc";
+import { formatMoney, toCents, fromCents } from "~/utils/money";
 import { requireUserId } from "~/utils/auth.server";
 import { Plus, Search, FileText, Calendar, DollarSign, Users } from "lucide-react";
 import type { InvoiceWithDetails, InvoiceStatus } from "~/types/invoice";
@@ -41,11 +41,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
       pending: invoices.filter((inv: InvoiceWithDetails) => inv.status === "sent" || inv.status === "viewed").length,
       paid: invoices.filter((inv: InvoiceWithDetails) => inv.status === "paid").length,
       overdue: invoiceStats.overdue_count,
-      totalAmount: invoiceStats.total_amount,
-      pendingAmount: invoiceStats.outstanding_amount
+      totalAmount: invoiceStats.total_amount ? toCents(invoiceStats.total_amount) : 0,
+      pendingAmount: invoiceStats.outstanding_amount ? toCents(invoiceStats.outstanding_amount) : 0
     };
     
-    return json({ invoices, stats, search, status: statusParam, sortBy, sortOrder });
+    // Serialize Money types for invoices
+    const serializedInvoices = invoices.map(invoice => ({
+      ...invoice,
+      total_amount: invoice.total_amount ? toCents(invoice.total_amount) : 0
+    }));
+    
+    return json({ invoices: serializedInvoices, stats, search, status: statusParam, sortBy, sortOrder });
   } catch (error) {
     console.error("Error loading invoices:", error);
     return json({ 
@@ -92,7 +98,19 @@ const formatDate = (dateString: string) => {
 };
 
 export default function InvoicesIndexPage() {
-  const { invoices, stats, search, status, sortBy, sortOrder } = useLoaderData<typeof loader>();
+  const { invoices: rawInvoices, stats: rawStats, search, status, sortBy, sortOrder } = useLoaderData<typeof loader>();
+  
+  // Deserialize Money types
+  const stats = {
+    ...rawStats,
+    totalAmount: rawStats.totalAmount ? fromCents(rawStats.totalAmount) : undefined,
+    pendingAmount: rawStats.pendingAmount ? fromCents(rawStats.pendingAmount) : undefined
+  };
+  
+  const invoices = rawInvoices.map(invoice => ({
+    ...invoice,
+    total_amount: invoice.total_amount ? fromCents(invoice.total_amount) : undefined
+  }));
   const [searchParams, setSearchParams] = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -178,7 +196,7 @@ export default function InvoicesIndexPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Amount</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalAmount * 100)}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalAmount ? formatMoney(stats.totalAmount) : '$0.00'}</p>
                   </div>
                   <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
@@ -190,7 +208,7 @@ export default function InvoicesIndexPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Pending Amount</p>
-                    <p className="text-2xl font-bold text-orange-600">{formatCurrency(stats.pendingAmount * 100)}</p>
+                    <p className="text-2xl font-bold text-orange-600">{stats.pendingAmount ? formatMoney(stats.pendingAmount) : '$0.00'}</p>
                   </div>
                   <Users className="h-8 w-8 text-orange-600" />
                 </div>
@@ -321,7 +339,7 @@ export default function InvoicesIndexPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatCurrency(invoice.total_amount * 100)}
+                            {invoice.total_amount ? formatMoney(invoice.total_amount) : '$0.00'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

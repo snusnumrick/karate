@@ -9,12 +9,16 @@ import {
 import { siteConfig } from '~/config/site';
 import type { Invoice, InvoiceEntity, InvoiceLineItem } from '~/types/invoice';
 import { calculateLineItemDiscount } from '~/utils/line-item-helpers';
+import {
+    addMoney, subtractMoney, multiplyMoney, formatMoney, formatPercentage, type Money,
+    isPositive, ZERO_MONEY
+} from '~/utils/money';
 
 interface LineItemTax {
   tax_description_snapshot?: string;
   tax_name_snapshot?: string;
   tax_rate_snapshot?: number;
-  tax_amount?: number;
+  tax_amount?: Money;
 }
 
 const styles = StyleSheet.create({
@@ -353,18 +357,7 @@ interface InvoiceTemplateProps {
 }
 
 export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) {
-  const formatCurrency = (amount: number | null | undefined) => {
-    const safeAmount = amount || 0;
-    try {
-      const formatted = new Intl.NumberFormat(siteConfig.localization.locale, {
-        style: 'currency',
-        currency: siteConfig.localization.currency,
-      }).format(safeAmount);
-      return formatted || '$0.00'; // Fallback if formatted is empty
-    } catch {
-      return '$0.00'; // Fallback if formatting fails
-    }
-  };
+
 
   const formatDate = (date: string) => {
     if (!date) return 'N/A';
@@ -396,10 +389,27 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
     }
   };
 
-  const subtotal = invoice.line_items?.reduce((sum, item) => sum + ((item.quantity || 0) * (item.unit_price || 0)), 0) || 0;
-  const taxAmount = invoice.tax_amount || 0;
-  const discountAmount = invoice.discount_amount || 0;
-  const total = subtotal + taxAmount - discountAmount;
+  // Calculate totals using dinero.js
+  const subtotalMoney : Money = invoice.line_items?.reduce((sum: Money, item) => {
+    const lineTotal : Money = multiplyMoney(item.unit_price, item.quantity || 0);
+    return addMoney(sum, lineTotal);
+  }, ZERO_MONEY);
+
+  const discountMoney : Money = invoice.line_items?.reduce((sum: Money, item) => {
+    const discount = calculateLineItemDiscount(item);
+    return addMoney(sum, discount);
+  }, ZERO_MONEY);
+
+  const taxMoney = invoice.line_items?.reduce((sum: Money, item) => {
+    const itemTaxes = (item as InvoiceLineItem & { taxes?: LineItemTax[] }).taxes || [];
+    const itemTaxTotal : Money = itemTaxes.reduce((taxSum: Money, tax) => {
+      // tax_amount is stored in cents according to our documentation
+      return addMoney(taxSum, tax.tax_amount);
+    }, ZERO_MONEY);
+    return addMoney(sum, itemTaxTotal);
+  }, ZERO_MONEY) || ZERO_MONEY;
+
+  const totalMoney = addMoney(subtractMoney(subtotalMoney, discountMoney), taxMoney);
 
   // Get dynamic origin for logo URL
   const getLogoUrl = () => {
@@ -527,7 +537,7 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
           {invoice.line_items?.map((item, index) => {
             const itemDiscount = calculateLineItemDiscount(item);
             const itemTaxes = (item as InvoiceLineItem & { taxes?: LineItemTax[] }).taxes || [];
-            const hasAdjustments = itemDiscount > 0 || itemTaxes.length > 0;
+            const hasAdjustments = isPositive(itemDiscount) || itemTaxes.length > 0;
             
             return (
               <View key={index}>
@@ -539,22 +549,22 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
                     {item.quantity || 0}
                   </Text>
                   <Text style={[styles.tableCell, styles.priceColumn]}>
-                    {formatCurrency(item.unit_price)}
+                    {formatMoney(item.unit_price || ZERO_MONEY)}
                   </Text>
                   <Text style={[styles.tableCell, styles.amountColumn]}>
-                    {formatCurrency((item.quantity || 0) * (item.unit_price || 0))}
+                    {formatMoney(multiplyMoney(item.unit_price || ZERO_MONEY, item.quantity || 0))}
                   </Text>
                 </View>
                 
                 {hasAdjustments && (
                   <View style={[styles.lineItemAdjustments, ...(index % 2 === 1 ? [styles.tableRowAlt] : [])]}>
-                    {itemDiscount > 0 && (
+                    {isPositive(itemDiscount) && (
                       <View style={styles.adjustmentRow}>
                         <Text style={styles.adjustmentLabel}>
                           Discount ({Number(item.discount_rate).toFixed(2)}%):
                         </Text>
                         <Text style={[styles.adjustmentValue, styles.discountValue]}>
-                          -{formatCurrency(itemDiscount)}
+                          -{formatMoney(itemDiscount)}
                         </Text>
                       </View>
                     )}
@@ -562,10 +572,10 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
                     {itemTaxes.map((tax: LineItemTax, taxIndex: number) => (
                       <View key={taxIndex} style={styles.adjustmentRow}>
                         <Text style={styles.adjustmentLabel}>
-                          {tax.tax_description_snapshot || tax.tax_name_snapshot || 'Tax'} ({((tax.tax_rate_snapshot || 0) * 100).toFixed(2)}%):
+                          {tax.tax_description_snapshot || tax.tax_name_snapshot || 'Tax'} ({formatPercentage(tax.tax_rate_snapshot || 0)}):
                         </Text>
                         <Text style={[styles.adjustmentValue, styles.taxValue]}>
-                          {formatCurrency(tax.tax_amount || 0)}
+                          {formatMoney(tax.tax_amount || ZERO_MONEY)}
                         </Text>
                       </View>
                     ))}
@@ -581,26 +591,26 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
           <View style={styles.totalsTable}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal:</Text>
-              <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
+              <Text style={styles.totalValue}>{formatMoney(subtotalMoney)}</Text>
             </View>
             
-            {discountAmount > 0 && (
+            {isPositive(discountMoney)  && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total Discounts:</Text>
-                <Text style={styles.totalValue}>-{formatCurrency(discountAmount)}</Text>
+                <Text style={styles.totalValue}>-{formatMoney(discountMoney)}</Text>
               </View>
             )}
             
-            {taxAmount > 0 && (
+            {isPositive(taxMoney) && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total Tax:</Text>
-                <Text style={styles.totalValue}>{formatCurrency(taxAmount)}</Text>
+                <Text style={styles.totalValue}>{formatMoney(taxMoney)}</Text>
               </View>
             )}
             
             <View style={styles.grandTotalRow}>
               <Text style={styles.grandTotalLabel}>Total:</Text>
-              <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
+              <Text style={styles.grandTotalValue}>{formatMoney(totalMoney)}</Text>
             </View>
           </View>
         </View>

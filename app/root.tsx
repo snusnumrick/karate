@@ -5,7 +5,7 @@ import {
     Outlet,
     Scripts,
     ScrollRestoration,
-    useLoaderData,
+    useRouteLoaderData,
 } from "@remix-run/react";
 import {
     json,
@@ -35,7 +35,8 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         nonce = deriveNonceForRequest(request);
     }
     
-    const [csrfToken, csrfCookieHeader] = await csrf.commitToken();
+    // Use the incoming request so we reuse any existing CSRF token
+    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
     
     return json(
         { nonce, csrfToken },
@@ -118,7 +119,8 @@ function ClientGTM({ nonce }: { nonce?: string }) {
 }
 
 export function Layout({children}: { children: React.ReactNode }) {
-    const loaderData = useLoaderData<typeof loader>();
+    // In error elements, useLoaderData is not allowed. Use useRouteLoaderData('root').
+    const loaderData = useRouteLoaderData('root') as { nonce?: string; csrfToken?: string } | undefined;
     const safeNonce = loaderData?.nonce;
 
     return (
@@ -144,7 +146,7 @@ export function Layout({children}: { children: React.ReactNode }) {
         </head>
         <body className="h-full bg-background text-foreground" suppressHydrationWarning>
         <NonceProvider value={safeNonce}>
-        <AuthenticityTokenProvider token={loaderData?.csrfToken}>
+        <AuthenticityTokenProvider token={loaderData?.csrfToken ?? ''}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
         </ThemeProvider>

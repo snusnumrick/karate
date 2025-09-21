@@ -8,6 +8,8 @@ import {
   clearAllPushSubscriptions 
 } from '~/utils/push-notifications.server';
 import { formatDate } from '~/utils/misc';
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserId(request);
@@ -33,6 +35,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireUserId(request);
+  await csrf.validate(request);
   
   const formData = await request.formData();
   const action = formData.get('action');
@@ -191,6 +194,7 @@ export default function PushDiagnostics() {
               <strong className="text-red-600"> Warning: This will require all users to re-subscribe to push notifications.</strong>
             </p>
             <Form method="post">
+              <AuthenticityTokenInput />
               <input type="hidden" name="action" value="generate-vapid-keys" />
               <button 
                 type="submit" 
@@ -210,6 +214,7 @@ export default function PushDiagnostics() {
               <strong className="text-red-600"> Warning: This action cannot be undone.</strong>
             </p>
             <Form method="post">
+              <AuthenticityTokenInput />
               <input type="hidden" name="action" value="clear-subscriptions" />
               <button 
                 type="submit" 

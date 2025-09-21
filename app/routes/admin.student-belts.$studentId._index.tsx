@@ -1,6 +1,6 @@
 import {useState} from "react"; // Import useState
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse} from "@remix-run/node";
-import {useLoaderData, useNavigate, useNavigation, useSubmit} from "@remix-run/react"; // Import useNavigate
+import {Form, useLoaderData, useNavigate, useNavigation} from "@remix-run/react"; // Import useNavigate and Form
 import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import type {Database} from "~/types/database.types";
 import {Button} from "~/components/ui/button";
@@ -21,6 +21,8 @@ import {Badge}from "~/components/ui/badge";
 import {formatDate}from "~/utils/misc"; // Import formatDate utility
 import {Edit, Trash2}from 'lucide-react'; // Icons for actions
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // Define types (assuming table renamed to 'belt_awards')
 type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name'>;
@@ -78,6 +80,7 @@ export async function loader({params}: LoaderFunctionArgs): Promise<TypedRespons
 // Action function to handle belt award deletion
 export async function action({request, params}: ActionFunctionArgs): Promise<TypedResponse<ActionData>> {
     const studentId = params.studentId;
+    await csrf.validate(request);
     const formData = await request.formData();
     const intent = formData.get("intent");
     const beltAwardId = formData.get("beltAwardId") as string; // Renamed from achievementId
@@ -118,22 +121,10 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 export default function AdminStudentAchievementsPage() { // Function name can stay for now, or rename later
     const {student, beltAwards, error} = useLoaderData<LoaderData>(); // Renamed variable
     const navigation = useNavigation();
-    const submit = useSubmit();
     const navigate = useNavigate(); // Get navigate function
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null); // State for delete target
 
     const isSubmitting = navigation.state === "submitting";
-
-    // Function to handle the actual form submission for delete
-    const submitDelete = () => {
-        if (!deleteTargetId) return; // Should not happen if dialog logic is correct
-
-        const formData = new FormData();
-        formData.append("intent", "delete");
-        formData.append("beltAwardId", deleteTargetId);
-        submit(formData, {method: "post"});
-        setDeleteTargetId(null); // Reset target ID after submission
-    };
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -218,14 +209,20 @@ export default function AdminStudentAchievementsPage() { // Function name can st
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel
                                                         onClick={() => setDeleteTargetId(null)}>Cancel</AlertDialogCancel>
-                                                    {/* Use AlertDialogAction which closes the dialog */}
-                                                    <AlertDialogAction
-                                                        onClick={submitDelete}
-                                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                                        disabled={isSubmitting} // Disable if a delete is already in progress
-                                                    >
-                                                        {isSubmitting && navigation.formData?.get('beltAwardId') === deleteTargetId ? 'Deleting...' : 'Delete'}
-                                                    </AlertDialogAction>
+                                                    <Form method="post" onSubmit={() => setDeleteTargetId(null)}>
+                                                        <AuthenticityTokenInput />
+                                                        <input type="hidden" name="intent" value="delete" />
+                                                        {deleteTargetId && (
+                                                            <input type="hidden" name="beltAwardId" value={deleteTargetId} />
+                                                        )}
+                                                        <AlertDialogAction
+                                                            type="submit"
+                                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            {isSubmitting && navigation.formData?.get('beltAwardId') === deleteTargetId ? 'Deleting...' : 'Delete'}
+                                                        </AlertDialogAction>
+                                                    </Form>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>

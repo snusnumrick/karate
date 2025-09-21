@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
+import { csrf } from "~/utils/csrf.server";
 import { deactivateInvoiceEntity, reactivateInvoiceEntity } from "~/services/invoice-entity.server";
 
 export async function action({ params, request }: ActionFunctionArgs) {
@@ -14,6 +15,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
   }
 
   try {
+    await csrf.validate(request);
     const formData = await request.formData();
     const isActive = formData.get("is_active") === "true";
 

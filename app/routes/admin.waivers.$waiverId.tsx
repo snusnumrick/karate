@@ -12,6 +12,8 @@ import {Textarea} from "~/components/ui/textarea";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For displaying errors
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // Loader to fetch a single waiver
 export async function loader({params}: LoaderFunctionArgs) {
@@ -70,6 +72,7 @@ export async function action({request, params}: ActionFunctionArgs) {
         return json({error: "Waiver ID is missing."}, {status: 400});
     }
 
+    await csrf.validate(request);
     const formData = await request.formData();
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
@@ -255,6 +258,7 @@ export default function EditWaiverPage() {
 
             <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
                 <Form method="post">
+                    <AuthenticityTokenInput />
                     {actionData?.error && (
                         <Alert variant="destructive" className="mb-4">
                             <AlertTitle>Error</AlertTitle>

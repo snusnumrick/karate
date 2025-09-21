@@ -2,6 +2,7 @@ import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import type { TaxRate, InvoiceItemType } from "~/types/invoice";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~/types/database.types";
+import {addMoney, Money, multiplyMoney, ZERO_MONEY} from "~/utils/money";
 
 /**
  * Get all active tax rates
@@ -185,15 +186,15 @@ export async function calculateTaxesForPayment({
   studentIds,
   supabaseClient
 }: {
-  subtotalAmount: number;
+  subtotalAmount: Money;
   paymentType: string;
   studentIds?: string[];
   supabaseClient?: SupabaseClient<Database>;
 }): Promise<{
-  totalTaxAmount: number;
+  totalTaxAmount: Money;
   paymentTaxes: Array<{
     tax_rate_id: string;
-    tax_amount: number;
+    tax_amount: Money;
     tax_rate_snapshot: number;
     tax_name_snapshot: string;
   }>;
@@ -231,14 +232,14 @@ export async function calculateTaxesForPayment({
   
   if (taxRatesData.length === 0) {
     console.warn(`[Service/calculateTaxesForPayment] No active tax rates found for item type: ${itemType}. Proceeding without tax.`);
-    return { totalTaxAmount: 0, paymentTaxes: [] };
+    return { totalTaxAmount: ZERO_MONEY, paymentTaxes: [] };
   }
 
   // Calculate individual taxes and total tax on the subtotal
-  let totalTaxAmount = 0;
+  let totalTaxAmount : Money = ZERO_MONEY;
   const paymentTaxes: Array<{
     tax_rate_id: string;
-    tax_amount: number;
+    tax_amount: Money;
     tax_rate_snapshot: number;
     tax_name_snapshot: string;
   }> = [];
@@ -252,8 +253,8 @@ export async function calculateTaxesForPayment({
     }
     
     // Calculate tax on the subtotal
-    const taxAmountForThisRate = Math.round(subtotalAmount * rate);
-    totalTaxAmount += taxAmountForThisRate;
+    const taxAmountForThisRate : Money = multiplyMoney(subtotalAmount, rate);
+    totalTaxAmount = addMoney(totalTaxAmount, taxAmountForThisRate);
     paymentTaxes.push({
       tax_rate_id: taxRate.id,
       tax_amount: taxAmountForThisRate,

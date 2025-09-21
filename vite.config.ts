@@ -7,6 +7,20 @@ import type { Plugin } from "vite";
 
 import { setRemixDevLoadContext } from "@remix-run/dev/dist/vite/plugin";
 
+const devServerHost = process.env.VITE_DEV_SERVER_HOST || "0.0.0.0";
+const devHmrHost = process.env.VITE_DEV_HMR_HOST || "localhost";
+const devHmrPort = process.env.VITE_DEV_HMR_PORT ? Number(process.env.VITE_DEV_HMR_PORT) : 5177;
+
+const allowedHostsEnv = process.env.VITE_DEV_ALLOWED_HOSTS;
+const devAllowedHosts: "all" | string[] = allowedHostsEnv
+  ? allowedHostsEnv === "all"
+    ? "all"
+    : allowedHostsEnv
+        .split(",")
+        .map((host) => host.trim())
+        .filter(Boolean)
+  : "all";
+
 // Only set dev load context in development mode
 // In production (Vercel), this is handled by the server adapter
 if (process.env.NODE_ENV === 'development') {
@@ -82,9 +96,26 @@ export default defineConfig({
   },
   server: {
     port: 5176,
+    host: devServerHost,
+    allowedHosts: devAllowedHosts,
     hmr: {
-      port: 5177,
-      host: 'localhost'
+      port: devHmrPort,
+      host: devHmrHost,
+    },
+  },
+  test: {
+    globals: true,
+    environment: 'node',
+    pool: 'threads',
+    poolOptions: { threads: { singleThread: true } },
+    setupFiles: ['./tests/setupTests.ts'],
+    include: [
+      'app/**/__tests__/**/*.{ts,tsx}'
+    ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      reportsDirectory: 'test-results/coverage'
     }
   }
 });

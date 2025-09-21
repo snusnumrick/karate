@@ -1,5 +1,5 @@
 import { json, LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation, useSearchParams, Link, useSubmit } from "@remix-run/react";
+import { useLoaderData, Form, useNavigation, useSearchParams, Link } from "@remix-run/react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
@@ -19,6 +19,8 @@ import { getPrograms } from "~/services/program.server";
 import type { ClassEnrollment } from "~/types/multi-class";
 import type { EligibilityStatus } from "~/types/payment";
 import { checkStudentEligibility, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // Extended type for enrollment with eligibility
 type EnrollmentWithEligibility = ClassEnrollment & {
@@ -81,6 +83,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  await csrf.validate(request);
   
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
@@ -120,7 +123,6 @@ export default function AdminEnrollments() {
   const { enrollments, classes, programs, stats, filters } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const submit = useSubmit();
   
   const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentWithEligibility | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -412,6 +414,7 @@ export default function AdminEnrollments() {
           
           {selectedEnrollment && (
             <Form method="post" className="space-y-4">
+              <AuthenticityTokenInput />
               <input type="hidden" name="intent" value="update" />
               <input type="hidden" name="id" value={selectedEnrollment.id} />
               
@@ -481,23 +484,21 @@ export default function AdminEnrollments() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-               onClick={() => {
-                 if (deleteEnrollmentId) {
-                   const formData = new FormData();
-                   formData.append('intent', 'drop');
-                   formData.append('id', deleteEnrollmentId);
-                   formData.append('reason', 'Admin action');
-                   
-                   submit(formData, { method: 'post' });
-                   setDeleteEnrollmentId(null);
-                 }
-               }}
-               disabled={isSubmitting}
-               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-             >
-               {isSubmitting ? 'Dropping...' : 'Drop Student'}
-             </AlertDialogAction>
+            <Form method="post" onSubmit={() => setDeleteEnrollmentId(null)}>
+              <AuthenticityTokenInput />
+              <input type="hidden" name="intent" value="drop" />
+              {deleteEnrollmentId && (
+                <input type="hidden" name="id" value={deleteEnrollmentId} />
+              )}
+              <input type="hidden" name="reason" value="Admin action" />
+              <AlertDialogAction
+                 type="submit"
+                 disabled={isSubmitting}
+                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+               >
+                 {isSubmitting ? 'Dropping...' : 'Drop Student'}
+               </AlertDialogAction>
+            </Form>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

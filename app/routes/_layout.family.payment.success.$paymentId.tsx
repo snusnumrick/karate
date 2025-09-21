@@ -7,6 +7,8 @@ import { Button } from "~/components/ui/button";
 import { CheckCircle } from "lucide-react"; // Use lucide-react icon for consistency
 import type { Database, Tables } from "~/types/database.types"; // Import Tables
 import { siteConfig } from "~/config/site";
+import { formatMoney, fromCents } from "~/utils/money";
+import { centsFromRow } from "~/utils/database-money";
 
 // Define types for related tables needed for store purchases
 type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row'];
@@ -67,13 +69,16 @@ function getPaymentProductDescription(type: Database['public']['Enums']['payment
 
 
 export async function loader({ request, params }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
-    // Get Stripe Payment Intent ID from URL query parameter `payment_intent`
+    // Get Payment Intent ID from URL query parameter `payment_intent`
     // OR get Supabase Payment ID from route parameter `paymentId` (for failed payments linking back)
     const url = new URL(request.url);
     const paymentIntentId = url.searchParams.get('payment_intent');
     const supabasePaymentId = params.paymentId; // This is the Supabase ID
 
     const { supabaseServer, response } = getSupabaseServerClient(request);
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const isUuid = paymentIntentId ? uuidRegex.test(paymentIntentId) : false;
 
     if (!paymentIntentId && !supabasePaymentId) {
         console.error("[Payment Success Loader] Missing payment_intent query parameter AND paymentId route parameter.");
@@ -84,10 +89,10 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     let error: string | undefined;
     let quantity: number | null = null;
 
-    // Prioritize fetching by Stripe Payment Intent ID if available (standard success flow)
+    // Prioritize fetching by Payment Intent ID if available (standard success flow)
     if (paymentIntentId) {
-        console.log(`[Payment Success Loader] Fetching payment record using Stripe PI ID: ${paymentIntentId}`);
-        const { data: paymentData, error: dbError } = await supabaseServer
+        console.log(`[Payment Success Loader] Fetching payment record using PI ID: ${paymentIntentId}`);
+        const baseQuery = supabaseServer
             .from('payments')
             // Select all required fields, including nested order details for store purchases
             .select(`
@@ -104,9 +109,12 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
                         )
                     )
                 )
-            `)
-            .eq('stripe_payment_intent_id', paymentIntentId)
-            .maybeSingle();
+            `);
+
+        const { data: paymentData, error: dbError } = await (isUuid
+            ? baseQuery.or(`payment_intent_id.eq.${paymentIntentId},id.eq.${paymentIntentId}`)
+            : baseQuery.eq('payment_intent_id', paymentIntentId)
+        ).maybeSingle();
 
         if (dbError) {
             console.error(`[Payment Success Loader] Error fetching payment by PI ID ${paymentIntentId}:`, dbError.message);
@@ -299,14 +307,14 @@ export default function PaymentSuccessPage() {
                                 <p><span className="font-semibold">Product:</span> {getPaymentProductDescription(payment.type, quantity)}</p>
                             )}
                             {/* Display amount breakdown */}
-                            <p><span className="font-semibold">Subtotal:</span> ${(payment.subtotal_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
+                            <p><span className="font-semibold">Subtotal:</span> {formatMoney(fromCents(centsFromRow('payments', 'subtotal_amount', payment as unknown as Record<string, unknown>)))} {siteConfig.localization.currency}</p>
                             {/* Display Tax Breakdown */}
                             {payment.payment_taxes && payment.payment_taxes.length > 0 && (
                                 payment.payment_taxes.map((tax, index) => (
-                                    <p key={index}><span className="font-semibold">{tax.tax_name_snapshot}:</span> ${(tax.tax_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
+                                    <p key={index}><span className="font-semibold">{tax.tax_name_snapshot}:</span> {formatMoney(fromCents(centsFromRow('payment_taxes', 'tax_amount', tax as unknown as Record<string, unknown>)))} {siteConfig.localization.currency}</p>
                                 ))
                             )}
-                            <p className="font-bold border-t pt-2 mt-2 dark:border-gray-600"><span className="font-semibold">Total Amount Paid:</span> ${(payment.total_amount / 100).toFixed(2)} {siteConfig.localization.currency}</p>
+                            <p className="font-bold border-t pt-2 mt-2 dark:border-gray-600"><span className="font-semibold">Total Amount Paid:</span> {formatMoney(fromCents(centsFromRow('payments', 'total_amount', payment as unknown as Record<string, unknown>)))} {siteConfig.localization.currency}</p>
                             {payment.payment_method && <p><span className="font-semibold">Payment Method:</span> {payment.payment_method.replace('_', ' ').toUpperCase()}</p>}
                             {payment.receipt_url && (
                                     <p className="mt-2"> {/* Add margin top for spacing */}

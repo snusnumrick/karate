@@ -1,6 +1,8 @@
 import { type ActionFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -27,6 +29,9 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     // Admin check happens in the parent _admin layout loader
     const { response } = getSupabaseServerClient(request); // Removed unused supabaseServer
     const headers = response.headers;
+
+    // CSRF validation
+    await csrf.validate(request);
 
     const formData = await request.formData();
     const name = formData.get('name') as string;
@@ -155,6 +160,7 @@ export default function AddProductPage() {
             )}
 
             <Form method="post" encType="multipart/form-data" className="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <AuthenticityTokenInput />
                 {/* Product Name */}
                 <div>
                     <Label htmlFor="name">Product Name <span className="text-destructive">*</span></Label>

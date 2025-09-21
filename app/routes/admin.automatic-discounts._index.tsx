@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
-import { useLoaderData, Link, useNavigation, useSubmit } from "@remix-run/react";
+import { useLoaderData, Link, useNavigation } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { AdminCard, AdminCardContent, AdminCardDescription, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
@@ -20,6 +20,9 @@ import { requireAdminUser } from "~/utils/auth.server";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { toMoney, formatDollars } from "~/utils/money";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 // Type definitions for assignment data with joins
 type AssignmentWithJoins = {
   id: string;
@@ -50,6 +53,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  await csrf.validate(request);
   
   const formData = await request.formData();
   const intent = formData.get('intent');
@@ -71,7 +75,6 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function AutomaticDiscountsIndex() {
   const { automationRules, assignments } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
-  const submit = useSubmit();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const isSubmitting = navigation.state === 'submitting';
 
@@ -269,9 +272,15 @@ export default function AutomaticDiscountsIndex() {
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
-                      {(assignment as AssignmentWithJoins).discount_codes?.discount_type === 'percentage' ?
-                  `${(assignment as AssignmentWithJoins).discount_codes?.discount_value}%` :
-                  `$${(assignment as AssignmentWithJoins).discount_codes?.discount_value}`} off
+                      {(() => {
+                        const dc = (assignment as AssignmentWithJoins).discount_codes;
+                        if (!dc) return '';
+                        if (dc.discount_type === 'percentage') {
+                          return `${dc.discount_value}%`;
+                        }
+                        const money = toMoney(dc.discount_value as unknown);
+                        return `$${formatDollars(money)}`;
+                      })()} off
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {(assignment as AssignmentWithJoins).discount_codes?.name}
@@ -310,20 +319,20 @@ export default function AutomaticDiscountsIndex() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteConfirmId) {
-                  const formData = new FormData();
-                  formData.append('intent', 'delete');
-                  formData.append('ruleId', deleteConfirmId);
-                  submit(formData, { method: 'post', replace: true });
-                }
-              }}
-              disabled={isSubmitting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isSubmitting ? 'Deleting...' : 'Delete Rule'}
-            </AlertDialogAction>
+            <form method="post" onSubmit={() => setDeleteConfirmId(null)}>
+              <AuthenticityTokenInput />
+              <input type="hidden" name="intent" value="delete" />
+              {deleteConfirmId && (
+                <input type="hidden" name="ruleId" value={deleteConfirmId} />
+              )}
+              <AlertDialogAction
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isSubmitting ? 'Deleting...' : 'Delete Rule'}
+              </AlertDialogAction>
+            </form>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

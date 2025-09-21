@@ -7,6 +7,8 @@ import {Checkbox} from "~/components/ui/checkbox";
 import {Label} from "~/components/ui/label";
 import {Alert, AlertDescription} from "~/components/ui/alert";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 export async function loader({request, params}: LoaderFunctionArgs) {
     const waiverId = params.id!;
@@ -95,6 +97,7 @@ export async function action({request, params}: ActionFunctionArgs) {
         return json({success: false, error: 'User not authenticated'});
     }
 
+    await csrf.validate(request);
     const formData = await request.formData();
     const signature = formData.get('signature') as string;
     const agreement = formData.get('agreement') === 'on';
@@ -334,6 +337,7 @@ export default function SignWaiver() {
                     </div>
 
                     <Form method="post" onSubmit={handleSubmit}>
+                        <AuthenticityTokenInput />
                         <div className="mb-6">
                             <h2 className="text-xl font-semibold mb-2">Your Signature</h2>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">

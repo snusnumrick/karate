@@ -120,9 +120,27 @@ Add the following environment variables in your deployment platform:
 
 ### Payment Integration
 
+**Provider Configuration:**
+- `PAYMENT_PROVIDER`: Payment provider to use (`stripe` or `square`, defaults to `stripe`)
+
+**Stripe Configuration:**
 - `STRIPE_SECRET_KEY`: Stripe secret key
 - `STRIPE_PUBLISHABLE_KEY`: Stripe publishable key
 - `STRIPE_WEBHOOK_SECRET`: Stripe webhook signing secret
+
+**Square Configuration (if using Square):**
+- `SQUARE_APPLICATION_ID`: Square application ID (sandbox: `sandbox-*`, production: `sq0idp-*`)
+- `SQUARE_ACCESS_TOKEN`: Square access token (required)
+- `SQUARE_LOCATION_ID`: Square location ID
+- `SQUARE_ENVIRONMENT`: Square environment (`sandbox` or `production`, defaults to `sandbox`)
+
+**Note**: Currency is automatically configured from `app/config/site.ts` → `localization.currency` (currently CAD). Ensure your Square merchant account supports this currency.
+
+**Square Production Requirements:**
+- ✅ **HTTPS Required**: Square Web SDK only works in secure contexts
+- ✅ **CSP Configuration**: Domains automatically added via provider abstraction in `entry.server.tsx`
+- ✅ **Browser Support**: No IE11, Chrome extensions not supported
+- ✅ **Token Security**: Payment tokens expire after 24 hours, single-use only
 
 ### Email Service
 
@@ -205,15 +223,58 @@ npx web-push generate-vapid-keys
    supabase functions deploy sync-pending-payments
    ```
 
-4. **Schedule Functions using pg_cron:**
-   - Set up automated scheduling for reminder functions
-   - Configure payment synchronization schedules
+4. **Configure Payment Provider for Edge Functions:**
+   
+   Set the `PAYMENT_PROVIDER` environment variable for Supabase Edge Functions:
+   ```bash
+   # For Stripe (default)
+   supabase secrets set PAYMENT_PROVIDER=stripe
+   
+   # For Square
+   supabase secrets set PAYMENT_PROVIDER=square
+   ```
+   
+   **Provider-specific secrets:**
+   
+   For Stripe:
+   ```bash
+   supabase secrets set STRIPE_SECRET_KEY=sk_live_...
+   ```
+   
+   For Square:
+   ```bash
+   supabase secrets set SQUARE_APPLICATION_ID=sq0idp-...
+   supabase secrets set SQUARE_ACCESS_TOKEN=EAAAE...
+   supabase secrets set SQUARE_LOCATION_ID=LR...
+   supabase secrets set SQUARE_ENVIRONMENT=production
+   ```
 
-5. **Authentication Settings:**
+5. **Schedule Functions using pg_cron:**
+   
+   Set up automated scheduling for reminder and sync functions:
+   ```sql
+   -- Schedule sync-pending-payments to run every 15 minutes
+   SELECT cron.schedule(
+     'sync-pending-payments',
+     '*/15 * * * *',
+     'SELECT net.http_post(url:=''https://your-project-ref.supabase.co/functions/v1/sync-pending-payments'', headers:=''{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.jwt_secret') || '"}''::jsonb) as request_id;'
+   );
+   
+   -- Schedule payment reminders (daily at 9 AM)
+   SELECT cron.schedule(
+     'payment-reminder',
+     '0 9 * * *',
+     'SELECT net.http_post(url:=''https://your-project-ref.supabase.co/functions/v1/payment-reminder'', headers:=''{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.jwt_secret') || '"}''::jsonb) as request_id;'
+   );
+   ```
+
+6. **Authentication Settings:**
    - Ensure "Confirm email" is **enabled** for production
    - Set up database backups
 
-### Stripe Webhook Configuration
+### Payment Provider Webhook Configuration
+
+#### Stripe Webhooks
 
 1. Get your production URL after deployment
 2. In Stripe Dashboard, go to Developers → Webhooks
@@ -223,6 +284,36 @@ npx web-push generate-vapid-keys
      - `payment_intent.succeeded`
      - `payment_intent.payment_failed`
    - Use the `STRIPE_WEBHOOK_SECRET` from your environment variables
+
+#### Square Webhooks
+
+1. In Square Developer Dashboard, go to your application
+2. Configure webhooks:
+   - URL: `https://<your-domain>/api/webhooks/square`
+   - Select events:
+     - `payment.created`
+     - `payment.updated`
+   - Configure signature verification using Square webhook signatures
+
+### Payment Sync Function Details
+
+The `sync-pending-payments` Edge Function is provider-agnostic and will:
+
+1. **Detect Provider:** Uses the `PAYMENT_PROVIDER` environment variable
+2. **Query Database:** Finds pending payments older than 15 minutes with payment intent IDs
+3. **Provider Integration:** 
+   - **Stripe:** Uses Stripe API to check payment intent status
+   - **Square:** Uses Square Payments API (implementation placeholder provided)
+4. **Update Status:** Automatically updates database based on provider response
+5. **Logging:** Provides detailed provider-specific logging for monitoring
+
+**Database Field Mapping:**
+- All providers: Uses generic `payment_intent_id` field
+- Legacy `stripe_payment_intent_id` field migrated to `payment_intent_id`
+
+**Status Mapping:**
+- Stripe: `succeeded` → `succeeded`, `requires_payment_method`/`canceled` → `failed`
+- Square: `approved`/`completed` → `succeeded`, `failed`/`canceled` → `failed`
 
 ### Tax Configuration
 
@@ -240,9 +331,85 @@ npx web-push generate-vapid-keys
 - **Email Delivery Issues:** Check Resend domain verification and API key
 - **Database Connection Errors:** Verify Supabase connection strings and permissions
 
+### Square Production Deployment
+
+#### Pre-Deployment Validation
+
+Run the Square configuration validator before deployment:
+
+```bash
+npm run validate:square
+```
+
+This validates:
+- ✅ All required environment variables are present
+- ✅ Application ID format matches environment (production: `sq0idp-*`, sandbox: `sandbox-*`)
+- ✅ Environment setting is valid (`sandbox` or `production`)
+- ✅ CSP domain requirements
+
+#### Square Production Checklist
+
+- [ ] **Environment Variables**: All Square credentials stored as environment variables
+- [ ] **HTTPS Enabled**: Production environment uses HTTPS only
+- [ ] **CSP Headers**: Content Security Policy configured to allow Square domains
+- [ ] **Sandbox Testing**: Complete payment flow tested with sandbox credentials
+- [ ] **Test Cards**: Verified with Square test cards (4111 1111 1111 1111)
+- [ ] **SCA Testing**: Strong Customer Authentication tested for EU customers
+- [ ] **Error Handling**: Production error logging and monitoring configured
+
+#### Square CSP Domains
+
+The following domains are automatically added to CSP headers when using Square:
+
+**Connect Sources:**
+- `https://connect.squareup.com`
+- `https://web.squarecdn.com`
+- `https://pci-connect.squareup.com` (production)
+- `https://pci-connect.squareupsandbox.com` (sandbox)
+
+**Script/Frame Sources:**
+- `https://js.squareup.com`
+- `https://web.squarecdn.com`
+- `https://sandbox.web.squarecdn.com`
+- `https://production.web.squarecdn.com`
+
+#### Common Square Production Issues
+
+**1. Payment Token Expiration**
+- **Problem**: Payment tokens expire after 24 hours
+- **Solution**: Process payment tokens immediately after generation
+
+**2. Strong Customer Authentication (SCA)**
+- **Problem**: EU customers require additional authentication
+- **Solution**: Provide comprehensive billing information to improve success rates
+
+**3. CSP Violations**
+- **Problem**: Square resources blocked by Content Security Policy
+- **Solution**: Verify all Square domains are included in CSP headers (automatically handled)
+
+**4. HTTPS Requirements**
+- **Problem**: Square Web SDK fails to load over HTTP
+- **Solution**: Ensure production environment uses HTTPS only
+
+**5. Application ID Format Errors**
+- **Problem**: `InvalidApplicationIdError: The Payment 'applicationId' option is not in the correct format`
+- **Solution**: Known issue with Square Web SDK versions 2.1.0+
+  - Use Square API version `2025-02-20` or earlier
+  - Verify application ID type: `sq0idp-` for Web SDK, `sq0idb-` for backend API
+  - May require separate application IDs for different Square services
+
+**6. OAuth Location Authorization Errors**
+- **Problem**: `Not authorized to take payments with location_id=...`
+- **Solution**: Square OAuth access tokens are location-specific
+  - **Critical**: Each Square location requires its own OAuth access token
+  - Verify the access token was generated for the specific location being used
+  - Re-run OAuth flow for each location that needs payment processing
+  - Cannot use a single access token across multiple locations
+
 ### Monitoring
 
 - Monitor Vercel function logs for errors
 - Check Supabase logs for database and function issues
-- Use Stripe dashboard for payment monitoring
+- Use Stripe/Square dashboard for payment monitoring
 - Monitor Resend dashboard for email delivery status
+- Track payment success rates and error patterns

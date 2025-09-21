@@ -1,5 +1,6 @@
 import { InvoiceTemplate } from "~/types/invoice";
 import { createFeeLineItem, getDefaultServicePeriod } from "~/utils/line-item-helpers";
+import { fromDollars } from '~/utils/money';
 
 export const invoiceTemplates: InvoiceTemplate[] = [
   {
@@ -12,7 +13,7 @@ export const invoiceTemplates: InvoiceTemplate[] = [
         item_type: 'class_enrollment',
         description: 'Monthly Class Fee',
         quantity: 1,
-        unit_price: 0, // Will be filled based on actual class
+        unit_price: fromDollars(0), // Will be filled based on actual class
         tax_rate: 0,
         discount_rate: 0,
         service_period_start: getDefaultServicePeriod().start,
@@ -29,14 +30,14 @@ export const invoiceTemplates: InvoiceTemplate[] = [
     description: 'Complete package for new student registration including fees and equipment',
     category: 'enrollment',
     lineItems: [
-      createFeeLineItem('Registration Fee', 50),
-      createFeeLineItem('Uniform (Gi)', 75),
-      createFeeLineItem('Belt', 15),
+      createFeeLineItem('Registration Fee', fromDollars(50)),
+      createFeeLineItem('Uniform (Gi)', fromDollars(75)),
+      createFeeLineItem('Belt', fromDollars(15)),
       {
         item_type: 'class_enrollment',
         description: 'First Month Class Fee',
         quantity: 1,
-        unit_price: 0, // Will be filled based on actual class
+        unit_price: fromDollars(0), // Will be filled based on actual class
         tax_rate: 0,
         discount_rate: 0,
         service_period_start: getDefaultServicePeriod().start,
@@ -53,8 +54,8 @@ export const invoiceTemplates: InvoiceTemplate[] = [
     description: 'Fees for belt promotion testing',
     category: 'fees',
     lineItems: [
-      createFeeLineItem('Belt Testing Fee', 40),
-      createFeeLineItem('New Belt', 20)
+      createFeeLineItem('Belt Testing Fee', fromDollars(40)),
+      createFeeLineItem('New Belt', fromDollars(20))
     ],
     defaultTerms: 'Testing fees are due before the testing date.',
     defaultNotes: 'Congratulations on your progress! Good luck with your testing.'
@@ -66,8 +67,8 @@ export const invoiceTemplates: InvoiceTemplate[] = [
     description: 'Registration fees for tournament participation',
     category: 'fees',
     lineItems: [
-      createFeeLineItem('Tournament Entry Fee', 60),
-      createFeeLineItem('USANKF Membership (if required)', 35)
+      createFeeLineItem('Tournament Entry Fee', fromDollars(60)),
+      createFeeLineItem('USANKF Membership (if required)', fromDollars(35))
     ],
     defaultTerms: 'Tournament fees are non-refundable and must be paid before the registration deadline.',
     defaultNotes: 'We wish you the best of luck in the tournament!'
@@ -79,11 +80,11 @@ export const invoiceTemplates: InvoiceTemplate[] = [
     description: 'Complete sparring gear package for competition students',
     category: 'products',
     lineItems: [
-      createFeeLineItem('Sparring Gloves', 45),
-      createFeeLineItem('Foot Pads', 35),
-      createFeeLineItem('Shin Guards', 40),
-      createFeeLineItem('Headgear', 65),
-      createFeeLineItem('Mouthguard', 15)
+      createFeeLineItem('Sparring Gloves', fromDollars(45)),
+      createFeeLineItem('Foot Pads', fromDollars(35)),
+      createFeeLineItem('Shin Guards', fromDollars(40)),
+      createFeeLineItem('Headgear', fromDollars(65)),
+      createFeeLineItem('Mouthguard', fromDollars(15))
     ],
     defaultTerms: 'Equipment sales are final. Please ensure proper fit before purchase.',
     defaultNotes: 'This equipment meets tournament standards and regulations.'
@@ -99,7 +100,7 @@ export const invoiceTemplates: InvoiceTemplate[] = [
         item_type: 'individual_session',
         description: 'Private Lesson (1 hour)',
         quantity: 4,
-        unit_price: 75,
+        unit_price: fromDollars(75),
         tax_rate: 0,
         discount_rate: 0
       }
@@ -118,7 +119,7 @@ export const invoiceTemplates: InvoiceTemplate[] = [
         item_type: 'class_enrollment',
         description: 'First Family Member - Monthly Fee',
         quantity: 1,
-        unit_price: 0, // Will be filled based on actual class
+        unit_price: fromDollars(0), // Will be filled based on actual class
         tax_rate: 0,
         discount_rate: 0,
         service_period_start: getDefaultServicePeriod().start,
@@ -128,7 +129,7 @@ export const invoiceTemplates: InvoiceTemplate[] = [
         item_type: 'class_enrollment',
         description: 'Additional Family Member - Monthly Fee',
         quantity: 1,
-        unit_price: 0, // Will be filled based on actual class
+        unit_price: fromDollars(0), // Will be filled based on actual class
         tax_rate: 0,
         discount_rate: 10, // 10% family discount
         service_period_start: getDefaultServicePeriod().start,
@@ -145,7 +146,7 @@ export const invoiceTemplates: InvoiceTemplate[] = [
     description: 'Fees for makeup classes due to absences',
     category: 'fees',
     lineItems: [
-      createFeeLineItem('Makeup Class Fee', 25)
+      createFeeLineItem('Makeup Class Fee', fromDollars(25))
     ],
     defaultTerms: 'Makeup classes must be scheduled within 30 days of the missed class.',
     defaultNotes: 'Makeup classes help ensure you stay on track with your training.'
@@ -157,9 +158,9 @@ export const invoiceTemplates: InvoiceTemplate[] = [
     description: 'Week-long summer martial arts camp',
     category: 'enrollment',
     lineItems: [
-      createFeeLineItem('Summer Camp Week 1', 150),
-      createFeeLineItem('Camp T-Shirt', 20),
-      createFeeLineItem('Lunch (5 days)', 50)
+      createFeeLineItem('Summer Camp Week 1', fromDollars(150)),
+      createFeeLineItem('Camp T-Shirt', fromDollars(20)),
+      createFeeLineItem('Lunch (5 days)', fromDollars(50))
     ],
     defaultTerms: 'Camp fees are due one week before the camp start date. Cancellations must be made 48 hours in advance.',
     defaultNotes: 'Our summer camp provides intensive training and fun activities for all skill levels.'
@@ -175,7 +176,7 @@ export const invoiceTemplates: InvoiceTemplate[] = [
         item_type: 'class_enrollment',
         description: 'Annual Membership (12 months)',
         quantity: 12,
-        unit_price: 0, // Will be filled based on actual class
+        unit_price: fromDollars(0), // Will be filled based on actual class
         tax_rate: 0,
         discount_rate: 15, // 15% discount for annual payment
         service_period_start: getDefaultServicePeriod().start,

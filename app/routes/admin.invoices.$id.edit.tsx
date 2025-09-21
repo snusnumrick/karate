@@ -8,7 +8,8 @@ import { getInvoiceEntities } from "~/services/invoice-entity.server";
 import { getInvoiceById, getInvoiceByNumber, updateInvoice } from "~/services/invoice.server";
 import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
-import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
+import type { CreateInvoiceData, CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
+import { isNegative, toCents, fromCents } from "~/utils/money";
 
 interface ActionData {
   errors?: {
@@ -55,6 +56,41 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       fee: feeTaxRates,
       other: otherTaxRates
     };
+
+    // Ensure any tax rates already applied to this invoice are available in the editor,
+    // even if current business rules would filter them out (e.g., PST on enrollments).
+    // Build a map of referenced tax rates using snapshots from the invoice line item taxes.
+    const referencedRatesMap = new Map<string, TaxRate>();
+    invoice.line_items.forEach((item) => {
+      (item.taxes || []).forEach((t) => {
+        if (!referencedRatesMap.has(t.tax_rate_id)) {
+          referencedRatesMap.set(t.tax_rate_id, {
+            id: t.tax_rate_id,
+            name: t.tax_name_snapshot,
+            rate: t.tax_rate_snapshot,
+            description: t.tax_description_snapshot || undefined,
+            region: undefined,
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      });
+    });
+
+    const referencedRates = Array.from(referencedRatesMap.values());
+    // Merge referenced rates into all item type buckets so the UI can always display them
+    const mergeRates = (arr: TaxRate[]) => {
+      const existing = new Map(arr.map(r => [r.id, r] as const));
+      referencedRates.forEach(r => {
+        if (!existing.has(r.id)) arr.push(r);
+      });
+    };
+    mergeRates(taxRatesByItemType.class_enrollment);
+    mergeRates(taxRatesByItemType.individual_session);
+    mergeRates(taxRatesByItemType.product);
+    mergeRates(taxRatesByItemType.fee);
+    mergeRates(taxRatesByItemType.other);
     
     // Check if invoice can be edited (only drafts)
     if (invoice.status !== 'draft') {
@@ -93,11 +129,22 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // Find the selected entity
     const selectedEntity = entities.find(e => e.id === invoice.entity_id);
     
+    // Serialize Money types for entities
+    const serializedEntities = entities.map(entity => ({
+      ...entity,
+      credit_limit: entity.credit_limit ? toCents(entity.credit_limit) : null
+    }));
+    
+    const serializedSelectedEntity = selectedEntity ? {
+      ...selectedEntity,
+      credit_limit: selectedEntity.credit_limit ? toCents(selectedEntity.credit_limit) : null
+    } : null;
+    
     return json({ 
       invoice, 
-      entities, 
+      entities: serializedEntities, 
       initialData, 
-      selectedEntity: selectedEntity || null,
+      selectedEntity: serializedSelectedEntity,
       taxRatesByItemType
     });
   } catch (error) {
@@ -188,7 +235,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
               errors.line_items = "All line items must have a positive quantity";
               break;
             }
-            if (item.unit_price < 0) {
+            if (isNegative(item.unit_price)) {
               errors.line_items = "Line item prices cannot be negative";
               break;
             }
@@ -201,7 +248,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
             errors.line_items = "Line items with descriptions must have a positive quantity";
             break;
           }
-          if (item.description?.trim() && item.unit_price < 0) {
+          if (item.description?.trim() && isNegative(item.unit_price)) {
             errors.line_items = "Line item prices cannot be negative";
             break;
           }
@@ -254,7 +301,18 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function EditInvoicePage() {
-  const { invoice, entities, initialData, selectedEntity, taxRatesByItemType } = useLoaderData<typeof loader>();
+  const { invoice, entities: rawEntities, initialData, selectedEntity: rawSelectedEntity, taxRatesByItemType } = useLoaderData<typeof loader>();
+  
+  // Deserialize Money types for entities
+  const entities = rawEntities.map(entity => ({
+    ...entity,
+    credit_limit: entity.credit_limit ? fromCents(entity.credit_limit) : undefined
+  }));
+  
+  const selectedEntity = rawSelectedEntity ? {
+    ...rawSelectedEntity,
+    credit_limit: rawSelectedEntity.credit_limit ? fromCents(rawSelectedEntity.credit_limit) : undefined
+  } : null;
   const actionData = useActionData<ActionData>();
 
   return (
@@ -285,8 +343,8 @@ export default function EditInvoicePage() {
 
         {/* Invoice Form */}
         <InvoiceForm 
-          entities={entities} 
-          initialData={initialData}
+          entities={entities}
+          initialData={initialData as Partial<CreateInvoiceData>}
           mode="edit"
           preSelectedEntity={selectedEntity}
           errors={actionData?.errors}

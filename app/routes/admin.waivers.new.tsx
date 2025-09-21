@@ -12,11 +12,14 @@ import {Textarea} from "~/components/ui/textarea";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // Action to create a new waiver
 export async function action({request}: ActionFunctionArgs) {
     console.log("Entering /admin/waivers/new action...");
 
+    await csrf.validate(request);
     const formData = await request.formData();
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
@@ -170,6 +173,7 @@ export default function NewWaiverPage() {
 
             <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
                 <Form method="post">
+                    <AuthenticityTokenInput />
                     {actionData?.error && (
                         <Alert variant="destructive" className="mb-4">
                             <AlertTitle>Error</AlertTitle>

@@ -5,7 +5,7 @@ import { csrf } from "~/utils/csrf.server";
 import { Building2, FileText, Trash2, Search, Plus, Users, Landmark, Briefcase, HelpCircle, CheckCircle, AlertCircle } from "lucide-react";
 import { getInvoiceEntitiesWithStats, deleteInvoiceEntity } from "~/services/invoice-entity.server";
 import type { EntityType, InvoiceEntityWithStats } from "~/types/invoice";
-import { formatCurrency } from "~/utils/misc";
+import { formatMoney, isPositive, addMoney, ZERO_MONEY, fromCents, toMoney } from "~/utils/money";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -53,8 +53,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   try {
     const entities = await getInvoiceEntitiesWithStats(filters);
-    const csrfToken = await csrf.commitToken(request);
-    return json({ entities, totalCount: entities.length, entityTypes: [], filters: { search, entityType, isActive }, csrfToken });
+    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+    return json(
+      { entities, totalCount: entities.length, entityTypes: [], filters: { search, entityType, isActive }, csrfToken },
+      { headers: csrfCookieHeader ? { 'Set-Cookie': csrfCookieHeader } : {} }
+    );
   } catch (error) {
     console.error("Error loading invoice entities:", error);
     throw new Response("Failed to load invoice entities", { status: 500 });
@@ -160,9 +163,8 @@ export default function InvoiceEntitiesIndexPage() {
     
     // Submit the change
     const formData = new FormData();
-    const tokenValue = Array.isArray(csrfToken) ? csrfToken[1] : csrfToken;
-    if (tokenValue) {
-      formData.append("csrf", tokenValue);
+    if (csrfToken) {
+      formData.append("csrf", csrfToken);
     }
     formData.append("is_active", newStatus.toString());
     
@@ -193,9 +195,8 @@ export default function InvoiceEntitiesIndexPage() {
       setFeedback({ type: null, message: '' });
       
       const formData = new FormData();
-      const tokenValue = Array.isArray(csrfToken) ? csrfToken[1] : csrfToken;
-      if (tokenValue) {
-        formData.append("csrf", tokenValue);
+      if (csrfToken) {
+        formData.append("csrf", csrfToken);
       }
       formData.append("action", "delete");
       formData.append("entityId", entityToDelete.id);
@@ -224,7 +225,7 @@ export default function InvoiceEntitiesIndexPage() {
 
   // Check if entity can be deleted (has no invoices)
   const canDeleteEntity = (entity: InvoiceEntityWithStats) => {
-    return typeof entity.total_invoices === 'number' && entity.total_invoices === 0;
+    return entity.total_invoices === 0;
   };
 
   // Handle fetcher completion
@@ -357,13 +358,13 @@ export default function InvoiceEntitiesIndexPage() {
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Outstanding</h3>
           <p className="text-2xl font-bold text-orange-600">
-            {formatCurrency(entities.reduce((sum, e) => sum + e.outstanding_amount, 0) * 100)}
+            {formatMoney(entities.reduce((sum, e) => addMoney(sum, typeof e.outstanding_amount === 'number' ? fromCents(e.outstanding_amount) : toMoney(e.outstanding_amount as unknown)), ZERO_MONEY))}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Invoiced</h3>
           <p className="text-2xl font-bold text-blue-600">
-            {formatCurrency(entities.reduce((sum, e) => sum + e.total_amount, 0) * 100)}
+            {formatMoney(entities.reduce((sum, e) => addMoney(sum, typeof e.total_amount === 'number' ? fromCents(e.total_amount) : toMoney(e.total_amount as unknown)), ZERO_MONEY))}
           </p>
         </div>
       </div>
@@ -429,22 +430,22 @@ export default function InvoiceEntitiesIndexPage() {
                       <div className="text-sm">
                         <div>{entity.total_invoices} invoices</div>
                         <div className="text-gray-500">
-                          {formatCurrency(entity.total_amount * 100)}
+                          {formatMoney(typeof entity.total_amount === 'number' ? fromCents(entity.total_amount) : toMoney(entity.total_amount as unknown))}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className={`font-medium ${
-                        entity.outstanding_amount > 0 ? 'text-orange-600' : 'text-green-600'
+                        isPositive(typeof entity.outstanding_amount === 'number' ? fromCents(entity.outstanding_amount) : toMoney(entity.outstanding_amount as unknown)) ? 'text-orange-600' : 'text-green-600'
                       }`}>
-                        {formatCurrency(entity.outstanding_amount * 100)}
+                        {formatMoney(typeof entity.outstanding_amount === 'number' ? fromCents(entity.outstanding_amount) : toMoney(entity.outstanding_amount as unknown))}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Switch
                           id={`status-${entity.id}`}
-                          checked={getEntityStatus(entity)}
+                          checked={getEntityStatus(entity as InvoiceEntityWithStats)}
                           disabled={isEntityUpdating(entity.id)}
                           onCheckedChange={(checked) => {
                             handleStatusToggle(entity.id, checked);
@@ -454,7 +455,7 @@ export default function InvoiceEntitiesIndexPage() {
                           htmlFor={`status-${entity.id}`} 
                           className={`text-sm ${isEntityUpdating(entity.id) ? 'opacity-50' : ''}`}
                         >
-                          {getEntityStatus(entity) ? "Active" : "Inactive"}
+                          {getEntityStatus(entity as InvoiceEntityWithStats) ? "Active" : "Inactive"}
                           {isEntityUpdating(entity.id) && (
                             <span className="ml-1 text-xs text-gray-500">updating...</span>
                           )}
@@ -468,7 +469,7 @@ export default function InvoiceEntitiesIndexPage() {
                             <FileText className="w-4 h-4" />
                           </Link>
                         </Button>
-                        {canDeleteEntity(entity) ? (
+                        {canDeleteEntity(entity as InvoiceEntityWithStats) ? (
                           <Button 
                             variant="outline" 
                             size="sm" 

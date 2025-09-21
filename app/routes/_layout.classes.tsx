@@ -5,6 +5,7 @@ import { getPrograms } from "~/services/program.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import type { Program } from "~/types/multi-class";
 import { mergeMeta } from "~/utils/meta";
+import { JsonLd } from "~/components/JsonLd";
 
 type ClassWithSchedule = {
     id: string;
@@ -300,14 +301,7 @@ export default function ClassesPage() {
 
     return (
         <div className="min-h-screen page-background-styles py-12">
-            {nonce && classesStructuredData && (
-                <script
-                    type="application/ld+json"
-                    nonce={nonce}
-                    suppressHydrationWarning
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(classesStructuredData) }}
-                />
-            )}
+            {nonce && classesStructuredData && (<JsonLd data={classesStructuredData} nonce={nonce} />)}
             {/* Hero Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">

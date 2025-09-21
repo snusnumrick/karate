@@ -3,6 +3,7 @@ import {createClient} from "@supabase/supabase-js"; // Import standard client
 import type {Database} from "~/types/database.types";
 import type { EligibilityStatus } from '~/types/payment';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
+import {addMoney, Money, toCents} from "./money";
 
 // Re-export EligibilityStatus for other modules
 export type { EligibilityStatus };
@@ -29,13 +30,7 @@ export function getSupabaseAdminClient() {
     return createClient<Database>(supabaseUrl, supabaseServiceKey);
 }
 
-// Initialize Stripe
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-if (!stripeSecretKey) {
-    console.warn("STRIPE_SECRET_KEY is not set. Payment functionality will be disabled.");
-}
-// Ensure Stripe version compatibility if needed, e.g., apiVersion: '2023-10-16'
-// Stripe client initialization removed since it is not used.
+// Note: Provider-specific environment validation is now handled by each provider's isConfigured() method
 
 type SupabaseClient = ReturnType<typeof createServerClient<Database>>;
 type SupabaseServerClientReturn = {
@@ -123,12 +118,12 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 // Renamed from createPaymentSession - This function ONLY creates the initial DB record.
 export async function createInitialPaymentRecord(
     familyId: string,
-    subtotalAmount: number,
+    subtotalAmount: Money,
     studentIds: string[],
     type: Database['public']['Enums']['payment_type_enum'],
     orderId?: string | null, // Optional: Add orderId parameter
     discountCodeId?: string | null, // Optional: Discount code ID
-    discountAmount?: number | null // Optional: Discount amount in cents
+    discountAmount?: Money | null // Optional: Discount amount in cents
 ) {
     // Use the centralized admin client function
     const supabaseAdmin = getSupabaseAdminClient();
@@ -153,7 +148,7 @@ export async function createInitialPaymentRecord(
     const { totalTaxAmount, paymentTaxes: paymentTaxesToInsert } = taxCalculation;
 
     // Calculate final total amount (subtotal + taxes)
-    const totalAmount = subtotalAmount + totalTaxAmount;
+    const totalAmount = addMoney(subtotalAmount, totalTaxAmount);
     // --- End Multi-Tax Calculation ---
 
 
@@ -162,15 +157,16 @@ export async function createInitialPaymentRecord(
         .from('payments')
         .insert({
             family_id: familyId,
-            subtotal_amount: subtotalAmount, // Store the original subtotal (before discount)
-            // tax_amount column removed
-            total_amount: totalAmount,
+            // Payments numeric columns are INT4 cents in this schema
+            subtotal_amount: toCents(subtotalAmount),
+            // tax_amount column removed; taxes stored in payment_taxes
+            total_amount: toCents(totalAmount),
             status: 'pending',
             type: type,
             order_id: orderId || null, // Set order_id if provided
             discount_code_id: discountCodeId || null, // Store discount code ID
-            discount_amount: discountAmount || null, // Store discount amount
-            // payment_date, payment_method, stripe_payment_intent_id, receipt_url updated later
+            discount_amount: discountAmount ? toCents(discountAmount) : null,
+            // payment_date, payment_method, payment_intent_id, receipt_url updated later
         })
         .select('id')
         .single();
@@ -184,13 +180,15 @@ export async function createInitialPaymentRecord(
 
     // 5. Insert records into the payment_taxes junction table
     if (paymentTaxesToInsert.length > 0) {
-        const taxesWithPaymentId = paymentTaxesToInsert.map(tax => ({
+        const taxesWithPaymentId_db = paymentTaxesToInsert.map(tax => ({
             ...tax,
+            tax_amount: toCents(tax.tax_amount),
+            tax_amount_cents: toCents(tax.tax_amount),
             payment_id: paymentId,
         }));
         const { error: insertTaxesError } = await supabaseAdmin
             .from('payment_taxes')
-            .insert(taxesWithPaymentId);
+            .insert(taxesWithPaymentId_db);
 
         if (insertTaxesError) {
             console.error(`Supabase payment_taxes insert error for payment ${paymentId}:`, insertTaxesError.message);
@@ -198,7 +196,7 @@ export async function createInitialPaymentRecord(
             await supabaseAdmin.from('payments').delete().eq('id', paymentId);
             return { data: null, error: `Failed to record tax details: ${insertTaxesError.message}` };
         }
-        // console.log(`[createInitialPaymentRecord] Inserted ${taxesWithPaymentId.length} tax records for payment ${paymentId}.`);
+        // console.log(`[createInitialPaymentRecord] Inserted ${taxesWithPaymentId_db.length} tax records for payment ${paymentId}.`);
     }
 
 
@@ -237,7 +235,7 @@ export async function createInitialPaymentRecord(
             discountAmount,
             studentIds?.[0] // Use first student ID if available
         );
-        
+
         if (!discountResult.success) {
             console.error('Failed to record discount usage:', discountResult.error);
             // Don't fail the payment creation, just log the error
@@ -293,7 +291,7 @@ export async function checkStudentEligibility(
     // 3. Check active enrollments with paid_until dates
     const today = new Date();
     const activeEnrollments = enrollments.filter(e => e.status === 'active');
-    
+
     for (const enrollment of activeEnrollments) {
         if (enrollment.paid_until) {
             const paidUntilDate = new Date(enrollment.paid_until);
@@ -336,7 +334,7 @@ export async function checkStudentEligibility(
 
     // 5. If we get here, no enrollments are paid up
     console.log(`[checkStudentEligibility] Student ${studentId} is NOT eligible. No active enrollments are paid up.`);
-    
+
     // Get the most recent payment info for the expired response
     const {data: paymentLinks} = await supabaseAdmin
         .from('payment_students')
@@ -391,9 +389,9 @@ function getSiteUrl(): string {
 export async function updatePaymentStatus(
     supabasePaymentId: string, // Use Supabase Payment ID (from metadata) to find the record
     status: "pending" | "succeeded" | "failed", // Use the specific enum values
-    _stripeReceiptUrl?: string | null, // Stripe receipt URL - renamed as we won't store it directly
+    _providerReceiptUrl?: string | null, // Provider receipt URL - not stored directly
     paymentMethod?: string | null, // Added parameter for payment method
-    stripePaymentIntentId?: string | null, // Optional: Store the PI ID if needed
+    paymentIntentId?: string | null, // Optional: Store the payment intent ID
     type?: Database['public']['Enums']['payment_type_enum'] | null, // Use 'type' parameter
     familyId?: string | null, // Added: Needed for individual session insert
     quantity?: number | null, // Added: Needed for individual session insert
@@ -410,10 +408,10 @@ export async function updatePaymentStatus(
 
     const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {
         status,
-        // receipt_url: receiptUrl, // Don't store the Stripe receipt URL directly anymore
+        // receipt_url: Don't store the provider receipt URL directly
         payment_method: paymentMethod,
         type: type || undefined, // Use 'type' parameter
-        stripe_payment_intent_id: stripePaymentIntentId || undefined, // Store the PI ID
+        payment_intent_id: paymentIntentId || undefined, // Generic payment intent ID for all providers
         card_last4: cardLast4 || undefined, // Store card last 4 digits
     };
 
@@ -536,7 +534,7 @@ export async function updatePaymentStatus(
         if (sessionInsertError) {
             console.error(`[updatePaymentStatus] FAILED to insert Individual Session record for payment ${data.id}:`, sessionInsertError.message);
             // Critical: Payment succeeded but session credit failed. Needs monitoring/alerting.
-            // Throw an error here to indicate the webhook handler should potentially return an error status to Stripe.
+            // Throw an error here to indicate the webhook handler should potentially return an error status to the payment provider.
             throw new Error(`Payment ${data.id} succeeded, but failed to record Individual Session credits: ${sessionInsertError.message}`);
         }
         // console.log(`[updatePaymentStatus] Recorded Individual Session purchase for payment ${data.id}.`); // Simplified log

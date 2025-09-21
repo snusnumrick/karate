@@ -29,6 +29,8 @@ import React from "react";
 import {Textarea} from "~/components/ui/textarea";
 import {Button} from "~/components/ui/button";
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // Define types
 type SessionWithClass = ClassSession & {
@@ -203,6 +205,7 @@ export async function loader({request}: LoaderFunctionArgs) {
 // Action: Save session attendance records
 export async function action({request}: ActionFunctionArgs) {
     console.log("Entering /admin/attendance/record action...");
+    await csrf.validate(request);
     const formData = await request.formData();
     const sessionId = formData.get("sessionId") as string;
     const studentIds = formData.getAll("studentId") as string[];
@@ -508,6 +511,7 @@ export default function RecordAttendancePage() {
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                     <h2 className="text-xl font-semibold mb-4 border-b pb-2">Record Attendance</h2>
                         <Form method="post">
+                            <AuthenticityTokenInput />
                             <input type="hidden" name="sessionId" value={selectedSession.id} />
                     <input type="hidden" name="classDate" value={attendanceDate} />
 

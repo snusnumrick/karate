@@ -26,25 +26,28 @@ import {
 } from "~/utils/line-item-helpers";
 import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
-
-
-
-
+import { toCents, addMoney, subtractMoney, ZERO_MONEY, type Money } from "~/utils/money";
+import { convertRowToMoney, convertRowsToMoney, convertMoneyToRow, moneyFromRow } from "~/services/database-money.server";
+import { getNum } from "~/utils/db-money";
 
 /**
  * Calculate invoice totals from line items
  */
 export function calculateInvoiceTotals(lineItems: InvoiceLineItem[]): InvoiceCalculations {
-  const subtotal = lineItems.reduce((sum, item) => sum + item.line_total, 0);
-  const taxAmount = lineItems.reduce((sum, item) => sum + (item.tax_amount ?? 0), 0);
-  const discountAmount = lineItems.reduce((sum, item) => sum + (item.discount_amount ?? 0), 0);
-  const totalAmount = subtotal + taxAmount - discountAmount;
+  // Assuming line items store values in cents, convert to Money objects
+  const subtotalMoney = lineItems.reduce((sum, item) => 
+    addMoney(sum, item.line_total), ZERO_MONEY);
+  const taxAmountMoney = lineItems.reduce((sum, item) => 
+    addMoney(sum, item.tax_amount ?? ZERO_MONEY), ZERO_MONEY);
+  const discountAmountMoney = lineItems.reduce((sum, item) => 
+    addMoney(sum, item.discount_amount ?? ZERO_MONEY), ZERO_MONEY);
+  const totalAmountMoney = addMoney(subtotalMoney, subtractMoney(taxAmountMoney, discountAmountMoney));
 
   return {
-    subtotal: Math.round(subtotal * 100) / 100,
-    tax_amount: Math.round(taxAmount * 100) / 100,
-    discount_amount: Math.round(discountAmount * 100) / 100,
-    total_amount: Math.round(totalAmount * 100) / 100,
+    subtotal: subtotalMoney,
+    tax_amount: taxAmountMoney,
+    discount_amount: discountAmountMoney,
+    total_amount: totalAmountMoney,
   };
 }
 
@@ -65,7 +68,7 @@ export async function createLineItemTaxAssociations(
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   const taxBreakdown = getLineItemTaxBreakdown(lineItemData, taxRates);
 
-  const taxAssociations = taxRateIds.map(taxRateId => {
+  const taxAssociations_db = taxRateIds.map(taxRateId => {
     const taxRate = taxRates.find(tr => tr.id === taxRateId);
     const breakdown = taxBreakdown.find(tb => tb.taxRate.id === taxRateId);
     
@@ -79,15 +82,17 @@ export async function createLineItemTaxAssociations(
       tax_name_snapshot: taxRate.name,
       tax_rate_snapshot: taxRate.rate,
       tax_description_snapshot: taxRate.description,
-      tax_amount: breakdown.amount
+      // invoice_line_item_taxes legacy numeric fields are dollars
+      tax_amount: toCents(breakdown.amount) / 100,
+      tax_amount_cents: toCents(breakdown.amount)
     };
   });
 
-  console.log('[Service/createLineItemTaxAssociations] Tax associations prepared:', taxAssociations);
+  console.log('[Service/createLineItemTaxAssociations] Tax associations prepared:', taxAssociations_db);
   
   const { error } = await client
     .from('invoice_line_item_taxes')
-    .insert(taxAssociations);
+    .insert(taxAssociations_db);
 
   if (error) {
     console.error('[Service/createLineItemTaxAssociations] Error creating tax associations:', error);
@@ -102,7 +107,7 @@ export async function createLineItemTaxAssociations(
  */
 export function calculateLineItemTotalsWithRates(
   quantity: number,
-  unitPrice: number,
+  unitPrice: Money,
   taxRateIds: string[] = [],
   taxRates: TaxRate[] = [],
   discountRate: number = 0
@@ -127,12 +132,13 @@ export function calculateLineItemTotalsWithRates(
     tempItem.discount_rate || 0
   );
   const discountAmount = calculateLineItemDiscount(tempItem);
+  const finalAmount = subtractMoney(addMoney(lineTotal, taxAmount), discountAmount);
 
   return {
-    line_total: Math.round(lineTotal * 100) / 100,
-    tax_amount: Math.round(taxAmount * 100) / 100,
-    discount_amount: Math.round(discountAmount * 100) / 100,
-    final_amount: Math.round(lineTotal * 100) / 100,
+    line_total: lineTotal,
+    tax_amount: taxAmount,
+    discount_amount: discountAmount,
+    final_amount: finalAmount,
   };
 }
 
@@ -200,7 +206,7 @@ export async function createInvoice(
   }
 
   // Calculate line item totals with pre-fetched tax rates
-  const lineItemsWithTotals = invoiceData.line_items.map((item, index) => {
+  const lineItemsWithTotals_db = invoiceData.line_items.map((item, index) => {
     // Use pre-fetched applicable tax rates based on item type
     const applicableTaxRates = taxRatesByItemType[item.item_type];
     
@@ -217,11 +223,16 @@ export async function createInvoice(
       item_type: item.item_type,
       description: item.description,
       quantity: item.quantity,
-      unit_price: item.unit_price,
-      line_total: calculations.line_total,
-      tax_amount: calculations.tax_amount ?? 0,
+      // Legacy numeric fields (without _cents) should be dollars; write both
+      unit_price: toCents(item.unit_price) / 100,
+      unit_price_cents: toCents(item.unit_price),
+      line_total: toCents(calculations.line_total) / 100,
+      line_total_cents: toCents(calculations.line_total),
+      tax_amount: toCents(calculations.tax_amount ?? ZERO_MONEY) / 100,
+      tax_amount_cents: toCents(calculations.tax_amount ?? ZERO_MONEY),
       discount_rate: (item.discount_rate || 0) / 100, // Convert percentage to decimal for database
-      discount_amount: calculations.discount_amount ?? 0,
+      discount_amount: toCents(calculations.discount_amount ?? ZERO_MONEY) / 100,
+      discount_amount_cents: toCents(calculations.discount_amount ?? ZERO_MONEY),
       enrollment_id: item.enrollment_id,
       product_id: item.product_id,
       service_period_start: item.service_period_start,
@@ -232,7 +243,7 @@ export async function createInvoice(
 
   const { data: insertedLineItems, error: lineItemsError } = await client
     .from('invoice_line_items')
-    .insert(lineItemsWithTotals)
+    .insert(lineItemsWithTotals_db)
     .select('id');
 
   if (lineItemsError) {
@@ -259,6 +270,29 @@ export async function createInvoice(
         );
       }
     }
+  }
+
+  // Denormalize totals onto invoices for easy querying and legacy compatibility
+  try {
+    const subtotalCents = lineItemsWithTotals_db.reduce((sum, li) => sum + (li.line_total_cents ?? 0), 0);
+    const discountCents = lineItemsWithTotals_db.reduce((sum, li) => sum + (li.discount_amount_cents ?? 0), 0);
+    const itemTaxCents = lineItemsWithTotals_db.reduce((sum, li) => sum + (li.tax_amount_cents ?? 0), 0);
+    const totalCents = subtotalCents - discountCents + itemTaxCents;
+    await client
+      .from('invoices')
+      .update({
+        subtotal_cents: subtotalCents,
+        subtotal: subtotalCents / 100,
+        discount_amount_cents: discountCents,
+        discount_amount: discountCents / 100,
+        tax_amount_cents: itemTaxCents,
+        tax_amount: itemTaxCents / 100,
+        total_amount_cents: totalCents,
+        total_amount: totalCents / 100,
+      })
+      .eq('id', invoice.id);
+  } catch (e) {
+    console.warn('[Service/createInvoice] Failed to denormalize invoice totals:', e);
   }
 
   // Fetch the complete invoice with details
@@ -304,7 +338,7 @@ export async function getInvoiceById(
   const lineItemIds = (invoice.invoice_line_items || []).map(item => item.id);
   console.log(`[Service/getInvoiceById] Fetching tax data for line items:`, lineItemIds);
   
-  const { data: lineItemTaxes, error: taxError } = await client
+  const { data: lineItemTaxes_db, error: taxError } = await client
     .from('invoice_line_item_taxes')
     .select('*')
     .in('invoice_line_item_id', lineItemIds);
@@ -313,22 +347,25 @@ export async function getInvoiceById(
     console.error(`[Service/getInvoiceById] Error fetching tax data:`, taxError);
   }
 
-  console.log(`[Service/getInvoiceById] Found tax data:`, lineItemTaxes);
+  console.log(`[Service/getInvoiceById] Found tax data:`, lineItemTaxes_db);
 
   // Group tax data by line item ID
-  const taxesByLineItem = (lineItemTaxes || []).reduce((acc, tax) => {
-    if (!acc[tax.invoice_line_item_id]) {
-      acc[tax.invoice_line_item_id] = [];
+  const taxesByLineItem = (lineItemTaxes_db || []).reduce((acc, tax_db) => {
+    if (!acc[tax_db.invoice_line_item_id]) {
+      acc[tax_db.invoice_line_item_id] = [];
     }
     // Ensure created_at is not null before pushing
-    if (tax.created_at) {
-      acc[tax.invoice_line_item_id].push(tax as InvoiceLineItemTax);
+    if (tax_db.created_at) {
+      acc[tax_db.invoice_line_item_id].push({
+        ...tax_db,
+        tax_amount: moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax_db as unknown as Record<string, unknown>)
+      } as InvoiceLineItemTax);
     }
     return acc;
   }, {} as Record<string, InvoiceLineItemTax[]>);
 
   // Also group tax rate IDs for backward compatibility
-  const taxRatesByLineItem = (lineItemTaxes || []).reduce((acc, tax) => {
+  const taxRatesByLineItem = (lineItemTaxes_db || []).reduce((acc, tax) => {
     if (!acc[tax.invoice_line_item_id]) {
       acc[tax.invoice_line_item_id] = [];
     }
@@ -339,13 +376,24 @@ export async function getInvoiceById(
   console.log(`[Service/getInvoiceById] Grouped taxes by line item:`, taxesByLineItem);
 
   // Fetch payment taxes separately
-  const { data: paymentTaxes } = await client
+  const { data: paymentTaxes_db } = await client
     .from('payment_taxes')
     .select('*')
     .in('payment_id', (invoice.invoice_payments || []).map(p => p.id));
 
+  // Convert main invoice money fields
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const convertedInvoice = convertRowToMoney('invoices', invoice as any) as any;
+
+  // Compute total tax amount across all line items (sum of all applied taxes)
+  const invoiceTotalTax = Object.values(taxesByLineItem).reduce((sum, itemTaxes) => {
+    return itemTaxes.reduce((innerSum, tax) => addMoney(innerSum, tax.tax_amount || ZERO_MONEY), sum);
+  }, ZERO_MONEY);
+  
   return {
-    ...invoice,
+    ...convertedInvoice,
+    // Override tax_amount to reflect sum of all applied taxes across line items
+    tax_amount: invoiceTotalTax,
     service_period_start: invoice.service_period_start || undefined,
     service_period_end: invoice.service_period_end || undefined,
     currency: invoice.currency || siteConfig.localization.currency,
@@ -358,7 +406,7 @@ export async function getInvoiceById(
     created_at: invoice.created_at || new Date().toISOString(),
     updated_at: invoice.updated_at || new Date().toISOString(),
     entity: {
-      ...invoice.invoice_entities,
+      ...convertRowToMoney('invoice_entities', invoice.invoice_entities),
       entity_type: invoice.invoice_entities.entity_type as EntityType,
       contact_person: invoice.invoice_entities.contact_person || undefined,
       email: invoice.invoice_entities.email || undefined,
@@ -371,7 +419,6 @@ export async function getInvoiceById(
       country: invoice.invoice_entities.country || siteConfig.localization.country,
       tax_id: invoice.invoice_entities.tax_id || undefined,
       payment_terms: (invoice.invoice_entities.payment_terms as PaymentTerms) || 'Net 30',
-      credit_limit: invoice.invoice_entities.credit_limit || undefined,
       is_active: invoice.invoice_entities.is_active ?? true,
       notes: invoice.invoice_entities.notes || undefined,
       created_at: invoice.invoice_entities.created_at || new Date().toISOString(),
@@ -380,19 +427,21 @@ export async function getInvoiceById(
     family: invoice.families || undefined,
     family_id: invoice.family_id || undefined,
     line_items: (invoice.invoice_line_items || []).map(item => {
+      // Normalize monetary fields on the line item using centralized converter
+      const convertedItem = convertRowToMoney('invoice_line_items', item) as Record<string, unknown>;
       const itemTaxes = taxesByLineItem[item.id] || [];
-      const totalTaxAmount = itemTaxes.reduce((sum, tax) => sum + (tax.tax_amount || 0), 0);
+      const totalTaxAmount = itemTaxes.reduce((sum, tax) => addMoney(sum, tax.tax_amount || ZERO_MONEY), ZERO_MONEY);
       
       return {
-        ...item,
-        tax_rate: (item.tax_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
-        tax_amount: item.tax_amount ?? 0,
+        ...(convertedItem as object),
+        tax_rate: ((item.tax_rate ?? 0) as number) * 100, // Convert decimal back to percentage for frontend
+        tax_amount: (convertedItem['tax_amount'] as unknown) ?? ZERO_MONEY,
         tax_rate_ids: taxRatesByLineItem[item.id] || [], // Include tax rate IDs from associations
         taxes: itemTaxes, // Include actual tax data
         total_tax_amount: totalTaxAmount, // Calculate total tax amount
-        discount_rate: (item.discount_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
-        discount_amount: item.discount_amount ?? 0,
-        sort_order: item.sort_order ?? 0,
+        discount_rate: ((item.discount_rate ?? 0) as number) * 100, // Convert decimal back to percentage for frontend
+        discount_amount: (convertedItem['discount_amount'] as unknown) ?? ZERO_MONEY,
+        sort_order: (item.sort_order ?? 0) as number,
         enrollment_id: item.enrollment_id || undefined,
         product_id: item.product_id || undefined,
         service_period_start: item.service_period_start || undefined,
@@ -401,16 +450,16 @@ export async function getInvoiceById(
       };
     }),
     payments: (invoice.invoice_payments || []).map(payment => {
-      const taxes = (paymentTaxes || []).filter(tax => tax.payment_id === payment.id);
+      const taxes_db = (paymentTaxes_db || []).filter(tax => tax.payment_id === payment.id);
       return {
         ...payment,
         reference_number: payment.reference_number || undefined,
         notes: payment.notes || undefined,
-        stripe_payment_intent_id: payment.stripe_payment_intent_id || undefined,
+        payment_intent_id: payment.payment_intent_id || undefined, // Generic payment intent ID
         created_at: payment.created_at || new Date().toISOString(),
         updated_at: payment.updated_at || new Date().toISOString(),
-        taxes,
-        total_tax_amount: taxes.reduce((sum: number, tax) => sum + (tax.tax_amount || 0), 0),
+        taxes: taxes_db,
+        total_tax_amount: taxes_db.reduce((sum: Money, tax) => addMoney(sum, moneyFromRow('payment_taxes', 'tax_amount', tax as unknown as Record<string, unknown>)), ZERO_MONEY),
       };
     }),
     status_history: invoice.invoice_status_history || [],
@@ -501,11 +550,12 @@ export async function getInvoices(
   }
   
   if (filters.amount_min !== undefined) {
-    query = query.gte('total_amount', filters.amount_min);
+    // Use new *_cents field for filtering amounts
+    query = query.gte('total_amount_cents', filters.amount_min);
   }
   
   if (filters.amount_max !== undefined) {
-    query = query.lte('total_amount', filters.amount_max);
+    query = query.lte('total_amount_cents', filters.amount_max);
   }
   
   if (filters.search) {
@@ -529,65 +579,79 @@ export async function getInvoices(
   const total = count || 0;
   const totalPages = Math.ceil(total / limit);
 
-  const invoicesWithDetails: InvoiceWithDetails[] = (invoices || []).map(invoice => ({
-    ...invoice,
-    status: (invoice.status as InvoiceStatus) || 'draft',
-    service_period_start: invoice.service_period_start || undefined,
-    service_period_end: invoice.service_period_end || undefined,
-    currency: invoice.currency || siteConfig.localization.currency,
-    notes: invoice.notes || undefined,
-    terms: invoice.terms || undefined,
-    footer_text: invoice.footer_text || undefined,
-    sent_at: invoice.sent_at || undefined,
-    viewed_at: invoice.viewed_at || undefined,
-    paid_at: invoice.paid_at || undefined,
-    created_at: invoice.created_at || new Date().toISOString(),
-    updated_at: invoice.updated_at || new Date().toISOString(),
-    entity: {
-      ...invoice.invoice_entities,
-      entity_type: invoice.invoice_entities.entity_type as EntityType,
-      contact_person: invoice.invoice_entities.contact_person || undefined,
-      email: invoice.invoice_entities.email || undefined,
-      phone: invoice.invoice_entities.phone || undefined,
-      address_line1: invoice.invoice_entities.address_line1 || undefined,
-      address_line2: invoice.invoice_entities.address_line2 || undefined,
-      city: invoice.invoice_entities.city || undefined,
-      state: invoice.invoice_entities.state || undefined,
-      postal_code: invoice.invoice_entities.postal_code || undefined,
-      country: invoice.invoice_entities.country || siteConfig.localization.country,
-      tax_id: invoice.invoice_entities.tax_id || undefined,
-      payment_terms: (invoice.invoice_entities.payment_terms as PaymentTerms) || 'Net 30',
-      credit_limit: invoice.invoice_entities.credit_limit || undefined,
-      is_active: invoice.invoice_entities.is_active ?? true,
-      notes: invoice.invoice_entities.notes || undefined,
-      created_at: invoice.invoice_entities.created_at || new Date().toISOString(),
-      updated_at: invoice.invoice_entities.updated_at || new Date().toISOString(),
-    },
-    family: invoice.families || undefined,
-    family_id: invoice.family_id || undefined,
-    line_items: (invoice.invoice_line_items || []).map(item => ({
-      ...item,
-      tax_rate: (item.tax_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
-      tax_amount: item.tax_amount ?? 0,
-      discount_rate: (item.discount_rate ?? 0) * 100, // Convert decimal back to percentage for frontend
-      discount_amount: item.discount_amount ?? 0,
-      sort_order: item.sort_order ?? 0,
-      enrollment_id: item.enrollment_id || undefined,
-      product_id: item.product_id || undefined,
-      service_period_start: item.service_period_start || undefined,
-      service_period_end: item.service_period_end || undefined,
-      created_at: item.created_at || new Date().toISOString(),
-    })),
-    payments: (invoice.invoice_payments || []).map(payment => ({
-      ...payment,
-      reference_number: payment.reference_number || undefined,
-      notes: payment.notes || undefined,
-      stripe_payment_intent_id: payment.stripe_payment_intent_id || undefined,
-      created_at: payment.created_at || new Date().toISOString(),
-      updated_at: payment.updated_at || new Date().toISOString(),
-    })),
-    status_history: [],
-  }));
+  // Convert monetary fields to Money objects
+  const convertedInvoicesUnknown = convertRowsToMoney('invoices', invoices || []) ?? [];
+
+  const invoicesWithDetails: InvoiceWithDetails[] = convertedInvoicesUnknown.map((inv) => {
+    const invoice = inv as Record<string, unknown> & {
+      invoice_entities: Database['public']['Tables']['invoice_entities']['Row'] & Record<string, unknown>;
+      invoice_line_items?: Database['public']['Tables']['invoice_line_items']['Row'][];
+      invoice_payments?: Database['public']['Tables']['invoice_payments']['Row'][];
+      families?: Database['public']['Tables']['families']['Row'];
+    };
+    return {
+      ...(invoice as object),
+      status: (invoice.status as InvoiceStatus) || 'draft',
+      service_period_start: (invoice.service_period_start as string | null) || undefined,
+      service_period_end: (invoice.service_period_end as string | null) || undefined,
+      currency: (invoice.currency as string | null) || siteConfig.localization.currency,
+      notes: (invoice.notes as string | null) || undefined,
+      terms: (invoice.terms as string | null) || undefined,
+      footer_text: (invoice.footer_text as string | null) || undefined,
+      sent_at: (invoice.sent_at as string | null) || undefined,
+      viewed_at: (invoice.viewed_at as string | null) || undefined,
+      paid_at: (invoice.paid_at as string | null) || undefined,
+      created_at: (invoice.created_at as string | null) || new Date().toISOString(),
+      updated_at: (invoice.updated_at as string | null) || new Date().toISOString(),
+      entity: {
+        ...(invoice.invoice_entities as object),
+        entity_type: invoice.invoice_entities.entity_type as EntityType,
+        contact_person: invoice.invoice_entities.contact_person || undefined,
+        email: invoice.invoice_entities.email || undefined,
+        phone: invoice.invoice_entities.phone || undefined,
+        address_line1: invoice.invoice_entities.address_line1 || undefined,
+        address_line2: invoice.invoice_entities.address_line2 || undefined,
+        city: invoice.invoice_entities.city || undefined,
+        state: invoice.invoice_entities.state || undefined,
+        postal_code: invoice.invoice_entities.postal_code || undefined,
+        country: invoice.invoice_entities.country || siteConfig.localization.country,
+        tax_id: invoice.invoice_entities.tax_id || undefined,
+        payment_terms: (invoice.invoice_entities.payment_terms as PaymentTerms) || 'Net 30',
+        credit_limit: (invoice.invoice_entities as unknown as { credit_limit?: unknown }).credit_limit || undefined,
+        is_active: (invoice.invoice_entities as unknown as { is_active?: boolean }).is_active ?? true,
+        notes: invoice.invoice_entities.notes || undefined,
+        created_at: invoice.invoice_entities.created_at || new Date().toISOString(),
+        updated_at: invoice.invoice_entities.updated_at || new Date().toISOString(),
+      },
+      family: invoice.families || undefined,
+      family_id: (invoice.family_id as string | null) || undefined,
+      line_items: (invoice.invoice_line_items || []).map((item) => {
+        const convertedItem = convertRowToMoney('invoice_line_items', item) as Record<string, unknown>;
+        return {
+          ...(convertedItem as object),
+          tax_rate: ((item.tax_rate ?? 0) as number) * 100,
+          tax_amount: (item.tax_amount as unknown) ?? ZERO_MONEY,
+          discount_rate: ((item.discount_rate ?? 0) as number) * 100,
+          discount_amount: (item.discount_amount as unknown) ?? ZERO_MONEY,
+          sort_order: (item.sort_order ?? 0) as number,
+          enrollment_id: item.enrollment_id || undefined,
+          product_id: item.product_id || undefined,
+          service_period_start: item.service_period_start || undefined,
+          service_period_end: item.service_period_end || undefined,
+          created_at: item.created_at || new Date().toISOString(),
+        };
+      }),
+      payments: (invoice.invoice_payments || []).map((payment) => ({
+        ...payment,
+        reference_number: payment.reference_number || undefined,
+        notes: payment.notes || undefined,
+        payment_intent_id: payment.payment_intent_id || undefined, // Generic payment intent ID
+        created_at: payment.created_at || new Date().toISOString(),
+        updated_at: payment.updated_at || new Date().toISOString(),
+      })),
+      status_history: [],
+    } as unknown as InvoiceWithDetails;
+  });
 
   return {
     invoices: invoicesWithDetails,
@@ -693,9 +757,9 @@ export async function updateInvoice(
         quantity: item.quantity,
         unit_price: item.unit_price,
         line_total: calculations.line_total,
-        tax_amount: calculations.tax_amount ?? 0,
+        tax_amount: calculations.tax_amount ?? ZERO_MONEY,
         discount_rate: (item.discount_rate || 0) / 100, // Convert percentage to decimal for database
-        discount_amount: calculations.discount_amount ?? 0,
+        discount_amount: calculations.discount_amount ?? ZERO_MONEY,
         enrollment_id: item.enrollment_id,
         product_id: item.product_id,
         service_period_start: item.service_period_start,
@@ -704,9 +768,16 @@ export async function updateInvoice(
       };
     });
 
+    // Convert Money objects to cents for database storage
+    type LineItemInsert = Database['public']['Tables']['invoice_line_items']['Insert'];
+    const lineItemsForDb: LineItemInsert[] = lineItemsWithTotals.map((item: Record<string, unknown>) => {
+      const converted = convertMoneyToRow('invoice_line_items', item as Record<string, unknown>);
+      return (converted as unknown) as LineItemInsert;
+    });
+
     const { data: insertedLineItems, error: lineItemsError } = await client
       .from('invoice_line_items')
-      .insert(lineItemsWithTotals)
+      .insert(lineItemsForDb)
       .select('id');
 
     if (lineItemsError) {
@@ -731,6 +802,29 @@ export async function updateInvoice(
           );
         }
       }
+    }
+
+    // Denormalize totals after replacement
+    try {
+      const subtotalCents = lineItemsForDb.reduce((sum, li) => sum + (getNum(li, 'line_total_cents') ?? 0), 0);
+      const discountCents = lineItemsForDb.reduce((sum, li) => sum + (getNum(li, 'discount_amount_cents') ?? 0), 0);
+      const itemTaxCents = lineItemsForDb.reduce((sum, li) => sum + (getNum(li, 'tax_amount_cents') ?? 0), 0);
+      const totalCents = subtotalCents - discountCents + itemTaxCents;
+      await client
+        .from('invoices')
+        .update({
+          subtotal_cents: subtotalCents,
+          subtotal: subtotalCents / 100,
+          discount_amount_cents: discountCents,
+          discount_amount: discountCents / 100,
+          tax_amount_cents: itemTaxCents,
+          tax_amount: itemTaxCents / 100,
+          total_amount_cents: totalCents,
+          total_amount: totalCents / 100,
+        })
+        .eq('id', invoiceId);
+    } catch (e) {
+      console.warn('[Service/updateInvoice] Failed to denormalize invoice totals:', e);
     }
   }
 
@@ -781,7 +875,7 @@ export async function updateInvoiceStatus(
       });
   }
 
-  return invoice as Invoice;
+  return convertRowToMoney('invoices', invoice) as unknown as Invoice;
 }
 
 /**
@@ -838,18 +932,18 @@ export async function getInvoiceStats(
   supabaseAdmin?: SupabaseClient<Database>
 ): Promise<{
   total_invoices: number;
-  total_amount: number;
-  paid_amount: number;
-  outstanding_amount: number;
+  total_amount: Money;
+  paid_amount: Money;
+  outstanding_amount: Money;
   overdue_count: number;
 }> {
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
   console.log('[Service/getInvoiceStats] Fetching invoice statistics');
 
-  const { data, error } = await client
+  const { data : invoices_db, error } = await client
     .from('invoices')
-    .select('status, total_amount, amount_paid, due_date')
+    .select('status, total_amount_cents, amount_paid_cents, due_date')
     .neq('status', 'cancelled');
 
   if (error) {
@@ -858,29 +952,28 @@ export async function getInvoiceStats(
   }
 
   const stats = {
-    total_invoices: data?.length || 0,
-    total_amount: 0,
-    paid_amount: 0,
-    outstanding_amount: 0,
+    total_invoices: invoices_db?.length || 0,
+    total_amount: ZERO_MONEY,
+    paid_amount: ZERO_MONEY,
+    outstanding_amount: ZERO_MONEY,
     overdue_count: 0,
   };
 
   const today = new Date().toISOString().split('T')[0];
 
-  data?.forEach(invoice => {
-    stats.total_amount += invoice.total_amount;
-    stats.paid_amount += invoice.amount_paid;
-    stats.outstanding_amount += (invoice.total_amount - invoice.amount_paid);
+    invoices_db?.forEach((invoice_db) => {
+    const inv = invoice_db as unknown as { total_amount_cents?: number; total_amount?: number; amount_paid_cents?: number; amount_paid?: number; status: string; due_date: string };
+    const totalAmount = moneyFromRow('invoices', 'total_amount', inv as unknown as Record<string, unknown>);
+    const paidAmount = moneyFromRow('invoices', 'amount_paid', inv as unknown as Record<string, unknown>);
     
-    if (invoice.status !== 'paid' && invoice.due_date < today) {
+    stats.total_amount = addMoney(stats.total_amount, totalAmount);
+    stats.paid_amount = addMoney(stats.paid_amount, paidAmount);
+    stats.outstanding_amount = addMoney(stats.outstanding_amount, subtractMoney(totalAmount, paidAmount));
+    
+    if (inv.status !== 'paid' && inv.due_date < today) {
       stats.overdue_count++;
     }
   });
-
-  // Round to 2 decimal places
-  stats.total_amount = Math.round(stats.total_amount * 100) / 100;
-  stats.paid_amount = Math.round(stats.paid_amount * 100) / 100;
-  stats.outstanding_amount = Math.round(stats.outstanding_amount * 100) / 100;
 
   return stats;
 }

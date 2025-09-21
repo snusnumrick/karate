@@ -6,6 +6,7 @@ import { getInvoiceEntityById, deactivateInvoiceEntity, reactivateInvoiceEntity 
 
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { formatDate } from "~/utils/misc";
+import { csrf } from "~/utils/csrf.server";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const { id } = params;
@@ -30,6 +31,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const { id } = params;
+  await csrf.validate(request);
   const formData = await request.formData();
   const action = formData.get("action");
 

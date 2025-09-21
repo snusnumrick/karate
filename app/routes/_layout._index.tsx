@@ -11,6 +11,7 @@ import { getScheduleData } from "~/utils/site-data.client";
 import { formatTime } from "~/utils/schedule";
 import { formatDate } from "~/utils/misc";
 import { useNonce } from "~/context/nonce";
+import { JsonLd } from "~/components/JsonLd";
 // Server imports moved to loader function only
 
 type UpcomingEventWithFormatted = UpcomingEvent & {
@@ -19,7 +20,7 @@ type UpcomingEventWithFormatted = UpcomingEvent & {
 
 // Loader for homepage - fetch upcoming events and schedule data
 export async function loader({ request }: LoaderFunctionArgs) {
-    const { getEventTypeConfigWithDarkMode, formatEventTypeName } = await import("~/utils/event-helpers.server");
+    const { getEventTypeConfigWithDarkMode } = await import("~/utils/event-helpers.server");
     const { getMainPageScheduleData } = await import("~/services/class.server");
     const { getSupabaseServerClient } = await import("~/utils/supabase.server");
     
@@ -39,7 +40,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         // Format event type names on the server side
         const upcomingEventsWithFormatted: UpcomingEventWithFormatted[] = upcomingEvents.map(event => ({
           ...event,
-          formattedEventType: formatEventTypeName(event.event_type?.name || 'other', event.event_type || undefined)
+          formattedEventType: event.event_type?.display_name || event.event_type?.name || 'Other'
         }));
         
         return json(
@@ -241,21 +242,8 @@ export default function Index() {
 
     return (
         <div className="page-background-styles">
-            {nonce && eventsStructuredData && (
-                <script
-                    type="application/ld+json"
-                    nonce={nonce}
-                    suppressHydrationWarning
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsStructuredData) }}
-                />
-            )}
-            {nonce && (
-                <script
-                    type="application/ld+json"
-                    suppressHydrationWarning
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(courseStructuredData) }}
-                />
-            )}
+            {nonce && eventsStructuredData && (<JsonLd data={eventsStructuredData} nonce={nonce} />)}
+            {nonce && (<JsonLd data={courseStructuredData} nonce={nonce} />)}
 
             {/* Hero Section with Background Image */}
             <div className="relative min-h-screen flex items-center justify-center overflow-hidden">

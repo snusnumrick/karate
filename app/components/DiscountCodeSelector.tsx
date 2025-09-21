@@ -2,18 +2,18 @@ import { useState, useEffect } from 'react';
 import { useFetcher } from '@remix-run/react';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
+import { formatMoney, fromCents, serializeMoney, type Money } from '~/utils/money';
 import { Label } from '~/components/ui/label';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { CheckCircledIcon, ExclamationTriangleIcon, ReloadIcon } from '@radix-ui/react-icons';
 import { RadioGroup, RadioGroupItem } from '~/components/ui/radio-group';
-import { siteConfig } from '~/config/site';
 import type { DiscountValidationResult, PaymentTypeEnum } from '~/types/discount';
 import type { AvailableDiscountCode, AvailableDiscountsResponse } from '~/routes/api.available-discounts.$familyId';
 
 interface DiscountCodeSelectorProps {
   familyId: string;
   studentId?: string;
-  subtotalAmount: number; // in cents
+  subtotalAmount: Money;
   applicableTo: PaymentTypeEnum;
   onDiscountApplied: (discount: DiscountValidationResult | null) => void;
   disabled?: boolean;
@@ -41,7 +41,7 @@ export function DiscountCodeSelector({
     const params = new URLSearchParams();
     if (studentId) params.set('studentId', studentId);
     params.set('applicableTo', applicableTo);
-    params.set('subtotalAmount', subtotalAmount.toString());
+    params.set('subtotalAmount', JSON.stringify(serializeMoney(subtotalAmount)));
     
     discountsFetcher.load(`/api/available-discounts/${familyId}?${params.toString()}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,7 +70,7 @@ export function DiscountCodeSelector({
           code: codeToValidate.toUpperCase(),
           family_id: familyId,
           student_id: studentId || '',
-          subtotal_amount: subtotalAmount,
+          subtotal_amount: serializeMoney(subtotalAmount),
           applicable_to: applicableTo
         })
       });
@@ -115,12 +115,7 @@ export function DiscountCodeSelector({
 
   // Validation response is now handled directly in handleValidateDiscount
 
-  const formatCurrency = (cents: number) => {
-    return new Intl.NumberFormat(siteConfig.localization.locale, {
-      style: 'currency',
-      currency: siteConfig.localization.currency
-    }).format(cents / 100);
-  };
+
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
@@ -240,7 +235,7 @@ export function DiscountCodeSelector({
                 <div>
                   <strong>Discount Applied: {discountCode}</strong>
                   <div className="text-sm mt-1">
-                    Discount: {formatCurrency(appliedDiscount.discount_amount * 100)}
+                    Discount: {formatMoney(appliedDiscount.discount_amount)}
                   </div>
                 </div>
                 <Button

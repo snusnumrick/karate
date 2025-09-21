@@ -23,9 +23,11 @@ import {Json} from "~/types/database.types";
 import {ClientOnly} from "~/components/client-only";
 import {cn} from "~/lib/utils";
 import retrieveDatabaseStructure, {DatabaseSchema, formatSchemaAsMarkdown} from "~/utils/retrieve.db.structure";
-import { formatCurrency as formatCurrencyUtil } from "~/utils/misc"; // Import the utility function
+import { fromCents, formatMoney } from "~/utils/money"; // Import dinero.js utilities
 import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // --- Cache for Database Schema Description ---
 let cachedSchemaDescription: string | null = null;
@@ -122,6 +124,7 @@ async function getAndCacheSchemaDescription(): Promise<string> {
 
 // The action function to process the query and generate a summary
 export async function action({request}: ActionFunctionArgs): Promise<Response> {
+    await csrf.validate(request);
     const formData = await request.formData();
     const originalQuery = formData.get("query") as string;
 
@@ -678,8 +681,8 @@ function renderQueryResults(summary: string | undefined | null, data: Json | nul
                                                                 maximumFractionDigits: 2,
                                                             }).format(value);
                                                         } else {
-                                                            // Value is in cents, use formatCurrencyUtil
-                                                            return formatCurrencyUtil(value);
+                                                            // Value is in cents, use dinero.js
+                                                            return formatMoney(fromCents(value));
                                                         }
                                                     })()
                                                     : value === null ?
@@ -1018,6 +1021,7 @@ export default function AdminDbChat() {
                                     addQueryToHistory(question);
                                 }}
                             >
+                                <AuthenticityTokenInput />
                                 <div className="flex items-start space-x-2">
                                     <Textarea
                                         ref={textareaRef} // Assign ref to textarea

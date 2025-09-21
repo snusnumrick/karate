@@ -9,6 +9,10 @@ import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 
 import { formatDate } from '~/utils/misc';
 import { calculateInvoicePaymentTaxBreakdown } from '~/utils/line-item-helpers';
+import { formatMoney, fromDollars, toDollars, toCents, addMoney, subtractMoney, compareMoney, toMoney, type Money } from '~/utils/money';
+import type { Database } from "~/types/database.types";
+import { moneyFromRow } from "~/utils/database-money";
+import { csrf } from "~/utils/csrf.server";
 
 
 
@@ -19,7 +23,8 @@ const RecordPaymentSchema = z.object({
   payment_method: z.enum(['cash', 'check', 'bank_transfer', 'credit_card', 'ach', 'other']),
   payment_date: z.string().refine((date) => !isNaN(Date.parse(date)), 'Invalid date'),
   reference_number: z.string().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  receipt_url: z.string().url().optional()
 });
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -34,7 +39,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const isInvoiceNumber = /^INV-\d{4}-\d{4}$/.test(params.id);
   
   // Fetch invoice details
-  const { data: invoice, error: invoiceError } = await supabase
+  const { data: invoice_db, error: invoiceError } = await supabase
     .from('invoices')
     .select(`
       id,
@@ -51,21 +56,21 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     .eq(isInvoiceNumber ? 'invoice_number' : 'id', params.id)
     .single();
 
-  if (invoiceError || !invoice) {
+  if (invoiceError || !invoice_db) {
     throw new Response('Invoice not found', { status: 404 });
   }
 
   // Check if invoice can accept payments
-  if (invoice.status === 'cancelled') {
+  if (invoice_db.status === 'cancelled') {
     throw new Response('Cannot record payment for cancelled invoice', { status: 400 });
   }
 
-  if (invoice.status === 'paid') {
+  if (invoice_db.status === 'paid') {
     throw new Response('Invoice is already fully paid', { status: 400 });
   }
 
   // Fetch existing payments for this invoice
-  const { data: payments, error: paymentsError } = await supabase
+  const { data: payments_db, error: paymentsError } = await supabase
     .from('invoice_payments')
     .select('*')
     .eq('invoice_id', params.id)
@@ -75,17 +80,24 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     console.error('Error fetching payments:', paymentsError);
   }
 
-  const remainingBalance = invoice.total_amount - invoice.amount_paid;
+  const invoice = {
+    ...invoice_db,
+    total_amount: moneyFromRow('invoices', 'total_amount', invoice_db as unknown as Record<string, unknown>),
+    amount_paid: moneyFromRow('invoices', 'amount_paid', invoice_db as unknown as Record<string, unknown>),
+  };
+
+  const remainingBalance = subtractMoney(invoice.total_amount, invoice.amount_paid);
 
   return json({
     invoice,
-    payments: payments || [],
+    payments: payments_db || [],
     remainingBalance
   });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const userId = await requireUserId(request);
+  await requireUserId(request);
+  await csrf.validate(request);
   const supabase = getSupabaseAdminClient();
   
   if (!params.id) {
@@ -107,13 +119,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
       payment_method: formData.get('payment_method') as string,
       payment_date: formData.get('payment_date') as string,
       reference_number: formData.get('reference_number') as string || undefined,
-      notes: formData.get('notes') as string || undefined
+      notes: formData.get('notes') as string || undefined,
+      receipt_url: (formData.get('receipt_url') as string) || undefined
     };
 
     const validatedData = RecordPaymentSchema.parse(rawData);
 
     // Fetch current invoice with line items and tax details to validate payment amount and calculate tax breakdown
-    const { data: invoice, error: invoiceError } = await supabase
+    const { data: invoice_db, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
         total_amount, 
@@ -134,37 +147,46 @@ export async function action({ request, params }: ActionFunctionArgs) {
       .eq('id', params.id)
       .single();
 
-    if (invoiceError || !invoice) {
+    if (invoiceError || !invoice_db) {
       return json({ errors: { general: 'Invoice not found' } }, { status: 404 });
     }
 
-    if (invoice.status === 'cancelled') {
+    if (invoice_db.status === 'cancelled') {
       return json({ errors: { general: 'Cannot record payment for cancelled invoice' } }, { status: 400 });
     }
 
-    const remainingBalance = invoice.total_amount - invoice.amount_paid;
-    const paymentAmountCents = Math.round(validatedData.amount * 100);
+    const invoice = {
+      ...invoice_db,
+      total_amount: moneyFromRow('invoices', 'total_amount', invoice_db as unknown as Record<string, unknown>),
+      amount_paid: moneyFromRow('invoices', 'amount_paid', invoice_db as unknown as Record<string, unknown>),
+    };
 
-    if (paymentAmountCents > remainingBalance) {
+    const remainingBalance = subtractMoney(invoice.total_amount, invoice.amount_paid);
+    const paymentAmount = fromDollars(validatedData.amount);
+
+    if (compareMoney(paymentAmount, remainingBalance) > 0) {
       return json({ 
         errors: { 
-          amount: `Payment amount cannot exceed remaining balance of $${(remainingBalance / 100).toFixed(2)}` 
+          amount: `Payment amount cannot exceed remaining balance of ${formatMoney(remainingBalance)}`
         } 
       }, { status: 400 });
     }
 
     // Record the payment
+    const insertPayload = {
+      invoice_id: validatedData.invoice_id,
+      amount: toDollars(paymentAmount),
+      amount_cents: toCents(paymentAmount),
+      payment_method: validatedData.payment_method as Database['public']['Enums']['invoice_payment_method'],
+      payment_date: validatedData.payment_date,
+      reference_number: validatedData.reference_number ?? null,
+      notes: validatedData.notes ?? null,
+      receipt_url: validatedData.receipt_url ?? null,
+    } satisfies Database['public']['Tables']['invoice_payments']['Insert'];
+
     const { data: payment, error: paymentError } = await supabase
       .from('invoice_payments')
-      .insert({
-        invoice_id: validatedData.invoice_id,
-        amount: paymentAmountCents,
-        payment_method: validatedData.payment_method,
-        payment_date: validatedData.payment_date,
-        reference_number: validatedData.reference_number,
-        notes: validatedData.notes,
-        recorded_by: userId
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -174,23 +196,25 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
 
     // Calculate and store tax breakdown for this payment
-    if (invoice.tax_amount > 0 && invoice.line_items) {
+    const taxAmountCents = (invoice_db as unknown as Record<string, unknown>)['tax_amount_cents'] as number | undefined;
+    const taxAmountDollars = (invoice_db as unknown as Record<string, unknown>)['tax_amount'] as number | undefined;
+    if ((((typeof taxAmountCents === 'number' ? taxAmountCents : Math.round((taxAmountDollars || 0) * 100)) > 0)) && invoice_db.line_items) {
       // Transform the data structure to match what the helper function expects
-      const lineItemsWithTaxes = invoice.line_items.map(item => ({
+      const lineItemsWithTaxes = invoice_db.line_items.map(item => ({
         id: item.id,
-        taxes: item.invoice_line_item_taxes?.map(tax => ({
-          tax_rate_id: tax.tax_rate_id,
-          tax_amount: tax.tax_amount,
-          tax_name_snapshot: tax.tax_name_snapshot,
-          tax_rate_snapshot: tax.tax_rate_snapshot,
-          tax_description_snapshot: tax.tax_description_snapshot || undefined
+        taxes: item.invoice_line_item_taxes?.map(tax_db => ({
+          tax_rate_id: tax_db.tax_rate_id,
+          tax_amount: moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax_db as unknown as Record<string, unknown>),
+          tax_name_snapshot: tax_db.tax_name_snapshot,
+          tax_rate_snapshot: tax_db.tax_rate_snapshot,
+          tax_description_snapshot: tax_db.tax_description_snapshot || undefined
         }))
       }));
 
       const taxBreakdown = calculateInvoicePaymentTaxBreakdown(
-        paymentAmountCents,
-        invoice.total_amount,
-        invoice.tax_amount,
+        paymentAmount,
+        moneyFromRow('invoices', 'total_amount', invoice_db as unknown as Record<string, unknown>),
+        moneyFromRow('invoices', 'tax_amount', invoice_db as unknown as Record<string, unknown>),
         lineItemsWithTaxes
       );
 
@@ -198,10 +222,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
         const taxRecords = taxBreakdown.map(tax => ({
           payment_id: payment.id,
           tax_rate_id: tax.tax_rate_id,
-          tax_amount: tax.tax_amount,
-          tax_rate_snapshot: tax.tax_rate_snapshot,
+          tax_amount: toDollars(tax.tax_amount),
+          tax_amount_cents: tax.tax_amount.getAmount(),
           tax_name_snapshot: tax.tax_name_snapshot,
-          tax_description_snapshot: tax.tax_description_snapshot || undefined
+          tax_rate_snapshot: tax.tax_rate_snapshot,
+          tax_description_snapshot: tax.tax_description_snapshot
         }));
 
         const { error: taxError } = await supabase
@@ -217,13 +242,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
 
     // Update invoice amount_paid and status
-    const newAmountPaid = invoice.amount_paid + paymentAmountCents;
-    const newStatus = newAmountPaid >= invoice.total_amount ? 'paid' : 'partially_paid';
+    const currentPaid = moneyFromRow('invoices', 'amount_paid', invoice_db as unknown as Record<string, unknown>);
+    const currentTotal = moneyFromRow('invoices', 'total_amount', invoice_db as unknown as Record<string, unknown>);
+    const newAmountPaid = addMoney(currentPaid, paymentAmount);
+    const newStatus = compareMoney(newAmountPaid, currentTotal) >= 0 ? 'paid' : 'partially_paid';
 
     const { error: updateError } = await supabase
       .from('invoices')
       .update({
-        amount_paid: newAmountPaid,
+        amount_paid: toDollars(newAmountPaid),
+        amount_paid_cents: newAmountPaid.getAmount(),
         status: newStatus,
         updated_at: new Date().toISOString()
       })
@@ -261,12 +289,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function RecordPaymentPage() {
-  const { invoice, payments, remainingBalance } = useLoaderData<typeof loader>();
+  const { invoice, payments: payments_db, remainingBalance } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
 
   const handleCancel = () => {
     navigate(`/admin/invoices/${invoice.id}`);
   };
+
+  const invoiceTotal: Money = toMoney((invoice as { total_amount: unknown }).total_amount);
+  const amountPaid: Money = toMoney((invoice as { amount_paid: unknown }).amount_paid);
+
+  const remainingBalanceMoney: Money = toMoney(remainingBalance as unknown);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -296,29 +329,29 @@ export default function RecordPaymentPage() {
         </div>
 
         {/* Payment History (if any) */}
-        {payments.length > 0 && (
+        {payments_db.length > 0 && (
           <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">
               Payment History
             </h3>
             <div className="space-y-2">
-              {payments.map((payment) => (
-                <div key={payment.id} className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+              {payments_db.map((payment_db) => (
+                <div key={payment_db.id} className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
                   <div>
                     <span className="font-medium text-gray-800 dark:text-gray-100">
-                      ${(payment.amount / 100).toFixed(2)}
+                      {formatMoney(moneyFromRow('invoice_payments', 'amount', payment_db as unknown as Record<string, unknown>))}
                     </span>
                     <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                      via {payment.payment_method.replace('_', ' ')}
+                      via {payment_db.payment_method.replace('_', ' ')}
                     </span>
-                    {payment.reference_number && (
+                    {payment_db.reference_number && (
                       <span className="ml-2 text-sm text-gray-500 dark:text-gray-500">
-                        (Ref: {payment.reference_number})
+                        (Ref: {payment_db.reference_number})
                       </span>
                     )}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {formatDate(payment.payment_date, { formatString: 'MMM d, yyyy' })}
+                    {formatDate(payment_db.payment_date, { formatString: 'MMM d, yyyy' })}
                   </div>
                 </div>
               ))}
@@ -329,9 +362,9 @@ export default function RecordPaymentPage() {
         {/* Payment Form */}
         <RecordPaymentForm
           invoiceId={invoice.id}
-          invoiceTotal={invoice.total_amount}
-          amountPaid={invoice.amount_paid}
-          remainingBalance={remainingBalance}
+          invoiceTotal={invoiceTotal}
+          amountPaid={amountPaid}
+          remainingBalance={remainingBalanceMoney}
           onCancel={handleCancel}
         />
       </div>

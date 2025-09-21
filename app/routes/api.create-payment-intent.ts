@@ -1,8 +1,10 @@
 import { type ActionFunctionArgs, json, TypedResponse } from "@remix-run/node";
-import Stripe from 'stripe';
 import { getSupabaseServerClient, getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from "~/types/database.types"; // Removed unused Tables import
 import { siteConfig } from "~/config/site";
+import { getPaymentProvider } from '~/services/payments/index.server';
+import type { PaymentProviderId } from '~/services/payments/types.server';
+import { fromCents } from "~/utils/money";
 
 // Define expected form data structure
 type PaymentOption = 'monthly' | 'yearly' | 'individual' | 'store' | 'event'; // Add 'store' and 'event' options
@@ -17,6 +19,7 @@ type ActionSuccessResponse = {
     subtotalAmount: number; // Amount before tax in cents
     taxAmount: number;      // Calculated tax amount in cents (can be 0)
     totalAmount: number;    // Total amount in cents (subtotal + tax)
+    provider: PaymentProviderId;
     error?: never; // Ensure error is not present on success
 };
 
@@ -27,6 +30,7 @@ type ActionErrorResponse = {
     subtotalAmount?: never;
     taxAmount?: never;
     totalAmount?: never;
+    provider?: PaymentProviderId;
     error: string;
 };
 
@@ -49,16 +53,16 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
 
     // --- Get Supabase Client with Auth Context ---
-    // Use request-specific client for auth check
-    const { supabaseClient, response } = getSupabaseServerClient(request);
+    // Use request-specific client for response headers
+    const paymentProvider = getPaymentProvider();
+    const { response } = getSupabaseServerClient(request);
     // --- End Get Supabase Client ---
 
 
     // --- Basic Validation ---
     // Add orderId check for store payment option
     if (!familyId || !familyName || !paymentOption || !subtotalAmountString || !totalAmountString || (paymentOption === 'store' && !orderIdFromForm)) {
-        // Include response headers in JSON response
-        return json({ error: "Missing required information (familyId, familyName, paymentOption, amounts, orderId for store)."}, { status: 400, headers: response.headers });
+        return json({ error: "Missing required information (familyId, familyName, paymentOption, amounts, orderId for store).", provider: paymentProvider.id }, { status: 400, headers: response.headers });
     }
 
     // Validate received amounts
@@ -67,7 +71,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
     if (isNaN(subtotalAmountFromForm) || isNaN(totalAmountFromForm) || subtotalAmountFromForm < 0 || totalAmountFromForm < 0 || totalAmountFromForm < subtotalAmountFromForm) {
         console.error(`[API Create PI] Invalid amounts received: subtotal=${subtotalAmountString}, total=${totalAmountString}`);
-        return json({ error: "Invalid payment amount details received." }, { status: 400, headers: response.headers });
+        return json({ error: "Invalid payment amount details received.", provider: paymentProvider.id }, { status: 400, headers: response.headers });
     }
     // console.log(`[API Create PI] Received amounts from form: Subtotal=${subtotalAmountFromForm}, Total=${totalAmountFromForm}`);
 
@@ -78,41 +82,21 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         : []; // Default to empty array for individual sessions or store purchases
 
     if ((paymentOption === 'monthly' || paymentOption === 'yearly') && studentIds.length === 0) {
-        // Include response headers in JSON response
-        return json({error: "Please select at least one student for group payments."}, {status: 400, headers: response.headers});
+        return json({error: "Please select at least one student for group payments.", provider: paymentProvider.id}, {status: 400, headers: response.headers});
     }
     if (paymentOption === 'individual' && (!priceIdFromForm || !quantityFromForm || parseInt(quantityFromForm, 10) <= 0)) {
-        // Include response headers in JSON response
-        return json({error: "Missing or invalid price/quantity for Individual Session."}, {status: 400, headers: response.headers});
+        return json({error: "Missing or invalid price/quantity for Individual Session.", provider: paymentProvider.id}, {status: 400, headers: response.headers});
     }
     if (paymentOption === 'yearly' && !priceIdFromForm) {
-        // Include response headers in JSON response
-        return json({error: "Missing price information for yearly payment."}, {status: 400, headers: response.headers});
+        return json({error: "Missing price information for yearly payment.", provider: paymentProvider.id}, {status: 400, headers: response.headers});
     }
     // --- End Validation ---
 
     const supabaseAdmin = getSupabaseAdminClient();
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeSecretKey) {
-        console.error("STRIPE_SECRET_KEY is not set.");
-        // Include response headers in JSON response
-        return json({error: "Payment processing is not configured."}, {status: 500, headers: response.headers});
-    }
-    const stripe = new Stripe(stripeSecretKey);
 
     // --- Get Email from Authenticated User ---
-    let customerEmail: string | undefined;
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-
-    if (authError) {
-        console.warn("Auth error while fetching user for Stripe email:", authError.message);
-        // Proceed without email, but maybe log more details or handle differently?
-    } else if (user?.email) {
-        customerEmail = user.email;
-        // console.log(`[Checkout Action] Using authenticated user email: ${customerEmail}`); // Optional log
-    } else {
-        console.warn(`[Checkout Action] User is authenticated but no email found. Proceeding without email.`);
-    }
+    // Email functionality disabled - using custom receipt system instead of provider receipts
+    // const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     // --- End Get Email ---
 
     let type: PaymentTypeEnum;
@@ -170,7 +154,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         // console.log(`[API Create PI] Using amounts from form: Subtotal=${subtotalAmountInCents}, Total Tax=${totalTaxAmountInCents}, Total=${totalAmountInCents}`);
         // Validate total amount is positive
         if (totalAmountInCents <= 0) {
-             console.error(`[API Create PI] Failing validation: totalAmountInCents=${totalAmountInCents}`);
+            console.error(`[API Create PI] Failing validation: totalAmountInCents=${totalAmountInCents}`);
             return json({error: "Payment total must be positive."}, {status: 400, headers: response.headers});
         }
         // --- End Validation ---
@@ -219,10 +203,10 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         if (existingTaxes && existingTaxes.length > 0) {
             console.log(`[API Create PI] Using existing tax records (${existingTaxes.length} taxes) to preserve exemptions.`);
             for (const existingTax of existingTaxes) {
-                existingTaxTotal += existingTax.tax_amount;
+                existingTaxTotal += ((existingTax as unknown as Record<string, number>)['tax_amount']);
                 paymentTaxesToInsert.push({
                     tax_rate_id: existingTax.tax_rate_id,
-                    tax_amount: existingTax.tax_amount,
+                    tax_amount: ((existingTax as unknown as Record<string, number>)['tax_amount']),
                     tax_rate_snapshot: existingTax.tax_rate_snapshot,
                     tax_name_snapshot: existingTax.tax_name_snapshot,
                     tax_description_snapshot: existingTax.tax_description_snapshot,
@@ -230,14 +214,14 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 taxDetailsForMetadata.push({
                     name: existingTax.tax_name_snapshot,
                     description: existingTax.tax_description_snapshot,
-                    amount: existingTax.tax_amount,
+                    amount: ((existingTax as unknown as Record<string, number>)['tax_amount']),
                     rate: existingTax.tax_rate_snapshot,
                 });
             }
-            
+
             // Verify existing tax total matches form-derived tax
             if (existingTaxTotal !== totalTaxAmountInCents) {
-                console.warn(`[API Create PI] Tax amount mismatch! Form-derived tax: ${totalTaxAmountInCents}, Existing tax total: ${existingTaxTotal}. Using form-derived total for Stripe.`);
+                console.warn(`[API Create PI] Tax amount mismatch! Form-derived tax: ${totalTaxAmountInCents}, Existing tax total: ${existingTaxTotal}. Using form-derived total for payment intent.`);
             } else {
                 console.log(`[API Create PI] Tax amounts match. Total tax: ${existingTaxTotal}`);
             }
@@ -246,58 +230,48 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         }
         // --- End Use Existing Tax Records ---
 
-        // 2. Create Stripe Payment Intent instead of Checkout Session
-        // Build metadata object explicitly
-        const paymentIntentMetadata: { [key: string]: string | number } = { // Allow number for quantity
-            paymentId: supabasePaymentId, // Keep Supabase Payment ID
-            type: type, // Use determined type
-            familyId: familyId,
-            familyName: familyName,
-            subtotal_amount: subtotalAmountInCents.toString(), // Use subtotal from form
-            tax_amount: totalTaxAmountInCents.toString(), // Use calculated tax for metadata consistency
-            total_amount: totalAmountInCents.toString(), // Use total from form
-            tax_details: JSON.stringify(taxDetailsForMetadata), // Use recalculated breakdown for metadata
-            // studentIds: studentIds.join(','), // Optional for group
+        // 2. Create Payment Intent through the configured provider
+        const paymentIntentMetadata: Record<string, string> = {
+            paymentId: supabasePaymentId,
+            type,
+            familyId,
+            familyName,
+            subtotal_amount: subtotalAmountInCents.toString(),
+            tax_amount: totalTaxAmountInCents.toString(),
+            total_amount: totalAmountInCents.toString(),
+            tax_details: JSON.stringify(taxDetailsForMetadata),
         };
         if ((type === 'individual_session' || type === 'store_purchase') && quantityForMetadata) {
-            paymentIntentMetadata.quantity = quantityForMetadata;
+            paymentIntentMetadata.quantity = quantityForMetadata.toString();
         }
-        if (type === 'store_purchase' && orderIdFromForm) { // Add orderId for store purchases
-             paymentIntentMetadata.orderId = orderIdFromForm;
+        if (type === 'store_purchase' && orderIdFromForm) {
+            paymentIntentMetadata.orderId = orderIdFromForm;
         }
 
-        // Create Payment Intent with the final TOTAL amount received from the form.
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: totalAmountInCents, // Pass FINAL total amount from form data
-            currency: siteConfig.pricing.currencyCode, // Use currency code from config
-            payment_method_types: ['card'], // Or configure allowed types
-            metadata: paymentIntentMetadata, // Attach metadata (includes amounts from form and recalculated tax breakdown)
-            // automatic_tax: { enabled: true }, // REMOVE THIS LINE
-            // Add customer email if found - Stripe might create/link a customer
-            receipt_email: customerEmail, // Send receipt to this email on success
-            // description: `Payment for ${type} - Family: ${familyName}`, // Optional description
-            // statement_descriptor: 'Sensei Negin', // Optional, short descriptor on bank statements
-            // Consider passing customer ID if available, or setup_future_usage
-            // customer: stripeCustomerId, // If you manage Stripe Customers
-            // setup_future_usage: 'on_session', // If you want to save cards
+        const paymentIntentResult = await paymentProvider.createPaymentIntent({
+            amount: fromCents(totalAmountInCents),
+            currency: siteConfig.pricing.currencyCode,
+            metadata: paymentIntentMetadata,
+            // receipt_email: customerEmail, // Removed to disable Stripe receipts - using custom receipt system
+            description: `Payment for ${type} - Family: ${familyName}`,
         });
 
-        if (!paymentIntent.client_secret) {
-            throw new Error('Stripe Payment Intent creation failed: Missing client_secret.');
-        }
+        const paymentIntentId = paymentIntentResult.id;
+        const clientSecret = paymentIntentResult.client_secret;
 
         // 4. Update Supabase payment record:
-        //    - Set Stripe Payment Intent ID.
+        //    - Set payment intent ID from the provider.
         //    - Update subtotal_amount and total_amount (in case they changed if user went back/forth).
         //    - Clear existing tax details for this payment (in payment_taxes).
         //    - Insert new tax details into payment_taxes.
-        // console.log(`[API Create PI] Updating Supabase payment ${supabasePaymentId} with PI ${paymentIntent.id}, amounts, and tax details.`);
+        // console.log(`[API Create PI] Updating Supabase payment ${supabasePaymentId} with intent ${paymentIntentId}, amounts, and tax details.`);
 
         // Step 4a: Update the main payment record
         const { error: updatePaymentError } = await supabaseAdmin
             .from('payments')
             .update({
-                stripe_payment_intent_id: paymentIntent.id,
+                payment_intent_id: paymentIntentId, // Generic payment intent ID for all providers
+                // Payments numeric columns are INT4 cents in this schema
                 subtotal_amount: subtotalAmountInCents,
                 total_amount: totalAmountInCents,
                 order_id: type === 'store_purchase' ? orderIdFromForm : undefined, // Add order_id if store purchase
@@ -309,12 +283,12 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
             console.error(`[API Create PI] FAILED to update main payment record ${supabasePaymentId}:`, updatePaymentError.message);
             // Critical: Payment might proceed but won't be trackable or have correct amounts.
             // Log for manual intervention. Attempt to cancel the Payment Intent.
-            console.log(`[API Create PI] Attempting to cancel Stripe Payment Intent ${paymentIntent.id} due to DB update failure.`);
+            console.log(`[API Create PI] Attempting to cancel payment intent ${paymentIntentId} due to DB update failure.`);
             try {
-                await stripe.paymentIntents.cancel(paymentIntent.id);
-                console.log(`[API Create PI] Successfully cancelled Stripe Payment Intent ${paymentIntent.id}.`);
+                await paymentProvider.cancelPaymentIntent(paymentIntentId);
+                console.log(`[API Create PI] Successfully cancelled payment intent ${paymentIntentId}.`);
             } catch (cancelError) {
-                console.error(`[API Create PI] FAILED to cancel Stripe Payment Intent ${paymentIntent.id}:`, cancelError instanceof Error ? cancelError.message : cancelError);
+                console.error(`[API Create PI] FAILED to cancel payment intent ${paymentIntentId}:`, cancelError instanceof Error ? cancelError.message : cancelError);
                 // Log this, but still return the original error to the user.
             }
             return json({ error: "Failed to link payment intent. Please contact support." }, { status: 500, headers: response.headers });
@@ -339,6 +313,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         if (paymentTaxesToInsert.length > 0) {
             const taxesWithPaymentId = paymentTaxesToInsert.map(tax => ({
                 ...tax,
+                tax_amount_cents: tax.tax_amount,
                 payment_id: supabasePaymentId,
             }));
             const { error: insertTaxesError } = await supabaseAdmin
@@ -349,21 +324,22 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
                 console.error(`[API Create PI] FAILED to insert new tax records for payment ${supabasePaymentId}:`, insertTaxesError.message);
                 // Critical: Amounts in 'payments' table might not match sum of 'payment_taxes'.
                 // Attempt to cancel PI? For now, log and return error.
-                console.log(`[API Create PI] Attempting to cancel Stripe Payment Intent ${paymentIntent.id} due to tax insertion failure.`);
-                try { await stripe.paymentIntents.cancel(paymentIntent.id); } catch { /* Log cancel error */ }
+                console.log(`[API Create PI] Attempting to cancel payment intent ${paymentIntentId} due to tax insertion failure.`);
+                try { await paymentProvider.cancelPaymentIntent(paymentIntentId); } catch { /* Log cancel error */ }
                 return json({ error: "Failed to record tax details. Please contact support." }, { status: 500, headers: response.headers });
             }
             // console.log(`[API Create PI] Inserted ${taxesWithPaymentId.length} new tax records for payment ${supabasePaymentId}.`);
         }
 
-        // 5. Return the client_secret, Supabase payment ID, and the amounts *received from the form* to the client
-        // console.log(`[API Create PI] Successfully created/updated Stripe PI ${paymentIntent.id} and Supabase payment ${supabasePaymentId} using amounts from form.`);
+        // 5. Return the client_secret, Supabase payment ID, and the amounts *received from the form*
+        // console.log(`[API Create PI] Successfully created/updated payment intent ${paymentIntentId} and Supabase payment ${supabasePaymentId} using amounts from form.`);
         return json({
-            clientSecret: paymentIntent.client_secret,
+            clientSecret: clientSecret ?? '',
             supabasePaymentId: supabasePaymentId,
             subtotalAmount: subtotalAmountInCents, // Return subtotal from form
             taxAmount: totalTaxAmountInCents, // Return calculated tax amount
-            totalAmount: totalAmountInCents // Return total from form
+            totalAmount: totalAmountInCents, // Return total from form
+            provider: paymentProvider.id,
         }, { headers: response.headers });
 
     } catch (error: unknown) {
@@ -375,7 +351,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
         // and can potentially be retried or cleaned up later.
         // We should NOT delete the original pending record here, as the user might go back and try again.
         // if (supabasePaymentId) { // Use the ID we received
-        //     console.log(`Stripe PI creation failed. The pending payment record ${supabasePaymentId} remains.`);
+        //     console.log(`Payment intent creation failed. The pending payment record ${supabasePaymentId} remains.`);
         //     // DO NOT DELETE: await supabaseAdmin.from('payments').delete().eq('id', supabasePaymentId);
         // }
         // Include response headers in JSON response

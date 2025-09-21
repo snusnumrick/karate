@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
 import { getSupabaseServerClient, createInitialPaymentRecord, getSupabaseAdminClient } from "~/utils/supabase.server";
@@ -11,7 +11,7 @@ import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import type { Database, Tables, TablesInsert } from "~/types/database.types";
 import type { TaxRate } from "~/types/invoice";
-import { formatCurrency } from "~/utils/misc"; // Assuming you have a currency formatter
+import { fromCents, formatMoney } from "~/utils/money"; // dinero.js currency formatter
 // For tax calculation consistency
 import { Info } from 'lucide-react'; // Added Info icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -158,8 +158,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         return redirect(`/login?redirectTo=/family/store/purchase/${studentId}`, { headers });
     }
 
-    // CSRF validation
-    await csrf.validate(request);
+    // Do not validate CSRF tokens in the loader (GET requests).
+    // CSRF validation is performed in the action on POST.
 
     // Fetch student data (only needed fields)
     const { data: studentData, error: studentError } = await supabaseServer
@@ -251,6 +251,9 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     if (!studentId) {
         return json({ error: "Student ID is missing." }, { status: 400 });
     }
+
+    // Validate CSRF before reading the request body
+    await csrf.validate(request);
 
     const formData = await request.formData();
     const productVariantId = formData.get('productVariantId') as string;
@@ -382,7 +385,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     // This function calculates tax and the final total_amount
     const { data: paymentData, error: paymentError } = await createInitialPaymentRecord(
         familyId,
-        subtotalAmount,
+        fromCents(subtotalAmount),
         [studentId], // Pass student ID for PST exemption logic
         'store_purchase', // Payment type
         orderId // Pass the order ID to link
@@ -408,7 +411,8 @@ export default function PurchaseGiPage() {
     const navigation = useNavigation();
     const params = useParams(); // Get studentId from params for the form action URL
 
-    const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+    // Keep RadioGroup controlled for its lifetime
+    const [selectedVariantId, setSelectedVariantId] = useState<string>("");
 
     const isSubmitting = navigation.state === "submitting";
 
@@ -440,12 +444,12 @@ export default function PurchaseGiPage() {
         return null;
     }, [student.t_shirt_size, products]);
 
-    // Set default selection on initial load
-    useState(() => {
-        if (defaultVariant) {
+    // Set default selection when available
+    useEffect(() => {
+        if (defaultVariant && !selectedVariantId) {
             setSelectedVariantId(defaultVariant.id);
         }
-    });
+    }, [defaultVariant, selectedVariantId]);
 
     // Find the selected variant across all products
     const selectedVariant = useMemo(() => {
@@ -536,7 +540,7 @@ export default function PurchaseGiPage() {
 
                                 <RadioGroup
                                     name="productVariantId" // Same name links all radio groups
-                                    value={selectedVariantId ?? undefined}
+                                    value={selectedVariantId}
                                     onValueChange={setSelectedVariantId}
                                     aria-label={`Select ${product.name} Size`} // More specific label
                                 >
@@ -575,7 +579,7 @@ export default function PurchaseGiPage() {
                                             >
                                                 <RadioGroupItem value={variant.id} id={variant.id} className="sr-only" />
                                                 <span className="font-semibold">{variant.size}</span>
-                                                <span className="text-sm text-muted-foreground">{formatCurrency(variant.price_in_cents)}</span>
+                                                <span className="text-sm text-muted-foreground">{formatMoney(fromCents(variant.price_in_cents))}</span>
                                                 {/* Highlight Recommended Size */}
                                                 {isRecommended && (
                                                     <span className="text-xs font-medium text-white bg-blue-600 px-1.5 py-0.5 rounded-full mt-1">Recommended</span>
@@ -607,18 +611,18 @@ export default function PurchaseGiPage() {
                              <div className="space-y-1 text-sm">
                                 <div className="flex justify-between">
                                     <span>Subtotal:</span>
-                                    <span>{formatCurrency(subtotal)}</span>
+                                    <span>{formatMoney(fromCents(subtotal))}</span>
                                 </div>
                                 {applicableTaxes.map(tax => (
                                     <div key={tax.name} className="flex justify-between text-gray-600 dark:text-gray-400">
                                         <span>{tax.name} ({ (tax.rate * 100).toFixed(0) }%):</span>
-                                        <span>{formatCurrency(Math.round(subtotal * tax.rate))}</span>
+                                        <span>{formatMoney(fromCents(Math.round(subtotal * tax.rate)))}</span>
                                     </div>
                                 ))}
                                 <Separator className="my-1" />
                                 <div className="flex justify-between font-semibold text-base">
                                     <span>Total:</span>
-                                    <span>{formatCurrency(totalAmount)}</span>
+                                    <span>{formatMoney(fromCents(totalAmount))}</span>
                                 </div>
                             </div>
                         </CardContent>

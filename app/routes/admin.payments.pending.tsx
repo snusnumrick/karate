@@ -8,6 +8,8 @@ import {Badge}from "~/components/ui/badge";
 import {formatDate}from "~/utils/misc"; // Import formatDate utility
 import {PaymentStatus}from "~/types/models"; // Import the enum
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { formatMoney, fromCents } from "~/utils/money";
+import { centsFromRow } from "~/utils/database-money";
 
 // Define types
 // Define the structure for pending payments, including the nested family object
@@ -55,6 +57,9 @@ export async function loader(): Promise<TypedResponse<LoaderData>> {
         // Format data to add familyName at the top level for easier use in the component
         const formattedPayments: FormattedPendingPayment[] = data?.map(p => ({
             ...p, // Spread the original payment data (id, amounts, status, etc.)
+            // Use centralized money rules per table / field
+            subtotal_amount: centsFromRow('payments', 'subtotal_amount', p as unknown as Record<string, unknown>),
+            total_amount: centsFromRow('payments', 'total_amount', p as unknown as Record<string, unknown>),
             familyName: p.family?.name ?? 'N/A' // Extract family name from the nested object
         })) ?? [];
 
@@ -105,7 +110,7 @@ export default function PendingPaymentsPage() {
                                         {formatDate(payment.created_at, { formatString: 'yyyy-MM-dd HH:mm' })}
                                     </TableCell>
                                      {/* Use total_amount */}
-                                    <TableCell className="text-right">${(payment.total_amount / 100).toFixed(2)}</TableCell>
+                                    <TableCell className="text-right">{formatMoney(fromCents(payment.total_amount))}</TableCell>
                                     <TableCell>
                                         <Badge variant="secondary" className="capitalize"> {/* Pending status */}
                                             {payment.status}

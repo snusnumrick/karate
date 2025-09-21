@@ -1,6 +1,8 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, TypedResponse } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 // Removed unused Label import
@@ -58,6 +60,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
     const { response } = getSupabaseServerClient(request); // Only need response for headers
     const headers = response.headers;
 
+    await csrf.validate(request);
     const formData = await request.formData();
     const updates: Array<{ id: string; stock_quantity: number }> = [];
     const fieldErrors: { [key: string]: string } = {};
@@ -152,6 +155,7 @@ export default function AdminInventoryPage() {
                 <p className="text-gray-500 dark:text-gray-400 text-center py-10">No active product variants found.</p>
             ) : (
                 <Form method="post">
+                    <AuthenticityTokenInput />
                     <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-800">
                         <Table>
                             <TableHeader>

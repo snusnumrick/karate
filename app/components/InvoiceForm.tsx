@@ -14,7 +14,7 @@ import { InvoiceTemplates } from "~/components/InvoiceTemplates";
 import { InvoicePreview } from "~/components/InvoicePreview";
 import type { InvoiceEntity, CreateInvoiceData, CreateInvoiceLineItemData , InvoiceTemplate, TaxRate } from "~/types/invoice";
 import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
-import { formatCurrency } from "~/utils/misc";
+import { formatMoney, toMoney } from "~/utils/money";
 import { createEmptyLineItem } from "~/utils/line-item-helpers";
 import { calculateDueDate } from "~/utils/entity-helpers";
 import { Calendar, FileText, Eye, Save, Send, CheckCircle, AlertCircle, XCircle, Settings } from "lucide-react";
@@ -103,10 +103,16 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
   // Initialize form with initial data
   useEffect(() => {
     if (initialData) {
+      // Rehydrate line item Money fields that may have been serialized to JSON
+      const rehydratedLineItems = (initialData.line_items || [createEmptyLineItem()]).map((item) => ({
+        ...item,
+        unit_price: toMoney(item.unit_price as unknown),
+      }));
+
       setInvoiceData(prev => ({
         ...prev,
         ...initialData,
-        line_items: initialData.line_items || [createEmptyLineItem()]
+        line_items: rehydratedLineItems
       }));
     }
   }, [initialData]);
@@ -158,7 +164,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
       invoiceData.line_items.every(item => 
         item.description.trim() && 
         item.quantity > 0 && 
-        item.unit_price >= 0
+        item.unit_price.getAmount() >= 0
       )
     );
   };
@@ -173,7 +179,7 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
       invoiceData.line_items.every(item => 
         item.description.trim() && 
         item.quantity > 0 && 
-        item.unit_price >= 0
+        item.unit_price.getAmount() >= 0
       );
 
     return {
@@ -424,23 +430,23 @@ export function InvoiceForm({ entities, initialData, mode = 'create', preSelecte
                     <div className="space-y-2">
                       <div className="flex justify-between dark:text-gray-200">
                         <span>Subtotal:</span>
-                        <span>{formatCurrency(subtotal * 100)}</span>
+                        <span>{formatMoney(subtotal)}</span>
                       </div>
-                      {totalDiscount > 0 && (
+                      {totalDiscount.getAmount() > 0 && (
                         <div className="flex justify-between text-green-600 dark:text-green-400">
                           <span>Discount (from line items):</span>
-                          <span>-{formatCurrency(totalDiscount * 100)}</span>
+                          <span>-{formatMoney(totalDiscount)}</span>
                         </div>
                       )}
-                      {totalTax > 0 && (
+                      {totalTax.getAmount() > 0 && (
                         <div className="flex justify-between dark:text-gray-200">
                           <span>Tax (from line items):</span>
-                          <span>{formatCurrency(totalTax * 100)}</span>
+                          <span>{formatMoney(totalTax)}</span>
                         </div>
                       )}
                       <div className="flex justify-between font-semibold text-lg border-t pt-2 dark:text-white dark:border-gray-600">
                         <span>Total:</span>
-                        <span>{formatCurrency(total * 100)}</span>
+                        <span>{formatMoney(total)}</span>
                       </div>
                     </div>
                   </CardContent>

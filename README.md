@@ -64,6 +64,16 @@ npm run dev
 - **Notifications**: Web Push API with VAPID
 - **Deployment**: Vercel with Edge Functions
 
+## 💰 Monetary System
+
+**INT4 Cents Storage**: All monetary values are stored as integers representing cents for precision and consistency:
+- **Precision**: Eliminates floating-point arithmetic errors
+- **Performance**: Faster integer operations and indexing
+- **Consistency**: Standardized storage across all tables
+- **Type Safety**: Strong typing with dinero.js integration
+
+See [MONETARY_STORAGE.md](docs/MONETARY_STORAGE.md) for detailed documentation and migration information.
+
 ## 🔒 Security Features
 
 - **CSRF Protection**: Comprehensive Cross-Site Request Forgery protection on all forms

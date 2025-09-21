@@ -18,8 +18,10 @@ import {
   AlertDialogTitle,
 } from '~/components/ui/alert-dialog';
 import { Plus } from 'lucide-react';
-import { formatCurrency, formatDate } from '~/utils/misc';
+import { formatDate } from '~/utils/misc';
+import { formatMoney, toMoney } from '~/utils/money';
 import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
+import { csrf } from "~/utils/csrf.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { supabaseServer } = getSupabaseServerClient(request);
@@ -44,9 +46,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Fetch discount codes
   const discountCodes = await DiscountService.getAllDiscountCodes();
 
+  const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
   return json({
-    discountCodes
-  });
+    discountCodes,
+    csrfToken
+  }, { headers: csrfCookieHeader ? { 'Set-Cookie': csrfCookieHeader } : {} });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -68,6 +72,8 @@ export async function action({ request }: ActionFunctionArgs) {
   if (profile?.role !== 'admin') {
     throw new Response('Forbidden', { status: 403 });
   }
+
+  await csrf.validate(request);
 
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
@@ -110,8 +116,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 
 export default function AdminDiscountCodes() {
-  const { discountCodes } = useLoaderData<typeof loader>() as {
+  const { discountCodes, csrfToken } = useLoaderData<typeof loader>() as {
     discountCodes: DiscountCodeWithUsage[];
+    csrfToken: string;
   };
 
   const [dialogState, setDialogState] = useState<{
@@ -228,7 +235,7 @@ export default function AdminDiscountCodes() {
                           <td className="p-4">
                             <div className="text-sm font-medium">
                               {code.discount_type === 'fixed_amount'
-                                  ? formatCurrency(code.discount_value * 100)
+                                  ? formatMoney(toMoney(code.discount_value))
                                   : `${code.discount_value}%`}
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -371,6 +378,7 @@ export default function AdminDiscountCodes() {
                       try {
                         console.log('Submitting form with:', { intent: dialogState.action, id: dialogState.codeId });
                         const formData = new FormData();
+                        formData.append('csrf', csrfToken);
                         formData.append('intent', dialogState.action);
                         formData.append('id', dialogState.codeId);
 

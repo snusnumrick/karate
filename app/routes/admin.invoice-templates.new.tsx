@@ -10,12 +10,14 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
-import { formatCurrency } from '~/utils/misc';
+import {addMoney, fromDollars, formatMoney, toCents, toDollars, type Money, ZERO_MONEY} from '~/utils/money';
 import { calculateLineItemTotalWithRates } from '~/utils/line-item-helpers';
 import { InvoiceTemplateService } from '~/services/invoice-template.server';
 import { getTemplateCategories } from '~/data/invoice-templates';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import type { CreateInvoiceLineItemData } from '~/types/invoice';
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 interface ActionData {
   errors?: {
@@ -37,6 +39,7 @@ export async function loader() {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
+    await csrf.validate(request);
     const formData = await request.formData();
     const { supabaseServer } = getSupabaseServerClient(request);
     const templateService = new InvoiceTemplateService(supabaseServer);
@@ -97,7 +100,8 @@ export async function action({ request }: ActionFunctionArgs) {
             item_type: item.item_type,
             description: item.description,
             quantity: item.quantity,
-            unit_price: item.unit_price,
+            unit_price: toDollars(item.unit_price),
+            unit_price_cents: toCents(item.unit_price),
             tax_rate: item.tax_rate || 0,
             discount_rate: item.discount_rate || 0,
             service_period_start: item.service_period_start || null,
@@ -123,13 +127,13 @@ export default function NewInvoiceTemplate() {
     const isSubmitting = navigation.state === "submitting";
     
     const [lineItems, setLineItems] = useState<CreateInvoiceLineItemData[]>([
-        { item_type: 'fee', description: "", quantity: 1, unit_price: 0, tax_rate: 0, sort_order: 0 }
+        { item_type: 'fee', description: "", quantity: 1, unit_price: ZERO_MONEY, tax_rate: 0, sort_order: 0 }
     ]);
     
     const categories = getTemplateCategories();
     
     const addLineItem = () => {
-        setLineItems([...lineItems, { item_type: 'fee', description: "", quantity: 1, unit_price: 0, tax_rate: 0, sort_order: lineItems.length }]);
+        setLineItems([...lineItems, { item_type: 'fee', description: "", quantity: 1, unit_price: ZERO_MONEY, tax_rate: 0, sort_order: lineItems.length }]);
     };
     
     const removeLineItem = (index: number) => {
@@ -138,7 +142,7 @@ export default function NewInvoiceTemplate() {
         }
     };
     
-    const updateLineItem = (index: number, field: keyof CreateInvoiceLineItemData, value: string | number) => {
+    const updateLineItem = (index: number, field: keyof CreateInvoiceLineItemData, value: string | number | Money) => {
         const updated = [...lineItems];
         updated[index] = { ...updated[index], [field]: value };
         setLineItems(updated);
@@ -150,8 +154,8 @@ export default function NewInvoiceTemplate() {
     
 
     
-    const calculateTotal = () => {
-        return lineItems.reduce((total, item) => total + calculateLineItemTotalWithRates(item, []), 0);
+    const calculateTotal = () : Money => {
+        return lineItems.reduce((total, item) => addMoney(total, calculateLineItemTotalWithRates(item, [])), ZERO_MONEY);
     };
 
     return (
@@ -167,6 +171,7 @@ export default function NewInvoiceTemplate() {
                 </div>
 
             <Form method="post" className="space-y-6">
+                <AuthenticityTokenInput />
                 <Card className="bg-white dark:bg-gray-900 shadow-sm">
                     <CardHeader>
                         <CardTitle>Template Details</CardTitle>
@@ -298,8 +303,8 @@ export default function NewInvoiceTemplate() {
                                             type="number"
                                             min="0"
                                             step="0.01"
-                                            value={item.unit_price}
-                                            onChange={(e) => updateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                            value={toDollars(item.unit_price)}
+                                            onChange={(e) => updateLineItem(index, 'unit_price', fromDollars(parseFloat(e.target.value) || 0))}
                                             onClick={handleInputClick}
                                             className="input-custom-styles"
                                             tabIndex={0}
@@ -328,7 +333,7 @@ export default function NewInvoiceTemplate() {
                                     <div className="space-y-2">
                                         <Label>Line Total</Label>
                                         <div className="h-10 px-3 py-2 border rounded-md bg-muted text-muted-foreground flex items-center">
-                                            {formatCurrency(calculateLineItemTotalWithRates(item, []) * 100)}
+                                            {formatMoney(calculateLineItemTotalWithRates(item, []))}
                                         </div>
                                     </div>
                                 </div>
@@ -342,7 +347,7 @@ export default function NewInvoiceTemplate() {
                         <div className="border-t pt-4">
                             <div className="flex justify-between items-center text-lg font-semibold">
                                 <span>Template Total:</span>
-                                <span>{formatCurrency(calculateTotal() * 100)}</span>
+                                <span>{formatMoney(calculateTotal())}</span>
                             </div>
                         </div>
                     </CardContent>

@@ -5,6 +5,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 interface ActionResponse {
     error?: string;
@@ -56,6 +58,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
 }
 
 export async function action({ request }: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
+    await csrf.validate(request);
     const formData = await request.formData();
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
@@ -142,6 +145,7 @@ export default function ResetPasswordPage() {
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="form-container-styles py-8 px-4 sm:px-10">
                         <form className="space-y-6" method="post">
+                            <AuthenticityTokenInput />
                             {/* Display error message */}
                             {actionData?.error && (
                                 <Alert variant="destructive">

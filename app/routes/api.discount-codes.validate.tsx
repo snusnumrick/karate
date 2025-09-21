@@ -2,6 +2,7 @@ import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { DiscountService } from '~/services/discount.server';
 import type { ApplyDiscountRequest } from '~/types/discount';
+import { toMoney, type Money } from '~/utils/money';
 
 export async function action({ request }: ActionFunctionArgs) {
   const { supabaseServer, response } = getSupabaseServerClient(request);
@@ -24,7 +25,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     const body = await request.json();
-    const { code, family_id, student_id, subtotal_amount, applicable_to }: ApplyDiscountRequest = body;
+    const { code, family_id, student_id, subtotal_amount: subtotalParam, applicable_to } = body;
 
     // Verify user belongs to this family
     const { data: profileData, error: profileError } = await supabaseServer
@@ -41,17 +42,20 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     // Validate required fields
-    if (!code || !family_id || !subtotal_amount || !applicable_to) {
+    if (!code || !family_id || !subtotalParam || !applicable_to) {
       return json(
         { error: 'Missing required fields: code, family_id, subtotal_amount, applicable_to' },
         { status: 400, headers: response.headers }
       );
     }
 
-    // Validate subtotal_amount
-    if (typeof subtotal_amount !== 'number' || subtotal_amount <= 0) {
+    // toMoney handles all parsing including JSON strings
+    let subtotal_amount: Money;
+    try {
+      subtotal_amount = toMoney(subtotalParam);
+    } catch (error) {
       return json(
-        { error: 'Invalid subtotal amount' },
+        { error: `Invalid subtotal amount format: ${error instanceof Error ? error.message : 'Unknown error'}` },
         { status: 400, headers: response.headers }
       );
     }

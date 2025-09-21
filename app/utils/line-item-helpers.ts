@@ -1,5 +1,14 @@
 import type { InvoiceItemType, CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
 import { formatDate } from "~/utils/misc";
+import {
+    multiplyMoney,
+    addMoney,
+    subtractMoney,
+    getAmount,
+    Money,
+    percentageOf,
+    negativeMoney, ZERO_MONEY, ratioMoney, isPositive
+} from "~/utils/money";
 
 /**
  * Get item type display label
@@ -39,7 +48,7 @@ export function createEmptyLineItem(): CreateInvoiceLineItemData {
     item_type: 'other',
     description: '',
     quantity: 1,
-    unit_price: 0,
+    unit_price: ZERO_MONEY,
     tax_rate: 0,
     discount_rate: 0
   };
@@ -59,7 +68,7 @@ export function validateLineItem(item: CreateInvoiceLineItemData): string[] {
     errors.push('Quantity must be greater than 0');
   }
   
-  if (item.unit_price < 0) {
+  if (getAmount(item.unit_price) < 0) {
     errors.push('Unit price cannot be negative');
   }
   
@@ -81,7 +90,7 @@ export function createLineItemFromEnrollment(
   enrollmentId: string,
   className: string,
   programName: string,
-  monthlyFee: number,
+  monthlyFee: Money,
   servicePeriodStart?: string,
   servicePeriodEnd?: string
 ): CreateInvoiceLineItemData {
@@ -104,7 +113,7 @@ export function createLineItemFromEnrollment(
 export function createLineItemFromProduct(
   productId: string,
   productName: string,
-  price: number,
+  price: Money,
   quantity: number = 1
 ): CreateInvoiceLineItemData {
   return {
@@ -123,7 +132,7 @@ export function createLineItemFromProduct(
  */
 export function createFeeLineItem(
   description: string,
-  amount: number
+  amount: Money
 ): CreateInvoiceLineItemData {
   return {
     item_type: 'fee',
@@ -140,13 +149,13 @@ export function createFeeLineItem(
  */
 export function createDiscountLineItem(
   description: string,
-  discountAmount: number
+  discountAmount: Money
 ): CreateInvoiceLineItemData {
   return {
     item_type: 'discount',
     description,
     quantity: 1,
-    unit_price: -Math.abs(discountAmount), // Ensure negative for discount
+    unit_price: negativeMoney(discountAmount), // Ensure negative for discount
     tax_rate: 0,
     discount_rate: 0
   };
@@ -167,40 +176,37 @@ export function duplicateLineItem(item: CreateInvoiceLineItemData): CreateInvoic
 /**
  * Calculate line item subtotal (before tax and discount)
  */
-export function calculateLineItemSubtotal(item: CreateInvoiceLineItemData): number {
-  return item.quantity * item.unit_price;
+export function calculateLineItemSubtotal(item: CreateInvoiceLineItemData): Money {
+  return multiplyMoney(item.unit_price, item.quantity);
 }
 
 /**
  * Calculate line item discount amount
  */
-export function calculateLineItemDiscount(item: CreateInvoiceLineItemData): number {
+export function calculateLineItemDiscount(item: CreateInvoiceLineItemData): Money {
   const subtotal = calculateLineItemSubtotal(item);
   const discountRate = item.discount_rate || 0;
-  return subtotal * (discountRate / 100);
+  return percentageOf(subtotal, discountRate);
 }
-
-
-
-
 
 /**
  * Calculate line item tax amount with multiple tax rates
  */
 export function calculateLineItemTaxWithRates(
   quantity: number,
-  unitPrice: number,
+  unitPrice: Money,
   taxRateIds: string[],
   taxRates: TaxRate[],
   discountRate: number = 0
-): number {
+): Money {
   if (!taxRateIds || taxRateIds.length === 0) {
-    return 0;
+    return ZERO_MONEY;
   }
 
-  const subtotal = quantity * unitPrice;
-  const discountAmount = subtotal * (discountRate / 100);
-  const taxableAmount = subtotal - discountAmount;
+  const subtotal = multiplyMoney(unitPrice, quantity);
+  // discountRate is stored as percentage (e.g., 10 for 10%), convert to decimal
+  const discountAmount = percentageOf(subtotal, discountRate);
+  const taxableAmount = subtractMoney(subtotal, discountAmount);
   
   // Calculate total tax from all applicable tax rates
   const totalTaxRate = taxRateIds.reduce((total, taxRateId) => {
@@ -208,20 +214,20 @@ export function calculateLineItemTaxWithRates(
     return total + (taxRate?.rate || 0);
   }, 0);
   
-  return taxableAmount * totalTaxRate;
+  return multiplyMoney(taxableAmount, totalTaxRate);
 }
 
 /**
  * Get tax breakdown for a line item with multiple tax rates
  */
-export function getLineItemTaxBreakdown(item: CreateInvoiceLineItemData, taxRates: TaxRate[]): Array<{ taxRate: TaxRate; amount: number }> {
+export function getLineItemTaxBreakdown(item: CreateInvoiceLineItemData, taxRates: TaxRate[]): Array<{ taxRate: TaxRate; amount: Money }> {
   if (!item.tax_rate_ids || item.tax_rate_ids.length === 0) {
     return [];
   }
 
   const subtotal = calculateLineItemSubtotal(item);
   const discount = calculateLineItemDiscount(item);
-  const taxableAmount = subtotal - discount;
+  const taxableAmount = subtractMoney(subtotal, discount);
   
   return item.tax_rate_ids.map(taxRateId => {
      const taxRate = taxRates.find(rate => rate.id === taxRateId);
@@ -234,10 +240,10 @@ export function getLineItemTaxBreakdown(item: CreateInvoiceLineItemData, taxRate
          created_at: new Date().toISOString(),
          updated_at: new Date().toISOString()
        };
-       return { taxRate: unknownTaxRate, amount: 0 };
+       return { taxRate: unknownTaxRate, amount: ZERO_MONEY}
      }
      
-     const amount = taxableAmount * taxRate.rate;
+     const amount = multiplyMoney(taxableAmount, taxRate.rate);
      return { taxRate, amount };
    });
 }
@@ -247,7 +253,7 @@ export function getLineItemTaxBreakdown(item: CreateInvoiceLineItemData, taxRate
 /**
  * Calculate line item total with multiple tax rates
  */
-export function calculateLineItemTotalWithRates(item: CreateInvoiceLineItemData, taxRates: TaxRate[]): number {
+export function calculateLineItemTotalWithRates(item: CreateInvoiceLineItemData, taxRates: TaxRate[]): Money {
   const subtotal = calculateLineItemSubtotal(item);
   const discount = calculateLineItemDiscount(item);
   const tax = calculateLineItemTaxWithRates(
@@ -257,7 +263,7 @@ export function calculateLineItemTotalWithRates(item: CreateInvoiceLineItemData,
     taxRates,
     item.discount_rate || 0
   );
-  return subtotal - discount + tax;
+  return addMoney(subtractMoney( subtotal, discount), tax);
 }
 
 /**
@@ -318,14 +324,14 @@ export function sortLineItems(items: CreateInvoiceLineItemData[]): CreateInvoice
  * Distributes payment amount proportionally across all tax rates based on invoice totals
  */
 export function calculateInvoicePaymentTaxBreakdown(
-  paymentAmountCents: number,
-  invoiceTotalAmountCents: number,
-  invoiceTaxAmountCents: number,
+  paymentAmount: Money,
+  invoiceTotalAmount: Money,
+  invoiceTaxAmount: Money,
   lineItems: Array<{
     id: string;
     taxes?: Array<{
       tax_rate_id: string;
-      tax_amount: number;
+      tax_amount: Money;
       tax_name_snapshot: string;
       tax_rate_snapshot: number;
       tax_description_snapshot?: string;
@@ -333,21 +339,21 @@ export function calculateInvoicePaymentTaxBreakdown(
   }>
 ): Array<{
   tax_rate_id: string;
-  tax_amount: number;
+  tax_amount: Money;
   tax_name_snapshot: string;
   tax_rate_snapshot: number;
   tax_description_snapshot?: string;
 }> {
-  if (paymentAmountCents <= 0 || invoiceTotalAmountCents <= 0 || invoiceTaxAmountCents <= 0) {
+  if (!(paymentAmount.isPositive() && invoiceTotalAmount.isPositive() && invoiceTaxAmount.isPositive())) {
     return [];
   }
 
   // Calculate payment proportion
-  const paymentProportion = paymentAmountCents / invoiceTotalAmountCents;
+  const paymentProportion =ratioMoney(paymentAmount, invoiceTotalAmount);
   
   // Aggregate all tax amounts by tax rate ID
   const taxAggregation = new Map<string, {
-    total_amount: number;
+    total_amount: Money;
     tax_name_snapshot: string;
     tax_rate_snapshot: number;
     tax_description_snapshot?: string;
@@ -358,7 +364,7 @@ export function calculateInvoicePaymentTaxBreakdown(
       item.taxes.forEach(tax => {
         const existing = taxAggregation.get(tax.tax_rate_id);
         if (existing) {
-          existing.total_amount += tax.tax_amount;
+          existing.total_amount = addMoney(existing.total_amount, tax.tax_amount);
         } else {
           taxAggregation.set(tax.tax_rate_id, {
             total_amount: tax.tax_amount,
@@ -374,16 +380,16 @@ export function calculateInvoicePaymentTaxBreakdown(
   // Calculate proportional tax amounts for this payment
   const paymentTaxBreakdown: Array<{
     tax_rate_id: string;
-    tax_amount: number;
+    tax_amount: Money;
     tax_name_snapshot: string;
     tax_rate_snapshot: number;
     tax_description_snapshot?: string;
   }> = [];
 
   taxAggregation.forEach((taxData, taxRateId) => {
-    const proportionalTaxAmount = Math.round(taxData.total_amount * paymentProportion);
+    const proportionalTaxAmount = multiplyMoney(taxData.total_amount, paymentProportion);
     
-    if (proportionalTaxAmount > 0) {
+    if (isPositive(proportionalTaxAmount)) {
       paymentTaxBreakdown.push({
         tax_rate_id: taxRateId,
         tax_amount: proportionalTaxAmount,

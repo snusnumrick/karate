@@ -4,21 +4,94 @@ import Stripe from 'https://esm.sh/stripe@15.7.0?target=deno'; // Use specific v
 import {corsHeaders} from '../_shared/cors.ts'; // Assuming you have CORS setup
 import type {Database} from '../_shared/database.types.ts'; // Import Database types
 
-// Initialize Stripe (ensure STRIPE_SECRET_KEY is set in Supabase Function env vars)
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
-  apiVersion: '2023-10-16', // Specify API version - KEEP THIS
-  httpClient: Stripe.createFetchHttpClient(), // Use Fetch client for Deno
-});
+// Detect payment provider from environment
+const PAYMENT_PROVIDER = Deno.env.get('PAYMENT_PROVIDER') || 'stripe';
+
+// Provider-specific initialization
+let stripe: Stripe | null = null;
+
+if (PAYMENT_PROVIDER === 'stripe') {
+  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+  if (stripeSecretKey) {
+    stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16', // Specify API version - KEEP THIS
+      httpClient: Stripe.createFetchHttpClient(), // Use Fetch client for Deno
+    });
+  } else {
+    console.warn('STRIPE_SECRET_KEY not found. Stripe functionality disabled.');
+  }
+}
 
 // Using shared Supabase admin client utility
 
 // Define the threshold for checking pending payments (e.g., 15 minutes)
 const PENDING_THRESHOLD_MINUTES = 15;
 
+// Provider-specific payment intent retrieval
+async function retrievePaymentIntent(paymentIntentId: string) {
+  if (PAYMENT_PROVIDER === 'stripe' && stripe) {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ['latest_charge'], // Expand to get receipt URL if succeeded
+    });
+    
+    return {
+      id: paymentIntent.id,
+      status: paymentIntent.status,
+      receiptUrl: (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object')
+        ? paymentIntent.latest_charge.receipt_url
+        : null,
+      paymentMethod: paymentIntent.payment_method_types?.[0] ?? null,
+    };
+  }
+  
+  // Add other providers here
+  if (PAYMENT_PROVIDER === 'square') {
+    // Square Web SDK payments would need to be tracked differently
+    // This is a placeholder - in a real implementation, you'd need to:
+    // 1. Store Square payment IDs in the database
+    // 2. Use Square Payments API to check payment status
+    // 3. Map Square statuses to our internal statuses
+    console.warn(`Square payment sync for ${paymentIntentId} - implementation needed`);
+    return {
+      id: paymentIntentId,
+      status: 'pending', // Default to pending since we can't check
+      receiptUrl: null,
+      paymentMethod: null,
+    };
+  }
+  
+  throw new Error(`Unsupported payment provider: ${PAYMENT_PROVIDER}`);
+}
+
+// Provider-agnostic status mapping
+function mapProviderStatusToDbStatus(providerStatus: string): 'succeeded' | 'failed' | 'pending' {
+  if (PAYMENT_PROVIDER === 'stripe') {
+    if (providerStatus === 'succeeded') return 'succeeded';
+    if (['requires_payment_method', 'canceled'].includes(providerStatus)) return 'failed';
+    return 'pending'; // For processing, requires_action, etc.
+  }
+  
+  if (PAYMENT_PROVIDER === 'square') {
+    // Map Square payment statuses to our internal statuses
+    if (['approved', 'completed'].includes(providerStatus.toLowerCase())) return 'succeeded';
+    if (['failed', 'canceled', 'cancelled'].includes(providerStatus.toLowerCase())) return 'failed';
+    return 'pending'; // For pending, processing, etc.
+  }
+  
+  return 'pending';
+}
+
+// Get database field name for payment intent ID (provider-specific until migration)
+function getPaymentIntentFieldName(): string {
+  // Now using generic payment_intent_id for all providers
+  return 'payment_intent_id';
+  }
+}
+
 serve(async (req) => {
   // This function is designed to be triggered by a schedule (cron job), not HTTP requests.
   // We might add a check here later to ensure it's triggered correctly if needed.
-  console.log('Starting sync-pending-payments function run...');
+  console.log(`Starting sync-pending-payments function run for provider: ${PAYMENT_PROVIDER}...`);
 
   const supabaseAdmin = getSupabaseAdminClient();
 
@@ -28,12 +101,13 @@ serve(async (req) => {
   const cutoffIsoString = cutoffDate.toISOString();
 
   try {
-    // 1. Find old pending payments with a Stripe PI ID
+    // 1. Find old pending payments with a payment intent ID
+    const paymentIntentField = getPaymentIntentFieldName();
     const { data: pendingPayments, error: fetchError } = await supabaseAdmin
       .from('payments')
-      .select('id, stripe_payment_intent_id')
+      .select(`id, ${paymentIntentField}`)
       .eq('status', 'pending')
-      .not('stripe_payment_intent_id', 'is', null)
+      .not(paymentIntentField, 'is', null)
       .lt('created_at', cutoffIsoString); // Check payments created *before* the cutoff
 
     if (fetchError) {
@@ -59,39 +133,31 @@ serve(async (req) => {
     let updatedCount = 0;
     let failedCount = 0;
 
-    // 2. Check each payment with Stripe and update DB if necessary
+    // 2. Check each payment with provider and update DB if necessary
     for (const payment of pendingPayments) {
-      if (!payment.stripe_payment_intent_id) continue; // Should not happen due to query, but safety check
+      const paymentIntentId = (payment as any)[paymentIntentField] as string;
+      if (!paymentIntentId) continue; // Should not happen due to query, but safety check
 
       try {
         console.log(
-          `Checking Stripe PI status for ${payment.stripe_payment_intent_id} (DB ID: ${payment.id})`,
+          `Checking ${PAYMENT_PROVIDER} PI status for ${paymentIntentId} (DB ID: ${(payment as any).id})`,
         );
-        const paymentIntent = await stripe.paymentIntents.retrieve(
-          payment.stripe_payment_intent_id,
-          {
-            expand: ['latest_charge'], // Expand to get receipt URL if succeeded
-          },
-        );
+        const paymentIntentData = await retrievePaymentIntent(paymentIntentId);
 
         let dbUpdateData: Partial<Database['public']['Tables']['payments']['Update']> | null = null;
+        const dbStatus = mapProviderStatusToDbStatus(paymentIntentData.status);
 
-        if (paymentIntent.status === 'succeeded') {
-          console.log(`Stripe PI ${paymentIntent.id} status is 'succeeded'. Preparing DB update.`);
-          const receiptUrl =
-            (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object')
-              ? paymentIntent.latest_charge.receipt_url
-              : null;
-          const paymentMethod = paymentIntent.payment_method_types?.[0] ?? null;
+        if (dbStatus === 'succeeded') {
+          console.log(`${PAYMENT_PROVIDER} PI ${paymentIntentData.id} status is 'succeeded'. Preparing DB update.`);
           dbUpdateData = {
             status: 'succeeded',
             payment_date: new Date().toISOString(), // Use current time as payment date approximation
-            receipt_url: receiptUrl,
-            payment_method: paymentMethod,
+            receipt_url: paymentIntentData.receiptUrl,
+            payment_method: paymentIntentData.paymentMethod,
           };
-        } else if (['requires_payment_method', 'canceled'].includes(paymentIntent.status)) {
+        } else if (dbStatus === 'failed') {
           console.log(
-            `Stripe PI ${paymentIntent.id} status is '${paymentIntent.status}'. Preparing DB update to 'failed'.`,
+            `${PAYMENT_PROVIDER} PI ${paymentIntentData.id} status is '${paymentIntentData.status}'. Preparing DB update to 'failed'.`,
           );
           dbUpdateData = {
             status: 'failed',
@@ -100,7 +166,7 @@ serve(async (req) => {
         } else {
           // For other statuses (processing, requires_action, etc.), leave the DB as pending.
           console.log(
-            `Stripe PI ${paymentIntent.id} status is '${paymentIntent.status}'. No DB update needed.`,
+            `${PAYMENT_PROVIDER} PI ${paymentIntentData.id} status is '${paymentIntentData.status}'. No DB update needed.`,
           );
         }
 
@@ -109,24 +175,24 @@ serve(async (req) => {
           const { error: updateError } = await supabaseAdmin
             .from('payments')
             .update(dbUpdateData)
-            .eq('id', payment.id);
+            .eq('id', (payment as any).id);
 
           if (updateError) {
             console.error(
-              `Failed to update payment ${payment.id} status in DB:`,
+              `Failed to update payment ${(payment as any).id} status in DB:`,
               updateError.message,
             );
             failedCount++;
             // Continue to next payment
           } else {
-            console.log(`Successfully updated payment ${payment.id} status in DB.`);
+            console.log(`Successfully updated payment ${(payment as any).id} status in DB.`);
             updatedCount++;
           }
         }
-      } catch (stripeError) {
+      } catch (providerError) {
         console.error(
-          `Error retrieving or processing Stripe PI ${payment.stripe_payment_intent_id} for payment ${payment.id}:`,
-          stripeError instanceof Error ? stripeError.message : stripeError,
+          `Error retrieving or processing ${PAYMENT_PROVIDER} PI ${paymentIntentId} for payment ${(payment as any).id}:`,
+          providerError instanceof Error ? providerError.message : providerError,
         );
         failedCount++;
         // Continue to next payment

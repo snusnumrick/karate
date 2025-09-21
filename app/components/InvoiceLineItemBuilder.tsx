@@ -6,7 +6,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Plus, Copy, Trash2 } from "lucide-react";
 import type { CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
 import { createEmptyLineItem, getAvailableItemTypes, duplicateLineItem, calculateLineItemTotalWithRates } from "~/utils/line-item-helpers";
-import { formatCurrency } from "~/utils/misc";
+import {formatMoney, getAmount, Money, parseDollars} from "~/utils/money";
 
 
 interface InvoiceLineItemBuilderProps {
@@ -79,7 +79,8 @@ export function InvoiceLineItemBuilder({
     });
   };
 
-  const handleUpdateLineItem = (index: number, field: keyof CreateInvoiceLineItemData, value: string | number | string[]) => {
+  const handleUpdateLineItem = (index: number, field: keyof CreateInvoiceLineItemData,
+                                value: string | number | string[] | Money  ) => {
     const newLineItems = [...lineItems];
     const updatedItem = {
       ...newLineItems[index],
@@ -175,12 +176,12 @@ export function InvoiceLineItemBuilder({
                           {item.description || `Line Item ${index + 1}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {item.quantity} × {formatCurrency(item.unit_price * 100)} = {formatCurrency(lineTotal * 100)}
+                          {item.quantity} × {formatMoney(item.unit_price)} = {formatMoney(lineTotal)}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium text-foreground">
-                          {formatCurrency(lineTotal * 100)}
+                          {formatMoney(lineTotal)}
                         </span>
                         <svg
                           className={`h-5 w-5 text-muted-foreground transition-transform ${
@@ -312,8 +313,8 @@ export function InvoiceLineItemBuilder({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={item.unit_price}
-                      onChange={(e) => handleUpdateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                      value={getAmount(item.unit_price) / 100}
+                      onChange={(e) => handleUpdateLineItem(index, 'unit_price', parseDollars(e.target.value))}
                       onClick={handleInputClick}
                       className={`input-custom-styles ${
                         itemErrors.length > 0 ? 'border-red-500' : ''

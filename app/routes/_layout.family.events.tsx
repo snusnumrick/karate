@@ -12,6 +12,10 @@ import { formatDate } from "~/utils/misc";
 // Avoid server-only imports in client components; implement a local formatter
 // to prevent SSR bundling issues.
 import type { Database } from "~/types/database.types";
+import { formatMoney, fromCents } from "~/utils/money";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+
 
 
 type EventWithStudents = {
@@ -55,6 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const userId = await requireUserId(request);
   const { supabaseServer } = getSupabaseServerClient(request);
   
+  await csrf.validate(request);
   const formData = await request.formData();
   const paymentCount = parseInt(formData.get("paymentCount") as string || "1");
   
@@ -442,6 +447,7 @@ export default function FamilyEventsPage() {
                    if (student.payment_required && student.payment_status === 'pending') {
                      return (
                        <Form method="post" className="inline">
+                         <AuthenticityTokenInput />
                          <input type="hidden" name="paymentId" value={student.payment_id || ''} />
                          <Button type="submit" size="sm" variant="destructive" className="h-6 px-2 text-xs">
                            Pay
@@ -488,6 +494,7 @@ export default function FamilyEventsPage() {
             
             {studentsWithPendingPayments.length > 0 && (
               <Form method="post">
+                <AuthenticityTokenInput />
                 {studentsWithPendingPayments.map((student, index) => (
                   <input 
                     key={student.id} 
@@ -537,7 +544,7 @@ export default function FamilyEventsPage() {
                         Pending Payments
                       </h3>
                       <p className="text-yellow-700 dark:text-yellow-300">
-                        You have ${(pendingPaymentTotal / 100).toFixed(2)} in pending payments
+                        You have {formatMoney(fromCents(pendingPaymentTotal))} in pending payments
                       </p>
                     </div>
                   </div>
@@ -554,6 +561,7 @@ export default function FamilyEventsPage() {
                     
                     return (
                       <Form method="post">
+                        <AuthenticityTokenInput />
                         {allPendingPaymentIds.map((paymentId, index) => (
                           <input 
                             key={paymentId} 

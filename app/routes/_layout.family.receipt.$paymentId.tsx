@@ -7,6 +7,8 @@ import { Printer } from "lucide-react";
 import type { Database } from "~/types/database.types";
 import { siteConfig } from "~/config/site"; // Import site config for business details
 import { formatDate } from "~/utils/misc"; // For formatting dates
+import { formatMoney, fromCents } from "~/utils/money";
+import { centsFromRow } from "~/utils/database-money";
 
 // Define the types for the data needed for the receipt
 type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row']; // Includes tax_description_snapshot now
@@ -273,14 +275,14 @@ export default function PaymentReceiptPage() {
                                             {item.quantity > 1 && ` (Qty: ${item.quantity})`}
                                         </td>
                                         {/* Display price per item * quantity for line total */}
-                                        <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">${((item.price_per_item_cents * item.quantity) / 100).toFixed(2)}</td>
+                                        <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">{formatMoney(fromCents(item.price_per_item_cents * item.quantity))}</td>
                                     </tr>
                                 ))
                             ) : (
                                 // Fallback for non-store items or if order data is missing
                                 <tr className="border-b border-gray-200 dark:border-gray-700 print:border-gray-400">
                                     <td className="py-3 pr-2 text-gray-700 dark:text-gray-300 print:text-black">{getPaymentProductDescription(payment.type, quantity)}</td>
-                                    <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">${(payment.subtotal_amount / 100).toFixed(2)}</td>
+                                    <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">{formatMoney(fromCents(centsFromRow('payments', 'subtotal_amount', payment as unknown as Record<string, unknown>)))}</td>
                                 </tr>
                             )}
                             {/* Tax Rows */}
@@ -290,7 +292,7 @@ export default function PaymentReceiptPage() {
                                     <td className="py-3 pr-2 text-gray-700 dark:text-gray-300 print:text-black pl-4">
                                         {tax.tax_description_snapshot || tax.tax_name_snapshot} ({ (tax.tax_rate_snapshot * 100).toFixed(2) }%)
                                     </td>
-                                    <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">${(tax.tax_amount / 100).toFixed(2)}</td>
+                                    <td className="py-3 px-2 text-gray-700 dark:text-gray-300 print:text-black text-right">{formatMoney(fromCents(centsFromRow('payment_taxes', 'tax_amount', tax as unknown as Record<string, unknown>)))}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -298,7 +300,7 @@ export default function PaymentReceiptPage() {
                             {/* Total Row */}
                             <tr className="border-t-2 border-gray-400 dark:border-gray-500 print:border-black">
                                 <td className="pt-3 pr-2 text-right font-bold text-gray-800 dark:text-gray-100 print:text-black">Total Paid:</td>
-                                <td className="pt-3 px-2 text-right font-bold text-gray-800 dark:text-gray-100 print:text-black">${(payment.total_amount / 100).toFixed(2)} {siteConfig.localization.currency}</td>
+                                <td className="pt-3 px-2 text-right font-bold text-gray-800 dark:text-gray-100 print:text-black">{formatMoney(fromCents(centsFromRow('payments', 'total_amount', payment as unknown as Record<string, unknown>)))} {siteConfig.localization.currency}</td>
                             </tr>
                         </tfoot>
                     </table>

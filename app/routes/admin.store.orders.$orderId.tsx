@@ -10,10 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { formatDate, formatCurrency } from "~/utils/misc";
+import { formatDate } from "~/utils/misc";
+import { fromCents, formatMoney } from "~/utils/money";
 import { Constants, type Tables, type Enums } from "~/types/database.types";
 import { CheckCircle, XCircle, Clock, PackageCheck, ShoppingCart } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // Define types for related data
 type OrderRow = Tables<'orders'>;
@@ -134,7 +137,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     // Removed: const { supabaseServer, response } = getSupabaseServerClient(request);
     // Removed: const headers = response.headers;
 
-
+    await csrf.validate(request);
     const formData = await request.formData();
     const newStatus = formData.get('status') as OrderStatusEnum | null;
     const pickupNotes = formData.get('pickup_notes') as string | null;
@@ -241,15 +244,15 @@ export default function AdminOrderDetailPage() {
                                             </TableCell>
                                             <TableCell>{item.product_variants?.size || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.quantity}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(item.price_per_item_cents)}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(item.price_per_item_cents * item.quantity)}</TableCell>
+                                            <TableCell className="text-right">{formatMoney(fromCents(item.price_per_item_cents))}</TableCell>
+                                            <TableCell className="text-right">{formatMoney(fromCents(item.price_per_item_cents * item.quantity))}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </CardContent>
                          <CardFooter className="flex justify-end font-semibold text-lg border-t pt-4">
-                            <span>Total: {formatCurrency(order.total_amount_cents)}</span>
+                            <span>Total: {formatMoney(fromCents(order.total_amount_cents))}</span>
                         </CardFooter>
                     </Card>
 
@@ -260,6 +263,7 @@ export default function AdminOrderDetailPage() {
                             <CardDescription>Update the order status or add pickup notes.</CardDescription>
                         </CardHeader>
                         <Form method="post">
+                            <AuthenticityTokenInput />
                             <CardContent className="space-y-4">
                                 <div>
                                     <Label htmlFor="status">Order Status</Label>
@@ -349,12 +353,12 @@ export default function AdminOrderDetailPage() {
                              <p><strong>Payment Status:</strong> <span className={`capitalize font-medium ${paymentStatus === 'succeeded' ? 'text-green-600' : paymentStatus === 'failed' ? 'text-red-600' : 'text-yellow-600'}`}>{paymentStatus || 'N/A'}</span></p>
                              <p><strong>Method:</strong> {paymentMethod || 'N/A'} {cardLast4 ? `(**** ${cardLast4})` : ''}</p>
                              <p><strong>Order Date:</strong> {formatDate(order.order_date, { type: 'datetime' })}</p>
-                             {order.payments?.receipt_url && (
+                             {order.payments?.receipt_url && paymentStatus === 'succeeded' && (
                                  <p>
                                      <strong>Receipt:</strong>
-                                     <a href={order.payments.receipt_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-2">
-                                         View Receipt
-                                     </a>
+                                     <Link to={`/family/receipt/${order.payments.id}`} className="text-blue-600 hover:underline ml-2">
+                                         View Custom Receipt
+                                     </Link>
                                  </p>
                              )}
                         </CardContent>

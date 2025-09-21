@@ -17,6 +17,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Badge } from "~/components/ui/badge";
 import { ArrowLeft, Trash2, Calendar, User } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toMoney, formatDollars } from "~/utils/money";
 // Type definitions for assignment data with joins
 type AssignmentWithJoins = {
   id: string;
@@ -254,7 +255,12 @@ export default function EditAutomationRule() {
                   <SelectContent>
                     {templates.map((template) => (
                       <SelectItem key={template.id} value={template.id}>
-                        {template.name} ({template.discount_type === 'percentage' ? `${template.discount_value}%` : `$${template.discount_value}`} off)
+                        {template.name} ({template.discount_type === 'percentage'
+                          ? `${template.discount_value}%`
+                          : (() => {
+                              const money = toMoney(template.discount_value as unknown);
+                              return `$${formatDollars(money)}`;
+                            })()} off)
                       </SelectItem>
                     ))}
                   </SelectContent>

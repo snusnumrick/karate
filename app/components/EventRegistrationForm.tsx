@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '~/components/ui/alert';
 import { EventPaymentForm } from '~/components/EventPaymentForm';
 import { AlertCircle, User, Users, CreditCard, CheckCircle } from 'lucide-react';
 import type { StudentPaymentDetail } from '~/types/payment';
+import {Money, ZERO_MONEY, formatMoney, multiplyMoney, toMoney} from "~/utils/money";
 
 // Event type definition
 interface Event {
@@ -23,7 +24,7 @@ interface Event {
   start_time: string | null;
   end_time: string | null;
   location: string | null;
-  registration_fee: number | null;
+  registration_fee: Money | null;
   max_participants: number | null;
   registration_deadline: string | null;
   status: string;
@@ -87,7 +88,7 @@ interface EventRegistrationFormProps {
 
 interface TaxInfo {
   taxName: string;
-  taxAmount: number;
+  taxAmount: Money;
   taxRate: number;
 }
 
@@ -102,7 +103,7 @@ interface ActionResponse {
   studentIds?: string[];
   message?: string;
   taxes?: TaxInfo[];
-  totalTaxAmount?: number;
+  totalTaxAmount?: Money;
   waiverValidationFailed?: boolean;
   missingWaivers?: Array<{ id: string; title: string }>;
 }
@@ -171,7 +172,7 @@ export function EventRegistrationForm({
     paymentId: string;
     studentPaymentDetails: StudentPaymentDetail[];
     taxes?: TaxInfo[];
-    totalTaxAmount?: number;
+    totalTaxAmount?: Money;
   } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [registrationResult, setRegistrationResult] = useState<{ familyId: string; studentIds: string[] } | null>(null);
@@ -207,7 +208,7 @@ export function EventRegistrationForm({
             lastName: student.lastName,
             eligibility: { eligible: true, reason: 'Trial' },
             needsPayment: true,
-            nextPaymentAmount: event.registration_fee || 0,
+            nextPaymentAmount: event.registration_fee || ZERO_MONEY,
             nextPaymentTierLabel: 'Event Registration Fee',
             pastPaymentCount: 0
           }));
@@ -216,8 +217,12 @@ export function EventRegistrationForm({
             registrationId: response.registrationId,
             paymentId: response.paymentId,
             studentPaymentDetails,
-            taxes: response.taxes || [],
-            totalTaxAmount: response.totalTaxAmount || 0
+            // Coerce serialized Money JSON into Dinero Money objects for client usage
+            taxes: (response.taxes || []).map(t => ({
+              ...t,
+              taxAmount: toMoney(t.taxAmount as unknown)
+            })),
+            totalTaxAmount: response.totalTaxAmount ? toMoney(response.totalTaxAmount as unknown) : ZERO_MONEY
           });
           setRegistrationResult({
             familyId: response.familyId || familyData?.familyId || 'guest',
@@ -536,7 +541,7 @@ export function EventRegistrationForm({
                   Students: {formData.students.map(s => `${s.firstName} ${s.lastName}`).join(', ')}
                 </p>
                 <p className="text-sm font-medium">
-                  Total: ${((event.registration_fee || 0) * formData.students.length).toFixed(2)}
+                  Total: ${formatMoney(multiplyMoney(event.registration_fee || ZERO_MONEY, formData.students.length))}
                 </p>
               </div>
             </div>
@@ -544,7 +549,7 @@ export function EventRegistrationForm({
             <EventPaymentForm
               eventId={event.id}
               eventTitle={event.title}
-              registrationFee={event.registration_fee || 0}
+              registrationFee={event.registration_fee || ZERO_MONEY}
               studentCount={formData.students.length}
               familyId={registrationResult.familyId}
               registrationId={paymentData?.registrationId || ''}
@@ -552,7 +557,7 @@ export function EventRegistrationForm({
               actionEndpoint={`/events/${event.id}/register`}
               onSuccess={handlePaymentSuccess}
               taxes={paymentData?.taxes || []}
-              totalTaxAmount={paymentData?.totalTaxAmount || 0}
+              totalTaxAmount={paymentData?.totalTaxAmount || ZERO_MONEY}
             />
           </CardContent>
         </Card>

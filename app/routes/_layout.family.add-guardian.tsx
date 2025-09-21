@@ -14,6 +14,8 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {Form as UIForm, FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form"; // Shadcn Form components
 import {ClientOnly} from "~/components/client-only";
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // --- Types and Schemas ---
 type GuardianInsert = Database['public']['Tables']['guardians']['Insert'];
@@ -83,6 +85,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionResponse>> {
     const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
+    await csrf.validate(request);
     const formData = await request.formData();
     const formValues = Object.fromEntries(formData.entries());
 
@@ -216,6 +219,7 @@ export default function AddGuardianPage() {
                     return (
                         <UIForm {...guardianForm}>
                             <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                            <AuthenticityTokenInput />
                             {/* Display field-specific errors */}
                             {actionData?.errors && (
                                 <Alert variant="destructive" className="mb-4">

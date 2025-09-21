@@ -1,5 +1,12 @@
+-- Karate School Database Setup
 -- Run this in your Supabase SQL Editor
 -- This script is idempotent - safe to run multiple times without duplicating data
+--
+-- IMPORTANT: Monetary fields have been migrated to INT4 cents storage for precision and consistency.
+-- See migration 015_convert_decimal_to_int4_cents.sql and 018_migrate_discount_value_to_cents.sql.
+-- See MONETARY_STORAGE.md for complete documentation.
+-- All monetary amounts are stored as integers representing cents (e.g., $12.34 = 1234 cents).
+-- Note: discount_codes and discount_templates tables now use discount_value_cents (INT4) instead of discount_value (NUMERIC).
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
@@ -605,8 +612,17 @@ ALTER TABLE payments
 -- Add other columns idempotently
 ALTER TABLE payments
     ADD COLUMN IF NOT EXISTS stripe_session_id text NULL; -- Keep for potential legacy data or other flows
-ALTER TABLE payments
-    ADD COLUMN IF NOT EXISTS stripe_payment_intent_id text NULL; -- Add Payment Intent ID
+-- Rename stripe_payment_intent_id to generic payment_intent_id for all providers
+ALTER TABLE payments 
+    ADD COLUMN IF NOT EXISTS payment_intent_id text NULL; -- Generic payment intent ID for all providers
+
+-- Copy data from old column if it exists
+UPDATE payments 
+SET payment_intent_id = stripe_payment_intent_id 
+WHERE stripe_payment_intent_id IS NOT NULL AND payment_intent_id IS NULL;
+
+-- Remove old Stripe-specific column
+ALTER TABLE payments DROP COLUMN IF EXISTS stripe_payment_intent_id;
 ALTER TABLE payments
     ADD COLUMN IF NOT EXISTS receipt_url text NULL;
 ALTER TABLE payments
@@ -2652,7 +2668,8 @@ CREATE TABLE IF NOT EXISTS public.discount_codes (
     
     -- Discount Type
     discount_type text NOT NULL CHECK (discount_type IN ('fixed_amount', 'percentage')),
-    discount_value numeric(10,4) NOT NULL CHECK (discount_value > 0),
+    discount_value numeric(10,4) NOT NULL CHECK (discount_value > 0), -- DEPRECATED: Use discount_value_cents instead
+    discount_value_cents integer NOT NULL DEFAULT 0 CHECK (discount_value_cents >= 0), -- Discount amount in cents
     
     -- Usage Restrictions
     usage_type text NOT NULL CHECK (usage_type IN ('one_time', 'ongoing')),
@@ -2862,7 +2879,8 @@ CREATE TABLE IF NOT EXISTS public.discount_templates (
     
     -- Discount Type
     discount_type text NOT NULL CHECK (discount_type IN ('fixed_amount', 'percentage')),
-    discount_value numeric(10,4) NOT NULL CHECK (discount_value > 0),
+    discount_value numeric(10,4) NOT NULL CHECK (discount_value > 0), -- DEPRECATED: Use discount_value_cents instead
+    discount_value_cents integer NOT NULL DEFAULT 0 CHECK (discount_value_cents >= 0), -- Discount amount in cents
     
     -- Usage Restrictions
     usage_type text NOT NULL CHECK (usage_type IN ('one_time', 'ongoing')),
@@ -3065,13 +3083,13 @@ END IF;
 -- Calculate discount amount
 IF p_subtotal_amount IS NOT NULL THEN
         IF v_discount_code.discount_type = 'fixed_amount' THEN
-            -- Convert discount_value from dollars to cents
-            v_calculated_discount := (v_discount_code.discount_value * 100)::integer;
+            -- Use discount_value_cents directly (already in cents)
+            v_calculated_discount := v_discount_code.discount_value_cents;
             -- Ensure discount doesn't exceed subtotal
-v_calculated_discount := LEAST(v_calculated_discount, p_subtotal_amount);
-ELSIF v_discount_code.discount_type = 'percentage' THEN
-            -- Calculate percentage of subtotal
-            v_calculated_discount := (p_subtotal_amount * v_discount_code.discount_value / 100)::integer;
+            v_calculated_discount := LEAST(v_calculated_discount, p_subtotal_amount);
+        ELSIF v_discount_code.discount_type = 'percentage' THEN
+            -- Calculate percentage of subtotal using discount_value_cents (percentage * 100, e.g., 15% = 1500)
+            v_calculated_discount := (p_subtotal_amount * v_discount_code.discount_value_cents / 10000)::integer;
 END IF;
 END IF;
 
@@ -3449,11 +3467,11 @@ CREATE TABLE IF NOT EXISTS public.programs (
     max_age integer CHECK (max_age >= min_age),
     gender_restriction text DEFAULT 'none' CHECK (gender_restriction IN ('male', 'female', 'none')),
     special_needs_support boolean DEFAULT false,
-    -- Pricing structure
-    monthly_fee numeric(10,2) DEFAULT 0,
-    registration_fee numeric(10,2) DEFAULT 0,
-    yearly_fee numeric(10,2) DEFAULT 0,
-    individual_session_fee numeric(10,2) DEFAULT 0,
+    -- Pricing structure (stored as cents for precision)
+    monthly_fee_cents INT4 NOT NULL DEFAULT 0,
+    registration_fee_cents INT4 NOT NULL DEFAULT 0,
+    yearly_fee_cents INT4 NOT NULL DEFAULT 0,
+    individual_session_fee_cents INT4 NOT NULL DEFAULT 0,
     -- System fields
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -3613,14 +3631,14 @@ BEGIN
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_active') THEN
 CREATE INDEX idx_programs_active ON public.programs (is_active);
 END IF;
-IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_monthly_fee') THEN
-CREATE INDEX idx_programs_monthly_fee ON public.programs (monthly_fee);
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_monthly_fee_cents') THEN
+CREATE INDEX idx_programs_monthly_fee_cents ON public.programs (monthly_fee_cents);
 END IF;
-IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_yearly_fee') THEN
-CREATE INDEX idx_programs_yearly_fee ON public.programs (yearly_fee);
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_yearly_fee_cents') THEN
+CREATE INDEX idx_programs_yearly_fee_cents ON public.programs (yearly_fee_cents);
 END IF;
-IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_session_fee') THEN
-CREATE INDEX idx_programs_session_fee ON public.programs (individual_session_fee);
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_session_fee_cents') THEN
+CREATE INDEX idx_programs_session_fee_cents ON public.programs (individual_session_fee_cents);
 END IF;
 -- New indexes for multi-class system
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_max_capacity') THEN
@@ -4137,13 +4155,13 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Insert sample programs
-/*INSERT INTO public.programs (name, description, age_group, belt_system, duration_weeks, monthly_fee, registration_fee, payment_frequency, family_discount, min_age, max_age, gender_restriction, special_needs_support, is_active)
+/*INSERT INTO public.programs (name, description, age_group, belt_system, duration_weeks, monthly_fee_cents, registration_fee_cents, payment_frequency, family_discount_cents, min_age, max_age, gender_restriction, special_needs_support, is_active)
 VALUES 
-    ('Little Dragons', 'Martial arts program for young children focusing on basic movements, discipline, and fun', 'Kids (4-6)', 'Traditional', 12, 80.00, 50.00, 'monthly', 10.00, 4, 6, 'none', true, true),
-    ('Youth Karate', 'Traditional karate training for children and teens', 'Kids (7-12)', 'Traditional', 16, 90.00, 75.00, 'monthly', 15.00, 7, 12, 'none', true, true),
-    ('Teen Martial Arts', 'Advanced martial arts training for teenagers', 'Teens (13-17)', 'Traditional', 20, 100.00, 75.00, 'monthly', 15.00, 13, 17, 'none', false, true),
-    ('Adult Karate', 'Traditional karate training for adults of all skill levels', 'Adults (18+)', 'Traditional', 24, 110.00, 100.00, 'monthly', 20.00, 18, NULL, 'none', false, true),
-    ('Competition Team', 'Advanced training for students interested in martial arts competitions', 'All Ages', 'Competition', 52, 150.00, 150.00, 'monthly', 25.00, 8, NULL, 'none', false, true)
+    ('Little Dragons', 'Martial arts program for young children focusing on basic movements, discipline, and fun', 'Kids (4-6)', 'Traditional', 12, 8000, 5000, 'monthly', 1000, 4, 6, 'none', true, true),
+    ('Youth Karate', 'Traditional karate training for children and teens', 'Kids (7-12)', 'Traditional', 16, 9000, 7500, 'monthly', 1500, 7, 12, 'none', true, true),
+    ('Teen Martial Arts', 'Advanced martial arts training for teenagers', 'Teens (13-17)', 'Traditional', 20, 10000, 7500, 'monthly', 1500, 13, 17, 'none', false, true),
+    ('Adult Karate', 'Traditional karate training for adults of all skill levels', 'Adults (18+)', 'Traditional', 24, 11000, 10000, 'monthly', 2000, 18, NULL, 'none', false, true),
+    ('Competition Team', 'Advanced training for students interested in martial arts competitions', 'All Ages', 'Competition', 52, 15000, 15000, 'monthly', 2500, 8, NULL, 'none', false, true)
 ON CONFLICT DO NOTHING;*/
 
 -- Insert sample classes
@@ -4574,7 +4592,7 @@ CREATE TABLE IF NOT EXISTS invoice_entities (
     country VARCHAR DEFAULT 'US',
     tax_id VARCHAR,
     payment_terms VARCHAR DEFAULT 'Net 30' CHECK (payment_terms IN ('Due on Receipt', 'Net 15', 'Net 30', 'Net 60', 'Net 90')),
-    credit_limit DECIMAL(10,2),
+    credit_limit_cents INTEGER, -- Migrated from DECIMAL(10,2) to INT4 cents storage
     family_id UUID REFERENCES families(id),
     is_active BOOLEAN DEFAULT true,
     notes TEXT,
@@ -4593,13 +4611,13 @@ CREATE TABLE IF NOT EXISTS invoices (
     due_date DATE NOT NULL,
     service_period_start DATE,
     service_period_end DATE,
-    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
-    tax_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-    discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-    amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0,
-    amount_due DECIMAL(10,2) NOT NULL DEFAULT 0,
-    currency VARCHAR(3) DEFAULT 'USD',
+    subtotal_cents INTEGER NOT NULL DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    tax_amount_cents INTEGER NOT NULL DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    discount_amount_cents INTEGER NOT NULL DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    total_amount_cents INTEGER NOT NULL DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    amount_paid_cents INTEGER NOT NULL DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    amount_due_cents INTEGER NOT NULL DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    currency VARCHAR(3) DEFAULT 'CAD',
     notes TEXT,
     terms TEXT,
     footer_text TEXT,
@@ -4616,11 +4634,11 @@ CREATE TABLE IF NOT EXISTS invoice_line_items (
     invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
     item_type invoice_item_type NOT NULL,
     description TEXT NOT NULL,
-    quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
-    unit_price DECIMAL(10,2) NOT NULL,
-    line_total DECIMAL(10,2) NOT NULL,
-    discount_rate DECIMAL(5,4) DEFAULT 0,
-    discount_amount DECIMAL(10,2) DEFAULT 0,
+    quantity_cents INTEGER NOT NULL DEFAULT 100, -- Migrated from DECIMAL(10,2) to INT4 cents storage (1.00 = 100 cents)
+    unit_price_cents INTEGER NOT NULL, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    line_total_cents INTEGER NOT NULL, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    discount_rate DECIMAL(5,4) DEFAULT 0, -- Keep as DECIMAL for percentage rates
+    discount_amount_cents INTEGER DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
     enrollment_id UUID REFERENCES enrollments(id),
     product_id UUID,
     service_period_start DATE,
@@ -4634,7 +4652,7 @@ CREATE TABLE IF NOT EXISTS invoice_line_item_taxes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     line_item_id UUID NOT NULL REFERENCES invoice_line_items(id) ON DELETE CASCADE,
     tax_rate_id UUID NOT NULL REFERENCES tax_rates(id) ON DELETE CASCADE,
-    tax_amount DECIMAL(10,2) NOT NULL,
+    tax_amount_cents INTEGER NOT NULL, -- Migrated from DECIMAL(10,2) to INT4 cents storage
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(line_item_id, tax_rate_id)
 );
@@ -4644,10 +4662,11 @@ CREATE TABLE IF NOT EXISTS invoice_payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     invoice_id UUID NOT NULL REFERENCES invoices(id),
     payment_method invoice_payment_method NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
+    amount_cents INTEGER NOT NULL, -- Migrated from DECIMAL(10,2) to INT4 cents storage
     payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
     reference_number VARCHAR,
     notes TEXT,
+    receipt_url VARCHAR,
     stripe_payment_intent_id VARCHAR,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -4669,7 +4688,7 @@ CREATE TABLE IF NOT EXISTS invoice_payment_taxes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     invoice_payment_id UUID NOT NULL REFERENCES invoice_payments(id) ON DELETE CASCADE,
     tax_rate_id UUID NOT NULL REFERENCES tax_rates(id) ON DELETE RESTRICT,
-    tax_amount DECIMAL(10,2) NOT NULL CHECK (tax_amount >= 0),
+    tax_amount_cents INTEGER NOT NULL CHECK (tax_amount_cents >= 0), -- Migrated from DECIMAL(10,2) to INT4 cents storage
     tax_rate_snapshot DECIMAL(5,4) NOT NULL,
     tax_name_snapshot VARCHAR NOT NULL,
     tax_description_snapshot TEXT,
@@ -4810,38 +4829,38 @@ $$;
 CREATE OR REPLACE FUNCTION update_invoice_totals()
 RETURNS TRIGGER AS $$
 DECLARE
-    invoice_subtotal DECIMAL(10,2);
-    invoice_tax_amount DECIMAL(10,2);
-    invoice_discount_amount DECIMAL(10,2);
-    invoice_total DECIMAL(10,2);
-    invoice_amount_paid DECIMAL(10,2);
+    invoice_subtotal_cents INTEGER;
+    invoice_tax_amount_cents INTEGER;
+    invoice_discount_amount_cents INTEGER;
+    invoice_total_cents INTEGER;
+    invoice_amount_paid_cents INTEGER;
 BEGIN
-    -- Calculate totals from line items
+    -- Calculate totals from line items (all in cents)
     SELECT 
-        COALESCE(SUM(line_total), 0),
-        COALESCE(SUM(tax_amount), 0),
-        COALESCE(SUM(discount_amount), 0)
-    INTO invoice_subtotal, invoice_tax_amount, invoice_discount_amount
+        COALESCE(SUM(line_total_cents), 0),
+        COALESCE(SUM(tax_amount_cents), 0),
+        COALESCE(SUM(discount_amount_cents), 0)
+    INTO invoice_subtotal_cents, invoice_tax_amount_cents, invoice_discount_amount_cents
     FROM invoice_line_items 
     WHERE invoice_id = COALESCE(NEW.invoice_id, OLD.invoice_id);
     
-    -- Calculate total amount
-    invoice_total := invoice_subtotal + invoice_tax_amount - invoice_discount_amount;
+    -- Calculate total amount (in cents)
+    invoice_total_cents := invoice_subtotal_cents + invoice_tax_amount_cents - invoice_discount_amount_cents;
     
-    -- Get amount paid
-    SELECT COALESCE(SUM(amount), 0)
-    INTO invoice_amount_paid
+    -- Get amount paid (in cents)
+    SELECT COALESCE(SUM(amount_cents), 0)
+    INTO invoice_amount_paid_cents
     FROM invoice_payments
     WHERE invoice_id = COALESCE(NEW.invoice_id, OLD.invoice_id);
     
-    -- Update invoice totals
+    -- Update invoice totals (all in cents)
     UPDATE invoices SET
-        subtotal = invoice_subtotal,
-        tax_amount = invoice_tax_amount,
-        discount_amount = invoice_discount_amount,
-        total_amount = invoice_total,
-        amount_paid = invoice_amount_paid,
-        amount_due = invoice_total - invoice_amount_paid,
+        subtotal_cents = invoice_subtotal_cents,
+        tax_amount_cents = invoice_tax_amount_cents,
+        discount_amount_cents = invoice_discount_amount_cents,
+        total_amount_cents = invoice_total_cents,
+        amount_paid_cents = invoice_amount_paid_cents,
+        amount_due_cents = invoice_total_cents - invoice_amount_paid_cents,
         updated_at = NOW()
     WHERE id = COALESCE(NEW.invoice_id, OLD.invoice_id);
     
@@ -5113,10 +5132,10 @@ CREATE TABLE IF NOT EXISTS invoice_template_line_items (
     template_id UUID NOT NULL REFERENCES invoice_templates(id) ON DELETE CASCADE,
     item_type invoice_item_type NOT NULL,
     description TEXT NOT NULL,
-    quantity DECIMAL(10,2) DEFAULT 1,
-    unit_price DECIMAL(10,2) DEFAULT 0,
-    tax_rate DECIMAL(6,4) DEFAULT 0,
-    discount_rate DECIMAL(6,4) DEFAULT 0,
+    quantity_cents INTEGER DEFAULT 100, -- Migrated from DECIMAL(10,2) to INT4 cents storage (1.00 = 100 cents)
+    unit_price_cents INTEGER DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    tax_rate DECIMAL(6,4) DEFAULT 0, -- Keep as DECIMAL for percentage rates
+    discount_rate DECIMAL(6,4) DEFAULT 0, -- Keep as DECIMAL for percentage rates
     service_period_start DATE,
     service_period_end DATE,
     sort_order INTEGER DEFAULT 0,
@@ -5400,8 +5419,8 @@ CREATE TABLE IF NOT EXISTS events (
     max_belt_rank belt_rank_enum,
     
     -- Pricing
-    registration_fee decimal(10,2) DEFAULT 0,
-    late_registration_fee decimal(10,2),
+    registration_fee_cents INTEGER DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
+    late_registration_fee_cents INTEGER, -- Migrated from DECIMAL(10,2) to INT4 cents storage
     
     -- Requirements
     requires_waiver boolean DEFAULT false,
@@ -5433,7 +5452,7 @@ CREATE TABLE IF NOT EXISTS event_registrations (
     
     -- Payment tracking
     payment_required boolean DEFAULT true,
-    payment_amount decimal(10,2),
+    payment_amount_cents INTEGER, -- Migrated from DECIMAL(10,2) to INT4 cents storage
     payment_status payment_status DEFAULT 'pending',
     payment_id uuid REFERENCES payments(id),
     
@@ -5946,4 +5965,3 @@ USING usage_type::discount_usage_type_enum;
 -- Payment status should only be tracked in the payments table
 
 ALTER TABLE event_registrations DROP COLUMN IF EXISTS payment_status;
-

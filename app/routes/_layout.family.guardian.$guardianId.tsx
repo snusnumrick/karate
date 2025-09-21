@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {Form, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
+import {Form, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
@@ -26,6 +26,8 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {Form as UIForm, FormControl, FormField, FormItem, FormLabel, FormMessage} from "~/components/ui/form"; // Shadcn Form components
 import {ClientOnly} from "~/components/client-only";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb"; // Import breadcrumb component
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // --- Types and Schemas ---
 type GuardianRow = Database['public']['Tables']['guardians']['Row'];
@@ -113,6 +115,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         return json({status: 'error', message: "Guardian ID is required"}, {status: 400});
     }
 
+    await csrf.validate(request);
     const formData = await request.formData();
     const intent = formData.get("intent") as string;
     const {supabaseServer, response} = getSupabaseServerClient(request);
@@ -217,7 +220,6 @@ export default function GuardianDetailPage() {
     const {guardian} = useLoaderData<LoaderData>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
-    const submit = useSubmit(); // Get the submit function
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete dialog
     // Removed deleteFormRef
@@ -294,6 +296,7 @@ export default function GuardianDetailPage() {
                     {() => (
                         <UIForm {...guardianForm}>
                             <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                                <AuthenticityTokenInput />
                                 <input type="hidden" name="intent" value="updateGuardian"/>
 
                                 {/* Display field-specific errors */}
@@ -501,21 +504,17 @@ export default function GuardianDetailPage() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel disabled={isSubmitting && formIntent === 'deleteGuardian'}>Cancel</AlertDialogCancel>
-                                {/* Removed hidden form */}
-                                {/* Action button triggers form submission via useSubmit */}
-                                <AlertDialogAction
-                                    onClick={() => {
-                                        // No need for e.preventDefault()
-                                        const formData = new FormData();
-                                        formData.append('intent', 'deleteGuardian');
-                                        submit(formData, { method: 'post', replace: true }); // Use submit hook, replace history entry
-                                    }}
-                                    disabled={isSubmitting && formIntent === 'deleteGuardian'} // Disable during submission
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90" // Style as destructive
-                                >
-                                    {/* Show loading state */}
-                                    {isSubmitting && formIntent === 'deleteGuardian' ? 'Deleting...' : 'Delete Guardian'}
-                                </AlertDialogAction>
+                                <Form method="post" onSubmit={() => setIsDeleteDialogOpen(false)}>
+                                    <AuthenticityTokenInput />
+                                    <input type="hidden" name="intent" value="deleteGuardian" />
+                                    <AlertDialogAction
+                                        type="submit"
+                                        disabled={isSubmitting && formIntent === 'deleteGuardian'}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        {isSubmitting && formIntent === 'deleteGuardian' ? 'Deleting...' : 'Delete Guardian'}
+                                    </AlertDialogAction>
+                                </Form>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>

@@ -1,6 +1,8 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction, redirect} from "@remix-run/node";
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
 import {getSupabaseAdminClient} from "~/utils/supabase.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import {Database} from "~/types/database.types";
 
 import {Button} from "~/components/ui/button";
@@ -56,6 +58,7 @@ export const meta: MetaFunction<typeof loader> = ({data}) => {
 export async function action({request, params}: ActionFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId; // Get familyId from URL params
+    await csrf.validate(request);
     const formData = await request.formData();
 
     const supabaseServer = getSupabaseAdminClient();
@@ -190,6 +193,7 @@ export default function AdminAddStudentPage() {
                         </Alert>
                     )}
                     <Form method="post" className="space-y-6">
+                        <AuthenticityTokenInput />
                         {/* Hidden input for familyId might not be needed as it's in the action's params */}
                         {/* <input type="hidden" name="familyId" value={familyId} /> */}
 

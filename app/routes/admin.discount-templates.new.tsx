@@ -2,6 +2,7 @@ import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useNavigation, Link } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
+import { fromDollars } from "~/utils/money";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -11,6 +12,8 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Save } from "lucide-react";
 import type { DiscountType, UsageType, PaymentTypeEnum, DiscountScope } from "~/types/discount";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 type ActionData = {
   errors?: {
@@ -28,6 +31,7 @@ type ActionData = {
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
+  await csrf.validate(request);
   const formData = await request.formData();
 
   const name = formData.get("name") as string;
@@ -88,7 +92,7 @@ export async function action({ request }: ActionFunctionArgs) {
       name,
       description: description || undefined,
       discount_type: discountType,
-      discount_value: discountValue,
+      discount_value: discountType === 'fixed_amount' ? fromDollars(discountValue) : discountValue,
       usage_type: usageType,
       max_uses: maxUses,
       applicable_to: applicableTo,
@@ -125,6 +129,7 @@ export default function NewDiscountTemplate() {
             </p>
           </div>
           <Form method="post" className="space-y-8">
+            <AuthenticityTokenInput />
             {actionData?.errors?.general && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                 {actionData.errors.general}

@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { InvoiceTemplate, CreateInvoiceLineItemData } from '~/types/invoice';
+import { moneyFromRow } from "~/services/database-money.server";
 
 export interface DatabaseInvoiceTemplate {
   id: string;
@@ -279,7 +280,7 @@ export class InvoiceTemplateService {
       item_type: dbLineItem.item_type,
       description: dbLineItem.description,
       quantity: dbLineItem.quantity,
-      unit_price: dbLineItem.unit_price,
+      unit_price: moneyFromRow('invoice_template_line_items', 'unit_price', dbLineItem as unknown as Record<string, unknown>),
       tax_rate: dbLineItem.tax_rate,
       discount_rate: dbLineItem.discount_rate,
       service_period_start: dbLineItem.service_period_start || undefined,

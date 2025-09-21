@@ -1,9 +1,10 @@
 import type { InvoiceEntity, CreateInvoiceData, TaxRate } from "~/types/invoice";
 
 import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
-import { formatCurrency, formatDate } from "~/utils/misc";
+import { formatDate } from "~/utils/misc";
 import { formatEntityAddress, getPaymentTermsLabel } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, getLineItemTaxBreakdown } from "~/utils/line-item-helpers";
+import {formatMoney, addMoney, subtractMoney, getAmount, Money, ZERO_MONEY, isPositive} from "~/utils/money";
 
 interface InvoicePreviewProps {
   invoiceData: CreateInvoiceData;
@@ -13,10 +14,12 @@ interface InvoicePreviewProps {
     class_enrollment: TaxRate[];
     individual_session: TaxRate[];
     product: TaxRate[];
+    fee: TaxRate[];
+    other: TaxRate[];
   };
 }
 
-export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByItemType = { class_enrollment: [], individual_session: [], product: [] } }: InvoicePreviewProps) {
+export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByItemType = { class_enrollment: [], individual_session: [], product: [], fee: [], other: [] } }: InvoicePreviewProps) {
   const { subtotal, tax_amount, discount_amount, total_amount } = useInvoiceCalculations(
     invoiceData.line_items,
     taxRatesByItemType
@@ -96,7 +99,7 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByI
                   ...taxRatesByItemType.product
                 ];
                 const taxBreakdown = getLineItemTaxBreakdown(item, allTaxRates);
-                const itemTaxTotal = taxBreakdown.reduce((sum, tax) => sum + tax.amount, 0);
+                const itemTaxTotal : Money = taxBreakdown.reduce((sum, tax) =>  addMoney(sum, tax.amount), ZERO_MONEY);
                 
                 return (
                   <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -113,7 +116,7 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByI
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-semibold text-gray-900">
-                          {formatCurrency((itemSubtotal - itemDiscount + itemTaxTotal) * 100)}
+                          {formatMoney(addMoney(subtractMoney(itemSubtotal, itemDiscount), itemTaxTotal))}
                         </div>
                         <div className="text-xs text-gray-500">Total</div>
                       </div>
@@ -127,32 +130,32 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByI
                       </div>
                       <div>
                         <div className="text-xs text-gray-500 uppercase tracking-wider">Unit Price</div>
-                        <div className="font-medium text-gray-900">{formatCurrency(item.unit_price * 100)}</div>
+                        <div className="font-medium text-gray-900">{formatMoney(item.unit_price)}</div>
                       </div>
                       <div>
                         <div className="text-xs text-gray-500 uppercase tracking-wider">Subtotal</div>
-                        <div className="font-medium text-gray-900">{formatCurrency(itemSubtotal * 100)}</div>
+                        <div className="font-medium text-gray-900">{formatMoney(itemSubtotal)}</div>
                       </div>
                       <div>
                         <div className="text-xs text-gray-500 uppercase tracking-wider">Line Total</div>
-                        <div className="font-medium text-gray-900">{formatCurrency((itemSubtotal - itemDiscount + itemTaxTotal) * 100)}</div>
+                        <div className="font-medium text-gray-900">{formatMoney(addMoney(subtractMoney(itemSubtotal, itemDiscount), itemTaxTotal))}</div>
                       </div>
                     </div>
                     
                     {/* Discounts and Taxes under each item */}
-                    {(itemDiscount > 0 || taxBreakdown.length > 0) && (
+                    {(isPositive(itemSubtotal) || taxBreakdown.length > 0) && (
                       <div className="mt-4 pt-3 border-t border-gray-200">
                         <div className="space-y-2">
-                          {itemDiscount > 0 && (
+                          {isPositive(itemDiscount) && (
                             <div className="flex justify-between text-sm">
                               <span className="text-green-600">Discount ({Number(item.discount_rate).toFixed(2)}%):</span>
-                              <span className="text-green-600">-{formatCurrency(itemDiscount * 100)}</span>
+                              <span className="text-green-600">-{formatMoney(itemDiscount)}</span>
                             </div>
                           )}
                           {taxBreakdown.map((tax, taxIndex) => (
                             <div key={taxIndex} className="flex justify-between text-sm">
                               <span className="text-gray-600">{tax.taxRate.name} ({(tax.taxRate.rate * 100).toFixed(2)}%):</span>
-                              <span className="text-gray-900">{formatCurrency(tax.amount * 100)}</span>
+                              <span className="text-gray-900">{formatMoney(tax.amount)}</span>
                             </div>
                           ))}
                         </div>
@@ -170,27 +173,27 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByI
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal:</span>
-                  <span className="text-gray-900">{formatCurrency(subtotal * 100)}</span>
+                  <span className="text-gray-900">{formatMoney(subtotal)}</span>
                 </div>
                 
-                {discount_amount > 0 && (
+                {getAmount(discount_amount) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-green-600">Total Discounts:</span>
-                    <span className="text-green-600">-{formatCurrency(discount_amount * 100)}</span>
+                    <span className="text-green-600">-{formatMoney(discount_amount)}</span>
                   </div>
                 )}
                 
-                {tax_amount > 0 && (
+                {getAmount(tax_amount) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Total Tax:</span>
-                    <span className="text-gray-900">{formatCurrency(tax_amount)}</span>
+                    <span className="text-gray-900">{formatMoney(tax_amount)}</span>
                   </div>
                 )}
                 
                 <div className="border-t border-gray-200 pt-2">
                   <div className="flex justify-between text-lg font-semibold">
                     <span className="text-gray-900">Total:</span>
-                    <span className="text-gray-900">{formatCurrency(total_amount * 100)}</span>
+                    <span className="text-gray-900">{formatMoney(total_amount)}</span>
                   </div>
                 </div>
               </div>

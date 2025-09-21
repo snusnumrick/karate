@@ -1,5 +1,7 @@
 // Invoice System Type Definitions
 
+import type { Money } from "~/utils/money";
+
 export type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled';
 
 export type InvoicePaymentMethod = 'cash' | 'check' | 'bank_transfer' | 'credit_card' | 'ach' | 'other';
@@ -26,7 +28,7 @@ export interface InvoiceLineItemTax {
   id: string;
   invoice_line_item_id: string;
   tax_rate_id: string;
-  tax_amount: number;
+  tax_amount: Money;
   tax_name_snapshot: string;
   tax_rate_snapshot: number;
   tax_description_snapshot: string | null;
@@ -37,7 +39,7 @@ export interface InvoicePaymentTax {
   id: string;
   payment_id: string;
   tax_rate_id: string;
-  tax_amount: number;
+  tax_amount: Money;
   tax_name_snapshot: string;
   tax_rate_snapshot: number;
   tax_description_snapshot?: string;
@@ -59,7 +61,7 @@ export interface InvoiceEntity {
   country: string;
   tax_id?: string;
   payment_terms: PaymentTerms;
-  credit_limit?: number;
+  credit_limit?: Money;
   is_active: boolean;
   notes?: string;
   created_at: string;
@@ -76,12 +78,12 @@ export interface Invoice {
   due_date: string;
   service_period_start?: string;
   service_period_end?: string;
-  subtotal: number;
-  tax_amount: number;
-  discount_amount: number;
-  total_amount: number;
-  amount_paid: number;
-  amount_due: number;
+  subtotal: Money;
+  tax_amount: Money;
+  discount_amount: Money;
+  total_amount: Money;
+  amount_paid: Money;
+  amount_due: Money;
   currency: string;
   notes?: string;
   terms?: string;
@@ -99,13 +101,13 @@ export interface InvoiceLineItem {
   item_type: InvoiceItemType;
   description: string;
   quantity: number;
-  unit_price: number;
-  line_total: number;
+  unit_price: Money;
+  line_total: Money;
   // Deprecated fields - use taxes array instead
   tax_rate?: number;
-  tax_amount?: number;
+  tax_amount?: Money;
   discount_rate: number;
-  discount_amount: number;
+  discount_amount: Money;
   enrollment_id?: string;
   product_id?: string;
   service_period_start?: string;
@@ -114,7 +116,7 @@ export interface InvoiceLineItem {
   created_at: string;
   // New tax system
   taxes?: InvoiceLineItemTax[];
-  total_tax_amount?: number;
+  total_tax_amount?: Money;
   tax_rate_ids?: string[];
 }
 
@@ -122,15 +124,15 @@ export interface InvoicePayment {
   id: string;
   invoice_id: string;
   payment_method: InvoicePaymentMethod;
-  amount: number;
+  amount: Money;
   payment_date: string;
   reference_number?: string;
   notes?: string;
-  stripe_payment_intent_id?: string;
+  payment_intent_id?: string;
   created_at: string;
   updated_at: string;
   taxes?: InvoicePaymentTax[];
-  total_tax_amount?: number;
+  total_tax_amount?: Money;
 }
 
 export interface InvoiceStatusHistory {
@@ -157,8 +159,8 @@ export interface InvoiceWithDetails extends Invoice {
 
 export interface InvoiceEntityWithStats extends InvoiceEntity {
   total_invoices: number;
-  total_amount: number;
-  outstanding_amount: number;
+  total_amount: Money;
+  outstanding_amount: Money;
   last_invoice_date?: string;
 }
 
@@ -177,7 +179,7 @@ export interface CreateInvoiceEntityData {
   country?: string;
   tax_id?: string;
   payment_terms?: PaymentTerms;
-  credit_limit?: number;
+  credit_limit?: Money;
   notes?: string;
 }
 
@@ -219,7 +221,7 @@ export interface CreateInvoiceLineItemData {
   item_type: InvoiceItemType;
   description: string;
   quantity: number;
-  unit_price: number;
+  unit_price: Money;
   // Deprecated - use tax_rate_ids instead
   tax_rate?: number;
   // New tax system
@@ -235,14 +237,14 @@ export interface CreateInvoiceLineItemData {
 export interface CreateInvoicePaymentData {
   invoice_id: string;
   payment_method: InvoicePaymentMethod;
-  amount: number;
+  amount: Money;
   payment_date: string;
   reference_number?: string;
   notes?: string;
-  stripe_payment_intent_id?: string;
+  payment_intent_id?: string;
   tax_breakdown?: {
     tax_rate_id: string;
-    tax_amount: number;
+    tax_amount: Money;
     tax_name_snapshot: string;
     tax_rate_snapshot: number;
     tax_description_snapshot?: string;
@@ -256,8 +258,8 @@ export interface InvoiceFilters {
   family_id?: string;
   date_from?: string;
   date_to?: string;
-  amount_min?: number;
-  amount_max?: number;
+  amount_min?: Money;
+  amount_max?: Money;
   search?: string;
 }
 
@@ -269,17 +271,17 @@ export interface InvoiceEntityFilters {
 
 // Calculation helpers
 export interface InvoiceCalculations {
-  subtotal: number;
-  tax_amount: number;
-  discount_amount: number;
-  total_amount: number;
+  subtotal: Money;
+  tax_amount: Money;
+  discount_amount: Money;
+  total_amount: Money;
 }
 
 export interface LineItemCalculations {
-  line_total: number;
-  tax_amount: number;
-  discount_amount: number;
-  final_amount: number;
+  line_total: Money;
+  tax_amount: Money;
+  discount_amount: Money;
+  final_amount: Money;
 }
 
 // Template types
@@ -297,7 +299,7 @@ export interface InvoiceTemplate {
 export interface InvoiceLineItemTemplate {
   item_type: InvoiceItemType;
   description: string;
-  unit_price: number;
+  unit_price: Money;
   tax_rate?: number;
   sort_order: number;
 }

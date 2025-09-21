@@ -18,6 +18,8 @@ import { requireAdminUser } from "~/utils/auth.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { formatDate } from "~/utils/misc";
 import type { CreateEnrollmentData } from "~/types/multi-class";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 type FamilyWithStudents = {
   id: string;
@@ -75,6 +77,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
 
+  await csrf.validate(request);
   const formData = await request.formData();
   const classId = formData.get("class_id") as string;
   const studentId = formData.get("student_id") as string;
@@ -225,6 +228,7 @@ export default function NewEnrollmentPage() {
             </div>
             <div className="p-6">
               <Form method="post" className="space-y-6">
+                <AuthenticityTokenInput />
                 <div className="space-y-3">
                   <Label htmlFor="family_id" className="text-sm font-medium flex items-center gap-2">
                     <Users className="h-4 w-4" />

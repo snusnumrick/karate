@@ -2,16 +2,17 @@ import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
+import { toMoney, formatDollars } from "~/utils/money";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Plus, Edit, FileText } from "lucide-react";
-import type { DiscountTemplate } from "~/types/discount";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
   const templates = await DiscountTemplateService.getAllTemplates();
+  // Let Remix serialize Money via toJSON; client handles Money JSON
   return json({ templates });
 }
 
@@ -56,7 +57,7 @@ export default function DiscountTemplatesIndex() {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {templates.map((template: DiscountTemplate) => (
+              {templates.map((template) => (
                 <Card key={template.id} className="hover:shadow-md transition-shadow">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -78,9 +79,9 @@ export default function DiscountTemplatesIndex() {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Value:</span>
                         <span>
-                          {template.discount_type === 'percentage' 
-                            ? `${template.discount_value}%` 
-                            : `$${template.discount_value}`}
+                          {template.discount_type === 'percentage'
+                            ? `${template.discount_value}%`
+                            : `$${formatDollars(toMoney(template.discount_value as unknown))}`}
                         </span>
                       </div>
                       <div className="flex justify-between">

@@ -104,7 +104,7 @@ export function validateEntityData(data: Partial<InvoiceEntity>): string[] {
     errors.push('Invalid phone format');
   }
   
-  if (data.credit_limit && data.credit_limit < 0) {
+  if (data.credit_limit && data.credit_limit.getAmount() < 0) {
     errors.push('Credit limit cannot be negative');
   }
   

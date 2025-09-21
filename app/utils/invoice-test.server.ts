@@ -4,6 +4,7 @@
 import { createInvoiceEntity, getInvoiceEntities } from "~/services/invoice-entity.server";
 import { createInvoice, getInvoices, generateInvoiceNumber } from "~/services/invoice.server";
 import type { CreateInvoiceEntityData, CreateInvoiceData } from "~/types/invoice";
+import { fromDollars } from "~/utils/money";
 
 /**
  * Test invoice entity creation and retrieval
@@ -65,14 +66,14 @@ export async function testInvoices() {
           item_type: "class_enrollment",
           description: "Monthly Karate Classes",
           quantity: 1,
-          unit_price: 100.00,
+          unit_price: fromDollars(100.00),
           tax_rate: 0.08,
         },
         {
           item_type: "fee",
           description: "Registration Fee",
           quantity: 1,
-          unit_price: 25.00,
+          unit_price: fromDollars(25.00),
           tax_rate: 0.08,
         },
       ],

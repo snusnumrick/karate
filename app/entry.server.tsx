@@ -10,6 +10,7 @@ import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import { createReadableStreamFromReadable, EntryContext } from "@remix-run/node";
 import { deriveNonceForRequest } from "./utils/nonce.server";
+import { getPaymentProvider } from "./services/payments/index.server";
 
 // Extend EntryContext to include nonce property
 interface ExtendedEntryContext extends EntryContext {
@@ -17,6 +18,24 @@ interface ExtendedEntryContext extends EntryContext {
 }
 
 const ABORT_DELAY = 5_000;
+
+/**
+ * Get payment provider specific domains for CSP from the configured provider
+ */
+function getPaymentProviderDomains() {
+    try {
+        const provider = getPaymentProvider();
+        return provider.getCSPDomains();
+    } catch (error) {
+        // If provider is not configured or fails, return empty domains
+        console.warn('Failed to get payment provider CSP domains:', error);
+        return {
+            connectSrc: [],
+            scriptSrc: [],
+            frameSrc: [],
+        };
+    }
+}
 
 function generateCsp(nonce: string) {
     const supabaseHostname = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : '';
@@ -26,13 +45,16 @@ function generateCsp(nonce: string) {
     const devWebSockets = isDevelopment ? 'ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*' : '';
     const devHttpOrigins = isDevelopment ? 'http://localhost:* http://127.0.0.1:*' : '';
 
+    // Get provider-specific domains
+    const providerDomains = getPaymentProviderDomains();
+
     const connectSrc = [
         "'self'",
         "https://*.google-analytics.com",
         "https://*.analytics.google.com",
         "https://*.google.com",
         "https://stats.g.doubleclick.net",
-        "https://api.stripe.com",
+        ...providerDomains.connectSrc,
         "https://umami-two-lilac.vercel.app",
         supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : '',
         devWebSockets,
@@ -47,6 +69,7 @@ function generateCsp(nonce: string) {
         "https://*.googletagmanager.com",
         "https://stats.g.doubleclick.net",
         "https://www.google.ca",
+        ...(providerDomains.imgSrc || []), // Use provider-specific image domains
     ].filter(Boolean).join(" ");
 
     const styleSrc = isDevelopment
@@ -54,31 +77,42 @@ function generateCsp(nonce: string) {
             "'self'",
             "'unsafe-inline'",
             "https://fonts.googleapis.com",
+            ...(providerDomains.styleSrc || []), // Use provider-specific style domains
           ].join(" ")
         : [
             "'self'",
             `'nonce-${nonce}'`,
             "https://fonts.googleapis.com",
+            ...(providerDomains.styleSrc || []), // Use provider-specific style domains
           ].filter(Boolean).join(" ");
 
-    const scriptSrc = [
-        "'self'",
-        `'nonce-${nonce}'`,
-        "'strict-dynamic'",
-        "https://js.stripe.com",
-        "https://umami-two-lilac.vercel.app",
-    ].filter(Boolean).join(" ");
+    const scriptSrc = isDevelopment
+        ? [
+            "'self'",
+            `'nonce-${nonce}'`,
+            "'strict-dynamic'",
+            "'unsafe-inline'", // Allow inline scripts in development for debugging
+            ...providerDomains.scriptSrc,
+            "https://umami-two-lilac.vercel.app",
+          ].filter(Boolean).join(" ")
+        : [
+            "'self'",
+            `'nonce-${nonce}'`,
+            "'strict-dynamic'",
+            ...providerDomains.scriptSrc,
+            "https://umami-two-lilac.vercel.app",
+          ].filter(Boolean).join(" ");
 
     const fontSrc = [
         "'self'",
         "https://fonts.gstatic.com",
+        ...(providerDomains.fontSrc || []), // Use provider-specific font domains
         "data:",
     ].filter(Boolean).join(" ");
 
     const frameSrc = [
         "'self'",
-        "https://js.stripe.com",
-        "https://hooks.stripe.com",
+        ...providerDomains.frameSrc,
         "https://www.youtube.com",
         "https://player.vimeo.com",
     ].filter(Boolean).join(" ");

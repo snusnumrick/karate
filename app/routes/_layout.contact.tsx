@@ -1,4 +1,5 @@
 import {siteConfig} from "~/config/site"; // Import site config
+import { JsonLd } from "~/components/JsonLd";
 import {Mail, MapPin, Phone} from 'lucide-react'; // Import icons
 // Import types needed for merging parent meta
 import type {MetaDescriptor, MetaFunction, LoaderFunctionArgs, ActionFunctionArgs} from "@remix-run/node";
@@ -259,14 +260,7 @@ export default function ContactPage() {
 
     return (
         <div className="min-h-screen page-background-styles py-12 text-foreground">
-            {nonce && (
-                <script
-                    type="application/ld+json"
-                    nonce={nonce}
-                    suppressHydrationWarning
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(contactStructuredData) }}
-                />
-            )}
+            {nonce && (<JsonLd data={contactStructuredData} nonce={nonce} />)}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center">
                     <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">

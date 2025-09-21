@@ -88,7 +88,7 @@ export default function AdminLayout() {
             <AdminNavbar/> {/* Add the Admin Navbar */}
             {/* Main content area with padding */}
             <main className="flex-grow max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
-                <Outlet/>
+                <Outlet context={{ supabase }}/>
             </main>
             <AdminFooter/> {/* Add the Admin Footer */}
             

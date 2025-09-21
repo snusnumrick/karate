@@ -9,6 +9,8 @@ import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select"; // Import Select components
 import {BELT_RANKS} from "~/utils/constants";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 // Define types (assuming table renamed to 'belt_awards' and types regenerated)
 // Ensure app/types/database.types.ts has been regenerated after adding the enum in SQL
@@ -75,6 +77,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         return json({error: "Student ID or Belt Award ID is missing."}, {status: 400}); // Updated message
     }
 
+    await csrf.validate(request);
     const formData = await request.formData();
     const type = formData.get("type") as string;
     const description = formData.get("description") as string;
@@ -140,6 +143,7 @@ export default function EditAchievementPage() { // Function name can stay for no
             )}
 
             <Form method="post" className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <AuthenticityTokenInput />
                 <div>
                     <Label htmlFor="type">Belt Awarded</Label>
                     <Select name="type" required defaultValue={beltAward.type}>

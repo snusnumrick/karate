@@ -1,3 +1,4 @@
+import { Money } from "~/utils/money";
 import type { Database } from './database.types';
 
 export type DiscountType = 'fixed_amount' | 'percentage';
@@ -14,7 +15,7 @@ export interface DiscountCode {
   
   // Discount Type
   discount_type: DiscountType;
-  discount_value: number; // In dollars for fixed_amount, percentage for percentage
+  discount_value: Money | number; // In dollars for fixed_amount, percentage for percentage
   
   // Usage Restrictions
   usage_type: UsageType;
@@ -51,9 +52,9 @@ export interface DiscountCodeUsage {
   student_id: string | null; // null for family-wide discounts
   
   // Applied discount details (snapshot)
-  discount_amount: number; // in cents
-  original_amount: number; // in cents
-  final_amount: number; // in cents
+  discount_amount: Money;
+  original_amount: Money;
+  final_amount: Money;
   
   used_at: string; // ISO timestamp
   discount_codes?: DiscountCode;
@@ -64,7 +65,7 @@ export interface DiscountValidationResult {
   discount_code_id?: string;
   code?: string;
   name?: string; // Add discount name
-  discount_amount: number; // in cents
+  discount_amount: Money;
   error_message?: string;
 }
 
@@ -73,7 +74,7 @@ export interface CreateDiscountCodeData {
   name: string;
   description?: string;
   discount_type: DiscountType;
-  discount_value: number;
+  discount_value: Money | number;
   usage_type: UsageType;
   max_uses?: number;
   applicable_to: ApplicableTo;
@@ -89,7 +90,7 @@ export interface UpdateDiscountCodeData {
   name?: string;
   description?: string;
   discount_type?: DiscountType;
-  discount_value?: number;
+  discount_value?: Money | number;
   usage_type?: UsageType;
   max_uses?: number;
   applicable_to?: ApplicableTo;
@@ -105,7 +106,7 @@ export interface ApplyDiscountRequest {
   code: string;
   family_id: string;
   student_id?: string;
-  subtotal_amount: number; // in cents
+  subtotal_amount: Money; // in cents
   applicable_to: PaymentTypeEnum; // Single value for database function
 }
 
@@ -138,7 +139,7 @@ export interface DiscountTemplate {
   
   // Template fields (same as discount code but without specific associations)
   discount_type: DiscountType;
-  discount_value: number;
+  discount_value: Money | number;
   usage_type: UsageType;
   max_uses?: number;
   applicable_to: ApplicableTo;
@@ -159,7 +160,7 @@ export interface CreateDiscountTemplateData {
   name: string;
   description?: string;
   discount_type: DiscountType;
-  discount_value: number;
+  discount_value: Money | number;
   usage_type: UsageType;
   max_uses?: number;
   applicable_to: ApplicableTo;
@@ -170,7 +171,7 @@ export interface UpdateDiscountTemplateData {
   name?: string;
   description?: string;
   discount_type?: DiscountType;
-  discount_value?: number;
+  discount_value?: Money | number;
   usage_type?: UsageType;
   max_uses?: number;
   applicable_to?: ApplicableTo;

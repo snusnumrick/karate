@@ -8,6 +8,8 @@ import {Badge} from "~/components/ui/badge"; // For status display
 import {formatDate} from "~/utils/misc"; // For date formatting
 import {PaymentStatus} from "~/types/models"; // Import the enum
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import { formatMoney, fromCents } from "~/utils/money";
+import { centsFromRow } from "~/utils/database-money";
 
 // Define the shape of data returned by the loader, including the family name
 type PaymentWithFamily = Database['public']['Tables']['payments']['Row'] & {
@@ -26,6 +28,7 @@ type InvoicePaymentFormatted = {
     familyName: string;
     source: 'invoice_payment';
     invoice_number?: string;
+    invoice_id?: string;
 };
 
 type RegularPaymentFormatted = Omit<PaymentWithFamily, 'families'> & { 
@@ -64,6 +67,7 @@ export async function loader({request}: LoaderFunctionArgs) {
             .select(`
                 *,
                 invoice:invoice_id (
+                    id,
                     family_id,
                     invoice_number,
                     families(id, name)
@@ -76,27 +80,35 @@ export async function loader({request}: LoaderFunctionArgs) {
             throw new Response("Failed to load invoice payment data.", {status: 500, headers: Object.fromEntries(headers)});
         }
 
-        // Format regular payments
-        const formattedPayments = paymentsData?.map(p => ({
-            ...p,
-            familyName: p.family?.name ?? 'N/A',
-            source: 'payment' as const
-        })) || [];
+        // Format regular payments (normalize to cents reliably)
+        const formattedPayments = paymentsData?.map((p) => {
+            const cents = centsFromRow('payments', 'total_amount', p as unknown as Record<string, unknown>);
+            return {
+                ...p,
+                total_amount: cents,
+                familyName: p.family?.name ?? 'N/A',
+                source: 'payment' as const
+            } as RegularPaymentFormatted;
+        }) || [];
 
         // Format invoice payments to match the payment structure
-        const formattedInvoicePayments = invoicePaymentsData?.map(ip => ({
-            id: ip.id,
-            family_id: ip.invoice?.family_id || '',
-            payment_date: ip.payment_date,
-            total_amount: ip.amount * 100, // invoice_payments stores amount in dollars, convert to cents for consistency
-            payment_method: ip.payment_method,
-            status: 'succeeded' as const, // invoice payments are always successful when recorded
-            notes: ip.notes,
-            reference_number: ip.reference_number,
-            familyName: ip.invoice?.families?.name ?? 'N/A',
-            source: 'invoice_payment' as const,
-            invoice_number: ip.invoice?.invoice_number
-        })) || [];
+        const formattedInvoicePayments = invoicePaymentsData?.map((ip) => {
+            const cents = centsFromRow('invoice_payments', 'amount', ip as unknown as Record<string, unknown>);
+            return {
+                id: ip.id,
+                family_id: ip.invoice?.family_id || '',
+                payment_date: ip.payment_date,
+                total_amount: cents,
+                payment_method: ip.payment_method,
+                status: 'succeeded' as const,
+                notes: ip.notes,
+                reference_number: ip.reference_number,
+                familyName: ip.invoice?.families?.name ?? 'N/A',
+                source: 'invoice_payment' as const,
+                invoice_number: ip.invoice?.invoice_number,
+                invoice_id: ip.invoice?.id
+            } as InvoicePaymentFormatted;
+        }) || [];
 
         // Combine and sort all payments by date
         const allPayments = [...formattedPayments, ...formattedInvoicePayments]
@@ -169,7 +181,7 @@ export default function AdminPaymentsPage() {
                                         </Link>
                                     </TableCell>
                                     <TableCell
-                                        className="text-right">${(payment.total_amount / 100).toFixed(2)}</TableCell>
+                                        className="text-right">{formatMoney(fromCents(payment.total_amount))}</TableCell>
                                     <TableCell className="capitalize">
                                         {payment.source === 'invoice_payment' 
                                             ? `Invoice Payment${payment.invoice_number ? ` (${payment.invoice_number})` : ''}` 
@@ -187,7 +199,7 @@ export default function AdminPaymentsPage() {
                                     <TableCell>
                                         {payment.source === 'invoice_payment' ? (
                                             <Button variant="outline" size="sm" asChild>
-                                                <Link to={`/admin/invoices/${(payment as InvoicePaymentFormatted).invoice_number?.split('-')[0]}`}>View Invoice</Link>
+                                                <Link to={`/admin/invoices/${(payment as InvoicePaymentFormatted).invoice_id}`}>View Invoice</Link>
                                             </Button>
                                         ) : (
                                             <Button variant="outline" size="sm" asChild>

@@ -15,6 +15,7 @@ import { DiscountService } from "~/services/discount.server";
 import { getDiscountTemplateById } from "~/services/discount-template.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { PaymentTypeEnum, DiscountTemplate } from "~/types/discount";
+import { fromDollars, toDollars } from "~/utils/money";
 
 import { FileText, X } from "lucide-react";
 
@@ -89,10 +90,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Error('Failed to fetch students');
   }
 
+  // Normalize template discount_value for UI defaults: number (dollars or %)
+  const normalizedTemplate = template ? {
+    ...template,
+    discount_value: template.discount_type === 'fixed_amount'
+      ? (typeof template.discount_value === 'number' ? template.discount_value : toDollars(template.discount_value))
+      : (template.discount_value as number)
+  } : null;
+
   return json({
     families: familiesResult.data as FamilyInfo[],
     students: studentsResult.data as StudentInfo[],
-    template
+    template: normalizedTemplate
   });
 }
 
@@ -154,7 +163,7 @@ export async function action({ request }: ActionFunctionArgs) {
       name,
       description: description || undefined,
       discount_type: discountType as 'fixed_amount' | 'percentage',
-      discount_value: value,
+      discount_value: (discountType === 'fixed_amount') ? fromDollars(value) : value,
       usage_type: usageType as 'one_time' | 'ongoing',
       max_uses: maxUses || undefined,
       applicable_to: applicableTo as PaymentTypeEnum[],

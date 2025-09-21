@@ -5,11 +5,11 @@ import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
-import { formatCurrency } from '~/utils/misc';
+import { formatMoney, addMoney, ZERO_MONEY, type Money, isPositive, toCents, fromCents } from '~/utils/money';
 import { calculateLineItemTotalWithRates } from '~/utils/line-item-helpers';
 import { InvoiceTemplateService } from '~/services/invoice-template.server';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
-import type { InvoiceTemplate } from '~/types/invoice';
+import type { InvoiceTemplate, CreateInvoiceLineItemData } from '~/types/invoice';
 
 export async function loader({ request }: LoaderFunctionArgs) {
     const { supabaseServer } = getSupabaseServerClient(request);
@@ -17,8 +17,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
     
     try {
         const templates = await templateService.getAllTemplates();
+        
+        // Convert Money types to serializable format
+        const serializedTemplates = templates.map(template => ({
+            ...template,
+            lineItems: template.lineItems.map(item => ({
+                ...item,
+                unit_price: toCents(item.unit_price)
+            }))
+        }));
+        
         return json({
-            templates
+            templates: serializedTemplates
         });
     } catch (error) {
         console.error('Failed to load invoice templates:', error);
@@ -29,7 +39,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function InvoiceTemplatesIndex() {
-    const { templates } = useLoaderData<typeof loader>();
+    const { templates: rawTemplates } = useLoaderData<typeof loader>();
+    
+    // Convert serialized data back to proper types
+    const templates = rawTemplates.map(template => ({
+        ...template,
+        lineItems: template.lineItems.map(item => ({
+            ...item,
+            unit_price: fromCents(item.unit_price)
+        }))
+    }));
 
     const getCategoryIcon = (category: string) => {
         switch (category) {
@@ -49,10 +68,6 @@ export default function InvoiceTemplatesIndex() {
             case 'custom': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
             default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
         }
-    };
-
-    const calculateTemplateTotal = (template: InvoiceTemplate): number => {
-        return template.lineItems.reduce((total, item) => total + calculateLineItemTotalWithRates(item, []), 0);
     };
 
     return (
@@ -95,7 +110,7 @@ export default function InvoiceTemplatesIndex() {
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {templates.map((template: InvoiceTemplate) => {
                         const CategoryIcon = getCategoryIcon(template.category);
-                        const templateTotal = calculateTemplateTotal(template);
+                        const templateTotal : Money =  template.lineItems.reduce((total, item) => addMoney(total, calculateLineItemTotalWithRates(item, [])), ZERO_MONEY);
                         
                         return (
                             <Card key={template.id} className="bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow">
@@ -120,10 +135,10 @@ export default function InvoiceTemplatesIndex() {
                                             <span>{template.lineItems.length}</span>
                                         </div>
                                         
-                                        {templateTotal > 0 && (
+                                        {isPositive(templateTotal) && (
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-muted-foreground">Template Total:</span>
-                                                <span className="font-medium">{formatCurrency(templateTotal * 100)}</span>
+                                                <span className="font-medium">{formatMoney(templateTotal)}</span>
                                             </div>
                                         )}
 
@@ -131,7 +146,7 @@ export default function InvoiceTemplatesIndex() {
                                             <div className="text-sm">
                                                 <span className="text-muted-foreground">Preview:</span>
                                                 <ul className="mt-1 space-y-1">
-                                                    {template.lineItems.slice(0, 2).map((item, index) => (
+                                                    {template.lineItems.slice(0, 2).map((item: CreateInvoiceLineItemData, index: number) => (
                                                         <li key={index} className="text-xs text-muted-foreground truncate">
                                                             • {item.description}
                                                         </li>

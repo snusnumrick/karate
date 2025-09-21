@@ -14,6 +14,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntityById, updateInvoiceEntity } from "~/services/invoice-entity.server";
 import type { EntityType, PaymentTerms } from "~/types/invoice";
 import { Save, CheckCircle } from "lucide-react";
+import {fromDollars, toDollars, toCents, fromCents} from "~/utils/money";
 import { Constants } from "~/types/database.types";
 
 interface ActionData {
@@ -39,7 +40,14 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
   try {
     const entity = await getInvoiceEntityById(entityId);
-    return json({ entity });
+    
+    // Convert Money types to serializable format
+    const serializedEntity = {
+      ...entity,
+      credit_limit: entity.credit_limit ? toCents(entity.credit_limit) : null
+    };
+    
+    return json({ entity: serializedEntity });
   } catch (error) {
     console.error("Error loading invoice entity:", error);
     throw new Response("Failed to load invoice entity", { status: 500 });
@@ -76,7 +84,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     country: formData.get("country") as string || siteConfig.localization.country,
     tax_id: formData.get("tax_id") as string || undefined,
     payment_terms: formData.get("payment_terms") as PaymentTerms,
-    credit_limit: formData.get("credit_limit") ? parseFloat(formData.get("credit_limit") as string) : undefined,
+    credit_limit: formData.get("credit_limit") ? fromDollars(parseFloat(formData.get("credit_limit") as string)) : undefined,
     is_active: formData.get("is_active") === "on",
     notes: formData.get("notes") as string || undefined,
   };
@@ -117,7 +125,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function EditInvoiceEntityPage() {
-  const { entity } = useLoaderData<typeof loader>();
+  const { entity: rawEntity } = useLoaderData<typeof loader>();
+  
+  // Convert serialized data back to proper types
+  const entity = {
+    ...rawEntity,
+    credit_limit: rawEntity.credit_limit ? fromCents(rawEntity.credit_limit) : null
+  };
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const [searchParams] = useSearchParams();
@@ -187,7 +201,7 @@ export default function EditInvoiceEntityPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Constants.public.Enums.entity_type_enum.map((type) => (
+                    {(Constants.public.Enums.entity_type_enum as unknown as readonly string[]).map((type) => (
                       <SelectItem key={type} value={type}>
                         {type.charAt(0).toUpperCase() + type.slice(1)}
                       </SelectItem>
@@ -375,7 +389,7 @@ export default function EditInvoiceEntityPage() {
                   type="number"
                   step="0.01"
                   min="0"
-                  defaultValue={entity.credit_limit || ""}
+                  defaultValue={entity.credit_limit ? toDollars(entity.credit_limit) : ""}
                   placeholder="0.00"
                   className="input-custom-styles"
                 />

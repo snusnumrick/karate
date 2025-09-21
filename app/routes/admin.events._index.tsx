@@ -13,6 +13,8 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { format, parseISO } from "date-fns";
 import type { Database } from "~/types/database.types";
 import { getEventTypeOptions } from "~/utils/event-helpers.server";
+import { csrf } from "~/utils/csrf.server";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 type Event = {
   id: string;
@@ -190,6 +192,7 @@ export async function action({ request }: ActionFunctionArgs) {
     return redirect("/login", { headers });
   }
 
+  await csrf.validate(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
 
@@ -518,9 +521,10 @@ export default function AdminEventsIndex() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={navigation.state === "submitting"}>Cancel</AlertDialogCancel>
             {deleteEventId && (
-               <Form method="post" onSubmit={() => setDeleteEventId(null)}>
-                 <input type="hidden" name="intent" value="delete" />
-                 <input type="hidden" name="eventId" value={deleteEventId} />
+             <Form method="post" onSubmit={() => setDeleteEventId(null)}>
+               <AuthenticityTokenInput />
+               <input type="hidden" name="intent" value="delete" />
+               <input type="hidden" name="eventId" value={deleteEventId} />
                  <AlertDialogAction
                    type="submit"
                    disabled={navigation.state === "submitting"}

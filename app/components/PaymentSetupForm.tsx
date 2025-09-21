@@ -1,5 +1,5 @@
 import { useFetcher, useNavigate } from '@remix-run/react';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
@@ -14,6 +14,21 @@ import type { AvailableDiscountCode, AvailableDiscountsResponse } from '~/routes
 import type { DiscountValidationResult } from '~/types/discount';
 import {StudentPaymentDetail} from "~/types/payment";
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
+import {
+    fromDollars,
+    formatMoney,
+    multiplyMoney,
+    subtractMoney,
+    Money,
+    addMoney,
+    ZERO_MONEY,
+    maxMoney,
+    isPositive,
+    percentageOf,
+    compareMoney,
+    serializeMoney,
+    toMoney
+} from '~/utils/money';
 
 // Payment options type
 type PaymentOption = 'monthly' | 'yearly' | 'individual';
@@ -47,13 +62,13 @@ function determineInitialOption(
 // Action response interface
 interface ActionResponse {
   success?: boolean;
-  paymentId?: string;
+  supabasePaymentId?: string;
   zeroPayment?: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
 }
 
-interface PaymentFormProps {
+interface PaymentSetupFormProps {
   familyId: string;
   studentPaymentDetails?: StudentPaymentDetail[];
   hasAvailableDiscounts: boolean;
@@ -65,14 +80,14 @@ interface PaymentFormProps {
   className?: string;
   appearance?: 'simplified' | 'default';
   enrollmentPricing?: {
-    monthlyAmount?: number;
-    yearlyAmount?: number;
-    individualSessionAmount?: number;
+    monthlyAmount?: Money;
+    yearlyAmount?: Money;
+    individualSessionAmount?: Money;
   }; // Enrollment-specific pricing that overrides default pricing
   supportedPaymentTypes?: string[];
 }
 
-export function PaymentForm({
+export function PaymentSetupForm({
   familyId,
   studentPaymentDetails = [],
   hasAvailableDiscounts,
@@ -85,11 +100,7 @@ export function PaymentForm({
   appearance = 'default',
   enrollmentPricing,
   supportedPaymentTypes
-}: PaymentFormProps) {
-  // console.log("PaymentForm");
-  // console.log("PaymentForm 1: ", familyId, studentPaymentDetails, hasAvailableDiscounts, mode, enrollmentId);
-  // console.log("PaymentForm 2: ",actionEndpoint, onSuccess, initialPaymentOption, className, appearance);
-  // console.log("PaymentForm 3: ",enrollmentPricing, supportedPaymentTypes);
+}: PaymentSetupFormProps) {
 
   const fetcher = useFetcher<ActionResponse>();
   const navigate = useNavigate();
@@ -121,6 +132,14 @@ export function PaymentForm({
 
   const discountsFetcher = useFetcher<AvailableDiscountsResponse>();
 
+  // Rehydrate Money for studentPaymentDetails coming over the wire as JSON
+  const rehydratedDetails = useMemo(() => {
+    return (studentPaymentDetails || []).map(d => ({
+      ...d,
+      nextPaymentAmount: toMoney(d.nextPaymentAmount as unknown),
+    }));
+  }, [studentPaymentDetails]);
+
   // Reset success handled state on new submission
   useEffect(() => {
     if (fetcher.state === 'submitting') {
@@ -130,10 +149,10 @@ export function PaymentForm({
 
   // Initialize selected students for student mode
   useEffect(() => {
-    if (mode === 'student' && studentPaymentDetails[0].studentId) {
-      setSelectedStudentIds(new Set([studentPaymentDetails[0].studentId]));
+    if (mode === 'student' && rehydratedDetails[0]?.studentId) {
+      setSelectedStudentIds(new Set([rehydratedDetails[0].studentId]));
     }
-  }, [mode, studentPaymentDetails]);
+  }, [mode, rehydratedDetails]);
 
   // Auto-select first available payment option when supportedPaymentTypes changes
   useEffect(() => {
@@ -159,55 +178,51 @@ export function PaymentForm({
   const hasEligibleStudentsForGroupPayment = true; //studentPaymentDetails.some(d => d.needsPayment);
 
   // Dynamic calculation
-  const calculateAmounts = () => {
-    let subtotal = 0;
+  const calculateAmounts = useCallback(() => {
+    let subtotal : Money = ZERO_MONEY;
     if (paymentOption === 'monthly' || paymentOption === 'yearly') {
       selectedStudentIds.forEach(id => {
-        const detail = studentPaymentDetails.find(d => d.studentId === id);
+        const detail = rehydratedDetails.find(d => d.studentId === id);
         if (detail) {
-          let amount;
+          let amount : Money;
           if (paymentOption === 'yearly') {
             // Use enrollment-specific yearly pricing if available, otherwise fall back to siteConfig
-            amount = enrollmentPricing?.yearlyAmount ?? siteConfig.pricing.yearly;
+            amount = enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly);
           } else {
             // For monthly, use enrollment-specific pricing if available, otherwise use detail.nextPaymentAmount
             amount = enrollmentPricing?.monthlyAmount ?? detail.nextPaymentAmount;
           }
-          subtotal += amount * 100;
+          subtotal = addMoney(subtotal, amount);
         }
       });
     } else if (paymentOption === 'individual') {
       // Use enrollment-specific individual session pricing if available, otherwise fall back to siteConfig
-      const sessionPrice = enrollmentPricing?.individualSessionAmount ?? siteConfig.pricing.oneOnOneSession;
-      subtotal = sessionPrice * oneOnOneQuantity * 100;
+      const sessionPrice : Money = enrollmentPricing?.individualSessionAmount ?? fromDollars(siteConfig.pricing.oneOnOneSession);
+      subtotal = multiplyMoney(sessionPrice, oneOnOneQuantity);
     }
 
-    const discountAmount = appliedDiscount?.discount_amount || 0;
-    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const discountAmount : Money = appliedDiscount?.discount_amount ?? ZERO_MONEY;
+    const discountedSubtotal : Money = maxMoney(ZERO_MONEY, subtractMoney(subtotal, discountAmount));
     const total = discountedSubtotal;
 
     return { subtotal, discountAmount, total };
-  };
+  }, [paymentOption, selectedStudentIds, rehydratedDetails, enrollmentPricing, oneOnOneQuantity, appliedDiscount]);
 
   // Helper functions
-  const formatCurrency = (amountInCents: number): string => {
-    const amount = amountInCents / 100;
-    const formatted = amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2);
-    return `$${formatted}`;
-  };
-
-  const calculatePercentageSavings = (discount: AvailableDiscountCode, subtotalInCents: number): string => {
-    if (discount.discount_type === 'percentage') {
-      const savingsAmount = (subtotalInCents * discount.discount_value) / 100;
-      return formatCurrency(savingsAmount);
+  const calculatePercentageSavings = (discount: AvailableDiscountCode, subtotal: Money): string => {
+    if (discount.discount_type === 'percentage' && typeof discount.discount_value === 'number') {
+      const savingsAmount = percentageOf(subtotal, discount.discount_value);
+      return formatMoney(savingsAmount);
     }
-    return formatCurrency(discount.discount_value * 100);
+    const dv = discount.discount_value as unknown;
+    const discountMoney: Money = toMoney(dv);
+    return formatMoney(discountMoney); // Convert dollars to cents
   };
 
-  const { subtotal: currentSubtotalInCents, discountAmount: currentDiscountAmountInCents, total: currentTotalInCents } = calculateAmounts();
-  const currentSubtotalDisplay = formatCurrency(currentSubtotalInCents);
-  const currentDiscountDisplay = appliedDiscount ? formatCurrency(currentDiscountAmountInCents) : null;
-  const currentTotalDisplay = formatCurrency(currentTotalInCents);
+  const { subtotal: currentSubtotal, discountAmount: currentDiscountAmount, total: currentTotal } = calculateAmounts();
+  const currentSubtotalDisplay = formatMoney(currentSubtotal);
+  const currentDiscountDisplay = appliedDiscount ? formatMoney(currentDiscountAmount) : null;
+  const currentTotalDisplay = formatMoney(currentTotal);
 
   // Event handlers
   const handleCheckboxChange = (studentId: string, checked: boolean | 'indeterminate') => {
@@ -241,26 +256,26 @@ export function PaymentForm({
   useEffect(() => {
     if (applyDiscount && hasAvailableDiscounts) {
       // Calculate subtotal without applied discount for fetching available discounts
-      let baseSubtotal = 0;
+      let subtotal = ZERO_MONEY;
       if (paymentOption === 'monthly' || paymentOption === 'yearly') {
         selectedStudentIds.forEach(id => {
           const detail = studentPaymentDetails.find(d => d.studentId === id);
           if (detail) {
             let amount;
             if (paymentOption === 'yearly') {
-              amount = enrollmentPricing?.yearlyAmount ?? siteConfig.pricing.yearly;
+              amount = enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly);
             } else {
               amount = enrollmentPricing?.monthlyAmount ?? detail.nextPaymentAmount;
             }
-            baseSubtotal += amount * 100;
+            subtotal = addMoney(subtotal, amount);
           }
         });
       } else if (paymentOption === 'individual') {
-        const sessionPrice = enrollmentPricing?.individualSessionAmount ?? siteConfig.pricing.oneOnOneSession;
-        baseSubtotal = sessionPrice * oneOnOneQuantity * 100;
+        const sessionPrice = enrollmentPricing?.individualSessionAmount ?? fromDollars(siteConfig.pricing.oneOnOneSession);
+        subtotal = multiplyMoney(sessionPrice, oneOnOneQuantity);
       }
 
-      if (baseSubtotal > 0) {
+      if (isPositive(subtotal)) {
         setIsLoadingDiscounts(true);
         const params = new URLSearchParams();
         if (selectedStudentIds.size === 1) {
@@ -268,7 +283,7 @@ export function PaymentForm({
         }
         const applicableTo = paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group';
         params.set('applicableTo', applicableTo);
-        params.set('subtotalAmount', baseSubtotal.toString());
+        params.set('subtotalAmount', JSON.stringify(serializeMoney(subtotal)));
         if (enrollmentId) {
           params.set('enrollmentId', enrollmentId);
         }
@@ -290,10 +305,34 @@ export function PaymentForm({
   useEffect(() => {
     if (discountsFetcher.data && discountsFetcher.state === 'idle') {
       const discounts = discountsFetcher.data.discounts || [];
+      
+      // Calculate current subtotal for proper percentage discount comparison
+      const { subtotal: currentSubtotal } = calculateAmounts();
+      
       const sortedDiscounts = discounts.sort((a, b) => {
-        const aValue = a.discount_type === 'percentage' ? a.discount_value : a.discount_value;
-        const bValue = b.discount_type === 'percentage' ? b.discount_value : b.discount_value;
-        return bValue - aValue;
+        // Calculate actual discount value for comparison
+        let aValue: Money;
+        let bValue: Money;
+        
+        if (a.discount_type === 'percentage') {
+          // For percentage discounts, discount_value should be a number (percentage)
+          const percentageValue = typeof a.discount_value === 'number' ? a.discount_value : 0;
+          aValue = percentageOf(currentSubtotal, percentageValue);
+        } else {
+          const adv = a.discount_value as unknown;
+          aValue = toMoney(adv);
+        }
+        
+        if (b.discount_type === 'percentage') {
+          // For percentage discounts, discount_value should be a number (percentage)
+          const percentageValue = typeof b.discount_value === 'number' ? b.discount_value : 0;
+          bValue = percentageOf(currentSubtotal, percentageValue);
+        } else {
+          const bdv = b.discount_value as unknown;
+          bValue = toMoney(bdv);
+        }
+        
+        return compareMoney(bValue, aValue);
       });
       setAvailableDiscounts(sortedDiscounts);
       if (sortedDiscounts.length > 0) {
@@ -301,7 +340,7 @@ export function PaymentForm({
       }
       setIsLoadingDiscounts(false);
     }
-  }, [discountsFetcher.data, discountsFetcher.state]);
+  }, [calculateAmounts, discountsFetcher.data, discountsFetcher.state]);
 
   // Validate discount when selected
   useEffect(() => {
@@ -313,23 +352,23 @@ export function PaymentForm({
         const validateDiscount = async () => {
           try {
             // Calculate base subtotal for validation (without applied discount)
-            let baseSubtotal = 0;
+            let subtotal = ZERO_MONEY;
             if (paymentOption === 'monthly' || paymentOption === 'yearly') {
               selectedStudentIds.forEach(id => {
               const detail = studentPaymentDetails.find(d => d.studentId === id);
                 if (detail) {
                   let amount;
                   if (paymentOption === 'yearly') {
-                    amount = enrollmentPricing?.yearlyAmount ?? siteConfig.pricing.yearly;
+                    amount = enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly);
                   } else {
                     amount = enrollmentPricing?.monthlyAmount ?? detail.nextPaymentAmount;
                   }
-                  baseSubtotal += amount * 100;
+                  subtotal = addMoney(subtotal, amount);
                 }
               });
             } else if (paymentOption === 'individual') {
-              const sessionPrice = enrollmentPricing?.individualSessionAmount ?? siteConfig.pricing.oneOnOneSession;
-              baseSubtotal = sessionPrice * oneOnOneQuantity * 100;
+              const sessionPrice = enrollmentPricing?.individualSessionAmount ?? fromDollars(siteConfig.pricing.oneOnOneSession);
+              subtotal = multiplyMoney(sessionPrice, oneOnOneQuantity);
             }
 
             const response = await fetch('/api/discount-codes/validate', {
@@ -341,7 +380,7 @@ export function PaymentForm({
                 code: selectedDiscount.code,
                 family_id: familyId,
                 student_id: selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : '',
-                subtotal_amount: baseSubtotal,
+                subtotal_amount: subtotal,
                 applicable_to: paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group'
               })
             });
@@ -414,24 +453,24 @@ export function PaymentForm({
     // console.log('[PaymentForm] Processing fetcher data:', fetcher.data);
 
     if (fetcher.data.success) {
-      if (fetcher.data.paymentId && !isSuccessHandled) {
+      if (fetcher.data.supabasePaymentId && !isSuccessHandled) {
         setIsSuccessHandled(true);
-        // console.log('[PaymentForm] Success with paymentId:', fetcher.data.paymentId);
+        // console.log('[PaymentForm] Success with supabasePaymentId:', fetcher.data.supabasePaymentId);
         if (onSuccess) {
-          onSuccess(fetcher.data.paymentId, fetcher.data.zeroPayment);
+          onSuccess(fetcher.data.supabasePaymentId, fetcher.data.zeroPayment);
         } else {
           if (fetcher.data.zeroPayment) {
             // console.log('[PaymentForm] Zero payment - redirecting to family page');
             navigate('/family');
           } else {
             // console.log('[PaymentForm] Regular payment - redirecting to payment page');
-            navigate(`/pay/${fetcher.data.paymentId}`);
+            navigate(`/pay/${fetcher.data.supabasePaymentId}`);
           }
         }
       } else if (isSuccessHandled) {
         // console.log('[PaymentForm] Success already handled, skipping navigation');
       } else {
-        console.warn('[PaymentForm] Success but no paymentId in response');
+        console.warn('[PaymentForm] Success but no supabasePaymentId in response');
       }
     } else if (fetcher.data.error) {
       console.warn('[PaymentForm] Error in response:', fetcher.data.error);
@@ -467,7 +506,7 @@ export function PaymentForm({
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="monthly" id="opt-monthly" disabled={!hasEligibleStudentsForGroupPayment} tabIndex={1}/>
                   <Label htmlFor="opt-monthly" className={`text-sm ${!hasEligibleStudentsForGroupPayment ? 'cursor-not-allowed text-gray-400 dark:text-gray-500' : ''}`}>
-                    Pay Monthly Group Class Fees ({siteConfig.pricing.currency}{enrollmentPricing?.monthlyAmount ?? siteConfig.pricing.monthly}/student)
+                    Pay Monthly Group Class Fees ({formatMoney(enrollmentPricing?.monthlyAmount ?? fromDollars(siteConfig.pricing.monthly))}/student)
                   </Label>
                 </div>
               )}
@@ -477,7 +516,7 @@ export function PaymentForm({
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yearly" id="opt-yearly" disabled={!hasEligibleStudentsForGroupPayment} tabIndex={2}/>
                   <Label htmlFor="opt-yearly" className={`text-sm ${!hasEligibleStudentsForGroupPayment ? 'cursor-not-allowed text-gray-400 dark:text-gray-500' : ''}`}>
-                    Pay Yearly Group Class Fees ({siteConfig.pricing.currency}{enrollmentPricing?.yearlyAmount ?? siteConfig.pricing.yearly}/student)
+                    Pay Yearly Group Class Fees ({formatMoney(enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly))}/student)
                   </Label>
                 </div>
               )}
@@ -487,7 +526,7 @@ export function PaymentForm({
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="individual" id="opt-individual" tabIndex={3}/>
                   <Label htmlFor="opt-individual" className="text-sm">
-                    Purchase Individual Session(s) ({siteConfig.pricing.currency}{enrollmentPricing?.individualSessionAmount ?? siteConfig.pricing.oneOnOneSession}/session)
+                    Purchase Individual Session(s) ({formatMoney(enrollmentPricing?.individualSessionAmount ?? fromDollars(siteConfig.pricing.oneOnOneSession))}/session)
                   </Label>
                 </div>
               )}
@@ -553,12 +592,12 @@ export function PaymentForm({
                       </p>
                       {detail.needsPayment && paymentOption === 'monthly' && (
                         <p className="text-sm font-semibold text-green-700 dark:text-green-400 mt-1">
-                          Next Monthly Payment: {formatCurrency(detail.nextPaymentAmount * 100)} ({detail.nextPaymentTierLabel})
+                          Next Monthly Payment: {formatMoney(detail.nextPaymentAmount)} ({detail.nextPaymentTierLabel})
                         </p>
                       )}
                       {detail.needsPayment && paymentOption === 'yearly' && (
                         <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mt-1">
-                          Yearly Payment: {formatCurrency((enrollmentPricing?.yearlyAmount ?? siteConfig.pricing.yearly) * 100)}
+                          Yearly Payment: {formatMoney(enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly))}
                         </p>
                       )}
                       {!detail.needsPayment && (
@@ -574,7 +613,7 @@ export function PaymentForm({
           )}
 
           {/* Discount Code Section */}
-          {currentSubtotalInCents > 0 && hasAvailableDiscounts && (
+          {isPositive(currentSubtotal) && hasAvailableDiscounts && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
               <div className="flex items-center space-x-2 mb-4">
                 <Checkbox
@@ -607,7 +646,7 @@ export function PaymentForm({
                         </SelectTrigger>
                         <SelectContent>
                           {availableDiscounts.map((discount) => {
-                            const savingsDisplay = calculatePercentageSavings(discount, currentSubtotalInCents);
+                            const savingsDisplay = calculatePercentageSavings(discount, currentSubtotal);
                             const displayText = discount.discount_type === 'percentage' 
                               ? `${discount.code} - ${discount.discount_value}% off (Save ${savingsDisplay})`
                               : `${discount.code} - ${savingsDisplay} off`;
@@ -626,7 +665,7 @@ export function PaymentForm({
                           <AlertDescription className="text-green-800 dark:text-green-200">
                             <strong>Discount Applied: {appliedDiscount.name || appliedDiscount.code}</strong>
                             <div className="text-sm mt-1">
-                              Discount: {formatCurrency(appliedDiscount.discount_amount * 100)}
+                              Discount: {formatMoney(appliedDiscount.discount_amount)}
                             </div>
                           </AlertDescription>
                         </Alert>
@@ -666,7 +705,7 @@ export function PaymentForm({
               )}
               <div className="flex justify-between items-center font-bold text-lg mt-2">
                 <span>Total Due:</span>
-                <span>{currentTotalInCents <= 0 ? currentTotalDisplay : `${currentTotalDisplay} + Tax`}</span>
+                <span>{!isPositive(currentTotal) ? currentTotalDisplay : `${currentTotalDisplay} + Tax`}</span>
               </div>
             </div>
           </div>
@@ -684,7 +723,7 @@ export function PaymentForm({
             {appliedDiscount && (
               <>
                 <input type="hidden" name="discountCodeId" value={appliedDiscount.discount_code_id}/>
-                <input type="hidden" name="discountAmount" value={appliedDiscount.discount_amount}/>
+                <input type="hidden" name="discountAmount" value={toCents(appliedDiscount.discount_amount)}/>
               </>
             )}
           </fetcher.Form>
@@ -704,7 +743,7 @@ export function PaymentForm({
             >
               {fetcher.state !== 'idle' 
                 ? "Setting up payment..." 
-                : currentTotalInCents <= 0 
+                : !isPositive(currentTotal)
                   ? "Proceed" 
                   : `Proceed to Pay`
               }
