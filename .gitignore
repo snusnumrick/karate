@@ -20,8 +20,6 @@ db-tools/
 
 .vercel
 _scratch/
-**/*.test.*
-**/__tests__/
 playwright-report/
 test-results/
 build/
