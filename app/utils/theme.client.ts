@@ -10,6 +10,16 @@ export function resolveDocumentTheme(): ResolvedTheme {
     return 'light';
   }
 
+  try {
+    const storedTheme = window?.localStorage?.getItem('ui-theme');
+    if (storedTheme === 'dark' || storedTheme === 'light') {
+      return storedTheme;
+    }
+  } catch {
+    // Accessing localStorage can throw in some contexts (e.g., blocked storage),
+    // so fall through to other detection strategies.
+  }
+
   const root = document.documentElement;
   const attributeTheme = root.getAttribute('data-theme');
   if (attributeTheme === 'dark' || attributeTheme === 'light') {
