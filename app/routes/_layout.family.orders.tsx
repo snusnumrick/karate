@@ -1,6 +1,7 @@
 import { json, LoaderFunctionArgs, MetaFunction, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useRouteError } from "@remix-run/react"; // Added useRouteError
 import { createServerClient } from "@supabase/auth-helpers-remix";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { Database, Tables } from "~/types/database.types";
 // Removed Card components, using div with classes instead
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
@@ -41,11 +42,11 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request }: LoaderFunctionArgs) {
     const response = new Response();
-    const supabase = createServerClient<Database>(
+    const supabase = createServerClient<Database, "public">(
         process.env.SUPABASE_URL!,
         process.env.SUPABASE_ANON_KEY!,
         { request, response }
-    );
+    ) as unknown as SupabaseClient<Database>;
 
     const { data: { session } } = await supabase.auth.getSession();
 

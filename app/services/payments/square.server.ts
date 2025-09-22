@@ -18,6 +18,7 @@ import {
 import { fromCents, toCents } from '~/utils/money';
 import type { InvoicePaymentMethod } from '~/types/invoice';
 import { SquareClient, SquareEnvironment } from 'square';
+import type * as SquareSdk from 'square';
 import { siteConfig } from '~/config/site';
 
 export class SquarePaymentProvider extends PaymentProvider {
@@ -215,16 +216,20 @@ export class SquarePaymentProvider extends PaymentProvider {
       console.log(`[Square] Processing payment with token: ${request.payment_method_id?.substring(0, 10)}...`);
       console.log(`[Square] Using credentials - Location: ${this.locationId}, Environment: ${this.environment}`);
       
-      const result = await this.squareClient.payments.create({
+      const amountMoney: SquareSdk.Square.Money = {
+        amount: BigInt(amountInCents),
+        currency: this.defaultCurrency as SquareSdk.Square.Currency
+      };
+
+      const paymentRequest: SquareSdk.Square.CreatePaymentRequest = {
         idempotencyKey: `confirm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        sourceId: request.payment_method_id || '', // This is the token from Web Payments SDK
-        amountMoney: {
-          amount: BigInt(amountInCents),
-          currency: this.defaultCurrency
-        },
+        sourceId: request.payment_method_id,
+        amountMoney,
         locationId: this.locationId,
-        referenceId: request.payment_intent_id // Link to your original intent
-      });
+        referenceId: request.payment_intent_id
+      };
+
+      const result = await this.squareClient.payments.create(paymentRequest);
 
       const payment = result.payment;
       if (!payment) {
@@ -323,15 +328,19 @@ export class SquarePaymentProvider extends PaymentProvider {
     try {
       const amountToRefund = request.amount ? toCents(request.amount) : undefined;
       
-      const result = await this.squareClient.refunds.refundPayment({
+      const refundAmount: SquareSdk.Square.Money = {
+        amount: BigInt(amountToRefund ?? 0),
+        currency: this.defaultCurrency as SquareSdk.Square.Currency
+      };
+
+      const refundRequest: SquareSdk.Square.RefundPaymentRequest = {
         idempotencyKey: `refund_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         paymentId: request.payment_intent_id,
-        amountMoney: {
-          amount: BigInt(amountToRefund || 0),
-          currency: this.defaultCurrency
-        },
+        amountMoney: refundAmount,
         reason: request.reason || 'Refund requested'
-      });
+      };
+
+      const result = await this.squareClient.refunds.refundPayment(refundRequest);
 
       const refund = result.refund;
       if (!refund) {

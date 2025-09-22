@@ -12,14 +12,14 @@ const devHmrHost = process.env.VITE_DEV_HMR_HOST || "localhost";
 const devHmrPort = process.env.VITE_DEV_HMR_PORT ? Number(process.env.VITE_DEV_HMR_PORT) : 5177;
 
 const allowedHostsEnv = process.env.VITE_DEV_ALLOWED_HOSTS;
-const devAllowedHosts: "all" | string[] = allowedHostsEnv
+const devAllowedHosts: true | string[] = allowedHostsEnv
   ? allowedHostsEnv === "all"
-    ? "all"
+    ? true
     : allowedHostsEnv
         .split(",")
         .map((host) => host.trim())
         .filter(Boolean)
-  : "all";
+  : true;
 
 // Only set dev load context in development mode
 // In production (Vercel), this is handled by the server adapter

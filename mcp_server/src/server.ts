@@ -1,6 +1,6 @@
-import process from 'process'; // Added import
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Reverted import path
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"; // Reverted import path
+import process from 'process';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
 import { z } from "zod";
 import { apiClient } from './apiClient'; // Import our existing API client
 

@@ -3,9 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const process_1 = __importDefault(require("process")); // Added import
-const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js"); // Reverted import path
-const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js"); // Reverted import path
+const process_1 = __importDefault(require("process"));
+const mcp_1 = require("@modelcontextprotocol/sdk/server/mcp");
+const stdio_1 = require("@modelcontextprotocol/sdk/server/stdio");
 const zod_1 = require("zod");
 const apiClient_1 = require("./apiClient"); // Import our existing API client
 // Define Zod schema for a student
@@ -31,7 +31,7 @@ const Guardian2InputSchema = zod_1.z.object({
     firstName: zod_1.z.string().min(1, "Guardian 2 first name required if provided"),
     lastName: zod_1.z.string().min(1, "Guardian 2 last name required if provided"),
     relationship: zod_1.z.string().min(1, "Guardian 2 relationship required if provided"),
-    homePhone: zod_1.z.string().min(1, "Guardian 2 home phone required if provided"),
+    homePhone: zod_1.z.string().nullish(),
     workPhone: zod_1.z.string().nullish(),
     cellPhone: zod_1.z.string().min(1, "Guardian 2 cell phone required if provided"),
     email: zod_1.z.string().email("Invalid Guardian 2 email format").min(1, "Guardian 2 email required if provided"),
@@ -60,7 +60,7 @@ const RegisterUserArgsSchema = zod_1.z.object({
     guardian1FirstName: zod_1.z.string().min(1, "Guardian 1 first name is required"),
     guardian1LastName: zod_1.z.string().min(1, "Guardian 1 last name is required"),
     guardian1Relationship: zod_1.z.string().min(1, "Guardian 1 relationship is required").default('Parent/Guardian'),
-    guardian1HomePhone: zod_1.z.string().min(1, "Guardian 1 home phone is required"),
+    guardian1HomePhone: zod_1.z.string().nullish(),
     guardian1WorkPhone: zod_1.z.string().nullish(),
     guardian1CellPhone: zod_1.z.string().min(1, "Guardian 1 cell phone is required"),
     guardian1Employer: zod_1.z.string().nullish(),
@@ -74,7 +74,7 @@ const RegisterUserArgsSchema = zod_1.z.object({
 async function startMcpServer() {
     // Removed startup log: console.error("Starting MCP Server...");
     // Create an MCP server instance
-    const server = new mcp_js_1.McpServer({
+    const server = new mcp_1.McpServer({
         name: "KarateAppConnector",
         version: "1.0.0",
         // Add capabilities if needed, e.g., for resources or prompts
@@ -124,7 +124,7 @@ async function startMcpServer() {
     });
     // Removed configuration log: console.error("MCP Server configured with 'registerUser' tool.");
     // Start receiving messages on stdin and sending messages on stdout
-    const transport = new stdio_js_1.StdioServerTransport();
+    const transport = new stdio_1.StdioServerTransport();
     // Removed connection logs:
     // console.error("Connecting MCP Server to StdioTransport...");
     await server.connect(transport);

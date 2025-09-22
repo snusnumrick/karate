@@ -125,9 +125,11 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       const vapidPublicKey = data.publicKey;
       
       console.log('📤 Creating push subscription...');
+      const vapidKeyBytes = urlBase64ToUint8Array(vapidPublicKey);
+      const vapidKeyBuffer: ArrayBuffer = Uint8Array.from(vapidKeyBytes).buffer;
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        applicationServerKey: vapidKeyBuffer
       });
 
       console.log('📤 Sending subscription to server...');

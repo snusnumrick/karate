@@ -4,7 +4,8 @@ import {getSupabaseServerClient, isUserAdmin} from "~/utils/supabase.server";
 import AdminNavbar from "~/components/AdminNavbar";
 import AdminFooter from "~/components/AdminFooter";
 import * as React from "react";
-import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix";
+import { createBrowserClient } from "@supabase/auth-helpers-remix";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~/types/database.types";
 
 // This is a pathless layout route that will wrap all routes in the admin directory
@@ -77,10 +78,10 @@ export default function AdminLayout() {
     const [supabase, setSupabase] = React.useState<SupabaseClient<Database> | null>(null);
 
     React.useEffect(() => {
-        const client = createBrowserClient<Database>(
+        const client = createBrowserClient<Database, "public">(
             ENV.SUPABASE_URL!,
             ENV.SUPABASE_ANON_KEY!
-        );
+        ) as unknown as SupabaseClient<Database>;
         setSupabase(client);
     }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
     return (

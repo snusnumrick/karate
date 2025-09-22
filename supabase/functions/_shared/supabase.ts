@@ -13,7 +13,7 @@ export function getSupabaseAdminClient(): SupabaseClient<Database> {
     throw new Error('Missing Supabase environment variables (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY)');
   }
   
-  return createClient<Database>(supabaseUrl, supabaseServiceKey);
+  return createClient<Database, 'public'>(supabaseUrl, supabaseServiceKey);
 }
 
 /**

@@ -22,17 +22,18 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // Generate the PDF
     const companyInfo = getDefaultCompanyInfo();
     const pdfBuffer = await generateInvoicePDF({ invoice, companyInfo });
+    const pdfBytes = new Uint8Array(pdfBuffer);
     
     // Generate filename
     const filename = generateInvoiceFilename(invoice);
 
     // Return the PDF as a response
-    return new Response(pdfBuffer, {
+    return new Response(pdfBytes, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `inline; filename="${filename}"`,
-        'Content-Length': pdfBuffer.length.toString(),
+        'Content-Length': pdfBytes.byteLength.toString(),
         'Cache-Control': 'private, no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',

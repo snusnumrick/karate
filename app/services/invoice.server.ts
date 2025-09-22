@@ -451,11 +451,14 @@ export async function getInvoiceById(
     }),
     payments: (invoice.invoice_payments || []).map(payment => {
       const taxes_db = (paymentTaxes_db || []).filter(tax => tax.payment_id === payment.id);
+      const rawPaymentIntentId = 'payment_intent_id' in payment
+        ? (payment as { payment_intent_id: string | null }).payment_intent_id
+        : (payment as { stripe_payment_intent_id?: string | null }).stripe_payment_intent_id ?? null;
       return {
         ...payment,
         reference_number: payment.reference_number || undefined,
         notes: payment.notes || undefined,
-        payment_intent_id: payment.payment_intent_id || undefined, // Generic payment intent ID
+        payment_intent_id: rawPaymentIntentId || undefined, // Generic payment intent ID
         created_at: payment.created_at || new Date().toISOString(),
         updated_at: payment.updated_at || new Date().toISOString(),
         taxes: taxes_db,
@@ -641,14 +644,19 @@ export async function getInvoices(
           created_at: item.created_at || new Date().toISOString(),
         };
       }),
-      payments: (invoice.invoice_payments || []).map((payment) => ({
-        ...payment,
-        reference_number: payment.reference_number || undefined,
-        notes: payment.notes || undefined,
-        payment_intent_id: payment.payment_intent_id || undefined, // Generic payment intent ID
-        created_at: payment.created_at || new Date().toISOString(),
-        updated_at: payment.updated_at || new Date().toISOString(),
-      })),
+      payments: (invoice.invoice_payments || []).map((payment) => {
+        const rawPaymentIntentId = 'payment_intent_id' in payment
+          ? (payment as { payment_intent_id: string | null }).payment_intent_id
+          : (payment as { stripe_payment_intent_id?: string | null }).stripe_payment_intent_id ?? null;
+        return {
+          ...payment,
+          reference_number: payment.reference_number || undefined,
+          notes: payment.notes || undefined,
+          payment_intent_id: rawPaymentIntentId || undefined, // Generic payment intent ID
+          created_at: payment.created_at || new Date().toISOString(),
+          updated_at: payment.updated_at || new Date().toISOString(),
+        };
+      }),
       status_history: [],
     } as unknown as InvoiceWithDetails;
   });

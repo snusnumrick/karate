@@ -20,7 +20,7 @@ export type MoneyLike = Money | MoneyJSON | number | string;
 export function createMoney(amount: MoneyInput, fromCents = false): Money {
   // Handle null/undefined case
   if (amount === null || amount === undefined) {
-    return Dinero({ amount: 0, currency: siteConfig.localization.currency, precision: 2 });
+    return Dinero({ amount: 0, currency: siteConfig.localization.currency as Dinero.Currency, precision: 2 });
   }
   
   if (typeof amount === 'object' && 'getAmount' in amount) {

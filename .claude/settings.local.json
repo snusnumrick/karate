@@ -12,7 +12,9 @@
       "Bash(npm run lint:*)",
       "Bash(npm run validate:square:*)",
       "Bash(echo:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []

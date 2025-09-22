@@ -1,7 +1,6 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { DiscountService } from '~/services/discount.server';
-import type { ApplyDiscountRequest } from '~/types/discount';
 import { toMoney, type Money } from '~/utils/money';
 
 export async function action({ request }: ActionFunctionArgs) {

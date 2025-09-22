@@ -20,7 +20,7 @@ function createSupabaseClientForAuth(request: Request): SupabaseClient<Database>
     // Create a new client for each request to avoid potential issues with shared state
     // Pass existing headers from the request to potentially forward cookies if needed,
     // although for API auth, we primarily rely on the Authorization header.
-    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    return createClient<Database, "public">(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: request.headers.get("Authorization")! } },
         auth: {
              // We expect the token to be passed via the Authorization header,

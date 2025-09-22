@@ -42,7 +42,7 @@ export function getSupabaseClient(config: SupabaseClientConfig): SupabaseClient<
   }
 
   // Create new singleton client
-  const client = createClient<Database>(config.url, config.anonKey, {
+  const client = createClient<Database, "public">(config.url, config.anonKey, {
     auth: { 
       persistSession: false, 
       autoRefreshToken: false 

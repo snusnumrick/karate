@@ -1,5 +1,6 @@
 import {createServerClient} from "@supabase/auth-helpers-remix";
 import {createClient} from "@supabase/supabase-js"; // Import standard client
+import type {SupabaseClient as SupabaseClientType} from "@supabase/supabase-js";
 import type {Database} from "~/types/database.types";
 import type { EligibilityStatus } from '~/types/payment';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
@@ -27,15 +28,15 @@ export function getSupabaseAdminClient() {
         throw new Error('Missing Supabase URL or Service Role Key environment variables.');
     }
 
-    return createClient<Database>(supabaseUrl, supabaseServiceKey);
+    return createClient<Database, "public">(supabaseUrl, supabaseServiceKey) as unknown as SupabaseClientType<Database>;
 }
 
 // Note: Provider-specific environment validation is now handled by each provider's isConfigured() method
 
-type SupabaseClient = ReturnType<typeof createServerClient<Database>>;
+type TypedSupabaseClient = SupabaseClientType<Database>;
 type SupabaseServerClientReturn = {
-    supabaseServer: SupabaseClient,
-    supabaseClient: SupabaseClient,
+    supabaseServer: TypedSupabaseClient,
+    supabaseClient: TypedSupabaseClient,
     response: Response,
     ENV: { // Pass environment variables needed by client
         SUPABASE_URL: string;
@@ -65,17 +66,17 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
     }
 
     // Now we know the variables are non-empty strings, proceed with initialization
-    const supabaseServer = createServerClient<Database>(
+    const supabaseServer = createServerClient<Database, "public">(
         supabaseUrl,
         supabaseServiceKey,
         {request, response}
-    );
+    ) as unknown as TypedSupabaseClient;
 
-    const supabaseClient = createServerClient<Database>(
+    const supabaseClient = createServerClient<Database, "public">(
         supabaseUrl, // Use the validated variable
         supabaseAnonKey, // Use the validated variable
         {request, response}
-    );
+    ) as unknown as TypedSupabaseClient;
 
     const ENV = { // Pass environment variables needed by client
         SUPABASE_URL: supabaseUrl,
@@ -259,7 +260,7 @@ export async function createInitialPaymentRecord(
  */
 export async function checkStudentEligibility(
     studentId: string,
-    supabaseAdmin: ReturnType<typeof createClient<Database>>
+    supabaseAdmin: TypedSupabaseClient
 ): Promise<EligibilityStatus> {
     console.log(`Checking eligibility for student ID: ${studentId}`);
 

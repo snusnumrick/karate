@@ -144,9 +144,11 @@ class PushNotificationService {
       }
 
       // Create new subscription
+      const vapidKeyBytes = this.urlBase64ToUint8Array(this.vapidPublicKey);
+      const vapidKeyBuffer: ArrayBuffer = Uint8Array.from(vapidKeyBytes).buffer;
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey)
+        applicationServerKey: vapidKeyBuffer
       });
 
       this.subscription = subscription;

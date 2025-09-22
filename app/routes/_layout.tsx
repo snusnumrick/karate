@@ -1,7 +1,7 @@
 import { json, type LoaderFunctionArgs } from "@vercel/remix";
 import {Outlet, useLoaderData, useLocation, useNavigate, useRevalidator} from "@remix-run/react";
 import * as React from "react";
-import { type SupabaseClient } from "@supabase/auth-helpers-remix";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "~/utils/supabase.client";
 import PublicNavbar from "~/components/PublicNavbar";
 import FamilyNavbar from "~/components/FamilyNavbar";

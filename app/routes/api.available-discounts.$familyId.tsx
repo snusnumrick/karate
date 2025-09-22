@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { DiscountService } from "~/services/discount.server";
 import type { DiscountCode, PaymentTypeEnum } from "~/types/discount";
 import type { ExtendedSupabaseClient } from "~/types/supabase-extensions";
-import {createMoney, calculatePercentage, type Money, formatMoney, compareMoney, toMoney} from "~/utils/money";
+import {calculatePercentage, type Money, formatMoney, compareMoney, toMoney} from "~/utils/money";
 
 export interface AvailableDiscountCode extends DiscountCode {
   formatted_display: string; // "name discount [%|$] (description)"

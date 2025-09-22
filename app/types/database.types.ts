@@ -1438,8 +1438,9 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_method: Database["public"]["Enums"]["invoice_payment_method"]
-          reference_number: string | null
           receipt_url: string | null
+          reference_number: string | null
+          payment_intent_id: string | null
           stripe_payment_intent_id: string | null
           updated_at: string | null
         }
@@ -1452,8 +1453,9 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method: Database["public"]["Enums"]["invoice_payment_method"]
-          reference_number?: string | null
           receipt_url?: string | null
+          reference_number?: string | null
+          payment_intent_id?: string | null
           stripe_payment_intent_id?: string | null
           updated_at?: string | null
         }
@@ -1466,8 +1468,9 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_method?: Database["public"]["Enums"]["invoice_payment_method"]
-          reference_number?: string | null
           receipt_url?: string | null
+          reference_number?: string | null
+          payment_intent_id?: string | null
           stripe_payment_intent_id?: string | null
           updated_at?: string | null
         }
@@ -2052,6 +2055,7 @@ export type Database = {
           notes: string | null
           order_id: string | null
           payment_date: string | null
+          payment_intent_id: string | null
           payment_method: string | null
           receipt_url: string | null
           status: Database["public"]["Enums"]["payment_status"]
@@ -2072,6 +2076,7 @@ export type Database = {
           notes?: string | null
           order_id?: string | null
           payment_date?: string | null
+          payment_intent_id?: string | null
           payment_method?: string | null
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
@@ -2092,6 +2097,7 @@ export type Database = {
           notes?: string | null
           order_id?: string | null
           payment_date?: string | null
+          payment_intent_id?: string | null
           payment_method?: string | null
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
@@ -2842,6 +2848,10 @@ export type Database = {
       }
       mark_conversation_as_read: {
         Args: { p_conversation_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      recalc_invoice_totals: {
+        Args: { p_invoice_id: string }
         Returns: undefined
       }
       validate_discount_code: {

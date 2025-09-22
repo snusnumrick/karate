@@ -24,6 +24,7 @@ import {
     ZERO_MONEY,
     maxMoney,
     isPositive,
+    toCents,
     percentageOf,
     compareMoney,
     serializeMoney,

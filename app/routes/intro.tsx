@@ -1,10 +1,11 @@
 import { json, type LoaderFunctionArgs } from "@vercel/remix";
 import { Outlet, useLoaderData } from "@remix-run/react";
-import { createBrowserClient, type SupabaseClient } from "@supabase/auth-helpers-remix";
+import { createBrowserClient } from "@supabase/auth-helpers-remix";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { getSiteData } from "~/utils/site-data.server";
 import { setSiteData } from "~/utils/site-data.client";
 import type { Database } from "~/types/database.types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import * as React from "react";
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -59,11 +60,11 @@ export default function IntroLayout() {
     }, [siteData]);
 
     // Use useMemo to ensure single client instance per environment
-    const supabase = React.useMemo(() => {
-        return createBrowserClient<Database>(
+    const supabase = React.useMemo<SupabaseClient<Database>>(() => {
+        return createBrowserClient<Database, "public">(
             ENV.SUPABASE_URL!,
             ENV.SUPABASE_ANON_KEY!
-        );
+        ) as unknown as SupabaseClient<Database>;
     }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
 
     return (
