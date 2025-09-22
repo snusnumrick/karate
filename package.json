@@ -8,7 +8,7 @@
     "build": "vite build && vite build --ssr",
     "dev": "vite dev",
     "dev:strict": "CSP_STRICT_DEV=1 vite dev",
-    "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
+    "lint": "eslint --ignore-path .eslintignore --cache --cache-location ./node_modules/.cache/eslint .",
     "start": "NODE_ENV=production node -r dotenv/config server.js",
     "typecheck": "tsc",
     "typecheck:deno": "deno check supabase/functions/**/*.ts",

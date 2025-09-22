@@ -4,3 +4,6 @@ dist/
 .cache/
 coverage/
 _scratch/
+**/*.test.*
+**/__tests__/
+db-tools/
