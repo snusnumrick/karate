@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { isDarkThemeEnabled } from "~/utils/theme.client";
 import { useFetcher } from "@remix-run/react";
 import type { ClientRenderConfig } from '~/services/payments/types.server';
 
@@ -163,8 +164,7 @@ export default function SquarePaymentForm({
         console.log('Creating card element...');
         
         // Detect dark mode for color scheme
-        const isDarkMode = document.documentElement.classList.contains('dark') || 
-                          window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDarkMode = isDarkThemeEnabled();
         
         const cardElement = await payments.card({
           style: {

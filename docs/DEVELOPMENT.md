@@ -72,6 +72,15 @@ Edit the `.env` file with your configuration values:
 ```env
 # Site URL (Used in email links, meta tags, sitemap, etc.)
 VITE_SITE_URL=http://localhost:5173
+
+# Session secret used for cookie signing and CSRF protection
+SESSION_SECRET=change-me-to-a-long-random-string
+```
+
+Generate a strong secret (at least 32 characters) before running the app in any shared environment:
+
+```bash
+openssl rand -hex 32
 ```
 
 ### Supabase Configuration

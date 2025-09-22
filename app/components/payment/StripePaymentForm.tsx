@@ -4,6 +4,7 @@ import { loadStripe, type StripeElementsOptions, type Stripe } from "@stripe/str
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { ClientOnly } from "~/components/client-only";
+import { isDarkThemeEnabled } from "~/utils/theme.client";
 import type { ClientRenderConfig } from '~/services/payments/types.server';
 
 interface PaymentWithDetails {
@@ -116,8 +117,7 @@ export default function StripePaymentForm({
   // Theme detection
   useEffect(() => {
     const checkTheme = () => {
-      const isDarkMode = document.documentElement.classList.contains("dark");
-      setCurrentTheme(isDarkMode ? "dark" : "light");
+      setCurrentTheme(isDarkThemeEnabled() ? "dark" : "light");
     };
     checkTheme();
     const observer = new MutationObserver(() => checkTheme());

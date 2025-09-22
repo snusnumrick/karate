@@ -117,6 +117,7 @@ Add the following environment variables in your deployment platform:
 - `SUPABASE_ANON_KEY`: Your project's anon/public key
 - `SUPABASE_SERVICE_ROLE_KEY`: Your project's service role key (keep secret)
 - `VITE_SITE_URL`: Your production website URL (e.g., `https://www.yourdomain.com`)
+- `SESSION_SECRET`: Long random string (≥32 characters) for session cookies and CSRF tokens
 
 ### Payment Integration
 
