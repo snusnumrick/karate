@@ -59,30 +59,32 @@ export default function SquarePaymentForm({
       return;
     }
 
-    const applyNonceToSquareStyles = (style: HTMLStyleElement) => {
-      if (!style.getAttribute('nonce') && style.textContent?.includes('.input-container')) {
-        style.setAttribute('nonce', nonce);
-      }
-    };
+    const originalCreateElement = document.createElement;
 
-    // Apply to any existing Square-generated styles
+    const patchedCreateElement = ((...args: Parameters<typeof document.createElement>) => {
+      const element = originalCreateElement.apply(document, args);
+      const [tagName] = args;
+      if (typeof tagName === 'string' && tagName.toLowerCase() === 'style' && nonce) {
+        if (!element.getAttribute('nonce')) {
+          element.setAttribute('nonce', nonce);
+        }
+      }
+      return element;
+    }) as typeof document.createElement;
+
+    document.createElement = patchedCreateElement;
+
     document
       .querySelectorAll('style')
-      .forEach((el) => el instanceof HTMLStyleElement && applyNonceToSquareStyles(el));
+      .forEach((styleNode) => {
+        if (styleNode instanceof HTMLStyleElement && !styleNode.getAttribute('nonce')) {
+          styleNode.setAttribute('nonce', nonce);
+        }
+      });
 
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        mutation.addedNodes.forEach((node) => {
-          if (node instanceof HTMLStyleElement) {
-            applyNonceToSquareStyles(node);
-          }
-        });
-      }
-    });
-
-    observer.observe(document.head, { childList: true });
-
-    return () => observer.disconnect();
+    return () => {
+      document.createElement = originalCreateElement;
+    };
   }, [nonce]);
 
   // Load Square Web SDK from npm package
