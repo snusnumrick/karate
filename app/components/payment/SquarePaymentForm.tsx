@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { isDarkThemeEnabled } from "~/utils/theme.client";
+import { useNonce } from "~/context/nonce";
 import { useFetcher } from "@remix-run/react";
 import type { ClientRenderConfig } from '~/services/payments/types.server';
 
@@ -51,6 +52,38 @@ export default function SquarePaymentForm({
   const fetcher = useFetcher();
   const loadAttempted = useRef(false);
   const initAttempted = useRef(false);
+  const nonce = useNonce();
+
+  useEffect(() => {
+    if (!nonce || typeof document === 'undefined') {
+      return;
+    }
+
+    const applyNonceToSquareStyles = (style: HTMLStyleElement) => {
+      if (!style.getAttribute('nonce') && style.textContent?.includes('.input-container')) {
+        style.setAttribute('nonce', nonce);
+      }
+    };
+
+    // Apply to any existing Square-generated styles
+    document
+      .querySelectorAll('style')
+      .forEach((el) => el instanceof HTMLStyleElement && applyNonceToSquareStyles(el));
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof HTMLStyleElement) {
+            applyNonceToSquareStyles(node);
+          }
+        });
+      }
+    });
+
+    observer.observe(document.head, { childList: true });
+
+    return () => observer.disconnect();
+  }, [nonce]);
 
   // Load Square Web SDK from npm package
   useEffect(() => {
@@ -185,7 +218,7 @@ export default function SquarePaymentForm({
               borderColor: isDarkMode ? '#374151' : '#d1d5db',
             },
             '.input-container.is-focus': {
-              borderColor: isDarkMode ? '#22c55e' : '#22c55e',
+              borderColor: '#22c55e',
             },
             '.input-container.is-error': {
               borderColor: '#ef4444',
@@ -201,6 +234,15 @@ export default function SquarePaymentForm({
         console.log('Card element created, attaching to DOM...');
         
         await cardElement.attach('#square-card-container');
+        
+        if (nonce && typeof document !== 'undefined') {
+          const recentStyles = Array.from(document.querySelectorAll('style')).slice(-3);
+          recentStyles.forEach((style) => {
+            if (!style.getAttribute('nonce') && style.textContent?.includes('.input-container')) {
+              style.setAttribute('nonce', nonce);
+            }
+          });
+        }
         console.log('Card element attached successfully');
         
         setCard(cardElement);
