@@ -23,11 +23,10 @@ import {
     isZero,
     ZERO_MONEY,
     fromCents,
-    fromDollars,
     toDollars,
-    toMoney,
     type Money
 } from "~/utils/money";
+import { moneyFromRow } from "~/utils/database-money";
 import type { InvoiceWithDetails, InvoiceLineItem, InvoiceLineItemTax } from "~/types/invoice";
 import { requireUserId } from "~/utils/auth.server";
 import { 
@@ -239,38 +238,38 @@ export default function InvoiceDetailPage() {
   const loaderData = useLoaderData<typeof loader>();
   const rawInvoice = loaderData.invoice;
   
-  // Convert serialized money values (numbers in cents or Money JSON) back to Money
+  // Convert serialized money values using proper database money conversion
   const invoice: InvoiceWithDetails = {
     ...rawInvoice,
-    subtotal: typeof rawInvoice.subtotal === 'number' ? fromCents(rawInvoice.subtotal as number) : toMoney(rawInvoice.subtotal as unknown),
-    tax_amount: typeof rawInvoice.tax_amount === 'number' ? fromCents(rawInvoice.tax_amount as number) : toMoney(rawInvoice.tax_amount as unknown),
-    discount_amount: typeof rawInvoice.discount_amount === 'number' ? fromCents(rawInvoice.discount_amount as number) : toMoney(rawInvoice.discount_amount as unknown),
-    total_amount: typeof rawInvoice.total_amount === 'number' ? fromCents(rawInvoice.total_amount as number) : toMoney(rawInvoice.total_amount as unknown),
-    amount_paid: typeof rawInvoice.amount_paid === 'number' ? fromCents(rawInvoice.amount_paid as number) : toMoney(rawInvoice.amount_paid as unknown),
-    amount_due: typeof rawInvoice.amount_due === 'number' ? fromCents(rawInvoice.amount_due as number) : toMoney(rawInvoice.amount_due as unknown),
+    subtotal: moneyFromRow('invoices', 'subtotal', rawInvoice as unknown as Record<string, unknown>),
+    tax_amount: moneyFromRow('invoices', 'tax_amount', rawInvoice as unknown as Record<string, unknown>),
+    discount_amount: moneyFromRow('invoices', 'discount_amount', rawInvoice as unknown as Record<string, unknown>),
+    total_amount: moneyFromRow('invoices', 'total_amount', rawInvoice as unknown as Record<string, unknown>),
+    amount_paid: moneyFromRow('invoices', 'amount_paid', rawInvoice as unknown as Record<string, unknown>),
+    amount_due: moneyFromRow('invoices', 'amount_due', rawInvoice as unknown as Record<string, unknown>),
     entity: {
       ...rawInvoice.entity,
-      credit_limit: rawInvoice.entity.credit_limit ? (typeof rawInvoice.entity.credit_limit === 'number' ? fromCents(rawInvoice.entity.credit_limit as number) : toMoney(rawInvoice.entity.credit_limit as unknown)) : undefined,
+      credit_limit: rawInvoice.entity.credit_limit ? moneyFromRow('invoice_entities', 'credit_limit', rawInvoice.entity as unknown as Record<string, unknown>) : undefined,
     },
     line_items: (rawInvoice.line_items as unknown as RawInvoiceLineItem[]).map((item) => ({
       ...item,
-      unit_price: typeof item.unit_price === 'number' ? fromCents(item.unit_price as number) : toMoney(item.unit_price as unknown),
-      line_total: typeof item.line_total === 'number' ? fromCents(item.line_total as number) : toMoney(item.line_total as unknown),
-      tax_amount: item.tax_amount ? (typeof item.tax_amount === 'number' ? fromCents(item.tax_amount as number) : toMoney(item.tax_amount as unknown)) : undefined,
-      discount_amount: typeof item.discount_amount === 'number' ? fromCents(item.discount_amount as number) : toMoney(item.discount_amount as unknown),
-      total_tax_amount: item.total_tax_amount ? (typeof item.total_tax_amount === 'number' ? fromCents(item.total_tax_amount as number) : toMoney(item.total_tax_amount as unknown)) : undefined,
+      unit_price: moneyFromRow('invoice_line_items', 'unit_price', item as unknown as Record<string, unknown>),
+      line_total: moneyFromRow('invoice_line_items', 'line_total', item as unknown as Record<string, unknown>),
+      tax_amount: item.tax_amount ? moneyFromRow('invoice_line_items', 'tax_amount', item as unknown as Record<string, unknown>) : undefined,
+      discount_amount: moneyFromRow('invoice_line_items', 'discount_amount', item as unknown as Record<string, unknown>),
+      total_tax_amount: item.total_tax_amount ? fromCents(item.total_tax_amount as number) : undefined,
       taxes: item.taxes?.map((tax: RawTaxItem) => ({
         ...tax,
-        tax_amount: typeof tax.tax_amount === 'number' ? fromCents(tax.tax_amount as number) : toMoney(tax.tax_amount as unknown),
+        tax_amount: moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax as unknown as Record<string, unknown>),
       })) || [],
     })),
     payments: (rawInvoice.payments as unknown as RawPayment[]).map((payment) => ({
       ...payment,
-      amount: typeof payment.amount === 'number' ? fromDollars(payment.amount as number) : toMoney(payment.amount as unknown),
-      total_tax_amount: payment.total_tax_amount ? (typeof payment.total_tax_amount === 'number' ? fromCents(payment.total_tax_amount as number) : toMoney(payment.total_tax_amount as unknown)) : undefined,
+      amount: moneyFromRow('invoice_payments', 'amount', payment as unknown as Record<string, unknown>),
+      total_tax_amount: payment.total_tax_amount ? fromCents(payment.total_tax_amount as number) : undefined,
       taxes: payment.taxes?.map((tax: RawTaxItem) => ({
         ...tax,
-        tax_amount: typeof tax.tax_amount === 'number' ? fromCents(tax.tax_amount as number) : toMoney(tax.tax_amount as unknown),
+        tax_amount: moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax as unknown as Record<string, unknown>),
       })) || [],
     })),
   } as InvoiceWithDetails;
