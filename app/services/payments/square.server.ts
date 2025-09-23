@@ -213,15 +213,18 @@ export class SquarePaymentProvider extends PaymentProvider {
       // Retrieve the actual payment amount from the database
       const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
       const supabaseAdmin = getSupabaseAdminClient();
-      
+
+      // Note: request.payment_intent_id contains the database payment record ID (not a Square payment intent ID)
+      // This is legacy naming from when the system was Stripe-only
+
       const { data: paymentData, error: dbError } = await supabaseAdmin
         .from('payments')
         .select('total_amount')
-        .eq('stripe_payment_intent_id', request.payment_intent_id)
+        .eq('id', request.payment_intent_id)
         .single();
       
       if (dbError || !paymentData) {
-        console.error(`[Square] Failed to retrieve payment amount for intent ${request.payment_intent_id}:`, dbError?.message);
+        console.error(`[Square] Failed to retrieve payment amount for payment ID ${request.payment_intent_id}:`, dbError?.message);
         throw new Error('Failed to retrieve payment amount from database');
       }
       
