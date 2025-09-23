@@ -621,6 +621,14 @@ export class SquarePaymentProvider extends PaymentProvider {
         throw new Error('SQUARE_WEBHOOK_SIGNATURE_KEY environment variable not configured');
       }
 
+      const requestId = headers.get('x-vercel-id')
+        ?? headers.get('x-request-id')
+        ?? headers.get('traceparent');
+      console.log(
+        `[Square Webhook] Verifying signature for payload length=${payload.length} ` +
+        `(reqId=${requestId ?? 'n/a'}) received=${signature.slice(0, 8)}...`
+      );
+
       // Square uses HMAC-SHA256 for webhook signature verification
       const crypto = await import('crypto');
       const expectedSignature = crypto
@@ -629,6 +637,10 @@ export class SquarePaymentProvider extends PaymentProvider {
         .digest('base64');
 
       if (signature !== expectedSignature) {
+        console.error(
+          `[Square Webhook] Signature mismatch for reqId=${requestId ?? 'n/a'}. ` +
+          `expected=${expectedSignature.slice(0, 8)}... received=${signature.slice(0, 8)}...`
+        );
         throw new Error('Invalid Square webhook signature');
       }
 
@@ -720,7 +732,7 @@ export class SquarePaymentProvider extends PaymentProvider {
         intentId = event.data.object?.id || event.event_id || 'unknown';
       }
       
-      return {
+      const parsedEvent: ParsedWebhookEvent = {
         type: normalizedType,
         rawType,
         intent: {
@@ -731,9 +743,17 @@ export class SquarePaymentProvider extends PaymentProvider {
           cardLast4,
         },
       };
-      
+
+      console.log(
+        `[Square Webhook] Parsed event rawType=${rawType} mappedType=${parsedEvent.type} ` +
+        `intent=${parsedEvent.intent.id}`
+      );
+
+      return parsedEvent;
+
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[Square Webhook] Failed to parse webhook event: ${errorMessage}`);
       throw new Error(`Failed to parse Square webhook event: ${errorMessage}`);
     }
   }

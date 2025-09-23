@@ -19,6 +19,11 @@ export async function handlePaymentWebhook(
     const { intent } = event;
     const metadata = intent.metadata ?? {};
 
+    console.log(
+      `[Webhook ${provider.id}] Parsed event rawType=${event.rawType} mappedType=${event.type} intent=${intent.id} ` +
+      `metadataKeys=${Object.keys(metadata).length ? Object.keys(metadata).join(',') : 'none'}`
+    );
+
     if (event.type === 'payment.succeeded') {
       return await handlePaymentSuccess(provider, event, metadata);
     }
