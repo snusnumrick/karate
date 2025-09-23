@@ -1430,9 +1430,9 @@ export type Database = {
       }
       invoice_payments: {
         Row: {
-          amount: number
           amount_cents: number
           created_at: string | null
+          currency: string
           id: string
           invoice_id: string
           notes: string | null
@@ -1440,14 +1440,13 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["invoice_payment_method"]
           receipt_url: string | null
           reference_number: string | null
-          payment_intent_id: string | null
           stripe_payment_intent_id: string | null
           updated_at: string | null
         }
         Insert: {
-          amount: number
           amount_cents: number
           created_at?: string | null
+          currency?: string
           id?: string
           invoice_id: string
           notes?: string | null
@@ -1455,14 +1454,13 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["invoice_payment_method"]
           receipt_url?: string | null
           reference_number?: string | null
-          payment_intent_id?: string | null
           stripe_payment_intent_id?: string | null
           updated_at?: string | null
         }
         Update: {
-          amount?: number
           amount_cents?: number
           created_at?: string | null
+          currency?: string
           id?: string
           invoice_id?: string
           notes?: string | null
@@ -1470,7 +1468,6 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["invoice_payment_method"]
           receipt_url?: string | null
           reference_number?: string | null
-          payment_intent_id?: string | null
           stripe_payment_intent_id?: string | null
           updated_at?: string | null
         }

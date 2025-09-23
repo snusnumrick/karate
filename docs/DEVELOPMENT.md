@@ -240,6 +240,17 @@ npx supabase gen types typescript --linked --schema public > supabase/functions/
 cp supabase/functions/_shared/database.types.ts app/types/database.types.ts
 ```
 
+**⚠️ Important**: After generating types, ensure that auto-calculated invoice fields are marked as `readonly` in your custom TypeScript types. The following invoice fields are automatically updated by database triggers and should not be directly modified by application code:
+
+- `subtotal` / `subtotal_cents`
+- `tax_amount` / `tax_amount_cents` 
+- `discount_amount` / `discount_amount_cents`
+- `total_amount` / `total_amount_cents`
+- `amount_paid` / `amount_paid_cents`
+- `amount_due` / `amount_due_cents`
+
+See <mcfile name="invoice-types.ts" path="app/types/invoice-types.ts"></mcfile> for examples of properly typed readonly invoice fields.
+
 ## Third-Party Services
 
 ### Square Setup (Optional)

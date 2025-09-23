@@ -236,6 +236,76 @@ CREATE INDEX idx_invoices_due_date_status ON invoices (due_date, status) WHERE s
 CREATE INDEX idx_invoice_line_items_type_date ON invoice_line_items (item_type, service_period_start);
 ```
 
+#### Database Triggers
+
+The invoice system uses database triggers to automatically maintain calculated fields and ensure data consistency:
+
+```sql
+-- Trigger function to update invoice totals when line items or payments change
+CREATE OR REPLACE FUNCTION update_invoice_totals()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Update invoice totals based on line items and payments
+    UPDATE invoices 
+    SET 
+        subtotal_cents = COALESCE((
+            SELECT SUM(line_total_cents) 
+            FROM invoice_line_items 
+            WHERE invoice_id = COALESCE(NEW.invoice_id, OLD.invoice_id)
+        ), 0),
+        tax_amount_cents = COALESCE((
+            SELECT SUM(tax_amount_cents) 
+            FROM invoice_line_items 
+            WHERE invoice_id = COALESCE(NEW.invoice_id, OLD.invoice_id)
+        ), 0),
+        discount_amount_cents = COALESCE((
+            SELECT SUM(discount_amount_cents) 
+            FROM invoice_line_items 
+            WHERE invoice_id = COALESCE(NEW.invoice_id, OLD.invoice_id)
+        ), 0),
+        amount_paid_cents = COALESCE((
+            SELECT SUM(amount_cents) 
+            FROM invoice_payments 
+            WHERE invoice_id = COALESCE(NEW.invoice_id, OLD.invoice_id)
+        ), 0)
+    WHERE id = COALESCE(NEW.invoice_id, OLD.invoice_id);
+    
+    -- Update calculated totals and legacy decimal fields
+    UPDATE invoices 
+    SET 
+        total_amount_cents = subtotal_cents + tax_amount_cents - discount_amount_cents,
+        amount_due_cents = subtotal_cents + tax_amount_cents - discount_amount_cents - amount_paid_cents,
+        -- Legacy decimal fields (maintained during migration)
+        subtotal = subtotal_cents / 100.0,
+        tax_amount = tax_amount_cents / 100.0,
+        discount_amount = discount_amount_cents / 100.0,
+        total_amount = total_amount_cents / 100.0,
+        amount_paid = amount_paid_cents / 100.0,
+        amount_due = amount_due_cents / 100.0
+    WHERE id = COALESCE(NEW.invoice_id, OLD.invoice_id);
+    
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply trigger to relevant tables
+CREATE TRIGGER trigger_update_invoice_totals_line_items
+    AFTER INSERT OR UPDATE OR DELETE ON invoice_line_items
+    FOR EACH ROW EXECUTE FUNCTION update_invoice_totals();
+
+CREATE TRIGGER trigger_update_invoice_totals_payments
+    AFTER INSERT OR UPDATE OR DELETE ON invoice_payments
+    FOR EACH ROW EXECUTE FUNCTION update_invoice_totals();
+```
+
+**⚠️ Important**: The following invoice fields are automatically calculated by the `update_invoice_totals()` trigger and should be marked as `readonly` in TypeScript types:
+- `subtotal` / `subtotal_cents`
+- `tax_amount` / `tax_amount_cents`
+- `discount_amount` / `discount_amount_cents`
+- `total_amount` / `total_amount_cents`
+- `amount_paid` / `amount_paid_cents`
+- `amount_due` / `amount_due_cents`
+
 ### Type Definitions
 
 ```typescript

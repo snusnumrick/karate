@@ -87,7 +87,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         ),
         payments:invoice_payments (
           id,
-          amount,
+          amount_cents,
+          currency,
           payment_date,
           payment_method,
           reference_number,
@@ -420,7 +421,7 @@ export default function FamilyInvoiceDetailPage() {
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="font-medium text-gray-900 dark:text-white">
-                              {formatMoney(moneyFromRow('invoice_payments', 'amount', payment as unknown as Record<string, unknown>))}
+                              {formatMoney(moneyFromRow('invoice_payments', 'amount_cents', payment as unknown as Record<string, unknown>))}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
                               {formatDateLocal(payment.payment_date)}

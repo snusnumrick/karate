@@ -117,6 +117,16 @@ View: `invoice_line_item_tax_breakdown` reflects the same semantics (numeric amo
 - `subtotal_cents`, `tax_amount_cents`, `discount_amount_cents`, `total_amount_cents`, `amount_paid_cents`, `amount_due_cents`: INT4 cents
 - `subtotal`, `tax_amount`, `discount_amount`, `total_amount`, `amount_paid`, `amount_due` (legacy numeric): Dollars
 
+**⚠️ Auto-Updated Fields**: The following invoice fields are automatically calculated and updated by the `update_invoice_totals()` database trigger when invoice line items or payments change:
+- `subtotal` / `subtotal_cents` - Sum of all line item totals
+- `tax_amount` / `tax_amount_cents` - Sum of all line item taxes  
+- `discount_amount` / `discount_amount_cents` - Sum of all line item discounts
+- `total_amount` / `total_amount_cents` - Subtotal + tax - discount
+- `amount_paid` / `amount_paid_cents` - Sum of all payments for this invoice
+- `amount_due` / `amount_due_cents` - Total amount - amount paid
+
+**Important**: These fields should be marked as `readonly` in TypeScript types and should NOT be directly updated by application code.
+
 ### order_items -> **Cents (INT4)**
 - `price_per_item_cents`: Stored in cents
 

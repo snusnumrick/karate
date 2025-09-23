@@ -175,8 +175,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     // Record the payment
     const insertPayload = {
       invoice_id: validatedData.invoice_id,
-      amount: toDollars(paymentAmount),
       amount_cents: toCents(paymentAmount),
+      currency: 'CAD', // Default currency
       payment_method: validatedData.payment_method as Database['public']['Enums']['invoice_payment_method'],
       payment_date: validatedData.payment_date,
       reference_number: validatedData.reference_number ?? null,
