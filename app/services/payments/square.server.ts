@@ -217,7 +217,7 @@ export class SquarePaymentProvider extends PaymentProvider {
       const { data: paymentData, error: dbError } = await supabaseAdmin
         .from('payments')
         .select('total_amount')
-        .eq('payment_intent_id', request.payment_intent_id)
+        .eq('stripe_payment_intent_id', request.payment_intent_id)
         .single();
       
       if (dbError || !paymentData) {
