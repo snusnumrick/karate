@@ -208,10 +208,27 @@ export class SquarePaymentProvider extends PaymentProvider {
       console.log(`[Square] Confirming payment intent: ${request.payment_intent_id}`);
       
       // request.payment_method_id contains the token from Square Web Payments SDK
-      // We need to get the amount from the original payment intent (stored in database or metadata)
+      // We need to get the amount from the original payment intent (stored in database)
       
-      // For now, using a placeholder amount - in production, retrieve from database
-      const amountInCents = 1000; // This should come from the original payment intent
+      // Retrieve the actual payment amount from the database
+      const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
+      const { moneyFromRow } = await import('~/utils/database-money');
+      const supabaseAdmin = getSupabaseAdminClient();
+      
+      const { data: paymentData, error: dbError } = await supabaseAdmin
+        .from('payments')
+        .select('total_amount, total_amount_cents')
+        .eq('payment_intent_id', request.payment_intent_id)
+        .single();
+      
+      if (dbError || !paymentData) {
+        console.error(`[Square] Failed to retrieve payment amount for intent ${request.payment_intent_id}:`, dbError?.message);
+        throw new Error('Failed to retrieve payment amount from database');
+      }
+      
+      // Use moneyFromRow to properly handle both legacy and modern monetary storage
+      const paymentAmount = moneyFromRow('payments', 'total_amount', paymentData as unknown as Record<string, unknown>);
+      const amountInCents = paymentAmount.getAmount(); // Get amount in cents from Money object
       
       console.log(`[Square] Processing payment with token: ${request.payment_method_id?.substring(0, 10)}...`);
       console.log(`[Square] Using credentials - Location: ${this.locationId}, Environment: ${this.environment}`);
@@ -590,12 +607,30 @@ export class SquarePaymentProvider extends PaymentProvider {
   }
 
   // Method to parse webhook events (used by the existing webhook handler)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async parseWebhookEvent(payload: string, _headers: Headers): Promise<ParsedWebhookEvent> {
+  async parseWebhookEvent(payload: string, headers: Headers): Promise<ParsedWebhookEvent> {
     try {
-      // TODO: Implement Square webhook signature verification using _headers
-      // For now, we'll parse without verification - implement signature verification in production
-      // Square webhook signature verification would use _headers.get('X-Square-Signature')
+      // Verify Square webhook signature
+      const signature = headers.get('X-Square-Signature');
+      if (!signature) {
+        throw new Error('Missing Square webhook signature');
+      }
+
+      const webhookSignatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
+      if (!webhookSignatureKey) {
+        throw new Error('SQUARE_WEBHOOK_SIGNATURE_KEY environment variable not configured');
+      }
+
+      // Square uses HMAC-SHA256 for webhook signature verification
+      const crypto = await import('crypto');
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSignatureKey)
+        .update(payload, 'utf8')
+        .digest('base64');
+
+      if (signature !== expectedSignature) {
+        throw new Error('Invalid Square webhook signature');
+      }
+
       const event = JSON.parse(payload);
       
       if (!event.type || !event.data) {
