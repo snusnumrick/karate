@@ -212,12 +212,11 @@ export class SquarePaymentProvider extends PaymentProvider {
       
       // Retrieve the actual payment amount from the database
       const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
-      const { moneyFromRow } = await import('~/utils/database-money');
       const supabaseAdmin = getSupabaseAdminClient();
       
       const { data: paymentData, error: dbError } = await supabaseAdmin
         .from('payments')
-        .select('total_amount, total_amount_cents')
+        .select('total_amount')
         .eq('payment_intent_id', request.payment_intent_id)
         .single();
       
@@ -226,9 +225,8 @@ export class SquarePaymentProvider extends PaymentProvider {
         throw new Error('Failed to retrieve payment amount from database');
       }
       
-      // Use moneyFromRow to properly handle both legacy and modern monetary storage
-      const paymentAmount = moneyFromRow('payments', 'total_amount', paymentData as unknown as Record<string, unknown>);
-      const amountInCents = paymentAmount.getAmount(); // Get amount in cents from Money object
+      // For payments table, total_amount is stored in cents (INT4)
+      const amountInCents = paymentData.total_amount;
       
       console.log(`[Square] Processing payment with token: ${request.payment_method_id?.substring(0, 10)}...`);
       console.log(`[Square] Using credentials - Location: ${this.locationId}, Environment: ${this.environment}`);
