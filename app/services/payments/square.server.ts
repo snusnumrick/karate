@@ -688,93 +688,133 @@ export class SquarePaymentProvider extends PaymentProvider {
       }
 
       const event = JSON.parse(payload);
-      
+
       if (!event.type || !event.data) {
         throw new Error('Invalid Square webhook payload structure');
       }
-      
       const rawType = event.type;
       let normalizedType = this.mapSquareEventType(rawType);
-      
+
       // Extract relevant data based on event type
-      let intentId: string;
+      let intentId: string | undefined;
       const metadata: Record<string, string> = {};
       let receiptUrl: string | undefined;
       let paymentMethodType: string | undefined;
       let cardLast4: string | undefined;
-      
+
+      const dataObject = event.data.object as Record<string, unknown> | undefined;
+      const paymentPayload = (dataObject && 'payment' in dataObject)
+        ? (dataObject.payment as Record<string, unknown>)
+        : (dataObject as Record<string, unknown> | undefined);
+      const orderPayload = (dataObject && 'order' in dataObject)
+        ? (dataObject.order as Record<string, unknown>)
+        : (dataObject as Record<string, unknown> | undefined);
+
       if (rawType.startsWith('payment.')) {
-        // Payment events - data.object contains the Payment object
-        const payment = event.data.object;
-        intentId = payment.id;
-        
-        // Determine actual payment status for Square
-        if (rawType === 'payment.updated' && payment.status) {
-          if (payment.status === 'COMPLETED') {
+        const payment = paymentPayload ?? {};
+        intentId = (payment.id as string | undefined)
+          ?? (event.data.id as string | undefined)
+          ?? (payment.reference_id as string | undefined)
+          ?? (payment.note_id as string | undefined);
+
+        const paymentStatus = payment.status as string | undefined;
+        if (rawType === 'payment.updated' && paymentStatus) {
+          if (paymentStatus === 'COMPLETED') {
             normalizedType = 'payment.succeeded';
-          } else if (['FAILED', 'CANCELED'].includes(payment.status)) {
+          } else if (['FAILED', 'CANCELED'].includes(paymentStatus)) {
             normalizedType = 'payment.failed';
           }
         }
-        
-        // Extract payment method details
-        if (payment.source_type) {
-          paymentMethodType = payment.source_type.toLowerCase();
+
+        const sourceType = payment.source_type as string | undefined;
+        if (sourceType) {
+          paymentMethodType = sourceType.toLowerCase();
         }
-        
-        if (payment.card_details?.card) {
-          cardLast4 = payment.card_details.card.last_4;
+
+        const cardDetails = payment.card_details as Record<string, unknown> | undefined;
+        const card = cardDetails?.card as Record<string, unknown> | undefined;
+        if (card?.last_4) {
+          cardLast4 = String(card.last_4);
         }
-        
-        // Extract receipt URL if available
-        receiptUrl = payment.receipt_url;
-        
-        // Extract order reference and metadata
+
+        receiptUrl = payment.receipt_url as string | undefined;
+
         if (payment.order_id) {
-          metadata.orderId = payment.order_id;
+          metadata.orderId = String(payment.order_id);
         }
-        
+
         if (payment.reference_id) {
-          metadata.referenceId = payment.reference_id;
+          metadata.referenceId = String(payment.reference_id);
         }
-        
+
+        if (payment.note && typeof payment.note === 'string') {
+          try {
+            const parsedNote = JSON.parse(payment.note) as Record<string, unknown>;
+            for (const [key, value] of Object.entries(parsedNote)) {
+              if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                metadata[key] = String(value);
+              }
+            }
+          } catch (noteError) {
+            console.warn(`[Square Webhook] Failed to parse payment note metadata: ${noteError instanceof Error ? noteError.message : String(noteError)}`);
+          }
+        }
+
+        if (payment.metadata && typeof payment.metadata === 'object') {
+          for (const [key, value] of Object.entries(payment.metadata as Record<string, unknown>)) {
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              metadata[key] = String(value);
+            }
+          }
+        }
+
       } else if (rawType.startsWith('order.')) {
-        // Order events - data.object contains the Order object
-        const order = event.data.object;
-        intentId = order.id;
-        
-        // Determine actual order/payment status for Square
-        if (rawType === 'order.updated' && order.state) {
-          if (order.state === 'COMPLETED') {
+        const order = orderPayload ?? {};
+        intentId = (order.id as string | undefined)
+          ?? (event.data.id as string | undefined);
+
+        const orderState = order.state as string | undefined;
+        if (rawType === 'order.updated' && orderState) {
+          if (orderState === 'COMPLETED') {
             normalizedType = 'payment.succeeded';
-          } else if (['CANCELED'].includes(order.state)) {
+          } else if (['CANCELED'].includes(orderState)) {
             normalizedType = 'payment.failed';
           }
         }
-        
+
         if (order.reference_id) {
-          metadata.referenceId = order.reference_id;
+          metadata.referenceId = String(order.reference_id);
         }
-        
-        // For orders, we might want to extract payment info from tenders
-        if (order.tenders && order.tenders.length > 0) {
-          const tender = order.tenders[0];
-          if (tender.card_details?.card) {
-            cardLast4 = tender.card_details.card.last_4;
+
+        const tenders = order.tenders as Array<Record<string, unknown>> | undefined;
+        if (tenders && tenders.length > 0) {
+          const tender = tenders[0];
+          const tenderCardDetails = tender.card_details as Record<string, unknown> | undefined;
+          const tenderCard = tenderCardDetails?.card as Record<string, unknown> | undefined;
+          if (tenderCard?.last_4) {
+            cardLast4 = String(tenderCard.last_4);
           }
-          paymentMethodType = tender.type?.toLowerCase();
-          
-          // Use payment ID as intent ID if available
+          if (tender.type) {
+            paymentMethodType = String(tender.type).toLowerCase();
+          }
+
           if (tender.payment_id) {
-            intentId = tender.payment_id;
+            intentId = String(tender.payment_id);
           }
         }
-        
+
       } else {
-        // Generic fallback
-        intentId = event.data.object?.id || event.event_id || 'unknown';
+        const genericObject = paymentPayload ?? orderPayload ?? {};
+        intentId = (genericObject.id as string | undefined)
+          ?? (event.data.id as string | undefined)
+          ?? event.event_id;
       }
-      
+
+      if (!intentId) {
+        console.error('[Square Webhook] Missing payment identifier in webhook payload.', { rawType, data: event.data });
+        throw new Error('Missing payment identifier in webhook payload');
+      }
+
       const parsedEvent: ParsedWebhookEvent = {
         type: normalizedType,
         rawType,
