@@ -611,9 +611,7 @@ export class SquarePaymentProvider extends PaymentProvider {
   async parseWebhookEvent(payload: string, headers: Headers, requestUrl: string): Promise<ParsedWebhookEvent> {
     try {
       // Verify Square webhook signature
-      const signature = headers.get('X-Square-Signature')
-        ?? headers.get('x-square-signature')
-        ?? headers.get('x-square-hmacsha256-signature');
+      const signature = headers.get('x-square-hmacsha256-signature');
       if (!signature) {
         throw new Error('Missing Square webhook signature');
       }
