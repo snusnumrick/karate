@@ -219,7 +219,7 @@ export class SquarePaymentProvider extends PaymentProvider {
 
       const { data: paymentData, error: dbError } = await supabaseAdmin
         .from('payments')
-        .select('total_amount')
+        .select('id, family_id, type, subtotal_amount, total_amount, order_id')
         .eq('id', request.payment_intent_id)
         .single();
       
@@ -229,8 +229,40 @@ export class SquarePaymentProvider extends PaymentProvider {
       }
       
       // For payments table, total_amount is stored in cents (INT4)
-      const amountInCents = paymentData.total_amount;
-      
+      const amountInCents = paymentData.total_amount ?? 0;
+      const subtotalInCents = paymentData.subtotal_amount ?? 0;
+      const taxAmountInCents = amountInCents - subtotalInCents;
+
+      const squareMetadata: Record<string, string> = {
+        paymentId: request.payment_intent_id,
+        subtotal_amount: String(subtotalInCents),
+        total_amount: String(amountInCents),
+        tax_amount: String(taxAmountInCents),
+      };
+
+      if (paymentData.type) {
+        squareMetadata.type = paymentData.type;
+      }
+      if (paymentData.family_id) {
+        squareMetadata.familyId = paymentData.family_id;
+      }
+      if (paymentData.order_id) {
+        squareMetadata.orderId = paymentData.order_id;
+      }
+
+      if (paymentData.type === 'individual_session') {
+        const { data: paymentStudents } = await supabaseAdmin
+          .from('payment_students')
+          .select('id')
+          .eq('payment_id', request.payment_intent_id);
+        if (paymentStudents) {
+          const count = paymentStudents.length;
+          if (count > 0) {
+            squareMetadata.quantity = String(count);
+          }
+        }
+      }
+
       console.log(`[Square] Processing payment with token: ${request.payment_method_id?.substring(0, 10)}...`);
       console.log(`[Square] Using credentials - Location: ${this.locationId}, Environment: ${this.environment}`);
       
@@ -244,7 +276,8 @@ export class SquarePaymentProvider extends PaymentProvider {
         sourceId: request.payment_method_id,
         amountMoney,
         locationId: this.locationId,
-        referenceId: request.payment_intent_id
+        referenceId: request.payment_intent_id,
+        note: JSON.stringify(squareMetadata),
       };
 
       const result = await this.squareClient.payments.create(paymentRequest);
@@ -636,7 +669,6 @@ export class SquarePaymentProvider extends PaymentProvider {
         `[Square Webhook] Verifying signature for payload length=${payload.length} ` +
         `(reqId=${requestId ?? 'n/a'}) received=${signature.slice(0, 8)}... canonicalUrl=${canonicalUrl}`
       );
-      console.log(webhookSignatureKey);
 
       const signatureValid = await WebhooksHelper.verifySignature({
         requestBody: payload,

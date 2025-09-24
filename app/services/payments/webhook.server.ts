@@ -18,7 +18,11 @@ export async function handlePaymentWebhook(
   try {
     const event = await provider.parseWebhookEvent(payload, headers, requestUrl);
     const { intent } = event;
-    const metadata = intent.metadata ?? {};
+    let metadata = intent.metadata ?? {};
+
+    if (provider.id === 'square') {
+      metadata = await enrichSquareMetadata(metadata, intent.id);
+    }
 
     console.log(
       `[Webhook ${provider.id}] Parsed event rawType=${event.rawType} mappedType=${event.type} intent=${intent.id} ` +
@@ -133,6 +137,80 @@ async function handlePaymentSuccess(
     console.error(`[Webhook ${provider.id}] Failed during post-payment processing for Supabase payment ${supabasePaymentId}:`, updateError instanceof Error ? updateError.message : updateError);
     return { success: false, error: "Database update or post-processing failed" };
   }
+}
+
+async function enrichSquareMetadata(
+  metadata: Record<string, string>,
+  providerIntentId: string
+): Promise<Record<string, string>> {
+  const enriched = { ...metadata };
+
+  type PaymentRecord = {
+    id: string;
+    family_id: string | null;
+    type: Database['public']['Enums']['payment_type_enum'] | null;
+    subtotal_amount: number | null;
+    total_amount: number | null;
+    order_id: string | null;
+  };
+
+  const supabaseAdmin = getSupabaseAdminClient();
+
+  const referenceId = enriched.referenceId;
+  let paymentRecord: PaymentRecord | null = null;
+
+  if (referenceId) {
+    const { data } = await supabaseAdmin
+      .from('payments')
+      .select('id, family_id, type, subtotal_amount, total_amount, order_id')
+      .eq('id', referenceId)
+      .single();
+    paymentRecord = (data ?? null) as PaymentRecord | null;
+  }
+
+  if (!paymentRecord) {
+    const { data } = await supabaseAdmin
+      .from('payments')
+      .select('id, family_id, type, subtotal_amount, total_amount, order_id')
+      .eq('payment_intent_id', providerIntentId)
+      .single();
+    paymentRecord = (data ?? null) as PaymentRecord | null;
+  }
+
+  if (!paymentRecord) {
+    console.error(`[Webhook square] Unable to locate payment record for intent ${providerIntentId}.`);
+    return enriched;
+  }
+
+  enriched.paymentId ??= paymentRecord.id;
+  if (paymentRecord.family_id) {
+    enriched.familyId ??= paymentRecord.family_id;
+  }
+  if (paymentRecord.type) {
+    enriched.type ??= paymentRecord.type;
+  }
+  const subtotal = paymentRecord.subtotal_amount ?? 0;
+  const total = paymentRecord.total_amount ?? 0;
+  enriched.subtotal_amount ??= String(subtotal);
+  enriched.total_amount ??= String(total);
+  if (!enriched.tax_amount) {
+    enriched.tax_amount = String(total - subtotal);
+  }
+  if (paymentRecord.order_id) {
+    enriched.orderId ??= paymentRecord.order_id;
+  }
+
+  if (!enriched.quantity && paymentRecord.type === 'individual_session') {
+    const { data: paymentStudents } = await supabaseAdmin
+      .from('payment_students')
+      .select('id')
+      .eq('payment_id', paymentRecord.id);
+    if (paymentStudents) {
+      enriched.quantity = String(paymentStudents.length || 0);
+    }
+  }
+
+  return enriched;
 }
 
 async function handlePaymentFailure(
