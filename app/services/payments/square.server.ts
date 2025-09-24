@@ -17,7 +17,7 @@ import {
 } from './types.server';
 import { fromCents, toCents } from '~/utils/money';
 import type { InvoicePaymentMethod } from '~/types/invoice';
-import { SquareClient, SquareEnvironment } from 'square';
+import { SquareClient, SquareEnvironment, WebhooksHelper } from 'square';
 import type * as SquareSdk from 'square';
 import { siteConfig } from '~/config/site';
 
@@ -611,7 +611,9 @@ export class SquarePaymentProvider extends PaymentProvider {
   async parseWebhookEvent(payload: string, headers: Headers, requestUrl: string): Promise<ParsedWebhookEvent> {
     try {
       // Verify Square webhook signature
-      const signature = headers.get('X-Square-Signature');
+      const signature = headers.get('X-Square-Signature')
+        ?? headers.get('x-square-signature')
+        ?? headers.get('x-square-hmacsha256-signature');
       if (!signature) {
         throw new Error('Missing Square webhook signature');
       }
@@ -632,60 +634,26 @@ export class SquarePaymentProvider extends PaymentProvider {
       const canonicalProto = forwardedProto ?? url.protocol.replace(':', '');
       const canonicalUrl = `${canonicalProto}://${canonicalHost}${url.pathname}${url.search}`;
 
-      const stringToSign = `${canonicalUrl}${payload}`;
-
       console.log(
         `[Square Webhook] Verifying signature for payload length=${payload.length} ` +
         `(reqId=${requestId ?? 'n/a'}) received=${signature.slice(0, 8)}... canonicalUrl=${canonicalUrl}`
       );
 
-      const crypto = await import('crypto');
-      const base64Regex = /^[A-Za-z0-9+/=]+$/;
-      const candidateKeys: Buffer[] = [];
-      let hasBase64Candidate = false;
-      if (base64Regex.test(webhookSignatureKey)) {
-        const decoded = Buffer.from(webhookSignatureKey, 'base64');
-        if (decoded.length > 0) {
-          candidateKeys.push(decoded);
-          hasBase64Candidate = true;
-        }
-      }
-      candidateKeys.push(Buffer.from(webhookSignatureKey, 'utf8'));
+      const signatureValid = await WebhooksHelper.verifySignature({
+        requestBody: payload,
+        signatureHeader: signature,
+        signatureKey: webhookSignatureKey,
+        notificationUrl: canonicalUrl,
+      });
 
-      let signatureMatch = false;
-      let firstComputedSignature: string | null = null;
-      let verificationStrategy: 'base64' | 'utf8' | 'unknown' = 'unknown';
-      for (let index = 0; index < candidateKeys.length; index += 1) {
-        const candidate = candidateKeys[index];
-        const computed = crypto
-          .createHmac('sha1', candidate)
-          .update(stringToSign, 'utf8')
-          .digest('base64');
-        if (!firstComputedSignature) {
-          firstComputedSignature = computed;
-        }
-        if (computed === signature) {
-          signatureMatch = true;
-          if (hasBase64Candidate && index === 0) {
-            verificationStrategy = 'base64';
-          } else {
-            verificationStrategy = 'utf8';
-          }
-          break;
-        }
-      }
-
-      if (!signatureMatch) {
-        const expectedPreview = firstComputedSignature ? firstComputedSignature.slice(0, 8) : 'unknown';
+      if (!signatureValid) {
         console.error(
           `[Square Webhook] Signature mismatch for reqId=${requestId ?? 'n/a'}. ` +
-          `expected=${expectedPreview}... received=${signature.slice(0, 8)}...`
+          `notificationUrl=${canonicalUrl}`
         );
         throw new Error('Invalid Square webhook signature');
       } else {
-        console.log(
-          `[Square Webhook] Signature verified using ${verificationStrategy} key interpretation for reqId=${requestId ?? 'n/a'}`
-        );
+        console.log(`[Square Webhook] Signature verification passed (reqId=${requestId ?? 'n/a'})`);
       }
 
       const event = JSON.parse(payload);
