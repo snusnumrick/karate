@@ -50,7 +50,7 @@ export async function action({ request }: ActionFunctionArgs) {
         `[Square Webhook] Payload length=${payload.length}. Preview=${payloadPreview}${payload.length > 200 ? '...' : ''}`
     );
     
-    const result = await handlePaymentWebhook(paymentProvider, payload, request.headers);
+    const result = await handlePaymentWebhook(paymentProvider, payload, request.headers, request.url);
     
     if (!result.success) {
         console.error(`[Square Webhook] Processing failed:`, result.error);

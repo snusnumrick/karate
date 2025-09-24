@@ -166,7 +166,7 @@ export abstract class PaymentProvider {
 
   // Webhook operations
   abstract constructWebhookEvent(payload: string, signature: string, secret: string): Promise<WebhookEvent>;
-  abstract parseWebhookEvent(payload: string, headers: Headers): Promise<ParsedWebhookEvent>;
+  abstract parseWebhookEvent(payload: string, headers: Headers, requestUrl: string): Promise<ParsedWebhookEvent>;
   abstract handleWebhookEvent(event: WebhookEvent): Promise<void>;
 
   // Utility methods

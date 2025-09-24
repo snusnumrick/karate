@@ -12,7 +12,7 @@ export async function action({request}: ActionFunctionArgs) {
     }
 
     const payload = await request.text();
-    const result = await handlePaymentWebhook(paymentProvider, payload, request.headers);
+    const result = await handlePaymentWebhook(paymentProvider, payload, request.headers, request.url);
     
     if (!result.success) {
         return json({ error: result.error || 'Webhook processing failed' }, { status: 400 });

@@ -12,10 +12,11 @@ function parseInteger(metaValue: string | undefined): number | null {
 export async function handlePaymentWebhook(
   provider: PaymentProvider,
   payload: string,
-  headers: Headers
+  headers: Headers,
+  requestUrl: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const event = await provider.parseWebhookEvent(payload, headers);
+    const event = await provider.parseWebhookEvent(payload, headers, requestUrl);
     const { intent } = event;
     const metadata = intent.metadata ?? {};
 

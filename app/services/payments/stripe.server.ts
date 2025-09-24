@@ -456,7 +456,11 @@ export class StripePaymentProvider extends PaymentProvider {
     return `https://dashboard.stripe.com/${testPrefix}payments/${paymentIntentId}`;
   }
 
-  async parseWebhookEvent(payload: string, headers: Headers): Promise<ParsedWebhookEvent> {
+  async parseWebhookEvent(
+    payload: string,
+    headers: Headers,
+    _requestUrl: string
+  ): Promise<ParsedWebhookEvent> {
     const signature = headers.get('Stripe-Signature') || headers.get('stripe-signature') || '';
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) {
