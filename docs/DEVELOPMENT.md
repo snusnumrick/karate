@@ -249,7 +249,7 @@ cp supabase/functions/_shared/database.types.ts app/types/database.types.ts
 - `amount_paid` / `amount_paid_cents`
 - `amount_due` / `amount_due_cents`
 
-See <mcfile name="invoice-types.ts" path="app/types/invoice-types.ts"></mcfile> for examples of properly typed readonly invoice fields.
+The canonical invoice types live in <mcfile name="invoice.ts" path="app/types/invoice.ts"></mcfile>, which includes examples of correctly typed readonly fields managed by database triggers.
 
 ## Third-Party Services
 

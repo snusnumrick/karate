@@ -459,6 +459,7 @@ export class StripePaymentProvider extends PaymentProvider {
   async parseWebhookEvent(
     payload: string,
     headers: Headers,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _requestUrl: string
   ): Promise<ParsedWebhookEvent> {
     const signature = headers.get('Stripe-Signature') || headers.get('stripe-signature') || '';
