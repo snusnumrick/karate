@@ -638,6 +638,7 @@ export class SquarePaymentProvider extends PaymentProvider {
         `[Square Webhook] Verifying signature for payload length=${payload.length} ` +
         `(reqId=${requestId ?? 'n/a'}) received=${signature.slice(0, 8)}... canonicalUrl=${canonicalUrl}`
       );
+      console.log(webhookSignatureKey);
 
       const signatureValid = await WebhooksHelper.verifySignature({
         requestBody: payload,
