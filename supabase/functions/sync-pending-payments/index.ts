@@ -1,25 +1,35 @@
 import {serve} from "https://deno.land/std@0.177.0/http/server.ts";
-import {getSupabaseAdminClient, SupabaseClient} from '../_shared/supabase.ts';
-import Stripe from 'https://esm.sh/stripe@15.7.0?target=deno'; // Use specific version
-import {corsHeaders} from '../_shared/cors.ts'; // Assuming you have CORS setup
-import type {Database} from '../_shared/database.types.ts'; // Import Database types
+import {getSupabaseAdminClient} from '../_shared/supabase.ts';
+import Stripe from 'https://esm.sh/stripe@15.7.0?target=deno';
+import {corsHeaders} from '../_shared/cors.ts';
+import type {Database} from '../_shared/database.types.ts';
 
-// Detect payment provider from environment
-const PAYMENT_PROVIDER = Deno.env.get('PAYMENT_PROVIDER') || 'stripe';
+type ProviderId = 'stripe' | 'square';
 
-// Provider-specific initialization
-let stripe: Stripe | null = null;
+// Stripe configuration
+const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16',
+      httpClient: Stripe.createFetchHttpClient(),
+    })
+  : null;
 
-if (PAYMENT_PROVIDER === 'stripe') {
-  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
-  if (stripeSecretKey) {
-    stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2023-10-16', // Specify API version - KEEP THIS
-      httpClient: Stripe.createFetchHttpClient(), // Use Fetch client for Deno
-    });
-  } else {
-    console.warn('STRIPE_SECRET_KEY not found. Stripe functionality disabled.');
-  }
+if (!stripeSecretKey) {
+  console.warn('[sync-pending-payments] STRIPE_SECRET_KEY not found. Stripe checks will be skipped.');
+}
+
+// Square configuration
+const squareAccessToken = Deno.env.get('SQUARE_ACCESS_TOKEN');
+const squareEnvironmentRaw = (Deno.env.get('SQUARE_ENVIRONMENT') || 'sandbox').toLowerCase();
+const squareEnvironment: 'sandbox' | 'production' = squareEnvironmentRaw === 'production' ? 'production' : 'sandbox';
+const squareApiBaseUrl = squareEnvironment === 'production'
+  ? 'https://connect.squareup.com'
+  : 'https://connect.squareupsandbox.com';
+const squareApiVersion = '2024-08-15';
+
+if (!squareAccessToken) {
+  console.warn('[sync-pending-payments] SQUARE_ACCESS_TOKEN not found. Square checks will be skipped.');
 }
 
 // Using shared Supabase admin client utility
@@ -27,71 +37,205 @@ if (PAYMENT_PROVIDER === 'stripe') {
 // Define the threshold for checking pending payments (e.g., 15 minutes)
 const PENDING_THRESHOLD_MINUTES = 15;
 
-// Provider-specific payment intent retrieval
-async function retrievePaymentIntent(paymentIntentId: string) {
-  if (PAYMENT_PROVIDER === 'stripe' && stripe) {
+interface ProviderIntentInfo {
+  id: string;
+  status: string;
+  receiptUrl: string | null;
+  paymentMethod: string | null;
+  cardLast4?: string | null;
+}
+
+type PendingPaymentRecord = Pick<Database['public']['Tables']['payments']['Row'], 'id' | 'payment_intent_id' | 'created_at'>;
+
+type SquareRetrievePaymentResponse = {
+  payment?: {
+    id?: string;
+    status?: string;
+    receipt_url?: string;
+    source_type?: string;
+    amount_money?: {
+      amount?: number | null;
+      currency?: string | null;
+    };
+    card_details?: {
+      card?: {
+        last_4?: string;
+      };
+    };
+  };
+  errors?: Array<{
+    code?: string;
+    detail?: string;
+  }>;
+};
+
+type StripeChargeLike = {
+  receipt_url?: string | null;
+  payment_method_details?: {
+    type?: string | null;
+    card?: {
+      last4?: string | null;
+    };
+  };
+};
+
+function detectProvider(paymentIntentId: string | null): ProviderId | null {
+  if (!paymentIntentId) return null;
+
+  if (paymentIntentId.startsWith('pi_')) {
+    return 'stripe';
+  }
+
+  if (paymentIntentId.startsWith('karate_')) {
+    return squareAccessToken ? 'square' : stripe ? 'stripe' : null;
+  }
+
+  if (squareAccessToken) {
+    return 'square';
+  }
+
+  if (stripe) {
+    return 'stripe';
+  }
+
+  return null;
+}
+
+async function retrievePaymentIntent(provider: ProviderId, paymentIntentId: string): Promise<ProviderIntentInfo> {
+  if (provider === 'stripe') {
+    if (!stripe) {
+      throw new Error('Stripe client not configured');
+    }
+
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-      expand: ['latest_charge'], // Expand to get receipt URL if succeeded
+      expand: ['latest_charge'],
     });
-    
+
+    let receiptUrl: string | null = null;
+    let paymentMethod: string | null = paymentIntent.payment_method_types?.[0] ?? null;
+    let cardLast4: string | null = null;
+
+    if (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object') {
+      const latestCharge = paymentIntent.latest_charge as StripeChargeLike;
+      receiptUrl = latestCharge.receipt_url ?? receiptUrl;
+      const details = latestCharge.payment_method_details;
+      if (details) {
+        paymentMethod = details.type ?? paymentMethod;
+        if (details.card && details.card.last4) {
+          cardLast4 = details.card.last4 ?? null;
+        }
+      }
+    }
+
     return {
       id: paymentIntent.id,
       status: paymentIntent.status,
-      receiptUrl: (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object')
-        ? paymentIntent.latest_charge.receipt_url
-        : null,
-      paymentMethod: paymentIntent.payment_method_types?.[0] ?? null,
+      receiptUrl,
+      paymentMethod,
+      cardLast4,
     };
   }
-  
-  // Add other providers here
-  if (PAYMENT_PROVIDER === 'square') {
-    // Square Web SDK payments would need to be tracked differently
-    // This is a placeholder - in a real implementation, you'd need to:
-    // 1. Store Square payment IDs in the database
-    // 2. Use Square Payments API to check payment status
-    // 3. Map Square statuses to our internal statuses
-    console.warn(`Square payment sync for ${paymentIntentId} - implementation needed`);
+
+  if (provider === 'square') {
+    if (!squareAccessToken) {
+      throw new Error('Square access token not configured');
+    }
+
+    if (paymentIntentId.startsWith('karate_')) {
+      return {
+        id: paymentIntentId,
+        status: 'PENDING',
+        receiptUrl: null,
+        paymentMethod: null,
+      };
+    }
+
+    const url = `${squareApiBaseUrl}/v2/payments/${paymentIntentId}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${squareAccessToken}`,
+        'Square-Version': squareApiVersion,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 404) {
+      console.warn(`[sync-pending-payments] Square payment ${paymentIntentId} not found (404). Treating as pending.`);
+      return {
+        id: paymentIntentId,
+        status: 'PENDING',
+        receiptUrl: null,
+        paymentMethod: null,
+      };
+    }
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Square API responded with ${response.status}: ${errorBody || 'No body'}`);
+    }
+
+    const payload = (await response.json()) as SquareRetrievePaymentResponse;
+
+    if (!payload.payment) {
+      if (payload.errors?.length) {
+        console.warn('[sync-pending-payments] Square API returned errors:', payload.errors);
+      }
+      return {
+        id: paymentIntentId,
+        status: 'PENDING',
+        receiptUrl: null,
+        paymentMethod: null,
+      };
+    }
+
+    const payment = payload.payment;
+    const status = typeof payment.status === 'string' ? payment.status : 'PENDING';
+    const receiptUrl = typeof payment.receipt_url === 'string' ? payment.receipt_url : null;
+    const paymentMethod = typeof payment.source_type === 'string' ? payment.source_type.toLowerCase() : null;
+    const cardLast4 = payment.card_details?.card?.last_4 ?? null;
+
     return {
-      id: paymentIntentId,
-      status: 'pending', // Default to pending since we can't check
-      receiptUrl: null,
-      paymentMethod: null,
+      id: payment.id ?? paymentIntentId,
+      status,
+      receiptUrl,
+      paymentMethod,
+      cardLast4,
     };
   }
-  
-  throw new Error(`Unsupported payment provider: ${PAYMENT_PROVIDER}`);
+
+  throw new Error(`Unsupported provider: ${provider}`);
 }
 
-// Provider-agnostic status mapping
-function mapProviderStatusToDbStatus(providerStatus: string): 'succeeded' | 'failed' | 'pending' {
-  if (PAYMENT_PROVIDER === 'stripe') {
-    if (providerStatus === 'succeeded') return 'succeeded';
-    if (['requires_payment_method', 'canceled'].includes(providerStatus)) return 'failed';
-    return 'pending'; // For processing, requires_action, etc.
+function mapProviderStatusToDbStatus(provider: ProviderId, providerStatus: string): 'succeeded' | 'failed' | 'pending' {
+  const normalizedStatus = providerStatus.toLowerCase();
+
+  if (provider === 'stripe') {
+    if (normalizedStatus === 'succeeded') return 'succeeded';
+    if (['requires_payment_method', 'canceled', 'cancelled'].includes(normalizedStatus)) return 'failed';
+    return 'pending';
   }
-  
-  if (PAYMENT_PROVIDER === 'square') {
-    // Map Square payment statuses to our internal statuses
-    if (['approved', 'completed'].includes(providerStatus.toLowerCase())) return 'succeeded';
-    if (['failed', 'canceled', 'cancelled'].includes(providerStatus.toLowerCase())) return 'failed';
-    return 'pending'; // For pending, processing, etc.
+
+  if (provider === 'square') {
+    if (['approved', 'completed', 'captured'].includes(normalizedStatus)) return 'succeeded';
+    if (['failed', 'canceled', 'cancelled', 'declined'].includes(normalizedStatus)) return 'failed';
+    return 'pending';
   }
-  
+
   return 'pending';
-}
-
-// Get database field name for payment intent ID (provider-specific until migration)
-function getPaymentIntentFieldName(): string {
-  // Now using generic payment_intent_id for all providers
-  return 'payment_intent_id';
-  }
 }
 
 serve(async (req) => {
   // This function is designed to be triggered by a schedule (cron job), not HTTP requests.
   // We might add a check here later to ensure it's triggered correctly if needed.
-  console.log(`Starting sync-pending-payments function run for provider: ${PAYMENT_PROVIDER}...`);
+  const enabledProviders: string[] = [];
+  if (stripe) enabledProviders.push('stripe');
+  if (squareAccessToken) enabledProviders.push(`square (${squareEnvironment})`);
+
+  console.log(
+    `[sync-pending-payments] Starting function run. Enabled providers: ` +
+      `${enabledProviders.length > 0 ? enabledProviders.join(', ') : 'none'}.`
+  );
 
   const supabaseAdmin = getSupabaseAdminClient();
 
@@ -102,12 +246,11 @@ serve(async (req) => {
 
   try {
     // 1. Find old pending payments with a payment intent ID
-    const paymentIntentField = getPaymentIntentFieldName();
     const { data: pendingPayments, error: fetchError } = await supabaseAdmin
       .from('payments')
-      .select(`id, ${paymentIntentField}`)
+      .select('id, payment_intent_id, created_at')
       .eq('status', 'pending')
-      .not(paymentIntentField, 'is', null)
+      .not('payment_intent_id', 'is', null)
       .lt('created_at', cutoffIsoString); // Check payments created *before* the cutoff
 
     if (fetchError) {
@@ -121,77 +264,193 @@ serve(async (req) => {
       );
     }
 
+    const statusBreakdown: Record<ProviderId, Record<string, number>> = {
+      stripe: {},
+      square: {},
+    };
+    const skippedRecords: Array<{ id: string; intentId: string | null; reason: string }> = [];
+
     if (!pendingPayments || pendingPayments.length === 0) {
-      console.log('No old pending payments found requiring sync.');
-      return new Response(JSON.stringify({ message: 'No old pending payments found.' }), {
+      console.log('[sync-pending-payments] No old pending payments found requiring sync.');
+      const responseBody = {
+        message: 'No old pending payments found.',
+        totals: {
+          checked: 0,
+          updated: 0,
+          failed: 0,
+        },
+        statusBreakdown,
+        skipped: skippedRecords,
+      };
+      return new Response(JSON.stringify(responseBody), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Found ${pendingPayments.length} old pending payment(s) to check.`);
+    const pendingPaymentRecords = (pendingPayments ?? []) as PendingPaymentRecord[];
+
+    console.log(`[sync-pending-payments] Found ${pendingPaymentRecords.length} old pending payment(s) to check.`);
     let updatedCount = 0;
     let failedCount = 0;
 
     // 2. Check each payment with provider and update DB if necessary
-    for (const payment of pendingPayments) {
-      const paymentIntentId = (payment as any)[paymentIntentField] as string;
+    for (const paymentRecord of pendingPaymentRecords) {
+      const paymentIntentId = paymentRecord.payment_intent_id;
       if (!paymentIntentId) continue; // Should not happen due to query, but safety check
 
-      try {
-        console.log(
-          `Checking ${PAYMENT_PROVIDER} PI status for ${paymentIntentId} (DB ID: ${(payment as any).id})`,
+      const provider = detectProvider(paymentIntentId);
+      if (!provider) {
+        console.warn(
+          `[sync-pending-payments] Unable to determine provider for payment ${paymentRecord.id} (intent ${paymentIntentId}). Skipping.`
         );
-        const paymentIntentData = await retrievePaymentIntent(paymentIntentId);
+        failedCount++;
+        skippedRecords.push({
+          id: paymentRecord.id,
+          intentId: paymentIntentId,
+          reason: 'unknown-provider',
+        });
+        continue;
+      }
+
+      if (provider === 'stripe' && !stripe) {
+        console.warn(
+          `[sync-pending-payments] Stripe client not configured. Cannot check payment ${paymentRecord.id} (intent ${paymentIntentId}).`
+        );
+        failedCount++;
+        skippedRecords.push({
+          id: paymentRecord.id,
+          intentId: paymentIntentId,
+          reason: 'stripe-client-missing',
+        });
+        continue;
+      }
+
+      if (provider === 'square' && !squareAccessToken) {
+        console.warn(
+          `[sync-pending-payments] Square credentials not configured. Cannot check payment ${paymentRecord.id} (intent ${paymentIntentId}).`
+        );
+        failedCount++;
+        skippedRecords.push({
+          id: paymentRecord.id,
+          intentId: paymentIntentId,
+          reason: 'square-credentials-missing',
+        });
+        continue;
+      }
+
+      try {
+        const createdAtIso = paymentRecord.created_at;
+
+        console.log(
+          `[sync-pending-payments] Checking ${provider} intent ${paymentIntentId} (payment ${paymentRecord.id}) createdAt=${createdAtIso ?? 'unknown'}.`
+        );
+
+        const isSquareReference = provider === 'square' && paymentIntentId.startsWith('karate_');
+
+        if (isSquareReference) {
+          console.log(
+            `[sync-pending-payments] Expiring stale Square reference ${paymentIntentId} for payment ${paymentRecord.id}.`
+          );
+
+          const expirationUpdate: Database['public']['Tables']['payments']['Update'] = {
+            status: 'failed',
+            payment_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+          const { error: expireError } = await supabaseAdmin
+            .from('payments')
+            .update(expirationUpdate)
+            .eq('id', paymentRecord.id);
+
+          if (expireError) {
+            console.error(
+              `[sync-pending-payments] Failed to expire placeholder Square intent ${paymentIntentId} for payment ${paymentRecord.id}:`,
+              expireError.message,
+            );
+            failedCount++;
+          } else {
+            statusBreakdown.square.reference = (statusBreakdown.square.reference ?? 0) + 1;
+            console.log(
+              `[sync-pending-payments] Marked placeholder Square intent ${paymentIntentId} as failed for payment ${paymentRecord.id}.`
+            );
+            updatedCount++;
+          }
+
+          continue;
+        }
+
+        const paymentIntentData = await retrievePaymentIntent(provider, paymentIntentId);
+
+        const rawStatus = paymentIntentData.status ?? 'unknown';
+        const normalizedStatus = rawStatus.toString().toLowerCase();
+        statusBreakdown[provider][normalizedStatus] =
+          (statusBreakdown[provider][normalizedStatus] ?? 0) + 1;
 
         let dbUpdateData: Partial<Database['public']['Tables']['payments']['Update']> | null = null;
-        const dbStatus = mapProviderStatusToDbStatus(paymentIntentData.status);
+        const dbStatus = mapProviderStatusToDbStatus(provider, rawStatus);
 
         if (dbStatus === 'succeeded') {
-          console.log(`${PAYMENT_PROVIDER} PI ${paymentIntentData.id} status is 'succeeded'. Preparing DB update.`);
+          console.log(
+            `[sync-pending-payments] ${provider} intent ${paymentIntentData.id} succeeded. Preparing DB update for payment ${paymentRecord.id}.`
+          );
           dbUpdateData = {
             status: 'succeeded',
-            payment_date: new Date().toISOString(), // Use current time as payment date approximation
-            receipt_url: paymentIntentData.receiptUrl,
-            payment_method: paymentIntentData.paymentMethod,
+            payment_date: new Date().toISOString(),
           };
         } else if (dbStatus === 'failed') {
           console.log(
-            `${PAYMENT_PROVIDER} PI ${paymentIntentData.id} status is '${paymentIntentData.status}'. Preparing DB update to 'failed'.`,
+            `[sync-pending-payments] ${provider} intent ${paymentIntentData.id} failed (${paymentIntentData.status}). Preparing DB update for payment ${paymentRecord.id}.`
           );
           dbUpdateData = {
             status: 'failed',
-            payment_date: new Date().toISOString(), // Use current time as failure date approximation
+            payment_date: new Date().toISOString(),
           };
         } else {
-          // For other statuses (processing, requires_action, etc.), leave the DB as pending.
           console.log(
-            `${PAYMENT_PROVIDER} PI ${paymentIntentData.id} status is '${paymentIntentData.status}'. No DB update needed.`,
+            `[sync-pending-payments] ${provider} intent ${paymentIntentData.id} still ${paymentIntentData.status}. Leaving payment ${paymentRecord.id} as pending.`
           );
+          if (provider === 'square' && paymentIntentId.startsWith('karate_')) {
+            console.log(
+              `[sync-pending-payments] Square intent ${paymentIntentId} remains a client reference (no Square payment created yet).`
+            );
+          }
         }
 
-        // Perform DB update if status needs changing
         if (dbUpdateData) {
+          if (paymentIntentData.receiptUrl) {
+            dbUpdateData.receipt_url = paymentIntentData.receiptUrl;
+          }
+          if (paymentIntentData.paymentMethod) {
+            dbUpdateData.payment_method = paymentIntentData.paymentMethod;
+          }
+          if (paymentIntentData.cardLast4) {
+            dbUpdateData.card_last4 = paymentIntentData.cardLast4;
+          }
+          if (paymentIntentData.id && paymentIntentData.id !== paymentIntentId) {
+            dbUpdateData.payment_intent_id = paymentIntentData.id;
+          }
+
           const { error: updateError } = await supabaseAdmin
             .from('payments')
             .update(dbUpdateData)
-            .eq('id', (payment as any).id);
+            .eq('id', paymentRecord.id);
 
           if (updateError) {
             console.error(
-              `Failed to update payment ${(payment as any).id} status in DB:`,
+              `[sync-pending-payments] Failed to update payment ${paymentRecord.id} status in DB:`,
               updateError.message,
             );
             failedCount++;
-            // Continue to next payment
           } else {
-            console.log(`Successfully updated payment ${(payment as any).id} status in DB.`);
+            console.log(`[sync-pending-payments] Successfully updated payment ${paymentRecord.id} status to ${dbUpdateData.status}.`);
             updatedCount++;
           }
         }
       } catch (providerError) {
         console.error(
-          `Error retrieving or processing ${PAYMENT_PROVIDER} PI ${paymentIntentId} for payment ${(payment as any).id}:`,
+          `[sync-pending-payments] Error retrieving or processing ${provider} intent ${paymentIntentId} for payment ${paymentRecord.id}:`,
           providerError instanceof Error ? providerError.message : providerError,
         );
         failedCount++;
@@ -200,9 +459,25 @@ serve(async (req) => {
     } // End for loop
 
     const summary =
-      `Sync completed. Checked: ${pendingPayments.length}, Updated: ${updatedCount}, Failed checks/updates: ${failedCount}.`;
+      `Sync completed. Checked: ${pendingPaymentRecords.length}, Updated: ${updatedCount}, Failed checks/updates: ${failedCount}.`;
     console.log(summary);
-    return new Response(JSON.stringify({ message: summary }), {
+    console.log('[sync-pending-payments] Status breakdown:', statusBreakdown);
+    if (skippedRecords.length > 0) {
+      console.log('[sync-pending-payments] Skipped records:', skippedRecords);
+    }
+
+    const responseBody = {
+      message: summary,
+      totals: {
+        checked: pendingPaymentRecords.length,
+        updated: updatedCount,
+        failed: failedCount,
+      },
+      statusBreakdown,
+      skipped: skippedRecords,
+    };
+
+    return new Response(JSON.stringify(responseBody), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

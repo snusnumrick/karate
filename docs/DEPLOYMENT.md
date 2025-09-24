@@ -121,9 +121,6 @@ Add the following environment variables in your deployment platform:
 
 ### Payment Integration
 
-**Provider Configuration:**
-- `PAYMENT_PROVIDER`: Payment provider to use (`stripe` or `square`, defaults to `stripe`)
-
 **Stripe Configuration:**
 - `STRIPE_SECRET_KEY`: Stripe secret key
 - `STRIPE_PUBLISHABLE_KEY`: Stripe publishable key
@@ -224,31 +221,20 @@ npx web-push generate-vapid-keys
    supabase functions deploy sync-pending-payments
    ```
 
-4. **Configure Payment Provider for Edge Functions:**
-   
-   Set the `PAYMENT_PROVIDER` environment variable for Supabase Edge Functions:
+4. **Configure Payment Provider Secrets for Edge Functions:**
+
+   Store only the credentials you plan to use. The sync job will automatically detect which provider issued each intent and call the matching API when the corresponding secrets are present.
+
    ```bash
-   # For Stripe (default)
-   supabase secrets set PAYMENT_PROVIDER=stripe
-   
-   # For Square
-   supabase secrets set PAYMENT_PROVIDER=square
-   ```
-   
-   **Provider-specific secrets:**
-   
-   For Stripe:
-   ```bash
+   # Stripe (required for Stripe intent sync + webhook enrichment)
    supabase secrets set STRIPE_SECRET_KEY=sk_live_...
-   ```
-   
-   For Square:
-   ```bash
-   supabase secrets set SQUARE_APPLICATION_ID=sq0idp-...
+
+   # Square (required for Square intent sync)
    supabase secrets set SQUARE_ACCESS_TOKEN=EAAAE...
-   supabase secrets set SQUARE_LOCATION_ID=LR...
    supabase secrets set SQUARE_ENVIRONMENT=production
    ```
+
+   The Square Web Payments SDK still needs `SQUARE_APPLICATION_ID` and `SQUARE_LOCATION_ID` in your hosting environment (Vercel, etc.), but the sync function only requires the access token and environment.
 
 5. **Schedule Functions using pg_cron:**
    
@@ -300,11 +286,11 @@ npx web-push generate-vapid-keys
 
 The `sync-pending-payments` Edge Function is provider-agnostic and will:
 
-1. **Detect Provider:** Uses the `PAYMENT_PROVIDER` environment variable
+1. **Detect Provider:** Infers Stripe vs Square from the stored intent ID and available secrets (supports mixed providers without extra config)
 2. **Query Database:** Finds pending payments older than 15 minutes with payment intent IDs
 3. **Provider Integration:** 
    - **Stripe:** Uses Stripe API to check payment intent status
-   - **Square:** Uses Square Payments API (implementation placeholder provided)
+   - **Square:** Uses Square Payments API and normalizes metadata (requires `SQUARE_ACCESS_TOKEN`)
 4. **Update Status:** Automatically updates database based on provider response
 5. **Logging:** Provides detailed provider-specific logging for monitoring
 
