@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
 import { mapProgramNullToUndefined, mapInstructorNullToUndefined, mapSessionNullToUndefined, mapClassNullToUndefined } from '~/utils/mappers';
+import { DEFAULT_SCHEDULE } from '~/constants/schedule';
 import type {
   Class,
   CreateClassData,
@@ -1009,10 +1010,20 @@ export async function getMainPageScheduleData(
     
     // Get age ranges from programs
     const programs = classesData.map(c => c.program).filter(Boolean);
-    const minAge = Math.min(...programs.map(p => p.min_age || 0).filter(age => age > 0));
-    const maxAge = Math.max(...programs.map(p => p.max_age || 100));
+    const minAges = programs
+      .map(program => program?.min_age)
+      .filter((age): age is number => typeof age === 'number' && age > 0 && !Number.isNaN(age));
+    const minAge = minAges.length > 0 ? Math.min(...minAges) : DEFAULT_SCHEDULE.minAge;
+    const maxAges = programs
+      .map(program => program?.max_age)
+      .filter((age): age is number => typeof age === 'number' && age > 0 && !Number.isNaN(age));
+    const derivedMaxAge = maxAges.length > 0 ? Math.max(...maxAges) : null;
+    const maxAge = derivedMaxAge ?? 100;
     const avgDuration = Math.round(programs.reduce((sum, p) => sum + (p.duration_minutes || 60), 0) / programs.length);
     const maxCapacity = Math.max(...programs.map(p => p.max_capacity || 20));
+    const ageRangeLabel = derivedMaxAge === null || derivedMaxAge >= 100
+      ? `${minAge}+`
+      : `${minAge}-${derivedMaxAge}`;
 
     // Format days (e.g., "Tuesday & Thursday")
     const dayNames: Record<string, string> = {
@@ -1047,7 +1058,7 @@ export async function getMainPageScheduleData(
     return {
       days: formattedDays,
       time: timeRange,
-      ageRange: `${minAge}-${maxAge}`,
+      ageRange: ageRangeLabel,
       duration: `${avgDuration} minutes`,
       maxStudents: maxCapacity,
       minAge,
