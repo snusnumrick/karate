@@ -1,4 +1,5 @@
 import { siteConfig } from "~/config/site";
+import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 import type { SiteData } from "~/utils/site-data.server";
 
 /**
@@ -46,9 +47,9 @@ export function getSiteData(): SiteData {
   }
   return {
     schedule: {
-      days: siteConfig.classes.days,
-      times: siteConfig.classes.timeLong,
-      ageRange: siteConfig.classes.ageRange,
+      days: DEFAULT_SCHEDULE.days,
+      times: DEFAULT_SCHEDULE.timeRange,
+      ageRange: getDefaultAgeRangeLabel(),
     },
     contact: {
       phone: siteConfig.contact.phone,
@@ -92,9 +93,9 @@ export function getScheduleData() {
   if (isServer()) {
     console.warn('SSR: Using fallback schedule data');
     return {
-      days: siteConfig.classes.days,
-      times: siteConfig.classes.timeLong,
-      ageRange: siteConfig.classes.ageRange,
+      days: DEFAULT_SCHEDULE.days,
+      times: DEFAULT_SCHEDULE.timeRange,
+      ageRange: getDefaultAgeRangeLabel(),
     };
   }
   

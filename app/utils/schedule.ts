@@ -1,7 +1,7 @@
-import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
 import { parseLocalDate } from "~/components/calendar/utils";
 import { formatDate } from "~/utils/misc";
+import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 
 // Type definitions
 type Session = Database['public']['Tables']['class_sessions']['Row'];
@@ -54,44 +54,49 @@ export const calculateEndTime = (startTime: string, durationMinutes: number) => 
 // Get age range from programs or fallback to site config
 export const getAgeRange = (programs: Program[]) => {
     if (programs.length === 0) {
-        return siteConfig.classes.ageRange;
+        return getDefaultAgeRangeLabel();
     }
-    
-    const ages = programs.map(p => ({min: p.min_age, max: p.max_age})).filter(a => a.min !== null && a.max !== null);
+
+    const ages = programs
+        .map(p => ({ min: p.min_age, max: p.max_age }))
+        .filter(a => a.min !== null && a.max !== null);
     if (ages.length === 0) {
-        return siteConfig.classes.ageRange;
+        return getDefaultAgeRangeLabel();
     }
-    
+
     const minAge = Math.min(...ages.map(a => a.min!));
     const maxAge = Math.max(...ages.map(a => a.max!));
     return `${minAge}-${maxAge}`;
 };
 
-// Helper function to convert time from site config to 24-hour format
-export const parseTimeFromSiteConfig = (timeLong: string) => {
-    // Parse "5:45 PM - 7:15 PM" format
-    const timeRange = timeLong.split(' - ');
-    if (timeRange.length !== 2) {
-        return { opens: "17:45", closes: "19:15" }; // Fallback
+// Helper function to convert a time range string to 24-hour format
+export const parseTimeRange = (timeRange: string | undefined | null) => {
+    if (!timeRange) {
+        return { opens: DEFAULT_SCHEDULE.opens, closes: DEFAULT_SCHEDULE.closes };
     }
-    
+
+    const parts = timeRange.split(' - ');
+    if (parts.length !== 2) {
+        return { opens: DEFAULT_SCHEDULE.opens, closes: DEFAULT_SCHEDULE.closes };
+    }
+
     const convertTo24Hour = (time12: string) => {
         const [time, period] = time12.trim().split(' ');
         const [hours, minutes] = time.split(':');
         let hour = parseInt(hours);
-        
+
         if (period.toUpperCase() === 'PM' && hour !== 12) {
             hour += 12;
         } else if (period.toUpperCase() === 'AM' && hour === 12) {
             hour = 0;
         }
-        
+
         return `${hour.toString().padStart(2, '0')}:${minutes}`;
     };
-    
+
     return {
-        opens: convertTo24Hour(timeRange[0]),
-        closes: convertTo24Hour(timeRange[1])
+        opens: convertTo24Hour(parts[0]),
+        closes: convertTo24Hour(parts[1])
     };
 };
 
@@ -100,8 +105,8 @@ export const getScheduleInfo = (classes: ClassWithSchedule[]) => {
     if (classes.length === 0) {
         console.warn('No classes found');
         return {
-            days: siteConfig.classes.days,
-            times: siteConfig.classes.timeLong
+            days: DEFAULT_SCHEDULE.days,
+            times: DEFAULT_SCHEDULE.timeRange
         };
     }
     
@@ -118,8 +123,8 @@ export const getScheduleInfo = (classes: ClassWithSchedule[]) => {
     if (allSessions.length === 0) {
         console.warn('No sessions found');
         return {
-            days: siteConfig.classes.days,
-            times: siteConfig.classes.timeLong
+            days: DEFAULT_SCHEDULE.days,
+            times: DEFAULT_SCHEDULE.timeRange
         };
     }
     // console.log('[getScheduleInfo] allSessions', allSessions);
@@ -163,35 +168,26 @@ export const getScheduleInfo = (classes: ClassWithSchedule[]) => {
         const times = `${formatTime(earliestStart)} - ${formatTime(latestEnd)}`;
 
         return {
-            days: days || siteConfig.classes.days,
+            days: days || DEFAULT_SCHEDULE.days,
             times: times
         };
     }
 
     console.warn('No sessions found');
     return {
-        days: siteConfig.classes.days,
-        times: siteConfig.classes.timeLong
+        days: DEFAULT_SCHEDULE.days,
+        times: DEFAULT_SCHEDULE.timeRange
     };
 };
 
 // Helper function to generate opening hours specification for structured data
 export const getOpeningHoursSpecification = (classes: ClassWithSchedule[]) => {
     if (classes.length === 0) {
-        // Fallback to site config
-        const dayMap: Record<string, string[]> = {
-            'Tue & Thu': ['Tuesday', 'Thursday'],
-            'Mon & Wed': ['Monday', 'Wednesday'],
-            'Tue & Fri': ['Tuesday', 'Friday']
-        };
-        
-        const { opens, closes } = parseTimeFromSiteConfig(siteConfig.classes.timeLong);
-        
         return [{
             "@type": "OpeningHoursSpecification",
-            "dayOfWeek": dayMap[siteConfig.classes.days] || ["Tuesday", "Thursday"],
-            "opens": opens,
-            "closes": closes
+            "dayOfWeek": DEFAULT_SCHEDULE.days.split(' & ').map(day => day.trim()),
+            "opens": DEFAULT_SCHEDULE.opens,
+            "closes": DEFAULT_SCHEDULE.closes
         }];
     }
     
@@ -206,18 +202,11 @@ export const getOpeningHoursSpecification = (classes: ClassWithSchedule[]) => {
     });
     
     if (allSessions.length === 0) {
-        const { opens, closes } = parseTimeFromSiteConfig(siteConfig.classes.timeLong);
-        const dayMap: Record<string, string[]> = {
-            'Tue & Thu': ['Tuesday', 'Thursday'],
-            'Mon & Wed': ['Monday', 'Wednesday'],
-            'Tue & Fri': ['Tuesday', 'Friday']
-        };
-        
         return [{
             "@type": "OpeningHoursSpecification",
-            "dayOfWeek": dayMap[siteConfig.classes.days] || ["Tuesday", "Thursday"],
-            "opens": opens,
-            "closes": closes
+            "dayOfWeek": DEFAULT_SCHEDULE.days.split(' & ').map(day => day.trim()),
+            "opens": DEFAULT_SCHEDULE.opens,
+            "closes": DEFAULT_SCHEDULE.closes
         }];
     }
     
@@ -261,7 +250,7 @@ export const getOpeningHoursSpecification = (classes: ClassWithSchedule[]) => {
 
 // Fallback schedule info for components that don't have access to dynamic data
 export const getFallbackScheduleInfo = () => ({
-    days: siteConfig.classes.days,
-    times: siteConfig.classes.timeLong,
-    ageRange: siteConfig.classes.ageRange
+    days: DEFAULT_SCHEDULE.days,
+    times: DEFAULT_SCHEDULE.timeRange,
+    ageRange: DEFAULT_SCHEDULE.ageRange
 });

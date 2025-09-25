@@ -6,6 +6,9 @@ import {Button} from "~/components/ui/button"; // Import Button component
 import {mergeMeta} from "~/utils/meta";
 import { JsonLd } from "~/components/JsonLd";
 import { useNonce } from "~/context/nonce";
+import { useEffect, useState } from "react";
+import { getScheduleData } from "~/utils/site-data.client";
+import { getDefaultAgeRangeLabel } from "~/constants/schedule";
 
 
 export const meta: MetaFunction = (args: MetaArgs) => {
@@ -38,6 +41,22 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 export default function AboutPage() {
     // Use nonce from NonceContext to ensure availability even if route loader data changes
     const nonce = useNonce();
+    const [ageRange, setAgeRange] = useState(getDefaultAgeRangeLabel());
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            try {
+                const schedule = getScheduleData();
+                if (schedule?.ageRange) {
+                    setAgeRange(schedule.ageRange);
+                }
+            } catch (error) {
+                console.warn('Failed to hydrate schedule data on About page:', error);
+            }
+        }, 100);
+
+        return () => clearTimeout(timer);
+    }, []);
 
     return (
         <div className="page-background-styles py-12">
@@ -156,7 +175,7 @@ export default function AboutPage() {
                                 <p className="mb-6"> {/* Added margin-bottom */}
                                     Experience the transformative power of karate under the guidance of Sensei Negin at
                                     {siteConfig.location.description}. Classes are designed for children
-                                    ages {siteConfig.classes.ageRange} and focus on
+                                    ages {ageRange} and focus on
                                     building a strong foundation in karate techniques while developing character and
                                     life skills. Ready to start? <a href="/contact"
                                                                     className="text-green-100 hover:underline font-semibold">Contact

@@ -6,6 +6,8 @@ import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import type { Program } from "~/types/multi-class";
 import { mergeMeta } from "~/utils/meta";
 import { JsonLd } from "~/components/JsonLd";
+import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
+import { getMainPageScheduleData } from "~/services/class.server";
 
 type ClassWithSchedule = {
     id: string;
@@ -31,6 +33,11 @@ type ClassWithSchedule = {
 type LoaderData = {
     programs: Program[];
     classes: ClassWithSchedule[];
+    scheduleSummary: {
+        days: string;
+        time: string;
+        ageRange: string;
+    } | null;
 };
 
 export const meta: MetaFunction = (args: MetaArgs) => {
@@ -39,9 +46,14 @@ export const meta: MetaFunction = (args: MetaArgs) => {
     // Get the already computed meta tags from the parent route match
     const parentMeta = parentMatch?.meta || [];
 
+    const loaderData = args.data as LoaderData | undefined;
+    const scheduleSummary = loaderData?.scheduleSummary;
+    const descriptionAgeRange = scheduleSummary?.ageRange ?? getDefaultAgeRangeLabel();
+    const descriptionDays = scheduleSummary?.days ?? DEFAULT_SCHEDULE.days;
+
     // Define meta tags specific to this Classes page
     const classesPageTitle = "Karate Classes - Programs & Schedules";
-    const classesPageDescription = `Explore our comprehensive karate programs at ${siteConfig.location.address}. Classes for children ages ${siteConfig.classes.ageRange} with experienced instructors. ${siteConfig.promotions.freeTrialDescription}`;
+    const classesPageDescription = `Explore our comprehensive karate programs at ${siteConfig.location.address}. Classes for children ages ${descriptionAgeRange} with experienced instructors on ${descriptionDays}. ${siteConfig.promotions.freeTrialDescription}`;
 
     const classesMeta: MetaDescriptor[] = [
         { title: classesPageTitle },
@@ -106,6 +118,8 @@ export async function loader() {
             console.error('Error fetching classes:', error);
         }
 
+        const scheduleSummary = await getMainPageScheduleData(supabase);
+
         // Transform the data to match our expected type
         const classes: ClassWithSchedule[] = (classesData || []).map(classItem => {
             // Find schedules for this class
@@ -125,7 +139,7 @@ export async function loader() {
         });
 
         return json<LoaderData>(
-            { programs, classes },
+            { programs, classes, scheduleSummary },
             {
                 headers: {
                     // Cache for 5 minutes (300 seconds) to match server-side cache duration
@@ -139,7 +153,7 @@ export async function loader() {
     } catch (error) {
         console.error('Error loading classes and programs:', error);
         return json<LoaderData>(
-            { programs: [], classes: [] },
+            { programs: [], classes: [], scheduleSummary: null },
             {
                 headers: {
                     // Don't cache error responses
@@ -151,7 +165,7 @@ export async function loader() {
 }
 
 export default function ClassesPage() {
-    const { programs, classes } = useLoaderData<typeof loader>();
+    const { programs, classes, scheduleSummary } = useLoaderData<typeof loader>();
     const rootData = useRouteLoaderData('root') as { nonce?: string } | undefined;
     const nonce = rootData?.nonce;
 
@@ -197,7 +211,7 @@ export default function ClassesPage() {
                 return `${minAge}-${maxAge}`;
             }
         }
-        return siteConfig.classes.ageRange; // Fallback to static config
+        return scheduleSummary?.ageRange ?? getDefaultAgeRangeLabel();
     };
 
     // Get pricing information from programs
@@ -467,27 +481,34 @@ export default function ClassesPage() {
                                     ))}
                                 </div>
                         ) : (
-                            <div className="text-center py-8">
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                                    Children&apos;s Classes (Ages {getAgeRange()})
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">Tuesday</span>
-                                            <span className="text-gray-900 dark:text-white font-medium">{siteConfig.classes.timeLong}</span>
+                            (() => {
+                                const fallbackDays = (scheduleSummary?.days ?? DEFAULT_SCHEDULE.days)
+                                    .split(/\s*[&,/]+\s*/)
+                                    .map(day => day.trim())
+                                    .filter(Boolean);
+                                const fallbackTime = scheduleSummary?.time ?? DEFAULT_SCHEDULE.timeRange;
+                                return (
+                                    <div className="text-center py-8">
+                                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                                            Children&apos;s Classes (Ages {getAgeRange()})
+                                        </h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                                            {fallbackDays.map(day => (
+                                                <div
+                                                    key={day}
+                                                    className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
+                                                >
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">{day}</span>
+                                                        <span className="text-gray-900 dark:text-white font-medium">{fallbackTime}</span>
+                                                    </div>
+                                                    <div className="text-sm text-gray-600 dark:text-gray-400">at {siteConfig.location.address}</div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div className="text-sm text-gray-600 dark:text-gray-400">at {siteConfig.location.address}</div>
                                     </div>
-                                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">Thursday</span>
-                                            <span className="text-gray-900 dark:text-white font-medium">{siteConfig.classes.timeLong}</span>
-                                        </div>
-                                        <div className="text-sm text-gray-600 dark:text-gray-400">at {siteConfig.location.address}</div>
-                                    </div>
-                                </div>
-                            </div>
+                                );
+                            })()
                         );
                         })()}
                     </div>

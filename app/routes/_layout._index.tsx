@@ -8,14 +8,25 @@ import { EventService, type UpcomingEvent } from "~/services/event.server";
 import { mergeMeta } from "~/utils/meta";
 import { useEffect, useState } from "react";
 import { getScheduleData } from "~/utils/site-data.client";
-import { formatTime } from "~/utils/schedule";
+import { formatDayName, formatTime, parseTimeRange } from "~/utils/schedule";
 import { formatDate } from "~/utils/misc";
 import { useNonce } from "~/context/nonce";
 import { JsonLd } from "~/components/JsonLd";
+import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 // Server imports moved to loader function only
 
 type UpcomingEventWithFormatted = UpcomingEvent & {
   formattedEventType: string;
+};
+
+type LoaderData = {
+    upcomingEvents: UpcomingEventWithFormatted[];
+    eventTypeConfig: Record<string, unknown>;
+    scheduleData: {
+        days: string;
+        time: string;
+        ageRange: string;
+    } | null;
 };
 
 // Loader for homepage - fetch upcoming events and schedule data
@@ -86,10 +97,15 @@ export const meta: MetaFunction = (args: MetaArgs) => {
     // Get the already computed meta tags from the parent route match
     const parentMeta = parentMatch?.meta || [];
 
+    const loaderData = args.data as LoaderData | undefined;
+    const schedule = loaderData?.scheduleData;
+    const descriptionDays = schedule?.days ?? DEFAULT_SCHEDULE.days;
+    const descriptionAgeRange = schedule?.ageRange ?? getDefaultAgeRangeLabel();
+
     // Define meta tags specific to this Index page
     const indexPageTitle = "Karate Classes - Sensei Negin";
     // Use siteConfig.location.address for consistency in description
-    const indexPageDescription = `Discover the art of karate with Sensei Negin at ${siteConfig.location.address}. Classes for children ages ${siteConfig.classes.ageRange} on ${siteConfig.classes.days}. Free trial available!`;
+    const indexPageDescription = `Discover the art of karate with Sensei Negin at ${siteConfig.location.address}. Classes for children ages ${descriptionAgeRange} on ${descriptionDays}. ${siteConfig.promotions.freeTrialDescription}`;
 
     const indexMeta: MetaDescriptor[] = [
         { title: indexPageTitle },
@@ -131,19 +147,30 @@ export default function Index() {
     }, [scheduleData]);
 
     // Priority: server scheduleData > client scheduleData > static config
-    const displaySchedule = scheduleData ? {
-        days: scheduleData.days,
-        time: scheduleData.time,
-        ageRange: scheduleData.ageRange
-    } : clientScheduleData ? {
-        days: clientScheduleData.days,
-        time: clientScheduleData.times, // Map 'times' to 'time' for consistency
-        ageRange: clientScheduleData.ageRange
-    } : {
-        days: siteConfig.classes.days,
-        time: siteConfig.classes.time,
-        ageRange: siteConfig.classes.ageRange
-    };
+    const displaySchedule = scheduleData
+        ? {
+            days: scheduleData.days,
+            timeRange: scheduleData.time,
+            ageRange: scheduleData.ageRange,
+        }
+        : clientScheduleData
+        ? {
+            days: clientScheduleData.days,
+            timeRange: clientScheduleData.times,
+            ageRange: clientScheduleData.ageRange,
+        }
+        : {
+            days: DEFAULT_SCHEDULE.days,
+            timeRange: DEFAULT_SCHEDULE.timeRange,
+            ageRange: getDefaultAgeRangeLabel(),
+        };
+
+    const scheduleTimeRange24 = parseTimeRange(displaySchedule.timeRange);
+    const displayDaysArray = displaySchedule.days
+        .split(/\s*[&,/]+\s*/)
+        .map(day => day.trim())
+        .filter(Boolean)
+        .map(day => formatDayName(day));
 
     // Build JSON-LD structured data objects here and render with nonce
     const eventsStructuredData = upcomingEvents && upcomingEvents.length > 0 ? {
@@ -186,7 +213,7 @@ export default function Index() {
         "@context": "https://schema.org",
         "@type": "Course",
         "name": "Karate Classes with Sensei Negin",
-        "description": `Learn the art of karate with professional instruction from a 5th Dan Black Belt. Classes for children ages ${siteConfig.classes.ageRange} focusing on discipline, self-defense, and personal growth.`,
+        "description": `Learn the art of karate with professional instruction from a 5th Dan Black Belt. Classes for children ages ${displaySchedule.ageRange} focusing on discipline, self-defense, and personal growth.`,
         "provider": {
             "@type": "Organization",
             "name": siteConfig.name,
@@ -216,9 +243,9 @@ export default function Index() {
         "courseSchedule": {
             "@type": "Schedule",
             "scheduleTimezone": "America/Vancouver",
-            "byDay": siteConfig.classes.days.split(' and ').map(day => day.trim()),
-            "startTime": siteConfig.classes.time.split(' - ')[0] || "18:30",
-            "endTime": siteConfig.classes.time.split(' - ')[1] || "19:30"
+            "byDay": displayDaysArray,
+            "startTime": scheduleTimeRange24.opens,
+            "endTime": scheduleTimeRange24.closes
         },
         "offers": {
             "@type": "Offer",
@@ -229,7 +256,7 @@ export default function Index() {
         "audience": {
             "@type": "EducationalAudience",
             "educationalRole": "student",
-            "audienceType": `Ages ${siteConfig.classes.ageRange}`
+            "audienceType": `Ages ${displaySchedule.ageRange}`
         },
         "instructor": {
             "@type": "Person",
@@ -298,7 +325,7 @@ export default function Index() {
                                 <Clock className="h-8 w-8 text-green-400 mx-auto mb-3" />
                                 <h3 className="font-bold text-lg mb-2">Class Schedule</h3>
                                 <p className="text-sm">{displaySchedule.days}</p>
-                                <p className="text-sm">{displaySchedule.time}</p>
+                                <p className="text-sm">{displaySchedule.timeRange}</p>
                             </div>
                             <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
                                 <Users className="h-8 w-8 text-green-400 mx-auto mb-3" />
@@ -464,7 +491,7 @@ export default function Index() {
                             </li>
                             <li className="flex items-center">
                                 <Clock className="mr-2 h-5 w-5 flex-shrink-0 text-blue-500 dark:text-blue-400" aria-hidden="true" />
-                                <span>{displaySchedule.days} at {displaySchedule.time}</span>
+                                <span>{displaySchedule.days} at {displaySchedule.timeRange}</span>
                             </li>
                             <li className="flex items-center">
                                 <Users className="mr-2 h-5 w-5 flex-shrink-0 text-purple-500 dark:text-purple-400" aria-hidden="true" />

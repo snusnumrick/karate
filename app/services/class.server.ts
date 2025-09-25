@@ -1047,7 +1047,7 @@ export async function getMainPageScheduleData(
     return {
       days: formattedDays,
       time: timeRange,
-      ageRange: `${minAge}-${maxAge} years`,
+      ageRange: `${minAge}-${maxAge}`,
       duration: `${avgDuration} minutes`,
       maxStudents: maxCapacity,
       minAge,

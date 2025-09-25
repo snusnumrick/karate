@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { siteConfig } from "~/config/site";
 import { getScheduleInfo, getAgeRange, getOpeningHoursSpecification } from "~/utils/schedule";
+import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 import type { Database } from "~/types/database.types";
 
 // Type definitions
@@ -166,9 +167,9 @@ async function fetchDynamicSiteData() {
 function getFallbackSiteData(): SiteData {
   return {
     schedule: {
-      days: siteConfig.classes.days,
-      times: siteConfig.classes.timeLong,
-      ageRange: siteConfig.classes.ageRange,
+      days: DEFAULT_SCHEDULE.days,
+      times: DEFAULT_SCHEDULE.timeRange,
+      ageRange: getDefaultAgeRangeLabel(),
     },
     contact: {
       phone: siteConfig.contact.phone,
@@ -184,14 +185,14 @@ function getFallbackSiteData(): SiteData {
       url: siteConfig.url,
       socials: {
          facebook: siteConfig.socials.facebook,
-         instagram: siteConfig.socials.instagram,
+      instagram: siteConfig.socials.instagram,
        },
     },
     openingHours: [{
       "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Tuesday", "Thursday"],
-      "opens": "17:45",
-      "closes": "19:15"
+      "dayOfWeek": DEFAULT_SCHEDULE.days.split(' & ').map(day => day.trim()),
+      "opens": DEFAULT_SCHEDULE.opens,
+      "closes": DEFAULT_SCHEDULE.closes
     }],
     lastUpdated: new Date(),
   };

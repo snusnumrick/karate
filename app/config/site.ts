@@ -63,16 +63,6 @@ export const siteConfig = {
         email: "info@karate.greenegin.ca",
         paymentsEmail: "payments@karate.greenegin.ca",
     },
-    classes: {
-        days: "Tue & Thu",
-        time: "5:45 - 7:15 p.m",
-        timeLong: "5:45 PM - 7:15 PM", // For more formal display
-        ageRange: "4-12",
-        duration: "90 minutes", // Class duration
-        maxStudents: 15, // Maximum students per class
-        minAge: 4,
-        maxAge: 12,
-    },
     // Business Hours
     businessHours: {
         timezone: "America/Vancouver", // Pacific Time

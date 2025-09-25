@@ -195,7 +195,9 @@ Customize student eligibility in `app/utils/supabase.server.ts`:
 // Example eligibility function
 export function isStudentEligible(student: Student): boolean {
     const age = calculateAge(student.birthDate);
-    return age >= siteConfig.classes.minAge && age <= siteConfig.classes.maxAge;
+    const MIN_AGE = 4; // Keep in sync with your active program configuration
+    const MAX_AGE = 12;
+    return age >= MIN_AGE && age <= MAX_AGE;
 }
 ```
 

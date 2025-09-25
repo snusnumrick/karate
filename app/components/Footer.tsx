@@ -4,15 +4,16 @@ import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { getScheduleData, getContactData, getBusinessData } from "~/utils/site-data.client";
 import { siteConfig } from "~/config/site";
+import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'; // Import icons
 import { useEffect, useState } from "react";
 
 export default function Footer({ user }: { user?: Session['user'] | null }) {
     // Use fallback data initially for SSR
     const [scheduleData, setScheduleData] = useState({
-        days: siteConfig.classes.days,
-        times: siteConfig.classes.timeLong,
-        ageRange: siteConfig.classes.ageRange,
+        days: DEFAULT_SCHEDULE.days,
+        times: DEFAULT_SCHEDULE.timeRange,
+        ageRange: getDefaultAgeRangeLabel(),
     });
     const [contactData, setContactData] = useState({
         phone: siteConfig.contact.phone,
