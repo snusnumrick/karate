@@ -1,8 +1,7 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
 import {createInitialPaymentRecord, getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
-import {getStudentPaymentOptions} from "~/services/enrollment-payment.server";
+import {getStudentPaymentOptions, getFamilyPaymentOptions, type EnrollmentPaymentOption} from "~/services/enrollment-payment.server";
 import type {Database} from "~/types/database.types";
-import {siteConfig} from "~/config/site";
 import {
     getFamilyIdFromUser,
     getFamilyPaymentEligibilityData,
@@ -16,8 +15,6 @@ import {useLoaderData, useRouteError, useSearchParams} from "@remix-run/react";
 import {PaymentSetupForm} from "~/components/PaymentSetupForm";
 import {csrf} from "~/utils/csrf.server";
 import {
-    fromDollars,
-    fromCents,
     Money,
     ZERO_MONEY,
     multiplyMoney,
@@ -25,7 +22,8 @@ import {
     maxMoney,
     createMoney,
     isPositive,
-    toMoney
+    toMoney,
+    addMoney
 } from "~/utils/money";
 
 // Payment Calculation (Flat Monthly Rate)
@@ -37,7 +35,7 @@ import {
 //  2 Fetch Payment-Student Links: It then queries the payment_students junction table to find out which specific student_id was included in each of those successful payments.
 //  3 Count Past Payments Per Student: For each student belonging to the family, the code counts how many times their student_id appears in the results from step 2 (i.e., how many successful payments they have been part
 //    of in the past). This is kept for historical tracking purposes.
-//  4 Set Flat Monthly Rate: All students now use the same monthly rate (siteConfig.pricing.monthly) regardless of their payment history.
+//  4 Resolve Program Fees Dynamically: Monthly, yearly, and individual session amounts pull from the student's active program pricing so totals reflect current rates.
 //     Automatic discounts will be applied at checkout for new students and other qualifying events.
 //  5 Pass to Component: The calculated nextPaymentAmount and nextPaymentTierLabel (along with eligibility status) for each student are then passed as studentPaymentDetails to the payment page component for display and
 //    use in the dynamic total calculation when checkboxes are selected.
@@ -83,9 +81,10 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
       ...paymentData,
       studentPaymentDetails: paymentData.studentPaymentDetails.map(detail => ({
         ...detail,
-        nextPaymentAmount: typeof detail.nextPaymentAmount === 'number' 
-          ? fromCents(detail.nextPaymentAmount)
-          : detail.nextPaymentAmount
+        nextPaymentAmount: toMoney(detail.nextPaymentAmount as unknown),
+        monthlyAmount: detail.monthlyAmount ? toMoney(detail.monthlyAmount as unknown) : undefined,
+        yearlyAmount: detail.yearlyAmount ? toMoney(detail.yearlyAmount as unknown) : undefined,
+        individualSessionAmount: detail.individualSessionAmount ? toMoney(detail.individualSessionAmount as unknown) : undefined,
       }))
     };
 
@@ -153,37 +152,98 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     let type: Database['public']['Enums']['payment_type_enum']; // Use 'type' variable
 
     try {
-        let monthlyAmount : Money = fromDollars(siteConfig.pricing.monthly);
-        let yearlyAmount : Money = fromDollars(siteConfig.pricing.yearly);
-        let individualSessionAmount : Money = fromDollars(siteConfig.pricing.oneOnOneSession);
+        const familyPaymentOptions = await getFamilyPaymentOptions(familyId, supabaseServer);
+        const pricingByStudent = new Map<string, EnrollmentPaymentOption[]>(
+            familyPaymentOptions.map(option => [option.studentId, option.enrollments])
+        );
 
-        // If an enrollmentId is provided, fetch its specific pricing
+        let enrollmentDetails: EnrollmentPaymentOption | undefined;
         if (enrollmentId && studentIds.length > 0) {
-            // In student mode, studentIds will contain one ID
             const studentId = studentIds[0];
             const paymentOptions = await getStudentPaymentOptions(studentId, supabaseServer);
-            const enrollmentDetails = paymentOptions?.enrollments.find(e => e.enrollmentId === enrollmentId);
+            enrollmentDetails = paymentOptions?.enrollments.find(e => e.enrollmentId === enrollmentId);
+        }
 
-            if (enrollmentDetails) {
-                monthlyAmount = enrollmentDetails.monthlyAmount || monthlyAmount;
-                yearlyAmount = enrollmentDetails.yearlyAmount || yearlyAmount;
-                individualSessionAmount = enrollmentDetails.individualSessionAmount || individualSessionAmount;
+        const resolveMonthlyAmount = (studentId: string): Money | null => {
+            if (enrollmentDetails && enrollmentDetails.studentId === studentId && enrollmentDetails.monthlyAmount) {
+                return enrollmentDetails.monthlyAmount;
             }
-        }
+            const enrollments = pricingByStudent.get(studentId) ?? [];
+            const match = enrollments.find(option => option.monthlyAmount);
+            return match?.monthlyAmount ?? null;
+        };
 
-        // --- Restore Original Logic ---
+        const resolveYearlyAmount = (studentId: string): Money | null => {
+            if (enrollmentDetails && enrollmentDetails.studentId === studentId && enrollmentDetails.yearlyAmount) {
+                return enrollmentDetails.yearlyAmount;
+            }
+            const enrollments = pricingByStudent.get(studentId) ?? [];
+            const match = enrollments.find(option => option.yearlyAmount);
+            return match?.yearlyAmount ?? null;
+        };
+
+        const resolveIndividualSessionAmount = (): Money => {
+            if (enrollmentDetails?.individualSessionAmount) {
+                return enrollmentDetails.individualSessionAmount;
+            }
+            if (studentIds.length > 0) {
+                for (const studentId of studentIds) {
+                    const enrollments = pricingByStudent.get(studentId) ?? [];
+                    const match = enrollments.find(option => option.individualSessionAmount);
+                    if (match?.individualSessionAmount) {
+                        return match.individualSessionAmount;
+                    }
+                }
+            }
+            for (const option of familyPaymentOptions) {
+                const match = option.enrollments.find(enrollment => enrollment.individualSessionAmount);
+                if (match?.individualSessionAmount) {
+                    return match.individualSessionAmount;
+                }
+            }
+            return ZERO_MONEY;
+        };
+
         if (paymentOption === 'individual') {
-            type = 'individual_session'; // Assign to 'type'
-            totalAmount = multiplyMoney(individualSessionAmount, oneOnOneQuantity);
+            type = 'individual_session';
+            const sessionAmount = resolveIndividualSessionAmount();
+            if (!isPositive(sessionAmount)) {
+                throw new Error('Individual session pricing is not configured for this family.');
+            }
+            totalAmount = multiplyMoney(sessionAmount, oneOnOneQuantity);
         } else if (paymentOption === 'yearly') {
-            type = 'yearly_group'; // Assign to 'type'
-            totalAmount = multiplyMoney(yearlyAmount, studentIds.length);
-        } else { // Monthly
-            type = 'monthly_group'; // Assign to 'type'
-            // Use flat monthly rate for all students - automatic discounts will handle reduced pricing
-            totalAmount = multiplyMoney(monthlyAmount, studentIds.length);
+            type = 'yearly_group';
+            let subtotal = ZERO_MONEY;
+            const missing: string[] = [];
+            studentIds.forEach(studentId => {
+                const amount = resolveYearlyAmount(studentId);
+                if (!amount || !isPositive(amount)) {
+                    missing.push(studentId);
+                    return;
+                }
+                subtotal = addMoney(subtotal, amount);
+            });
+            if (missing.length > 0) {
+                throw new Error('Yearly pricing is not configured for one or more selected students.');
+            }
+            totalAmount = subtotal;
+        } else {
+            type = 'monthly_group';
+            let subtotal = ZERO_MONEY;
+            const missing: string[] = [];
+            studentIds.forEach(studentId => {
+                const amount = resolveMonthlyAmount(studentId);
+                if (!amount || !isPositive(amount)) {
+                    missing.push(studentId);
+                    return;
+                }
+                subtotal = addMoney(subtotal, amount);
+            });
+            if (missing.length > 0) {
+                throw new Error('Monthly pricing is not configured for one or more selected students.');
+            }
+            totalAmount = subtotal;
         }
-        // Rename totalAmount to subtotalAmount for clarity
         const subtotalAmount = totalAmount;
 
         // Parse discount amount
@@ -290,9 +350,10 @@ export default function FamilyPaymentPage() {
     // Convert serialized data back to proper types
     const studentPaymentDetails = loaderData.studentPaymentDetails.map(detail => ({
         ...detail,
-        nextPaymentAmount: typeof detail.nextPaymentAmount === 'number' 
-            ? fromCents(detail.nextPaymentAmount)
-            : toMoney(detail.nextPaymentAmount as unknown)
+        nextPaymentAmount: toMoney(detail.nextPaymentAmount as unknown),
+        monthlyAmount: detail.monthlyAmount ? toMoney(detail.monthlyAmount as unknown) : undefined,
+        yearlyAmount: detail.yearlyAmount ? toMoney(detail.yearlyAmount as unknown) : undefined,
+        individualSessionAmount: detail.individualSessionAmount ? toMoney(detail.individualSessionAmount as unknown) : undefined
     }));
     
     const [searchParams] = useSearchParams();

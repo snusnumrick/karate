@@ -144,43 +144,26 @@ Customize component styles by modifying the CSS variables in `app/globals.css`:
 
 ## Pricing Configuration
 
-### Basic Pricing
+### Program Fees
 
-Update pricing in `app/config/site.ts`:
+Monthly, yearly, and individual session pricing now come from the `programs` table in Supabase. Update these amounts through the admin Programs UI (`/admin/programs`) or by editing the `monthly_fee`, `yearly_fee`, and `individual_session_fee` columns directly.
 
-```typescript
-pricing: {
-    currency: "$",
-    currencyCode: "CAD",
-    freeTrial: "FREE TRIAL",
-    monthly: 121,
-    yearly: 1200,
-    oneOnOneSession: 80
-}
-```
+Each enrollment references a program, and payment flows automatically pull the matching program fees to calculate totals. Ensure active programs have correct values before enabling family payments.
 
-### Stripe Integration
+### Free Trial Messaging
 
-Configure Stripe price IDs:
+Marketing copy for free-trial CTAs lives in `app/config/site.ts` under:
 
 ```typescript
-stripe: {
-    priceIds: {
-        monthly: 'price_your_monthly_id',
-        yearly: 'price_your_yearly_id',
-        oneOnOneSession: 'price_your_session_id'
-    }
+promotions: {
+    freeTrialLabel: 'FREE TRIAL',
+    freeTrialDescription: 'Free trial available!'
 }
 ```
 
 ### Dynamic Pricing Logic
 
-Customize pricing logic in `/family/payment` route and related components. The system supports:
-
-- Multi-student discounts
-- Automatic discount application
-- Custom discount codes
-- Tax calculations
+Business rules for composing totals live in the family payment loader/action (`app/routes/_layout.family.payment.tsx`) and supporting services (`app/services/payment-eligibility.server.ts`, `app/services/enrollment-payment.server.ts`). Customise these modules to introduce additional pricing rules such as multi-student discounts, automatic promotions, or program-specific offers.
 
 ## Tax Configuration
 

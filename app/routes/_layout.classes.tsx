@@ -41,7 +41,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 
     // Define meta tags specific to this Classes page
     const classesPageTitle = "Karate Classes - Programs & Schedules";
-    const classesPageDescription = `Explore our comprehensive karate programs at ${siteConfig.location.address}. Classes for children ages ${siteConfig.classes.ageRange} with experienced instructors. ${siteConfig.pricing.freeTrial} available!`;
+    const classesPageDescription = `Explore our comprehensive karate programs at ${siteConfig.location.address}. Classes for children ages ${siteConfig.classes.ageRange} with experienced instructors. ${siteConfig.promotions.freeTrialDescription}`;
 
     const classesMeta: MetaDescriptor[] = [
         { title: classesPageTitle },
@@ -622,7 +622,6 @@ export default function ClassesPage() {
                         <div className="mt-6">
                             <p className="text-gray-600 dark:text-gray-400 text-center">
                                 Start with a free trial class, then enjoy special introductory pricing automatically applied for new students.
-                                Regular monthly tuition is {siteConfig.pricing.currency}{siteConfig.pricing.monthly}/month per student.
                             </p>
                         </div>
                     </div>

@@ -115,7 +115,7 @@ export async function getStudentPaymentOptions(
       )
     `)
     .eq('student_id', studentId)
-    .eq('status', 'active');
+    .in('status', ['active', 'trial']);
 
   if (enrollmentsError) {
     throw new Error(`Failed to fetch enrollments: ${enrollmentsError.message}`);
@@ -144,13 +144,15 @@ export async function getStudentPaymentOptions(
     const supportedPaymentTypes = getSupportedPaymentTypes(program_db);
 
     // Determine current status
-    let currentStatus: EnrollmentPaymentOption['currentStatus'] = 'trial';
+    let currentStatus: EnrollmentPaymentOption['currentStatus'];
     if (hasActiveYearly) {
       currentStatus = 'active_yearly';
     } else if (hasActiveMonthly) {
       currentStatus = 'active_monthly';
+    } else if (enrollment_db.status === 'trial') {
+      currentStatus = 'trial';
     } else {
-      // Check if subscription expired (simplified logic)
+      // Active enrollment without a recent payment is treated as expired for billing purposes
       currentStatus = 'expired';
     }
 

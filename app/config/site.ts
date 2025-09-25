@@ -173,26 +173,9 @@ export const siteConfig = {
         privacyPolicyUrl: "/privacy-policy", // Add when privacy policy page exists
         termsOfServiceUrl: "/terms-of-service", // Add when terms page exists
     },
-    pricing: {
-        currency: "$",
-        currencyCode: "CAD", // Optional: For more specific contexts
-        freeTrial: "FREE TRIAL",
-        monthly: 121,
-        yearly: 1200, // Example yearly price (e.g., ~10% discount)
-        oneOnOneSession: 80, // Example price for a single 1:1 session
-        // taxRateBC removed - Tax rates are now managed in the database (tax_rates table)
-        // Define applicable tax *names* (matching tax_rates table) for the region/site
-        // This example assumes BC taxes apply site-wide. Adjust logic if region-specific taxes are needed.
-        // applicableTaxNames: ['GST', 'PST_BC'],
-        // applicableTaxNames: ['PST_BC'],
-        get tiers(): { label: string; description: string }[] {
-            return [
-                {label: "Free Trial", description: "Your first class is on us!"},
-                {label: "Monthly", description: `(${this.currency}${this.monthly} - Ongoing)`}, // Display price from main config
-                {label: "Yearly Membership", description: `(${this.currency}${this.yearly} - Paid Annually)`}, // Display price from main config
-                {label: "1:1 Session", description: `(${this.currency}${this.oneOnOneSession} - Per Session)`}, // Display price from main config
-            ];
-        }
+    promotions: {
+        freeTrialLabel: "FREE TRIAL",
+        freeTrialDescription: "Free trial available!",
     },
     payments: {
         provider: 'square' as 'stripe' | 'square' | 'mock',

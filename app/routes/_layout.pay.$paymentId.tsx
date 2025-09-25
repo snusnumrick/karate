@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import PaymentForm from "~/components/payment/PaymentForm";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {siteConfig} from "~/config/site";
 import type {Database} from "~/types/database.types";
-import { formatMoney, fromCents } from "~/utils/money";
+import { formatMoney, fromCents, toCents } from "~/utils/money";
 import { getPaymentProvider } from '~/services/payments/index.server';
 import type { ClientRenderConfig, PaymentProviderId } from '~/services/payments/types.server';
+import { getFamilyPaymentOptions, type EnrollmentPaymentOption } from "~/services/enrollment-payment.server";
 
 // Import types for payment table columns
 type PaymentColumns = Database['public']['Tables']['payments']['Row'];
@@ -30,7 +30,8 @@ type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount'> & { // O
     }
     >;
     payment_students: Array<Pick<PaymentStudentRow, 'student_id'>>;
-    // quantity?: number | null; // Keep if needed
+    individualSessionUnitAmountCents?: number | null;
+    individualSessionQuantity?: number | null;
 };
 
 type LoaderData = {
@@ -162,9 +163,55 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         });
     }
 
+    let individualSessionUnitAmountCents: number | null = null;
+    let individualSessionQuantity: number | null = null;
+
+    if (payment.type === 'individual_session') {
+        try {
+            const familyPaymentOptions = await getFamilyPaymentOptions(payment.family_id, supabaseAdmin);
+            const pricingByStudent = new Map<string, EnrollmentPaymentOption[]>(
+                familyPaymentOptions.map(option => [option.studentId, option.enrollments])
+            );
+            const studentIds = payment.payment_students?.map(ps => ps.student_id) ?? [];
+
+            const resolveIndividualAmountCents = (): number | null => {
+                for (const studentId of studentIds) {
+                    const enrollments = pricingByStudent.get(studentId) ?? [];
+                    const match = enrollments.find(enrollment => enrollment.individualSessionAmount);
+                    if (match?.individualSessionAmount) {
+                        return toCents(match.individualSessionAmount);
+                    }
+                }
+                for (const option of familyPaymentOptions) {
+                    const match = option.enrollments.find(enrollment => enrollment.individualSessionAmount);
+                    if (match?.individualSessionAmount) {
+                        return toCents(match.individualSessionAmount);
+                    }
+                }
+                return null;
+            };
+
+            const unitAmountCents = resolveIndividualAmountCents();
+            if (unitAmountCents && unitAmountCents > 0) {
+                individualSessionUnitAmountCents = unitAmountCents;
+                if (payment.subtotal_amount) {
+                    individualSessionQuantity = Math.round(payment.subtotal_amount / unitAmountCents);
+                }
+            }
+        } catch (pricingError) {
+            console.error('[Loader] Unable to derive individual session pricing:', pricingError);
+        }
+    }
+
+    const paymentWithDerived = {
+        ...payment,
+        individualSessionUnitAmountCents,
+        individualSessionQuantity
+    } as PaymentWithDetails;
+
     // --- Check provider status if DB status is 'pending' ---
-    const paymentIntentId = payment.payment_intent_id; // Generic payment intent ID for all providers
-    if (payment.status === 'pending' && paymentIntentId) {
+    const paymentIntentId = paymentWithDerived.payment_intent_id; // Generic payment intent ID for all providers
+    if (paymentWithDerived.status === 'pending' && paymentIntentId) {
         console.log(`[Loader] DB status is pending for ${paymentId}. Checking provider intent status for ${paymentIntentId}...`);
         const supabaseAdmin = getSupabaseAdminClient();
 
@@ -217,7 +264,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
 
     // Ensure payment is not already successfully completed (check status *again* in case it was updated by the check above)
-    if (payment.status === 'succeeded') {
+    if (paymentWithDerived.status === 'succeeded') {
         console.warn(`Attempted to access payment page for already succeeded payment ${paymentId}`);
         // Redirect to success page if already succeeded
         if (paymentIntentId) {
@@ -233,7 +280,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     // Prepare the data object to be returned
     const loaderReturnData: LoaderData = {
-        payment: payment as PaymentWithDetails,
+        payment: paymentWithDerived,
         paymentProviderId,
         providerConfig: renderConfig,
     };
@@ -414,19 +461,14 @@ export default function PaymentPage() {
                     break;
                 case 'individual_session':
                     paymentOption = 'individual';
-                    // Price ID will be determined by the payment provider based on the payment option
-                    // Determine quantity: This depends on how you created the payment record.
-                    // If the quantity is stored on the payment record itself (e.g., in a 'quantity' column), use that.
-                    // Otherwise, calculate based on subtotal_amount / price.
-                    // Let's assume quantity needs calculation based on subtotal.
-                    if (siteConfig.pricing.oneOnOneSession > 0 && payment.subtotal_amount) {
-                        const pricePerSessionCents = siteConfig.pricing.oneOnOneSession * 100;
-                        const calculatedQuantity = Math.round(payment.subtotal_amount / pricePerSessionCents);
-                        quantity = calculatedQuantity > 0 ? calculatedQuantity.toString() : '1'; // Default to 1 if calculation fails
-                        // console.log(`[PaymentPage Effect] Calculated quantity ${quantity} for individual session payment ${payment.id} based on subtotal ${payment.subtotal_amount} and price ${pricePerSessionCents}`);
+                    if (payment.individualSessionQuantity && payment.individualSessionQuantity > 0) {
+                        quantity = payment.individualSessionQuantity.toString();
+                    } else if (payment.individualSessionUnitAmountCents && payment.individualSessionUnitAmountCents > 0 && payment.subtotal_amount) {
+                        const calculatedQuantity = Math.round(payment.subtotal_amount / payment.individualSessionUnitAmountCents);
+                        quantity = calculatedQuantity > 0 ? calculatedQuantity.toString() : '1';
                     } else {
-                        console.error("Individual session price is zero, not configured, or subtotal_amount missing. Cannot determine quantity.");
-                        setFetcherError("Configuration error: Cannot determine individual session quantity.");
+                        console.error('Unable to derive individual session quantity for payment ID ' + payment.id);
+                        setFetcherError('Configuration error: Cannot determine individual session quantity.');
                         return;
                     }
                     break;

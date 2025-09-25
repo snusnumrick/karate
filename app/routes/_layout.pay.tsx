@@ -18,9 +18,8 @@ import {
 } from "react";
 import PaymentForm from "~/components/payment/PaymentForm";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { siteConfig } from "~/config/site";
 import type { Database } from "~/types/database.types";
-import { formatMoney, fromCents } from "~/utils/money";
+import { formatMoney, fromCents, toCents } from "~/utils/money";
 import {
   getSupabaseAdminClient,
   getSupabaseServerClient,
@@ -28,6 +27,7 @@ import {
 } from "~/utils/supabase.server";
 import { getPaymentProvider } from "~/services/payments/index.server";
 import type { ClientRenderConfig, PaymentProviderId } from '~/services/payments/types.server';
+import { getFamilyPaymentOptions, type EnrollmentPaymentOption } from "~/services/enrollment-payment.server";
 
 type PaymentColumns = Database["public"]["Tables"]["payments"]["Row"];
 type PaymentStudentRow = Database["public"]["Tables"]["payment_students"]["Row"];
@@ -43,6 +43,8 @@ type PaymentWithDetails = Omit<PaymentColumns, "amount" | "tax_amount"> & {
     }
   >;
   payment_students: Array<Pick<PaymentStudentRow, "student_id">>;
+  individualSessionUnitAmountCents?: number | null;
+  individualSessionQuantity?: number | null;
 };
 
 type LoaderData = {
@@ -114,9 +116,11 @@ function getPaymentIntentFormData(payment: PaymentWithDetails) {
     case "individual_session":
       paymentOption = "individual";
       priceId = "oneOnOneSession"; // Provider-neutral price identifier
-      if (siteConfig.pricing.oneOnOneSession > 0 && payment.subtotal_amount) {
+      if (payment.individualSessionQuantity && payment.individualSessionQuantity > 0) {
+        quantity = payment.individualSessionQuantity.toString();
+      } else if (payment.individualSessionUnitAmountCents && payment.individualSessionUnitAmountCents > 0 && payment.subtotal_amount) {
         const calculatedQuantity = Math.round(
-          payment.subtotal_amount / siteConfig.pricing.oneOnOneSession,
+          payment.subtotal_amount / payment.individualSessionUnitAmountCents,
         );
         quantity = calculatedQuantity.toString();
       }
@@ -273,8 +277,54 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     );
   }
 
-  const paymentIntentId = payment.payment_intent_id; // Generic payment intent ID for all providers
-  if (payment.status === "pending" && paymentIntentId) {
+  let individualSessionUnitAmountCents: number | null = null;
+  let individualSessionQuantity: number | null = null;
+
+  if (payment.type === "individual_session") {
+    try {
+      const familyPaymentOptions = await getFamilyPaymentOptions(payment.family_id, supabaseAdmin);
+      const pricingByStudent = new Map<string, EnrollmentPaymentOption[]>(
+        familyPaymentOptions.map(option => [option.studentId, option.enrollments]),
+      );
+      const studentIds = payment.payment_students?.map((ps) => ps.student_id) ?? [];
+
+      const resolveIndividualSessionAmountCents = (): number | null => {
+        for (const studentId of studentIds) {
+          const enrollments = pricingByStudent.get(studentId) ?? [];
+          const match = enrollments.find((enrollment) => enrollment.individualSessionAmount);
+          if (match?.individualSessionAmount) {
+            return toCents(match.individualSessionAmount);
+          }
+        }
+        for (const option of familyPaymentOptions) {
+          const match = option.enrollments.find((enrollment) => enrollment.individualSessionAmount);
+          if (match?.individualSessionAmount) {
+            return toCents(match.individualSessionAmount);
+          }
+        }
+        return null;
+      };
+
+      const unitAmountCents = resolveIndividualSessionAmountCents();
+      if (unitAmountCents && unitAmountCents > 0) {
+        individualSessionUnitAmountCents = unitAmountCents;
+        if (payment.subtotal_amount) {
+          individualSessionQuantity = Math.round(payment.subtotal_amount / unitAmountCents);
+        }
+      }
+    } catch (pricingError) {
+      console.error('[Payment loader] Failed to derive individual session pricing:', pricingError);
+    }
+  }
+
+  const paymentWithDerived = {
+    ...payment,
+    individualSessionUnitAmountCents,
+    individualSessionQuantity,
+  } as PaymentWithDetails;
+
+  const paymentIntentId = paymentWithDerived.payment_intent_id; // Generic payment intent ID for all providers
+  if (paymentWithDerived.status === "pending" && paymentIntentId) {
     try {
       const providerIntent = await provider.retrievePaymentIntent(
         paymentIntentId,
@@ -283,7 +333,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
 
       if (providerIntent.status === "succeeded") {
         await updatePaymentStatus(
-          payment.id,
+          paymentWithDerived.id,
           "succeeded",
           providerIntent.receiptUrl ?? null,
           providerIntent.paymentMethodType ?? null,
@@ -296,7 +346,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
       }
 
       if (providerIntent.status === "canceled") {
-        await updatePaymentStatus(payment.id, "failed", null, providerIntent.paymentMethodType ?? null, providerIntent.id);
+        await updatePaymentStatus(paymentWithDerived.id, "failed", null, providerIntent.paymentMethodType ?? null, providerIntent.id);
       }
     } catch (providerError) {
       console.error(
@@ -308,7 +358,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
 
   return json<LoaderData>(
     {
-      payment: payment as PaymentWithDetails,
+      payment: paymentWithDerived,
       paymentProviderId,
       providerConfig: renderConfig,
       providerCapabilities,

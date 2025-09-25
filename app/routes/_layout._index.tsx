@@ -222,10 +222,9 @@ export default function Index() {
         },
         "offers": {
             "@type": "Offer",
-            "price": siteConfig.pricing.monthly.toString(),
             "priceCurrency": siteConfig.localization.currency,
             "category": "Monthly",
-            "description": `${siteConfig.pricing.freeTrial} available`
+            "description": siteConfig.promotions.freeTrialDescription
         },
         "audience": {
             "@type": "EducationalAudience",
@@ -274,7 +273,7 @@ export default function Index() {
                                 &ldquo;This class is an introduction to one of the most sophisticated martial arts ‒ the
                                 Art of Karate. While karate focuses on defence techniques, its teaching goes far beyond fighting&rdquo;
                             </p>
-                            <p className="text-lg md:text-xl text-green-300 dark:text-green-400 font-semibold">{siteConfig.pricing.freeTrial} available!</p>
+                            <p className="text-lg md:text-xl text-green-300 dark:text-green-400 font-semibold">{siteConfig.promotions.freeTrialLabel} available!</p>
                         </div>
                         
                         {/* Call to Action Buttons */}

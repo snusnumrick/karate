@@ -250,7 +250,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
         const paymentIntentResult = await paymentProvider.createPaymentIntent({
             amount: fromCents(totalAmountInCents),
-            currency: siteConfig.pricing.currencyCode,
+            currency: siteConfig.localization.currency,
             metadata: paymentIntentMetadata,
             // receipt_email: customerEmail, // Removed to disable Stripe receipts - using custom receipt system
             description: `Payment for ${type} - Family: ${familyName}`,

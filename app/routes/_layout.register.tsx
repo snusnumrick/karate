@@ -219,7 +219,7 @@ export default function RegisterPage() {
                         <div
                             className="mb-6 p-4 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-md text-center">
                             <p className="font-semibold text-green-800 dark:text-green-200">Your first class is a <span
-                                className="font-bold">{siteConfig.pricing.freeTrial}</span>!</p>
+                                className="font-bold">{siteConfig.promotions.freeTrialLabel}</span>!</p>
                         </div>
 
                         <p className="mb-6 text-muted-foreground">

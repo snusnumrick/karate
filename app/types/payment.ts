@@ -25,6 +25,9 @@ export interface StudentPaymentDetail {
   nextPaymentTierLabel: string; // Label for payment (Monthly)
   pastPaymentCount: number; // Kept for historical tracking
   individualSessions?: IndividualSessionInfo;
+  monthlyAmount?: Money;
+  yearlyAmount?: Money;
+  individualSessionAmount?: Money;
   // nextPaymentPriceId: string; // Stripe Price ID for monthly payment
 }
 

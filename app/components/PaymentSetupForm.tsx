@@ -4,7 +4,6 @@ import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { CheckCircledIcon, ExclamationTriangleIcon, ReloadIcon } from '@radix-ui/react-icons';
-import { siteConfig } from '~/config/site';
 import { Checkbox } from '~/components/ui/checkbox';
 import { formatDate } from '~/utils/misc';
 import { RadioGroup, RadioGroupItem } from '~/components/ui/radio-group';
@@ -15,7 +14,6 @@ import type { DiscountValidationResult } from '~/types/discount';
 import {StudentPaymentDetail} from "~/types/payment";
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
 import {
-    fromDollars,
     formatMoney,
     multiplyMoney,
     subtractMoney,
@@ -138,8 +136,59 @@ export function PaymentSetupForm({
     return (studentPaymentDetails || []).map(d => ({
       ...d,
       nextPaymentAmount: toMoney(d.nextPaymentAmount as unknown),
+      monthlyAmount: d.monthlyAmount ? toMoney(d.monthlyAmount as unknown) : undefined,
+      yearlyAmount: d.yearlyAmount ? toMoney(d.yearlyAmount as unknown) : undefined,
+      individualSessionAmount: d.individualSessionAmount ? toMoney(d.individualSessionAmount as unknown) : undefined,
     }));
   }, [studentPaymentDetails]);
+
+  const getMonthlyAmountForDetail = useCallback((detail: StudentPaymentDetail & { monthlyAmount?: Money }) => {
+    if (enrollmentPricing?.monthlyAmount) return enrollmentPricing.monthlyAmount;
+    return detail.monthlyAmount ?? detail.nextPaymentAmount;
+  }, [enrollmentPricing]);
+
+  const getYearlyAmountForDetail = useCallback((detail: StudentPaymentDetail & { yearlyAmount?: Money }) => {
+    if (enrollmentPricing?.yearlyAmount) return enrollmentPricing.yearlyAmount;
+    return detail.yearlyAmount ?? detail.nextPaymentAmount;
+  }, [enrollmentPricing]);
+
+  const defaultIndividualSessionAmount = useMemo(() => {
+    if (enrollmentPricing?.individualSessionAmount) {
+      return enrollmentPricing.individualSessionAmount;
+    }
+    const detailWithIndividual = rehydratedDetails.find(detail => detail.individualSessionAmount && isPositive(detail.individualSessionAmount));
+    return detailWithIndividual?.individualSessionAmount ?? ZERO_MONEY;
+  }, [enrollmentPricing, rehydratedDetails]);
+
+  const displayMonthlyAmount = useMemo(() => {
+    if (enrollmentPricing?.monthlyAmount) {
+      return enrollmentPricing.monthlyAmount;
+    }
+    const detailWithMonthly = rehydratedDetails.find(detail => detail.monthlyAmount && isPositive(detail.monthlyAmount));
+    if (detailWithMonthly?.monthlyAmount) {
+      return detailWithMonthly.monthlyAmount;
+    }
+    const detailWithPositive = rehydratedDetails.find(detail => isPositive(detail.nextPaymentAmount));
+    return detailWithPositive?.nextPaymentAmount ?? ZERO_MONEY;
+  }, [enrollmentPricing, rehydratedDetails]);
+
+  const displayYearlyAmount = useMemo(() => {
+    if (enrollmentPricing?.yearlyAmount) {
+      return enrollmentPricing.yearlyAmount;
+    }
+    const detailWithYearly = rehydratedDetails.find(detail => detail.yearlyAmount && isPositive(detail.yearlyAmount));
+    if (detailWithYearly?.yearlyAmount) {
+      return detailWithYearly.yearlyAmount;
+    }
+    return ZERO_MONEY;
+  }, [enrollmentPricing, rehydratedDetails]);
+
+  const displayIndividualAmount = useMemo(() => {
+    if (isPositive(defaultIndividualSessionAmount)) {
+      return defaultIndividualSessionAmount;
+    }
+    return ZERO_MONEY;
+  }, [defaultIndividualSessionAmount]);
 
   // Reset success handled state on new submission
   useEffect(() => {
@@ -178,36 +227,30 @@ export function PaymentSetupForm({
   // Determine if any student is eligible for group payment
   const hasEligibleStudentsForGroupPayment = true; //studentPaymentDetails.some(d => d.needsPayment);
 
-  // Dynamic calculation
-  const calculateAmounts = useCallback(() => {
-    let subtotal : Money = ZERO_MONEY;
+  const computeRawSubtotal = useCallback(() => {
+    let subtotal: Money = ZERO_MONEY;
     if (paymentOption === 'monthly' || paymentOption === 'yearly') {
       selectedStudentIds.forEach(id => {
         const detail = rehydratedDetails.find(d => d.studentId === id);
-        if (detail) {
-          let amount : Money;
-          if (paymentOption === 'yearly') {
-            // Use enrollment-specific yearly pricing if available, otherwise fall back to siteConfig
-            amount = enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly);
-          } else {
-            // For monthly, use enrollment-specific pricing if available, otherwise use detail.nextPaymentAmount
-            amount = enrollmentPricing?.monthlyAmount ?? detail.nextPaymentAmount;
-          }
-          subtotal = addMoney(subtotal, amount);
-        }
+        if (!detail) return;
+        const amount = paymentOption === 'yearly'
+          ? getYearlyAmountForDetail(detail)
+          : getMonthlyAmountForDetail(detail);
+        subtotal = addMoney(subtotal, amount);
       });
     } else if (paymentOption === 'individual') {
-      // Use enrollment-specific individual session pricing if available, otherwise fall back to siteConfig
-      const sessionPrice : Money = enrollmentPricing?.individualSessionAmount ?? fromDollars(siteConfig.pricing.oneOnOneSession);
-      subtotal = multiplyMoney(sessionPrice, oneOnOneQuantity);
+      subtotal = multiplyMoney(defaultIndividualSessionAmount, oneOnOneQuantity);
     }
+    return subtotal;
+  }, [paymentOption, selectedStudentIds, rehydratedDetails, getYearlyAmountForDetail, getMonthlyAmountForDetail, defaultIndividualSessionAmount, oneOnOneQuantity]);
 
-    const discountAmount : Money = appliedDiscount?.discount_amount ?? ZERO_MONEY;
-    const discountedSubtotal : Money = maxMoney(ZERO_MONEY, subtractMoney(subtotal, discountAmount));
-    const total = discountedSubtotal;
-
-    return { subtotal, discountAmount, total };
-  }, [paymentOption, selectedStudentIds, rehydratedDetails, enrollmentPricing, oneOnOneQuantity, appliedDiscount]);
+  // Dynamic calculation
+  const calculateAmounts = useCallback(() => {
+    const subtotal = computeRawSubtotal();
+    const discountAmount: Money = appliedDiscount?.discount_amount ?? ZERO_MONEY;
+    const discountedSubtotal: Money = maxMoney(ZERO_MONEY, subtractMoney(subtotal, discountAmount));
+    return { subtotal, discountAmount, total: discountedSubtotal };
+  }, [computeRawSubtotal, appliedDiscount]);
 
   // Helper functions
   const calculatePercentageSavings = (discount: AvailableDiscountCode, subtotal: Money): string => {
@@ -256,25 +299,7 @@ export function PaymentSetupForm({
   // Fetch available discounts
   useEffect(() => {
     if (applyDiscount && hasAvailableDiscounts) {
-      // Calculate subtotal without applied discount for fetching available discounts
-      let subtotal = ZERO_MONEY;
-      if (paymentOption === 'monthly' || paymentOption === 'yearly') {
-        selectedStudentIds.forEach(id => {
-          const detail = studentPaymentDetails.find(d => d.studentId === id);
-          if (detail) {
-            let amount;
-            if (paymentOption === 'yearly') {
-              amount = enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly);
-            } else {
-              amount = enrollmentPricing?.monthlyAmount ?? detail.nextPaymentAmount;
-            }
-            subtotal = addMoney(subtotal, amount);
-          }
-        });
-      } else if (paymentOption === 'individual') {
-        const sessionPrice = enrollmentPricing?.individualSessionAmount ?? fromDollars(siteConfig.pricing.oneOnOneSession);
-        subtotal = multiplyMoney(sessionPrice, oneOnOneQuantity);
-      }
+      const subtotal = computeRawSubtotal();
 
       if (isPositive(subtotal)) {
         setIsLoadingDiscounts(true);
@@ -296,11 +321,8 @@ export function PaymentSetupForm({
       setSelectedDiscountId('');
       setAppliedDiscount(null);
     }
-  // }, [applyDiscount, hasAvailableDiscounts, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity, studentPaymentDetails, enrollmentPricing, enrollmentId]);
-  // Note: These dependencies are intentionally omitted to prevent infinite loop as they are recreated on every render.
-  // The effect only needs to run when discount loading params change.
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- discountsFetcher, enrollmentId, enrollmentPricing?.individualSessionAmount, enrollmentPricing?.monthlyAmount, enrollmentPricing?.yearlyAmount, studentPaymentDetails
-  }, [applyDiscount, hasAvailableDiscounts, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- discountsFetcher, enrollmentId, studentPaymentDetails
+  }, [applyDiscount, hasAvailableDiscounts, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity, computeRawSubtotal]);
 
   // Handle discounts fetcher response
   useEffect(() => {
@@ -352,25 +374,7 @@ export function PaymentSetupForm({
       if (selectedDiscount) {
         const validateDiscount = async () => {
           try {
-            // Calculate base subtotal for validation (without applied discount)
-            let subtotal = ZERO_MONEY;
-            if (paymentOption === 'monthly' || paymentOption === 'yearly') {
-              selectedStudentIds.forEach(id => {
-              const detail = studentPaymentDetails.find(d => d.studentId === id);
-                if (detail) {
-                  let amount;
-                  if (paymentOption === 'yearly') {
-                    amount = enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly);
-                  } else {
-                    amount = enrollmentPricing?.monthlyAmount ?? detail.nextPaymentAmount;
-                  }
-                  subtotal = addMoney(subtotal, amount);
-                }
-              });
-            } else if (paymentOption === 'individual') {
-              const sessionPrice = enrollmentPricing?.individualSessionAmount ?? fromDollars(siteConfig.pricing.oneOnOneSession);
-              subtotal = multiplyMoney(sessionPrice, oneOnOneQuantity);
-            }
+            const subtotal = computeRawSubtotal();
 
             const response = await fetch('/api/discount-codes/validate', {
               method: 'POST',
@@ -408,7 +412,7 @@ export function PaymentSetupForm({
     // Note: These dependencies are intentionally omitted to prevent infinite loop as they are recreated on every render.
     // The validation only needs to run when discount selection or payment params change.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- availableDiscounts, enrollmentPricing, studentPaymentDetails
-  }, [selectedDiscountId, applyDiscount, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity]);
+  }, [selectedDiscountId, applyDiscount, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity, computeRawSubtotal]);
 
   // Form visibility control
   useEffect(() => {
@@ -507,7 +511,7 @@ export function PaymentSetupForm({
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="monthly" id="opt-monthly" disabled={!hasEligibleStudentsForGroupPayment} tabIndex={1}/>
                   <Label htmlFor="opt-monthly" className={`text-sm ${!hasEligibleStudentsForGroupPayment ? 'cursor-not-allowed text-gray-400 dark:text-gray-500' : ''}`}>
-                    Pay Monthly Group Class Fees ({formatMoney(enrollmentPricing?.monthlyAmount ?? fromDollars(siteConfig.pricing.monthly))}/student)
+                    Pay Monthly Group Class Fees ({formatMoney(displayMonthlyAmount)}/student)
                   </Label>
                 </div>
               )}
@@ -517,7 +521,7 @@ export function PaymentSetupForm({
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yearly" id="opt-yearly" disabled={!hasEligibleStudentsForGroupPayment} tabIndex={2}/>
                   <Label htmlFor="opt-yearly" className={`text-sm ${!hasEligibleStudentsForGroupPayment ? 'cursor-not-allowed text-gray-400 dark:text-gray-500' : ''}`}>
-                    Pay Yearly Group Class Fees ({formatMoney(enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly))}/student)
+                    Pay Yearly Group Class Fees ({formatMoney(displayYearlyAmount)}/student)
                   </Label>
                 </div>
               )}
@@ -527,7 +531,7 @@ export function PaymentSetupForm({
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="individual" id="opt-individual" tabIndex={3}/>
                   <Label htmlFor="opt-individual" className="text-sm">
-                    Purchase Individual Session(s) ({formatMoney(enrollmentPricing?.individualSessionAmount ?? fromDollars(siteConfig.pricing.oneOnOneSession))}/session)
+                    Purchase Individual Session(s) ({formatMoney(displayIndividualAmount)}/session)
                   </Label>
                 </div>
               )}
@@ -598,7 +602,7 @@ export function PaymentSetupForm({
                       )}
                       {detail.needsPayment && paymentOption === 'yearly' && (
                         <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mt-1">
-                          Yearly Payment: {formatMoney(enrollmentPricing?.yearlyAmount ?? fromDollars(siteConfig.pricing.yearly))}
+                          Yearly Payment: {formatMoney(displayYearlyAmount)}
                         </p>
                       )}
                       {!detail.needsPayment && (

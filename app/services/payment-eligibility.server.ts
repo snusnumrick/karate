@@ -1,7 +1,7 @@
 import { getSupabaseAdminClient , checkStudentEligibility } from '~/utils/supabase.server';
-import { siteConfig } from '~/config/site';
 import {EligibilityStatus, StudentPaymentDetail} from '~/types/payment';
-import {fromDollars} from "~/utils/money";
+import {ZERO_MONEY} from "~/utils/money";
+import {getFamilyPaymentOptions, type EnrollmentPaymentOption} from "~/services/enrollment-payment.server";
 
 // Types for the reusable payment eligibility service
 export interface IndividualSessionInfo {
@@ -129,6 +129,17 @@ export async function getFamilyPaymentEligibilityData(
     }
     const students = studentsData;
 
+    // 3b. Load current program pricing for each student (monthly/yearly/individual)
+    let studentPricingMap = new Map<string, EnrollmentPaymentOption[]>();
+    try {
+      const studentPaymentOptions = await getFamilyPaymentOptions(familyId, supabaseClient);
+      studentPricingMap = new Map(
+        studentPaymentOptions.map(option => [option.studentId, option.enrollments])
+      );
+    } catch (pricingError) {
+      console.error('Payment Eligibility Error: Failed to load program pricing', pricingError);
+    }
+
     // 3. Fetch Successful Payments for the Family
     const { data: paymentsData, error: paymentsError } = await supabaseClient
       .from('payments')
@@ -184,9 +195,27 @@ export async function getFamilyPaymentEligibilityData(
 
       // Determine next payment amount - using flat monthly rate
       const pastPaymentCount = paymentStudentLinks.filter(link => link.student_id === student.id).length;
-      const nextPaymentAmount = fromDollars(siteConfig.pricing.monthly);
-      const nextPaymentTierLabel = 'Monthly';
-      // const nextPaymentPriceId = siteConfig.stripe.priceIds.monthly;
+      const enrollmentOptions = studentPricingMap.get(student.id) ?? [];
+      const monthlyOption = enrollmentOptions.find(option => option.monthlyAmount);
+      const yearlyOption = enrollmentOptions.find(option => option.yearlyAmount);
+      const individualOption = enrollmentOptions.find(option => option.individualSessionAmount);
+
+      const monthlyAmount = monthlyOption?.monthlyAmount ?? null;
+      const yearlyAmount = yearlyOption?.yearlyAmount ?? null;
+      const individualSessionAmount = individualOption?.individualSessionAmount ?? null;
+
+      let nextPaymentAmount = monthlyAmount ?? yearlyAmount ?? individualSessionAmount ?? ZERO_MONEY;
+      let nextPaymentTierLabel: string;
+      if (monthlyAmount) {
+        nextPaymentTierLabel = 'Monthly';
+      } else if (yearlyAmount) {
+        nextPaymentTierLabel = 'Yearly';
+      } else if (individualSessionAmount) {
+        nextPaymentTierLabel = 'Individual Session';
+      } else {
+        nextPaymentTierLabel = 'Monthly';
+        nextPaymentAmount = ZERO_MONEY;
+      }
 
       // Determine if group class payment is needed now
       // Trial students can make payment to upgrade, expired students need payment
@@ -198,11 +227,14 @@ export async function getFamilyPaymentEligibilityData(
         lastName: student.last_name,
         eligibility: eligibility,
         needsPayment: needsPayment,
-        nextPaymentAmount: nextPaymentAmount,
-        nextPaymentTierLabel: nextPaymentTierLabel,
+        nextPaymentAmount,
+        nextPaymentTierLabel,
         // nextPaymentPriceId: nextPaymentPriceId,
         pastPaymentCount: pastPaymentCount,
         individualSessions: individualSessions,
+        monthlyAmount: monthlyAmount ?? undefined,
+        yearlyAmount: yearlyAmount ?? undefined,
+        individualSessionAmount: individualSessionAmount ?? undefined,
       });
     }
 
