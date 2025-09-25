@@ -107,6 +107,69 @@ export async function action({request}: ActionFunctionArgs)
 }
 
 
+interface LoginPageCopy {
+    heading: string;
+    linkPrefix: string;
+    linkLabel?: string;
+    linkHref?: string;
+    linkSuffix?: string;
+    extraMessage?: string;
+}
+
+function resolveLoginCopy(redirectTo?: string): LoginPageCopy {
+    const registerHref = redirectTo ? `/register?redirectTo=${encodeURIComponent(redirectTo)}` : '/register';
+
+    if (!redirectTo) {
+        return {
+            heading: 'Sign in to your account',
+            linkPrefix: 'Or ',
+            linkLabel: 'register for classes',
+            linkHref: registerHref,
+        };
+    }
+
+    const redirectPath = redirectTo.split(/[?#]/)[0];
+
+    if (redirectPath.startsWith('/events/') && redirectPath.endsWith('/register')) {
+        return {
+            heading: 'Sign in to register for this event',
+            linkPrefix: 'Need an account? ',
+            linkLabel: 'create a family portal account',
+            linkHref: registerHref,
+            linkSuffix: ' to finish your RSVP.',
+            extraMessage: "You'll return to the event registration form right after you sign in.",
+        };
+    }
+
+    if (redirectPath.startsWith('/family')) {
+        return {
+            heading: 'Sign in to manage your family portal',
+            linkPrefix: 'New to our programs? ',
+            linkLabel: 'create a family portal account',
+            linkHref: registerHref,
+            linkSuffix: ' to get started.',
+            extraMessage: 'Once signed in you can add students, view schedules, and complete registrations.',
+        };
+    }
+
+    if (redirectPath.startsWith('/admin')) {
+        return {
+            heading: 'Sign in with your staff account',
+            linkPrefix: 'Need access? ',
+            linkLabel: 'contact the dojo team',
+            linkHref: '/contact',
+            linkSuffix: ' for credentials.',
+        };
+    }
+
+    return {
+        heading: 'Sign in to your account',
+        linkPrefix: 'Or ',
+        linkLabel: 'register for classes',
+        linkHref: registerHref,
+    };
+}
+
 export default function LoginPage() {
     const actionData = useActionData<typeof action>();
     const fetcher = useFetcher<ResendActionData>(); // Use the imported type
@@ -115,6 +178,7 @@ export default function LoginPage() {
     const [searchParams] = useSearchParams();
     const successMessage = searchParams.get('message');
     const redirectTo = searchParams.get('redirectTo') || undefined;
+    const { heading, linkPrefix, linkLabel, linkHref, linkSuffix, extraMessage } = resolveLoginCopy(redirectTo);
 
     // Define a type for the resend action data if needed, or use inline type
     // type ResendActionData = { success?: boolean; error?: string };
@@ -128,15 +192,23 @@ export default function LoginPage() {
             <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
                 <div className="sm:mx-auto sm:w-full sm:max-w-md">
                     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-                        Sign in to your account
+                        {heading}
                     </h2>
                     <p className="mt-2 text-center text-sm text-gray-600">
-                        Or{" "}
-                        <Link to={redirectTo ? `/register?redirectTo=${encodeURIComponent(redirectTo)}` : "/register"}
-                              className="font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300">
-                            register for classes
-                        </Link>
+                        {linkPrefix}
+                        {linkHref && linkLabel ? (
+                            <Link to={linkHref}
+                                  className="font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300">
+                                {linkLabel}
+                            </Link>
+                        ) : linkLabel}
+                        {linkSuffix ?? ''}
                     </p>
+                    {extraMessage && (
+                        <p className="mt-2 text-center text-sm text-gray-500 dark:text-gray-300">
+                            {extraMessage}
+                        </p>
+                    )}
                 </div>
 
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
