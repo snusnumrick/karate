@@ -4,6 +4,7 @@ import { EventService } from '~/services/event.server';
 import { siteConfig } from '~/config/site';
 import { Button } from '~/components/ui/button';
 import {Card, CardContent} from '~/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { EventRegistrationForm } from '~/components/EventRegistrationForm';
 import { getSupabaseServerClient, getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database, Tables, TablesInsert } from '~/types/database.types';
@@ -47,10 +48,16 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
   try {
     // Parse registration data
     const registrationData = JSON.parse(formData.get("registrationData") as string);
-    const { parentInfo, students } = registrationData;
+    const { students } = registrationData;
 
     // Get user session
     const { data: { user } } = await supabaseServer.auth.getUser();
+
+    if (!user) {
+      const currentUrl = new URL(request.url);
+      const redirectTo = `${currentUrl.pathname}${currentUrl.search}`;
+      return redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+    }
 
     // Check waiver requirements for authenticated users
     if (user) {
@@ -94,44 +101,22 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       }
     }
 
-    let familyId = null;
-    
-    if (user) {
-      // For authenticated users, get their family ID
-      const { data: profile } = await supabaseServer
-        .from('profiles')
-        .select('family_id')
-        .eq('id', user.id)
-        .single();
-      familyId = profile?.family_id;
-    } else {
-      // For guest users, create a new family
-      const { data: newFamily, error: familyError } = await supabaseServer
-        .from('families')
-        .insert({
-          name: `${parentInfo.firstName} ${parentInfo.lastName}`,
-          email: parentInfo.email,
-          primary_phone: parentInfo.phone,
-          address: parentInfo.address || '',
-          city: parentInfo.city || '',
-          postal_code: parentInfo.postalCode || '',
-          province: parentInfo.province || '',
-           emergency_contact: parentInfo.emergencyContactName,
-        })
-        .select('id')
-        .single();
+    // For authenticated users, get their family ID
+    const { data: profile, error: profileError } = await supabaseServer
+      .from('profiles')
+      .select('family_id')
+      .eq('id', user.id)
+      .single();
 
-      if (familyError) {
-        console.error('Error creating family:', familyError);
-        return json({ error: 'Failed to create family record' }, { status: 500 });
-      }
-
-      familyId = newFamily.id;
+    if (profileError) {
+      console.error('Error fetching profile for event registration:', profileError);
+      return json({ error: 'Failed to load profile information' }, { status: 500 });
     }
 
-    // Ensure we have a valid family ID
+    const familyId = profile?.family_id;
+
     if (!familyId) {
-      return json({ error: 'Failed to determine family ID' }, { status: 500 });
+      return json({ error: 'Family profile is incomplete. Please contact support.' }, { status: 400 });
     }
 
     // Create student records for guest users or use existing for authenticated users
@@ -433,6 +418,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const { data: { user } } = await supabaseServer.auth.getUser();
   const isLoggedIn = !!user;
 
+  if (!isLoggedIn) {
+    const currentUrl = new URL(request.url);
+    const redirectTo = `${currentUrl.pathname}${currentUrl.search}`;
+    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+  }
+
   const event = await EventService.getEventById(eventId, isLoggedIn);
   
   if (!event) {
@@ -460,6 +451,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   
   let familyData = undefined;
   let isAuthenticated = false;
+  let hasExistingStudents = false;
 
   if (user) {
     isAuthenticated = true;
@@ -494,6 +486,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
           birth_date
         `)
         .eq('family_id', profile.family_id);
+
+      hasExistingStudents = Array.isArray(students) && students.length > 0;
 
       // Get already registered students for this event
       const { data: registeredStudents } = await supabaseServer
@@ -546,17 +540,24 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     allow_registration: event.status === 'registration_open'
   };
 
+  const requestUrl = new URL(request.url);
+  const redirectTo = `${requestUrl.pathname}${requestUrl.search}`;
+  const addStudentUrl = `/family/add-student?redirectTo=${encodeURIComponent(redirectTo)}`;
+  const requiresStudentProfile = !hasExistingStudents;
+
   return json({ 
     event: eventWithProperties, 
     isAuthenticated, 
     familyData,
     requiredWaivers,
-    signedWaiverIds
+    signedWaiverIds,
+    requiresStudentProfile,
+    addStudentUrl
   });
 }
 
 export default function EventRegistration() {
-  const { event, isAuthenticated, familyData, requiredWaivers, signedWaiverIds } = useLoaderData<typeof loader>();
+  const { event, isAuthenticated, familyData, requiredWaivers, signedWaiverIds, requiresStudentProfile, addStudentUrl } = useLoaderData<typeof loader>();
 
   // Convert registration_fee from number to Money type for the component
   const eventWithMoney = {
@@ -653,6 +654,19 @@ export default function EventRegistration() {
           <div className="lg:col-span-2">
             <Card className="form-container-styles">
               <CardContent className="p-8">
+                {requiresStudentProfile && (
+                  <Alert className="mb-6">
+                    <AlertTitle className="text-lg font-semibold">Add students before registering</AlertTitle>
+                    <AlertDescription className="mt-2 text-sm text-muted-foreground">
+                      You’ll need at least one student on your family profile to complete event registration. Add a student now and we’ll bring you right back to this page.
+                    </AlertDescription>
+                    <div className="mt-4">
+                      <Button asChild variant="secondary">
+                        <Link to={addStudentUrl}>Add a student</Link>
+                      </Button>
+                    </div>
+                  </Alert>
+                )}
 
                 {/* Registration Form */}
                 <EventRegistrationForm 

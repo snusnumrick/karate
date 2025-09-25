@@ -10,6 +10,7 @@ import {getSupabaseServerClient} from "~/utils/supabase.server";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import type {ResendActionData} from "~/routes/api.resend-confirmation"; // Import the type
+import { safeRedirect } from "~/utils/redirect";
 
 interface ActionResponse {
     error?: string;
@@ -97,12 +98,10 @@ export async function action({request}: ActionFunctionArgs)
         return json({error: "Could not retrieve user profile."}, {status: 500, headers});
     }
 
-    // Determine redirect path
-    let redirectTo = "/family"; // Default redirect for non-admin users
-    if (profile?.role === 'admin') {
-        redirectTo = "/admin";
-    }
-    // Add other role checks here if needed, e.g., 'instructor'
+    // Determine redirect target
+    const defaultRedirect = profile?.role === 'admin' ? '/admin' : '/family';
+    const redirectToParam = formData.get('redirectTo');
+    const redirectTo = safeRedirect(redirectToParam, defaultRedirect);
 
     return redirect(redirectTo, {headers});
 }
@@ -115,6 +114,7 @@ export default function LoginPage() {
     const isSubmitting = navigation.state === 'submitting'; // Check if form is submitting
     const [searchParams] = useSearchParams();
     const successMessage = searchParams.get('message');
+    const redirectTo = searchParams.get('redirectTo') || undefined;
 
     // Define a type for the resend action data if needed, or use inline type
     // type ResendActionData = { success?: boolean; error?: string };
@@ -132,7 +132,7 @@ export default function LoginPage() {
                     </h2>
                     <p className="mt-2 text-center text-sm text-gray-600">
                         Or{" "}
-                        <Link to="/register"
+                        <Link to={redirectTo ? `/register?redirectTo=${encodeURIComponent(redirectTo)}` : "/register"}
                               className="font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300">
                             register for classes
                         </Link>
@@ -143,6 +143,9 @@ export default function LoginPage() {
                     <div className="form-container-styles py-8 px-4 sm:px-10">
                         <form className="space-y-6" method="post">
                             <AuthenticityTokenInput />
+                            {redirectTo && (
+                                <input type="hidden" name="redirectTo" value={redirectTo} />
+                            )}
                             {/* Display success message from URL params */}
                             {successMessage && (
                                 <Alert variant="default">

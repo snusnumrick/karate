@@ -12,7 +12,9 @@ export async function requireUserId(request: Request): Promise<string> {
   const { data: { user }, error } = await supabaseServer.auth.getUser();
 
   if (error || !user) {
-    throw redirect("/login");
+    const url = new URL(request.url);
+    const redirectTo = `${url.pathname}${url.search}`;
+    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
   }
   
   return user.id;
@@ -24,7 +26,9 @@ export async function requireAdminUser(request: Request) {
   const { data: { user }, error } = await supabaseServer.auth.getUser();
 
   if (error || !user) {
-    throw redirect("/login");
+    const url = new URL(request.url);
+    const redirectTo = `${url.pathname}${url.search}`;
+    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
   }
 
   const isAdmin = await isUserAdmin(user.id);

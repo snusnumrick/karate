@@ -1,5 +1,5 @@
 // Removed unused useState import
-import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLocation, useRouteError} from "@remix-run/react"; // Import Outlet and useLocation
+import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLocation, useRouteError, useSearchParams} from "@remix-run/react"; // Import Outlet and useLocation
 import type {ActionFunctionArgs} from "@remix-run/node"; // or cloudflare/deno
 import {json, redirect} from "@remix-run/node"; // or cloudflare/deno
 import {getSupabaseServerClient} from "~/utils/supabase.server";
@@ -13,6 +13,7 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { siteConfig } from "~/config/site";
+import { safeRedirect } from "~/utils/redirect";
 
 type ActionData = {
   errors?: {
@@ -49,6 +50,7 @@ export async function action({request}: ActionFunctionArgs) {
     }
     
     const formData = await request.formData();
+    const redirectToParam = formData.get('redirectTo');
     // console.log(formData);
     const {supabaseServer} = getSupabaseServerClient(request);
 
@@ -161,7 +163,10 @@ export async function action({request}: ActionFunctionArgs) {
         // Waiver signatures will be handled in a separate dedicated flow.
         // Students will be added via the family portal after registration.
 
-        return redirect('/register/success');
+        const redirectTarget = redirectToParam ? safeRedirect(redirectToParam, '/family') : null;
+        const successLocation = redirectTarget ? `/register/success?redirectTo=${encodeURIComponent(redirectTarget)}` : '/register/success';
+
+        return redirect(successLocation);
 
     } catch (error) {
         console.error('Registration error:', error);
@@ -186,6 +191,8 @@ export default function RegisterPage() {
     // Removed multi-step functions: nextStep, prevStep
 
     const location = useLocation(); // Get the current location
+    const [searchParams] = useSearchParams();
+    const redirectTo = searchParams.get('redirectTo') || undefined;
 
     // Determine if we are on the base /register route or a child route
     const isBaseRegisterRoute = location.pathname === '/register';
@@ -210,7 +217,7 @@ export default function RegisterPage() {
                             {/* Form Header */}
                             <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                                 <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Registration Form</h2>
-                                <Link to="/login"
+                                <Link to={redirectTo ? `/login?redirectTo=${encodeURIComponent(redirectTo)}` : '/login'}
                                       className="text-sm text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300 sm:text-base">
                                     Already a customer? Click here to login.
                                 </Link>
@@ -232,6 +239,7 @@ export default function RegisterPage() {
 
                         <Form method="post" noValidate className="space-y-8">
                             <AuthenticityTokenInput />
+                            {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
                             {/* Form sections are now rendered sequentially */}
                             <div> {/* Wrap sections for structure if needed */}
                                 <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL

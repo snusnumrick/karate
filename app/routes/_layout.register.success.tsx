@@ -1,7 +1,10 @@
-import {Link} from "@remix-run/react";
+import {Link, useSearchParams} from "@remix-run/react";
 import {Button} from "~/components/ui/button";
 
 export default function RegistrationSuccessPage() {
+    const [searchParams] = useSearchParams();
+    const redirectTo = searchParams.get('redirectTo') || undefined;
+
     return (
         <div
             className="min-h-screen page-background-styles py-12 text-foreground flex items-center justify-center">
@@ -22,7 +25,7 @@ export default function RegistrationSuccessPage() {
                         account.
                     </p>
                     <Button asChild className="bg-green-600 text-white hover:bg-green-700">
-                        <Link to="/login">Go to Login</Link>
+                        <Link to={redirectTo ? `/login?redirectTo=${encodeURIComponent(redirectTo)}` : '/login'}>Go to Login</Link>
                     </Button>
                 </div>
             </div>
