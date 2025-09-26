@@ -102,7 +102,7 @@ type ActionResponse = {
 // Update return type: Action returns JSON data (success/error)
 export async function action({request}: ActionFunctionArgs): Promise<TypedResponse<ActionResponse & {
     success?: boolean;
-    paymentId?: string
+    supabasePaymentId?: string
 }>> {
     const {supabaseServer, response} = getSupabaseServerClient(request);
     
@@ -304,7 +304,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
             console.log(`[Action] Zero payment update result:`, updateData);
             console.log(`[Action] Zero payment completed successfully (ID: ${paymentRecord.id}).`);
-            return json({success: true, paymentId: paymentRecord.id, zeroPayment: true}, {headers: response.headers});
+            return json({success: true, supabasePaymentId: paymentRecord.id, zeroPayment: true}, {headers: response.headers});
         }
 
         // Create the initial payment record
@@ -328,10 +328,10 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             });
         }
 
-        // Return full JSON success data including paymentId
+        // Return full JSON success data including supabasePaymentId
         const paymentId = paymentRecord.id;
-        // console.log(`[Action] Payment record created successfully (ID: ${paymentId}). Returning success JSON with paymentId...`);
-        return json({success: true, paymentId: paymentId}, {headers: response.headers}); // Return success and ID
+        // console.log(`[Action] Payment record created successfully (ID: ${paymentId}). Returning success JSON with supabasePaymentId...`);
+        return json({success: true, supabasePaymentId: paymentId}, {headers: response.headers}); // Return success and ID
 
     } catch (error) {
         // This catch block handles actual errors
