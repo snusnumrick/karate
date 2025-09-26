@@ -280,6 +280,7 @@ npx web-push generate-vapid-keys
    - Select events:
      - `payment.created`
      - `payment.updated`
+   - Copy the webhook signature key and add it to your environment variables as `SQUARE_WEBHOOK_SIGNATURE_KEY`
    - Configure signature verification using Square webhook signatures
 
 ### Payment Sync Function Details

@@ -61,16 +61,62 @@ BEGIN
 END $$;
 
 -- Update attendance table to use attendance_status_enum
+-- First remove the old CHECK constraint that compares with text values
+ALTER TABLE attendance 
+DROP CONSTRAINT IF EXISTS attendance_status_check;
+
+-- Remove the default value to avoid casting issues
+ALTER TABLE attendance 
+ALTER COLUMN status DROP DEFAULT;
+
+-- Then convert the column type
 ALTER TABLE attendance 
 ALTER COLUMN status TYPE attendance_status_enum 
 USING status::attendance_status_enum;
 
+-- Finally, re-add the default value with the enum type
+ALTER TABLE attendance 
+ALTER COLUMN status SET DEFAULT 'present'::attendance_status_enum;
+
 -- Update class_sessions table to use class_session_status_enum
+-- First remove the old CHECK constraint that compares with text values
+ALTER TABLE class_sessions 
+DROP CONSTRAINT IF EXISTS class_sessions_status_check;
+
+-- Remove the default value to avoid casting issues
+ALTER TABLE class_sessions 
+ALTER COLUMN status DROP DEFAULT;
+
+-- Then convert the column type
 ALTER TABLE class_sessions 
 ALTER COLUMN status TYPE class_session_status_enum 
 USING status::class_session_status_enum;
 
+-- Finally, re-add the default value with the enum type
+ALTER TABLE class_sessions 
+ALTER COLUMN status SET DEFAULT 'scheduled'::class_session_status_enum;
+
 -- Update discount_codes table to use the new enums
+-- First remove the old CHECK constraints that compare with text values
+ALTER TABLE discount_codes 
+DROP CONSTRAINT IF EXISTS discount_codes_discount_type_check;
+
+ALTER TABLE discount_codes 
+DROP CONSTRAINT IF EXISTS discount_codes_scope_check;
+
+ALTER TABLE discount_codes 
+DROP CONSTRAINT IF EXISTS discount_codes_usage_type_check;
+
+ALTER TABLE discount_codes 
+DROP CONSTRAINT IF EXISTS discount_codes_association_check;
+
+ALTER TABLE discount_codes 
+DROP CONSTRAINT IF EXISTS discount_codes_discount_value_check;
+
+ALTER TABLE discount_codes 
+DROP CONSTRAINT IF EXISTS discount_codes_scope_association_check;
+
+-- Then convert the column types
 ALTER TABLE discount_codes 
 ALTER COLUMN discount_type TYPE discount_type_enum 
 USING discount_type::discount_type_enum;
@@ -84,6 +130,20 @@ ALTER COLUMN usage_type TYPE discount_usage_type_enum
 USING usage_type::discount_usage_type_enum;
 
 -- Update discount_templates table to use the new enums
+-- First remove the old CHECK constraints that compare with text values
+ALTER TABLE discount_templates 
+DROP CONSTRAINT IF EXISTS discount_templates_discount_type_check;
+
+ALTER TABLE discount_templates 
+DROP CONSTRAINT IF EXISTS discount_templates_scope_check;
+
+ALTER TABLE discount_templates 
+DROP CONSTRAINT IF EXISTS discount_templates_usage_type_check;
+
+ALTER TABLE discount_templates 
+DROP CONSTRAINT IF EXISTS discount_templates_discount_value_check;
+
+-- Then convert the column types
 ALTER TABLE discount_templates 
 ALTER COLUMN discount_type TYPE discount_type_enum 
 USING discount_type::discount_type_enum;

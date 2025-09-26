@@ -126,6 +126,7 @@ SQUARE_ACCESS_TOKEN=EAAAExxxxxxxxxxxxxxxxxxxxxxxx  # Sandbox access token
 SQUARE_LOCATION_ID=LRxxxxxxxxxxxxxxx              # Sandbox location ID
 SQUARE_APPLICATION_ID=sandbox-sq0idb-xxxxxxxxxx   # Sandbox application ID
 SQUARE_ENVIRONMENT=sandbox                        # Must be "sandbox" for development
+SQUARE_WEBHOOK_SIGNATURE_KEY=your-webhook-signature-key  # For webhook verification
 ```
 
 **Currency Configuration:**
@@ -137,6 +138,7 @@ Currency is automatically configured from `app/config/site.ts` → `localization
 3. Navigate to your application → Credentials
 4. Copy the **Sandbox** Application ID and Access Token
 5. Find your **Sandbox** Location ID in the Locations section
+6. For webhook signature key: Go to Webhooks → Create webhook endpoint → Copy the signature key
 
 **Important Notes:**
 - Always use **sandbox** credentials for development
