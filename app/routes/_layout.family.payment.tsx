@@ -120,6 +120,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const discountAmountStr = formData.get('discountAmount') as string | null; // Discount amount
 
     console.log("[Action] Received payment form data:", formData);
+    console.log("[Action] FormData entries:", Object.fromEntries(formData.entries()));
+    console.log("[Action] FormData keys:", Array.from(formData.keys()));
+    console.log("[Action] FormData values:", Array.from(formData.values()));
 
     // --- Validation ---
     const fieldErrors: ActionResponse['fieldErrors'] = {};
