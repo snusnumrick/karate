@@ -30,22 +30,22 @@ export type PaymentType = 'trial' | 'individual_session' | 'monthly_subscription
 
 // Helper function to get supported payment types for a program
 export function getSupportedPaymentTypes(program: {
-  monthly_fee?: number | null;
-  yearly_fee?: number | null;
-  individual_session_fee?: number | null;
+  monthly_fee_cents?: number | null;
+  yearly_fee_cents?: number | null;
+  individual_session_fee_cents?: number | null;
 }): PaymentType[] {
   const supportedTypes: PaymentType[] = [];
   
   // Individual sessions should always be available if fee is set
-  if (program.individual_session_fee && program.individual_session_fee > 0) {
+  if (program.individual_session_fee_cents && program.individual_session_fee_cents > 0) {
     supportedTypes.push('individual_session');
   }
   
-  if (program.monthly_fee && program.monthly_fee > 0) {
+  if (program.monthly_fee_cents && program.monthly_fee_cents > 0) {
     supportedTypes.push('monthly_subscription');
   }
   
-  if (program.yearly_fee && program.yearly_fee > 0) {
+  if (program.yearly_fee_cents && program.yearly_fee_cents > 0) {
     supportedTypes.push('yearly_subscription');
   }
   
@@ -108,9 +108,9 @@ export async function getStudentPaymentOptions(
         program:programs(
           id,
           name,
-          monthly_fee,
-          yearly_fee,
-          individual_session_fee
+          monthly_fee_cents,
+          yearly_fee_cents,
+          individual_session_fee_cents
         )
       )
     `)
@@ -166,9 +166,9 @@ export async function getStudentPaymentOptions(
       className: enrollment_db.class.name,
       supportedPaymentTypes,
       currentStatus,
-      monthlyAmount: program_db.monthly_fee? fromCents(program_db.monthly_fee) : undefined,
-      yearlyAmount: program_db.yearly_fee ? fromCents(program_db.yearly_fee) : undefined,
-      individualSessionAmount: program_db.individual_session_fee ? fromCents(program_db.individual_session_fee) : undefined,
+      monthlyAmount: program_db.monthly_fee_cents? fromCents(program_db.monthly_fee_cents) : undefined,
+      yearlyAmount: program_db.yearly_fee_cents ? fromCents(program_db.yearly_fee_cents) : undefined,
+      individualSessionAmount: program_db.individual_session_fee_cents ? fromCents(program_db.individual_session_fee_cents) : undefined,
       hasActiveSubscription: hasAnyActiveSubscription,
       paidUntil: (hasActiveYearly || hasActiveMonthly) ? (enrollment_db.paid_until || undefined) : undefined
     };

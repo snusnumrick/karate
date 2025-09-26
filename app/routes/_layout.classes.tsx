@@ -96,8 +96,8 @@ export async function loader() {
           max_age,
           duration_minutes,
           max_capacity,
-          monthly_fee,
-          yearly_fee
+          monthly_fee_cents,
+          yearly_fee_cents
         )
       `)
             .eq('is_active', true)

@@ -36,10 +36,10 @@ export async function createProgram(
       gender_restriction: programData.gender_restriction,
       special_needs_support: programData.special_needs_support,
       // Pricing structure
-      monthly_fee: programData.monthly_fee,
-      registration_fee: programData.registration_fee,
-      yearly_fee: programData.yearly_fee,
-      individual_session_fee: programData.individual_session_fee,
+      monthly_fee_cents: programData.monthly_fee,
+      registration_fee_cents: programData.registration_fee,
+      yearly_fee_cents: programData.yearly_fee,
+      individual_session_fee_cents: programData.individual_session_fee,
       // System fields
       is_active: programData.is_active ?? true,
     })
@@ -66,10 +66,10 @@ export async function createProgram(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
-    monthly_fee: data.monthly_fee || undefined,
-    registration_fee: data.registration_fee || undefined,
-    yearly_fee: data.yearly_fee || undefined,
-    individual_session_fee: data.individual_session_fee || undefined,
+    monthly_fee: data.monthly_fee_cents || undefined,
+    registration_fee: data.registration_fee_cents || undefined,
+    yearly_fee: data.yearly_fee_cents || undefined,
+    individual_session_fee: data.individual_session_fee_cents || undefined,
   };
 }
 
@@ -141,10 +141,10 @@ export async function updateProgram(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
-    monthly_fee: data.monthly_fee || undefined,
-    registration_fee: data.registration_fee || undefined,
-    yearly_fee: data.yearly_fee || undefined,
-    individual_session_fee: data.individual_session_fee || undefined,
+    monthly_fee: data.monthly_fee_cents || undefined,
+    registration_fee: data.registration_fee_cents || undefined,
+    yearly_fee: data.yearly_fee_cents || undefined,
+    individual_session_fee: data.individual_session_fee_cents || undefined,
   };
 }
 
@@ -192,10 +192,10 @@ export async function getPrograms(
     max_age: program.max_age || undefined,
     gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: program.special_needs_support || undefined,
-    monthly_fee: program.monthly_fee || undefined,
-    registration_fee: program.registration_fee || undefined,
-    yearly_fee: program.yearly_fee || undefined,
-    individual_session_fee: program.individual_session_fee || undefined,
+    monthly_fee: program.monthly_fee_cents || undefined,
+    registration_fee: program.registration_fee_cents || undefined,
+    yearly_fee: program.yearly_fee_cents || undefined,
+    individual_session_fee: program.individual_session_fee_cents || undefined,
   }));
 }
 
@@ -235,10 +235,10 @@ export async function getProgramById(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
-    monthly_fee: data.monthly_fee || undefined,
-    registration_fee: data.registration_fee || undefined,
-    yearly_fee: data.yearly_fee || undefined,
-    individual_session_fee: data.individual_session_fee || undefined,
+    monthly_fee: data.monthly_fee_cents || undefined,
+    registration_fee: data.registration_fee_cents || undefined,
+    yearly_fee: data.yearly_fee_cents || undefined,
+    individual_session_fee: data.individual_session_fee_cents || undefined,
   };
 }
 
