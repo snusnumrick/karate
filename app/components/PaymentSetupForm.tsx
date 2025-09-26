@@ -731,29 +731,28 @@ export function PaymentSetupForm({
                 <input type="hidden" name="discountAmount" value={toCents(appliedDiscount.discount_amount)}/>
               </>
             )}
-          </fetcher.Form>
 
-          {/* Submit Button */}
-          <div className="mt-6">
-            <Button
-              type="submit"
-              form="payment-setup-form"
-              className="w-full"
-              disabled={
-                fetcher.state !== 'idle' ||
-                ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
-                (paymentOption === 'individual' && oneOnOneQuantity <= 0)
-              }
-              tabIndex={8}
-            >
-              {fetcher.state !== 'idle' 
-                ? "Setting up payment..." 
-                : !isPositive(currentTotal)
-                  ? "Proceed" 
-                  : `Proceed to Pay`
-              }
-            </Button>
-          </div>
+            {/* Submit Button */}
+            <div className="mt-6">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={
+                  fetcher.state !== 'idle' ||
+                  ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size === 0) ||
+                  (paymentOption === 'individual' && oneOnOneQuantity <= 0)
+                }
+                tabIndex={8}
+              >
+                {fetcher.state !== 'idle' 
+                  ? "Setting up payment..." 
+                  : !isPositive(currentTotal)
+                    ? "Proceed" 
+                    : `Proceed to Pay`
+                }
+              </Button>
+            </div>
+          </fetcher.Form>
         </>
       ) : (
         <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow text-center">
