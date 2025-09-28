@@ -146,23 +146,48 @@ export function formatMoney(
     showCurrency?: boolean;
     minimumFractionDigits?: number;
     maximumFractionDigits?: number;
+    trimTrailingZeros?: boolean;
   } = {}
 ): string {
   const {
     showCurrency = false,
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2,
-  } = options;
-  
-  const dollars = toDollars(money);
-  
-  const formatted = new Intl.NumberFormat('en-US', {
-    style: showCurrency ? 'currency' : 'decimal',
-    currency: showCurrency ? (siteConfig.localization.currency as Dinero.Currency) : undefined,
     minimumFractionDigits,
     maximumFractionDigits,
+    trimTrailingZeros = false,
+  } = options;
+
+  const dollars = toDollars(money);
+  const dineroCurrency = money.getCurrency() as { code?: string; exponent?: number } | undefined;
+  const precision = typeof dineroCurrency?.exponent === 'number' ? dineroCurrency.exponent : 2;
+  const smallestUnit = Math.pow(10, precision);
+  const isWholeAmount = trimTrailingZeros && money.getAmount() % smallestUnit === 0;
+  const minDigits = minimumFractionDigits ?? (isWholeAmount ? 0 : precision);
+  const maxDigits = maximumFractionDigits ?? (isWholeAmount ? 0 : precision);
+  const fallbackCurrency = siteConfig.localization.currency as unknown as string;
+  const currencyCode = showCurrency
+    ? (dineroCurrency?.code ?? fallbackCurrency)
+    : undefined;
+  const locale =
+    (showCurrency ? siteConfig.localization.currencyLocale : siteConfig.localization.locale)
+    || siteConfig.localization.locale
+    || siteConfig.localization.fallbackLocale
+    || 'en-US';
+  const supportedCurrencyDisplays = new Set(['symbol', 'narrowSymbol', 'code', 'name']);
+  const configuredDisplay = siteConfig.localization.currencyDisplay as string | undefined;
+  const currencyDisplay = showCurrency
+    ? (supportedCurrencyDisplays.has(configuredDisplay || '')
+        ? (configuredDisplay as Intl.NumberFormatOptions['currencyDisplay'])
+        : 'symbol')
+    : undefined;
+
+  const formatted = new Intl.NumberFormat(locale, {
+    style: showCurrency ? 'currency' : 'decimal',
+    currency: currencyCode,
+    currencyDisplay,
+    minimumFractionDigits: minDigits,
+    maximumFractionDigits: maxDigits,
   }).format(dollars);
-  
+
   return formatted;
 }
 

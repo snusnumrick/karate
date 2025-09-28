@@ -8,6 +8,7 @@ import { mergeMeta } from "~/utils/meta";
 import { JsonLd } from "~/components/JsonLd";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 import { getMainPageScheduleData } from "~/services/class.server";
+import { formatMoney, fromCents, toDollars } from "~/utils/money";
 
 type ClassWithSchedule = {
     id: string;
@@ -227,11 +228,13 @@ export default function ClassesPage() {
             const monthlyFees = monthlyPrograms.map(p => p.monthly_fee!);
             const minMonthly = Math.min(...monthlyFees);
             const maxMonthly = Math.max(...monthlyFees);
+            const minLabel = formatMoney(fromCents(minMonthly), { showCurrency: true, trimTrailingZeros: true });
+            const maxLabel = formatMoney(fromCents(maxMonthly), { showCurrency: true, trimTrailingZeros: true });
 
             if (minMonthly === maxMonthly) {
-                tiers.push({ label: "Monthly", description: `$${minMonthly} - Ongoing` });
+                tiers.push({ label: "Monthly", description: `${minLabel} - Ongoing` });
             } else {
-                tiers.push({ label: "Monthly", description: `$${minMonthly}-$${maxMonthly} - Ongoing` });
+                tiers.push({ label: "Monthly", description: `${minLabel} - ${maxLabel} - Ongoing` });
             }
         }
 
@@ -241,11 +244,13 @@ export default function ClassesPage() {
             const yearlyFees = yearlyPrograms.map(p => p.yearly_fee!);
             const minYearly = Math.min(...yearlyFees);
             const maxYearly = Math.max(...yearlyFees);
+            const minLabel = formatMoney(fromCents(minYearly), { showCurrency: true, trimTrailingZeros: true });
+            const maxLabel = formatMoney(fromCents(maxYearly), { showCurrency: true, trimTrailingZeros: true });
 
             if (minYearly === maxYearly) {
-                tiers.push({ label: "Yearly", description: `$${minYearly} - Best value` });
+                tiers.push({ label: "Yearly", description: `${minLabel} - Best value` });
             } else {
-                tiers.push({ label: "Yearly", description: `$${minYearly}-$${maxYearly} - Best value` });
+                tiers.push({ label: "Yearly", description: `${minLabel} - ${maxLabel} - Best value` });
             }
         }
 
@@ -270,7 +275,7 @@ export default function ClassesPage() {
             if (monthly && monthly > 0) {
                 offers.push({
                     "@type": "Offer",
-                    "price": monthly,
+                    "price": toDollars(fromCents(monthly)),
                     "priceCurrency": siteConfig.localization.currency,
                     "category": "Monthly",
                 });
@@ -278,7 +283,7 @@ export default function ClassesPage() {
             if (yearly && yearly > 0) {
                 offers.push({
                     "@type": "Offer",
-                    "price": yearly,
+                    "price": toDollars(fromCents(yearly)),
                     "priceCurrency": siteConfig.localization.currency,
                     "category": "Yearly",
                 });
@@ -342,16 +347,39 @@ export default function ClassesPage() {
                                     (program.monthly_fee && program.monthly_fee > 0) ||
                                     (program.yearly_fee && program.yearly_fee > 0)
                                 )
-                                .map((program) => (
-                                    <div
-                                        key={program.id}
-                                        className="page-card-styles"
-                                    >
-                                        <div className="mb-6">
-                                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                                                {program.name}
-                                            </h3>
-                                            {program.description && (
+                                .map((program) => {
+                                    const monthlyLabel =
+                                        program.monthly_fee && program.monthly_fee > 0
+                                            ? formatMoney(fromCents(program.monthly_fee), {
+                                                showCurrency: true,
+                                                trimTrailingZeros: true,
+                                            })
+                                            : null;
+                                    const yearlyLabel =
+                                        program.yearly_fee && program.yearly_fee > 0
+                                            ? formatMoney(fromCents(program.yearly_fee), {
+                                                showCurrency: true,
+                                                trimTrailingZeros: true,
+                                            })
+                                            : null;
+                                    const sessionLabel =
+                                        program.individual_session_fee && program.individual_session_fee > 0
+                                            ? formatMoney(fromCents(program.individual_session_fee), {
+                                                showCurrency: true,
+                                                trimTrailingZeros: true,
+                                            })
+                                            : null;
+
+                                    return (
+                                        <div
+                                            key={program.id}
+                                            className="page-card-styles"
+                                        >
+                                            <div className="mb-6">
+                                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                                                    {program.name}
+                                                </h3>
+                                                {program.description && (
                                                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
                                                     {program.description}
                                                 </p>
@@ -367,35 +395,36 @@ export default function ClassesPage() {
                                                 </div>
                                             )}
 
-                                            {program.monthly_fee && (
+                                            {monthlyLabel && (
                                                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                                                     <div className="flex justify-between items-center mb-2">
                                                         <span className="text-gray-700 dark:text-gray-300 font-medium">Monthly:</span>
-                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">${program.monthly_fee}</span>
+                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">{monthlyLabel}</span>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {program.yearly_fee && (
+                                            {yearlyLabel && (
                                                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                                                     <div className="flex justify-between items-center mb-2">
                                                         <span className="text-gray-700 dark:text-gray-300 font-medium">Yearly:</span>
-                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">${program.yearly_fee}</span>
+                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">{yearlyLabel}</span>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {program.individual_session_fee && (
+                                            {sessionLabel && (
                                                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                                                     <div className="flex justify-between items-center mb-2">
                                                         <span className="text-gray-700 dark:text-gray-300 font-medium">Per Session:</span>
-                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">${program.individual_session_fee}</span>
+                                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">{sessionLabel}</span>
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                ))}
+                                        </div>
+                                    );
+                                })}
                         </div>
                     </section>
                 )}
