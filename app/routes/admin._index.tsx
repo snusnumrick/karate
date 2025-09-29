@@ -1,12 +1,13 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node"; // Keep json, LoaderFunctionArgs
-import { Link, useLoaderData } from "@remix-run/react"; // Remove useRouteError
-import { getSupabaseAdminClient } from "~/utils/supabase.server";
-import { PaymentStatus } from "~/types/models"; // Import the enum
-import { getTodayLocalDateString } from "~/components/calendar/utils";
-import { getInvoiceStats } from "~/services/invoice.server";
-import { getInvoiceEntities } from "~/services/invoice-entity.server";
-import { formatMoney, fromCents, ZERO_MONEY, toMoney, type Money } from "~/utils/money";
-import { centsFromRow } from "~/utils/database-money";
+import {json, type LoaderFunctionArgs} from "@remix-run/node"; // Keep json, LoaderFunctionArgs
+import {Link, useFetcher, useLoaderData} from "@remix-run/react"; // Remove useRouteError
+import {getSupabaseAdminClient} from "~/utils/supabase.server";
+import {PaymentStatus} from "~/types/models"; // Import the enum
+import {getTodayLocalDateString} from "~/components/calendar/utils";
+import {getInvoiceStats} from "~/services/invoice.server";
+import {getInvoiceEntities} from "~/services/invoice-entity.server";
+import {formatMoney, fromCents, ZERO_MONEY, toMoney, type Money} from "~/utils/money";
+import {centsFromRow} from "~/utils/database-money";
+import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 
 // Loader now only fetches data, assumes auth handled by parent layout (_admin.tsx)
@@ -32,7 +33,7 @@ export async function loader(_: LoaderFunctionArgs) {
         if (requiredWaiversError) {
             console.error("Error fetching required waivers:", requiredWaiversError.message);
             // Throw simple response
-            throw new Response("Failed to load required waiver data.", { status: 500 });
+            throw new Response("Failed to load required waiver data.", {status: 500});
         }
         const requiredWaiverIds = requiredWaivers?.map(w => w.id) || [];
 
@@ -57,7 +58,10 @@ export async function loader(_: LoaderFunctionArgs) {
         ] = await Promise.all([
             supabaseAdmin.from('programs').select('id', {count: 'exact', head: true}).eq('is_active', true),
             supabaseAdmin.from('classes').select('id', {count: 'exact', head: true}).eq('is_active', true),
-            supabaseAdmin.from('enrollments').select('id', {count: 'exact', head: true}).in('status', ['active', 'trial']),
+            supabaseAdmin.from('enrollments').select('id', {
+                count: 'exact',
+                head: true
+            }).in('status', ['active', 'trial']),
             supabaseAdmin.from('classes')
                 .select('id, max_capacity')
                 .eq('is_active', true),
@@ -70,8 +74,8 @@ export async function loader(_: LoaderFunctionArgs) {
                 `)
                 .eq('status', 'scheduled')
                 .gte('session_date', getTodayLocalDateString())
-                .order('session_date', { ascending: true })
-                .order('start_time', { ascending: true })
+                .order('session_date', {ascending: true})
+                .order('start_time', {ascending: true})
                 .limit(1)
         ]);
 
@@ -151,14 +155,14 @@ export async function loader(_: LoaderFunctionArgs) {
         // --- Data Processing ---
         // Sum payments in cents using robust helper
         const totalPaymentCents = completedPayments_db?.reduce((sum, payment) => sum + centsFromRow('payments', 'total_amount', payment as unknown as Record<string, unknown>), 0) || 0;
-        const totalPaymentAmount : Money = fromCents(totalPaymentCents);
+        const totalPaymentAmount: Money = fromCents(totalPaymentCents);
 
         // Count distinct families with pending payments
         const uniqueFamilyIds = new Set(pendingPaymentsFamilies?.map(p => p.family_id) || []);
         const pendingPaymentsCount = uniqueFamilyIds.size;
 
         // Calculate discount usage stats
-        const totalDiscountAmount : Money = fromCents(discountUsageData?.reduce((sum, usage) => sum + (usage.discount_amount || 0), 0) || 0);
+        const totalDiscountAmount: Money = fromCents(discountUsageData?.reduce((sum, usage) => sum + (usage.discount_amount || 0), 0) || 0);
         const discountUsageCount = discountUsageData?.length || 0;
 
         // Calculate total enrollment from actual enrollment count
@@ -180,41 +184,41 @@ export async function loader(_: LoaderFunctionArgs) {
 
         // Count families missing waivers instead of individual users
         // Use the already declared requiredWaiverIds from above
-        
+
         // Get all profiles grouped by family
-        const { data: familyProfiles, error: familyProfilesError } = await supabaseAdmin
+        const {data: familyProfiles, error: familyProfilesError} = await supabaseAdmin
             .from('profiles')
             .select('id, family_id')
             .eq('role', 'user')
             .not('family_id', 'is', null); // Only include profiles with a family
-            
+
         if (familyProfilesError) {
             console.error("Error fetching family profiles:", familyProfilesError.message);
         }
-        
+
         // Group profiles by family
         const familyMap = new Map<string, string[]>(); // Map<family_id, user_ids[]>
         if (familyProfiles) {
             familyProfiles.forEach(profile => {
                 if (!profile.family_id) return;
-                
+
                 if (!familyMap.has(profile.family_id)) {
                     familyMap.set(profile.family_id, []);
                 }
                 familyMap.get(profile.family_id)!.push(profile.id);
             });
         }
-        
+
         // Get all waiver signatures for required waivers
-        const { data: allSignatures, error: allSignaturesError } = await supabaseAdmin
+        const {data: allSignatures, error: allSignaturesError} = await supabaseAdmin
             .from('waiver_signatures')
             .select('user_id, waiver_id')
             .in('waiver_id', requiredWaiverIds);
-            
+
         if (allSignaturesError) {
             console.error("Error fetching all signatures:", allSignaturesError.message);
         }
-        
+
         // Create a map of user_id -> Set of signed waiver_ids
         const userSignaturesMap = new Map<string, Set<string>>();
         if (allSignatures) {
@@ -225,10 +229,10 @@ export async function loader(_: LoaderFunctionArgs) {
                 userSignaturesMap.get(sig.user_id)!.add(sig.waiver_id);
             });
         }
-        
+
         // Count families missing any required waivers
         let familiesMissingWaivers = 0;
-        
+
         familyMap.forEach((userIds) => {
             // Check if any user in the family is missing any required waiver
             const isFamilyMissingWaivers = userIds.some(userId => {
@@ -236,18 +240,18 @@ export async function loader(_: LoaderFunctionArgs) {
                 // If this user hasn't signed all required waivers, the family is missing waivers
                 return requiredWaiverIds.some(waiverId => !signedWaivers.has(waiverId));
             });
-            
+
             if (isFamilyMissingWaivers) {
                 familiesMissingWaivers++;
             }
         });
-        
+
         const missingWaiversCount = familiesMissingWaivers;
 
         // Fetch today's sessions
         // Get today's date in local timezone to avoid timezone issues
         const today = getTodayLocalDateString();
-        const { data: todaysSessions, error: sessionsError } = await supabaseAdmin
+        const {data: todaysSessions, error: sessionsError} = await supabaseAdmin
             .from('class_sessions')
             .select(`
                 id,
@@ -272,8 +276,15 @@ export async function loader(_: LoaderFunctionArgs) {
 
         // Calculate session statistics using local date parsing
         const totalTodaysSessions = todaysSessions?.length || 0;
-        const completedSessions = todaysSessions?.filter((s: { status: string }) => s.status === 'completed').length || 0;
-        const inProgressSessions = todaysSessions?.filter((s: { status: string; session_date: string; start_time: string; end_time: string }) => {
+        const completedSessions = todaysSessions?.filter((s: {
+            status: string
+        }) => s.status === 'completed').length || 0;
+        const inProgressSessions = todaysSessions?.filter((s: {
+            status: string;
+            session_date: string;
+            start_time: string;
+            end_time: string
+        }) => {
             if (s.status !== 'scheduled') return false;
             const now = new Date();
             // Parse session date as local date to avoid timezone issues
@@ -287,7 +298,11 @@ export async function loader(_: LoaderFunctionArgs) {
             sessionEnd.setHours(endHour, endMin, 0, 0);
             return now >= sessionStart && now <= sessionEnd;
         }).length || 0;
-        const upcomingSessions = todaysSessions?.filter((s: { status: string; session_date: string; start_time: string }) => {
+        const upcomingSessions = todaysSessions?.filter((s: {
+            status: string;
+            session_date: string;
+            start_time: string
+        }) => {
             if (s.status !== 'scheduled') return false;
             const now = new Date();
             // Parse session date as local date to avoid timezone issues
@@ -337,8 +352,8 @@ export async function loader(_: LoaderFunctionArgs) {
                 total_invoices: 0,
                 total_amount: ZERO_MONEY,
                 paid_amount: ZERO_MONEY,
-          outstanding_amount: ZERO_MONEY,
-          overdue_count: 0,
+                outstanding_amount: ZERO_MONEY,
+                overdue_count: 0,
             },
             totalInvoiceEntities: invoiceEntities.length || 0,
             // Events statistics
@@ -354,7 +369,7 @@ export async function loader(_: LoaderFunctionArgs) {
         // Let the error boundary in the layout handle this
         // Throw simple response
         console.error("Data fetch error - throwing 500");
-        throw new Response("Failed to load dashboard data.", { status: 500 });
+        throw new Response("Failed to load dashboard data.", {status: 500});
     }
 }
 
@@ -363,7 +378,10 @@ export async function loader(_: LoaderFunctionArgs) {
 export default function AdminDashboard() {
     // Re-add useLoaderData
     const loaderData = useLoaderData<typeof loader>();
-    
+    const sessionStatusFetcher = useFetcher<{ success?: boolean; status?: string; error?: string }>();
+    const activeSessionMutationId = sessionStatusFetcher.formData?.get("sessionId")?.toString();
+    const isMutatingSession = sessionStatusFetcher.state === "submitting" || sessionStatusFetcher.state === "loading";
+
     // Convert serialized Money data back to Money objects
     const data = {
         ...loaderData,
@@ -656,42 +674,67 @@ export default function AdminDashboard() {
                             <h3 className="font-medium text-gray-700 dark:text-gray-300">Today&apos;s Sessions</h3>
                             <div className="space-y-2">
                                 {data.todaysSessions.length > 0 ? (
-                                    data.todaysSessions.slice(0, 3).map((session) => (
-                                        <div key={session.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                                    {(session.classes as { name?: string })?.name}
-                                </p>
-                                                <p className="text-xs text-gray-600 dark:text-gray-400">
-                                                    {session.start_time} - {session.end_time}
-                                                </p>
+                                    data.todaysSessions.slice(0, 3).map((session) => {
+                                        const classId = (session.classes as { id?: string })?.id;
+                                        const disableButtons =
+                                            isMutatingSession && activeSessionMutationId === session.id;
+
+                                        return (
+                                            <div key={session.id}
+                                                 className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                                        {(session.classes as { name?: string })?.name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                        {session.start_time} - {session.end_time}
+                                                    </p>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                    <Link
+                                                        to={`/admin/attendance/record?session=${session.id}`}
+                                                        className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                                                    >
+                                                        Attendance
+                                                    </Link>
+                                                    {session.status === 'scheduled' && classId && (
+                                                        <>
+                                                            <sessionStatusFetcher.Form
+                                                                method="post"
+                                                                action={`/admin/classes/${classId}/sessions/${session.id}/complete`}
+                                                                className="inline"
+                                                            >
+                                                                <AuthenticityTokenInput />
+                                                                <input type="hidden" name="sessionId" value={session.id} />
+                                                                <button
+                                                                    type="submit"
+                                                                    className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded hover:bg-green-200 dark:hover:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                                                                    disabled={disableButtons}
+                                                                >
+                                                                    Complete
+                                                                </button>
+                                                            </sessionStatusFetcher.Form>
+                                                            <sessionStatusFetcher.Form
+                                                                method="post"
+                                                                action={`/admin/classes/${classId}/sessions/${session.id}/cancel`}
+                                                                className="inline"
+                                                            >
+                                                                <AuthenticityTokenInput />
+                                                                <input type="hidden" name="sessionId" value={session.id} />
+                                                                <button
+                                                                    type="submit"
+                                                                    className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-2 py-1 rounded hover:bg-red-200 dark:hover:bg-red-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                                                                    disabled={disableButtons}
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </sessionStatusFetcher.Form>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex space-x-2">
-                                                <Link
-                                                    to={`/admin/attendance/record?session=${session.id}`}
-                                                    className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
-                                                >
-                                                    Attendance
-                                                </Link>
-                                                {session.status === 'scheduled' && (
-                                                    <>
-                                                        <Link
-                                            to={`/admin/classes/${(session.classes as { id?: string })?.id}/sessions/${session.id}/complete`}
-                                            className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded hover:bg-green-200 dark:hover:bg-green-800"
-                                        >
-                                            Complete
-                                        </Link>
-                                        <Link
-                                            to={`/admin/classes/${(session.classes as { id?: string })?.id}/sessions/${session.id}/cancel`}
-                                            className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-2 py-1 rounded hover:bg-red-200 dark:hover:bg-red-800"
-                                        >
-                                            Cancel
-                                        </Link>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <p className="text-gray-600 dark:text-gray-400 text-sm">
                                         No sessions scheduled for today
