@@ -393,7 +393,10 @@ export function PaymentSetupForm({
             if (response.ok) {
               const data = await response.json();
               if (data.is_valid) {
-                setAppliedDiscount(data);
+                setAppliedDiscount({
+                  ...data,
+                  discount_amount: toMoney(data.discount_amount as unknown),
+                });
               } else {
                 setAppliedDiscount(null);
               }
