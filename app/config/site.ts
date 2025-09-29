@@ -45,7 +45,7 @@ export const siteConfig = {
         locale: 'en-CA', // Primary locale for non-currency formatting
         currencyLocale: 'en', // Locale used when rendering currency strings (ensures "CA$" prefix)
         currency: 'CAD', // Currency code
-        currencyDisplay: 'narrowSymbol', // Display style for currency formatting (symbol, code, name, narrowSymbol)
+        currencyDisplay: 'code', // Display style for currency formatting (symbol, code, name, narrowSymbol)
         country: 'CA', // Country code for formatting/display logic (dates, numbers, etc.)
         pageSize: 'A4', // PDF page size based on region (A4 for Canada/international, LETTER for US)
         // Alternative locales for fallback or specific use cases
