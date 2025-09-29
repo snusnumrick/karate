@@ -20,7 +20,7 @@ import { CalendarPageHeader } from "~/components/calendar/CalendarPageHeader";
 import { CalendarFilters } from "~/components/calendar/CalendarFilters";
 import { CalendarLegend } from "~/components/calendar/CalendarLegend";
 import type { CalendarEvent } from "~/components/calendar/types";
-import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents } from "~/components/calendar/utils";
+import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents, filterEventsByStudent } from "~/components/calendar/utils";
 import { formatDate } from "~/utils/misc";
 import { requireUserId } from "~/utils/auth.server";
 import { breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -550,6 +550,9 @@ export default function FamilyCalendarPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedStudentId = searchParams.get('student') || 'all';
 
+  // Filter events once the selection is known
+  const filteredEvents = filterEventsByStudent(allEvents, selectedStudentId, studentList);
+
   // Restore scroll position after navigation
   useEffect(() => {
     if (scrollPositionRef.current > 0) {
@@ -627,7 +630,7 @@ export default function FamilyCalendarPage() {
       {/* Calendar Component in Card */}
       <div className="form-container-styles p-2 backdrop-blur-lg mb-8 landscape-tablet:mb-2 landscape-tablet:p-1">
         <Calendar
-          events={allEvents}
+          events={filteredEvents}
           currentDate={currentDate}
           onDateChange={handleDateChange}
           onEventClick={handleEventClick}
