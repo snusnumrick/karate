@@ -7,7 +7,7 @@ import type { Program } from "~/types/multi-class";
 import { mergeMeta } from "~/utils/meta";
 import { JsonLd } from "~/components/JsonLd";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
-import { getMainPageScheduleData } from "~/services/class.server";
+import { buildScheduleSummaryFromClasses } from "~/services/class.server";
 import { formatMoney, fromCents, toDollars } from "~/utils/money";
 
 type ClassWithSchedule = {
@@ -16,6 +16,7 @@ type ClassWithSchedule = {
     description: string | null;
     is_active: boolean;
     program: {
+        id: string;
         name: string;
         description: string | null;
         min_age: number | null;
@@ -91,6 +92,7 @@ export async function loader() {
         description,
         is_active,
         program:programs!inner(
+          id,
           name,
           description,
           min_age,
@@ -104,40 +106,73 @@ export async function loader() {
             .eq('is_active', true)
             .order('name');
 
-        // Get schedules separately to avoid foreign key issues
-        let schedulesData: Array<{ class_id: string; day_of_week: string; start_time: string }> = [];
-        if (classesData && classesData.length > 0) {
-            const classIds = classesData.map(c => c.id);
-            const { data: schedules } = await supabase
-                .from('class_schedules')
-                .select('class_id, day_of_week, start_time')
-                .in('class_id', classIds);
-            schedulesData = schedules || [];
-        }
-
         if (error) {
             console.error('Error fetching classes:', error);
         }
 
-        const scheduleSummary = await getMainPageScheduleData(supabase);
+        let schedulesByClassId: Record<string, Array<{ day_of_week: string; start_time: string }>> = {};
+        if (classesData && classesData.length > 0) {
+            const classIds = classesData.map(classItem => classItem.id);
+            const { data: schedulesData, error: schedulesError } = await supabase
+                .from('class_schedules')
+                .select('class_id, day_of_week, start_time')
+                .in('class_id', classIds)
+                .order('day_of_week')
+                .order('start_time');
+
+            if (schedulesError) {
+                console.error('Error fetching class schedules:', schedulesError);
+            }
+
+            schedulesByClassId = (schedulesData || []).reduce<Record<string, Array<{ day_of_week: string; start_time: string }>>>(
+                (acc, schedule) => {
+                    const key = schedule.class_id;
+                    if (!acc[key]) {
+                        acc[key] = [];
+                    }
+                    acc[key].push({
+                        day_of_week: schedule.day_of_week,
+                        start_time: schedule.start_time,
+                    });
+                    return acc;
+                },
+                {}
+            );
+        }
 
         // Transform the data to match our expected type
         const classes: ClassWithSchedule[] = (classesData || []).map(classItem => {
-            // Find schedules for this class
-            const classSchedules = schedulesData.filter(schedule => schedule.class_id === classItem.id);
-            
+            const rawProgram = Array.isArray(classItem.program)
+                ? classItem.program[0]
+                : classItem.program;
+
+            const normalizedProgram = rawProgram
+                ? {
+                    id: rawProgram.id,
+                    name: rawProgram.name,
+                    description: rawProgram.description,
+                    min_age: rawProgram.min_age,
+                    max_age: rawProgram.max_age,
+                    duration_minutes: rawProgram.duration_minutes,
+                    max_capacity: rawProgram.max_capacity,
+                    monthly_fee: rawProgram.monthly_fee_cents ?? null,
+                    yearly_fee: rawProgram.yearly_fee_cents ?? null,
+                }
+                : null;
+
+            const schedules = schedulesByClassId[classItem.id] || [];
+
             return {
                 id: classItem.id,
                 name: classItem.name,
                 description: classItem.description,
                 is_active: classItem.is_active,
-                program: Array.isArray(classItem.program) ? classItem.program[0] || null : classItem.program,
-                schedules: classSchedules.map(schedule => ({
-                    day_of_week: schedule.day_of_week,
-                    start_time: schedule.start_time
-                }))
+                program: normalizedProgram,
+                schedules,
             };
         });
+
+        const scheduleSummary = buildScheduleSummaryFromClasses(classes);
 
         return json<LoaderData>(
             { programs, classes, scheduleSummary },
@@ -455,7 +490,7 @@ export default function ClassesPage() {
                                 
                                 return hasGroupCapacity && hasMonthlyOrYearlyFee;
                             });
-                            
+
                             return filteredClasses.length > 0 ? (
                                 <div className="space-y-8">
                                     {filteredClasses.map((classItem) => (
