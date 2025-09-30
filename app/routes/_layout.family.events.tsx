@@ -27,7 +27,7 @@ type EventWithStudents = {
   start_time: string | null;
   end_time: string | null;
   location: string | null;
-  registration_fee: number | null;
+  registration_fee_cents: number | null;
   status: string;
   event_type: {
     id: string;
@@ -186,8 +186,49 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .select('id, first_name, last_name')
     .eq('family_id', profile.family_id);
 
-  // Get events that have registrations from this family
-  const { data: eventsWithRegistrations } = await supabaseServer
+  // Get event registrations for this family
+  const { data: registrations, error: registrationsError } = await supabaseServer
+    .from('event_registrations')
+    .select(`
+      id,
+      event_id,
+      student_id,
+      registration_status,
+      payment_required,
+      payment_amount_cents,
+      payment_id
+    `)
+    .eq('family_id', profile.family_id);
+
+  if (registrationsError) {
+    console.error('Error loading registrations:', {
+      error: registrationsError,
+      message: registrationsError.message,
+      details: registrationsError.details,
+      hint: registrationsError.hint,
+      code: registrationsError.code
+    });
+    throw new Response(`Failed to load registrations: ${registrationsError.message}`, { status: 500 });
+  }
+
+  if (!registrations || !students) {
+    throw new Response("Failed to load data", { status: 500 });
+  }
+
+  // Get unique event IDs from registrations
+  const eventIds = [...new Set(registrations.map(reg => reg.event_id))];
+
+  if (eventIds.length === 0) {
+    // No events registered, return empty
+    return json({
+      events: [],
+      familyName: family?.name || null,
+      pendingPaymentTotal: 0
+    });
+  }
+
+  // Get event details for registered events
+  const { data: eventsData, error: eventsError } = await supabaseServer
     .from('events')
     .select(`
       id,
@@ -198,7 +239,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       start_time,
       end_time,
       location,
-      registration_fee,
+      registration_fee_cents,
       status,
       event_type:event_types (
         id,
@@ -207,40 +248,57 @@ export async function loader({ request }: LoaderFunctionArgs) {
         color_class,
         border_class,
         dark_mode_class
-      ),
-      event_registrations!inner (
-        id,
-        student_id,
-        registration_status,
-        payment_required,
-        payment_amount,
-        payment_id,
-        payment:payments (
-          id,
-          status,
-          total_amount
-        )
       )
     `)
-    .eq('event_registrations.family_id', profile.family_id)
+    .in('id', eventIds)
     .order('start_date', { ascending: true });
 
-  if (!eventsWithRegistrations || !students) {
-    throw new Response("Failed to load data", { status: 500 });
+  if (eventsError) {
+    console.error('Error loading events:', eventsError);
+    throw new Response("Failed to load events", { status: 500 });
+  }
+
+  if (!eventsData) {
+    throw new Response("Failed to load events", { status: 500 });
+  }
+
+  // Collect all payment IDs to fetch payment data
+  const paymentIds = registrations
+    .map(reg => reg.payment_id)
+    .filter((id): id is string => id !== null);
+
+  // Fetch payment data
+  const paymentMap = new Map<string, { status: string }>();
+  if (paymentIds.length > 0) {
+    const { data: payments } = await supabaseServer
+      .from('payments')
+      .select('id, status')
+      .in('id', paymentIds);
+
+    if (payments) {
+      payments.forEach(payment => {
+        paymentMap.set(payment.id, { status: payment.status });
+      });
+    }
   }
 
   // Group events with student registration status
-  const events: EventWithStudents[] = eventsWithRegistrations.map((event) => {
+  const events: EventWithStudents[] = eventsData.map((event) => {
     const eventStudents = students.map((student) => {
-      const registration = event.event_registrations.find((reg) => reg.student_id === student.id);
-      
+      const registration = registrations.find((reg) =>
+        reg.event_id === event.id && reg.student_id === student.id
+      );
+      const paymentStatus = registration?.payment_id
+        ? paymentMap.get(registration.payment_id)?.status || null
+        : null;
+
       return {
         id: student.id,
         first_name: student.first_name,
         last_name: student.last_name,
         registration_status: (registration?.registration_status || 'not_registered') as EventWithStudents['students'][number]['registration_status'],
         payment_required: registration?.payment_required || false,
-        payment_status: registration?.payment?.status || null,
+        payment_status: paymentStatus as 'pending' | 'succeeded' | 'failed' | null,
         registration_id: registration?.id || null,
         payment_id: registration?.payment_id || null
       };
@@ -255,7 +313,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       start_time: event.start_time,
       end_time: event.end_time,
       location: event.location,
-      registration_fee: event.registration_fee,
+      registration_fee_cents: event.registration_fee_cents,
       status: event.status,
       event_type: event.event_type,
       students: eventStudents
@@ -417,11 +475,11 @@ export default function FamilyEventsPage() {
           )}
 
           {/* Registration Fee */}
-           {event.registration_fee && event.registration_fee > 0 && (
+           {event.registration_fee_cents && event.registration_fee_cents > 0 && (
              <div className="flex items-center gap-3">
                <DollarSign className="h-4 w-4 text-gray-500" />
                <span className="text-sm text-gray-900 dark:text-white">
-                 Registration Fee: ${event.registration_fee}
+                 Registration Fee: {formatMoney(fromCents(event.registration_fee_cents))}
                </span>
              </div>
            )}
