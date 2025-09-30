@@ -7,24 +7,28 @@ import PublicNavbar from "~/components/PublicNavbar";
 import FamilyNavbar from "~/components/FamilyNavbar";
 import AdminNavbar from "~/components/AdminNavbar";
 import Footer from "~/components/Footer";
-import { getSupabaseServerClient, isUserAdmin } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getUserRole } from "~/utils/supabase.server";
 import { getSiteData } from "~/utils/site-data.server";
 import { setSiteData } from "~/utils/site-data.client";
 import type { Database } from "~/types/database.types";
+import InstructorNavbar from "~/components/InstructorNavbar";
+import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
 
 
 export async function loader({ request }: LoaderFunctionArgs) {
     const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
     const { data: { session } } = await supabaseServer.auth.getSession();
-    let isAdmin = false;
+    let userRole: UserRole | null = null;
     if (session?.user) {
-        isAdmin = await isUserAdmin(session.user.id);
+        userRole = await getUserRole(session.user.id);
     }
+    const isAdmin = isAdminRole(userRole);
+    const isInstructor = isInstructorRole(userRole) || isAdmin;
     
     // Fetch site data for consistent information across all pages
     const siteData = await getSiteData();
     
-    return json({ session, ENV, isAdmin, siteData }, { headers });
+    return json({ session, ENV, userRole, isAdmin, isInstructor, siteData }, { headers });
 }
 
 // --- 1. MODIFIED: AuthTokenSender now accepts the supabase client as a prop ---
@@ -73,7 +77,7 @@ function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> | nu
 
 
 export default function Layout() {
-    const { session: serverSession, ENV, isAdmin, siteData } = useLoaderData<typeof loader>();
+    const { session: serverSession, ENV, userRole, isAdmin, isInstructor, siteData } = useLoaderData<typeof loader>();
     
     // Initialize client-side site data cache
     React.useEffect(() => {
@@ -84,6 +88,7 @@ export default function Layout() {
     const navigate = useNavigate();
     const isReceiptPage = location.pathname.startsWith('/family/receipt/');
     const isAdminRoute = location.pathname.startsWith('/admin');
+    const isInstructorRoute = location.pathname.startsWith('/instructor');
     const isFamilyRoute = location.pathname.startsWith('/family');
 
     // console.log(`Layout render ${serverSession}`);
@@ -127,14 +132,16 @@ export default function Layout() {
     const user = serverSession?.user;
 
     const renderNavbar = () => {
-        // ... (renderNavbar function is unchanged) ...
         if (isAdminRoute && user && isAdmin) {
             return <AdminNavbar />;
-        } else if (isFamilyRoute && user && !isAdmin) {
-            return <FamilyNavbar />;
-        } else {
-            return <PublicNavbar user={user} isAdmin={isAdmin} />;
         }
+        if (isInstructorRoute && user && (isInstructor || isAdmin)) {
+            return <InstructorNavbar />;
+        }
+        if (isFamilyRoute && user && !isAdmin) {
+            return <FamilyNavbar />;
+        }
+        return <PublicNavbar user={user} isAdmin={isAdmin} userRole={userRole} isInstructor={isInstructor} />;
     };
 
     // console.log(`Layout render ${supabase}`);

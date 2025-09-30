@@ -775,6 +775,10 @@ export async function getClassSessions(
     `);
 
   // Apply filters
+  if (filters.session_id) {
+    query = query.eq('id', filters.session_id);
+  }
+
   if (filters.class_id) {
     query = query.eq('class_id', filters.class_id);
   }
@@ -791,6 +795,10 @@ export async function getClassSessions(
 
   if (filters.status) {
     query = query.eq('status', filters.status);
+  }
+
+  if (filters.instructor_id) {
+    query = query.eq('instructor_id', filters.instructor_id);
   }
 
   query = query.order('session_date', { ascending: true });

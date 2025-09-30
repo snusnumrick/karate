@@ -19,6 +19,7 @@ import {
     LogOut,
     Menu,
     MessageSquare,
+    BookOpen,
     Package,
     Boxes,
     Receipt,
@@ -39,6 +40,7 @@ import {Button} from "~/components/ui/button"; // Import cn utility
 // Define navigation items for reuse
 const adminNavItems = [
     {to: "/admin", label: "Dashboard", icon: LayoutDashboard},
+    {to: "/instructor", label: "Instructor Portal", icon: BookOpen},
     {to: "/admin/waivers", label: "Waivers", icon: FileText},
     {to: "/admin/messages", label: "Messages", icon: MessageSquare},
     {to: "/admin/db-chat", label: "DB Chat", icon: Database},

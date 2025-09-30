@@ -1,11 +1,12 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
-type AttendanceRecord = {
+export type AttendanceRecord = {
   id?: string;
   student_id: string;
   class_session_id: string;
   status: 'present' | 'absent' | 'excused' | 'late';
   notes?: string;
+  marked_by?: string;
 };
 
 type AttendanceWithStudent = AttendanceRecord & {
@@ -55,7 +56,8 @@ export async function getAttendanceBySession(
     student_id: record.student_id,
     class_session_id: record.class_session_id!,
     status: record.status as 'present' | 'absent' | 'excused' | 'late',
-    notes: record.notes || undefined
+    notes: record.notes || undefined,
+    marked_by: record.marked_by ?? undefined,
   }));
 }
 
@@ -109,6 +111,7 @@ export async function getAttendanceByStudent(
     class_session_id: record.class_session_id!,
     status: record.status as 'present' | 'absent' | 'excused' | 'late',
     notes: record.notes || undefined,
+    marked_by: record.marked_by ?? undefined,
     class_sessions: record.class_sessions
   }));
 }
@@ -150,6 +153,7 @@ export async function getAttendanceByDateRange(
     class_session_id: record.class_session_id!,
     status: record.status as 'present' | 'absent' | 'excused' | 'late',
     notes: record.notes || undefined,
+    marked_by: record.marked_by ?? undefined,
     students: record.students
   }));
 }
@@ -159,8 +163,9 @@ export async function getAttendanceByDateRange(
  */
 export async function recordSessionAttendance(
   sessionId: string,
-  attendanceRecords: Omit<AttendanceRecord, 'class_session_id'>[],
-  supabase = getSupabaseAdminClient()
+  attendanceRecords: Omit<AttendanceRecord, 'class_session_id' | 'marked_by'>[],
+  supabase = getSupabaseAdminClient(),
+  recordedBy?: string | null
 ): Promise<AttendanceRecord[]> {
   // First, delete existing attendance records for this session
   const { error: deleteError } = await supabase
@@ -178,7 +183,8 @@ export async function recordSessionAttendance(
     student_id: record.student_id,
     class_session_id: sessionId,
     status: record.status,
-    notes: record.notes || null
+    notes: record.notes || null,
+    marked_by: recordedBy ?? null,
   }));
 
   const { data, error } = await supabase
@@ -196,8 +202,50 @@ export async function recordSessionAttendance(
     student_id: record.student_id,
     class_session_id: record.class_session_id!,
     status: record.status as 'present' | 'absent' | 'excused' | 'late',
-    notes: record.notes || undefined
+    notes: record.notes || undefined,
+    marked_by: record.marked_by ?? undefined,
   }));
+}
+
+export async function getAttendanceForSessions(
+  sessionIds: string[],
+  supabase = getSupabaseAdminClient()
+): Promise<Record<string, AttendanceRecord[]>> {
+  if (sessionIds.length === 0) {
+    return {};
+  }
+
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .in('class_session_id', sessionIds);
+
+  if (error) {
+    console.error('Error fetching attendance for sessions:', error);
+    throw new Error(`Failed to fetch attendance: ${error.message}`);
+  }
+
+  const grouped: Record<string, AttendanceRecord[]> = {};
+
+  for (const record of data ?? []) {
+    const sessionId = record.class_session_id;
+    if (!sessionId) continue;
+
+    if (!grouped[sessionId]) {
+      grouped[sessionId] = [];
+    }
+
+    grouped[sessionId].push({
+      id: record.id,
+      student_id: record.student_id,
+      class_session_id: sessionId,
+      status: record.status as 'present' | 'absent' | 'excused' | 'late',
+      notes: record.notes ?? undefined,
+      marked_by: record.marked_by ?? undefined,
+    });
+  }
+
+  return grouped;
 }
 
 /**

@@ -11,6 +11,7 @@ import {
 } from "@remix-run/react";
 import {type SupabaseClient} from '@supabase/supabase-js';
 import {getSupabaseAdminClient,checkStudentEligibility} from '~/utils/supabase.server';
+import { requireAdminUser } from '~/utils/auth.server';
 import type {Database} from "~/types/database.types";
 import type {ClassSession} from "~/types/multi-class";
 import {getClassSessions} from "~/services/class.server";
@@ -206,6 +207,7 @@ export async function loader({request}: LoaderFunctionArgs) {
 export async function action({request}: ActionFunctionArgs) {
     console.log("Entering /admin/attendance/record action...");
     await csrf.validate(request);
+    const adminUser = await requireAdminUser(request);
     const formData = await request.formData();
     const sessionId = formData.get("sessionId") as string;
     const studentIds = formData.getAll("studentId") as string[];
@@ -249,7 +251,8 @@ export async function action({request}: ActionFunctionArgs) {
                 status: record.status as 'present' | 'absent' | 'excused' | 'late',
                 notes: record.notes || undefined
             })),
-            supabaseAdmin
+            supabaseAdmin,
+            adminUser.id
         );
 
         // Handle individual session usage for present students

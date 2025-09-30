@@ -218,10 +218,12 @@ export interface EnrollmentFilters {
 }
 
 export interface SessionFilters {
+  session_id?: string;
   class_id?: string;
   session_date_from?: string;
   session_date_to?: string;
   status?: 'scheduled' | 'completed' | 'cancelled';
+  instructor_id?: string;
 }
 
 // Calendar and scheduling types

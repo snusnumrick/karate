@@ -3,6 +3,8 @@ import {createClient} from "@supabase/supabase-js"; // Import standard client
 import type {SupabaseClient as SupabaseClientType} from "@supabase/supabase-js";
 import type {Database} from "~/types/database.types";
 import type { EligibilityStatus } from '~/types/payment';
+import type { UserRole } from '~/types/auth';
+import { isAdminRole } from '~/types/auth';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import {addMoney, Money, toCents} from "./money";
 
@@ -87,33 +89,34 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
     return {supabaseServer, supabaseClient, response, ENV};
 }
 
-export async function isUserAdmin(userId: string): Promise<boolean> {
-    if (!userId) return false;
+export async function getUserRole(userId: string): Promise<UserRole | null> {
+    if (!userId) return null;
 
-    // Use the standard Supabase client with the service role key for admin checks
-    // This avoids needing a Request object when checking roles internally.
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        // Throw an error for missing configuration
-        throw new Error('Missing Supabase environment variables (URL or Service Role Key) required for admin check.');
+        throw new Error('Missing Supabase environment variables (URL or Service Role Key) required to fetch user role.');
     }
 
-    // Use the centralized admin client function
     const supabaseAdmin = getSupabaseAdminClient();
 
-    const {data, error} = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
 
     if (error || !data) {
-        return false;
+        return null;
     }
 
-    return data.role === 'admin';
+    return data.role;
+}
+
+export async function isUserAdmin(userId: string): Promise<boolean> {
+    const role = await getUserRole(userId);
+    return isAdminRole(role);
 }
 
 // Renamed from createPaymentSession - This function ONLY creates the initial DB record.

@@ -7,14 +7,21 @@ import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "./ui/too
 import {LogOut, Menu, Sun, X} from "lucide-react";
 import type { Session } from "@supabase/auth-helpers-remix";
 import {ClientOnly} from './client-only';
+import type { UserRole } from '~/types/auth';
+import { isFamilyRole } from '~/types/auth';
 
 interface PublicNavbarProps {
     user?: Session['user'] | null;
     isAdmin?: boolean;
+    userRole?: UserRole | null;
+    isInstructor?: boolean;
 }
 
-export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
+export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: PublicNavbarProps) {
     const [isOpen, setIsOpen] = React.useState(false);
+    const showFamilyPortal = !!user && isFamilyRole(userRole ?? null);
+    const showInstructorPortal = !!user && (isInstructor || false);
+    const showAdminPanel = !!user && (isAdmin || false);
 
     return (
         <TooltipProvider delayDuration={100}>
@@ -47,10 +54,13 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
                             )}
                             <NavLink to="/contact">Contact</NavLink>
                             <NavLink to="/pwa">PWA</NavLink>
-                            {user && !isAdmin && (
+                            {showFamilyPortal && (
                                 <NavLink to="/family">Family Portal</NavLink>
                             )}
-                            {user && isAdmin && (
+                            {showInstructorPortal && (
+                                <NavLink to="/instructor">Instructor Portal</NavLink>
+                            )}
+                            {showAdminPanel && (
                                 <NavLink to="/admin">Admin Panel</NavLink>
                             )}
                         </nav>
@@ -141,12 +151,17 @@ export default function PublicNavbar({ user, isAdmin }: PublicNavbarProps) {
                                             {/* Mobile Auth Links */}
                                             {user ? (
                                                 <>
-                                                    {!isAdmin && (
+                                                    {showFamilyPortal && (
                                                         <MobileNavLink to="/family" onClick={() => setIsOpen(false)}>
                                                             Family Portal
                                                         </MobileNavLink>
                                                     )}
-                                                    {isAdmin && (
+                                                    {showInstructorPortal && (
+                                                        <MobileNavLink to="/instructor" onClick={() => setIsOpen(false)}>
+                                                            Instructor Portal
+                                                        </MobileNavLink>
+                                                    )}
+                                                    {showAdminPanel && (
                                                         <MobileNavLink to="/admin" onClick={() => setIsOpen(false)}>
                                                             Admin Panel
                                                         </MobileNavLink>

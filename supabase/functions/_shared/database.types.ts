@@ -21,6 +21,7 @@ export type Database = {
           notes: string | null
           status: string
           student_id: string
+          marked_by: string | null
         }
         Insert: {
           class_session_id?: string | null
@@ -28,6 +29,7 @@ export type Database = {
           notes?: string | null
           status?: string
           student_id: string
+          marked_by?: string | null
         }
         Update: {
           class_session_id?: string | null
@@ -35,6 +37,7 @@ export type Database = {
           notes?: string | null
           status?: string
           student_id?: string
+          marked_by?: string | null
         }
         Relationships: [
           {
@@ -49,6 +52,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2251,7 +2261,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
-          role: string
+          role: Database["public"]["Enums"]["profile_role"]
         }
         Insert: {
           email: string
@@ -2259,7 +2269,7 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
-          role?: string
+          role?: Database["public"]["Enums"]["profile_role"]
         }
         Update: {
           email?: string
@@ -2267,7 +2277,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
-          role?: string
+          role?: Database["public"]["Enums"]["profile_role"]
         }
         Relationships: [
           {
@@ -2963,6 +2973,7 @@ export type Database = {
         | "other"
         | "store_purchase"
         | "event_registration"
+      profile_role: "user" | "instructor" | "admin"
       registration_status_enum:
         | "pending"
         | "confirmed"
@@ -3213,6 +3224,11 @@ export const Constants = {
         "other",
         "store_purchase",
         "event_registration",
+      ],
+      profile_role: [
+        "user",
+        "instructor",
+        "admin",
       ],
       registration_status_enum: [
         "pending",
