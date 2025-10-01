@@ -1,6 +1,6 @@
 import { json, LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation, useSearchParams, Link } from "@remix-run/react";
-import { useState } from "react";
+import { useLoaderData, Form, useNavigation, useSearchParams, Link, useActionData } from "@remix-run/react";
+import { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Label } from "~/components/ui/label";
 import { Input } from "~/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { CheckCircle, Clock, AlertCircle, Users, Plus, Edit, Trash2 } from "lucide-react";
 import { formatDate } from "~/utils/misc";
@@ -104,7 +104,12 @@ export async function action({ request }: ActionFunctionArgs) {
     case "drop": {
       const id = formData.get("id") as string;
       // const reason = formData.get("reason") as string;
-      
+
+      if (!id || id === "null" || id === "") {
+        console.error("Drop student failed: invalid ID received:", id);
+        return json({ error: "Invalid enrollment ID" }, { status: 400 });
+      }
+
       await dropStudent(id);
       return json({ success: true });
     }
@@ -121,14 +126,23 @@ function getStudentName(enrollment: EnrollmentWithEligibility): string {
 
 export default function AdminEnrollments() {
   const { enrollments, classes, programs, stats, filters } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentWithEligibility | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteEnrollmentId, setDeleteEnrollmentId] = useState<string | null>(null);
-  
+
   const isSubmitting = navigation.state === "submitting";
+
+  // Close dialog after successful submission
+  useEffect(() => {
+    if (actionData && "success" in actionData && actionData.success && navigation.state === "idle") {
+      setDeleteEnrollmentId(null);
+      setIsEditDialogOpen(false);
+    }
+  }, [actionData, navigation.state]);
   
   const handleFilterChange = (key: string, value: string) => {
     if (value === "all" || value === "") {
@@ -484,20 +498,18 @@ export default function AdminEnrollments() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <Form method="post" onSubmit={() => setDeleteEnrollmentId(null)}>
+            <Form method="post">
               <AuthenticityTokenInput />
               <input type="hidden" name="intent" value="drop" />
-              {deleteEnrollmentId && (
-                <input type="hidden" name="id" value={deleteEnrollmentId} />
-              )}
+              <input type="hidden" name="id" value={deleteEnrollmentId ?? ""} />
               <input type="hidden" name="reason" value="Admin action" />
-              <AlertDialogAction
-                 type="submit"
-                 disabled={isSubmitting}
-                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-               >
-                 {isSubmitting ? 'Dropping...' : 'Drop Student'}
-               </AlertDialogAction>
+              <button
+                type="submit"
+                disabled={isSubmitting || !deleteEnrollmentId}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isSubmitting ? 'Dropping...' : 'Drop Student'}
+              </button>
             </Form>
           </AlertDialogFooter>
         </AlertDialogContent>
