@@ -18,26 +18,26 @@ export type Database = {
         Row: {
           class_session_id: string | null
           id: string
-          notes: string | null
-          status: string
-          student_id: string
           marked_by: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["attendance_status_enum"]
+          student_id: string
         }
         Insert: {
           class_session_id?: string | null
           id?: string
-          notes?: string | null
-          status?: string
-          student_id: string
           marked_by?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["attendance_status_enum"]
+          student_id: string
         }
         Update: {
           class_session_id?: string | null
           id?: string
-          notes?: string | null
-          status?: string
-          student_id?: string
           marked_by?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["attendance_status_enum"]
+          student_id?: string
         }
         Relationships: [
           {
@@ -48,17 +48,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "attendance_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "attendance_marked_by_fkey"
             columns: ["marked_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -192,7 +192,7 @@ export type Database = {
           notes: string | null
           session_date: string
           start_time: string
-          status: string
+          status: Database["public"]["Enums"]["class_session_status_enum"]
           updated_at: string
         }
         Insert: {
@@ -204,7 +204,7 @@ export type Database = {
           notes?: string | null
           session_date: string
           start_time: string
-          status?: string
+          status?: Database["public"]["Enums"]["class_session_status_enum"]
           updated_at?: string
         }
         Update: {
@@ -216,7 +216,7 @@ export type Database = {
           notes?: string | null
           session_date?: string
           start_time?: string
-          status?: string
+          status?: Database["public"]["Enums"]["class_session_status_enum"]
           updated_at?: string
         }
         Relationships: [
@@ -552,7 +552,7 @@ export type Database = {
           created_by: string | null
           current_uses: number
           description: string | null
-          discount_type: string
+          discount_type: Database["public"]["Enums"]["discount_type_enum"]
           discount_value: number
           discount_value_cents: number
           family_id: string | null
@@ -560,10 +560,10 @@ export type Database = {
           is_active: boolean
           max_uses: number | null
           name: string
-          scope: string
+          scope: Database["public"]["Enums"]["discount_scope_enum"]
           student_id: string | null
           updated_at: string
-          usage_type: string
+          usage_type: Database["public"]["Enums"]["discount_usage_type_enum"]
           valid_from: string
           valid_until: string | null
         }
@@ -575,7 +575,7 @@ export type Database = {
           created_by?: string | null
           current_uses?: number
           description?: string | null
-          discount_type: string
+          discount_type: Database["public"]["Enums"]["discount_type_enum"]
           discount_value: number
           discount_value_cents?: number
           family_id?: string | null
@@ -583,10 +583,10 @@ export type Database = {
           is_active?: boolean
           max_uses?: number | null
           name: string
-          scope: string
+          scope: Database["public"]["Enums"]["discount_scope_enum"]
           student_id?: string | null
           updated_at?: string
-          usage_type: string
+          usage_type: Database["public"]["Enums"]["discount_usage_type_enum"]
           valid_from?: string
           valid_until?: string | null
         }
@@ -598,7 +598,7 @@ export type Database = {
           created_by?: string | null
           current_uses?: number
           description?: string | null
-          discount_type?: string
+          discount_type?: Database["public"]["Enums"]["discount_type_enum"]
           discount_value?: number
           discount_value_cents?: number
           family_id?: string | null
@@ -606,10 +606,10 @@ export type Database = {
           is_active?: boolean
           max_uses?: number | null
           name?: string
-          scope?: string
+          scope?: Database["public"]["Enums"]["discount_scope_enum"]
           student_id?: string | null
           updated_at?: string
-          usage_type?: string
+          usage_type?: Database["public"]["Enums"]["discount_usage_type_enum"]
           valid_from?: string
           valid_until?: string | null
         }
@@ -681,45 +681,45 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
-          discount_type: string
+          discount_type: Database["public"]["Enums"]["discount_type_enum"]
           discount_value: number
           id: string
           is_active: boolean
           max_uses: number | null
           name: string
-          scope: string
+          scope: Database["public"]["Enums"]["discount_scope_enum"]
           updated_at: string
-          usage_type: string
+          usage_type: Database["public"]["Enums"]["discount_usage_type_enum"]
         }
         Insert: {
           applicable_to: Database["public"]["Enums"]["payment_type_enum"][]
           created_at?: string
           created_by?: string | null
           description?: string | null
-          discount_type: string
+          discount_type: Database["public"]["Enums"]["discount_type_enum"]
           discount_value: number
           id?: string
           is_active?: boolean
           max_uses?: number | null
           name: string
-          scope: string
+          scope: Database["public"]["Enums"]["discount_scope_enum"]
           updated_at?: string
-          usage_type: string
+          usage_type: Database["public"]["Enums"]["discount_usage_type_enum"]
         }
         Update: {
           applicable_to?: Database["public"]["Enums"]["payment_type_enum"][]
           created_at?: string
           created_by?: string | null
           description?: string | null
-          discount_type?: string
+          discount_type?: Database["public"]["Enums"]["discount_type_enum"]
           discount_value?: number
           id?: string
           is_active?: boolean
           max_uses?: number | null
           name?: string
-          scope?: string
+          scope?: Database["public"]["Enums"]["discount_scope_enum"]
           updated_at?: string
-          usage_type?: string
+          usage_type?: Database["public"]["Enums"]["discount_usage_type_enum"]
         }
         Relationships: []
       }
@@ -804,7 +804,6 @@ export type Database = {
           family_id: string
           id: string
           notes: string | null
-          payment_amount: number | null
           payment_amount_cents: number | null
           payment_id: string | null
           payment_required: boolean | null
@@ -820,7 +819,6 @@ export type Database = {
           family_id: string
           id?: string
           notes?: string | null
-          payment_amount?: number | null
           payment_amount_cents?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
@@ -836,7 +834,6 @@ export type Database = {
           family_id?: string
           id?: string
           notes?: string | null
-          payment_amount?: number | null
           payment_amount_cents?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
@@ -2878,6 +2875,7 @@ export type Database = {
       }
     }
     Enums: {
+      attendance_status_enum: "present" | "absent" | "excused" | "late"
       belt_rank_enum:
         | "white"
         | "yellow"
@@ -2888,6 +2886,11 @@ export type Database = {
         | "red"
         | "brown"
         | "black"
+      class_session_status_enum:
+        | "scheduled"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
       day_of_week:
         | "monday"
         | "tuesday"
@@ -2904,6 +2907,9 @@ export type Database = {
         | "family_referral"
         | "birthday"
         | "seasonal_promotion"
+      discount_scope_enum: "per_student" | "per_family"
+      discount_type_enum: "fixed_amount" | "percentage"
+      discount_usage_type_enum: "one_time" | "ongoing"
       eligibility_reason_enum:
         | "eligible"
         | "event_not_found"
@@ -3118,6 +3124,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      attendance_status_enum: ["present", "absent", "excused", "late"],
       belt_rank_enum: [
         "white",
         "yellow",
@@ -3128,6 +3135,12 @@ export const Constants = {
         "red",
         "brown",
         "black",
+      ],
+      class_session_status_enum: [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
       ],
       day_of_week: [
         "monday",
@@ -3147,6 +3160,9 @@ export const Constants = {
         "birthday",
         "seasonal_promotion",
       ],
+      discount_scope_enum: ["per_student", "per_family"],
+      discount_type_enum: ["fixed_amount", "percentage"],
+      discount_usage_type_enum: ["one_time", "ongoing"],
       eligibility_reason_enum: [
         "eligible",
         "event_not_found",
@@ -3225,11 +3241,7 @@ export const Constants = {
         "store_purchase",
         "event_registration",
       ],
-      profile_role: [
-        "user",
-        "instructor",
-        "admin",
-      ],
+      profile_role: ["user", "instructor", "admin"],
       registration_status_enum: [
         "pending",
         "confirmed",
