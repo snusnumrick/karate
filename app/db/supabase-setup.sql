@@ -58,6 +58,16 @@ $$
     END
 $$;
 
+-- Create profile role enum (user, instructor, admin)
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'profile_role') THEN
+            CREATE TYPE profile_role AS ENUM ('user', 'instructor', 'admin');
+        END IF;
+    END
+$$;
+
 
 -- Create payment_type enum type if it doesn't exist
 DO
@@ -338,9 +348,9 @@ $$
                          AND tablename = 'products') THEN
             CREATE POLICY "Allow admins to manage products" ON public.products
                 FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
                 ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
                 );
         END IF;
     END
@@ -411,9 +421,9 @@ $$
                          AND tablename = 'product_variants') THEN
             CREATE POLICY "Allow admins to manage product variants" ON public.product_variants
                 FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
                 ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
                 );
         END IF;
     END
@@ -489,9 +499,9 @@ $$
                          AND tablename = 'orders') THEN
             CREATE POLICY "Allow admins to manage orders" ON public.orders
                 FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
                 ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
                 );
         END IF;
     END
@@ -566,9 +576,9 @@ $$
                          AND tablename = 'order_items') THEN
             CREATE POLICY "Allow admins to manage order items" ON public.order_items
                 FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
                 ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
                 );
         END IF;
     END
@@ -991,7 +1001,7 @@ CREATE TABLE IF NOT EXISTS profiles
 (
     id         uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
     email      text NOT NULL,
-    role       text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'instructor')),
+    role       profile_role NOT NULL DEFAULT 'user'::profile_role,
     family_id  uuid REFERENCES families (id) ON DELETE SET NULL,
     -- Add first_name and last_name columns
     first_name text NULL,
@@ -1017,6 +1027,36 @@ IF NOT EXISTS (SELECT 1
 CREATE INDEX idx_profiles_family_id ON profiles (family_id);
 END IF;
 END $$;
+
+-- Ensure profiles.role uses profile_role enum even if pre-existing
+DO
+$$
+    BEGIN
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'profiles'
+              AND column_name = 'role'
+              AND udt_name <> 'profile_role'
+        ) THEN
+            ALTER TABLE public.profiles
+                ADD COLUMN IF NOT EXISTS role_tmp profile_role DEFAULT 'user'::profile_role;
+
+            UPDATE public.profiles
+            SET role_tmp = COALESCE(NULLIF(trim(role::text), ''), 'user')::profile_role;
+
+            ALTER TABLE public.profiles
+                ALTER COLUMN role_tmp SET NOT NULL;
+
+            ALTER TABLE public.profiles
+                DROP COLUMN role;
+
+            ALTER TABLE public.profiles
+                RENAME COLUMN role_tmp TO role;
+        END IF;
+    END
+$$;
 
 -- Drop existing triggers first to avoid conflicts when recreating
 DROP TRIGGER IF EXISTS families_updated ON families;
@@ -1063,6 +1103,12 @@ ALTER TABLE belt_awards
     ENABLE ROW LEVEL SECURITY; -- Renamed table
 ALTER TABLE attendance
     ENABLE ROW LEVEL SECURITY;
+-- Ensure attendance table tracks who marked attendance
+ALTER TABLE public.attendance
+    ADD COLUMN IF NOT EXISTS marked_by uuid REFERENCES public.profiles(id);
+
+COMMENT ON COLUMN public.attendance.marked_by IS 'User (instructor/admin) who recorded the attendance entry';
+
 ALTER TABLE waivers
     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waiver_signatures
@@ -1108,12 +1154,12 @@ CREATE POLICY "Allow admins to manage tax rates" ON public.tax_rates
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -1195,12 +1241,12 @@ CREATE POLICY "Allow admins to manage payment taxes" ON public.payment_taxes
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -1226,7 +1272,7 @@ CREATE POLICY "Profiles viewable by user, admin, or instructor" ON public.profil
     FOR SELECT USING (
     auth.uid() = id -- Can view own profile
         OR
-    EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('admin', 'instructor')) -- Admins and instructors can view all profiles
+    EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('admin'::profile_role, 'instructor'::profile_role)) -- Admins and instructors can view all profiles
     );
 END IF;
 
@@ -1263,7 +1309,7 @@ CREATE POLICY "Admins can view all families" ON families
     EXISTS (SELECT 1
             FROM profiles
             WHERE profiles.id = auth.uid()
-              AND profiles.role = 'admin')
+              AND profiles.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -1277,12 +1323,12 @@ CREATE POLICY "Admins can manage all families" ON families
     EXISTS (SELECT 1
             FROM profiles
             WHERE profiles.id = auth.uid()
-              AND profiles.role = 'admin')
+              AND profiles.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM profiles
             WHERE profiles.id = auth.uid()
-              AND profiles.role = 'admin')
+              AND profiles.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -1398,11 +1444,11 @@ CREATE POLICY "Admins can manage all attendance" ON attendance
     USING (EXISTS (SELECT 1
                    FROM profiles
                    WHERE profiles.id = auth.uid()
-                     AND profiles.role = 'admin'))
+                     AND profiles.role = 'admin'::profile_role))
     WITH CHECK (EXISTS (SELECT 1
                         FROM profiles
                         WHERE profiles.id = auth.uid()
-                          AND profiles.role = 'admin'));
+                          AND profiles.role = 'admin'::profile_role));
 END IF;
 
 IF NOT EXISTS (SELECT 1
@@ -1429,13 +1475,13 @@ CREATE POLICY "Instructors can manage attendance for their sessions" ON attendan
                    FROM profiles
                             JOIN class_sessions cs ON cs.instructor_id = profiles.id
                    WHERE profiles.id = auth.uid()
-                     AND profiles.role = 'instructor'
+                     AND profiles.role = 'instructor'::profile_role
                      AND cs.id = attendance.class_session_id))
     WITH CHECK (EXISTS (SELECT 1
                         FROM profiles
                                  JOIN class_sessions cs ON cs.instructor_id = profiles.id
                         WHERE profiles.id = auth.uid()
-                          AND profiles.role = 'instructor'
+                          AND profiles.role = 'instructor'::profile_role
                           AND cs.id = attendance.class_session_id));
 END IF;
 
@@ -1481,7 +1527,7 @@ CREATE POLICY "Admins can manage waiver signatures" ON waiver_signatures
     USING (EXISTS (SELECT 1
                    FROM profiles
                    WHERE profiles.id = auth.uid()
-                     AND profiles.role = 'admin'));
+                     AND profiles.role = 'admin'::profile_role));
 END IF;
 END $$;
 
@@ -1623,12 +1669,12 @@ CREATE POLICY "Allow admins to manage all sessions" ON public.one_on_one_session
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -1708,12 +1754,12 @@ CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_sessio
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -1891,7 +1937,7 @@ CREATE POLICY "Allow participants to view conversations" ON public.conversations
         SELECT 1
         FROM public.profiles p
         WHERE p.id = auth.uid()
-          AND p.role = 'admin')
+          AND p.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -1919,7 +1965,7 @@ CREATE POLICY "Allow users to view their own participation" ON public.conversati
         SELECT 1
         FROM public.profiles p
         WHERE p.id = auth.uid()
-          AND p.role = 'admin')
+          AND p.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -1943,7 +1989,7 @@ CREATE POLICY "Allow admins to insert participants" ON public.conversation_parti
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -1963,7 +2009,7 @@ CREATE POLICY "Allow participants to view messages" ON public.messages
         SELECT 1
         FROM public.profiles p
         WHERE p.id = auth.uid()
-          AND p.role = 'admin')
+          AND p.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -1992,7 +2038,7 @@ CREATE POLICY "Allow admins to delete messages" ON public.messages
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -2045,7 +2091,7 @@ VALUES (new_conversation_id, p_sender_id);
 FOR admin_instructor_id IN
 SELECT id
 FROM public.profiles
-WHERE role IN ('admin', 'instructor')
+WHERE role IN ('admin'::profile_role, 'instructor'::profile_role)
     LOOP
 -- Use INSERT ... ON CONFLICT DO NOTHING to avoid errors if a user is both sender and admin/instructor
 INSERT INTO public.conversation_participants (conversation_id, user_id)
@@ -2467,7 +2513,7 @@ WITH RelevantConversations AS (SELECT c.id, c.subject, c.last_message_at
                                      FROM public.conversation_participants cp
                                               JOIN public.profiles p ON cp.user_id = p.id
                                      WHERE cp.conversation_id = rc.id
-                                       AND p.role IN ('admin', 'instructor')
+                                       AND p.role IN ('admin'::profile_role, 'instructor'::profile_role)
                                        AND cp.last_read_at < rc.last_message_at) as status_flag -- This is now a boolean
                       FROM RelevantConversations rc)
 SELECT rc.id,
@@ -2546,7 +2592,7 @@ WITH UserConversations AS (
                         pd.last_name,
                     -- Role if admin/instructor and name missing
                         CASE
-                            WHEN pd.role IN ('admin', 'instructor') THEN initcap(pd.role) -- Capitalize role
+                            WHEN pd.role IN ('admin'::profile_role, 'instructor'::profile_role) THEN initcap(pd.role) -- Capitalize role
                             ELSE NULL
                             END,
                     -- Email prefix as fallback
@@ -2769,12 +2815,12 @@ CREATE POLICY "Allow admins to manage discount codes" ON public.discount_codes
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -2844,7 +2890,7 @@ CREATE POLICY "Allow admins to view all discount usage" ON public.discount_code_
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -2930,12 +2976,12 @@ CREATE POLICY "Allow admins to manage discount templates" ON public.discount_tem
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -3193,12 +3239,12 @@ CREATE POLICY "Allow admins to manage discount events" ON public.discount_events
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -3297,12 +3343,12 @@ CREATE POLICY "Allow admins to manage automation rules" ON public.discount_autom
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -3324,12 +3370,12 @@ CREATE POLICY "Allow admins to manage automation rule discount templates" ON pub
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -3419,12 +3465,12 @@ CREATE POLICY "Allow admins to manage discount assignments" ON public.discount_a
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 
@@ -3727,12 +3773,12 @@ CREATE POLICY "Allow admins to manage programs" ON public.programs
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -3763,12 +3809,12 @@ CREATE POLICY "Allow admins to manage classes" ON public.classes
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -3837,12 +3883,12 @@ CREATE POLICY "Allow admins to manage class schedules" ON public.class_schedules
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -3881,12 +3927,12 @@ CREATE POLICY "Allow admins to manage class sessions" ON public.class_sessions
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -4017,12 +4063,12 @@ CREATE POLICY "Allow admins to manage enrollments" ON public.enrollments
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     ) WITH CHECK (
     EXISTS (SELECT 1
             FROM public.profiles p
             WHERE p.id = auth.uid()
-              AND p.role = 'admin')
+              AND p.role = 'admin'::profile_role)
     );
 END IF;
 END $$;
@@ -4523,9 +4569,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow admins to manage push subscriptions' AND tablename = 'push_subscriptions') THEN
         CREATE POLICY "Allow admins to manage push subscriptions" ON public.push_subscriptions
             FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
             ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
             );
     END IF;
 END
@@ -5548,7 +5594,7 @@ BEGIN
                 EXISTS (
                     SELECT 1 FROM profiles 
                     WHERE profiles.id = auth.uid() 
-                    AND profiles.role = 'admin'
+                    AND profiles.role = 'admin'::profile_role
                 )
             );
     END IF;
@@ -5561,7 +5607,7 @@ BEGIN
                 EXISTS (
                     SELECT 1 FROM profiles 
                     WHERE profiles.id = auth.uid() 
-                    AND profiles.role IN ('admin', 'instructor')
+                    AND profiles.role IN ('admin'::profile_role, 'instructor'::profile_role)
                 )
             );
     END IF;
@@ -5596,7 +5642,7 @@ BEGIN
                 EXISTS (
                     SELECT 1 FROM profiles 
                     WHERE profiles.id = auth.uid() 
-                    AND profiles.role = 'admin'
+                    AND profiles.role = 'admin'::profile_role
                 )
             );
     END IF;
@@ -5618,7 +5664,7 @@ BEGIN
                 EXISTS (
                     SELECT 1 FROM profiles 
                     WHERE profiles.id = auth.uid() 
-                    AND profiles.role = 'admin'
+                    AND profiles.role = 'admin'::profile_role
                 )
             );
     END IF;
