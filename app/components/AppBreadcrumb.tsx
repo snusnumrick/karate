@@ -195,6 +195,17 @@ export const breadcrumbPatterns = {
     { label: "Messages", href: "/admin/messages" },
     { label: conversationTitle || "Conversation", current: true },
   ],
+
+  instructorMessages: () => [
+    { label: "Instructor Portal", href: "/instructor" },
+    { label: "Messages", current: true },
+  ],
+
+  instructorMessageConversation: (conversationTitle?: string) => [
+    { label: "Instructor Portal", href: "/instructor" },
+    { label: "Messages", href: "/instructor/messages" },
+    { label: conversationTitle || "Conversation", current: true },
+  ],
   
   adminPayments: () => [
     { label: "Admin Dashboard", href: "/admin" },

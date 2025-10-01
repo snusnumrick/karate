@@ -12,6 +12,7 @@ import {
   Home,
   LogOut,
   Menu,
+  MessageSquare,
   NotebookText,
   Sun,
   Users,
@@ -22,6 +23,7 @@ const instructorNavItems = [
   { to: '/instructor', label: 'Dashboard', icon: Home },
   { to: '/instructor/sessions', label: 'Schedule', icon: CalendarDays },
   { to: '/instructor/attendance', label: 'Attendance', icon: CheckSquare },
+  { to: '/instructor/messages', label: 'Messages', icon: MessageSquare },
   { to: '/instructor/students', label: 'Students', icon: Users },
   { to: '/instructor/resources', label: 'Materials', icon: NotebookText },
 ] as const;

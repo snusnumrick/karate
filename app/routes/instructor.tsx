@@ -1,10 +1,17 @@
-import { Outlet, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
+import { Outlet, useLoaderData, useMatches, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
+import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseServerClient, getUserRole } from '~/utils/supabase.server';
 import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
+import InstructorNavbar from '~/components/InstructorNavbar';
+import InstructorFooter from '~/components/InstructorFooter';
+import { AppBreadcrumb, type BreadcrumbItem } from '~/components/AppBreadcrumb';
+import { createBrowserClient } from '@supabase/auth-helpers-remix';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '~/types/database.types';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer, response } = getSupabaseServerClient(request);
+  const { supabaseServer, response, ENV } = getSupabaseServerClient(request);
   const { data: { user } } = await supabaseServer.auth.getUser();
   const headers = Object.fromEntries(response.headers);
 
@@ -18,21 +25,85 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return redirect('/', { headers });
   }
 
-  return json({ role }, { headers });
+  return json({ role, ENV }, { headers });
 }
 
+type InstructorRouteHandle = {
+  breadcrumb?: (data: unknown) => BreadcrumbItem[];
+};
+
+export type InstructorOutletContext = {
+  role: UserRole;
+  supabase: SupabaseClient<Database> | null;
+};
+
 export default function InstructorLayout() {
-  const { role } = useLoaderData<typeof loader>();
+  const { role, ENV } = useLoaderData<typeof loader>();
+  const matches = useMatches();
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
+
+  useEffect(() => {
+    const url = ENV?.SUPABASE_URL;
+    const anonKey = ENV?.SUPABASE_ANON_KEY;
+    if (!url || !anonKey) {
+      console.warn('InstructorLayout missing Supabase environment configuration.');
+      return;
+    }
+
+    const client = createBrowserClient<Database, 'public'>(url, anonKey) as unknown as SupabaseClient<Database>;
+    setSupabase(client);
+  }, [ENV?.SUPABASE_URL, ENV?.SUPABASE_ANON_KEY]);
+
+  const breadcrumbItems = useMemo(() => {
+    const childSegments = matches
+      .filter((match) => match.id !== 'routes/instructor' && match.id.startsWith('routes/instructor'))
+      .flatMap((match) => {
+        const handle = match.handle as InstructorRouteHandle | undefined;
+        if (!handle?.breadcrumb) return [] as BreadcrumbItem[];
+        try {
+          const crumbs = handle.breadcrumb(match.data);
+          return Array.isArray(crumbs) ? crumbs : [];
+        } catch (error) {
+          console.error('Error building instructor breadcrumb for match', match.id, error);
+          return [] as BreadcrumbItem[];
+        }
+      });
+
+    const items: BreadcrumbItem[] = [];
+    if (childSegments.length === 0) {
+      items.push({ label: 'Instructor Portal', current: true });
+    } else {
+      items.push({ label: 'Instructor Portal', href: '/instructor' });
+      items.push(...childSegments);
+    }
+
+    const hasExplicitCurrent = items.some((item) => item.current);
+    if (!hasExplicitCurrent && items.length > 0) {
+      const lastIndex = items.length - 1;
+      items[lastIndex] = { ...items[lastIndex], current: true };
+    }
+
+    return items.map((item) => (item.current ? { ...item, href: undefined } : item));
+  }, [matches]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6">
-      <Outlet context={{ role }} />
+    <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+      <InstructorNavbar />
+      <main className="flex-1">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <AppBreadcrumb items={breadcrumbItems} className="mb-6" />
+          <Outlet context={{ role, supabase }} />
+        </div>
+      </main>
+      <InstructorFooter />
     </div>
   );
 }
 
+export type { InstructorRouteHandle };
+
 export function useInstructorRole() {
-  const { role } = useOutletContext<{ role: UserRole }>();
+  const { role } = useOutletContext<InstructorOutletContext>();
   return role;
 }
 

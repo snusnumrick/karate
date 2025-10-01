@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { CalendarDays, Users, AlertTriangle, Clock } from 'lucide-react';
+import type { InstructorRouteHandle } from '~/routes/instructor';
 
 interface SessionsLoaderData {
   role: UserRole;
@@ -23,6 +24,10 @@ interface SessionsLoaderData {
   focus: string | null;
   rangeLabel: string;
 }
+
+export const handle: InstructorRouteHandle = {
+  breadcrumb: () => [{ label: 'Schedule', href: '/instructor/sessions' }],
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);

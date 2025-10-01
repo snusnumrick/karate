@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import { AlertTriangle, CheckCircle2, Users } from 'lucide-react';
+import type { InstructorRouteHandle } from '~/routes/instructor';
 
 interface StudentSummary {
   studentId: string;
@@ -25,6 +26,10 @@ interface StudentsLoaderData {
   role: UserRole;
   students: StudentSummary[];
 }
+
+export const handle: InstructorRouteHandle = {
+  breadcrumb: () => [{ label: 'Students', href: '/instructor/students' }],
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);

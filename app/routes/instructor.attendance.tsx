@@ -1,5 +1,5 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { Form, useFetcher, useLoaderData, useSearchParams, useSubmit } from '@remix-run/react';
+import { Form, Link, useFetcher, useLoaderData, useSearchParams, useSubmit } from '@remix-run/react';
 import { addDays, addMinutes, format, isAfter, parseISO } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { UserRole } from '~/types/auth';
@@ -16,8 +16,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { AlertTriangle, CheckCircle2, Clock, RotateCcw, Users } from 'lucide-react';
 import { cn } from '~/lib/utils';
+import type { InstructorRouteHandle } from '~/routes/instructor';
+import type { BreadcrumbItem } from '~/components/AppBreadcrumb';
 
 const LATE_THRESHOLD_MINUTES = 15;
+
+export const handle: InstructorRouteHandle = {
+  breadcrumb: (data) => {
+    const loaderData = data as LoaderData | undefined;
+    const items: BreadcrumbItem[] = [{ label: 'Attendance', href: '/instructor/attendance' }];
+    if (loaderData?.session?.className) {
+      items.push({ label: loaderData.session.className, current: true });
+    }
+    return items;
+  },
+};
 
 type AttendanceStatus = 'present' | 'late' | 'absent' | 'excused' | 'unmarked';
 
@@ -31,6 +44,7 @@ interface LoaderData {
   session: InstructorSessionPayload | null;
   sessionOptions: SessionOption[];
   csrfToken: string;
+  viewMode: 'record' | 'roster';
 }
 
 interface ActionResponse {
@@ -43,6 +57,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers, searchParams } = context;
   const requestedSessionId = searchParams.get('sessionId');
+  const modeParam = searchParams.get('mode') === 'roster' ? 'roster' : 'record';
 
   const today = new Date();
   let startDate = format(today, 'yyyy-MM-dd');
@@ -101,6 +116,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     session,
     sessionOptions,
     csrfToken,
+    viewMode: modeParam,
   }, { headers });
 }
 
@@ -112,6 +128,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const sessionId = formData.get('sessionId');
   const payload = formData.get('payload');
+  const baselineRaw = formData.get('baseline');
 
   if (!sessionId || typeof sessionId !== 'string') {
     return json<ActionResponse>({ success: false, error: 'Missing sessionId' }, { status: 400, headers });
@@ -119,6 +136,15 @@ export async function action({ request }: ActionFunctionArgs) {
 
   if (!payload || typeof payload !== 'string') {
     return json<ActionResponse>({ success: false, error: 'Missing payload' }, { status: 400, headers });
+  }
+
+  let baseline: Record<string, AttendanceStatus> = {};
+  if (baselineRaw && typeof baselineRaw === 'string') {
+    try {
+      baseline = JSON.parse(baselineRaw) as Record<string, AttendanceStatus>;
+    } catch (error) {
+      console.warn('Instructor attendance action: failed to parse baseline payload', error);
+    }
   }
 
   const { data: sessionRecords, error: fetchError } = await supabaseAdmin
@@ -149,7 +175,12 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   const records = Object.entries(parsed)
-    .filter(([, status]) => status !== 'unmarked')
+    .filter(([studentId, status]) => {
+      const initial = baseline[studentId] ?? 'unmarked';
+      if (status === initial) return false;
+      if (status === 'unmarked') return false;
+      return true;
+    })
     .map(([studentId, status]) => ({
       student_id: studentId,
       status: status as Exclude<AttendanceStatus, 'unmarked'>,
@@ -185,37 +216,43 @@ export default function InstructorAttendancePage() {
   const [searchParams] = useSearchParams();
 
   const session = data.session;
-  const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>(() => buildStatusMap(session));
+  const viewMode = data.viewMode;
+  const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>(() => buildStatusMap(session, viewMode));
   const [autoLateFlags, setAutoLateFlags] = useState<Record<string, boolean>>({});
   const baselineRef = useRef(statusMap);
 
   useEffect(() => {
     if (session) {
-      const initial = buildStatusMap(session);
+      const initial = buildStatusMap(session, viewMode);
       setStatusMap(initial);
       baselineRef.current = initial;
       setAutoLateFlags({});
     }
-  }, [session]);
+  }, [session, viewMode]);
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success && fetcher.data.session) {
-      const updated = buildStatusMap(fetcher.data.session);
+      const updated = buildStatusMap(fetcher.data.session, viewMode);
       setStatusMap(updated);
       baselineRef.current = updated;
       setAutoLateFlags({});
     }
-  }, [fetcher.state, fetcher.data]);
+  }, [fetcher.state, fetcher.data, viewMode]);
 
   const isSubmitting = fetcher.state !== 'idle';
   const isDirty = useMemo(() => hasDifferences(baselineRef.current, statusMap), [statusMap]);
   const counts = useMemo(() => buildCounts(statusMap), [statusMap]);
 
+  const headerTitle = viewMode === 'roster' ? 'Class Roster' : 'Record Attendance';
+  const headerDescription = viewMode === 'roster'
+    ? 'Instructor tools for reviewing eligibility and capturing attendance details.'
+    : 'Tap a student name to check in; tap again to mark them not here. Border colors display the current status at a glance.';
+
   if (!session) {
     return (
       <div className="space-y-6">
         <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Attendance</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{headerTitle}</h1>
           <p className="text-muted-foreground">No upcoming sessions available to record right now.</p>
         </header>
         <EmptyState />
@@ -226,40 +263,60 @@ export default function InstructorAttendancePage() {
   const lateThreshold = session.start ? addMinutes(parseISO(session.start), LATE_THRESHOLD_MINUTES) : null;
 
   const selectedSessionId = searchParams.get('sessionId') ?? session.id;
+  const buildModeLink = (mode: 'record' | 'roster') => {
+    const params = new URLSearchParams();
+    params.set('sessionId', selectedSessionId);
+    if (mode === 'roster') {
+      params.set('mode', 'roster');
+    }
+    return `/instructor/attendance${params.size > 0 ? `?${params.toString()}` : ''}`;
+  };
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Record Attendance</h1>
-          <p className="text-muted-foreground">Tap a student to set their status. Designed for tablet use.</p>
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">{headerTitle}</h1>
+          <p className="text-muted-foreground max-w-2xl">{headerDescription}</p>
         </div>
 
-        {data.sessionOptions.length > 0 && (
-          <Form method="get" className="flex items-center gap-2">
-            <label htmlFor="sessionId" className="text-sm font-medium text-muted-foreground">
-              Session
-            </label>
-            <select
-              id="sessionId"
-              name="sessionId"
-              defaultValue={selectedSessionId}
-              onChange={(event) => {
-                const form = event.currentTarget.form;
-                if (form) {
-                  submit(form);
-                }
-              }}
-              className="border border-border bg-background text-foreground rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {data.sessionOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Form>
-        )}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <div className="flex items-center justify-end gap-2">
+            <Button variant={viewMode === 'record' ? 'default' : 'outline'} size="sm" asChild>
+              <Link to={buildModeLink('record')}>Record</Link>
+            </Button>
+            <Button variant={viewMode === 'roster' ? 'default' : 'outline'} size="sm" asChild>
+              <Link to={buildModeLink('roster')}>Roster</Link>
+            </Button>
+          </div>
+
+          {data.sessionOptions.length > 0 && (
+            <Form method="get" className="flex items-center gap-2">
+              <label htmlFor="sessionId" className="text-sm font-medium text-muted-foreground">
+                Session
+              </label>
+              <select
+                id="sessionId"
+                name="sessionId"
+                defaultValue={selectedSessionId}
+                onChange={(event) => {
+                  const form = event.currentTarget.form;
+                  if (form) {
+                    submit(form);
+                  }
+                }}
+                className="border border-border bg-background text-foreground rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {data.sessionOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {viewMode === 'roster' && <input type="hidden" name="mode" value="roster" />}
+            </Form>
+          )}
+        </div>
       </header>
 
       <Card>
@@ -272,54 +329,85 @@ export default function InstructorAttendancePage() {
           <div className="flex flex-wrap gap-3">
             <SummaryPill icon={CheckCircle2} label="Present" value={counts.present} variant="success" />
             <SummaryPill icon={Clock} label="Late" value={counts.late} variant="warn" />
-            <SummaryPill icon={AlertTriangle} label="Absent" value={counts.absent} variant="destructive" />
-            <SummaryPill icon={Users} label="Unmarked" value={counts.unmarked} variant="info" />
+            <SummaryPill icon={AlertTriangle} label="Not here" value={counts.absent} variant="absence" />
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSubmitting}
-              onClick={() => handleMarkAll(session, 'present', { enforceLate: true, lateThreshold, statusMap, setStatusMap, setAutoLateFlags })}
-            >
-              Mark all present
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSubmitting}
-              onClick={() => handleReset(setStatusMap, setAutoLateFlags, baselineRef)}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" /> Reset changes
-            </Button>
-          </div>
+        <CardContent className="space-y-5">
+          {viewMode === 'roster' ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSubmitting}
+                  onClick={() => handleMarkAll(session, 'present', { enforceLate: true, lateThreshold, statusMap, setStatusMap, setAutoLateFlags })}
+                >
+                  Mark all present
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSubmitting}
+                  onClick={() => handleReset(setStatusMap, setAutoLateFlags, baselineRef)}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" /> Reset changes
+                </Button>
+              </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {session.roster.map((entry) => (
-              <StudentCard
-                key={entry.studentId}
-                entry={entry}
-                status={statusMap[entry.studentId] ?? 'unmarked'}
-                isAutoLate={autoLateFlags[entry.studentId] ?? false}
-                lateThreshold={lateThreshold}
-                onCycle={() => handleCycle(entry.studentId, lateThreshold, statusMap, setStatusMap, setAutoLateFlags)}
-                onSet={(status, options) => handleSetStatus(entry.studentId, status, {
-                  enforceLate: options?.enforceLate ?? false,
-                  lateThreshold,
-                  setStatusMap,
-                  setAutoLateFlags,
-                })}
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {session.roster.map((entry) => (
+                  <StudentCard
+                    key={entry.studentId}
+                    entry={entry}
+                    status={statusMap[entry.studentId] ?? 'unmarked'}
+                    isAutoLate={autoLateFlags[entry.studentId] ?? false}
+                    lateThreshold={lateThreshold}
+                    onCycle={() => handleCycle(entry.studentId, lateThreshold, statusMap, setStatusMap, setAutoLateFlags)}
+                    onSet={(status, options) => handleSetStatus(entry.studentId, status, {
+                      enforceLate: options?.enforceLate ?? false,
+                      lateThreshold,
+                      setStatusMap,
+                      setAutoLateFlags,
+                    })}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <CheckInLegend />
+              <CheckInGrid
+                session={session}
+                statusMap={statusMap}
+                autoLateFlags={autoLateFlags}
+                onToggle={(studentId) => {
+                  const current = statusMap[studentId] ?? 'unmarked';
+                  if (current === 'present' || current === 'late') {
+                    handleSetStatus(studentId, 'absent', {
+                      enforceLate: false,
+                      lateThreshold,
+                      setStatusMap,
+                      setAutoLateFlags,
+                    });
+                  } else {
+                    handleSetStatus(studentId, 'present', {
+                      enforceLate: true,
+                      lateThreshold,
+                      setStatusMap,
+                      setAutoLateFlags,
+                    });
+                  }
+                }}
               />
-            ))}
-          </div>
+            </>
+          )}
 
           <fetcher.Form method="post" className="flex flex-col gap-3">
             <input type="hidden" name="sessionId" value={session.id} />
             <input type="hidden" name="payload" value={JSON.stringify(statusMap)} />
+            <input type="hidden" name="baseline" value={JSON.stringify(baselineRef.current)} />
             <input type="hidden" name="_csrf" value={data.csrfToken} />
 
             <div className="flex flex-wrap items-center gap-3">
@@ -340,11 +428,19 @@ export default function InstructorAttendancePage() {
   );
 }
 
-function buildStatusMap(session?: InstructorSessionPayload | null): Record<string, AttendanceStatus> {
+function buildStatusMap(
+  session: InstructorSessionPayload | null | undefined,
+  viewMode: 'record' | 'roster',
+): Record<string, AttendanceStatus> {
   if (!session) return {};
   const map: Record<string, AttendanceStatus> = {};
   for (const entry of session.roster) {
-    map[entry.studentId] = entry.attendanceStatus;
+    const current = entry.attendanceStatus;
+    if (viewMode === 'record' && current === 'unmarked') {
+      map[entry.studentId] = 'absent';
+    } else {
+      map[entry.studentId] = current;
+    }
   }
   return map;
 }
@@ -492,7 +588,110 @@ function resolveStatus(status: AttendanceStatus, { enforceLate, lateThreshold }:
     return { status: 'unmarked' as AttendanceStatus, clearedAutoLate: true };
   }
 
+  if (status === 'absent' || status === 'excused') {
+    return { status: status as AttendanceStatus, clearedAutoLate: true };
+  }
+
   return { status };
+}
+
+function CheckInLegend() {
+  return (
+    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+      <LegendSwatch label="Present" className="border-emerald-500 bg-emerald-500/10" />
+      <LegendSwatch label="Late" className="border-amber-500 bg-amber-500/10" />
+      <LegendSwatch label="Not here" className="border-purple-500 bg-purple-500/10" />
+      <span className="inline-flex items-center gap-2">
+        <span className="h-3 w-3 rounded-full border border-red-500 ring-2 ring-red-500" />
+        Eligibility review needed
+      </span>
+    </div>
+  );
+}
+
+function LegendSwatch({ label, className }: { label: string; className: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={cn('h-3 w-3 rounded-full border-2', className)} />
+      {label}
+    </span>
+  );
+}
+
+function CheckInGrid({
+  session,
+  statusMap,
+  autoLateFlags,
+  onToggle,
+}: {
+  session: InstructorSessionPayload;
+  statusMap: Record<string, AttendanceStatus>;
+  autoLateFlags: Record<string, boolean>;
+  onToggle: (studentId: string) => void;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      {session.roster.map((entry) => {
+        const status = statusMap[entry.studentId] ?? 'unmarked';
+        const eligible = entry.eligibility?.eligible ?? true;
+        const statusLabel = getStatusInfo(status).label;
+        return (
+          <button
+            key={entry.studentId}
+            type="button"
+            onClick={() => onToggle(entry.studentId)}
+            aria-pressed={status === 'present' || status === 'late'}
+            className={cn(
+              'relative flex h-28 flex-col items-center justify-center rounded-xl border-2 p-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900',
+              getCheckInTileClass(status),
+              !eligible && 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900',
+            )}
+          >
+            <span className="text-base font-semibold text-foreground">{entry.fullName}</span>
+            {!eligible && (
+              <span className="mt-1 text-[0.625rem] font-semibold uppercase tracking-wide text-red-500">
+                Eligibility hold
+              </span>
+            )}
+            <span className={cn('mt-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide', getCheckInStatusTextColor(status))}>
+              {statusLabel}
+              {status === 'late' && autoLateFlags[entry.studentId] && (
+                <span className="inline-flex items-center gap-1 text-[0.7rem] text-amber-500">
+                  <Clock className="h-3 w-3" /> auto
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function getCheckInTileClass(status: AttendanceStatus) {
+  const classes: Record<AttendanceStatus, string> = {
+    present: 'border-emerald-500 bg-emerald-500/5',
+    late: 'border-amber-500 bg-amber-500/5',
+    absent: 'border-purple-500 bg-purple-500/5',
+    excused: 'border-sky-500 bg-sky-500/5',
+    unmarked: 'border-border bg-background',
+  };
+  return classes[status];
+}
+
+function getCheckInStatusTextColor(status: AttendanceStatus) {
+  switch (status) {
+    case 'present':
+      return 'text-emerald-600 dark:text-emerald-300';
+    case 'late':
+      return 'text-amber-600 dark:text-amber-300';
+    case 'absent':
+      return 'text-purple-600 dark:text-purple-300';
+    case 'excused':
+      return 'text-sky-600 dark:text-sky-300';
+    default:
+      return 'text-muted-foreground';
+  }
 }
 
 function StudentCard({
@@ -548,7 +747,7 @@ function StudentCard({
           onClick={() => onSet('late')}
         />
         <StatusButton
-          label="Absent"
+          label="Not here"
           active={status === 'absent'}
           variant="destructive"
           onClick={() => onSet('absent')}
@@ -616,12 +815,12 @@ function SummaryPill({
   icon: ComponentType<{ className?: string }>;
   label: string;
   value: number;
-  variant: 'success' | 'warn' | 'destructive' | 'info';
+  variant: 'success' | 'warn' | 'absence' | 'info';
 }) {
   const variantStyles: Record<typeof variant, string> = {
     success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
     warn: 'bg-amber-500/10 text-amber-600 dark:text-amber-300',
-    destructive: 'bg-red-500/10 text-red-600 dark:text-red-300',
+    absence: 'bg-purple-500/10 text-purple-600 dark:text-purple-300',
     info: 'bg-sky-500/10 text-sky-600 dark:text-sky-300',
   };
 
@@ -651,7 +850,7 @@ function getStatusInfo(status: AttendanceStatus) {
     case 'late':
       return { label: 'Late', badgeVariant: 'secondary' as const, containerClass: 'border-amber-500/50 bg-amber-500/5' };
     case 'absent':
-      return { label: 'Absent', badgeVariant: 'destructive' as const, containerClass: 'border-red-500/50 bg-red-500/5' };
+      return { label: 'Not here', badgeVariant: 'secondary' as const, containerClass: 'border-purple-500/50 bg-purple-500/5' };
     case 'excused':
       return { label: 'Excused', badgeVariant: 'secondary' as const, containerClass: 'border-sky-500/50 bg-sky-500/5' };
     default:

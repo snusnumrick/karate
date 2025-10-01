@@ -9,6 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { BookOpen, ExternalLink, Notebook } from 'lucide-react';
+import type { InstructorRouteHandle } from '~/routes/instructor';
 
 interface ResourceSummary {
   programId?: string;
@@ -21,6 +22,10 @@ interface ResourcesLoaderData {
   role: UserRole;
   resources: ResourceSummary[];
 }
+
+export const handle: InstructorRouteHandle = {
+  breadcrumb: () => [{ label: 'Materials', href: '/instructor/resources' }],
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);

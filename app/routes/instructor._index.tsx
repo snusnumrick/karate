@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { AlertTriangle, CalendarDays, ChevronRight, Clock, Users } from 'lucide-react';
+import type { InstructorRouteHandle } from '~/routes/instructor';
 
 type SerializableSession = InstructorSessionPayload;
 
@@ -35,6 +36,10 @@ interface DashboardLoaderData {
   upcomingSessions: SerializableSession[];
   nextSession: SerializableSession | null;
 }
+
+export const handle: InstructorRouteHandle = {
+  breadcrumb: () => [{ label: 'Dashboard', href: '/instructor' }],
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const {
