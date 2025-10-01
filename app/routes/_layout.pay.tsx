@@ -19,7 +19,17 @@ import {
 import PaymentForm from "~/components/payment/PaymentForm";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import type { Database } from "~/types/database.types";
-import { formatMoney, fromCents, toCents } from "~/utils/money";
+import {
+  formatMoney,
+  toCents,
+  serializeMoney,
+  deserializeMoney,
+  type Money,
+  type MoneyJSON,
+  ZERO_MONEY,
+  addMoney,
+} from "~/utils/money";
+import { moneyFromRow } from "~/utils/database-money";
 import {
   getSupabaseAdminClient,
   getSupabaseServerClient,
@@ -35,20 +45,35 @@ type FamilyRow = Database["public"]["Tables"]["families"]["Row"];
 type PaymentTaxRow = Database["public"]["Tables"]["payment_taxes"]["Row"];
 type TaxRateRow = Database["public"]["Tables"]["tax_rates"]["Row"];
 
-type PaymentWithDetails = Omit<PaymentColumns, "amount" | "tax_amount"> & {
+type PaymentTaxWithDescription = Omit<Pick<PaymentTaxRow, "tax_name_snapshot" | "tax_amount">, "tax_amount"> & {
+  tax_amount: Money;
+  tax_rates: Pick<TaxRateRow, "description"> | null;
+};
+
+type PaymentWithDetails = Omit<PaymentColumns, "amount" | "tax_amount" | "subtotal_amount" | "total_amount"> & {
+  subtotal_amount: Money;
+  total_amount: Money;
+  tax_amount: Money;
   family: Pick<FamilyRow, "name" | "email" | "postal_code"> | null;
-  payment_taxes: Array<
-    Pick<PaymentTaxRow, "tax_name_snapshot" | "tax_amount"> & {
-      tax_rates: Pick<TaxRateRow, "description"> | null;
-    }
-  >;
+  payment_taxes: PaymentTaxWithDescription[];
   payment_students: Array<Pick<PaymentStudentRow, "student_id">>;
   individualSessionUnitAmountCents?: number | null;
   individualSessionQuantity?: number | null;
 };
 
+type SerializedPaymentTaxWithDescription = Omit<PaymentTaxWithDescription, "tax_amount"> & {
+  tax_amount: MoneyJSON;
+};
+
+type SerializedPaymentWithDetails = Omit<PaymentWithDetails, "subtotal_amount" | "total_amount" | "tax_amount" | "payment_taxes"> & {
+  subtotal_amount: MoneyJSON;
+  total_amount: MoneyJSON;
+  tax_amount: MoneyJSON;
+  payment_taxes: SerializedPaymentTaxWithDescription[];
+};
+
 type LoaderData = {
-  payment?: PaymentWithDetails;
+  payment?: SerializedPaymentWithDetails;
   error?: string;
   paymentProviderId: PaymentProviderId;
   providerConfig: ClientRenderConfig;
@@ -57,6 +82,49 @@ type LoaderData = {
     requiresCheckoutUrl: boolean;
   };
 };
+
+type RawPaymentTaxWithDescription = Omit<PaymentTaxWithDescription, "tax_amount"> & {
+  tax_amount: number;
+};
+
+type RawPaymentWithDetails = Omit<PaymentWithDetails, "subtotal_amount" | "total_amount" | "tax_amount" | "payment_taxes"> & {
+  subtotal_amount: number;
+  total_amount: number;
+  payment_taxes: RawPaymentTaxWithDescription[];
+};
+
+type LoaderPaymentQuery = RawPaymentWithDetails | null;
+
+type LoaderPaymentResult = {
+  data: LoaderPaymentQuery;
+  error: { message: string } | null;
+};
+
+function serializePayment(payment: PaymentWithDetails): SerializedPaymentWithDetails {
+  return {
+    ...payment,
+    subtotal_amount: serializeMoney(payment.subtotal_amount),
+    total_amount: serializeMoney(payment.total_amount),
+    tax_amount: serializeMoney(payment.tax_amount),
+    payment_taxes: payment.payment_taxes.map((tax) => ({
+      ...tax,
+      tax_amount: serializeMoney(tax.tax_amount),
+    })),
+  };
+}
+
+function deserializePayment(payment: SerializedPaymentWithDetails): PaymentWithDetails {
+  return {
+    ...payment,
+    subtotal_amount: deserializeMoney(payment.subtotal_amount),
+    total_amount: deserializeMoney(payment.total_amount),
+    tax_amount: deserializeMoney(payment.tax_amount),
+    payment_taxes: payment.payment_taxes.map((tax) => ({
+      ...tax,
+      tax_amount: deserializeMoney(tax.tax_amount),
+    })),
+  };
+}
 
 type ActionSuccessResponse = {
   clientSecret: string;
@@ -80,20 +148,13 @@ type ActionErrorResponse = {
 
 type ApiActionResponse = ActionSuccessResponse | ActionErrorResponse;
 
-type LoaderPaymentQuery = PaymentWithDetails | null;
-
-type LoaderPaymentResult = {
-  data: LoaderPaymentQuery;
-  error: { message: string } | null;
-};
-
 function getPaymentIntentFormData(payment: PaymentWithDetails) {
   const formData = new FormData();
   formData.append("familyId", payment.family_id);
   formData.append("familyName", payment.family?.name ?? "Unknown Family");
   formData.append("supabasePaymentId", payment.id);
-  formData.append("subtotalAmount", payment.subtotal_amount.toString());
-  formData.append("totalAmount", payment.total_amount.toString());
+  formData.append("subtotalAmount", toCents(payment.subtotal_amount).toString());
+  formData.append("totalAmount", toCents(payment.total_amount).toString());
 
   let paymentOption:
     | "monthly"
@@ -118,11 +179,14 @@ function getPaymentIntentFormData(payment: PaymentWithDetails) {
       priceId = "oneOnOneSession"; // Provider-neutral price identifier
       if (payment.individualSessionQuantity && payment.individualSessionQuantity > 0) {
         quantity = payment.individualSessionQuantity.toString();
-      } else if (payment.individualSessionUnitAmountCents && payment.individualSessionUnitAmountCents > 0 && payment.subtotal_amount) {
-        const calculatedQuantity = Math.round(
-          payment.subtotal_amount / payment.individualSessionUnitAmountCents,
-        );
-        quantity = calculatedQuantity.toString();
+      } else if (payment.individualSessionUnitAmountCents && payment.individualSessionUnitAmountCents > 0) {
+        const subtotalCents = toCents(payment.subtotal_amount);
+        if (subtotalCents > 0) {
+          const calculatedQuantity = Math.round(
+            subtotalCents / payment.individualSessionUnitAmountCents,
+          );
+          quantity = calculatedQuantity.toString();
+        }
       }
       break;
     case "store_purchase":
@@ -317,11 +381,28 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     }
   }
 
-  const paymentWithDerived = {
+  const paymentTaxesWithMoney: PaymentTaxWithDescription[] = (payment.payment_taxes ?? []).map((tax) => ({
+    ...tax,
+    tax_amount: moneyFromRow("payment_taxes", "tax_amount", tax),
+  }));
+
+  const subtotalMoney = moneyFromRow("payments", "subtotal_amount", payment);
+  const totalMoney = moneyFromRow("payments", "total_amount", payment);
+  const totalTaxMoney = paymentTaxesWithMoney.reduce<Money>(
+    (acc, tax) => addMoney(acc, tax.tax_amount),
+    ZERO_MONEY,
+  );
+
+  const paymentWithDerived: PaymentWithDetails = {
     ...payment,
+    subtotal_amount: subtotalMoney,
+    total_amount: totalMoney,
+    tax_amount: totalTaxMoney,
+    payment_taxes: paymentTaxesWithMoney,
+    payment_students: payment.payment_students ?? [],
     individualSessionUnitAmountCents,
     individualSessionQuantity,
-  } as PaymentWithDetails;
+  };
 
   const paymentIntentId = paymentWithDerived.payment_intent_id; // Generic payment intent ID for all providers
   if (paymentWithDerived.status === "pending" && paymentIntentId) {
@@ -358,7 +439,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
 
   return json<LoaderData>(
     {
-      payment: paymentWithDerived,
+      payment: serializePayment(paymentWithDerived),
       paymentProviderId,
       providerConfig: renderConfig,
       providerCapabilities,
@@ -397,11 +478,15 @@ type ProviderAwareState = {
 
 export default function PaymentPage() {
   const {
-    payment,
+    payment: serializedPayment,
     error: loaderError,
     providerConfig,
     providerCapabilities,
   } = useLoaderData<LoaderData>();
+  const payment = useMemo(
+    () => (serializedPayment ? deserializePayment(serializedPayment) : undefined),
+    [serializedPayment],
+  );
 
   const paymentIntentFetcher = useFetcher<ApiActionResponse>();
 
@@ -420,11 +505,12 @@ export default function PaymentPage() {
   const requiresCheckoutUrl = providerCapabilities.requiresCheckoutUrl;
 
   const groupedTaxes = useMemo(() => {
-    if (!payment?.payment_taxes) return [] as Array<{ description: string; amount: number }>;
-    const taxMap = new Map<string, number>();
+    if (!payment?.payment_taxes) return [] as Array<{ description: string; amount: Money }>;
+    const taxMap = new Map<string, Money>();
     payment.payment_taxes.forEach((tax) => {
       const key = tax.tax_rates?.description || tax.tax_name_snapshot || "Unknown Tax";
-      taxMap.set(key, (taxMap.get(key) ?? 0) + (tax.tax_amount ?? 0));
+      const currentAmount = taxMap.get(key) ?? ZERO_MONEY;
+      taxMap.set(key, addMoney(currentAmount, tax.tax_amount));
     });
     return Array.from(taxMap.entries()).map(([description, amount]) => ({ description, amount }));
   }, [payment?.payment_taxes]);
@@ -527,18 +613,18 @@ export default function PaymentPage() {
           <span className="font-semibold">Family:</span> {payment.family?.name ?? "N/A"}
         </p>
         <p className="text-sm text-gray-700 dark:text-gray-300">
-          <span className="font-semibold">Subtotal:</span> {formatMoney(fromCents(payment.subtotal_amount))}
+          <span className="font-semibold">Subtotal:</span> {formatMoney(payment.subtotal_amount)}
           {payment.discount_amount && payment.discount_amount > 0 && (
             <span className="text-green-600 dark:text-green-400 ml-2">(discount applied)</span>
           )}
         </p>
         {groupedTaxes.map((tax) => (
           <p key={tax.description} className="text-sm text-gray-700 dark:text-gray-300">
-            <span className="font-semibold">{tax.description}:</span> {formatMoney(fromCents(tax.amount))}
+            <span className="font-semibold">{tax.description}:</span> {formatMoney(tax.amount)}
           </p>
         ))}
         <p className="text-lg font-bold text-gray-800 dark:text-gray-100 mt-2 border-t pt-2 dark:border-gray-600">
-          <span className="font-semibold">Total Amount:</span> {formatMoney(fromCents(payment.total_amount))}
+          <span className="font-semibold">Total Amount:</span> {formatMoney(payment.total_amount)}
         </p>
         <p className="text-sm text-gray-700 dark:text-gray-300">
           <span className="font-semibold">Product:</span> {getPaymentProductDescription(payment.type)}

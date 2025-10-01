@@ -7,7 +7,7 @@ import { Badge } from "~/components/ui/badge";
 import { AppBreadcrumb } from "~/components/AppBreadcrumb";
 import { Users, DollarSign, FileText, ArrowLeft } from "lucide-react";
 import type { Database } from "~/types/database.types";
-import { fromCents, formatMoney } from "~/utils/money";
+import {fromCents, formatMoney} from "~/utils/money";
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventRegistration = Database['public']['Tables']['event_registrations']['Row'] & {
@@ -28,7 +28,7 @@ type LoaderData = {
   registrations: EventRegistration[];
   totalRegistrations: number;
   confirmedRegistrations: number;
-  totalRevenue: number;
+  totalRevenueCents: number;
 };
 
 export async function loader({ params}: LoaderFunctionArgs) {
@@ -77,20 +77,19 @@ export async function loader({ params}: LoaderFunctionArgs) {
 
   const totalRegistrations = registrations?.length || 0;
   const confirmedRegistrations = registrations?.filter(reg => reg.registration_status === 'confirmed').length || 0;
-  const totalRevenue = registrations?.reduce((sum: number, reg: EventRegistration) => {
-    // Only count revenue from confirmed registrations (completed payments)
+  const totalRevenueCents = registrations?.reduce((sum: number, reg: EventRegistration) => {
     if (reg.registration_status === 'confirmed') {
-      return sum + (reg.payment_amount || 0);
+      return sum + (reg.payment_amount_cents ?? 0);
     }
     return sum;
-  }, 0) || 0;
+  }, 0) ?? 0;
 
   return json({
     event,
     registrations: registrations || [],
     totalRegistrations,
     confirmedRegistrations,
-    totalRevenue,
+    totalRevenueCents,
   });
 }
 
@@ -134,7 +133,7 @@ function calculateAge(birthDate: string) {
 }
 
 export default function EventRegistrationsPage() {
-  const { event, registrations, totalRegistrations, confirmedRegistrations, totalRevenue } = useLoaderData<LoaderData>();
+  const { event, registrations, totalRegistrations, confirmedRegistrations, totalRevenueCents } = useLoaderData<LoaderData>();
 
   const breadcrumbItems = [
     { label: 'Admin', href: '/admin' },
@@ -193,7 +192,7 @@ export default function EventRegistrationsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatMoney(fromCents(totalRevenue))}</div>
+            <div className="text-2xl font-bold">{formatMoney(fromCents(totalRevenueCents))}</div>
             <p className="text-xs text-muted-foreground mt-1">
               From confirmed payments only
             </p>
@@ -240,8 +239,8 @@ export default function EventRegistrationsPage() {
                     
                     <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
                       <span>Registered: {formatDate(registration.registered_at)}</span>
-                      {registration.payment_amount && (
-                        <span>Amount: {formatMoney(fromCents(registration.payment_amount))}</span>
+                      {registration.payment_amount_cents != null && (
+                        <span>Amount: {formatMoney(fromCents(registration.payment_amount_cents))}</span>
                       )}
                       {registration.emergency_contact && (
                         <span>Emergency: {registration.emergency_contact}</span>

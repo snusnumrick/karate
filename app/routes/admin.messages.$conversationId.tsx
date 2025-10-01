@@ -92,7 +92,8 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     }
 
     // Check if user is admin or instructor
-    const {data: profile, error: profileError} = await supabaseServer
+    const supabaseAdmin = getSupabaseAdminClient();
+    const {data: profile, error: profileError} = await supabaseAdmin
         .from('profiles')
         .select('role')
         .eq('id', user.id)
@@ -115,7 +116,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     // Verify admin/instructor is a participant (should always be true for family-initiated convos)
     // This also implicitly checks if the conversation exists.
-    const {data: participantCheck, error: participantError} = await supabaseServer
+    const {data: participantCheck, error: participantError} = await supabaseAdmin
         .from('conversation_participants')
         .select('conversation_id')
         .eq('conversation_id', conversationId)
@@ -145,7 +146,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     // --- Mark conversation as read BEFORE fetching messages ---
     // Call the RPC function to update last_read_at for this user/conversation
     // We use supabaseServer which has the user's context, and the function is SECURITY INVOKER
-    const { error: markReadError } = await supabaseServer.rpc('mark_conversation_as_read', {
+    const { error: markReadError } = await supabaseAdmin.rpc('mark_conversation_as_read', {
         p_conversation_id: conversationId,
         p_user_id: user.id, // The current admin/instructor user
     });
@@ -160,7 +161,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
 
     // Step 1: Fetch conversation details
-    const {data: conversationData, error: conversationError} = await supabaseServer
+    const {data: conversationData, error: conversationError} = await supabaseAdmin
         .from('conversations')
         .select('*')
         .eq('id', conversationId)
@@ -182,7 +183,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     }
 
     // Step 2: Fetch participants for this conversation
-    const {data: participants, error: participantsError} = await supabaseServer
+    const {data: participants, error: participantsError} = await supabaseAdmin
         .from('conversation_participants')
         .select('user_id')
         .eq('conversation_id', conversationId);
@@ -205,9 +206,6 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     // Step 3: Get all unique user IDs
     const userIds = participants.map(p => p.user_id);
 
-    // Create an admin client directly using environment variables on the server
-    // to ensure service_role privileges for fetching profiles and families
-    const supabaseAdmin = getSupabaseAdminClient();
     console.log("[AdminConversationView Loader] Fetching profiles using explicit admin client for IDs:", userIds);
 
     // Step 4: Fetch profiles for all users using the admin client
@@ -284,7 +282,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
 
     // --- Fetch Messages (Step 1) ---
-    const {data: rawMessagesData, error: messagesError} = await supabaseServer
+    const {data: rawMessagesData, error: messagesError} = await supabaseAdmin
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
@@ -418,7 +416,8 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     // --- The rest of your action function remains the same ---
 
     // Verify user is admin/instructor AND a participant before allowing send
-    const {data: participantCheck, error: participantError} = await supabaseServer
+    const supabaseAdminAction = getSupabaseAdminClient();
+    const {data: participantCheck, error: participantError} = await supabaseAdminAction
         .from('conversation_participants')
         .select('user_id')
         .eq('conversation_id', conversationId)
@@ -433,7 +432,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         });
     }
 
-    const {data: profileCheck, error: profileError} = await supabaseServer
+    const {data: profileCheck, error: profileError} = await supabaseAdminAction
         .from('profiles')
         .select('role, first_name, last_name')
         .eq('id', user.id)
@@ -448,7 +447,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     }
 
     // Insert the new message
-    const {data: newMessage, error: insertError} = await supabaseServer
+    const {data: newMessage, error: insertError} = await supabaseAdminAction
         .from('messages')
         .insert({
             conversation_id: conversationId,
@@ -465,7 +464,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
     // The push notification logic for notifying families...
     try {
-        const {data: otherParticipants} = await supabaseServer
+        const {data: otherParticipants} = await supabaseAdminAction
             .from('conversation_participants')
             .select('user_id')
             .eq('conversation_id', conversationId)

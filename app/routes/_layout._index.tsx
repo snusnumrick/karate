@@ -6,21 +6,27 @@ import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, 
 import { siteConfig } from "~/config/site"; // Import site config
 import { EventService, type UpcomingEvent } from "~/services/event.server";
 import { mergeMeta } from "~/utils/meta";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getScheduleData } from "~/utils/site-data.client";
 import { formatDayName, formatTime, parseTimeRange } from "~/utils/schedule";
 import { formatDate } from "~/utils/misc";
 import { useNonce } from "~/context/nonce";
 import { JsonLd } from "~/components/JsonLd";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
+import { formatMoney, isPositive, toDollars, serializeMoney, deserializeMoney, type MoneyJSON } from "~/utils/money";
 // Server imports moved to loader function only
 
 type UpcomingEventWithFormatted = UpcomingEvent & {
   formattedEventType: string;
 };
 
+type SerializedUpcomingEventWithFormatted = Omit<UpcomingEventWithFormatted, 'registration_fee' | 'late_registration_fee'> & {
+  registration_fee: MoneyJSON;
+  late_registration_fee: MoneyJSON;
+};
+
 type LoaderData = {
-    upcomingEvents: UpcomingEventWithFormatted[];
+    upcomingEvents: SerializedUpcomingEventWithFormatted[];
     eventTypeConfig: Record<string, unknown>;
     scheduleData: {
         days: string;
@@ -53,10 +59,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
           ...event,
           formattedEventType: event.event_type?.display_name || event.event_type?.name || 'Other'
         }));
-        
+
+        const serializedUpcomingEvents: SerializedUpcomingEventWithFormatted[] = upcomingEventsWithFormatted.map(event => ({
+          ...event,
+          registration_fee: serializeMoney(event.registration_fee),
+          late_registration_fee: serializeMoney(event.late_registration_fee),
+        }));
+
         return json(
             { 
-                upcomingEvents: upcomingEventsWithFormatted, 
+                upcomingEvents: serializedUpcomingEvents, 
                 eventTypeConfig,
                 scheduleData
             },
@@ -125,7 +137,15 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 };
 
 export default function Index() {
-    const { upcomingEvents, eventTypeConfig, scheduleData } = useLoaderData<typeof loader>();
+    const { upcomingEvents: serializedUpcomingEvents, eventTypeConfig, scheduleData } = useLoaderData<typeof loader>();
+    const upcomingEvents = useMemo<UpcomingEventWithFormatted[]>(() =>
+        serializedUpcomingEvents.map(event => ({
+            ...event,
+            registration_fee: deserializeMoney(event.registration_fee),
+            late_registration_fee: deserializeMoney(event.late_registration_fee),
+        })),
+        [serializedUpcomingEvents]
+    );
     const nonce = useNonce();
     const [clientScheduleData, setClientScheduleData] = useState<{
         days: string;
@@ -198,10 +218,10 @@ export default function Index() {
                 "name": siteConfig.name,
                 "url": siteConfig.url
             },
-            "offers": event.registration_fee ? {
+            "offers": isPositive(event.registration_fee) ? {
                 "@type": "Offer",
-                "price": event.registration_fee,
-                "priceCurrency": "CAD",
+                "price": toDollars(event.registration_fee),
+                "priceCurrency": siteConfig.localization.currency,
                 "availability": "https://schema.org/InStock"
             } : undefined,
             "eventStatus": "https://schema.org/EventScheduled",
@@ -417,10 +437,10 @@ export default function Index() {
                                                 </div>
                                             )}
                                             
-                                            {event.registration_fee && (
+                                            {isPositive(event.registration_fee) && (
                                                 <div className="flex items-center">
                                                     <span className="text-green-600 dark:text-green-400 font-semibold">
-                                                        ${event.registration_fee} CAD
+                                                        {formatMoney(event.registration_fee, { showCurrency: true, trimTrailingZeros: true })}
                                                     </span>
                                                 </div>
                                             )}

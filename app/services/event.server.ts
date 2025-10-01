@@ -1,34 +1,63 @@
 import type { Database } from "~/types/database.types";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
+import type { Money } from "~/utils/money";
+import { moneyFromRow } from "~/utils/database-money";
 
-type Event = Database['public']['Tables']['events']['Row'];
+type EventRow = Database['public']['Tables']['events']['Row'];
+
+type EventMoneyFields = {
+  registration_fee: Money;
+  late_registration_fee: Money;
+};
+
 
 // Type for upcoming events with selected fields and event type data
-export type UpcomingEvent = Pick<Event, 
-    'id' | 'title' | 'description' | 'event_type_id' | 'status' | 
-    'start_date' | 'end_date' | 'start_time' | 'end_time' | 
-    'location' | 'address' | 'registration_fee' | 'registration_deadline' | 'external_url' | 'visibility'
-> & {
-    event_type: {
-        name: string;
-        display_name: string;
-        color_class: string;
-        border_class: string | null;
-        dark_mode_class: string | null;
-        icon: string | null;
-    } | null;
+type UpcomingEventRow = Pick<EventRow,
+  'id' |
+  'title' |
+  'description' |
+  'event_type_id' |
+  'status' |
+  'start_date' |
+  'end_date' |
+  'start_time' |
+  'end_time' |
+  'location' |
+  'address' |
+  'registration_fee' |
+  'registration_fee_cents' |
+  'late_registration_fee' |
+  'late_registration_fee_cents' |
+  'registration_deadline' |
+  'external_url' |
+  'visibility'
+>;
+
+export type UpcomingEvent = Omit<UpcomingEventRow, 'registration_fee' | 'late_registration_fee'> & EventMoneyFields & {
+  event_type: {
+    name: string;
+    display_name: string;
+    color_class: string;
+    border_class: string | null;
+    dark_mode_class: string | null;
+    icon: string | null;
+  } | null;
 };
 
 // Type for event with event type data
-export type EventWithEventType = Event & {
-    event_type: {
-        name: string;
-        display_name: string;
-        color_class: string;
-        border_class: string | null;
-        dark_mode_class: string | null;
-        icon: string | null;
-    } | null;
+type EventWithEventTypeRow = EventRow & {
+  event_type: {
+    name: string;
+    display_name: string;
+    color_class: string;
+    border_class: string | null;
+    dark_mode_class: string | null;
+    icon: string | null;
+  } | null;
+};
+
+export type EventWithEventType = Omit<EventWithEventTypeRow, 'registration_fee' | 'late_registration_fee'> & EventMoneyFields & {
+  event_type: EventWithEventTypeRow['event_type'];
 };
 
 // Simple in-memory cache for events
@@ -42,6 +71,15 @@ function getSupabase() {
     supabase = getSupabaseAdminClient();
   }
   return supabase;
+}
+
+function applyEventMoney<T extends Record<string, unknown>>(event: T): Omit<T, 'registration_fee' | 'late_registration_fee'> & EventMoneyFields {
+  const record = event as Record<string, unknown>;
+  return {
+    ...event,
+    registration_fee: moneyFromRow('events', 'registration_fee', record),
+    late_registration_fee: moneyFromRow('events', 'late_registration_fee', record),
+  } as Omit<T, 'registration_fee' | 'late_registration_fee'> & EventMoneyFields;
 }
 
 export class EventService {
@@ -73,6 +111,9 @@ export class EventService {
         location,
         address,
         registration_fee,
+        registration_fee_cents,
+        late_registration_fee,
+        late_registration_fee_cents,
         registration_deadline,
         external_url,
         visibility,
@@ -96,7 +137,7 @@ export class EventService {
       return [];
     }
 
-    const eventsData = events || [];
+    const eventsData = (events || []).map(applyEventMoney);
     
     // Cache the results
     eventCache.set(cacheKey, { data: eventsData, timestamp: now });
@@ -140,7 +181,7 @@ export class EventService {
       return null;
     }
 
-    return event;
+    return applyEventMoney(event);
   }
 
   static async getEventsForLoggedInUsers(): Promise<UpcomingEvent[]> {
@@ -170,6 +211,9 @@ export class EventService {
         location,
         address,
         registration_fee,
+        registration_fee_cents,
+        late_registration_fee,
+        late_registration_fee_cents,
         registration_deadline,
         external_url,
         visibility,
@@ -193,7 +237,7 @@ export class EventService {
       return [];
     }
 
-    const eventsData = events || [];
+    const eventsData = (events || []).map(applyEventMoney);
     
     // Cache the results
     eventCache.set(cacheKey, { data: eventsData, timestamp: now });

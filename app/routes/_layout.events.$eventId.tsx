@@ -2,12 +2,13 @@ import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, useLoaderData, Outlet, useLocation, useRouteError, isRouteErrorResponse, useRouteLoaderData } from "@remix-run/react";
 import { JsonLd } from "~/components/JsonLd";
-import { EventService } from "~/services/event.server";
+import { EventService, type EventWithEventType } from "~/services/event.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
+import { formatMoney, isPositive, toDollars, serializeMoney, deserializeMoney, type MoneyJSON } from "~/utils/money";
 import { isLoggedIn as userIsLoggedIn } from "~/utils/auth.server";
 
 
@@ -33,6 +34,11 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   ];
 };
 
+type SerializedEventWithEventType = Omit<EventWithEventType, 'registration_fee' | 'late_registration_fee'> & {
+  registration_fee: MoneyJSON;
+  late_registration_fee: MoneyJSON;
+};
+
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const { eventId } = params;
   
@@ -55,11 +61,22 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     : 'bg-gray-100 text-gray-800 border-gray-200';
   const formattedEventType = event.event_type?.display_name || event.event_type?.name || 'Other';
 
-  return json({ event, eventTypeColor, formattedEventType });
+  const serializedEvent: SerializedEventWithEventType = {
+    ...event,
+    registration_fee: serializeMoney(event.registration_fee),
+    late_registration_fee: serializeMoney(event.late_registration_fee),
+  };
+
+  return json({ event: serializedEvent, eventTypeColor, formattedEventType });
 }
 
 export default function EventDetail() {
-  const { event, eventTypeColor, formattedEventType } = useLoaderData<typeof loader>();
+  const { event: serializedEvent, eventTypeColor, formattedEventType } = useLoaderData<typeof loader>();
+  const event: EventWithEventType = {
+    ...serializedEvent,
+    registration_fee: deserializeMoney(serializedEvent.registration_fee),
+    late_registration_fee: deserializeMoney(serializedEvent.late_registration_fee),
+  };
   const location = useLocation();
   const rootData = useRouteLoaderData('root') as { nonce?: string } | undefined;
   const nonce = rootData?.nonce;
@@ -129,10 +146,10 @@ export default function EventDetail() {
       name: siteConfig.name,
       url: siteConfig.url,
     },
-    offers: event.registration_fee ? {
+    offers: isPositive(event.registration_fee) ? {
       "@type": "Offer",
-      price: event.registration_fee,
-      priceCurrency: "CAD",
+      price: toDollars(event.registration_fee),
+      priceCurrency: siteConfig.localization.currency,
       availability: "https://schema.org/InStock",
       validFrom: event.registration_deadline || event.start_date,
       validThrough: event.registration_deadline || event.start_date,
@@ -298,13 +315,13 @@ export default function EventDetail() {
               <CardContent className="p-8">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Registration</h2>
                 
-                {event.registration_fee && (
+                {isPositive(event.registration_fee) && (
                   <div className="mb-6">
                     <div className="flex items-center mb-2">
                       <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
                       <p className="text-sm text-gray-600 dark:text-gray-300">Registration Fee</p>
                     </div>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">${event.registration_fee}</p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatMoney(event.registration_fee, { trimTrailingZeros: true })}</p>
                   </div>
                 )}
 

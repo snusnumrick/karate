@@ -1,21 +1,27 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node';
 import { useLoaderData, Link } from '@remix-run/react';
-import { EventService } from '~/services/event.server';
+import { EventService, type EventWithEventType } from '~/services/event.server';
 import { siteConfig } from '~/config/site';
 import { Button } from '~/components/ui/button';
 import {Card, CardContent} from '~/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { EventRegistrationForm } from '~/components/EventRegistrationForm';
 import { getSupabaseServerClient, getSupabaseAdminClient } from '~/utils/supabase.server';
-import type { Database, Tables, TablesInsert } from '~/types/database.types';
+import type { Database, TablesInsert } from '~/types/database.types';
 import { Calendar, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
 import { formatDate } from '~/utils/misc';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
-import {fromDollars, multiplyMoney, type Money, addMoney, isPositive, toCents} from '~/utils/money';
+import { multiplyMoney, type Money, addMoney, isPositive, toCents, ZERO_MONEY, formatMoney, serializeMoney, deserializeMoney, type MoneyJSON } from '~/utils/money';
+import { moneyFromRow } from '~/utils/database-money';
 
 // Extended Event type for registration with additional properties
-type EventWithRegistrationInfo = Tables<'events'> & {
+type EventWithRegistrationInfo = EventWithEventType & {
   allow_registration: boolean;
+};
+
+type SerializedEventWithRegistrationInfo = Omit<EventWithRegistrationInfo, 'registration_fee' | 'late_registration_fee'> & {
+  registration_fee: MoneyJSON;
+  late_registration_fee: MoneyJSON;
 };
 
 type StudentInsert = TablesInsert<'students'>;
@@ -175,11 +181,13 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     // Get event details to check registration fee
     const { data: eventDetails_db } = await supabaseServer
       .from('events')
-      .select('registration_fee')
+      .select('registration_fee, registration_fee_cents')
       .eq('id', eventId)
       .single();
 
-    const registrationFee : Money = fromDollars(eventDetails_db?.registration_fee || 0);
+    const registrationFee: Money = eventDetails_db
+      ? moneyFromRow('events', 'registration_fee', eventDetails_db as unknown as Record<string, unknown>)
+      : ZERO_MONEY;
     const paymentRequired = isPositive(registrationFee);
 
     // Create event registrations
@@ -540,13 +548,19 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     allow_registration: event.status === 'registration_open'
   };
 
+  const serializedEvent: SerializedEventWithRegistrationInfo = {
+    ...eventWithProperties,
+    registration_fee: serializeMoney(eventWithProperties.registration_fee),
+    late_registration_fee: serializeMoney(eventWithProperties.late_registration_fee),
+  };
+
   const requestUrl = new URL(request.url);
   const redirectTo = `${requestUrl.pathname}${requestUrl.search}`;
   const addStudentUrl = `/family/add-student?redirectTo=${encodeURIComponent(redirectTo)}`;
   const requiresStudentProfile = !hasExistingStudents;
 
   return json({ 
-    event: eventWithProperties, 
+    event: serializedEvent, 
     isAuthenticated, 
     familyData,
     requiredWaivers,
@@ -557,12 +571,11 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 }
 
 export default function EventRegistration() {
-  const { event, isAuthenticated, familyData, requiredWaivers, signedWaiverIds, requiresStudentProfile, addStudentUrl } = useLoaderData<typeof loader>();
-
-  // Convert registration_fee from number to Money type for the component
-  const eventWithMoney = {
-    ...event,
-    registration_fee: event.registration_fee ? fromDollars(event.registration_fee) : null
+  const { event: serializedEvent, isAuthenticated, familyData, requiredWaivers, signedWaiverIds, requiresStudentProfile, addStudentUrl } = useLoaderData<typeof loader>();
+  const event: EventWithRegistrationInfo = {
+    ...serializedEvent,
+    registration_fee: deserializeMoney(serializedEvent.registration_fee),
+    late_registration_fee: deserializeMoney(serializedEvent.late_registration_fee),
   };
 
   const handleRegistrationSuccess = () => {
@@ -638,10 +651,10 @@ export default function EventRegistration() {
                       <MapPin className="h-4 w-4" />
                       <span>{event.location_name || event.location || siteConfig.name}</span>
                     </div>
-                    {event.registration_fee && (
+                    {isPositive(event.registration_fee) && (
                       <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                         <DollarSign className="h-4 w-4" />
-                        <span className="font-medium">${event.registration_fee}</span>
+                        <span className="font-medium">{formatMoney(event.registration_fee, { trimTrailingZeros: true })}</span>
                       </div>
                     )}
                   </div>
@@ -670,7 +683,7 @@ export default function EventRegistration() {
 
                 {/* Registration Form */}
                 <EventRegistrationForm 
-                  event={eventWithMoney}
+                  event={event}
                   isAuthenticated={isAuthenticated}
                   familyData={familyData}
                   requiredWaivers={requiredWaivers}

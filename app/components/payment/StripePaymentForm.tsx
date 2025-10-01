@@ -6,12 +6,13 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { ClientOnly } from "~/components/client-only";
 import { isDarkThemeEnabled } from "~/utils/theme.client";
 import type { ClientRenderConfig } from '~/services/payments/types.server';
+import type { Money } from '~/utils/money';
 
 interface PaymentWithDetails {
   id: string;
   family_id: string;
-  subtotal_amount: number;
-  total_amount: number;
+  subtotal_amount: Money;
+  total_amount: Money;
   family: { email?: string; postal_code?: string } | null;
 }
 

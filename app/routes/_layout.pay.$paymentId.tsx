@@ -5,7 +5,17 @@ import PaymentForm from "~/components/payment/PaymentForm";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import type {Database} from "~/types/database.types";
-import { formatMoney, fromCents, toCents } from "~/utils/money";
+import {
+    formatMoney,
+    toCents,
+    serializeMoney,
+    deserializeMoney,
+    type Money,
+    type MoneyJSON,
+    ZERO_MONEY,
+    addMoney
+} from "~/utils/money";
+import { moneyFromRow } from "~/utils/database-money";
 import { getPaymentProvider } from '~/services/payments/index.server';
 import type { ClientRenderConfig, PaymentProviderId } from '~/services/payments/types.server';
 import { getFamilyPaymentOptions, type EnrollmentPaymentOption } from "~/services/enrollment-payment.server";
@@ -18,29 +28,67 @@ type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row'];
 type TaxRateRow = Database['public']['Tables']['tax_rates']['Row']; // Add TaxRateRow type
 
 // Define the detailed payment type including new amount columns and taxes with description
-type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount'> & { // Omit old amount and single tax_amount
-    subtotal_amount: number;
-    total_amount: number;
+type PaymentTaxWithDescription = Omit<Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_amount'>, 'tax_amount'> & {
+    tax_amount: Money;
+    tax_rates: Pick<TaxRateRow, 'description'> | null;
+};
+
+type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount' | 'subtotal_amount' | 'total_amount'> & {
+    subtotal_amount: Money;
+    total_amount: Money;
+    tax_amount: Money;
     family: Pick<FamilyRow, 'name' | 'email' | 'postal_code'> | null;
     type: Database['public']['Enums']['payment_type_enum'];
-    // Update payment_taxes to include the related tax rate description
-    payment_taxes: Array<
-        Pick<PaymentTaxRow, 'tax_name_snapshot' | 'tax_amount'> & {
-        tax_rates: Pick<TaxRateRow, 'description'> | null; // Fetch description from related tax_rates
-    }
-    >;
+    payment_taxes: PaymentTaxWithDescription[];
     payment_students: Array<Pick<PaymentStudentRow, 'student_id'>>;
     individualSessionUnitAmountCents?: number | null;
     individualSessionQuantity?: number | null;
 };
 
+type SerializedPaymentTaxWithDescription = Omit<PaymentTaxWithDescription, 'tax_amount'> & {
+    tax_amount: MoneyJSON;
+};
+
+type SerializedPaymentWithDetails = Omit<PaymentWithDetails, 'subtotal_amount' | 'total_amount' | 'tax_amount' | 'payment_taxes'> & {
+    subtotal_amount: MoneyJSON;
+    total_amount: MoneyJSON;
+    tax_amount: MoneyJSON;
+    payment_taxes: SerializedPaymentTaxWithDescription[];
+};
+
 type LoaderData = {
-    payment?: PaymentWithDetails; // Use the more detailed type
+    payment?: SerializedPaymentWithDetails; // Use the more detailed type
     paymentProviderId: PaymentProviderId;
     providerConfig: ClientRenderConfig;
     error?: string; // Add error field for loader errors
     // paymentStatus is implicitly included in the payment object
 };
+
+function serializePayment(payment: PaymentWithDetails): SerializedPaymentWithDetails {
+    return {
+        ...payment,
+        subtotal_amount: serializeMoney(payment.subtotal_amount),
+        total_amount: serializeMoney(payment.total_amount),
+        tax_amount: serializeMoney(payment.tax_amount),
+        payment_taxes: payment.payment_taxes.map((tax) => ({
+            ...tax,
+            tax_amount: serializeMoney(tax.tax_amount),
+        })),
+    };
+}
+
+function deserializePayment(payment: SerializedPaymentWithDetails): PaymentWithDetails {
+    return {
+        ...payment,
+        subtotal_amount: deserializeMoney(payment.subtotal_amount),
+        total_amount: deserializeMoney(payment.total_amount),
+        tax_amount: deserializeMoney(payment.tax_amount),
+        payment_taxes: payment.payment_taxes.map((tax) => ({
+            ...tax,
+            tax_amount: deserializeMoney(tax.tax_amount),
+        })),
+    };
+}
 
 // --- Action Response Types (Mirrored from API endpoint) ---
 // Type for the successful response from /api/create-payment-intent (includes subtotal, tax, total)
@@ -203,10 +251,24 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         }
     }
 
-    const paymentWithDerived = {
+    const paymentTaxesWithMoney: PaymentTaxWithDescription[] = (payment.payment_taxes ?? []).map((tax) => ({
+        ...tax,
+        tax_amount: moneyFromRow('payment_taxes', 'tax_amount', tax),
+    }));
+
+    const subtotalMoney = moneyFromRow('payments', 'subtotal_amount', payment);
+    const totalMoney = moneyFromRow('payments', 'total_amount', payment);
+    const totalTaxMoney = paymentTaxesWithMoney.reduce<Money>((acc, tax) => addMoney(acc, tax.tax_amount), ZERO_MONEY);
+
+    const paymentWithDerived: PaymentWithDetails = {
         ...payment,
+        subtotal_amount: subtotalMoney,
+        total_amount: totalMoney,
+        tax_amount: totalTaxMoney,
+        payment_taxes: paymentTaxesWithMoney,
+        payment_students: payment.payment_students ?? [],
         individualSessionUnitAmountCents,
-        individualSessionQuantity
+        individualSessionQuantity,
     } as PaymentWithDetails;
 
     // --- Check provider status if DB status is 'pending' ---
@@ -280,7 +342,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     // Prepare the data object to be returned
     const loaderReturnData: LoaderData = {
-        payment: paymentWithDerived,
+        payment: serializePayment(paymentWithDerived),
         paymentProviderId,
         providerConfig: renderConfig,
     };
@@ -370,10 +432,11 @@ export default function PaymentPage() {
     // console.log("[PaymentPage] Component rendering started.");
     // payment object now contains the status
     const {
-        payment,
+        payment: serializedPayment,
         error: loaderError,
         providerConfig,
     } = useLoaderData<LoaderData>();
+    const payment = useMemo(() => serializedPayment ? deserializePayment(serializedPayment) : undefined, [serializedPayment]);
     // Use the combined type for the fetcher
     const paymentIntentFetcher = useFetcher<ApiActionResponse>();
     const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -387,25 +450,22 @@ export default function PaymentPage() {
     // --- Helper to Group Taxes ---
     const groupedTaxes = useMemo(() => {
         if (!payment?.payment_taxes) {
-            return [];
+            return [] as Array<{ description: string; amount: Money }>;
         }
 
-        const taxMap = new Map<string, number>(); // Map: tax description/name -> total amount
+        const taxMap = new Map<string, Money>();
 
         payment.payment_taxes.forEach(tax => {
-            // Use description first, fallback to snapshot name
             const key = tax.tax_rates?.description || tax.tax_name_snapshot || 'Unknown Tax';
-            const currentAmount = taxMap.get(key) || 0;
-            // Ensure tax_amount is treated as a number, default to 0 if null/undefined
-            taxMap.set(key, currentAmount + (tax.tax_amount ?? 0));
+            const currentAmount = taxMap.get(key) ?? ZERO_MONEY;
+            taxMap.set(key, addMoney(currentAmount, tax.tax_amount));
         });
 
-        // Convert map back to an array of objects for rendering
         return Array.from(taxMap.entries()).map(([description, amount]) => ({
             description,
             amount,
         }));
-    }, [payment?.payment_taxes]); // Recalculate if taxes change
+    }, [payment?.payment_taxes]);
 
 
     // console.log('PaymentPage, payment: ', payment);
@@ -431,8 +491,8 @@ export default function PaymentPage() {
             formData.append('supabasePaymentId', payment.id); // Pass Supabase ID for linking/update
 
             // The database now stores the discounted subtotal, so use it directly
-            formData.append('subtotalAmount', payment.subtotal_amount.toString());
-            formData.append('totalAmount', payment.total_amount.toString());
+            formData.append('subtotalAmount', toCents(payment.subtotal_amount).toString());
+            formData.append('totalAmount', toCents(payment.total_amount).toString());
 
 
             // Determine paymentOption, priceId, quantity, studentIds based on payment.payment_type
@@ -463,9 +523,12 @@ export default function PaymentPage() {
                     paymentOption = 'individual';
                     if (payment.individualSessionQuantity && payment.individualSessionQuantity > 0) {
                         quantity = payment.individualSessionQuantity.toString();
-                    } else if (payment.individualSessionUnitAmountCents && payment.individualSessionUnitAmountCents > 0 && payment.subtotal_amount) {
-                        const calculatedQuantity = Math.round(payment.subtotal_amount / payment.individualSessionUnitAmountCents);
-                        quantity = calculatedQuantity > 0 ? calculatedQuantity.toString() : '1';
+                    } else if (payment.individualSessionUnitAmountCents && payment.individualSessionUnitAmountCents > 0) {
+                        const subtotalCents = toCents(payment.subtotal_amount);
+                        if (subtotalCents > 0) {
+                            const calculatedQuantity = Math.round(subtotalCents / payment.individualSessionUnitAmountCents);
+                            quantity = calculatedQuantity > 0 ? calculatedQuantity.toString() : '1';
+                        }
                     } else {
                         console.error('Unable to derive individual session quantity for payment ID ' + payment.id);
                         setFetcherError('Configuration error: Cannot determine individual session quantity.');
@@ -550,18 +613,17 @@ export default function PaymentPage() {
                 if (payment) {
                     let mismatch = false;
                     // The database now stores the discounted subtotal, so compare directly
-                    if (paymentIntentFetcher.data.subtotalAmount !== payment.subtotal_amount) {
-                        console.error(`Subtotal Amount mismatch! DB record: ${payment.subtotal_amount}, Intent created: ${paymentIntentFetcher.data.subtotalAmount}`);
+                    if (paymentIntentFetcher.data.subtotalAmount !== toCents(payment.subtotal_amount)) {
+                        console.error(`Subtotal Amount mismatch! DB record: ${toCents(payment.subtotal_amount)}, Intent created: ${paymentIntentFetcher.data.subtotalAmount}`);
                         mismatch = true;
                     }
-                    // Verify total tax amount (Commented out comparison - only check subtotal and total)
-                    // const dbTotalTax = payment.payment_taxes?.reduce((sum, tax) => sum + tax.tax_amount, 0) ?? 0;
-                    // if (paymentIntentFetcher.data.taxAmount !== dbTotalTax) {
-                    //     console.error(`Total Tax Amount mismatch! DB record sum: ${dbTotalTax}, Intent created: ${paymentIntentFetcher.data.taxAmount}`);
-                    //     mismatch = true;
-                    // }
-                    if (paymentIntentFetcher.data.totalAmount !== payment.total_amount) {
-                        console.error(`Total Amount mismatch! DB record: ${payment.total_amount}, Intent created: ${paymentIntentFetcher.data.totalAmount}`);
+                    const dbTotalTax = toCents(payment.tax_amount);
+                    if (paymentIntentFetcher.data.taxAmount !== dbTotalTax) {
+                        console.error(`Total Tax Amount mismatch! DB record sum: ${dbTotalTax}, Intent created: ${paymentIntentFetcher.data.taxAmount}`);
+                        mismatch = true;
+                    }
+                    if (paymentIntentFetcher.data.totalAmount !== toCents(payment.total_amount)) {
+                        console.error(`Total Amount mismatch! DB record: ${toCents(payment.total_amount)}, Intent created: ${paymentIntentFetcher.data.totalAmount}`);
                         mismatch = true;
                     }
                     if (mismatch) {
@@ -635,7 +697,7 @@ export default function PaymentPage() {
                 </p>
                 {/* Display Subtotal (already discounted) */}
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <span className="font-semibold">Subtotal:</span> {formatMoney(fromCents(payment.subtotal_amount))}
+                    <span className="font-semibold">Subtotal:</span> {formatMoney(payment.subtotal_amount)}
                     {payment.discount_amount && payment.discount_amount > 0 && (
                         <span className="text-green-600 dark:text-green-400 ml-2">
                             (discount applied)
@@ -648,13 +710,13 @@ export default function PaymentPage() {
                         <p key={index} className="text-sm text-gray-700 dark:text-gray-300">
                             <span className="font-semibold">
                                 {tax.description}:
-                            </span> {formatMoney(fromCents(tax.amount))}
+                            </span> {formatMoney(tax.amount)}
                         </p>
                     ))
                 )}
                 <p className="text-lg font-bold text-gray-800 dark:text-gray-100 mt-2 border-t pt-2 dark:border-gray-600">
                     {/* Display the final total amount */}
-                    <span className="font-semibold">Total Amount:</span> {formatMoney(fromCents(payment.total_amount))}
+                    <span className="font-semibold">Total Amount:</span> {formatMoney(payment.total_amount)}
                 </p>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                     <span

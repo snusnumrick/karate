@@ -5,6 +5,7 @@ import { isDarkThemeEnabled } from "~/utils/theme.client";
 import { useNonce } from "~/context/nonce";
 import { useFetcher } from "@remix-run/react";
 import type { ClientRenderConfig } from '~/services/payments/types.server';
+import { formatMoney, type Money } from "~/utils/money";
 
 // Import Square Web SDK from npm package
 interface SquareCardElement {
@@ -27,8 +28,8 @@ let Square: SquareSDK | null = null;
 interface PaymentWithDetails {
   id: string;
   family_id: string;
-  subtotal_amount: number;
-  total_amount: number;
+  subtotal_amount: Money;
+  total_amount: Money;
   family: { email?: string; postal_code?: string } | null;
 }
 
@@ -340,12 +341,7 @@ export default function SquarePaymentForm({
     }
   }, [fetcher.data, payment.id, onError]);
 
-  const formatAmount = (cents: number) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD',
-    }).format(cents / 100);
-  };
+  const formatAmount = (amount: Money) => formatMoney(amount);
 
   if (sdkError) {
     return (
