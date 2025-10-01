@@ -12,6 +12,7 @@ This guide covers the complete development setup and workflow for the karate sch
 - [Development Workflow](#development-workflow)
 - [Available Scripts](#available-scripts)
 - [Project Structure](#project-structure)
+- [Instructor Portal](#instructor-portal)
 - [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
 
@@ -442,6 +443,18 @@ karate/
 - **`app/utils/`**: Utility functions and helpers
 - **`supabase/functions/`**: Serverless edge functions
 - **`public/`**: Static assets and PWA files
+
+## Instructor Portal
+
+- The instructor experience lives under `/instructor` and is available to users whose `profiles.role` is `instructor` or `admin`.
+- Promote an account for local testing:
+  ```sql
+  UPDATE profiles
+  SET role = 'instructor'::profile_role
+  WHERE email = 'sensei@example.com';
+  ```
+- The portal includes dashboard, sessions, resources, and a tablet-friendly attendance page. Attendance updates capture the marking instructor via the `attendance.marked_by` column.
+- Admins automatically inherit access and can switch to the instructor view to cover classes or audit workflows.
 
 ## Testing
 

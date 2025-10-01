@@ -25,6 +25,7 @@ npm run dev
 - **[Development Setup](docs/DEVELOPMENT.md)** - Complete development environment setup
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 - **[Architecture Overview](docs/ARCHITECTURE.md)** - Technical architecture and database design
+- **[Instructor Portal Guide](docs/INSTRUCTOR_PORTAL.md)** - Instructor workflows, permissions, and attendance tools
 - **[API Documentation](docs/API.md)** - External API endpoints and integration
 - **[Customization Guide](docs/CUSTOMIZATION.md)** - How to customize the system for your school
 
@@ -47,6 +48,12 @@ npm run dev
 - **Discount System** - Flexible discount codes and automatic family discounts
 - **Database Chat** - Natural language database queries using AI
 - **Bulk Operations** - Efficient management of large datasets
+
+### For Instructors
+- **Instructor Portal** - Dedicated workspace for session schedules, rosters, and student context
+- **Tablet-Friendly Attendance** - Tap-to-mark interface with automatic late detection (15-minute threshold)
+- **Eligibility Insights** - Quickly review tuition status and promotion readiness before each class
+- **Cross-Access for Admins** - Admins can switch into the instructor view to cover classes or audit workflows
 
 ### Marketing Tools
 - **Dynamic Landing Pages** - Customizable program landing pages for different audiences
