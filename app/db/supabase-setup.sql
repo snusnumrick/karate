@@ -137,6 +137,16 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Shared helper for BEFORE UPDATE triggers that maintain updated_at
+CREATE OR REPLACE FUNCTION public.update_modified_column()
+    RETURNS TRIGGER AS
+$$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Create entity_type enum for invoice entities
 DO
 $$
@@ -308,6 +318,66 @@ $$
             CREATE INDEX idx_students_family_id ON students (family_id);
         END IF;
     END
+$$;
+
+
+-- Profiles table (must exist before downstream RLS policies reference it)
+CREATE TABLE IF NOT EXISTS public.profiles
+(
+    id         uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+    email      text NOT NULL,
+    role       profile_role NOT NULL DEFAULT 'user'::profile_role,
+    family_id  uuid REFERENCES families (id) ON DELETE SET NULL,
+    first_name text NULL,
+    last_name  text NULL
+);
+
+ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS first_name text NULL;
+ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS last_name text NULL;
+ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS family_id uuid REFERENCES families (id) ON DELETE SET NULL;
+
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1
+                   FROM pg_indexes
+                   WHERE indexname = 'idx_profiles_family_id') THEN
+        CREATE INDEX idx_profiles_family_id ON public.profiles (family_id);
+    END IF;
+END
+$$;
+
+-- Ensure profiles.role uses profile_role enum even if pre-existing
+DO
+$$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'profiles'
+          AND column_name = 'role'
+          AND udt_name <> 'profile_role'
+    ) THEN
+        ALTER TABLE public.profiles
+            ADD COLUMN IF NOT EXISTS role_tmp profile_role DEFAULT 'user'::profile_role;
+
+        UPDATE public.profiles
+        SET role_tmp = COALESCE(NULLIF(trim(role::text), ''), 'user')::profile_role;
+
+        ALTER TABLE public.profiles
+            ALTER COLUMN role_tmp SET NOT NULL;
+
+        ALTER TABLE public.profiles
+            DROP COLUMN role;
+
+        ALTER TABLE public.profiles
+            RENAME COLUMN role_tmp TO role;
+    END IF;
+END
 $$;
 
 
@@ -627,9 +697,21 @@ ALTER TABLE payments
     ADD COLUMN IF NOT EXISTS payment_intent_id text NULL; -- Generic payment intent ID for all providers
 
 -- Copy data from old column if it exists
-UPDATE payments 
-SET payment_intent_id = stripe_payment_intent_id 
-WHERE stripe_payment_intent_id IS NOT NULL AND payment_intent_id IS NULL;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'payments'
+          AND column_name = 'stripe_payment_intent_id'
+    ) THEN
+        EXECUTE 'UPDATE public.payments
+                 SET payment_intent_id = stripe_payment_intent_id
+                 WHERE stripe_payment_intent_id IS NOT NULL
+                   AND payment_intent_id IS NULL';
+    END IF;
+END $$;
 
 -- Remove old Stripe-specific column
 ALTER TABLE payments DROP COLUMN IF EXISTS stripe_payment_intent_id;
@@ -694,17 +776,6 @@ $$
         END IF;
     END
 $$;
-
--- Define the function to update the 'updated_at' column
--- Moved this definition earlier to ensure it exists before triggers use it.
-CREATE OR REPLACE FUNCTION update_modified_column()
-    RETURNS TRIGGER AS
-$$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
 -- Add update timestamp trigger for payments table
 DO
@@ -996,68 +1067,6 @@ $$;
 
 -- Policy Agreements table removed in favor of enhanced waiver_signatures
 
--- Profiles table
-CREATE TABLE IF NOT EXISTS profiles
-(
-    id         uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
-    email      text NOT NULL,
-    role       profile_role NOT NULL DEFAULT 'user'::profile_role,
-    family_id  uuid REFERENCES families (id) ON DELETE SET NULL,
-    -- Add first_name and last_name columns
-    first_name text NULL,
-    last_name  text NULL
-);
-
--- Add columns idempotently if they don't exist
-ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS first_name text NULL;
-ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS last_name text NULL;
-
--- Add family_id column idempotently before attempting to index it
-ALTER TABLE profiles
-    ADD COLUMN IF NOT EXISTS family_id uuid REFERENCES families (id) ON DELETE SET NULL;
-
-DO
-$$
-    BEGIN
-IF NOT EXISTS (SELECT 1
-                       FROM pg_indexes
-                       WHERE indexname = 'idx_profiles_family_id') THEN
-CREATE INDEX idx_profiles_family_id ON profiles (family_id);
-END IF;
-END $$;
-
--- Ensure profiles.role uses profile_role enum even if pre-existing
-DO
-$$
-    BEGIN
-        IF EXISTS (
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'profiles'
-              AND column_name = 'role'
-              AND udt_name <> 'profile_role'
-        ) THEN
-            ALTER TABLE public.profiles
-                ADD COLUMN IF NOT EXISTS role_tmp profile_role DEFAULT 'user'::profile_role;
-
-            UPDATE public.profiles
-            SET role_tmp = COALESCE(NULLIF(trim(role::text), ''), 'user')::profile_role;
-
-            ALTER TABLE public.profiles
-                ALTER COLUMN role_tmp SET NOT NULL;
-
-            ALTER TABLE public.profiles
-                DROP COLUMN role;
-
-            ALTER TABLE public.profiles
-                RENAME COLUMN role_tmp TO role;
-        END IF;
-    END
-$$;
-
 -- Drop existing triggers first to avoid conflicts when recreating
 DROP TRIGGER IF EXISTS families_updated ON families;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -1101,13 +1110,18 @@ ALTER TABLE payment_students
     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE belt_awards
     ENABLE ROW LEVEL SECURITY; -- Renamed table
-ALTER TABLE attendance
-    ENABLE ROW LEVEL SECURITY;
--- Ensure attendance table tracks who marked attendance
-ALTER TABLE public.attendance
-    ADD COLUMN IF NOT EXISTS marked_by uuid REFERENCES public.profiles(id);
+DO $$
+BEGIN
+    IF to_regclass('public.attendance') IS NOT NULL THEN
+        ALTER TABLE public.attendance
+            ENABLE ROW LEVEL SECURITY;
 
-COMMENT ON COLUMN public.attendance.marked_by IS 'User (instructor/admin) who recorded the attendance entry';
+        ALTER TABLE public.attendance
+            ADD COLUMN IF NOT EXISTS marked_by uuid REFERENCES public.profiles(id);
+
+        COMMENT ON COLUMN public.attendance.marked_by IS 'User (instructor/admin) who recorded the attendance entry';
+    END IF;
+END $$;
 
 ALTER TABLE waivers
     ENABLE ROW LEVEL SECURITY;
@@ -1435,54 +1449,59 @@ CREATE POLICY "Belt awards are viewable by family members" ON belt_awards -- Ren
 END IF;
 
 -- Attendance RLS policies (session-based)
-IF NOT EXISTS (SELECT 1
-                       FROM pg_policies
-                       WHERE tablename = 'attendance'
-                         AND policyname = 'Admins can manage all attendance') THEN
-CREATE POLICY "Admins can manage all attendance" ON attendance
-    FOR ALL TO authenticated
-    USING (EXISTS (SELECT 1
-                   FROM profiles
-                   WHERE profiles.id = auth.uid()
-                     AND profiles.role = 'admin'::profile_role))
-    WITH CHECK (EXISTS (SELECT 1
-                        FROM profiles
-                        WHERE profiles.id = auth.uid()
-                          AND profiles.role = 'admin'::profile_role));
-END IF;
+IF to_regclass('public.attendance') IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1
+                   FROM pg_policies
+                   WHERE schemaname = 'public'
+                     AND tablename = 'attendance'
+                     AND policyname = 'Admins can manage all attendance') THEN
+        CREATE POLICY "Admins can manage all attendance" ON public.attendance
+            FOR ALL TO authenticated
+            USING (EXISTS (SELECT 1
+                           FROM public.profiles
+                           WHERE profiles.id = auth.uid()
+                             AND profiles.role = 'admin'::profile_role))
+            WITH CHECK (EXISTS (SELECT 1
+                                FROM public.profiles
+                                WHERE profiles.id = auth.uid()
+                                  AND profiles.role = 'admin'::profile_role));
+    END IF;
 
-IF NOT EXISTS (SELECT 1
-                       FROM pg_policies
-                       WHERE tablename = 'attendance'
-                         AND policyname = 'Family members can view their students attendance') THEN
-CREATE POLICY "Family members can view their students attendance" ON attendance
-    FOR SELECT USING (
-    EXISTS (SELECT 1
-            FROM students
-                     JOIN profiles ON profiles.family_id = students.family_id
-            WHERE attendance.student_id = students.id
-              AND profiles.id = auth.uid())
-    );
-END IF;
+    IF NOT EXISTS (SELECT 1
+                   FROM pg_policies
+                   WHERE schemaname = 'public'
+                     AND tablename = 'attendance'
+                     AND policyname = 'Family members can view their students attendance') THEN
+        CREATE POLICY "Family members can view their students attendance" ON public.attendance
+            FOR SELECT USING (
+            EXISTS (SELECT 1
+                    FROM public.students
+                             JOIN public.profiles ON profiles.family_id = students.family_id
+                    WHERE attendance.student_id = students.id
+                      AND profiles.id = auth.uid())
+            );
+    END IF;
 
-IF NOT EXISTS (SELECT 1
-                       FROM pg_policies
-                       WHERE tablename = 'attendance'
-                         AND policyname = 'Instructors can manage attendance for their sessions') THEN
-CREATE POLICY "Instructors can manage attendance for their sessions" ON attendance
-    FOR ALL TO authenticated
-    USING (EXISTS (SELECT 1
-                   FROM profiles
-                            JOIN class_sessions cs ON cs.instructor_id = profiles.id
-                   WHERE profiles.id = auth.uid()
-                     AND profiles.role = 'instructor'::profile_role
-                     AND cs.id = attendance.class_session_id))
-    WITH CHECK (EXISTS (SELECT 1
-                        FROM profiles
-                                 JOIN class_sessions cs ON cs.instructor_id = profiles.id
-                        WHERE profiles.id = auth.uid()
-                          AND profiles.role = 'instructor'::profile_role
-                          AND cs.id = attendance.class_session_id));
+    IF NOT EXISTS (SELECT 1
+                   FROM pg_policies
+                   WHERE schemaname = 'public'
+                     AND tablename = 'attendance'
+                     AND policyname = 'Instructors can manage attendance for their sessions') THEN
+        CREATE POLICY "Instructors can manage attendance for their sessions" ON public.attendance
+            FOR ALL TO authenticated
+            USING (EXISTS (SELECT 1
+                           FROM public.profiles
+                                    JOIN public.class_sessions cs ON cs.instructor_id = profiles.id
+                           WHERE profiles.id = auth.uid()
+                             AND profiles.role = 'instructor'::profile_role
+                             AND cs.id = attendance.class_session_id))
+            WITH CHECK (EXISTS (SELECT 1
+                                FROM public.profiles
+                                         JOIN public.class_sessions cs ON cs.instructor_id = profiles.id
+                                WHERE profiles.id = auth.uid()
+                                  AND profiles.role = 'instructor'::profile_role
+                                  AND cs.id = attendance.class_session_id));
+    END IF;
 END IF;
 
 IF NOT EXISTS (SELECT 1
@@ -2592,7 +2611,7 @@ WITH UserConversations AS (
                         pd.last_name,
                     -- Role if admin/instructor and name missing
                         CASE
-                            WHEN pd.role IN ('admin'::profile_role, 'instructor'::profile_role) THEN initcap(pd.role) -- Capitalize role
+                            WHEN pd.role IN ('admin'::profile_role, 'instructor'::profile_role) THEN initcap(pd.role::text) -- Capitalize role
                             ELSE NULL
                             END,
                     -- Email prefix as fallback
@@ -5296,48 +5315,48 @@ DO
 $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM invoice_template_line_items WHERE template_id = '550e8400-e29b-41d4-a716-446655440001') THEN
-        INSERT INTO invoice_template_line_items (template_id, item_type, description, quantity, unit_price, tax_rate, discount_rate, sort_order) VALUES
+        INSERT INTO invoice_template_line_items (template_id, item_type, description, quantity_cents, unit_price_cents, tax_rate, discount_rate, sort_order) VALUES
         -- Monthly enrollment
-        ('550e8400-e29b-41d4-a716-446655440001', 'class_enrollment', 'Monthly Class Fee', 1, 0, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440001', 'class_enrollment', 'Monthly Class Fee', 100, 0, 0, 0, 0),
 
         -- Registration package
-        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Registration Fee', 1, 50, 0, 0, 0),
-        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Uniform (Gi)', 1, 75, 0, 0, 1),
-        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Belt', 1, 15, 0, 0, 2),
-        ('550e8400-e29b-41d4-a716-446655440002', 'class_enrollment', 'First Month Class Fee', 1, 0, 0, 0, 3),
+        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Registration Fee', 100, 5000, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Uniform (Gi)', 100, 7500, 0, 0, 1),
+        ('550e8400-e29b-41d4-a716-446655440002', 'fee', 'Belt', 100, 1500, 0, 0, 2),
+        ('550e8400-e29b-41d4-a716-446655440002', 'class_enrollment', 'First Month Class Fee', 100, 0, 0, 0, 3),
 
         -- Testing fees
-        ('550e8400-e29b-41d4-a716-446655440003', 'fee', 'Belt Testing Fee', 1, 40, 0, 0, 0),
-        ('550e8400-e29b-41d4-a716-446655440003', 'fee', 'New Belt', 1, 20, 0, 0, 1),
+        ('550e8400-e29b-41d4-a716-446655440003', 'fee', 'Belt Testing Fee', 100, 4000, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440003', 'fee', 'New Belt', 100, 2000, 0, 0, 1),
 
         -- Tournament fees
-        ('550e8400-e29b-41d4-a716-446655440004', 'fee', 'Tournament Entry Fee', 1, 60, 0, 0, 0),
-        ('550e8400-e29b-41d4-a716-446655440004', 'fee', 'USANKF Membership (if required)', 1, 35, 0, 0, 1),
+        ('550e8400-e29b-41d4-a716-446655440004', 'fee', 'Tournament Entry Fee', 100, 6000, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440004', 'fee', 'USANKF Membership (if required)', 100, 3500, 0, 0, 1),
 
         -- Equipment package
-        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Sparring Gloves', 1, 45, 0, 0, 0),
-        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Foot Pads', 1, 35, 0, 0, 1),
-        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Shin Guards', 1, 40, 0, 0, 2),
-        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Headgear', 1, 65, 0, 0, 3),
-        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Mouthguard', 1, 15, 0, 0, 4),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Sparring Gloves', 100, 4500, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Foot Pads', 100, 3500, 0, 0, 1),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Shin Guards', 100, 4000, 0, 0, 2),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Headgear', 100, 6500, 0, 0, 3),
+        ('550e8400-e29b-41d4-a716-446655440005', 'fee', 'Mouthguard', 100, 1500, 0, 0, 4),
 
         -- Private lessons
-        ('550e8400-e29b-41d4-a716-446655440006', 'individual_session', 'Private Lesson (1 hour)', 4, 75, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440006', 'individual_session', 'Private Lesson (1 hour)', 400, 7500, 0, 0, 0),
 
         -- Family discount
-        ('550e8400-e29b-41d4-a716-446655440007', 'class_enrollment', 'First Family Member - Monthly Fee', 1, 0, 0, 0, 0),
-        ('550e8400-e29b-41d4-a716-446655440007', 'class_enrollment', 'Additional Family Member - Monthly Fee', 1, 0, 0, 0.10, 1),
+        ('550e8400-e29b-41d4-a716-446655440007', 'class_enrollment', 'First Family Member - Monthly Fee', 100, 0, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440007', 'class_enrollment', 'Additional Family Member - Monthly Fee', 100, 0, 0, 0.10, 1),
 
         -- Makeup classes
-        ('550e8400-e29b-41d4-a716-446655440008', 'fee', 'Makeup Class Fee', 1, 25, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440008', 'fee', 'Makeup Class Fee', 100, 2500, 0, 0, 0),
 
         -- Summer camp
-        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Summer Camp Week 1', 1, 150, 0, 0, 0),
-        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Camp T-Shirt', 1, 20, 0, 0, 1),
-        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Lunch (5 days)', 1, 50, 0, 0, 2),
+        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Summer Camp Week 1', 100, 15000, 0, 0, 0),
+        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Camp T-Shirt', 100, 2000, 0, 0, 1),
+        ('550e8400-e29b-41d4-a716-446655440009', 'fee', 'Lunch (5 days)', 100, 5000, 0, 0, 2),
 
         -- Annual membership
-        ('550e8400-e29b-41d4-a716-446655440010', 'class_enrollment', 'Annual Membership (12 months)', 12, 0, 0, 0.15, 0);
+        ('550e8400-e29b-41d4-a716-446655440010', 'class_enrollment', 'Annual Membership (12 months)', 1200, 0, 0, 0.15, 0);
     END IF;
 END
 $$;
@@ -5385,10 +5404,27 @@ VALUES
     ('other', 'Other', 'Other types of events', 'bg-gray-100 text-gray-800', 'border-gray-200', 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200', 8)
 ON CONFLICT (name) DO NOTHING;
 
--- Add constraint to prevent deletion of the 'other' event type (required for default values)
-ALTER TABLE event_types 
-ADD CONSTRAINT IF NOT EXISTS prevent_other_deletion 
-CHECK (name != 'other' OR is_active = true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'prevent_other_deletion'
+          AND conrelid = 'public.event_types'::regclass
+    ) THEN
+        ALTER TABLE public.event_types
+            ADD CONSTRAINT prevent_other_deletion
+            CHECK (name != 'other' OR is_active = true);
+    END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.get_event_type_id(p_name text)
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT id FROM public.event_types WHERE name = p_name LIMIT 1;
+$$;
 
 -- Create event_status enum
 DO $$
@@ -5436,7 +5472,7 @@ CREATE TABLE IF NOT EXISTS events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     title text NOT NULL,
     description text,
-    event_type_id uuid REFERENCES event_types(id) NOT NULL DEFAULT (SELECT id FROM event_types WHERE name = 'other' LIMIT 1),
+    event_type_id uuid REFERENCES event_types(id) NOT NULL DEFAULT public.get_event_type_id('other'),
     status event_status_enum NOT NULL DEFAULT 'draft',
     
     -- Date and time information
@@ -5971,16 +6007,77 @@ BEGIN
 END $$;
 
 -- Update attendance table to use attendance_status_enum
+DO $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'public.attendance'::regclass
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%status%'
+    LOOP
+        EXECUTE format('ALTER TABLE public.attendance DROP CONSTRAINT %I', rec.conname);
+    END LOOP;
+END $$;
+
+ALTER TABLE public.attendance
+    ALTER COLUMN status DROP DEFAULT;
+
 ALTER TABLE attendance 
 ALTER COLUMN status TYPE attendance_status_enum 
 USING status::attendance_status_enum;
 
+ALTER TABLE public.attendance
+    ALTER COLUMN status SET DEFAULT 'present'::attendance_status_enum;
+
 -- Update class_sessions table to use class_session_status_enum
+DO $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'public.class_sessions'::regclass
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%status%'
+    LOOP
+        EXECUTE format('ALTER TABLE public.class_sessions DROP CONSTRAINT %I', rec.conname);
+    END LOOP;
+END $$;
+
+ALTER TABLE public.class_sessions
+    ALTER COLUMN status DROP DEFAULT;
+
 ALTER TABLE class_sessions 
 ALTER COLUMN status TYPE class_session_status_enum 
 USING status::class_session_status_enum;
 
+ALTER TABLE public.class_sessions
+    ALTER COLUMN status SET DEFAULT 'scheduled'::class_session_status_enum;
+
 -- Update discount_codes table to use the new enums
+DO $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'public.discount_codes'::regclass
+          AND contype = 'c'
+          AND (
+              pg_get_constraintdef(oid) ILIKE '%discount_type%'
+           OR pg_get_constraintdef(oid) ILIKE '%usage_type%'
+           OR pg_get_constraintdef(oid) ILIKE '%scope%'
+        )
+    LOOP
+        EXECUTE format('ALTER TABLE public.discount_codes DROP CONSTRAINT %I', rec.conname);
+    END LOOP;
+END $$;
+
 ALTER TABLE discount_codes 
 ALTER COLUMN discount_type TYPE discount_type_enum 
 USING discount_type::discount_type_enum;
@@ -5994,6 +6091,25 @@ ALTER COLUMN usage_type TYPE discount_usage_type_enum
 USING usage_type::discount_usage_type_enum;
 
 -- Update discount_templates table to use the new enums
+DO $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'public.discount_templates'::regclass
+          AND contype = 'c'
+          AND (
+              pg_get_constraintdef(oid) ILIKE '%discount_type%'
+           OR pg_get_constraintdef(oid) ILIKE '%usage_type%'
+           OR pg_get_constraintdef(oid) ILIKE '%scope%'
+        )
+    LOOP
+        EXECUTE format('ALTER TABLE public.discount_templates DROP CONSTRAINT %I', rec.conname);
+    END LOOP;
+END $$;
+
 ALTER TABLE discount_templates 
 ALTER COLUMN discount_type TYPE discount_type_enum 
 USING discount_type::discount_type_enum;
