@@ -1,7 +1,6 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from '@remix-run/node';
 import { useLoaderData, Link } from "@remix-run/react";
 import { useState } from 'react';
-import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { DiscountService } from '~/services/discount.server';
 import type { DiscountCodeWithUsage } from '~/types/discount';
 import { Button } from '~/components/ui/button';
@@ -24,25 +23,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import { csrf } from "~/utils/csrf.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer } = getSupabaseServerClient(request);
-
-  // Check if user is admin
-  const { data: { user } } = await supabaseServer.auth.getUser();
-  if (!user) {
-    throw new Response('Unauthorized', { status: 401 });
-  }
-
-  // Check admin status
-  const { data: profile } = await supabaseServer
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-  if (profile?.role !== 'admin') {
-    throw new Response('Forbidden', { status: 403 });
-  }
-
+  // Auth is handled by parent admin.tsx layout
   // Fetch discount codes
   const discountCodes = await DiscountService.getAllDiscountCodes();
 
@@ -54,25 +35,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  const { supabaseServer } = getSupabaseServerClient(request);
-
-  // Check if user is admin
-  const { data: { user } } = await supabaseServer.auth.getUser();
-  if (!user) {
-    throw new Response('Unauthorized', { status: 401 });
-  }
-
-  // Check admin status
-  const { data: profile } = await supabaseServer
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-  if (profile?.role !== 'admin') {
-    throw new Response('Forbidden', { status: 403 });
-  }
-
+  // Auth is handled by parent admin.tsx layout
   await csrf.validate(request);
 
   const formData = await request.formData();
