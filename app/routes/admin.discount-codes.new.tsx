@@ -10,7 +10,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
-import { getSupabaseServerClient , getSupabaseAdminClient } from "~/utils/supabase.server";
+import { getSupabaseAdminClient, getSupabaseServerClient } from "~/utils/supabase.server";
 import { DiscountService } from "~/services/discount.server";
 import { getDiscountTemplateById } from "~/services/discount-template.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -40,24 +40,7 @@ type ActionData = {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer } = getSupabaseServerClient(request);
-  
-  // Check if user is admin
-  const { data: { user } } = await supabaseServer.auth.getUser();
-  if (!user) {
-    throw new Response('Unauthorized', { status: 401 });
-  }
-
-  // Check admin status
-  const { data: profile } = await supabaseServer
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profile?.role !== 'admin') {
-    throw new Response('Forbidden', { status: 403 });
-  }
+  // Auth is handled by parent admin.tsx layout
 
   // Use service role client for admin data access (bypass RLS)
   const supabaseAdmin = getSupabaseAdminClient();
