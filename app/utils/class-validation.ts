@@ -6,10 +6,16 @@ export interface ClassValidationResult {
   warnings: string[];
 }
 
+// Subset of Program fields needed for validation (doesn't include Money fields)
+export type ProgramForValidation = Pick<Program,
+  'max_capacity' | 'sessions_per_week' | 'min_sessions_per_week' | 'max_sessions_per_week' |
+  'min_age' | 'max_age' | 'duration_minutes' | 'name'
+>;
+
 export interface ClassValidationData {
   maxCapacity?: number;
   schedules: Array<{ day_of_week: string; start_time: string }>;
-  program: Program;
+  program: ProgramForValidation;
 }
 
 /**
@@ -89,14 +95,14 @@ export function validateClassConstraints(data: ClassValidationData): ClassValida
 /**
  * Get default max capacity for a class based on program constraints
  */
-export function getDefaultMaxCapacity(program: Program): number | undefined {
+export function getDefaultMaxCapacity(program: ProgramForValidation): number | undefined {
   return program.max_capacity;
 }
 
 /**
  * Get session frequency description for a program
  */
-export function getSessionFrequencyDescription(program: Program): string {
+export function getSessionFrequencyDescription(program: ProgramForValidation): string {
   if (program.sessions_per_week) {
     return `This program requires exactly ${program.sessions_per_week} session${program.sessions_per_week > 1 ? 's' : ''} per week.`;
   }

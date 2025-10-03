@@ -6,23 +6,39 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Checkbox } from "~/components/ui/checkbox";
-import { Plus, Edit, Users, Calendar, DollarSign, Archive } from "lucide-react";
-import type { Program } from "~/types/multi-class";
+import { Plus, Edit, Calendar, Archive, Users } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { serializeMoney, fromCents, formatMoney, isPositive } from "~/utils/money";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
-  
+
   const url = new URL(request.url);
   const showInactive = url.searchParams.get('showInactive') === 'true';
-  
+
   const programs = await getPrograms(showInactive ? {} : { is_active: true });
-  return json({ programs, showInactive });
+
+  // Serialize Money objects for JSON transmission
+  const serializedPrograms = programs.map(program => ({
+    ...program,
+    monthly_fee: program.monthly_fee ? serializeMoney(program.monthly_fee) : undefined,
+    yearly_fee: program.yearly_fee ? serializeMoney(program.yearly_fee) : undefined,
+    individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
+    registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
+  }));
+
+  return json({ programs: serializedPrograms, showInactive });
 }
 
 export default function ProgramsIndex() {
   const { programs, showInactive } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Helper to format money from serialized MoneyJSON
+  const formatProgramFee = (moneyJson: { amount: number; currency: string } | undefined) => {
+    if (!moneyJson) return null;
+    return fromCents(moneyJson.amount);
+  };
 
   const handleToggleInactive = (checked: boolean) => {
     if (checked) {
@@ -101,54 +117,59 @@ export default function ProgramsIndex() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {programs.map((program: Program) => (
-            <Card key={program.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{program.name}</CardTitle>
-                  <Badge variant={program.is_active ? "default" : "secondary"}>
-                    {program.is_active ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-                {program.description && (
-                  <CardDescription>{program.description}</CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground flex items-center">
-                      <DollarSign className="h-4 w-4 mr-1" />
-                      {program.monthly_fee ? 'Monthly Fee:' : 
-                       program.yearly_fee ? 'Yearly Fee:' : 
-                       program.individual_session_fee ? 'Session Fee:' : 'Monthly Fee:'}
-                    </span>
-                    <span>
-                      {program.monthly_fee ? `$${program.monthly_fee}` : 
-                       program.yearly_fee ? `$${program.yearly_fee}` : 
-                       program.individual_session_fee ? `$${program.individual_session_fee}` : 'Not set'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground flex items-center">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      Duration:
-                    </span>
-                    <span>{program.duration_minutes} minutes</span>
-                  </div>
+          {programs.map((program) => {
+            const monthlyFee = formatProgramFee(program.monthly_fee);
+            const yearlyFee = formatProgramFee(program.yearly_fee);
+            const sessionFee = formatProgramFee(program.individual_session_fee);
 
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <Button asChild size="sm" variant="outline" className="flex-1">
-                    <Link to={`/admin/programs/${program.id}/edit`}>
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+            return (
+              <Card key={program.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{program.name}</CardTitle>
+                    <Badge variant={program.is_active ? "default" : "secondary"}>
+                      {program.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  {program.description && (
+                    <CardDescription>{program.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground flex items-center">
+                        {monthlyFee && isPositive(monthlyFee) ? 'Monthly Fee:' :
+                         yearlyFee && isPositive(yearlyFee) ? 'Yearly Fee:' :
+                         sessionFee && isPositive(sessionFee) ? 'Session Fee:' : 'Monthly Fee:'}
+                      </span>
+                      <span>
+                        {monthlyFee && isPositive(monthlyFee) ? formatMoney(monthlyFee, { showCurrency: true, trimTrailingZeros: true }) :
+                         yearlyFee && isPositive(yearlyFee) ? formatMoney(yearlyFee, { showCurrency: true, trimTrailingZeros: true }) :
+                         sessionFee && isPositive(sessionFee) ? formatMoney(sessionFee, { showCurrency: true, trimTrailingZeros: true }) : 'Not set'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground flex items-center">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        Duration:
+                      </span>
+                      <span>{program.duration_minutes} minutes</span>
+                    </div>
+
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <Button asChild size="sm" variant="outline" className="flex-1">
+                      <Link to={`/admin/programs/${program.id}/edit`}>
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

@@ -14,6 +14,7 @@ import { Save } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
 import type { CreateProgramData } from "~/types/multi-class";
+import {toMoney, isNegative, serializeMoney, type MoneyJSON} from "~/utils/money";
 
 
 type ActionData = {
@@ -42,18 +43,27 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ request, params }: LoaderFunctionArgs) {
   await requireAdminUser(request);
   const programId = params.id;
-  
+
   if (!programId) {
     throw new Response("Program ID is required", { status: 400 });
   }
 
   const program = await getProgramById(programId);
-  
+
   if (!program) {
     throw new Response("Program not found", { status: 404 });
   }
 
-  return json({ program });
+  // Serialize Money objects for JSON transport
+  return json({
+    program: {
+      ...program,
+      monthly_fee: program.monthly_fee ? serializeMoney(program.monthly_fee) : undefined,
+      registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
+      yearly_fee: program.yearly_fee ? serializeMoney(program.yearly_fee) : undefined,
+      individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
+    }
+  });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -98,10 +108,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const specialNeedsSupport = formData.get("special_needs_support") === "on";
   
   // Pricing
-  const monthlyFee = formData.get("monthly_fee") ? parseFloat(formData.get("monthly_fee") as string) : undefined;
-  const registrationFee = formData.get("registration_fee") ? parseFloat(formData.get("registration_fee") as string) : undefined;
-  const yearlyFee = formData.get("yearly_fee") ? parseFloat(formData.get("yearly_fee") as string) : undefined;
-  const individualSessionFee = formData.get("individual_session_fee") ? parseFloat(formData.get("individual_session_fee") as string) : undefined;
+  const monthlyFee = formData.get("monthly_fee") ? toMoney(formData.get("monthly_fee")) : undefined;
+  const registrationFee = formData.get("registration_fee") ? toMoney(formData.get("registration_fee")) : undefined;
+  const yearlyFee = formData.get("yearly_fee") ? toMoney(formData.get("yearly_fee")) : undefined;
+  const individualSessionFee = formData.get("individual_session_fee") ? toMoney(formData.get("individual_session_fee")) : undefined;
 
   const isActive = formData.get("is_active") === "on";
 
@@ -137,15 +147,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
     errors.max_age = "Maximum age must be greater than or equal to minimum age";
   }
 
-  if (monthlyFee !== undefined && monthlyFee < 0) {
+  if (monthlyFee !== undefined && isNegative(monthlyFee)) {
     errors.monthly_fee = "Monthly fee cannot be negative";
   }
 
-  if (yearlyFee !== undefined && yearlyFee < 0) {
+  if (yearlyFee !== undefined && isNegative(yearlyFee)) {
     errors.yearly_fee = "Yearly fee cannot be negative";
   }
 
-  if (individualSessionFee !== undefined && individualSessionFee < 0) {
+  if (individualSessionFee !== undefined && isNegative(individualSessionFee)) {
     errors.individual_session_fee = "Individual session fee cannot be negative";
   }
 
@@ -199,6 +209,12 @@ export default function EditProgram() {
   const actionData = useActionData<typeof action>() as ActionData | undefined;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+
+  // Helper to convert MoneyJSON to dollar string for inputs
+  const moneyToString = (money: MoneyJSON | undefined) => {
+    if (!money) return "";
+    return (money.amount / 100).toString();
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -520,7 +536,7 @@ export default function EditProgram() {
                 type="number"
                 min="0"
                 step="0.01"
-                defaultValue={program.monthly_fee?.toString() || ""}
+                defaultValue={moneyToString(program.monthly_fee)}
                 placeholder="e.g., 120.00"
                 className={`input-custom-styles ${actionData?.errors?.monthly_fee ? "border-red-500" : ""}`}
                 tabIndex={16}
@@ -539,7 +555,7 @@ export default function EditProgram() {
                 type="number"
                 min="0"
                 step="0.01"
-                defaultValue={program.registration_fee?.toString() || ""}
+                defaultValue={moneyToString(program.registration_fee)}
                 placeholder="e.g., 50.00"
                 className="input-custom-styles"
                 tabIndex={17}
@@ -555,7 +571,7 @@ export default function EditProgram() {
                 type="number"
                 min="0"
                 step="0.01"
-                defaultValue={program.yearly_fee?.toString() || ""}
+                defaultValue={moneyToString(program.yearly_fee)}
                 placeholder="e.g., 1200.00"
                 className={`input-custom-styles ${actionData?.errors?.yearly_fee ? "border-red-500" : ""}`}
                 tabIndex={18}
@@ -574,7 +590,7 @@ export default function EditProgram() {
                 type="number"
                 min="0"
                 step="0.01"
-                defaultValue={program.individual_session_fee?.toString() || ""}
+                defaultValue={moneyToString(program.individual_session_fee)}
                 placeholder="e.g., 35.00"
                 className={`input-custom-styles ${actionData?.errors?.individual_session_fee ? "border-red-500" : ""}`}
                 tabIndex={19}

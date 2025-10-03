@@ -4,6 +4,7 @@ import {
   CreateProgramData,
   UpdateProgramData,
 } from '~/types/multi-class';
+import { toCents, fromCents } from '~/utils/money';
 
 /**
  * Create a new program
@@ -12,37 +13,42 @@ export async function createProgram(
   programData: CreateProgramData,
   supabase = getSupabaseAdminClient()
 ): Promise<Program> {
+  const programInsert = {
+    name: programData.name,
+    description: programData.description,
+    duration_minutes: programData.duration_minutes,
+    // Capacity constraints
+    max_capacity: programData.max_capacity,
+    // Frequency constraints
+    sessions_per_week: programData.sessions_per_week,
+    min_sessions_per_week: programData.min_sessions_per_week,
+    max_sessions_per_week: programData.max_sessions_per_week,
+    // Belt requirements
+    min_belt_rank: programData.min_belt_rank,
+    max_belt_rank: programData.max_belt_rank,
+    belt_rank_required: programData.belt_rank_required ?? false,
+    // Prerequisite programs
+    prerequisite_programs: programData.prerequisite_programs,
+    // Age and demographic constraints
+    min_age: programData.min_age,
+    max_age: programData.max_age,
+    gender_restriction: programData.gender_restriction,
+    special_needs_support: programData.special_needs_support,
+    // Pricing structure - convert Money to cents for storage
+    monthly_fee_cents: programData.monthly_fee ? toCents(programData.monthly_fee) : null,
+    registration_fee_cents: programData.registration_fee ? toCents(programData.registration_fee) : null,
+    yearly_fee_cents: programData.yearly_fee ? toCents(programData.yearly_fee) : null,
+    individual_session_fee_cents: programData.individual_session_fee ? toCents(programData.individual_session_fee) : null,
+    // System fields
+    is_active: programData.is_active ?? true,
+  };
+
+  // Supabase generated types are incomplete and missing required fields like 'name'
+  // This is a known limitation with Supabase's type generation - regenerating types may help
   const { data, error } = await supabase
     .from('programs')
-    .insert({
-      name: programData.name,
-      description: programData.description,
-      duration_minutes: programData.duration_minutes,
-      // Capacity constraints
-      max_capacity: programData.max_capacity,
-      // Frequency constraints
-      sessions_per_week: programData.sessions_per_week,
-      min_sessions_per_week: programData.min_sessions_per_week,
-      max_sessions_per_week: programData.max_sessions_per_week,
-      // Belt requirements
-      min_belt_rank: programData.min_belt_rank,
-      max_belt_rank: programData.max_belt_rank,
-      belt_rank_required: programData.belt_rank_required ?? false,
-      // Prerequisite programs
-      prerequisite_programs: programData.prerequisite_programs,
-      // Age and demographic constraints
-      min_age: programData.min_age,
-      max_age: programData.max_age,
-      gender_restriction: programData.gender_restriction,
-      special_needs_support: programData.special_needs_support,
-      // Pricing structure
-      monthly_fee_cents: programData.monthly_fee,
-      registration_fee_cents: programData.registration_fee,
-      yearly_fee_cents: programData.yearly_fee,
-      individual_session_fee_cents: programData.individual_session_fee,
-      // System fields
-      is_active: programData.is_active ?? true,
-    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .insert(programInsert as any)
     .select()
     .single();
 
@@ -66,10 +72,11 @@ export async function createProgram(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
-    monthly_fee: data.monthly_fee_cents || undefined,
-    registration_fee: data.registration_fee_cents || undefined,
-    yearly_fee: data.yearly_fee_cents || undefined,
-    individual_session_fee: data.individual_session_fee_cents || undefined,
+    // Convert cents back to Money objects
+    monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
+    registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
+    yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
+    individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
   };
 }
 
@@ -106,11 +113,11 @@ export async function updateProgram(
   if (updates.max_age !== undefined) updateData.max_age = updates.max_age;
   if (updates.gender_restriction !== undefined) updateData.gender_restriction = updates.gender_restriction;
   if (updates.special_needs_support !== undefined) updateData.special_needs_support = updates.special_needs_support;
-  // Pricing structure
-  if (updates.monthly_fee !== undefined) updateData.monthly_fee = updates.monthly_fee;
-  if (updates.registration_fee !== undefined) updateData.registration_fee = updates.registration_fee;
-  if (updates.yearly_fee !== undefined) updateData.yearly_fee = updates.yearly_fee;
-  if (updates.individual_session_fee !== undefined) updateData.individual_session_fee = updates.individual_session_fee;
+  // Pricing structure - convert Money to cents
+  if (updates.monthly_fee !== undefined) updateData.monthly_fee_cents = updates.monthly_fee ? toCents(updates.monthly_fee) : null;
+  if (updates.registration_fee !== undefined) updateData.registration_fee_cents = updates.registration_fee ? toCents(updates.registration_fee) : null;
+  if (updates.yearly_fee !== undefined) updateData.yearly_fee_cents = updates.yearly_fee ? toCents(updates.yearly_fee) : null;
+  if (updates.individual_session_fee !== undefined) updateData.individual_session_fee_cents = updates.individual_session_fee ? toCents(updates.individual_session_fee) : null;
   // System fields
   if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
 
@@ -141,10 +148,11 @@ export async function updateProgram(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
-    monthly_fee: data.monthly_fee_cents || undefined,
-    registration_fee: data.registration_fee_cents || undefined,
-    yearly_fee: data.yearly_fee_cents || undefined,
-    individual_session_fee: data.individual_session_fee_cents || undefined,
+    // Convert cents back to Money objects
+    monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
+    registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
+    yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
+    individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
   };
 }
 
@@ -192,10 +200,11 @@ export async function getPrograms(
     max_age: program.max_age || undefined,
     gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: program.special_needs_support || undefined,
-    monthly_fee: program.monthly_fee_cents || undefined,
-    registration_fee: program.registration_fee_cents || undefined,
-    yearly_fee: program.yearly_fee_cents || undefined,
-    individual_session_fee: program.individual_session_fee_cents || undefined,
+    // Convert cents back to Money objects
+    monthly_fee: program.monthly_fee_cents != null ? fromCents(program.monthly_fee_cents) : undefined,
+    registration_fee: program.registration_fee_cents != null ? fromCents(program.registration_fee_cents) : undefined,
+    yearly_fee: program.yearly_fee_cents != null ? fromCents(program.yearly_fee_cents) : undefined,
+    individual_session_fee: program.individual_session_fee_cents != null ? fromCents(program.individual_session_fee_cents) : undefined,
   }));
 }
 
@@ -235,10 +244,11 @@ export async function getProgramById(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
-    monthly_fee: data.monthly_fee_cents || undefined,
-    registration_fee: data.registration_fee_cents || undefined,
-    yearly_fee: data.yearly_fee_cents || undefined,
-    individual_session_fee: data.individual_session_fee_cents || undefined,
+    // Convert cents back to Money objects
+    monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
+    registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
+    yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
+    individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
   };
 }
 
@@ -307,10 +317,11 @@ export async function getProgramsWithStats(
     max_age: program.max_age || undefined,
     gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: program.special_needs_support || undefined,
-    monthly_fee: program.monthly_fee || undefined,
-    registration_fee: program.registration_fee || undefined,
-    yearly_fee: program.yearly_fee || undefined,
-    individual_session_fee: program.individual_session_fee || undefined,
+    // Convert cents back to Money objects
+    monthly_fee: program.monthly_fee_cents != null ? fromCents(program.monthly_fee_cents) : undefined,
+    registration_fee: program.registration_fee_cents != null ? fromCents(program.registration_fee_cents) : undefined,
+    yearly_fee: program.yearly_fee_cents != null ? fromCents(program.yearly_fee_cents) : undefined,
+    individual_session_fee: program.individual_session_fee_cents != null ? fromCents(program.individual_session_fee_cents) : undefined,
   }));
 }
 

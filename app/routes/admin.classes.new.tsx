@@ -16,8 +16,9 @@ import { requireAdminUser } from "~/utils/auth.server";
 import { createClass, getInstructors, createClassSchedule } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import type { CreateClassData, Program } from "~/types/multi-class";
+import type { CreateClassData } from "~/types/multi-class";
 import { validateClassConstraints, getDefaultMaxCapacity, getSessionFrequencyDescription } from "~/utils/class-validation";
+import { serializeMoney } from "~/utils/money";
 
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -28,7 +29,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
     getInstructors()
   ]);
 
-  return json({ programs, instructors });
+  // Serialize Money objects in programs
+  const serializedPrograms = programs.map(program => ({
+    ...program,
+    monthly_fee: program.monthly_fee ? serializeMoney(program.monthly_fee) : undefined,
+    registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
+    yearly_fee: program.yearly_fee ? serializeMoney(program.yearly_fee) : undefined,
+    individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
+  }));
+
+  return json({ programs: serializedPrograms, instructors });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -126,6 +136,9 @@ export default function NewClass() {
   const navigation = useNavigation();
   const actionData = useActionData<typeof action>();
   const isSubmitting = navigation.state === "submitting";
+
+  // Infer types from the loader data
+  type ProgramType = typeof programs[number];
 
   const [schedules, setSchedules] = useState([{ id: 0, startTime: '', dayOfWeek: '' }]);
   const [scheduleTimes, setScheduleTimes] = useState<{[key: number]: string}>({0: ''});
@@ -242,9 +255,9 @@ export default function NewClass() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="program_id">Program *</Label>
-                <Select 
-                  name="program_id" 
-                  required 
+                <Select
+                  name="program_id"
+                  required
                   value={selectedProgramId}
                   onValueChange={setSelectedProgramId}
                 >
@@ -252,7 +265,7 @@ export default function NewClass() {
                     <SelectValue placeholder="Select program" />
                   </SelectTrigger>
                   <SelectContent>
-                    {programs.filter((p: Program) => p.is_active).map((program: Program) => (
+                    {programs.filter((p: ProgramType) => p.is_active).map((program: ProgramType) => (
                       <SelectItem key={program.id} value={program.id}>
                         {program.name}
                       </SelectItem>

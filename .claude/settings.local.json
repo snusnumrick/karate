@@ -14,7 +14,10 @@
       "Bash(echo:*)",
       "Bash(grep:*)",
       "Bash(npm run:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(cut:*)",
+      "Bash(timeout 15 npm run typecheck)",
+      "Bash(timeout 20 npm run typecheck)"
     ],
     "deny": [],
     "ask": []

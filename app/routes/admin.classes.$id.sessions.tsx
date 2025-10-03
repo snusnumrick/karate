@@ -22,7 +22,7 @@ import { siteConfig } from "~/config/site";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClassById, getClassSessions, generateClassSessions, deleteClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
-import type { ClassSession, BulkSessionGeneration } from "~/types/multi-class";
+import type { BulkSessionGeneration } from "~/types/multi-class";
 import { useState } from "react";
 import { formatDate } from "~/utils/misc";
 import { getTodayLocalDateString, formatLocalDate } from "~/components/calendar/utils";
@@ -122,11 +122,13 @@ export default function ClassSessions() {
   const fetcher = useFetcher<ActionData>();
   const isSubmitting = navigation.state === "submitting" || fetcher.state === "submitting";
 
+  type SessionType = typeof sessions[number];
+
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [sessionToDelete, setSessionToDelete] = useState<ClassSession | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<SessionType | null>(null);
 
-  const handleDelete = (session: ClassSession) => {
+  const handleDelete = (session: SessionType) => {
     setSessionToDelete(session);
     setIsDeleteDialogOpen(true);
   };

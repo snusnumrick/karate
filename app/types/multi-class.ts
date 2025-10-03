@@ -1,7 +1,7 @@
 // Multi-Class System TypeScript Types
 // This file defines all the types and interfaces for the program and class management system
 
-
+import { Money } from "~/utils/money";
 
 export interface ClassSchedule {
   id: string;
@@ -35,10 +35,10 @@ export interface Program {
   gender_restriction?: 'male' | 'female' | 'none';
   special_needs_support?: boolean;
   // Pricing structure
-  monthly_fee?: number;
-  registration_fee?: number;
-  yearly_fee?: number;
-  individual_session_fee?: number;
+  monthly_fee?: Money;
+  registration_fee?: Money;
+  yearly_fee?: Money;
+  individual_session_fee?: Money;
   // System fields
   is_active: boolean;
   created_at: string;
@@ -140,10 +140,10 @@ export interface CreateProgramData {
   gender_restriction?: 'male' | 'female' | 'none';
   special_needs_support?: boolean;
   // Pricing structure
-  monthly_fee?: number;
-  registration_fee?: number;
-  yearly_fee?: number;
-  individual_session_fee?: number;
+  monthly_fee?: Money;
+  registration_fee?: Money;
+  yearly_fee?: Money;
+  individual_session_fee?: Money;
   // System fields
   is_active?: boolean;
 }
@@ -304,9 +304,9 @@ export interface ClassPaymentData {
   student_id: string;
   enrollment_type: 'full_session' | 'monthly' | 'drop_in';
   discount_codes?: string[];
-  amount: number;
-  registration_fee?: number;
-  family_discount_applied?: number;
+  amount: Money;
+  registration_fee?: Money;
+  family_discount_applied?: Money;
 }
 
 // Bulk operations
@@ -358,6 +358,6 @@ export type FamilyWithClassEnrollments = {
   name: string;
   email: string;
   students: StudentWithEnrollments[];
-  total_monthly_fees: number;
+  total_monthly_fees: Money;
   active_class_count: number;
 };

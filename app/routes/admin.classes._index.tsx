@@ -9,9 +9,10 @@ import { requireAdminUser } from "~/utils/auth.server";
 import { getClasses, getClassById } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import { getEnrollmentStats } from "~/services/enrollment.server";
-import type { Program, EnrollmentStats, ClassWithDetails } from "~/types/multi-class";
+import type { EnrollmentStats, ClassWithDetails } from "~/types/multi-class";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { formatDate } from "~/utils/misc";
+import { serializeMoney } from "~/utils/money";
 
 type ClassWithStats = ClassWithDetails & {
   enrollmentStats: EnrollmentStats;
@@ -19,15 +20,15 @@ type ClassWithStats = ClassWithDetails & {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
-  
+
   const url = new URL(request.url);
   const programId = url.searchParams.get("program");
-  
+
   const [classes, programs] = await Promise.all([
     getClasses(programId ? { program_id: programId, is_active: true } : { is_active: true }),
     getPrograms()
   ]);
-  
+
   // Get enrollment stats and detailed info for each class
   const classesWithStats = await Promise.all(
     classes.map(async (classItem) => {
@@ -41,14 +42,27 @@ export async function loader({ request }: LoaderFunctionArgs) {
       } as ClassWithStats;
     })
   );
-  
-  return json({ classes: classesWithStats, programs, selectedProgramId: programId });
+
+  // Serialize Money objects in programs
+  const serializedPrograms = programs.map(program => ({
+    ...program,
+    monthly_fee: program.monthly_fee ? serializeMoney(program.monthly_fee) : undefined,
+    registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
+    yearly_fee: program.yearly_fee ? serializeMoney(program.yearly_fee) : undefined,
+    individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
+  }));
+
+  return json({ classes: classesWithStats, programs: serializedPrograms, selectedProgramId: programId });
 }
 
 export default function AdminClassesIndex() {
   const { classes, programs, selectedProgramId } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
+  // Infer types from the loader data
+  type ProgramType = typeof programs[number];
+  type ClassType = typeof classes[number];
+
   const handleProgramFilter = (programId: string) => {
     if (programId === "all") {
       searchParams.delete("program");
@@ -57,13 +71,13 @@ export default function AdminClassesIndex() {
     }
     setSearchParams(searchParams);
   };
-  
 
-  
+
+
   return (
     <div className="container mx-auto py-6">
       <AppBreadcrumb items={breadcrumbPatterns.adminClasses()} className="mb-6" />
-      
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Classes</h1>
@@ -71,7 +85,7 @@ export default function AdminClassesIndex() {
             Manage class schedules, capacity, and enrollment.
           </p>
         </div>
-        
+
         <div className="flex gap-2">
           <Select value={selectedProgramId || "all"} onValueChange={handleProgramFilter}>
             <SelectTrigger className="w-48 input-custom-styles">
@@ -79,14 +93,14 @@ export default function AdminClassesIndex() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Programs</SelectItem>
-              {programs.map((program: Program) => (
+              {programs.map((program: ProgramType) => (
                 <SelectItem key={program.id} value={program.id}>
                   {program.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
+
           <Button asChild>
             <Link to="/admin/classes/new">
               <Plus className="h-4 w-4 mr-2" />
@@ -95,10 +109,10 @@ export default function AdminClassesIndex() {
           </Button>
         </div>
       </div>
-      
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {classes.map((classItem: ClassWithStats) => {
-          const program = programs.find((p: Program) => p.id === classItem.program_id);
+        {classes.map((classItem: ClassType) => {
+          const program = programs.find((p: ProgramType) => p.id === classItem.program_id);
           
           return (
             <Card key={classItem.id} className="relative">

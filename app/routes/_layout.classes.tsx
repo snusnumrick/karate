@@ -8,7 +8,7 @@ import { mergeMeta } from "~/utils/meta";
 import { JsonLd } from "~/components/JsonLd";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 import { buildScheduleSummaryFromClasses } from "~/services/class.server";
-import { formatMoney, fromCents, toDollars } from "~/utils/money";
+import { formatMoney, fromCents, toDollars, toCents } from "~/utils/money";
 
 type ClassWithSchedule = {
     id: string;
@@ -32,8 +32,15 @@ type ClassWithSchedule = {
     }>;
 };
 
+type ProgramWithCents = Omit<Program, 'monthly_fee' | 'registration_fee' | 'yearly_fee' | 'individual_session_fee'> & {
+    monthly_fee: number | null;
+    registration_fee: number | null;
+    yearly_fee: number | null;
+    individual_session_fee: number | null;
+};
+
 type LoaderData = {
-    programs: Program[];
+    programs: ProgramWithCents[];
     classes: ClassWithSchedule[];
     scheduleSummary: {
         days: string;
@@ -174,8 +181,17 @@ export async function loader() {
 
         const scheduleSummary = buildScheduleSummaryFromClasses(classes);
 
+        // Convert Money objects in programs to cents for JSON serialization
+        const programsWithCents = programs.map(program => ({
+            ...program,
+            monthly_fee: program.monthly_fee ? toCents(program.monthly_fee) : null,
+            registration_fee: program.registration_fee ? toCents(program.registration_fee) : null,
+            yearly_fee: program.yearly_fee ? toCents(program.yearly_fee) : null,
+            individual_session_fee: program.individual_session_fee ? toCents(program.individual_session_fee) : null,
+        }));
+
         return json<LoaderData>(
-            { programs, classes, scheduleSummary },
+            { programs: programsWithCents, classes, scheduleSummary },
             {
                 headers: {
                     // Cache for 5 minutes (300 seconds) to match server-side cache duration

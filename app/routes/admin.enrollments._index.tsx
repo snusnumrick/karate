@@ -16,27 +16,19 @@ import { requireAdminUser } from "~/utils/auth.server";
 import { getEnrollments, updateEnrollment, dropStudent } from "~/services/enrollment.server";
 import { getClasses } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
-import type { ClassEnrollment } from "~/types/multi-class";
-import type { EligibilityStatus } from "~/types/payment";
 import { checkStudentEligibility, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
-
-// Extended type for enrollment with eligibility
-type EnrollmentWithEligibility = ClassEnrollment & {
-  student?: ClassEnrollment['student'] & {
-    eligibility?: EligibilityStatus;
-  };
-};
+import { serializeMoney } from "~/utils/money";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
-  
+
   const url = new URL(request.url);
   const classId = url.searchParams.get("class");
   const programId = url.searchParams.get("program");
   const status = url.searchParams.get("status");
-  
+
   const [enrollments, classes, programs] = await Promise.all([
     getEnrollments({ class_id: classId || undefined, status: status as 'active' | 'waitlist' | 'dropped' | 'completed' | undefined }),
     getClasses(),
@@ -62,7 +54,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       return enrollment;
     })
   );
-  
+
   // Calculate stats from enrollments
   const stats = {
     total: enrollments.length,
@@ -71,11 +63,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
     waitlisted: enrollments.filter(e => e.status === 'waitlist').length,
     dropped: enrollments.filter(e => e.status === 'dropped').length
   };
-  
-  return json({ 
-    enrollments: enrollmentsWithEligibility, 
-    classes, 
-    programs, 
+
+  // Serialize Money objects in programs for JSON transmission
+  const serializedPrograms = programs.map(program => ({
+    ...program,
+    monthly_fee: program.monthly_fee ? serializeMoney(program.monthly_fee) : undefined,
+    yearly_fee: program.yearly_fee ? serializeMoney(program.yearly_fee) : undefined,
+    individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
+    registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
+  }));
+
+  return json({
+    enrollments: enrollmentsWithEligibility,
+    classes,
+    programs: serializedPrograms,
     stats,
     filters: { classId, programId, status }
   });
@@ -119,18 +120,21 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-function getStudentName(enrollment: EnrollmentWithEligibility): string {
-  if (!enrollment.student) return "Unknown Student";
-  return `${enrollment.student.first_name} ${enrollment.student.last_name}`;
-}
-
 export default function AdminEnrollments() {
   const { enrollments, classes, programs, stats, filters } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentWithEligibility | null>(null);
+  // Use inferred types from loader data
+  type EnrollmentType = typeof enrollments[number];
+
+  const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentType | null>(null);
+
+  function getStudentName(enrollment: EnrollmentType): string {
+    if (!enrollment.student) return "Unknown Student";
+    return `${enrollment.student.first_name} ${enrollment.student.last_name}`;
+  }
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteEnrollmentId, setDeleteEnrollmentId] = useState<string | null>(null);
 
@@ -152,10 +156,11 @@ export default function AdminEnrollments() {
     }
     setSearchParams(searchParams);
   };
-  
-  const getStatusBadge = (enrollment: EnrollmentWithEligibility) => {
+
+  const getStatusBadge = (enrollment: EnrollmentType) => {
     const status = enrollment.status;
-    const eligibility = enrollment.student?.eligibility;
+    const student = enrollment.student;
+    const eligibility = student && 'eligibility' in student ? student.eligibility : undefined;
     
     // For dropped or waitlisted enrollments, show simple status
     if (status === "dropped") {

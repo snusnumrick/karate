@@ -14,6 +14,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { CreateProgramData } from "~/types/multi-class";
+import {toMoney, isNegative} from "~/utils/money";
 
 type ActionData = {
   errors?: {
@@ -55,10 +56,10 @@ export async function action({ request }: ActionFunctionArgs) {
   const specialNeedsSupport = formData.get("special_needs_support") === "on";
 
   // Pricing
-  const monthlyFee = formData.get("monthly_fee") ? parseFloat(formData.get("monthly_fee") as string) : undefined;
-  const registrationFee = formData.get("registration_fee") ? parseFloat(formData.get("registration_fee") as string) : undefined;
-  const yearlyFee = formData.get("yearly_fee") ? parseFloat(formData.get("yearly_fee") as string) : undefined;
-  const individualSessionFee = formData.get("individual_session_fee") ? parseFloat(formData.get("individual_session_fee") as string) : undefined;
+  const monthlyFee = formData.get("monthly_fee") ? toMoney(formData.get("monthly_fee")) : undefined;
+  const registrationFee = formData.get("registration_fee") ? toMoney(formData.get("registration_fee")) : undefined;
+  const yearlyFee = formData.get("yearly_fee") ? toMoney(formData.get("yearly_fee")) : undefined;
+  const individualSessionFee = formData.get("individual_session_fee") ? toMoney(formData.get("individual_session_fee")) : undefined;
 
   const isActive = formData.get("is_active") === "on";
 
@@ -94,15 +95,15 @@ export async function action({ request }: ActionFunctionArgs) {
     errors.max_age = "Maximum age must be greater than or equal to minimum age";
   }
 
-  if (monthlyFee !== undefined && monthlyFee < 0) {
+  if (monthlyFee !== undefined && isNegative(monthlyFee)) {
     errors.monthly_fee = "Monthly fee cannot be negative";
   }
 
-  if (yearlyFee !== undefined && yearlyFee < 0) {
+  if (yearlyFee !== undefined && isNegative(yearlyFee)) {
     errors.yearly_fee = "Yearly fee cannot be negative";
   }
 
-  if (individualSessionFee !== undefined && individualSessionFee < 0) {
+  if (individualSessionFee !== undefined && isNegative(individualSessionFee)) {
     errors.individual_session_fee = "Individual session fee cannot be negative";
   }
 

@@ -24,10 +24,11 @@ import { Trash2, Plus, X, AlertTriangle, Info } from "lucide-react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClassById, updateClass, deleteClass, getInstructors, getClassSchedules, updateClassSchedules } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
-import type { UpdateClassData, Program } from "~/types/multi-class";
+import type { UpdateClassData } from "~/types/multi-class";
 import { useState, useEffect } from "react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { validateClassConstraints, getSessionFrequencyDescription } from "~/utils/class-validation";
+import { serializeMoney } from "~/utils/money";
 
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -49,7 +50,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Class not found", { status: 404 });
   }
 
-  return json({ classData, programs, instructors, schedules });
+  // Serialize Money objects in programs
+  const serializedPrograms = programs.map(program => ({
+    ...program,
+    monthly_fee: program.monthly_fee ? serializeMoney(program.monthly_fee) : undefined,
+    registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
+    yearly_fee: program.yearly_fee ? serializeMoney(program.yearly_fee) : undefined,
+    individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
+  }));
+
+  return json({ classData, programs: serializedPrograms, instructors, schedules });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -157,6 +167,8 @@ export default function EditClass() {
   const submit = useSubmit();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  type ProgramType = typeof programs[number];
+
   // Initialize schedules state with existing schedules
   const [classSchedules, setClassSchedules] = useState(
     schedules.map(schedule => ({
@@ -258,7 +270,7 @@ export default function EditClass() {
                       <SelectValue placeholder="Select program" />
                     </SelectTrigger>
                     <SelectContent>
-                      {programs.filter((p: Program) => p.is_active).map((program: Program) => (
+                      {programs.filter((p: ProgramType) => p.is_active).map((program: ProgramType) => (
                         <SelectItem key={program.id} value={program.id}>
                           {program.name}
                         </SelectItem>

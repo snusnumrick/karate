@@ -12,6 +12,7 @@ import { checkScheduleConflicts } from './class.server';
 import { checkProgramEligibility } from './program.server';
 import { recordStudentEnrollmentEvent } from '~/utils/auto-discount-events.server';
 import { mapEnrollmentClassNullToUndefined } from '~/utils/mappers';
+import { fromCents } from '~/utils/money';
 
 /**
  * Enroll a student in a class with validation
@@ -202,12 +203,12 @@ export async function enrollStudent(
             max_capacity: data.class.program.max_capacity || undefined,
             belt_rank_required: data.class.program.belt_rank_required || false,
             gender_restriction: (data.class.program.gender_restriction as 'male' | 'female' | 'none') || undefined,
-            individual_session_fee: data.class.program.individual_session_fee || undefined,
-            yearly_fee: data.class.program.yearly_fee || undefined,
+            individual_session_fee: data.class.program.individual_session_fee_cents != null ? fromCents(data.class.program.individual_session_fee_cents) : undefined,
+            yearly_fee: data.class.program.yearly_fee_cents != null ? fromCents(data.class.program.yearly_fee_cents) : undefined,
             min_sessions_per_week: data.class.program.min_sessions_per_week || undefined,
             max_sessions_per_week: data.class.program.max_sessions_per_week || undefined,
-            monthly_fee: data.class.program.monthly_fee || undefined,
-            registration_fee: data.class.program.registration_fee || undefined,
+            monthly_fee: data.class.program.monthly_fee_cents != null ? fromCents(data.class.program.monthly_fee_cents) : undefined,
+            registration_fee: data.class.program.registration_fee_cents != null ? fromCents(data.class.program.registration_fee_cents) : undefined,
             min_belt_rank: data.class.program.min_belt_rank || undefined,
             max_belt_rank: data.class.program.max_belt_rank || undefined,
             sessions_per_week: data.class.program.sessions_per_week || undefined,
@@ -283,12 +284,12 @@ export async function updateEnrollment(
         max_capacity: data.class.program.max_capacity || undefined,
         belt_rank_required: data.class.program.belt_rank_required || false,
         gender_restriction: (data.class.program.gender_restriction as 'male' | 'female' | 'none') || undefined,
-         individual_session_fee: data.class.program.individual_session_fee || undefined,
-         yearly_fee: data.class.program.yearly_fee || undefined,
+         individual_session_fee: data.class.program.individual_session_fee_cents != null ? fromCents(data.class.program.individual_session_fee_cents) : undefined,
+         yearly_fee: data.class.program.yearly_fee_cents != null ? fromCents(data.class.program.yearly_fee_cents) : undefined,
          min_sessions_per_week: data.class.program.min_sessions_per_week || undefined,
          max_sessions_per_week: data.class.program.max_sessions_per_week || undefined,
-         monthly_fee: data.class.program.monthly_fee || undefined,
-         registration_fee: data.class.program.registration_fee || undefined,
+         monthly_fee: data.class.program.monthly_fee_cents != null ? fromCents(data.class.program.monthly_fee_cents) : undefined,
+         registration_fee: data.class.program.registration_fee_cents != null ? fromCents(data.class.program.registration_fee_cents) : undefined,
          min_belt_rank: data.class.program.min_belt_rank || undefined,
          max_belt_rank: data.class.program.max_belt_rank || undefined,
          sessions_per_week: data.class.program.sessions_per_week || undefined,
@@ -781,12 +782,12 @@ export async function getEnrollmentById(
         max_capacity: data.class.program.max_capacity || undefined,
         belt_rank_required: data.class.program.belt_rank_required || false,
         gender_restriction: (data.class.program.gender_restriction as 'male' | 'female' | 'none') || undefined,
-        individual_session_fee: data.class.program.individual_session_fee || undefined,
-        yearly_fee: data.class.program.yearly_fee || undefined,
+        individual_session_fee: data.class.program.individual_session_fee_cents != null ? fromCents(data.class.program.individual_session_fee_cents) : undefined,
+        yearly_fee: data.class.program.yearly_fee_cents != null ? fromCents(data.class.program.yearly_fee_cents) : undefined,
         min_sessions_per_week: data.class.program.min_sessions_per_week || undefined,
         max_sessions_per_week: data.class.program.max_sessions_per_week || undefined,
-        monthly_fee: data.class.program.monthly_fee || undefined,
-        registration_fee: data.class.program.registration_fee || undefined,
+        monthly_fee: data.class.program.monthly_fee_cents != null ? fromCents(data.class.program.monthly_fee_cents) : undefined,
+        registration_fee: data.class.program.registration_fee_cents != null ? fromCents(data.class.program.registration_fee_cents) : undefined,
         min_belt_rank: data.class.program.min_belt_rank || undefined,
         max_belt_rank: data.class.program.max_belt_rank || undefined,
         sessions_per_week: data.class.program.sessions_per_week || undefined,
