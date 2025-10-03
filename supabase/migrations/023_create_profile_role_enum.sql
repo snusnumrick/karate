@@ -81,10 +81,6 @@ BEGIN
     END LOOP;
 END $$;
 
-ALTER POLICY "Allow admins to manage tax rates" ON public.tax_rates
-  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role::text = 'admin'))
-  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role::text = 'admin'));
-
 -- Final sweep: drop any remaining policies whose definition still references profiles.role
 
 -- Drop any existing default before switching the type
