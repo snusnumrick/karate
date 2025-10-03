@@ -1,7 +1,7 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, Form, useNavigation } from "@remix-run/react";
 import { useState } from "react";
-import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { getSupabaseServerClient, getSupabaseAdminClient, isUserAdmin } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -15,6 +15,9 @@ import type { Database } from "~/types/database.types";
 import { getEventTypeOptions } from "~/utils/event-helpers.server";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import {moneyFromRow} from "~/utils/database-money";
+import { addMoney, multiplyMoney, ZERO_MONEY, type Money, type MoneyJSON, formatMoney, serializeMoney, deserializeMoney } from "~/utils/money";
+
 
 type Event = {
   id: string;
@@ -47,7 +50,7 @@ type LoaderData = {
     totalEvents: number;
     upcomingEvents: number;
     totalRegistrations: number;
-    totalRevenue: number;
+    totalRevenue: MoneyJSON;
   };
   filters: {
     status?: string;
@@ -66,14 +69,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return redirect("/login?redirectTo=/admin/events", { headers });
   }
 
-  // Check if user is admin
-  const { data: profile } = await supabaseServer
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin') {
+  if (!isUserAdmin(user.id)) {
     return redirect("/", { headers });
   }
 
@@ -82,9 +78,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const typeFilter = url.searchParams.get('type');
   const searchFilter = url.searchParams.get('search');
 
+  const supabaseAdmin = getSupabaseAdminClient();
+
   try {
     // Build query with filters
-    let eventsQuery = supabaseServer
+    let eventsQuery = supabaseAdmin
       .from('events')
       .select(`
         id,
@@ -99,6 +97,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         location,
         max_participants,
         registration_fee,
+        registration_fee_cents,
         registration_deadline,
         instructor_id,
         created_at,
@@ -154,9 +153,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
       e.status !== 'cancelled'
     ).length;
     const totalRegistrations = Array.from(registrationCountMap.values()).reduce((sum, count) => sum + count, 0);
-    const totalRevenue = events.reduce((sum, event) => 
-      sum + ((event.registration_fee || 0) * (registrationCountMap.get(event.id) || 0)), 0
-    );
+    const totalRevenue: Money = events.reduce((sum, event) =>
+      addMoney(sum,
+          multiplyMoney(
+              moneyFromRow('events','registration_fee', event as unknown as Record<string, unknown>),
+              (registrationCountMap.get(event.id) || 0)
+          )), ZERO_MONEY);
 
     // Get event type options
     const eventTypeOptions = await getEventTypeOptions(request);
@@ -167,7 +169,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         totalEvents,
         upcomingEvents,
         totalRegistrations,
-        totalRevenue
+        totalRevenue: serializeMoney(totalRevenue)
       },
       filters: {
         status: statusFilter,
@@ -315,7 +317,7 @@ export default function AdminEventsIndex() {
             <h3 className="text-sm font-medium">Total Revenue</h3>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </div>
-          <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+          <div className="text-2xl font-bold">{formatMoney(deserializeMoney(stats.totalRevenue), { showCurrency: true })}</div>
         </div>
       </div>
 
