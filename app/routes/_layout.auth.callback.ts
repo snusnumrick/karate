@@ -26,6 +26,8 @@ export async function loader({request}: LoaderFunctionArgs) {
 
                 if (profile?.role === 'admin') {
                     return redirect("/admin", {headers});
+                } else if (profile?.role === 'instructor') {
+                    return redirect("/instructor", {headers});
                 }
             }
             // Default redirect for non-admins or if profile fetch fails

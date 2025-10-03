@@ -99,7 +99,7 @@ export async function action({request}: ActionFunctionArgs)
     }
 
     // Determine redirect target
-    const defaultRedirect = profile?.role === 'admin' ? '/admin' : '/family';
+    const defaultRedirect = profile?.role === 'admin' ? '/admin' : (profile?.role === 'instructor' ? '/instructor' : '/family');
     const redirectToParam = formData.get('redirectTo');
     const redirectTo = safeRedirect(redirectToParam, defaultRedirect);
 
