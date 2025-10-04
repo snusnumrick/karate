@@ -25,7 +25,7 @@ const LATE_THRESHOLD_MINUTES = 15;
 export const handle: InstructorRouteHandle = {
   breadcrumb: (data) => {
     const loaderData = data as LoaderData | undefined;
-    const items: BreadcrumbItem[] = [{ label: 'Attendance', href: '/instructor/attendance' }];
+    const items: BreadcrumbItem[] = [{ label: 'Schedule', href: '/instructor/sessions' }];
     if (loaderData?.session?.className) {
       items.push({ label: loaderData.session.className, current: true });
     }
