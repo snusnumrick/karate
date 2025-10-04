@@ -92,7 +92,7 @@ export interface UpdateDiscountCodeData {
   discount_type?: DiscountType;
   discount_value?: Money | number;
   usage_type?: UsageType;
-  max_uses?: number;
+  max_uses?: number | null;
   applicable_to?: ApplicableTo;
   scope?: DiscountScope;
   family_id?: string;

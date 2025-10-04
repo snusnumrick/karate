@@ -90,7 +90,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const discountType = formData.get('discountType') as string;
   const value = parseFloat(formData.get('value') as string);
   const usageType = formData.get('usageType') as string;
-  const maxUses = formData.get('maxUses') ? parseInt(formData.get('maxUses') as string) : null;
+  const maxUsesRaw = formData.get('maxUses') as string;
+  const maxUses = maxUsesRaw && maxUsesRaw.trim() !== '' ? parseInt(maxUsesRaw) : null;
   const applicableTo = formData.getAll('applicableTo') as string[];
   const scope = formData.get('scope') as string;
   const familyId = formData.get('familyId') as string;
@@ -130,7 +131,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       discount_type: discountType as 'fixed_amount' | 'percentage',
       discount_value: (discountType === 'fixed_amount') ? fromDollars(value) : value,
       usage_type: usageType as 'one_time' | 'ongoing',
-      max_uses: maxUses || undefined,
+      max_uses: maxUses === null ? null : maxUses,
       applicable_to: applicableTo as PaymentTypeEnum[],
       scope: scope as 'per_student' | 'per_family',
       family_id: scope === 'per_family' ? familyId : undefined,
@@ -142,8 +143,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return redirect('/admin/discount-codes');
   } catch (error) {
     console.error('Error updating discount code:', error);
-    return json({ 
-      error: error instanceof Error ? error.message : 'Failed to update discount code. Please try again.' 
+    return json({
+      error: error instanceof Error ? error.message : 'Failed to update discount code. Please try again.'
     }, { status: 500 });
   }
 }
@@ -156,7 +157,13 @@ export default function AdminEditDiscountCodePage() {
 
   const [code, setCode] = useState(discountCode.code);
   const [selectedScope, setSelectedScope] = useState(discountCode.scope);
-  const [selectedFamily, setSelectedFamily] = useState(discountCode.family_id || '');
+
+  // For per-student discount codes, find the family_id through the student
+  const initialFamilyId = discountCode.family_id ||
+    (discountCode.student_id ? students.find(s => s.id === discountCode.student_id)?.family_id : '') ||
+    '';
+
+  const [selectedFamily, setSelectedFamily] = useState(initialFamilyId);
   const [selectedStudent, setSelectedStudent] = useState(discountCode.student_id || '');
   const [familyStudents, setFamilyStudents] = useState<StudentInfo[]>([]);
 
@@ -176,11 +183,11 @@ export default function AdminEditDiscountCodePage() {
 
   // Initialize family students on load
   useEffect(() => {
-    if (discountCode.family_id) {
-      const filteredStudents = students.filter(student => student.family_id === discountCode.family_id);
+    if (initialFamilyId) {
+      const filteredStudents = students.filter(student => student.family_id === initialFamilyId);
       setFamilyStudents(filteredStudents);
     }
-  }, [discountCode.family_id, students]);
+  }, [initialFamilyId, students]);
 
   const generateCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
