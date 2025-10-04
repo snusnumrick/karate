@@ -10,7 +10,8 @@ import {
   type InstructorSessionPayload,
 } from '~/services/instructor.server';
 import { recordSessionAttendance } from '~/services/attendance.server';
-import { getCSRFToken, validateCSRF } from '~/utils/csrf.server';
+import { validateCSRF } from '~/utils/csrf.server';
+import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
@@ -43,7 +44,6 @@ interface LoaderData {
   role: UserRole;
   session: InstructorSessionPayload | null;
   sessionOptions: SessionOption[];
-  csrfToken: string;
   viewMode: 'record' | 'roster';
 }
 
@@ -109,13 +109,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     session = findCurrentOrNextSession(serialized) ?? serialized[0];
   }
 
-  const csrfToken = await getCSRFToken(request);
-
   return json<LoaderData>({
     role,
     session,
     sessionOptions,
-    csrfToken,
     viewMode: modeParam,
   }, { headers });
 }
@@ -405,10 +402,10 @@ export default function InstructorAttendancePage() {
           )}
 
           <fetcher.Form method="post" className="flex flex-col gap-3">
+            <AuthenticityTokenInput />
             <input type="hidden" name="sessionId" value={session.id} />
             <input type="hidden" name="payload" value={JSON.stringify(statusMap)} />
             <input type="hidden" name="baseline" value={JSON.stringify(baselineRef.current)} />
-            <input type="hidden" name="_csrf" value={data.csrfToken} />
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" disabled={!isDirty || isSubmitting}>
