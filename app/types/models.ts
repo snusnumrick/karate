@@ -8,10 +8,10 @@ export type StudentWithFamily = Student & {
 export interface Family {
     id: string;
     name: string;
-    address: string;
-    city: string;
-    province: string;
-    postalCode: string;
+    address?: string | null;
+    city?: string | null;
+    province?: string | null;
+    postalCode?: string | null;
     primaryPhone: string;
     email: string;
     referralSource?: string;
@@ -42,11 +42,11 @@ export interface Student {
     firstName: string;
     lastName: string;
     gender: string;
-    birthDate: string;
+    birthDate: string | null;
     cellPhone?: string;
     email?: string;
-    tShirtSize: string;
-    school: string;
+    tShirtSize: string | null;
+    school: string | null;
     gradeLevel: string;
     specialNeeds?: string;
     allergies?: string;

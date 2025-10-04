@@ -13,7 +13,7 @@ interface PaymentWithDetails {
   family_id: string;
   subtotal_amount: Money;
   total_amount: Money;
-  family: { email?: string; postal_code?: string } | null;
+  family: { email?: string; postal_code?: string | null } | null;
 }
 
 interface StripePaymentFormProps {

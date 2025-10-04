@@ -35,7 +35,7 @@ interface StudentRegistration {
   id?: string; // For existing students
   firstName: string;
   lastName: string;
-  dateOfBirth: string;
+  dateOfBirth: string | null;
   beltRank: string;
   gender?: string;
   school?: string;
@@ -77,7 +77,7 @@ interface EventRegistrationFormProps {
       id: string;
       firstName: string;
       lastName: string;
-      dateOfBirth: string;
+      dateOfBirth: string | null;
       beltRank: string;
     }>;
   };
@@ -757,7 +757,7 @@ export function EventRegistrationForm({
                     <Input
                       id={`student-${index}-dateOfBirth`}
                       type="date"
-                      value={student.dateOfBirth}
+                      value={student.dateOfBirth || ''}
                       onChange={(e) => updateStudent(index, 'dateOfBirth', e.target.value)}
                       className={`input-custom-styles ${errors[`student-${index}-dateOfBirth`] ? 'border-red-500' : ''}`}
                       disabled={student.isExistingStudent}

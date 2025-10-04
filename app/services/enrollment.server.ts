@@ -114,6 +114,10 @@ export async function enrollStudent(
     dropped_at: data.dropped_at ?? undefined,
     notes: data.notes ?? undefined,
     class: mapEnrollmentClassNullToUndefined(data.class),
+    student: data.student ? {
+      ...data.student,
+      birth_date: data.student.birth_date ?? '',
+    } : data.student,
   };
   }
 
@@ -297,7 +301,9 @@ export async function updateEnrollment(
          max_age: data.class.program.max_age || undefined,
          special_needs_support: data.class.program.special_needs_support || undefined,
          prerequisite_programs: data.class.program.prerequisite_programs || undefined,
-         duration_minutes: data.class.program.duration_minutes || undefined
+         duration_minutes: data.class.program.duration_minutes || undefined,
+         ability_category: data.class.program.ability_category ?? undefined,
+         single_purchase_price_cents: data.class.program.single_purchase_price_cents ?? undefined
       }
     }
   };
@@ -397,6 +403,10 @@ export async function getEnrollments(
     dropped_at: enrollment.dropped_at ?? undefined,
     notes: enrollment.notes ?? undefined,
     class: mapEnrollmentClassNullToUndefined(enrollment.class),
+    student: enrollment.student ? {
+      ...enrollment.student,
+      birth_date: enrollment.student.birth_date ?? '',
+    } : enrollment.student,
   }));
 }
 
@@ -795,7 +805,9 @@ export async function getEnrollmentById(
         max_age: data.class.program.max_age || undefined,
         special_needs_support: data.class.program.special_needs_support || undefined,
         prerequisite_programs: data.class.program.prerequisite_programs || undefined,
-        duration_minutes: data.class.program.duration_minutes || undefined
+        duration_minutes: data.class.program.duration_minutes || undefined,
+        ability_category: data.class.program.ability_category ?? undefined,
+        single_purchase_price_cents: data.class.program.single_purchase_price_cents ?? undefined
       }
     }
   };

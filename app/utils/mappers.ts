@@ -69,6 +69,8 @@ export function mapEnrollmentProgramNullToUndefined(program: Program) {
     special_needs_support: program.special_needs_support ?? undefined,
     prerequisite_programs: program.prerequisite_programs ?? undefined,
     duration_minutes: program.duration_minutes ?? undefined,
+    ability_category: program.ability_category ?? undefined,
+    single_purchase_price_cents: program.single_purchase_price_cents ?? undefined,
   };
 }
 
@@ -89,11 +91,11 @@ export function mapStudentFromSupabase(row: Database['public']['Tables']['studen
         firstName: row.first_name,
         lastName: row.last_name,
         gender: row.gender,
-        birthDate: row.birth_date,
+        birthDate: row.birth_date,  // Now allows null
         cellPhone: row.cell_phone || undefined,
         email: row.email || undefined,
-        tShirtSize: row.t_shirt_size,
-        school: row.school,
+        tShirtSize: row.t_shirt_size,  // Now allows null
+        school: row.school,  // Now allows null
         gradeLevel: row.grade_level || '',
         specialNeeds: row.special_needs || undefined,
         allergies: row.allergies || undefined,

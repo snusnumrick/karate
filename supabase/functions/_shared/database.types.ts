@@ -190,6 +190,7 @@ export type Database = {
           id: string
           instructor_id: string | null
           notes: string | null
+          sequence_number: number | null
           session_date: string
           start_time: string
           status: Database["public"]["Enums"]["class_session_status_enum"]
@@ -202,6 +203,7 @@ export type Database = {
           id?: string
           instructor_id?: string | null
           notes?: string | null
+          sequence_number?: number | null
           session_date: string
           start_time: string
           status?: Database["public"]["Enums"]["class_session_status_enum"]
@@ -214,6 +216,7 @@ export type Database = {
           id?: string
           instructor_id?: string | null
           notes?: string | null
+          sequence_number?: number | null
           session_date?: string
           start_time?: string
           status?: Database["public"]["Enums"]["class_session_status_enum"]
@@ -238,36 +241,63 @@ export type Database = {
       }
       classes: {
         Row: {
+          allow_self_enrollment: boolean
           created_at: string
           description: string | null
           id: string
           instructor_id: string | null
           is_active: boolean
           max_capacity: number | null
+          min_capacity: number | null
           name: string
+          on_demand: boolean
           program_id: string
+          series_end_on: string | null
+          series_label: string | null
+          series_session_quota: number | null
+          series_start_on: string | null
+          session_duration_minutes: number | null
+          sessions_per_week_override: number | null
           updated_at: string
         }
         Insert: {
+          allow_self_enrollment?: boolean
           created_at?: string
           description?: string | null
           id?: string
           instructor_id?: string | null
           is_active?: boolean
           max_capacity?: number | null
+          min_capacity?: number | null
           name: string
+          on_demand?: boolean
           program_id: string
+          series_end_on?: string | null
+          series_label?: string | null
+          series_session_quota?: number | null
+          series_start_on?: string | null
+          session_duration_minutes?: number | null
+          sessions_per_week_override?: number | null
           updated_at?: string
         }
         Update: {
+          allow_self_enrollment?: boolean
           created_at?: string
           description?: string | null
           id?: string
           instructor_id?: string | null
           is_active?: boolean
           max_capacity?: number | null
+          min_capacity?: number | null
           name?: string
+          on_demand?: boolean
           program_id?: string
+          series_end_on?: string | null
+          series_label?: string | null
+          series_session_quota?: number | null
+          series_start_on?: string | null
+          session_duration_minutes?: number | null
+          sessions_per_week_override?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -804,6 +834,7 @@ export type Database = {
           family_id: string
           id: string
           notes: string | null
+          participant_profile_id: string | null
           payment_amount_cents: number | null
           payment_id: string | null
           payment_required: boolean | null
@@ -812,6 +843,7 @@ export type Database = {
             | Database["public"]["Enums"]["registration_status_enum"]
             | null
           student_id: string
+          waiver_status: Database["public"]["Enums"]["waiver_status"]
         }
         Insert: {
           emergency_contact?: string | null
@@ -819,6 +851,7 @@ export type Database = {
           family_id: string
           id?: string
           notes?: string | null
+          participant_profile_id?: string | null
           payment_amount_cents?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
@@ -827,6 +860,7 @@ export type Database = {
             | Database["public"]["Enums"]["registration_status_enum"]
             | null
           student_id: string
+          waiver_status?: Database["public"]["Enums"]["waiver_status"]
         }
         Update: {
           emergency_contact?: string | null
@@ -834,6 +868,7 @@ export type Database = {
           family_id?: string
           id?: string
           notes?: string | null
+          participant_profile_id?: string | null
           payment_amount_cents?: number | null
           payment_id?: string | null
           payment_required?: boolean | null
@@ -842,6 +877,7 @@ export type Database = {
             | Database["public"]["Enums"]["registration_status_enum"]
             | null
           student_id?: string
+          waiver_status?: Database["public"]["Enums"]["waiver_status"]
         }
         Relationships: [
           {
@@ -856,6 +892,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_participant_profile_id_fkey"
+            columns: ["participant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -958,6 +1001,7 @@ export type Database = {
       events: {
         Row: {
           address: string | null
+          allow_self_participants: boolean
           country: string | null
           created_at: string | null
           created_by: string
@@ -979,6 +1023,7 @@ export type Database = {
           max_participants: number | null
           min_age: number | null
           min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_capacity: number | null
           notes: string | null
           postal_code: string | null
           region: string | null
@@ -988,6 +1033,10 @@ export type Database = {
           required_waiver_ids: string[] | null
           requires_equipment: string[] | null
           requires_waiver: boolean | null
+          slot_one_end: string | null
+          slot_one_start: string | null
+          slot_two_end: string | null
+          slot_two_start: string | null
           start_date: string
           start_time: string | null
           status: Database["public"]["Enums"]["event_status_enum"]
@@ -999,6 +1048,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          allow_self_participants?: boolean
           country?: string | null
           created_at?: string | null
           created_by: string
@@ -1020,6 +1070,7 @@ export type Database = {
           max_participants?: number | null
           min_age?: number | null
           min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_capacity?: number | null
           notes?: string | null
           postal_code?: string | null
           region?: string | null
@@ -1029,6 +1080,10 @@ export type Database = {
           required_waiver_ids?: string[] | null
           requires_equipment?: string[] | null
           requires_waiver?: boolean | null
+          slot_one_end?: string | null
+          slot_one_start?: string | null
+          slot_two_end?: string | null
+          slot_two_start?: string | null
           start_date: string
           start_time?: string | null
           status?: Database["public"]["Enums"]["event_status_enum"]
@@ -1040,6 +1095,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          allow_self_participants?: boolean
           country?: string | null
           created_at?: string | null
           created_by?: string
@@ -1061,6 +1117,7 @@ export type Database = {
           max_participants?: number | null
           min_age?: number | null
           min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_capacity?: number | null
           notes?: string | null
           postal_code?: string | null
           region?: string | null
@@ -1070,6 +1127,10 @@ export type Database = {
           required_waiver_ids?: string[] | null
           requires_equipment?: string[] | null
           requires_waiver?: boolean | null
+          slot_one_end?: string | null
+          slot_one_start?: string | null
+          slot_two_end?: string | null
+          slot_two_start?: string | null
           start_date?: string
           start_time?: string | null
           status?: Database["public"]["Enums"]["event_status_enum"]
@@ -1105,52 +1166,55 @@ export type Database = {
       }
       families: {
         Row: {
-          address: string
-          city: string
+          address: string | null
+          city: string | null
           created_at: string | null
           email: string
           emergency_contact: string | null
+          family_type: Database["public"]["Enums"]["family_type"]
           health_info: string | null
           id: string
           name: string
           notes: string | null
-          postal_code: string
+          postal_code: string | null
           primary_phone: string
-          province: string
+          province: string | null
           referral_name: string | null
           referral_source: string | null
           updated_at: string | null
         }
         Insert: {
-          address: string
-          city: string
+          address?: string | null
+          city?: string | null
           created_at?: string | null
           email: string
           emergency_contact?: string | null
+          family_type?: Database["public"]["Enums"]["family_type"]
           health_info?: string | null
           id?: string
           name: string
           notes?: string | null
-          postal_code: string
+          postal_code?: string | null
           primary_phone: string
-          province: string
+          province?: string | null
           referral_name?: string | null
           referral_source?: string | null
           updated_at?: string | null
         }
         Update: {
-          address?: string
-          city?: string
+          address?: string | null
+          city?: string | null
           created_at?: string | null
           email?: string
           emergency_contact?: string | null
+          family_type?: Database["public"]["Enums"]["family_type"]
           health_info?: string | null
           id?: string
           name?: string
           notes?: string | null
-          postal_code?: string
+          postal_code?: string | null
           primary_phone?: string
-          province?: string
+          province?: string | null
           referral_name?: string | null
           referral_source?: string | null
           updated_at?: string | null
@@ -2288,10 +2352,16 @@ export type Database = {
       }
       programs: {
         Row: {
+          ability_category:
+            | Database["public"]["Enums"]["ability_category"]
+            | null
+          audience_scope: Database["public"]["Enums"]["audience_scope"]
           belt_rank_required: boolean | null
           created_at: string
+          delivery_format: Database["public"]["Enums"]["delivery_format"] | null
           description: string | null
           duration_minutes: number
+          engagement_type: Database["public"]["Enums"]["engagement_type"]
           gender_restriction: string | null
           id: string
           individual_session_fee: number | null
@@ -2303,6 +2373,7 @@ export type Database = {
           max_sessions_per_week: number | null
           min_age: number | null
           min_belt_rank: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_capacity: number | null
           min_sessions_per_week: number | null
           monthly_fee: number | null
           monthly_fee_cents: number
@@ -2311,16 +2382,28 @@ export type Database = {
           registration_fee: number | null
           registration_fee_cents: number
           sessions_per_week: number
+          single_purchase_price_cents: number | null
+          slug: string | null
           special_needs_support: boolean | null
+          subscription_monthly_price_cents: number | null
+          subscription_yearly_price_cents: number | null
           updated_at: string
           yearly_fee: number | null
           yearly_fee_cents: number
         }
         Insert: {
+          ability_category?:
+            | Database["public"]["Enums"]["ability_category"]
+            | null
+          audience_scope?: Database["public"]["Enums"]["audience_scope"]
           belt_rank_required?: boolean | null
           created_at?: string
+          delivery_format?:
+            | Database["public"]["Enums"]["delivery_format"]
+            | null
           description?: string | null
           duration_minutes?: number
+          engagement_type?: Database["public"]["Enums"]["engagement_type"]
           gender_restriction?: string | null
           id?: string
           individual_session_fee?: number | null
@@ -2332,6 +2415,7 @@ export type Database = {
           max_sessions_per_week?: number | null
           min_age?: number | null
           min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_capacity?: number | null
           min_sessions_per_week?: number | null
           monthly_fee?: number | null
           monthly_fee_cents?: number
@@ -2340,16 +2424,28 @@ export type Database = {
           registration_fee?: number | null
           registration_fee_cents?: number
           sessions_per_week?: number
+          single_purchase_price_cents?: number | null
+          slug?: string | null
           special_needs_support?: boolean | null
+          subscription_monthly_price_cents?: number | null
+          subscription_yearly_price_cents?: number | null
           updated_at?: string
           yearly_fee?: number | null
           yearly_fee_cents?: number
         }
         Update: {
+          ability_category?:
+            | Database["public"]["Enums"]["ability_category"]
+            | null
+          audience_scope?: Database["public"]["Enums"]["audience_scope"]
           belt_rank_required?: boolean | null
           created_at?: string
+          delivery_format?:
+            | Database["public"]["Enums"]["delivery_format"]
+            | null
           description?: string | null
           duration_minutes?: number
+          engagement_type?: Database["public"]["Enums"]["engagement_type"]
           gender_restriction?: string | null
           id?: string
           individual_session_fee?: number | null
@@ -2361,6 +2457,7 @@ export type Database = {
           max_sessions_per_week?: number | null
           min_age?: number | null
           min_belt_rank?: Database["public"]["Enums"]["belt_rank_enum"] | null
+          min_capacity?: number | null
           min_sessions_per_week?: number | null
           monthly_fee?: number | null
           monthly_fee_cents?: number
@@ -2369,7 +2466,11 @@ export type Database = {
           registration_fee?: number | null
           registration_fee_cents?: number
           sessions_per_week?: number
+          single_purchase_price_cents?: number | null
+          slug?: string | null
           special_needs_support?: boolean | null
+          subscription_monthly_price_cents?: number | null
+          subscription_yearly_price_cents?: number | null
           updated_at?: string
           yearly_fee?: number | null
           yearly_fee_cents?: number
@@ -2417,7 +2518,7 @@ export type Database = {
       students: {
         Row: {
           allergies: string | null
-          birth_date: string
+          birth_date: string | null
           cell_phone: string | null
           email: string | null
           family_id: string
@@ -2428,15 +2529,17 @@ export type Database = {
           id: string
           immunization_notes: string | null
           immunizations_up_to_date: string | null
+          is_adult: boolean
           last_name: string
           medications: string | null
-          school: string
+          profile_id: string | null
+          school: string | null
           special_needs: string | null
-          t_shirt_size: Database["public"]["Enums"]["t_shirt_size_enum"]
+          t_shirt_size: Database["public"]["Enums"]["t_shirt_size_enum"] | null
         }
         Insert: {
           allergies?: string | null
-          birth_date: string
+          birth_date?: string | null
           cell_phone?: string | null
           email?: string | null
           family_id: string
@@ -2447,15 +2550,17 @@ export type Database = {
           id?: string
           immunization_notes?: string | null
           immunizations_up_to_date?: string | null
+          is_adult?: boolean
           last_name: string
           medications?: string | null
-          school: string
+          profile_id?: string | null
+          school?: string | null
           special_needs?: string | null
-          t_shirt_size: Database["public"]["Enums"]["t_shirt_size_enum"]
+          t_shirt_size?: Database["public"]["Enums"]["t_shirt_size_enum"] | null
         }
         Update: {
           allergies?: string | null
-          birth_date?: string
+          birth_date?: string | null
           cell_phone?: string | null
           email?: string | null
           family_id?: string
@@ -2466,11 +2571,13 @@ export type Database = {
           id?: string
           immunization_notes?: string | null
           immunizations_up_to_date?: string | null
+          is_adult?: boolean
           last_name?: string
           medications?: string | null
-          school?: string
+          profile_id?: string | null
+          school?: string | null
           special_needs?: string | null
-          t_shirt_size?: Database["public"]["Enums"]["t_shirt_size_enum"]
+          t_shirt_size?: Database["public"]["Enums"]["t_shirt_size_enum"] | null
         }
         Relationships: [
           {
@@ -2478,6 +2585,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2875,7 +2989,9 @@ export type Database = {
       }
     }
     Enums: {
+      ability_category: "able" | "adaptive"
       attendance_status_enum: "present" | "absent" | "excused" | "late"
+      audience_scope: "youth" | "adults" | "mixed"
       belt_rank_enum:
         | "white"
         | "yellow"
@@ -2899,6 +3015,12 @@ export type Database = {
         | "friday"
         | "saturday"
         | "sunday"
+      delivery_format:
+        | "group"
+        | "private"
+        | "competition_individual"
+        | "competition_team"
+        | "introductory"
       discount_event_type:
         | "student_enrollment"
         | "first_payment"
@@ -2922,6 +3044,7 @@ export type Database = {
         | "student_too_old"
         | "student_belt_rank_too_low"
         | "student_belt_rank_too_high"
+      engagement_type: "program" | "seminar"
       enrollment_status:
         | "active"
         | "inactive"
@@ -2944,6 +3067,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       event_visibility_enum: "public" | "limited" | "internal"
+      family_type: "household" | "self" | "organization"
       invoice_item_type:
         | "class_enrollment"
         | "individual_session"
@@ -2997,6 +3121,7 @@ export type Database = {
         | "AL"
         | "AXL"
         | "A2XL"
+      waiver_status: "not_required" | "pending" | "signed" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3124,7 +3249,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ability_category: ["able", "adaptive"],
       attendance_status_enum: ["present", "absent", "excused", "late"],
+      audience_scope: ["youth", "adults", "mixed"],
       belt_rank_enum: [
         "white",
         "yellow",
@@ -3151,6 +3278,13 @@ export const Constants = {
         "saturday",
         "sunday",
       ],
+      delivery_format: [
+        "group",
+        "private",
+        "competition_individual",
+        "competition_team",
+        "introductory",
+      ],
       discount_event_type: [
         "student_enrollment",
         "first_payment",
@@ -3176,6 +3310,7 @@ export const Constants = {
         "student_belt_rank_too_low",
         "student_belt_rank_too_high",
       ],
+      engagement_type: ["program", "seminar"],
       enrollment_status: [
         "active",
         "inactive",
@@ -3201,6 +3336,7 @@ export const Constants = {
         "cancelled",
       ],
       event_visibility_enum: ["public", "limited", "internal"],
+      family_type: ["household", "self", "organization"],
       invoice_item_type: [
         "class_enrollment",
         "individual_session",
@@ -3261,6 +3397,7 @@ export const Constants = {
         "AXL",
         "A2XL",
       ],
+      waiver_status: ["not_required", "pending", "signed", "expired"],
     },
   },
 } as const

@@ -72,11 +72,16 @@ export async function createProgram(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
+    // Seminar-specific fields
+    ability_category: data.ability_category || undefined,
+    delivery_format: data.delivery_format || undefined,
+    slug: data.slug || undefined,
     // Convert cents back to Money objects
     monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
     registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
     yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
     individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
+    single_purchase_price_cents: data.single_purchase_price_cents ?? undefined,
   };
 }
 
@@ -148,11 +153,16 @@ export async function updateProgram(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
+    // Seminar-specific fields
+    ability_category: data.ability_category || undefined,
+    delivery_format: data.delivery_format || undefined,
+    slug: data.slug || undefined,
     // Convert cents back to Money objects
     monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
     registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
     yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
     individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
+    single_purchase_price_cents: data.single_purchase_price_cents ?? undefined,
   };
 }
 
@@ -162,7 +172,14 @@ export async function updateProgram(
  * Get all programs with optional filtering
  */
 export async function getPrograms(
-  filters: { is_active?: boolean; search?: string } = {},
+  filters: {
+    is_active?: boolean;
+    search?: string;
+    engagement_type?: 'program' | 'seminar';
+    ability_category?: 'able' | 'adaptive';
+    delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory';
+    audience_scope?: 'youth' | 'adults' | 'mixed';
+  } = {},
   supabase = getSupabaseAdminClient()
 ): Promise<Program[]> {
   let query = supabase.from('programs').select('*');
@@ -170,6 +187,22 @@ export async function getPrograms(
   // Apply filters
   if (filters.is_active !== undefined) {
     query = query.eq('is_active', filters.is_active);
+  }
+
+  if (filters.engagement_type) {
+    query = query.eq('engagement_type', filters.engagement_type);
+  }
+
+  if (filters.ability_category) {
+    query = query.eq('ability_category', filters.ability_category);
+  }
+
+  if (filters.delivery_format) {
+    query = query.eq('delivery_format', filters.delivery_format);
+  }
+
+  if (filters.audience_scope) {
+    query = query.eq('audience_scope', filters.audience_scope);
   }
 
   if (filters.search) {
@@ -244,11 +277,16 @@ export async function getProgramById(
     max_age: data.max_age || undefined,
     gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
     special_needs_support: data.special_needs_support || undefined,
+    // Seminar-specific fields
+    ability_category: data.ability_category || undefined,
+    delivery_format: data.delivery_format || undefined,
+    slug: data.slug || undefined,
     // Convert cents back to Money objects
     monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
     registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
     yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
     individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
+    single_purchase_price_cents: data.single_purchase_price_cents ?? undefined,
   };
 }
 
@@ -407,21 +445,150 @@ export async function getProgramsForStudent(
 ): Promise<Program[]> {
   // Get all active programs
   const allPrograms = await getPrograms({ is_active: true }, supabase);
-  
+
   // Filter programs based on student eligibility
   const eligiblePrograms: Program[] = [];
-  
+
   for (const program of allPrograms) {
     const eligibilityCheck = await checkProgramEligibility(
       program.id,
       studentId,
       supabase
     );
-    
+
     if (eligibilityCheck.eligible) {
       eligiblePrograms.push(program);
     }
   }
-  
+
   return eligiblePrograms;
+}
+
+/**
+ * Get seminar templates (programs with engagement_type='seminar')
+ */
+export async function getSeminars(
+  filters: {
+    is_active?: boolean;
+    search?: string;
+    ability_category?: 'able' | 'adaptive';
+    delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory';
+    audience_scope?: 'youth' | 'adults' | 'mixed';
+  } = {},
+  supabase = getSupabaseAdminClient()
+): Promise<Program[]> {
+  return getPrograms({ ...filters, engagement_type: 'seminar' }, supabase);
+}
+
+/**
+ * Get a seminar with its series and ordered sessions
+ */
+export async function getSeminarWithSeries(
+  seminarId: string,
+  supabase = getSupabaseAdminClient()
+) {
+  const { data, error } = await supabase
+    .from('programs')
+    .select(`
+      *,
+      classes (
+        id,
+        name,
+        description,
+        series_label,
+        series_start_on,
+        series_end_on,
+        sessions_per_week_override,
+        session_duration_minutes,
+        series_session_quota,
+        allow_self_enrollment,
+        min_capacity,
+        max_capacity,
+        on_demand,
+        is_active,
+        class_sessions (
+          id,
+          session_date,
+          start_time,
+          end_time,
+          sequence_number,
+          status
+        )
+      )
+    `)
+    .eq('id', seminarId)
+    .eq('engagement_type', 'seminar')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to fetch seminar with series: ${error.message}`);
+  }
+
+  // Sort class_sessions by sequence_number or session_date
+  if (data.classes) {
+    data.classes = data.classes.map((cls) => ({
+      ...cls,
+      class_sessions: (cls.class_sessions || []).sort((a, b) => {
+        if (a.sequence_number !== null && b.sequence_number !== null && a.sequence_number !== undefined && b.sequence_number !== undefined) {
+          return a.sequence_number - b.sequence_number;
+        }
+        return new Date(a.session_date).getTime() - new Date(b.session_date).getTime();
+      }),
+    })) as typeof data.classes;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data as any;
+}
+
+/**
+ * Get program by slug
+ */
+export async function getProgramBySlug(
+  slug: string,
+  supabase = getSupabaseAdminClient()
+): Promise<Program | null> {
+  const { data, error } = await supabase
+    .from('programs')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to fetch program: ${error.message}`);
+  }
+
+  return {
+    ...data,
+    description: data.description || undefined,
+    duration_minutes: data.duration_minutes || undefined,
+    max_capacity: data.max_capacity || undefined,
+    sessions_per_week: data.sessions_per_week || undefined,
+    min_sessions_per_week: data.min_sessions_per_week || undefined,
+    max_sessions_per_week: data.max_sessions_per_week || undefined,
+    min_belt_rank: data.min_belt_rank || undefined,
+    max_belt_rank: data.max_belt_rank || undefined,
+    belt_rank_required: data.belt_rank_required || undefined,
+    prerequisite_programs: data.prerequisite_programs || undefined,
+    min_age: data.min_age || undefined,
+    max_age: data.max_age || undefined,
+    gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
+    special_needs_support: data.special_needs_support || undefined,
+    // Seminar-specific fields
+    ability_category: data.ability_category || undefined,
+    delivery_format: data.delivery_format || undefined,
+    slug: data.slug || undefined,
+    // Convert cents back to Money objects
+    monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
+    registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
+    yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
+    individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
+    single_purchase_price_cents: data.single_purchase_price_cents ?? undefined,
+  };
 }

@@ -566,13 +566,13 @@ export default function StudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="birth_date">Birth Date</Label>
-                                <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date}
+                                <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date || ''}
                                        required className="input-custom-styles"/>
                             </div>
                             {/* Belt Rank Select Removed */}
                             <div>
                                 <Label htmlFor="t_shirt_size">T-Shirt Size</Label>
-                                <Select name="t_shirt_size" defaultValue={student.t_shirt_size} required>
+                                <Select name="t_shirt_size" defaultValue={student.t_shirt_size || undefined} required>
                                     <SelectTrigger id="t_shirt_size" className="input-custom-styles"><SelectValue
                                         placeholder="Select size"/></SelectTrigger>
                                     <SelectContent>
@@ -594,7 +594,7 @@ export default function StudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="school">School</Label>
-                                <Input id="school" name="school" defaultValue={student.school} required className="input-custom-styles"/>
+                                <Input id="school" name="school" defaultValue={student.school || ''} required className="input-custom-styles"/>
                             </div>
                             <div>
                                 <Label htmlFor="grade_level">Grade Level</Label>

@@ -305,7 +305,7 @@ export default function AdminStudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="birth_date">Birth Date <span className="text-red-500">*</span></Label>
-                                <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date}
+                                <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date || ''}
                                        required tabIndex={4} className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.birth_date &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.birth_date}</p>}
@@ -314,7 +314,7 @@ export default function AdminStudentDetailPage() {
                             <div>
                                 <Label htmlFor="t_shirt_size">T-Shirt Size <span
                                     className="text-red-500">*</span></Label>
-                                <Select name="t_shirt_size" defaultValue={student.t_shirt_size} required>
+                                <Select name="t_shirt_size" defaultValue={student.t_shirt_size || undefined} required>
                                     <SelectTrigger id="t_shirt_size" tabIndex={5} className="input-custom-styles"><SelectValue
                                         placeholder="Select size"/></SelectTrigger>
                                     <SelectContent>
@@ -338,7 +338,7 @@ export default function AdminStudentDetailPage() {
                             </div>
                             <div>
                                 <Label htmlFor="school">School <span className="text-red-500">*</span></Label>
-                                <Input id="school" name="school" defaultValue={student.school} required tabIndex={7} className="input-custom-styles"/>
+                                <Input id="school" name="school" defaultValue={student.school || ''} required tabIndex={7} className="input-custom-styles"/>
                                 {actionData?.fieldErrors?.school &&
                                     <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.school}</p>}
                             </div>

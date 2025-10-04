@@ -15,8 +15,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const showInactive = url.searchParams.get('showInactive') === 'true';
+  const filter = url.searchParams.get('filter') as 'all' | 'program' | 'seminar' | null;
 
-  const programs = await getPrograms(showInactive ? {} : { is_active: true });
+  const programs = await getPrograms({
+    is_active: showInactive ? undefined : true,
+    engagement_type: filter === 'program' ? 'program' : filter === 'seminar' ? 'seminar' : undefined,
+  });
 
   // Serialize Money objects for JSON transmission
   const serializedPrograms = programs.map(program => ({
@@ -27,11 +31,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
   }));
 
-  return json({ programs: serializedPrograms, showInactive });
+  return json({ programs: serializedPrograms, showInactive, filter: filter || 'all' });
 }
 
 export default function ProgramsIndex() {
-  const { programs, showInactive } = useLoaderData<typeof loader>();
+  const { programs, showInactive, filter } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Helper to format money from serialized MoneyJSON
@@ -49,14 +53,23 @@ export default function ProgramsIndex() {
     setSearchParams(searchParams);
   };
 
+  const handleFilterChange = (newFilter: string) => {
+    if (newFilter === 'all') {
+      searchParams.delete('filter');
+    } else {
+      searchParams.set('filter', newFilter);
+    }
+    setSearchParams(searchParams);
+  };
+
   return (
     <div className="space-y-6">
       <AppBreadcrumb items={breadcrumbPatterns.adminPrograms()} className="mb-6" />
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Programs</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Programs & Seminars</h1>
           <p className="text-muted-foreground">
-            Manage your martial arts programs and their configurations
+            Manage your martial arts programs, seminars, and their configurations
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -73,13 +86,53 @@ export default function ProgramsIndex() {
               Show Inactive
             </label>
           </div>
-          <Button asChild>
+          <Button asChild variant="outline">
             <Link to="/admin/programs/new">
               <Plus className="h-4 w-4 mr-2" />
               New Program
             </Link>
           </Button>
+          <Button asChild>
+            <Link to="/admin/seminars/new">
+              <Plus className="h-4 w-4 mr-2" />
+              New Seminar
+            </Link>
+          </Button>
         </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => handleFilterChange('all')}
+          className={`px-4 py-2 border-b-2 transition-colors ${
+            filter === 'all'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => handleFilterChange('program')}
+          className={`px-4 py-2 border-b-2 transition-colors ${
+            filter === 'program'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Programs
+        </button>
+        <button
+          onClick={() => handleFilterChange('seminar')}
+          className={`px-4 py-2 border-b-2 transition-colors ${
+            filter === 'seminar'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Seminars
+        </button>
       </div>
 
       {programs.length === 0 ? (

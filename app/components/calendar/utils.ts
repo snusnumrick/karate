@@ -10,7 +10,7 @@ export function birthdaysToCalendarEvents(
     id: string;
     first_name: string;
     last_name: string;
-    birth_date: string;
+    birth_date: string | null;
   }>,
   startDate: Date = new Date()
 ): CalendarEvent[] {

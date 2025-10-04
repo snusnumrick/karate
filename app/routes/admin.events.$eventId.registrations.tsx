@@ -15,7 +15,7 @@ type EventRegistration = Database['public']['Tables']['event_registrations']['Ro
     id: string;
     first_name: string;
     last_name: string;
-    birth_date: string;
+    birth_date: string | null;
   };
   families: {
     id: string;
@@ -119,12 +119,13 @@ function formatDate(dateString: string | null) {
   });
 }
 
-function calculateAge(birthDate: string) {
+function calculateAge(birthDate: string | null) {
+  if (!birthDate) return 'N/A';
   const today = new Date();
   const birth = new Date(birthDate);
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
-  
+
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
     age--;
   }

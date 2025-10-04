@@ -21,10 +21,10 @@ export interface CachedFamilyData {
   family: {
     id: string;
     name: string;
-    address?: string;
-    city?: string;
-    province?: string;
-    postal_code?: string;
+    address?: string | null;
+    city?: string | null;
+    province?: string | null;
+    postal_code?: string | null;
     primary_phone?: string;
     email?: string;
     students?: Array<{

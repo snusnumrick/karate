@@ -17,6 +17,13 @@ export interface Program {
   name: string;
   description?: string;
   duration_minutes?: number;
+  // Seminar-specific fields (from migration 025)
+  engagement_type?: 'program' | 'seminar';
+  ability_category?: 'able' | 'adaptive' | null; // Database enum
+  delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory' | null;
+  audience_scope?: 'youth' | 'adults' | 'mixed';
+  slug?: string | null;
+  single_purchase_price_cents?: number | null;
   // Capacity constraints
   max_capacity?: number;
   // Frequency constraints
@@ -49,12 +56,23 @@ export interface Class {
   id: string;
   program_id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   max_capacity?: number;
   instructor_id?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Seminar series fields (from migration 025)
+  series_label?: string | null;
+  series_start_on?: string | null;
+  series_end_on?: string | null;
+  sessions_per_week_override?: number | null;
+  session_duration_minutes?: number | null;
+  series_session_quota?: number | null;
+  min_capacity?: number | null;
+  allow_self_enrollment?: boolean;
+  on_demand?: boolean;
+  audience_scope?: 'youth' | 'adults' | 'mixed' | null;
   // Relations
   program?: Program; // Optional program reference
   instructor?: {
@@ -83,7 +101,7 @@ export interface ClassEnrollment {
     id: string;
     first_name: string;
     last_name: string;
-    birth_date: string;
+    birth_date: string | null;
     family_id: string;
   };
 }
@@ -346,7 +364,7 @@ export type StudentWithEnrollments = {
   id: string;
   first_name: string;
   last_name: string;
-  birth_date: string;
+  birth_date: string | null;
   family_id: string;
   enrollments: (ClassEnrollment & {
     class: Class & { program: Program };

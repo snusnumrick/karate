@@ -31,6 +31,10 @@ export async function testHasStudentsUnder15() {
     }
     
     const testStudent = students[0];
+    if (!testStudent.birth_date) {
+      console.log('⚠️ Test student has no birth date, skipping age check');
+      return false;
+    }
     const birthDate = new Date(testStudent.birth_date);
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear() - 
@@ -95,6 +99,10 @@ export async function testPSTExemptionLogic() {
     }
     
     const testStudent = students[0];
+    if (!testStudent.birth_date) {
+      console.log('⚠️ Test student has no birth date, skipping age check');
+      return false;
+    }
     const birthDate = new Date(testStudent.birth_date);
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear() - 

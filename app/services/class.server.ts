@@ -296,14 +296,24 @@ export async function getClasses(
     throw new Error(`Failed to fetch classes: ${error.message}`);
   }
 
-  return (data || []).map(item => ({
-    ...item,
-    description: item.description ?? undefined,
-    max_capacity: item.max_capacity ?? undefined,
-    instructor_id: item.instructor_id ?? undefined,
-    instructor: item.instructor ? mapInstructorNullToUndefined(item.instructor) : undefined,
-    program: item.program ? mapProgramNullToUndefined(item.program) : item.program
-  }));
+  return (data || []).map(item => {
+    const itemWithScope = item as typeof item & { audience_scope?: 'youth' | 'adults' | 'mixed' | null };
+    return {
+      ...item,
+      description: item.description ?? undefined,
+      max_capacity: item.max_capacity ?? undefined,
+      instructor_id: item.instructor_id ?? undefined,
+      series_label: item.series_label ?? undefined,
+      series_start_on: item.series_start_on ?? undefined,
+      series_end_on: item.series_end_on ?? undefined,
+      sessions_per_week_override: item.sessions_per_week_override ?? undefined,
+      series_session_quota: item.series_session_quota ?? undefined,
+      session_duration_minutes: item.session_duration_minutes ?? undefined,
+      audience_scope: itemWithScope.audience_scope ?? undefined,
+      instructor: item.instructor ? mapInstructorNullToUndefined(item.instructor) : undefined,
+      program: item.program ? mapProgramNullToUndefined(item.program) : item.program
+    };
+  });
 }
 
 /**
@@ -424,11 +434,19 @@ export async function getClassById(
     }
   }
 
+  const dataWithScope = data as typeof data & { audience_scope?: 'youth' | 'adults' | 'mixed' | null };
   return {
     ...data,
     description: data.description ?? undefined,
     max_capacity: data.max_capacity ?? undefined,
     instructor_id: data.instructor_id ?? undefined,
+    series_label: data.series_label ?? undefined,
+    series_start_on: data.series_start_on ?? undefined,
+    series_end_on: data.series_end_on ?? undefined,
+    sessions_per_week_override: data.sessions_per_week_override ?? undefined,
+    series_session_quota: data.series_session_quota ?? undefined,
+    session_duration_minutes: data.session_duration_minutes ?? undefined,
+    audience_scope: dataWithScope.audience_scope ?? undefined,
     program: mapProgramNullToUndefined(data.program),
     instructor: data.instructor ? mapInstructorNullToUndefined(data.instructor) : undefined,
     enrollment_count: enrollments.length,

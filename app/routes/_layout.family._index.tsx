@@ -27,6 +27,7 @@ import {OfflineErrorBoundary} from "~/components/OfflineErrorBoundary";
 import {cacheAttendanceData, cacheFamilyData, cacheUpcomingClasses} from "~/utils/offline-cache";
 import {useClientReady} from "~/hooks/use-client-ready";
 import {FamilyLoadingScreen} from "~/components/LoadingScreen";
+import {SeminarEnrollmentsCard} from "~/components/SeminarEnrollmentsCard";
 
 // Define Guardian type
 type GuardianRow = Database["public"]["Tables"]["guardians"]["Row"];
@@ -345,13 +346,75 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         }
     }
 
-    // Return profile, combined family data, waiver status, upcoming classes, and attendance data
+    // 7. Fetch seminar enrollments for the family
+    const seminarEnrollments: Array<{
+        id: string;
+        status: string;
+        class: {
+            id: string;
+            name: string;
+            series_label?: string;
+            series_start_on?: string;
+            series_end_on?: string;
+            series_session_quota?: number;
+            program: {
+                name: string;
+                engagement_type: string;
+            };
+        };
+        student: {
+            id: string;
+            first_name: string;
+            last_name: string;
+            is_adult: boolean;
+        };
+    }> = [];
+
+    if (studentsWithEligibility.length > 0) {
+        try {
+            const studentIds = studentsWithEligibility.map(s => s.id);
+            const { data: enrollmentsData } = await supabaseServer
+                .from('enrollments')
+                .select(`
+                    id,
+                    status,
+                    class:classes!inner(
+                        id,
+                        name,
+                        series_label,
+                        series_start_on,
+                        series_end_on,
+                        series_session_quota,
+                        program:programs!inner(
+                            name,
+                            engagement_type
+                        )
+                    ),
+                    student:students!inner(
+                        id,
+                        first_name,
+                        last_name,
+                        is_adult
+                    )
+                `)
+                .in('student_id', studentIds)
+                .eq('classes.programs.engagement_type', 'seminar')
+                .in('status', ['active', 'trial', 'waitlist']);
+
+            seminarEnrollments.push(...(enrollmentsData || []) as typeof seminarEnrollments);
+        } catch (error) {
+            console.error('Error fetching seminar enrollments:', error);
+        }
+    }
+
+    // Return profile, combined family data, waiver status, upcoming classes, attendance data, and seminar enrollments
     return json({
         profile: {familyId: String(profileData.family_id)},
         family: finalFamilyData, // Use the combined data
         allWaiversSigned,
         upcomingClasses,
-        studentAttendanceData
+        studentAttendanceData,
+        seminarEnrollments
     }, {headers});
 }
 
@@ -376,6 +439,28 @@ export default function FamilyDashboard() {
     // Always call hooks at the top level
     const loaderData = useLoaderData<typeof loader>();
     const {family, error, allWaiversSigned, upcomingClasses, studentAttendanceData} = loaderData;
+    const seminarEnrollments = ('seminarEnrollments' in loaderData ? loaderData.seminarEnrollments : []) as Array<{
+        id: string;
+        status: string;
+        class: {
+            id: string;
+            name: string;
+            series_label?: string;
+            series_start_on?: string;
+            series_end_on?: string;
+            series_session_quota?: number;
+            program: {
+                name: string;
+                engagement_type: string;
+            };
+        };
+        student: {
+            id: string;
+            first_name: string;
+            last_name: string;
+            is_adult: boolean;
+        };
+    }>;
     const isClientReady = useClientReady();
 
     // Cache data for offline access when component mounts
@@ -627,6 +712,16 @@ export default function FamilyDashboard() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Seminar Enrollments Section */}
+                        {seminarEnrollments && seminarEnrollments.length > 0 && (
+                            <div className="form-container-styles backdrop-blur-lg">
+                                <SeminarEnrollmentsCard
+                                    enrollments={seminarEnrollments}
+                                    isAdult={family?.family_type === 'self'}
+                                />
+                            </div>
+                        )}
 
                         {/* Attendance Panel */}
                         <div
