@@ -43,6 +43,7 @@ export interface InstructorSessionRosterEntry {
   studentId: string;
   fullName: string;
   attendanceStatus: AttendanceRecord['status'] | 'unmarked';
+  attendanceNotes?: string;
   eligibility?: EligibilityStatus;
 }
 
@@ -323,6 +324,7 @@ export function serializeInstructorSessionSummary(summary: InstructorSessionSumm
       studentId: enrollment.student_id,
       fullName,
       attendanceStatus: attendance?.status ?? 'unmarked',
+      attendanceNotes: attendance?.notes,
       eligibility: summary.eligibilitySummary.byStudent[enrollment.student_id],
     };
   });

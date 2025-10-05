@@ -17,6 +17,8 @@ import { formatDate } from '~/utils/misc';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
+import { Textarea } from '~/components/ui/textarea';
+import { Label } from '~/components/ui/label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -187,6 +189,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   const payload = formData.get('payload');
+  const notesPayload = formData.get('notesPayload');
   const baselineRaw = formData.get('baseline');
 
   if (!payload || typeof payload !== 'string') {
@@ -199,6 +202,15 @@ export async function action({ request }: ActionFunctionArgs) {
       baseline = JSON.parse(baselineRaw) as Record<string, AttendanceStatus>;
     } catch (error) {
       console.warn('Instructor attendance action: failed to parse baseline payload', error);
+    }
+  }
+
+  let notes: Record<string, string> = {};
+  if (notesPayload && typeof notesPayload === 'string') {
+    try {
+      notes = JSON.parse(notesPayload) as Record<string, string>;
+    } catch (error) {
+      console.warn('Instructor attendance action: failed to parse notes payload', error);
     }
   }
 
@@ -229,17 +241,38 @@ export async function action({ request }: ActionFunctionArgs) {
     return json<ActionResponse>({ success: false, error: 'Invalid payload' }, { status: 400, headers });
   }
 
+  // Get baseline notes from the formData for comparison
+  const baselineNotesRaw = formData.get('baselineNotes');
+  let baselineNotes: Record<string, string> = {};
+  if (baselineNotesRaw && typeof baselineNotesRaw === 'string') {
+    try {
+      baselineNotes = JSON.parse(baselineNotesRaw) as Record<string, string>;
+    } catch (error) {
+      console.warn('Instructor attendance action: failed to parse baseline notes', error);
+    }
+  }
+
   const records = Object.entries(parsed)
     .filter(([studentId, status]) => {
-      const initial = baseline[studentId] ?? 'unmarked';
-      if (status === initial) return false;
+      // Skip unmarked students - they have no attendance to record
       if (status === 'unmarked') return false;
-      return true;
+
+      const initialStatus = baseline[studentId] ?? 'unmarked';
+      const initialNotes = baselineNotes[studentId] ?? '';
+      const currentNotes = notes[studentId] ?? '';
+
+      // Include if status changed from baseline
+      const statusChanged = status !== initialStatus;
+      // Include if notes changed from baseline (and student has a valid status)
+      const notesChanged = currentNotes !== initialNotes;
+
+      // Include if there's any change
+      return statusChanged || notesChanged;
     })
     .map(([studentId, status]) => ({
       student_id: studentId,
       status: status as Exclude<AttendanceStatus, 'unmarked'>,
-      notes: undefined,
+      notes: notes[studentId] || undefined,
     }));
 
   try {
@@ -273,15 +306,20 @@ export default function InstructorAttendancePage() {
   const session = data.session;
   const viewMode = data.viewMode;
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>(() => buildStatusMap(session, viewMode));
+  const [notesMap, setNotesMap] = useState<Record<string, string>>(() => buildNotesMap(session));
   const [autoLateFlags, setAutoLateFlags] = useState<Record<string, boolean>>({});
   const baselineRef = useRef(statusMap);
+  const baselineNotesRef = useRef(notesMap);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (session) {
       const initial = buildStatusMap(session, viewMode);
+      const initialNotes = buildNotesMap(session);
       setStatusMap(initial);
+      setNotesMap(initialNotes);
       baselineRef.current = initial;
+      baselineNotesRef.current = initialNotes;
       setAutoLateFlags({});
     }
   }, [session, viewMode]);
@@ -289,14 +327,20 @@ export default function InstructorAttendancePage() {
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success && fetcher.data.session) {
       const updated = buildStatusMap(fetcher.data.session, viewMode);
+      const updatedNotes = buildNotesMap(fetcher.data.session);
       setStatusMap(updated);
+      setNotesMap(updatedNotes);
       baselineRef.current = updated;
+      baselineNotesRef.current = updatedNotes;
       setAutoLateFlags({});
     }
   }, [fetcher.state, fetcher.data, viewMode]);
 
   const isSubmitting = fetcher.state !== 'idle';
-  const isDirty = useMemo(() => hasDifferences(baselineRef.current, statusMap), [statusMap]);
+  const isDirty = useMemo(() =>
+    hasDifferences(baselineRef.current, statusMap) || hasNotesDifferences(baselineNotesRef.current, notesMap, statusMap),
+    [statusMap, notesMap]
+  );
   const counts = useMemo(() => buildCounts(statusMap), [statusMap]);
 
   const headerTitle = viewMode === 'roster' ? 'Class Roster' : 'Record Attendance';
@@ -432,6 +476,7 @@ export default function InstructorAttendancePage() {
                     key={entry.studentId}
                     entry={entry}
                     status={statusMap[entry.studentId] ?? 'unmarked'}
+                    notes={notesMap[entry.studentId] ?? ''}
                     isAutoLate={autoLateFlags[entry.studentId] ?? false}
                     lateThreshold={lateThreshold}
                     onCycle={() => handleCycle(entry.studentId, lateThreshold, statusMap, setStatusMap, setAutoLateFlags)}
@@ -441,6 +486,7 @@ export default function InstructorAttendancePage() {
                       setStatusMap,
                       setAutoLateFlags,
                     })}
+                    onNotesChange={(notes) => setNotesMap((prev) => ({ ...prev, [entry.studentId]: notes }))}
                   />
                 ))}
               </div>
@@ -478,7 +524,9 @@ export default function InstructorAttendancePage() {
             <AuthenticityTokenInput />
             <input type="hidden" name="sessionId" value={session.id} />
             <input type="hidden" name="payload" value={JSON.stringify(statusMap)} />
+            <input type="hidden" name="notesPayload" value={JSON.stringify(notesMap)} />
             <input type="hidden" name="baseline" value={JSON.stringify(baselineRef.current)} />
+            <input type="hidden" name="baselineNotes" value={JSON.stringify(baselineNotesRef.current)} />
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" disabled={!isDirty || isSubmitting}>
@@ -553,10 +601,41 @@ function buildStatusMap(
   return map;
 }
 
+function buildNotesMap(
+  session: InstructorSessionPayload | null | undefined,
+): Record<string, string> {
+  if (!session) return {};
+  const map: Record<string, string> = {};
+  for (const entry of session.roster) {
+    if (entry.attendanceNotes) {
+      map[entry.studentId] = entry.attendanceNotes;
+    }
+  }
+  return map;
+}
+
 function hasDifferences(a: Record<string, AttendanceStatus>, b: Record<string, AttendanceStatus>): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   for (const key of keys) {
     if ((a[key] ?? 'unmarked') !== (b[key] ?? 'unmarked')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasNotesDifferences(
+  a: Record<string, string>,
+  b: Record<string, string>,
+  statusMap: Record<string, AttendanceStatus>
+): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    // Only count notes changes for students with a valid attendance status
+    const status = statusMap[key] ?? 'unmarked';
+    if (status === 'unmarked') continue;
+
+    if ((a[key] ?? '') !== (b[key] ?? '')) {
       return true;
     }
   }
@@ -805,17 +884,21 @@ function getCheckInStatusTextColor(status: AttendanceStatus) {
 function StudentCard({
   entry,
   status,
+  notes,
   isAutoLate,
   lateThreshold,
   onCycle,
   onSet,
+  onNotesChange,
 }: {
   entry: InstructorSessionPayload['roster'][number];
   status: AttendanceStatus;
+  notes: string;
   isAutoLate: boolean;
   lateThreshold: Date | null;
   onCycle: () => void;
   onSet: (status: AttendanceStatus, options?: { enforceLate?: boolean }) => void;
+  onNotesChange: (notes: string) => void;
 }) {
   const statusInfo = getStatusInfo(status);
 
@@ -871,6 +954,20 @@ function StudentCard({
           active={status === 'unmarked'}
           variant="ghost"
           onClick={() => onSet('unmarked')}
+        />
+      </div>
+
+      <div className="mt-4">
+        <Label htmlFor={`notes-${entry.studentId}`} className="text-sm mb-2 block">
+          Notes (Optional)
+        </Label>
+        <Textarea
+          id={`notes-${entry.studentId}`}
+          value={notes}
+          onChange={(e) => onNotesChange(e.target.value)}
+          rows={2}
+          placeholder="e.g., Left early, arrived late, makeup class"
+          className="input-custom-styles"
         />
       </div>
 
