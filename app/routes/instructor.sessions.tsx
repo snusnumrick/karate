@@ -14,7 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { CalendarDays, Users, AlertTriangle, Clock } from 'lucide-react';
+import { cn } from '~/lib/utils';
 import type { InstructorRouteHandle } from '~/routes/instructor';
+import { formatDate } from '~/utils/misc';
 
 interface SessionsLoaderData {
   role: UserRole;
@@ -53,7 +55,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     instructorOptions,
     sessions: serialized,
     focus,
-    rangeLabel: `${format(today, 'MMM d')} – ${format(addDays(today, 14), 'MMM d')}`,
+    rangeLabel: `${formatDate(today, { formatString: 'MMM d' })} – ${formatDate(addDays(today, 14), { formatString: 'MMM d' })}`,
   }, { headers });
 }
 
@@ -75,7 +77,7 @@ export default function InstructorSessionsPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, sessions]) => ({
         date,
-        label: format(parseISO(date), 'EEEE, MMMM d'),
+        label: formatDate(parseISO(date), { formatString: 'EEEE, MMMM d' }),
         sessions: sessions.sort((left, right) => {
           if (!left.start || !right.start) return 0;
           return parseISO(left.start).getTime() - parseISO(right.start).getTime();
@@ -92,8 +94,8 @@ export default function InstructorSessionsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Upcoming Sessions</h1>
-          <p className="text-muted-foreground">Classes scheduled over the next two weeks · {data.rangeLabel}</p>
+          <h1 className="instructor-page-header-styles">Upcoming Sessions</h1>
+          <p className="instructor-subheader-styles">Classes scheduled over the next two weeks · {data.rangeLabel}</p>
         </div>
 
         {isAdmin && data.instructorOptions.length > 0 && (
@@ -134,7 +136,7 @@ export default function InstructorSessionsPage() {
         <div className="space-y-6">
           {groupedSessions.map((group) => (
             <section key={group.date} className="space-y-4">
-              <h2 className="text-xl font-semibold">{group.label}</h2>
+              <h2 className="instructor-section-header-styles">{group.label}</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {group.sessions.map((session) => (
                   <SessionSummaryCard
@@ -159,12 +161,27 @@ function SessionSummaryCard({
   session: InstructorSessionPayload;
   highlighted: boolean;
 }) {
+  const isCompleted = session.status === 'completed';
+  const isCancelled = session.status === 'cancelled';
+
   return (
-    <Card className={highlighted ? 'border-primary shadow-lg shadow-primary/10' : undefined}>
+    <Card className={cn(
+      highlighted && 'border-primary shadow-lg shadow-primary/10',
+      isCompleted && 'bg-muted/30 opacity-75',
+      isCancelled && 'bg-muted/50 opacity-60'
+    )}>
       <CardHeader className="flex flex-col gap-1">
         <CardTitle className="flex items-center justify-between gap-2">
           <span>{session.className}</span>
-          <Badge variant="secondary">Roster · {session.roster.length}</Badge>
+          <div className="flex items-center gap-2">
+            {session.status === 'completed' && (
+              <Badge variant="default" className="bg-green-600 hover:bg-green-700">Completed</Badge>
+            )}
+            {session.status === 'cancelled' && (
+              <Badge variant="destructive">Cancelled</Badge>
+            )}
+            <Badge variant="secondary">Roster · {session.roster.length}</Badge>
+          </div>
         </CardTitle>
         <p className="text-sm text-muted-foreground">{formatSessionTimeRange(session.start, session.end)}</p>
         {session.programName && <p className="text-sm text-muted-foreground">{session.programName}</p>}
@@ -201,15 +218,14 @@ function MetricPill({
   value: number;
   variant?: 'default' | 'warn' | 'info';
 }) {
-  const base = 'inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm text-foreground';
   const variantClass = variant === 'warn'
-    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
+    ? 'instructor-badge-warn-styles'
     : variant === 'info'
-      ? 'bg-sky-500/10 text-sky-600 dark:text-sky-300'
+      ? 'instructor-badge-info-styles'
       : 'bg-primary/10 text-primary';
 
   return (
-    <span className={`${base} ${variantClass}`}>
+    <span className={`instructor-stat-pill-styles ${variantClass}`}>
       <Icon className="h-4 w-4" />
       <span>{label}</span>
       <span className="font-semibold">{value}</span>
@@ -227,7 +243,7 @@ function EmptyState({
   icon: ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 p-10 text-center text-muted-foreground">
+    <div className="instructor-empty-state-styles">
       <Icon className="h-8 w-8 mb-3" />
       <p className="text-lg font-semibold text-foreground">{title}</p>
       <p className="text-sm">{description}</p>
@@ -240,15 +256,15 @@ function formatSessionTimeRange(start: string | null, end: string | null): strin
   const startDate = parseISO(start);
   const endDate = end ? parseISO(end) : null;
 
-  const dayPart = format(startDate, 'EEE MMM d');
-  const startPart = format(startDate, 'h:mm a');
+  const dayPart = formatDate(startDate, { formatString: 'EEE MMM d' });
+  const startPart = formatDate(startDate, { formatString: 'h:mm a' });
 
   if (!endDate) {
     return `${dayPart} · ${startPart}`;
   }
 
   const sameDay = startDate.toDateString() === endDate.toDateString();
-  const endPart = format(endDate, sameDay ? 'h:mm a' : 'EEE MMM d h:mm a');
+  const endPart = formatDate(endDate, { formatString: sameDay ? 'h:mm a' : 'EEE MMM d h:mm a' });
 
   return `${dayPart} · ${startPart} – ${endPart}`;
 }

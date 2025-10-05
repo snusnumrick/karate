@@ -1,4 +1,4 @@
-import { differenceInMinutes, format, parseISO } from 'date-fns';
+import { differenceInMinutes, format } from 'date-fns';
 import { redirect } from '@vercel/remix';
 import { getSupabaseAdminClient, getSupabaseServerClient, getUserRole, checkStudentEligibility } from '~/utils/supabase.server';
 import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
@@ -43,6 +43,7 @@ export interface InstructorSessionRosterEntry {
   studentId: string;
   fullName: string;
   attendanceStatus: AttendanceRecord['status'] | 'unmarked';
+  attendanceNotes?: string;
   eligibility?: EligibilityStatus;
 }
 
@@ -55,6 +56,7 @@ export interface InstructorSessionPayload {
   sessionDate: string;
   start: string | null;
   end: string | null;
+  status: 'scheduled' | 'completed' | 'cancelled';
   notes: string | null;
   attendanceSummary: AttendanceSummary;
   eligibilitySummary: {
@@ -275,9 +277,15 @@ function combineDateAndTime(date: string, time?: string | null): Date | null {
     return null;
   }
 
-  const isoString = `${date}T${time}`;
   try {
-    return parseISO(isoString);
+    // Parse date in local timezone (consistent with parseLocalDate pattern)
+    const [year, month, day] = date.split('-').map(Number);
+
+    // Parse time components
+    const [hours, minutes, seconds = 0] = time.split(':').map(Number);
+
+    // Create Date in local timezone to avoid server timezone issues
+    return new Date(year, month - 1, day, hours, minutes, seconds);
   } catch {
     return null;
   }
@@ -316,6 +324,7 @@ export function serializeInstructorSessionSummary(summary: InstructorSessionSumm
       studentId: enrollment.student_id,
       fullName,
       attendanceStatus: attendance?.status ?? 'unmarked',
+      attendanceNotes: attendance?.notes,
       eligibility: summary.eligibilitySummary.byStudent[enrollment.student_id],
     };
   });
@@ -329,6 +338,7 @@ export function serializeInstructorSessionSummary(summary: InstructorSessionSumm
     sessionDate: summary.session.session_date,
     start: summary.startDateTime ? summary.startDateTime.toISOString() : null,
     end: summary.endDateTime ? summary.endDateTime.toISOString() : null,
+    status: summary.session.status,
     notes: summary.session.notes ?? null,
     attendanceSummary: summary.attendanceSummary,
     eligibilitySummary: {

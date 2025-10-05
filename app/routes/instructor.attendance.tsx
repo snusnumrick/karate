@@ -10,11 +10,25 @@ import {
   type InstructorSessionPayload,
 } from '~/services/instructor.server';
 import { recordSessionAttendance } from '~/services/attendance.server';
+import { updateClassSession } from '~/services/class.server';
 import { validateCSRF } from '~/utils/csrf.server';
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
+import { formatDate } from '~/utils/misc';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
+import { Textarea } from '~/components/ui/textarea';
+import { Label } from '~/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '~/components/ui/alert-dialog';
 import { AlertTriangle, CheckCircle2, Clock, RotateCcw, Users } from 'lucide-react';
 import { cn } from '~/lib/utils';
 import type { InstructorRouteHandle } from '~/routes/instructor';
@@ -123,13 +137,60 @@ export async function action({ request }: ActionFunctionArgs) {
   const { role, viewInstructorId, supabaseAdmin, headers, userId } = context;
 
   const formData = await request.formData();
+  const intent = formData.get('intent');
   const sessionId = formData.get('sessionId');
-  const payload = formData.get('payload');
-  const baselineRaw = formData.get('baseline');
 
   if (!sessionId || typeof sessionId !== 'string') {
     return json<ActionResponse>({ success: false, error: 'Missing sessionId' }, { status: 400, headers });
   }
+
+  // Handle complete session intent
+  if (intent === 'complete_session') {
+    const { data: sessionRecords, error: fetchError } = await supabaseAdmin
+      .from('class_sessions')
+      .select('id, session_date, instructor_id, status, class:classes(instructor_id)')
+      .eq('id', sessionId)
+      .limit(1);
+
+    if (fetchError) {
+      return json<ActionResponse>({ success: false, error: 'Failed to load session' }, { status: 500, headers });
+    }
+
+    const record = sessionRecords?.[0];
+    if (!record) {
+      return json<ActionResponse>({ success: false, error: 'Session not found' }, { status: 404, headers });
+    }
+
+    const sessionInstructor = record.instructor_id ?? record.class?.instructor_id ?? null;
+    if (role !== 'admin' && sessionInstructor && sessionInstructor !== userId) {
+      return json<ActionResponse>({ success: false, error: 'You do not have access to this session' }, { status: 403, headers });
+    }
+
+    try {
+      await updateClassSession(sessionId, { status: 'completed' }, supabaseAdmin);
+    } catch (error) {
+      console.error('Failed to complete session', error);
+      return json<ActionResponse>({ success: false, error: 'Failed to complete session' }, { status: 500, headers });
+    }
+
+    const summaries = await getInstructorSessionsWithDetails({
+      instructorId: viewInstructorId,
+      startDate: record.session_date,
+      endDate: record.session_date,
+      supabaseAdmin,
+    });
+
+    const updated = summaries.find((summary) => summary.session.id === sessionId);
+    if (!updated) {
+      return json<ActionResponse>({ success: true }, { headers });
+    }
+
+    return json<ActionResponse>({ success: true, session: serializeInstructorSessionSummary(updated) }, { headers });
+  }
+
+  const payload = formData.get('payload');
+  const notesPayload = formData.get('notesPayload');
+  const baselineRaw = formData.get('baseline');
 
   if (!payload || typeof payload !== 'string') {
     return json<ActionResponse>({ success: false, error: 'Missing payload' }, { status: 400, headers });
@@ -141,6 +202,15 @@ export async function action({ request }: ActionFunctionArgs) {
       baseline = JSON.parse(baselineRaw) as Record<string, AttendanceStatus>;
     } catch (error) {
       console.warn('Instructor attendance action: failed to parse baseline payload', error);
+    }
+  }
+
+  let notes: Record<string, string> = {};
+  if (notesPayload && typeof notesPayload === 'string') {
+    try {
+      notes = JSON.parse(notesPayload) as Record<string, string>;
+    } catch (error) {
+      console.warn('Instructor attendance action: failed to parse notes payload', error);
     }
   }
 
@@ -171,17 +241,38 @@ export async function action({ request }: ActionFunctionArgs) {
     return json<ActionResponse>({ success: false, error: 'Invalid payload' }, { status: 400, headers });
   }
 
+  // Get baseline notes from the formData for comparison
+  const baselineNotesRaw = formData.get('baselineNotes');
+  let baselineNotes: Record<string, string> = {};
+  if (baselineNotesRaw && typeof baselineNotesRaw === 'string') {
+    try {
+      baselineNotes = JSON.parse(baselineNotesRaw) as Record<string, string>;
+    } catch (error) {
+      console.warn('Instructor attendance action: failed to parse baseline notes', error);
+    }
+  }
+
   const records = Object.entries(parsed)
     .filter(([studentId, status]) => {
-      const initial = baseline[studentId] ?? 'unmarked';
-      if (status === initial) return false;
+      // Skip unmarked students - they have no attendance to record
       if (status === 'unmarked') return false;
-      return true;
+
+      const initialStatus = baseline[studentId] ?? 'unmarked';
+      const initialNotes = baselineNotes[studentId] ?? '';
+      const currentNotes = notes[studentId] ?? '';
+
+      // Include if status changed from baseline
+      const statusChanged = status !== initialStatus;
+      // Include if notes changed from baseline (and student has a valid status)
+      const notesChanged = currentNotes !== initialNotes;
+
+      // Include if there's any change
+      return statusChanged || notesChanged;
     })
     .map(([studentId, status]) => ({
       student_id: studentId,
       status: status as Exclude<AttendanceStatus, 'unmarked'>,
-      notes: undefined,
+      notes: notes[studentId] || undefined,
     }));
 
   try {
@@ -215,14 +306,20 @@ export default function InstructorAttendancePage() {
   const session = data.session;
   const viewMode = data.viewMode;
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>(() => buildStatusMap(session, viewMode));
+  const [notesMap, setNotesMap] = useState<Record<string, string>>(() => buildNotesMap(session));
   const [autoLateFlags, setAutoLateFlags] = useState<Record<string, boolean>>({});
   const baselineRef = useRef(statusMap);
+  const baselineNotesRef = useRef(notesMap);
+  const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (session) {
       const initial = buildStatusMap(session, viewMode);
+      const initialNotes = buildNotesMap(session);
       setStatusMap(initial);
+      setNotesMap(initialNotes);
       baselineRef.current = initial;
+      baselineNotesRef.current = initialNotes;
       setAutoLateFlags({});
     }
   }, [session, viewMode]);
@@ -230,14 +327,20 @@ export default function InstructorAttendancePage() {
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success && fetcher.data.session) {
       const updated = buildStatusMap(fetcher.data.session, viewMode);
+      const updatedNotes = buildNotesMap(fetcher.data.session);
       setStatusMap(updated);
+      setNotesMap(updatedNotes);
       baselineRef.current = updated;
+      baselineNotesRef.current = updatedNotes;
       setAutoLateFlags({});
     }
   }, [fetcher.state, fetcher.data, viewMode]);
 
   const isSubmitting = fetcher.state !== 'idle';
-  const isDirty = useMemo(() => hasDifferences(baselineRef.current, statusMap), [statusMap]);
+  const isDirty = useMemo(() =>
+    hasDifferences(baselineRef.current, statusMap) || hasNotesDifferences(baselineNotesRef.current, notesMap, statusMap),
+    [statusMap, notesMap]
+  );
   const counts = useMemo(() => buildCounts(statusMap), [statusMap]);
 
   const headerTitle = viewMode === 'roster' ? 'Class Roster' : 'Record Attendance';
@@ -273,8 +376,8 @@ export default function InstructorAttendancePage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">{headerTitle}</h1>
-          <p className="text-muted-foreground max-w-2xl">{headerDescription}</p>
+          <h1 className="instructor-page-header-styles">{headerTitle}</h1>
+          <p className="instructor-subheader-styles max-w-2xl">{headerDescription}</p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
@@ -316,10 +419,24 @@ export default function InstructorAttendancePage() {
         </div>
       </header>
 
-      <Card>
+      <Card className={cn(
+        session.status === 'completed' && 'bg-muted/30 opacity-75',
+        session.status === 'cancelled' && 'bg-muted/50 opacity-60'
+      )}>
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-2xl">{session.className}</CardTitle>
+            <div className="flex items-center gap-3 flex-wrap">
+              <CardTitle className="text-2xl">{session.className}</CardTitle>
+              {session.status === 'completed' && (
+                <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                  Completed
+                </Badge>
+              )}
+              {session.status === 'cancelled' && (
+                <Badge variant="destructive">Cancelled</Badge>
+              )}
+            </div>
             <p className="text-muted-foreground">{formatSessionTimeRange(session.start, session.end)}</p>
             {session.programName && <p className="text-sm text-muted-foreground">{session.programName}</p>}
           </div>
@@ -359,6 +476,7 @@ export default function InstructorAttendancePage() {
                     key={entry.studentId}
                     entry={entry}
                     status={statusMap[entry.studentId] ?? 'unmarked'}
+                    notes={notesMap[entry.studentId] ?? ''}
                     isAutoLate={autoLateFlags[entry.studentId] ?? false}
                     lateThreshold={lateThreshold}
                     onCycle={() => handleCycle(entry.studentId, lateThreshold, statusMap, setStatusMap, setAutoLateFlags)}
@@ -368,6 +486,7 @@ export default function InstructorAttendancePage() {
                       setStatusMap,
                       setAutoLateFlags,
                     })}
+                    onNotesChange={(notes) => setNotesMap((prev) => ({ ...prev, [entry.studentId]: notes }))}
                   />
                 ))}
               </div>
@@ -405,12 +524,25 @@ export default function InstructorAttendancePage() {
             <AuthenticityTokenInput />
             <input type="hidden" name="sessionId" value={session.id} />
             <input type="hidden" name="payload" value={JSON.stringify(statusMap)} />
+            <input type="hidden" name="notesPayload" value={JSON.stringify(notesMap)} />
             <input type="hidden" name="baseline" value={JSON.stringify(baselineRef.current)} />
+            <input type="hidden" name="baselineNotes" value={JSON.stringify(baselineNotesRef.current)} />
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" disabled={!isDirty || isSubmitting}>
                 {isSubmitting ? 'Saving…' : 'Save attendance'}
               </Button>
+              {viewMode === 'roster' && session.status === 'scheduled' && (
+                <Button
+                  type="button"
+                  variant="default"
+                  disabled={isDirty || isSubmitting}
+                  onClick={() => setIsCompleteDialogOpen(true)}
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Complete Session
+                </Button>
+              )}
               {!isDirty && !isSubmitting && <span className="text-sm text-muted-foreground">All changes saved.</span>}
               {isDirty && !isSubmitting && <span className="text-sm text-amber-600">Unsaved changes.</span>}
             </div>
@@ -421,6 +553,33 @@ export default function InstructorAttendancePage() {
           </fetcher.Form>
         </CardContent>
       </Card>
+
+      {/* Complete Session Confirmation Dialog */}
+      <AlertDialog open={isCompleteDialogOpen} onOpenChange={setIsCompleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete Session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the session as completed. You can still edit attendance records after completion, but the session status will indicate it has finished.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <fetcher.Form method="post" onSubmit={() => setIsCompleteDialogOpen(false)}>
+              <AuthenticityTokenInput />
+              <input type="hidden" name="intent" value="complete_session" />
+              <input type="hidden" name="sessionId" value={session.id} />
+              <AlertDialogAction
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {isSubmitting ? 'Completing…' : 'Complete Session'}
+              </AlertDialogAction>
+            </fetcher.Form>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -442,10 +601,41 @@ function buildStatusMap(
   return map;
 }
 
+function buildNotesMap(
+  session: InstructorSessionPayload | null | undefined,
+): Record<string, string> {
+  if (!session) return {};
+  const map: Record<string, string> = {};
+  for (const entry of session.roster) {
+    if (entry.attendanceNotes) {
+      map[entry.studentId] = entry.attendanceNotes;
+    }
+  }
+  return map;
+}
+
 function hasDifferences(a: Record<string, AttendanceStatus>, b: Record<string, AttendanceStatus>): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   for (const key of keys) {
     if ((a[key] ?? 'unmarked') !== (b[key] ?? 'unmarked')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasNotesDifferences(
+  a: Record<string, string>,
+  b: Record<string, string>,
+  statusMap: Record<string, AttendanceStatus>
+): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    // Only count notes changes for students with a valid attendance status
+    const status = statusMap[key] ?? 'unmarked';
+    if (status === 'unmarked') continue;
+
+    if ((a[key] ?? '') !== (b[key] ?? '')) {
       return true;
     }
   }
@@ -694,17 +884,21 @@ function getCheckInStatusTextColor(status: AttendanceStatus) {
 function StudentCard({
   entry,
   status,
+  notes,
   isAutoLate,
   lateThreshold,
   onCycle,
   onSet,
+  onNotesChange,
 }: {
   entry: InstructorSessionPayload['roster'][number];
   status: AttendanceStatus;
+  notes: string;
   isAutoLate: boolean;
   lateThreshold: Date | null;
   onCycle: () => void;
   onSet: (status: AttendanceStatus, options?: { enforceLate?: boolean }) => void;
+  onNotesChange: (notes: string) => void;
 }) {
   const statusInfo = getStatusInfo(status);
 
@@ -763,13 +957,27 @@ function StudentCard({
         />
       </div>
 
+      <div className="mt-4">
+        <Label htmlFor={`notes-${entry.studentId}`} className="text-sm mb-2 block">
+          Notes (Optional)
+        </Label>
+        <Textarea
+          id={`notes-${entry.studentId}`}
+          value={notes}
+          onChange={(e) => onNotesChange(e.target.value)}
+          rows={2}
+          placeholder="e.g., Left early, arrived late, makeup class"
+          className="input-custom-styles"
+        />
+      </div>
+
       <Button type="button" variant="ghost" size="sm" className="mt-3 text-xs" onClick={onCycle}>
         Cycle status
       </Button>
 
       {lateThreshold && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Late after {format(lateThreshold, 'h:mm a')} ({LATE_THRESHOLD_MINUTES}m)
+          Late after {formatDate(lateThreshold, { formatString: 'h:mm a' })} ({LATE_THRESHOLD_MINUTES}m)
         </p>
       )}
     </div>
@@ -815,14 +1023,14 @@ function SummaryPill({
   variant: 'success' | 'warn' | 'absence' | 'info';
 }) {
   const variantStyles: Record<typeof variant, string> = {
-    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
-    warn: 'bg-amber-500/10 text-amber-600 dark:text-amber-300',
+    success: 'instructor-badge-success-styles',
+    warn: 'instructor-badge-warn-styles',
     absence: 'bg-purple-500/10 text-purple-600 dark:text-purple-300',
-    info: 'bg-sky-500/10 text-sky-600 dark:text-sky-300',
+    info: 'instructor-badge-info-styles',
   };
 
   return (
-    <span className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm', variantStyles[variant])}>
+    <span className={cn('instructor-stat-pill-styles', variantStyles[variant])}>
       <Icon className="h-4 w-4" />
       <span>{label}</span>
       <span className="font-semibold">{value}</span>
@@ -832,7 +1040,7 @@ function SummaryPill({
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 p-12 text-center text-muted-foreground">
+    <div className="instructor-empty-state-styles">
       <Users className="h-8 w-8" />
       <p className="text-lg font-semibold text-foreground">No sessions available</p>
       <p className="text-sm">Once a session is scheduled for today, it will appear here for quick attendance.</p>
@@ -864,13 +1072,13 @@ function formatSessionTimeRange(start: string | null, end: string | null): strin
   if (!start) return 'Time TBD';
   const startDate = parseISO(start);
   const endDate = end ? parseISO(end) : null;
-  const dayPart = format(startDate, 'EEE MMM d');
-  const startPart = format(startDate, 'h:mm a');
+  const dayPart = formatDate(startDate, { formatString: 'EEE MMM d' });
+  const startPart = formatDate(startDate, { formatString: 'h:mm a' });
   if (!endDate) {
     return `${dayPart} · ${startPart}`;
   }
   const sameDay = startDate.toDateString() === endDate.toDateString();
-  const endPart = format(endDate, sameDay ? 'h:mm a' : 'EEE MMM d h:mm a');
+  const endPart = formatDate(endDate, { formatString: sameDay ? 'h:mm a' : 'EEE MMM d h:mm a' });
   return `${dayPart} · ${startPart} – ${endPart}`;
 }
 
