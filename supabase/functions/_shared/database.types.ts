@@ -2960,6 +2960,10 @@ export type Database = {
           program_name: string
         }[]
       }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["profile_role"]
+      }
       increment_discount_code_usage: {
         Args: { p_discount_code_id: string }
         Returns: undefined
