@@ -81,8 +81,8 @@ export default function InstructorStudentsPage() {
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Enrolled Students</h1>
-        <p className="text-muted-foreground">Snapshot of students tied to upcoming sessions for quick eligibility checks.</p>
+        <h1 className="instructor-page-header-styles">Enrolled Students</h1>
+        <p className="instructor-subheader-styles">Snapshot of students tied to upcoming sessions for quick eligibility checks.</p>
       </header>
 
       <Card>
@@ -141,7 +141,7 @@ export default function InstructorStudentsPage() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+    <div className="instructor-empty-state-styles py-12">
       <Users className="h-8 w-8" />
       <p>No active students found for this instructor window.</p>
     </div>

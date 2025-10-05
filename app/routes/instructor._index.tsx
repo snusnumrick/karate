@@ -118,8 +118,8 @@ export default function InstructorDashboard() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Instructor Dashboard</h1>
-          <p className="text-muted-foreground">Stay on top of today’s classes, attendance, and eligibility in one place.</p>
+          <h1 className="instructor-page-header-styles">Instructor Dashboard</h1>
+<p className="instructor-subheader-styles">Stay on top of today&apos;s classes, attendance, and eligibility in one place.</p>
         </div>
 
         {isAdmin && data.instructorOptions.length > 0 && (
@@ -185,7 +185,7 @@ export default function InstructorDashboard() {
       )}
 
       <section>
-        <h2 className="text-2xl font-semibold mb-4">Today · {data.todayLabel}</h2>
+        <h2 className="instructor-section-header-styles">Today · {data.todayLabel}</h2>
         <div className="grid gap-4 md:grid-cols-4">
           <DashboardMetricCard icon={CalendarDays} title="Sessions" value={data.metrics.totalSessions} accent="bg-blue-500" />
           <DashboardMetricCard icon={Users} title="Students" value={data.metrics.totalStudents} accent="bg-emerald-500" />
@@ -205,7 +205,7 @@ export default function InstructorDashboard() {
       </section>
 
       <section>
-        <h2 className="text-2xl font-semibold mb-4">Upcoming · {data.upcomingLabel}</h2>
+        <h2 className="instructor-section-header-styles">Upcoming · {data.upcomingLabel}</h2>
         {data.upcomingSessions.length === 0 ? (
           <EmptyState title="Nothing on the horizon" description="No upcoming sessions in the next week." icon={CalendarDays} />
         ) : (
@@ -257,15 +257,14 @@ function MetricPill({
   value: string;
   variant?: 'default' | 'warn' | 'ok';
 }) {
-  const base = 'inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm';
   const variantClass = variant === 'warn'
-    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
+    ? 'instructor-badge-warn-styles'
     : variant === 'ok'
-      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+      ? 'instructor-badge-success-styles'
       : 'bg-primary/10 text-primary';
 
   return (
-    <span className={`${base} ${variantClass}`}>
+    <span className={`instructor-stat-pill-styles ${variantClass}`}>
       <Icon className="h-4 w-4" />
       <span className="font-medium">{label}</span>
       <span>{value}</span>
@@ -367,10 +366,10 @@ function AttendanceChip({
   variant: 'success' | 'warn' | 'destructive' | 'info';
 }) {
   const variantStyles: Record<typeof variant, string> = {
-    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
-    warn: 'bg-amber-500/10 text-amber-600 dark:text-amber-300',
-    destructive: 'bg-red-500/10 text-red-600 dark:text-red-300',
-    info: 'bg-sky-500/10 text-sky-600 dark:text-sky-300',
+    success: 'instructor-badge-success-styles',
+    warn: 'instructor-badge-warn-styles',
+    destructive: 'instructor-badge-error-styles',
+    info: 'instructor-badge-info-styles',
   };
 
   return (
@@ -405,7 +404,7 @@ function EmptyState({
   icon: ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 p-10 text-center text-muted-foreground">
+    <div className="instructor-empty-state-styles">
       <Icon className="h-8 w-8 mb-3" />
       <p className="text-lg font-semibold text-foreground">{title}</p>
       <p className="text-sm">{description}</p>

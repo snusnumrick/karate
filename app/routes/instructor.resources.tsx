@@ -72,8 +72,8 @@ export default function InstructorResourcesPage() {
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Curriculum & Materials</h1>
-        <p className="text-muted-foreground">Program descriptions and quick links to program management for reference before class.</p>
+        <h1 className="instructor-page-header-styles">Curriculum & Materials</h1>
+        <p className="instructor-subheader-styles">Program descriptions and quick links to program management for reference before class.</p>
       </header>
 
       {data.resources.length === 0 ? (
@@ -118,7 +118,7 @@ export default function InstructorResourcesPage() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 p-12 text-center text-muted-foreground">
+    <div className="instructor-empty-state-styles">
       <Notebook className="h-8 w-8" />
       <p className="text-lg font-semibold text-foreground">No materials queued</p>
       <p className="text-sm">Programs tied to this instructor will appear here with quick access links.</p>

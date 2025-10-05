@@ -238,8 +238,8 @@ export default function InstructorMessagesIndex() {
             <div className="mb-8">
                 <AppBreadcrumb items={breadcrumbPatterns.instructorMessages()} />
                 <div className="mt-4">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Messages</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">Keep in touch with families and students.</p>
+                    <h1 className="instructor-page-header-styles">Messages</h1>
+                    <p className="instructor-subheader-styles mt-1">Keep in touch with families and students.</p>
                 </div>
             </div>
 

@@ -331,8 +331,8 @@ export default function InstructorAttendancePage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">{headerTitle}</h1>
-          <p className="text-muted-foreground max-w-2xl">{headerDescription}</p>
+          <h1 className="instructor-page-header-styles">{headerTitle}</h1>
+          <p className="instructor-subheader-styles max-w-2xl">{headerDescription}</p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
@@ -925,14 +925,14 @@ function SummaryPill({
   variant: 'success' | 'warn' | 'absence' | 'info';
 }) {
   const variantStyles: Record<typeof variant, string> = {
-    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
-    warn: 'bg-amber-500/10 text-amber-600 dark:text-amber-300',
+    success: 'instructor-badge-success-styles',
+    warn: 'instructor-badge-warn-styles',
     absence: 'bg-purple-500/10 text-purple-600 dark:text-purple-300',
-    info: 'bg-sky-500/10 text-sky-600 dark:text-sky-300',
+    info: 'instructor-badge-info-styles',
   };
 
   return (
-    <span className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm', variantStyles[variant])}>
+    <span className={cn('instructor-stat-pill-styles', variantStyles[variant])}>
       <Icon className="h-4 w-4" />
       <span>{label}</span>
       <span className="font-semibold">{value}</span>
@@ -942,7 +942,7 @@ function SummaryPill({
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 p-12 text-center text-muted-foreground">
+    <div className="instructor-empty-state-styles">
       <Users className="h-8 w-8" />
       <p className="text-lg font-semibold text-foreground">No sessions available</p>
       <p className="text-sm">Once a session is scheduled for today, it will appear here for quick attendance.</p>

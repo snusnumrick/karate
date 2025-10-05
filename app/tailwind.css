@@ -63,6 +63,47 @@
         @apply text-green-600 dark:text-green-400;
     }
 
+    /* Instructor Portal Specific Styles */
+    .instructor-card-styles {
+        @apply bg-card text-card-foreground rounded-xl border border-border shadow-sm;
+    }
+
+    .instructor-page-header-styles {
+        @apply text-3xl font-bold tracking-tight text-foreground;
+    }
+
+    .instructor-section-header-styles {
+        @apply text-2xl font-semibold mb-4 text-foreground;
+    }
+
+    .instructor-subheader-styles {
+        @apply text-muted-foreground;
+    }
+
+    .instructor-stat-pill-styles {
+        @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm;
+    }
+
+    .instructor-empty-state-styles {
+        @apply flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 p-10 text-center text-muted-foreground;
+    }
+
+    .instructor-badge-success-styles {
+        @apply bg-emerald-500/10 text-emerald-600 dark:text-emerald-300;
+    }
+
+    .instructor-badge-warn-styles {
+        @apply bg-amber-500/10 text-amber-600 dark:text-amber-300;
+    }
+
+    .instructor-badge-error-styles {
+        @apply bg-red-500/10 text-red-600 dark:text-red-300;
+    }
+
+    .instructor-badge-info-styles {
+        @apply bg-sky-500/10 text-sky-600 dark:text-sky-300;
+    }
+
     /* Fix calendar icon visibility in dark mode */
     input[type="date"].input-custom-styles {
         color-scheme: light;

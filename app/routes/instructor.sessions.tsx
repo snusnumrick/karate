@@ -93,8 +93,8 @@ export default function InstructorSessionsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Upcoming Sessions</h1>
-          <p className="text-muted-foreground">Classes scheduled over the next two weeks · {data.rangeLabel}</p>
+          <h1 className="instructor-page-header-styles">Upcoming Sessions</h1>
+          <p className="instructor-subheader-styles">Classes scheduled over the next two weeks · {data.rangeLabel}</p>
         </div>
 
         {isAdmin && data.instructorOptions.length > 0 && (
@@ -135,7 +135,7 @@ export default function InstructorSessionsPage() {
         <div className="space-y-6">
           {groupedSessions.map((group) => (
             <section key={group.date} className="space-y-4">
-              <h2 className="text-xl font-semibold">{group.label}</h2>
+              <h2 className="instructor-section-header-styles">{group.label}</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {group.sessions.map((session) => (
                   <SessionSummaryCard
@@ -217,15 +217,14 @@ function MetricPill({
   value: number;
   variant?: 'default' | 'warn' | 'info';
 }) {
-  const base = 'inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm text-foreground';
   const variantClass = variant === 'warn'
-    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
+    ? 'instructor-badge-warn-styles'
     : variant === 'info'
-      ? 'bg-sky-500/10 text-sky-600 dark:text-sky-300'
+      ? 'instructor-badge-info-styles'
       : 'bg-primary/10 text-primary';
 
   return (
-    <span className={`${base} ${variantClass}`}>
+    <span className={`instructor-stat-pill-styles ${variantClass}`}>
       <Icon className="h-4 w-4" />
       <span>{label}</span>
       <span className="font-semibold">{value}</span>
@@ -243,7 +242,7 @@ function EmptyState({
   icon: ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 p-10 text-center text-muted-foreground">
+    <div className="instructor-empty-state-styles">
       <Icon className="h-8 w-8 mb-3" />
       <p className="text-lg font-semibold text-foreground">{title}</p>
       <p className="text-sm">{description}</p>
