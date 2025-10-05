@@ -1,4 +1,4 @@
-import { differenceInMinutes, format, parseISO } from 'date-fns';
+import { differenceInMinutes, format } from 'date-fns';
 import { redirect } from '@vercel/remix';
 import { getSupabaseAdminClient, getSupabaseServerClient, getUserRole, checkStudentEligibility } from '~/utils/supabase.server';
 import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
@@ -276,9 +276,15 @@ function combineDateAndTime(date: string, time?: string | null): Date | null {
     return null;
   }
 
-  const isoString = `${date}T${time}`;
   try {
-    return parseISO(isoString);
+    // Parse date in local timezone (consistent with parseLocalDate pattern)
+    const [year, month, day] = date.split('-').map(Number);
+
+    // Parse time components
+    const [hours, minutes, seconds = 0] = time.split(':').map(Number);
+
+    // Create Date in local timezone to avoid server timezone issues
+    return new Date(year, month - 1, day, hours, minutes, seconds);
   } catch {
     return null;
   }
