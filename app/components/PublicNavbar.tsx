@@ -47,7 +47,7 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
 
                         {/* Desktop Navigation */}
                         <nav className="hidden lg:flex lg:space-x-8 lg:items-center">
-                            <NavLink to="/classes">Programs</NavLink>
+                            <NavLink to="/curriculum">Pathways</NavLink>
                             <NavLink to="/about">About</NavLink>
                             {!user && (
                                 <NavLink to="/register">Register</NavLink>
@@ -132,7 +132,7 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
                                     <div className="flex-1 overflow-y-auto py-4">
                                         <SheetTitle className="px-4 mb-2">Navigation</SheetTitle>
                                         <div className="flex flex-col space-y-4 px-4">
-                                            <MobileNavLink to="/classes" onClick={() => setIsOpen(false)}>
+                                            <MobileNavLink to="/curriculum" onClick={() => setIsOpen(false)}>
                                                 Programs
                                             </MobileNavLink>
                                             <MobileNavLink to="/about" onClick={() => setIsOpen(false)}>
