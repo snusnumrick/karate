@@ -147,6 +147,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Helper function from migration 026 to get user role (bypasses RLS to avoid recursion)
+CREATE OR REPLACE FUNCTION public.get_user_role(user_id uuid)
+RETURNS profile_role
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT role FROM public.profiles WHERE id = user_id LIMIT 1;
+$$;
+
 -- Create entity_type enum for invoice entities
 DO
 $$
@@ -181,6 +191,66 @@ $$
                 'AXL',
                 'A2XL'
             );
+        END IF;
+    END
+$$;
+
+-- Engagement type for programs (seminar vs program)
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'engagement_type') THEN
+            CREATE TYPE engagement_type AS ENUM ('program', 'seminar');
+        END IF;
+    END
+$$;
+
+-- Ability category for marketing/filtering
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ability_category') THEN
+            CREATE TYPE ability_category AS ENUM ('able', 'adaptive');
+        END IF;
+    END
+$$;
+
+-- Delivery format for programs/seminars
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'delivery_format') THEN
+            CREATE TYPE delivery_format AS ENUM ('group', 'private', 'competition_individual', 'competition_team', 'introductory');
+        END IF;
+    END
+$$;
+
+-- Audience scope for programs/seminars
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'audience_scope') THEN
+            CREATE TYPE audience_scope AS ENUM ('youth', 'adults', 'mixed');
+        END IF;
+    END
+$$;
+
+-- Family type to distinguish households from self-registrants
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'family_type') THEN
+            CREATE TYPE family_type AS ENUM ('household', 'self', 'organization');
+        END IF;
+    END
+$$;
+
+-- Waiver status for self-registrants
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'waiver_status') THEN
+            CREATE TYPE waiver_status AS ENUM ('not_required', 'pending', 'signed', 'expired');
         END IF;
     END
 $$;
@@ -238,16 +308,18 @@ CREATE TABLE IF NOT EXISTS families
 (
     id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name              text        NOT NULL,
-    address           text        NOT NULL,
-    city              text        NOT NULL,
-    province          text        NOT NULL,
-    postal_code       varchar(10) NOT NULL,
+    address           text        NULL, -- Made nullable for self-registrants in migration 025
+    city              text        NULL, -- Made nullable for self-registrants in migration 025
+    province          text        NULL, -- Made nullable for self-registrants in migration 025
+    postal_code       varchar(10) NULL, -- Made nullable for self-registrants in migration 025
     primary_phone     varchar(20) NOT NULL,
     email             text        NOT NULL,
     referral_source   text,
     referral_name     text,
     emergency_contact text,
     health_info       text,
+    -- Family type from migration 025
+    family_type       family_type NOT NULL DEFAULT 'household',
     created_at        timestamptz      DEFAULT now(),
     updated_at        timestamptz      DEFAULT now()
 );
@@ -294,10 +366,10 @@ CREATE TABLE IF NOT EXISTS students
     first_name               text                                            NOT NULL,
     last_name                text                                            NOT NULL,
     gender                   text                                            NOT NULL,
-    birth_date               date                                            NOT NULL,
+    birth_date               date                                            NULL, -- Made nullable for adult registrants in migration 025
     -- belt_rank removed, derive from latest belt_awards
-    t_shirt_size             text                                            NOT NULL,
-    school                   text                                            NOT NULL,
+    t_shirt_size             text                                            NULL, -- Made nullable for adult registrants in migration 025
+    school                   text                                            NULL, -- Made nullable for adult registrants in migration 025
     grade_level              text,
     cell_phone               varchar(20),
     email                    text,
@@ -306,7 +378,10 @@ CREATE TABLE IF NOT EXISTS students
     immunization_notes       text,
     allergies                text,
     medications              text,
-    special_needs            text
+    special_needs            text,
+    -- Adult self-registration fields from migration 025
+    is_adult                 boolean NOT NULL DEFAULT false,
+    profile_id               uuid NULL REFERENCES public.profiles(id) ON DELETE SET NULL
 );
 
 DO
@@ -316,6 +391,29 @@ $$
                        FROM pg_indexes
                        WHERE indexname = 'idx_students_family_id') THEN
             CREATE INDEX idx_students_family_id ON students (family_id);
+        END IF;
+        -- Indexes from migration 025
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_indexes
+                       WHERE indexname = 'idx_students_is_adult') THEN
+            CREATE INDEX idx_students_is_adult ON students (is_adult);
+        END IF;
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_indexes
+                       WHERE indexname = 'idx_students_profile_id') THEN
+            CREATE INDEX idx_students_profile_id ON students (profile_id);
+        END IF;
+    END
+$$;
+
+-- Add index on families.family_type from migration 025
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1
+                       FROM pg_indexes
+                       WHERE indexname = 'idx_families_family_type') THEN
+            CREATE INDEX idx_families_family_type ON families (family_type);
         END IF;
     END
 $$;
@@ -1277,18 +1375,16 @@ DROP POLICY IF EXISTS "Profiles are viewable by user or admin role" ON public.pr
 DROP POLICY IF EXISTS "Profiles are viewable by user" ON public.profiles;
 -- Drop older policy if exists
 
--- Check if the target policy already exists before creating it
-IF NOT EXISTS (SELECT 1
-                       FROM pg_policies
-                       WHERE tablename = 'profiles'
-                         AND policyname = 'Profiles viewable by user, admin, or instructor') THEN
+-- Drop the old policy to recreate with the fix from migration 026
+DROP POLICY IF EXISTS "Profiles viewable by user, admin, or instructor" ON public.profiles;
+
+-- Create the policy using helper function to avoid RLS recursion (migration 026)
 CREATE POLICY "Profiles viewable by user, admin, or instructor" ON public.profiles
     FOR SELECT USING (
-    auth.uid() = id -- Can view own profile
+        auth.uid() = id -- Can view own profile
         OR
-    EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('admin'::profile_role, 'instructor'::profile_role)) -- Admins and instructors can view all profiles
+        public.get_user_role(auth.uid()) IN ('admin'::profile_role, 'instructor'::profile_role) -- Admins and instructors can view all profiles
     );
-END IF;
 
 IF NOT EXISTS (SELECT 1
                        FROM pg_policies
@@ -3537,6 +3633,17 @@ CREATE TABLE IF NOT EXISTS public.programs (
     registration_fee_cents INT4 NOT NULL DEFAULT 0,
     yearly_fee_cents INT4 NOT NULL DEFAULT 0,
     individual_session_fee_cents INT4 NOT NULL DEFAULT 0,
+    -- Additional pricing columns from migration 025
+    single_purchase_price_cents INT4 NULL CHECK (single_purchase_price_cents >= 0),
+    subscription_monthly_price_cents INT4 NULL CHECK (subscription_monthly_price_cents >= 0),
+    subscription_yearly_price_cents INT4 NULL CHECK (subscription_yearly_price_cents >= 0),
+    -- Engagement type and marketing fields from migration 025
+    engagement_type engagement_type NOT NULL DEFAULT 'program',
+    ability_category ability_category NULL,
+    delivery_format delivery_format NULL,
+    audience_scope audience_scope NOT NULL DEFAULT 'youth',
+    min_capacity integer NULL CHECK (min_capacity > 0),
+    slug text NULL UNIQUE,
     -- System fields
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -3556,9 +3663,21 @@ CREATE TABLE IF NOT EXISTS public.classes (
     description text NULL,
     max_capacity integer NULL,
     instructor_id uuid REFERENCES public.profiles(id),
+    -- Seminar-specific fields from migration 025
+    series_label text NULL,
+    series_start_on date NULL,
+    series_end_on date NULL,
+    sessions_per_week_override integer NULL CHECK (sessions_per_week_override > 0),
+    session_duration_minutes integer NULL CHECK (session_duration_minutes > 0),
+    series_session_quota integer NULL CHECK (series_session_quota > 0),
+    allow_self_enrollment boolean NOT NULL DEFAULT false,
+    min_capacity integer NULL CHECK (min_capacity > 0),
+    on_demand boolean NOT NULL DEFAULT false,
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    -- Constraint to ensure series dates are valid from migration 025
+    CHECK (series_start_on IS NULL OR series_end_on IS NULL OR series_end_on >= series_start_on)
 );
 
 -- Class Schedule Table - normalized approach with proper types
@@ -3718,6 +3837,13 @@ END IF;
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_prerequisites') THEN
 CREATE INDEX idx_programs_prerequisites ON public.programs USING GIN (prerequisite_programs);
 END IF;
+-- Indexes from migration 025
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_engagement_type') THEN
+CREATE INDEX idx_programs_engagement_type ON public.programs (engagement_type);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_audience_scope') THEN
+CREATE INDEX idx_programs_audience_scope ON public.programs (audience_scope);
+END IF;
 END $$;
 
 -- Add indexes for classes
@@ -3848,6 +3974,8 @@ CREATE TABLE IF NOT EXISTS public.class_sessions (
     status VARCHAR(20) NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
     instructor_id uuid REFERENCES public.profiles(id),
     notes TEXT,
+    -- Sequence number for ordered timelines from migration 025
+    sequence_number integer NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE(class_id, session_date, start_time) -- Prevent duplicate sessions
@@ -3868,6 +3996,13 @@ CREATE INDEX idx_class_sessions_status ON public.class_sessions (status);
 END IF;
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_sessions_instructor') THEN
 CREATE INDEX idx_class_sessions_instructor ON public.class_sessions (instructor_id);
+END IF;
+-- Indexes from migration 025
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_sessions_class_sequence') THEN
+CREATE INDEX idx_class_sessions_class_sequence ON public.class_sessions (class_id, sequence_number);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_sessions_session_date_time') THEN
+CREATE INDEX idx_class_sessions_session_date_time ON public.class_sessions (session_date, start_time);
 END IF;
 END $$;
 
@@ -5494,54 +5629,73 @@ CREATE TABLE IF NOT EXISTS events (
     
     -- Registration and capacity
     max_participants integer,
+    min_capacity integer NULL CHECK (min_capacity > 0), -- Added in migration 025
     registration_deadline date,
     min_age integer,
     max_age integer,
     min_belt_rank belt_rank_enum,
     max_belt_rank belt_rank_enum,
-    
+
+    -- Multi-slot scheduling from migration 025
+    slot_one_start timestamptz NULL,
+    slot_one_end timestamptz NULL,
+    slot_two_start timestamptz NULL,
+    slot_two_end timestamptz NULL,
+    allow_self_participants boolean NOT NULL DEFAULT false,
+
     -- Pricing
     registration_fee_cents INTEGER DEFAULT 0, -- Migrated from DECIMAL(10,2) to INT4 cents storage
     late_registration_fee_cents INTEGER, -- Migrated from DECIMAL(10,2) to INT4 cents storage
-    
+
     -- Requirements
     requires_waiver boolean DEFAULT false,
     required_waiver_ids uuid[] DEFAULT '{}',
     requires_equipment text[], -- Array of required equipment
-    
+
     -- Administrative
     instructor_id uuid REFERENCES profiles(id),
     created_by uuid REFERENCES profiles(id) NOT NULL,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now(),
-    
+
     -- Additional metadata
     external_url text, -- For external registration or info
     notes text,
-    visibility event_visibility_enum NOT NULL DEFAULT 'public' -- Event visibility level
+    visibility event_visibility_enum NOT NULL DEFAULT 'public', -- Event visibility level
+
+    -- Constraints from migration 025
+    CHECK (slot_one_start IS NULL OR slot_one_end IS NULL OR slot_one_end > slot_one_start),
+    CHECK (slot_two_start IS NULL OR slot_two_end IS NULL OR slot_two_end > slot_two_start)
 );
 
 -- Create event registrations table
 CREATE TABLE IF NOT EXISTS event_registrations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id uuid REFERENCES events(id) ON DELETE CASCADE NOT NULL,
-    student_id uuid REFERENCES students(id) ON DELETE CASCADE NOT NULL,
+    student_id uuid REFERENCES students(id) ON DELETE CASCADE NULL, -- Made nullable in migration 025
     family_id uuid REFERENCES families(id) ON DELETE CASCADE NOT NULL,
-    
+
+    -- Adult self-participant fields from migration 025
+    participant_profile_id uuid NULL REFERENCES public.profiles(id) ON DELETE SET NULL,
+    waiver_status waiver_status NOT NULL DEFAULT 'not_required',
+
     -- Registration details
     registered_at timestamptz DEFAULT now(),
     registration_status registration_status_enum DEFAULT 'pending',
-    
+
     -- Payment tracking
     payment_required boolean DEFAULT true,
     payment_amount_cents INTEGER, -- Migrated from DECIMAL(10,2) to INT4 cents storage
     payment_status payment_status DEFAULT 'pending',
     payment_id uuid REFERENCES payments(id),
-    
+
     -- Additional info
     notes text,
     emergency_contact text,
-    
+
+    -- Constraint from migration 025: ensure either student_id or participant_profile_id is set
+    CHECK (student_id IS NOT NULL OR participant_profile_id IS NOT NULL),
+
     UNIQUE(event_id, student_id)
 );
 
@@ -5594,7 +5748,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_event_registrations_status') THEN
         CREATE INDEX idx_event_registrations_status ON event_registrations(registration_status);
     END IF;
-    
+
+    -- Index from migration 025
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_event_registrations_participant_profile') THEN
+        CREATE INDEX idx_event_registrations_participant_profile ON event_registrations(participant_profile_id);
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_event_waivers_event') THEN
         CREATE INDEX idx_event_waivers_event ON event_waivers(event_id);
     END IF;
