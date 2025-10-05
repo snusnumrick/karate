@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { CalendarDays, Users, AlertTriangle, Clock } from 'lucide-react';
+import { cn } from '~/lib/utils';
 import type { InstructorRouteHandle } from '~/routes/instructor';
 
 interface SessionsLoaderData {
@@ -159,12 +160,27 @@ function SessionSummaryCard({
   session: InstructorSessionPayload;
   highlighted: boolean;
 }) {
+  const isCompleted = session.status === 'completed';
+  const isCancelled = session.status === 'cancelled';
+
   return (
-    <Card className={highlighted ? 'border-primary shadow-lg shadow-primary/10' : undefined}>
+    <Card className={cn(
+      highlighted && 'border-primary shadow-lg shadow-primary/10',
+      isCompleted && 'bg-muted/30 opacity-75',
+      isCancelled && 'bg-muted/50 opacity-60'
+    )}>
       <CardHeader className="flex flex-col gap-1">
         <CardTitle className="flex items-center justify-between gap-2">
           <span>{session.className}</span>
-          <Badge variant="secondary">Roster · {session.roster.length}</Badge>
+          <div className="flex items-center gap-2">
+            {session.status === 'completed' && (
+              <Badge variant="default" className="bg-green-600 hover:bg-green-700">Completed</Badge>
+            )}
+            {session.status === 'cancelled' && (
+              <Badge variant="destructive">Cancelled</Badge>
+            )}
+            <Badge variant="secondary">Roster · {session.roster.length}</Badge>
+          </div>
         </CardTitle>
         <p className="text-sm text-muted-foreground">{formatSessionTimeRange(session.start, session.end)}</p>
         {session.programName && <p className="text-sm text-muted-foreground">{session.programName}</p>}

@@ -55,6 +55,7 @@ export interface InstructorSessionPayload {
   sessionDate: string;
   start: string | null;
   end: string | null;
+  status: 'scheduled' | 'completed' | 'cancelled';
   notes: string | null;
   attendanceSummary: AttendanceSummary;
   eligibilitySummary: {
@@ -329,6 +330,7 @@ export function serializeInstructorSessionSummary(summary: InstructorSessionSumm
     sessionDate: summary.session.session_date,
     start: summary.startDateTime ? summary.startDateTime.toISOString() : null,
     end: summary.endDateTime ? summary.endDateTime.toISOString() : null,
+    status: summary.session.status,
     notes: summary.session.notes ?? null,
     attendanceSummary: summary.attendanceSummary,
     eligibilitySummary: {

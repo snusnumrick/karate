@@ -10,11 +10,22 @@ import {
   type InstructorSessionPayload,
 } from '~/services/instructor.server';
 import { recordSessionAttendance } from '~/services/attendance.server';
+import { updateClassSession } from '~/services/class.server';
 import { validateCSRF } from '~/utils/csrf.server';
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '~/components/ui/alert-dialog';
 import { AlertTriangle, CheckCircle2, Clock, RotateCcw, Users } from 'lucide-react';
 import { cn } from '~/lib/utils';
 import type { InstructorRouteHandle } from '~/routes/instructor';
@@ -123,13 +134,59 @@ export async function action({ request }: ActionFunctionArgs) {
   const { role, viewInstructorId, supabaseAdmin, headers, userId } = context;
 
   const formData = await request.formData();
+  const intent = formData.get('intent');
   const sessionId = formData.get('sessionId');
-  const payload = formData.get('payload');
-  const baselineRaw = formData.get('baseline');
 
   if (!sessionId || typeof sessionId !== 'string') {
     return json<ActionResponse>({ success: false, error: 'Missing sessionId' }, { status: 400, headers });
   }
+
+  // Handle complete session intent
+  if (intent === 'complete_session') {
+    const { data: sessionRecords, error: fetchError } = await supabaseAdmin
+      .from('class_sessions')
+      .select('id, session_date, instructor_id, status, class:classes(instructor_id)')
+      .eq('id', sessionId)
+      .limit(1);
+
+    if (fetchError) {
+      return json<ActionResponse>({ success: false, error: 'Failed to load session' }, { status: 500, headers });
+    }
+
+    const record = sessionRecords?.[0];
+    if (!record) {
+      return json<ActionResponse>({ success: false, error: 'Session not found' }, { status: 404, headers });
+    }
+
+    const sessionInstructor = record.instructor_id ?? record.class?.instructor_id ?? null;
+    if (role !== 'admin' && sessionInstructor && sessionInstructor !== userId) {
+      return json<ActionResponse>({ success: false, error: 'You do not have access to this session' }, { status: 403, headers });
+    }
+
+    try {
+      await updateClassSession(sessionId, { status: 'completed' }, supabaseAdmin);
+    } catch (error) {
+      console.error('Failed to complete session', error);
+      return json<ActionResponse>({ success: false, error: 'Failed to complete session' }, { status: 500, headers });
+    }
+
+    const summaries = await getInstructorSessionsWithDetails({
+      instructorId: viewInstructorId,
+      startDate: record.session_date,
+      endDate: record.session_date,
+      supabaseAdmin,
+    });
+
+    const updated = summaries.find((summary) => summary.session.id === sessionId);
+    if (!updated) {
+      return json<ActionResponse>({ success: true }, { headers });
+    }
+
+    return json<ActionResponse>({ success: true, session: serializeInstructorSessionSummary(updated) }, { headers });
+  }
+
+  const payload = formData.get('payload');
+  const baselineRaw = formData.get('baseline');
 
   if (!payload || typeof payload !== 'string') {
     return json<ActionResponse>({ success: false, error: 'Missing payload' }, { status: 400, headers });
@@ -217,6 +274,7 @@ export default function InstructorAttendancePage() {
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>(() => buildStatusMap(session, viewMode));
   const [autoLateFlags, setAutoLateFlags] = useState<Record<string, boolean>>({});
   const baselineRef = useRef(statusMap);
+  const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -316,10 +374,24 @@ export default function InstructorAttendancePage() {
         </div>
       </header>
 
-      <Card>
+      <Card className={cn(
+        session.status === 'completed' && 'bg-muted/30 opacity-75',
+        session.status === 'cancelled' && 'bg-muted/50 opacity-60'
+      )}>
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-2xl">{session.className}</CardTitle>
+            <div className="flex items-center gap-3 flex-wrap">
+              <CardTitle className="text-2xl">{session.className}</CardTitle>
+              {session.status === 'completed' && (
+                <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                  Completed
+                </Badge>
+              )}
+              {session.status === 'cancelled' && (
+                <Badge variant="destructive">Cancelled</Badge>
+              )}
+            </div>
             <p className="text-muted-foreground">{formatSessionTimeRange(session.start, session.end)}</p>
             {session.programName && <p className="text-sm text-muted-foreground">{session.programName}</p>}
           </div>
@@ -411,6 +483,17 @@ export default function InstructorAttendancePage() {
               <Button type="submit" disabled={!isDirty || isSubmitting}>
                 {isSubmitting ? 'Saving…' : 'Save attendance'}
               </Button>
+              {viewMode === 'roster' && session.status === 'scheduled' && (
+                <Button
+                  type="button"
+                  variant="default"
+                  disabled={isDirty || isSubmitting}
+                  onClick={() => setIsCompleteDialogOpen(true)}
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Complete Session
+                </Button>
+              )}
               {!isDirty && !isSubmitting && <span className="text-sm text-muted-foreground">All changes saved.</span>}
               {isDirty && !isSubmitting && <span className="text-sm text-amber-600">Unsaved changes.</span>}
             </div>
@@ -421,6 +504,33 @@ export default function InstructorAttendancePage() {
           </fetcher.Form>
         </CardContent>
       </Card>
+
+      {/* Complete Session Confirmation Dialog */}
+      <AlertDialog open={isCompleteDialogOpen} onOpenChange={setIsCompleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete Session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the session as completed. You can still edit attendance records after completion, but the session status will indicate it has finished.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <fetcher.Form method="post" onSubmit={() => setIsCompleteDialogOpen(false)}>
+              <AuthenticityTokenInput />
+              <input type="hidden" name="intent" value="complete_session" />
+              <input type="hidden" name="sessionId" value={session.id} />
+              <AlertDialogAction
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {isSubmitting ? 'Completing…' : 'Complete Session'}
+              </AlertDialogAction>
+            </fetcher.Form>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
