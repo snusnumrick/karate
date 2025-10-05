@@ -16,6 +16,7 @@ import { Button } from '~/components/ui/button';
 import { CalendarDays, Users, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '~/lib/utils';
 import type { InstructorRouteHandle } from '~/routes/instructor';
+import { formatDate } from '~/utils/misc';
 
 interface SessionsLoaderData {
   role: UserRole;
@@ -54,7 +55,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     instructorOptions,
     sessions: serialized,
     focus,
-    rangeLabel: `${format(today, 'MMM d')} – ${format(addDays(today, 14), 'MMM d')}`,
+    rangeLabel: `${formatDate(today, { formatString: 'MMM d' })} – ${formatDate(addDays(today, 14), { formatString: 'MMM d' })}`,
   }, { headers });
 }
 
@@ -76,7 +77,7 @@ export default function InstructorSessionsPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, sessions]) => ({
         date,
-        label: format(parseISO(date), 'EEEE, MMMM d'),
+        label: formatDate(parseISO(date), { formatString: 'EEEE, MMMM d' }),
         sessions: sessions.sort((left, right) => {
           if (!left.start || !right.start) return 0;
           return parseISO(left.start).getTime() - parseISO(right.start).getTime();
@@ -255,15 +256,15 @@ function formatSessionTimeRange(start: string | null, end: string | null): strin
   const startDate = parseISO(start);
   const endDate = end ? parseISO(end) : null;
 
-  const dayPart = format(startDate, 'EEE MMM d');
-  const startPart = format(startDate, 'h:mm a');
+  const dayPart = formatDate(startDate, { formatString: 'EEE MMM d' });
+  const startPart = formatDate(startDate, { formatString: 'h:mm a' });
 
   if (!endDate) {
     return `${dayPart} · ${startPart}`;
   }
 
   const sameDay = startDate.toDateString() === endDate.toDateString();
-  const endPart = format(endDate, sameDay ? 'h:mm a' : 'EEE MMM d h:mm a');
+  const endPart = formatDate(endDate, { formatString: sameDay ? 'h:mm a' : 'EEE MMM d h:mm a' });
 
   return `${dayPart} · ${startPart} – ${endPart}`;
 }

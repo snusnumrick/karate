@@ -13,6 +13,7 @@ import { recordSessionAttendance } from '~/services/attendance.server';
 import { updateClassSession } from '~/services/class.server';
 import { validateCSRF } from '~/utils/csrf.server';
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
+import { formatDate } from '~/utils/misc';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
@@ -879,7 +880,7 @@ function StudentCard({
 
       {lateThreshold && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Late after {format(lateThreshold, 'h:mm a')} ({LATE_THRESHOLD_MINUTES}m)
+          Late after {formatDate(lateThreshold, { formatString: 'h:mm a' })} ({LATE_THRESHOLD_MINUTES}m)
         </p>
       )}
     </div>
@@ -974,13 +975,13 @@ function formatSessionTimeRange(start: string | null, end: string | null): strin
   if (!start) return 'Time TBD';
   const startDate = parseISO(start);
   const endDate = end ? parseISO(end) : null;
-  const dayPart = format(startDate, 'EEE MMM d');
-  const startPart = format(startDate, 'h:mm a');
+  const dayPart = formatDate(startDate, { formatString: 'EEE MMM d' });
+  const startPart = formatDate(startDate, { formatString: 'h:mm a' });
   if (!endDate) {
     return `${dayPart} · ${startPart}`;
   }
   const sameDay = startDate.toDateString() === endDate.toDateString();
-  const endPart = format(endDate, sameDay ? 'h:mm a' : 'EEE MMM d h:mm a');
+  const endPart = formatDate(endDate, { formatString: sameDay ? 'h:mm a' : 'EEE MMM d h:mm a' });
   return `${dayPart} · ${startPart} – ${endPart}`;
 }
 

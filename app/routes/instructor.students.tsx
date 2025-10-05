@@ -12,6 +12,7 @@ import { Badge } from '~/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import { AlertTriangle, CheckCircle2, Users } from 'lucide-react';
 import type { InstructorRouteHandle } from '~/routes/instructor';
+import { formatDate } from '~/utils/misc';
 
 interface StudentSummary {
   studentId: string;
@@ -36,7 +37,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const { role, viewInstructorId, supabaseAdmin, headers } = context;
 
   const today = new Date();
-  const startDate = format(addDays(today, -7), 'yyyy-MM-dd');
+  const startDate = format(addDays(today, -90), 'yyyy-MM-dd');
   const endDate = format(addDays(today, 30), 'yyyy-MM-dd');
 
   const sessions = await getInstructorSessionsWithDetails({
@@ -51,13 +52,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   for (const session of serialized) {
     const sessionStart = session.start ? parseISO(session.start) : null;
+    const isPastOrCompleted = session.status === 'completed' || (sessionStart && !isAfter(sessionStart, today));
+
     for (const entry of session.roster) {
       const prior = studentMap.get(entry.studentId);
       const isEligible = entry.eligibility?.eligible ?? false;
       const eligibilityReason = entry.eligibility?.reason;
       const upcomingSessions = (prior?.upcomingSessions ?? 0) + (sessionStart && isAfter(sessionStart, today) ? 1 : 0);
       const fullName = entry.fullName;
-      const lastSessionIso = session.start ?? session.sessionDate;
+
+      // Only update lastSession if:
+      // 1. Session is in the past or completed
+      // 2. Student actually attended (present or late)
+      // 3. We have a complete datetime (not just date)
+      const studentAttended = entry.attendanceStatus === 'present' || entry.attendanceStatus === 'late';
+      const hasCompleteDateTime = session.start !== null;
+      const shouldUpdateLastSession = isPastOrCompleted && studentAttended && hasCompleteDateTime;
+      const lastSessionIso = shouldUpdateLastSession ? session.start : null;
 
       studentMap.set(entry.studentId, {
         studentId: entry.studentId,
@@ -127,7 +138,7 @@ export default function InstructorStudentsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">{student.upcomingSessions}</TableCell>
-                    <TableCell className="text-right">{student.lastSession ? format(parseISO(student.lastSession), 'MMM d, h:mm a') : '—'}</TableCell>
+                    <TableCell className="text-right">{student.lastSession ? formatDate(student.lastSession, { type: 'datetime' }) : '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
