@@ -12,8 +12,8 @@ import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // For displaying errors
-import {format} from 'date-fns'; // For default date
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
+import {getTodayLocalDateString} from "~/utils/misc";
 import { formatMoney, fromCents } from "~/utils/money";
 import { getPaymentProvider } from '~/services/payments/index.server';
 
@@ -46,10 +46,6 @@ type ActionData = {
     };
 };
 
-// Function to get today's date in YYYY-MM-DD format
-function getTodayDateString(): string {
-    return format(new Date(), 'yyyy-MM-dd');
-}
 
 export async function loader({request}: LoaderFunctionArgs) {
     console.log("Entering /admin/payments/new loader...");
@@ -168,7 +164,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     if (!requiresOnlineProcessing) {
         if (!paymentDate) {
             // Default the date if it's not an online payment and date is missing.
-            paymentDate = getTodayDateString();
+            paymentDate = getTodayLocalDateString();
         }
     } else {
         paymentDate = null; // Online payments are pending, date will be set on success
@@ -689,7 +685,7 @@ export default function AdminNewPaymentPage() {
                                     id="paymentDate"
                                     name="paymentDate"
                                     type="date"
-                                    defaultValue={getTodayDateString()}
+                                    defaultValue={getTodayLocalDateString()}
                                     required={selectedMethod !== paymentProvider.id}
                                     className="mt-1"
                                     tabIndex={5}

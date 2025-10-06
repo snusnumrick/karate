@@ -1,6 +1,7 @@
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
 import { Form, Link, useLoaderData, useSearchParams, useSubmit } from '@remix-run/react';
 import { addDays, format, parseISO } from 'date-fns';
+import { formatDate } from '~/utils/misc';
 import { useMemo, type ComponentType } from 'react';
 import type { UserRole } from '~/types/auth';
 import {
@@ -16,7 +17,6 @@ import { Button } from '~/components/ui/button';
 import { CalendarDays, Users, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '~/lib/utils';
 import type { InstructorRouteHandle } from '~/routes/instructor';
-import { formatDate } from '~/utils/misc';
 
 interface SessionsLoaderData {
   role: UserRole;
@@ -77,7 +77,7 @@ export default function InstructorSessionsPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, sessions]) => ({
         date,
-        label: formatDate(parseISO(date), { formatString: 'EEEE, MMMM d' }),
+        label: formatDate(date, { formatString: 'EEEE, MMMM d' }),
         sessions: sessions.sort((left, right) => {
           if (!left.start || !right.start) return 0;
           return parseISO(left.start).getTime() - parseISO(right.start).getTime();

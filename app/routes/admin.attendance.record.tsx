@@ -24,8 +24,8 @@ import {Input} from "~/components/ui/input";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {RadioGroup, RadioGroupItem} from "~/components/ui/radio-group";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select";
-import {format, isValid, parse} from 'date-fns';
-import {formatDate} from "~/utils/misc";
+import {isValid, parse} from 'date-fns';
+import {formatDate, getTodayLocalDateString} from "~/utils/misc";
 import React from "react";
 import {Textarea} from "~/components/ui/textarea";
 import {Button} from "~/components/ui/button";
@@ -89,10 +89,6 @@ type ActionData = {
     success?: boolean;
 };
 
-// Helper to get today's date in YYYY-MM-DD format
-function getTodayDateString(): string {
-    return format(new Date(), 'yyyy-MM-dd');
-}
 
 // Loader: Fetch sessions and enrolled students for attendance recording
 export async function loader({request}: LoaderFunctionArgs) {
@@ -102,7 +98,7 @@ export async function loader({request}: LoaderFunctionArgs) {
     const sessionParam = url.searchParams.get("session");
 
     // Validate dateParam or default to today
-    let attendanceDate = getTodayDateString();
+    let attendanceDate = getTodayLocalDateString();
     if (dateParam) {
         const parsedDate = parse(dateParam, 'yyyy-MM-dd', new Date());
         if (isValid(parsedDate)) {

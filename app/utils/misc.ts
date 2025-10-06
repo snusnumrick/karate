@@ -2,6 +2,7 @@ import { parseISO, format as fnsFormat } from 'date-fns'; // Import parseISO and
 import { enCA } from 'date-fns/locale'; // Import specific date-fns locale
 import { siteConfig } from '~/config/site'; // Import siteConfig
 import { type Money, formatMoney, toDollars, fromCents } from './money'; // Import dinero.js utilities
+import { parseLocalDate } from '~/components/calendar/utils'; // Import parseLocalDate for timezone-safe date parsing
 
 /**
  * Formats monetary values into a currency string (e.g., $12.34).
@@ -106,7 +107,21 @@ export function formatDate(
     const formatType = options?.type || 'date'; // Default to 'date'
 
     try {
-        const dateObj = typeof date === 'string' ? parseISO(date) : date;
+        // Use parseLocalDate for date-only strings (YYYY-MM-DD) to avoid timezone issues
+        // Use parseISO for datetime strings with time components
+        let dateObj: Date;
+        if (typeof date === 'string') {
+            // Check if it's a date-only string (YYYY-MM-DD format)
+            if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                dateObj = parseLocalDate(date);
+            } else {
+                // For datetime strings or other formats, use parseISO
+                dateObj = parseISO(date);
+            }
+        } else {
+            dateObj = date;
+        }
+
         if (isNaN(dateObj.getTime())) {
             throw new Error('Invalid date value');
         }
@@ -135,4 +150,17 @@ export function formatDate(
         console.error(`Error formatting date (type: ${formatType}, locale: ${currentLocale}):`, error);
         return 'Invalid Date';
     }
+}
+
+/**
+ * Get today's date as a local date string (YYYY-MM-DD)
+ * This avoids timezone issues when comparing with database dates
+ * @returns Today's date in YYYY-MM-DD format in local timezone
+ */
+export function getTodayLocalDateString(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
