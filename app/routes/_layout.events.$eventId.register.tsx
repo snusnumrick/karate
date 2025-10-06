@@ -53,8 +53,12 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
   
   try {
     // Parse registration data
-    const registrationData = JSON.parse(formData.get("registrationData") as string);
-    const { students } = registrationData;
+    const registrationData = JSON.parse(formData.get("registrationData") as string || '{}');
+    const students: Array<Record<string, any>> = Array.isArray(registrationData.students) ? registrationData.students : [];
+    const registerSelf: boolean = Boolean(registrationData.registerSelf);
+    const selfParticipant: { firstName?: string; lastName?: string; email?: string } | undefined = registrationData.selfParticipant;
+    let selfParticipantStudentId: string | undefined = registrationData.selfParticipantStudentId || undefined;
+    const submittedFamilyType: string | undefined = registrationData.familyType || undefined;
 
     // Get user session
     const { data: { user } } = await supabaseServer.auth.getUser();
@@ -107,10 +111,10 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       }
     }
 
-    // For authenticated users, get their family ID
+    // For authenticated users, get their family information
     const { data: profile, error: profileError } = await supabaseServer
       .from('profiles')
-      .select('family_id')
+      .select('family_id, first_name, last_name')
       .eq('id', user.id)
       .single();
 
@@ -119,63 +123,162 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       return json({ error: 'Failed to load profile information' }, { status: 500 });
     }
 
-    const familyId = profile?.family_id;
+    let familyId: string | null = profile?.family_id || null;
+
+    if (!familyId && registerSelf) {
+      const participantFirstName = selfParticipant?.firstName || profile?.first_name || user.user_metadata?.first_name || 'Self';
+      const participantLastName = selfParticipant?.lastName || profile?.last_name || user.user_metadata?.last_name || 'Participant';
+      const primaryPhone = typeof registrationData.parentPhone === 'string' ? registrationData.parentPhone : '';
+      const familyName = `${participantFirstName} ${participantLastName}`.trim() || 'Self Participant';
+      const { data: newFamily, error: createFamilyError } = await supabaseServer
+        .from('families')
+        .insert({
+          name: familyName,
+          email: selfParticipant?.email ?? user.email ?? '',
+          primary_phone: primaryPhone,
+          family_type: 'self',
+        })
+        .select('id')
+        .single();
+
+      if (createFamilyError || !newFamily) {
+        console.error('Error creating self family:', createFamilyError);
+        return json({ error: 'Unable to prepare account for registration' }, { status: 500 });
+      }
+
+      familyId = newFamily.id;
+
+      const { error: updateProfileError } = await supabaseServer
+        .from('profiles')
+        .update({ family_id: familyId })
+        .eq('id', user.id);
+
+      if (updateProfileError) {
+        console.error('Error linking profile to self family:', updateProfileError);
+      }
+    }
 
     if (!familyId) {
       return json({ error: 'Family profile is incomplete. Please contact support.' }, { status: 400 });
     }
 
-    // Create student records for guest users or use existing for authenticated users
-    const studentIds = [];
-    
-    for (const student of students) {
-      if (student.existingStudentId || student.id) {
-        // Use existing student
-        studentIds.push(student.existingStudentId || student.id);
-      } else {
-        // Create new student
-        const studentData: StudentInsert = {
-            family_id: familyId,
-            first_name: student.firstName,
-            last_name: student.lastName,
-            birth_date: student.dateOfBirth,
-            gender: student.gender || 'other',
-            school: student.school || 'Not specified',
-            cell_phone: student.emergencyContactPhone || null,
-            t_shirt_size: 'AM' as Database['public']['Enums']['t_shirt_size_enum'],
-            allergies: student.allergies || null,
-            medications: student.medicalConditions || null,
-            email: student.emergencyContactName || null
-          };
+    const familyIdStr = familyId as string;
 
-        const { data: newStudent, error: studentError } = await supabaseServer
+    const registrationParticipants: Array<{ studentId: string; participantProfileId?: string }> = [];
+    const studentIdsForPayment: string[] = [];
+
+    for (const student of students) {
+      const existingStudentId: string | undefined = student.id || student.existingStudentId;
+
+      if (student.isExistingStudent && existingStudentId) {
+        registrationParticipants.push({ studentId: existingStudentId });
+        studentIdsForPayment.push(existingStudentId);
+        continue;
+      }
+
+      if (!student.firstName || !student.lastName) {
+        console.warn('Skipping student without required name fields');
+        continue;
+      }
+
+      const studentData: StudentInsert = {
+        family_id: familyIdStr,
+        first_name: student.firstName,
+        last_name: student.lastName,
+        birth_date: student.dateOfBirth || null,
+        gender: student.gender || 'other',
+        school: student.school || null,
+        cell_phone: student.emergencyContactPhone || null,
+        t_shirt_size: 'AM' as Database['public']['Enums']['t_shirt_size_enum'],
+        allergies: student.allergies || null,
+        medications: student.medicalConditions || null,
+        email: null,
+      };
+
+      const { data: newStudent, error: studentError } = await supabaseServer
+        .from('students')
+        .insert(studentData)
+        .select('id')
+        .single();
+
+      if (studentError || !newStudent) {
+        console.error('Error creating student:', studentError);
+        return json({ error: 'Failed to create student record' }, { status: 500 });
+      }
+
+      registrationParticipants.push({ studentId: newStudent.id });
+      studentIdsForPayment.push(newStudent.id);
+    }
+
+    if (registerSelf) {
+      if (!familyId) {
+        return json({ error: 'Unable to determine account family for self registration.' }, { status: 400 });
+      }
+
+      if (!selfParticipantStudentId) {
+        const participantFirstName = selfParticipant?.firstName || profile?.first_name || user.user_metadata?.first_name || 'Self';
+        const participantLastName = selfParticipant?.lastName || profile?.last_name || user.user_metadata?.last_name || 'Participant';
+
+        const { data: selfStudent, error: selfStudentError } = await supabaseServer
           .from('students')
-          .insert(studentData)
+          .insert({
+            family_id: familyIdStr,
+            first_name: participantFirstName,
+            last_name: participantLastName,
+            is_adult: true,
+            profile_id: user.id,
+            gender: 'other',
+          })
           .select('id')
           .single();
 
-        if (studentError) {
-          console.error('Error creating student:', studentError);
-          return json({ error: 'Failed to create student record' }, { status: 500 });
+        if (selfStudentError || !selfStudent) {
+          console.error('Error creating self participant student record:', selfStudentError);
+          return json({ error: 'Failed to create participant record' }, { status: 500 });
         }
 
-        studentIds.push(newStudent.id);
+        selfParticipantStudentId = selfStudent.id;
+      }
+
+      if (!selfParticipantStudentId) {
+        return json({ error: 'Unable to create participant record for self registration' }, { status: 500 });
+      }
+
+      studentIdsForPayment.push(selfParticipantStudentId);
+
+      registrationParticipants.push({
+        studentId: selfParticipantStudentId,
+        participantProfileId: user.id,
+      });
+    }
+
+    if (studentIdsForPayment.length > 0) {
+      const { data: existingRegistrations } = await supabaseServer
+        .from('event_registrations')
+        .select('student_id')
+        .eq('event_id', eventId)
+        .in('student_id', studentIdsForPayment);
+
+      if (existingRegistrations && existingRegistrations.length > 0) {
+        const alreadyRegisteredIds = existingRegistrations.map(reg => reg.student_id);
+        return json({ 
+          error: 'One or more students are already registered for this event',
+          alreadyRegistered: alreadyRegisteredIds
+        }, { status: 400 });
       }
     }
 
-    // Check for existing registrations before creating new ones
-    const { data: existingRegistrations } = await supabaseServer
-      .from('event_registrations')
-      .select('student_id')
-      .eq('event_id', eventId)
-      .in('student_id', studentIds);
+    if (registerSelf) {
+      const { data: existingSelfRegistration } = await supabaseServer
+        .from('event_registrations')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('participant_profile_id', user.id)
+        .maybeSingle();
 
-    if (existingRegistrations && existingRegistrations.length > 0) {
-      const alreadyRegisteredIds = existingRegistrations.map(reg => reg.student_id);
-      return json({ 
-        error: 'One or more students are already registered for this event',
-        alreadyRegistered: alreadyRegisteredIds
-      }, { status: 400 });
+      if (existingSelfRegistration) {
+        return json({ error: 'You are already registered for this event' }, { status: 400 });
+      }
     }
 
     // Get event details to check registration fee
@@ -190,12 +293,14 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       : ZERO_MONEY;
     const paymentRequired = isPositive(registrationFee);
 
-    // Create event registrations
-    const registrations = studentIds.map(studentId => ({
+    const registrations = registrationParticipants.map((participant) => ({
       event_id: eventId,
-      student_id: studentId,
-       family_id: familyId || '',
-       registration_status: paymentRequired ? 'pending' as Database['public']['Enums']['registration_status_enum'] : 'confirmed' as Database['public']['Enums']['registration_status_enum'],
+      student_id: participant.studentId ?? null,
+      participant_profile_id: participant.participantProfileId ?? null,
+      family_id: familyId,
+      registration_status: (paymentRequired
+        ? 'pending'
+        : 'confirmed') as Database['public']['Enums']['registration_status_enum'],
     }));
 
     const { data: createdRegistrations_db, error: registrationError } = await supabaseServer
@@ -209,16 +314,17 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     }
 
     const registrationId = createdRegistrations_db?.[0]?.id;
+    const registrationIds = (createdRegistrations_db || []).map((row) => row.id);
 
     if (paymentRequired) {
       // Create payment record for paid events using admin client
-      const subtotal = multiplyMoney(registrationFee, studentIds.length);
+      const subtotal = multiplyMoney(registrationFee, registrationParticipants.length);
       
       // Calculate taxes for the payment
       const taxCalculation = await calculateTaxesForPayment({
         subtotalAmount: subtotal,
         paymentType: 'event_registration',
-        studentIds
+        studentIds: studentIdsForPayment
       });
       
       const total = addMoney(subtotal, taxCalculation.totalTaxAmount);
@@ -264,36 +370,44 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       console.log('Linking payment to registrations:', {
         paymentId: paymentRecord.id,
         eventId,
-        familyId,
-        studentIds,
+        familyId: familyIdStr,
+        studentIds: studentIdsForPayment,
         registrationFee
       });
       
       // Small delay to ensure registrations are committed
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      const { data: updateResult, error: linkError } = await supabaseAdmin
-        .from('event_registrations')
-        .update({
-          payment_id: paymentRecord.id,
-          payment_amount: toCents(registrationFee), // Convert to cents
-          payment_required: true
-        })
-        .eq('event_id', eventId)
-        .eq('family_id', familyId)
-        .in('student_id', studentIds)
-        .select('id, payment_id');
-
-      if (linkError) {
-        console.error('Error linking payment to registrations:', linkError);
-        return json({ error: 'Failed to link payment to registrations' }, { status: 500 });
+      let updateResult = null;
+      let linkError = null;
+      if (registrationIds.length > 0) {
+        const { data, error } = await supabaseAdmin
+          .from('event_registrations')
+          .update({
+            payment_id: paymentRecord.id,
+            payment_amount: toCents(registrationFee), // Convert to cents
+            payment_required: true
+          })
+          .eq('event_id', eventId)
+        .eq('family_id', familyIdStr)
+          .in('id', registrationIds)
+          .select('id, payment_id');
+        updateResult = data;
+        linkError = error;
       }
-      
-      console.log('Payment linking result:', updateResult);
-      
-      if (!updateResult || updateResult.length === 0) {
-        console.error('No registrations were updated with payment_id');
-        return json({ error: 'Failed to link payment - no registrations found to update' }, { status: 500 });
+
+      if (registrationIds.length > 0) {
+        if (linkError) {
+          console.error('Error linking payment to registrations:', linkError);
+          return json({ error: 'Failed to link payment to registrations' }, { status: 500 });
+        }
+        
+        console.log('Payment linking result:', updateResult);
+        
+        if (!updateResult || updateResult.length === 0) {
+          console.error('No registrations were updated with payment_id');
+          return json({ error: 'Failed to link payment - no registrations found to update' }, { status: 500 });
+        }
       }
 
       return json({ 
@@ -301,8 +415,8 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         paymentRequired: true,
         registrationId,
         paymentId: paymentRecord.id,
-        familyId,
-        studentIds,
+        familyId: familyIdStr,
+        studentIds: studentIdsForPayment,
         taxes: taxCalculation.paymentTaxes.map(tax => ({
           taxName: tax.tax_name_snapshot,
           taxAmount: tax.tax_amount,
@@ -312,20 +426,23 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       });
     } else {
       // Free event - update registrations with payment info
-      const { error: updateError } = await supabaseServer
-        .from('event_registrations')
-        .update({
-          payment_amount: 0,
-          payment_required: false
-        })
-        .eq('event_id', eventId)
-        .eq('family_id', familyId)
-        .in('student_id', studentIds);
+      if (registrationIds.length > 0) {
+        const { error: updateError } = await supabaseServer
+          .from('event_registrations')
+          .update({
+            payment_amount: 0,
+            payment_required: false
+          })
+          .eq('event_id', eventId)
+        .eq('family_id', familyIdStr)
+          .in('id', registrationIds);
 
-      if (updateError) {
-        console.error('Error updating free event registrations:', updateError);
-        return json({ error: 'Failed to update registrations' }, { status: 500 });
+        if (updateError) {
+          console.error('Error updating free event registrations:', updateError);
+          return json({ error: 'Failed to update registrations' }, { status: 500 });
+        }
       }
+
 
       // Free event - registration is complete
       return json({ 
@@ -333,8 +450,8 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         paymentRequired: false,
         registrationId,
         message: 'Registration completed successfully!',
-        familyId,
-        studentIds 
+        familyId: familyIdStr,
+        studentIds: studentIdsForPayment,
       });
     }
 
@@ -438,6 +555,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Event not found", { status: 404 });
   }
 
+  const selfRegistrationAllowed = Boolean(event.allow_self_participants);
+
   // Get required waivers for this event
   const { data: eventWaivers } = await supabaseServer
     .from('event_waivers')
@@ -460,6 +579,9 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   let familyData = undefined;
   let isAuthenticated = false;
   let hasExistingStudents = false;
+  let profileInfo: { firstName: string; lastName: string; email: string } | undefined;
+  let existingSelfStudentId: string | undefined;
+  let familyType: Database['public']['Tables']['families']['Row']['family_type'] | undefined;
 
   if (user) {
     isAuthenticated = true;
@@ -467,9 +589,15 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     // Get user profile to find family_id
     const { data: profile } = await supabaseServer
       .from('profiles')
-      .select('family_id')
+      .select('family_id, first_name, last_name')
       .eq('id', user.id)
       .single();
+
+    profileInfo = {
+      firstName: profile?.first_name || user.user_metadata?.first_name || '',
+      lastName: profile?.last_name || user.user_metadata?.last_name || '',
+      email: user.email || '',
+    };
 
     if (profile?.family_id) {
       // Get family information
@@ -479,7 +607,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
           id,
           name,
           email,
-          primary_phone
+          primary_phone,
+          family_type
         `)
         .eq('id', profile.family_id)
         .single();
@@ -509,6 +638,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       );
 
       if (family) {
+        familyType = family.family_type ?? undefined;
         const [firstName, ...lastNameParts] = (family.name || '').split(' ');
         familyData = {
           familyId: family.id,
@@ -526,6 +656,17 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
               beltRank: 'White'
             }))
         };
+      }
+    } else if (selfRegistrationAllowed) {
+      const { data: selfStudent } = await supabaseServer
+        .from('students')
+        .select('id')
+        .eq('profile_id', user.id)
+        .eq('is_adult', true)
+        .maybeSingle();
+
+      if (selfStudent) {
+        existingSelfStudentId = selfStudent.id;
       }
     }
   }
@@ -557,7 +698,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const requestUrl = new URL(request.url);
   const redirectTo = `${requestUrl.pathname}${requestUrl.search}`;
   const addStudentUrl = `/family/add-student?redirectTo=${encodeURIComponent(redirectTo)}`;
-  const requiresStudentProfile = !hasExistingStudents;
+  const requiresStudentProfile = !hasExistingStudents && !selfRegistrationAllowed;
 
   return json({ 
     event: serializedEvent, 
@@ -566,12 +707,28 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     requiredWaivers,
     signedWaiverIds,
     requiresStudentProfile,
-    addStudentUrl
+    addStudentUrl,
+    selfRegistrationAllowed,
+    profileInfo,
+    existingSelfStudentId,
+    familyType
   });
 }
 
 export default function EventRegistration() {
-  const { event: serializedEvent, isAuthenticated, familyData, requiredWaivers, signedWaiverIds, requiresStudentProfile, addStudentUrl } = useLoaderData<typeof loader>();
+  const {
+    event: serializedEvent,
+    isAuthenticated,
+    familyData,
+    requiredWaivers,
+    signedWaiverIds,
+    requiresStudentProfile,
+    addStudentUrl,
+    selfRegistrationAllowed,
+    profileInfo,
+    existingSelfStudentId,
+    familyType,
+  } = useLoaderData<typeof loader>();
   const event: EventWithRegistrationInfo = {
     ...serializedEvent,
     registration_fee: deserializeMoney(serializedEvent.registration_fee),
@@ -593,6 +750,11 @@ export default function EventRegistration() {
       hour12: true
     });
   };
+
+  const slotTimeRanges = [
+    [event.slot_one_start, event.slot_one_end],
+    [event.slot_two_start, event.slot_two_end],
+  ].filter(([start, end]) => start || end) as Array<[string | null, string | null]>;
 
   return (
     <div className="min-h-screen page-background-styles py-12">
@@ -657,6 +819,19 @@ export default function EventRegistration() {
                         <span className="font-medium">{formatMoney(event.registration_fee, { trimTrailingZeros: true })}</span>
                       </div>
                     )}
+                    {slotTimeRanges.length > 0 && (
+                      <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400 mt-2">
+                        <p className="font-medium">Additional Time Slots</p>
+                        <ul className="space-y-1">
+                          {slotTimeRanges.map(([start, end], index) => (
+                            <li key={index}>
+                              {start ? formatTime(start) : 'TBD'}
+                              {end ? ` - ${formatTime(end)}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -688,6 +863,10 @@ export default function EventRegistration() {
                   familyData={familyData}
                   requiredWaivers={requiredWaivers}
                   signedWaiverIds={signedWaiverIds}
+                  selfRegistrationAllowed={selfRegistrationAllowed}
+                  profileInfo={profileInfo}
+                  existingSelfStudentId={existingSelfStudentId}
+                  familyType={familyType}
                   onSuccess={handleRegistrationSuccess}
                 />
 

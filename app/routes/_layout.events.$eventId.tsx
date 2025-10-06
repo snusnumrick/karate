@@ -106,6 +106,11 @@ export default function EventDetail() {
   // Registration is available if event is open AND (no deadline OR deadline hasn't passed)
   const canRegister = isRegistrationOpen && !registrationDeadlinePassed;
 
+  const slotTimeRanges = [
+    [event.slot_one_start, event.slot_one_end],
+    [event.slot_two_start, event.slot_two_end],
+  ].filter(([start, end]) => start || end) as Array<[string | null, string | null]>;
+
   // Build JSON-LD structured data for the event using the same logic as before
   const hasEventLocation = event.location_name || event.street_address || event.locality || event.address;
   const locationName = hasEventLocation 
@@ -231,6 +236,24 @@ export default function EventDetail() {
                       </div>
                     </div>
                   )}
+                  {slotTimeRanges.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                        Additional Time Slots
+                      </p>
+                      <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                        {slotTimeRanges.map(([start, end], index) => (
+                          <li key={index} className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>
+                              {start ? formatTime(start) : 'TBD'}
+                              {end ? ` - ${formatTime(end)}` : ''}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -335,6 +358,12 @@ export default function EventDetail() {
                   </div>
                 )}
 
+                {event.allow_self_participants && (
+                  <div className="mb-6 rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-800 dark:text-green-300">
+                    Adult participants and instructors can register themselves for this event—no family profile required.
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {canRegister ? (
                     <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white">
@@ -371,6 +400,15 @@ export default function EventDetail() {
                     <dt className="text-sm text-gray-600 dark:text-gray-300">Status</dt>
                     <dd className="font-semibold text-gray-900 dark:text-white capitalize">{event.status.replace('_', ' ')}</dd>
                   </div>
+                  {event.min_capacity != null && (
+                    <div>
+                      <dt className="text-sm text-gray-600 dark:text-gray-300 flex items-center">
+                        <Users className="h-4 w-4 mr-1" />
+                        Minimum Participants
+                      </dt>
+                      <dd className="font-semibold text-gray-900 dark:text-white">{event.min_capacity}</dd>
+                    </div>
+                  )}
                   {event.max_participants && (
                     <div>
                       <dt className="text-sm text-gray-600 dark:text-gray-300 flex items-center">

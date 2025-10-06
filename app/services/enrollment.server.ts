@@ -302,8 +302,13 @@ export async function updateEnrollment(
          special_needs_support: data.class.program.special_needs_support || undefined,
          prerequisite_programs: data.class.program.prerequisite_programs || undefined,
          duration_minutes: data.class.program.duration_minutes || undefined,
-         ability_category: data.class.program.ability_category ?? undefined,
-         single_purchase_price_cents: data.class.program.single_purchase_price_cents ?? undefined
+        ability_category: data.class.program.ability_category ?? undefined,
+        audience_scope: data.class.program.audience_scope ?? 'youth',
+        engagement_type: data.class.program.engagement_type ?? 'program',
+        min_capacity: data.class.program.min_capacity ?? undefined,
+        single_purchase_price: data.class.program.single_purchase_price_cents != null ? fromCents(data.class.program.single_purchase_price_cents) : undefined,
+        subscription_monthly_price: data.class.program.subscription_monthly_price_cents != null ? fromCents(data.class.program.subscription_monthly_price_cents) : undefined,
+        subscription_yearly_price: data.class.program.subscription_yearly_price_cents != null ? fromCents(data.class.program.subscription_yearly_price_cents) : undefined,
       }
     }
   };
@@ -807,7 +812,12 @@ export async function getEnrollmentById(
         prerequisite_programs: data.class.program.prerequisite_programs || undefined,
         duration_minutes: data.class.program.duration_minutes || undefined,
         ability_category: data.class.program.ability_category ?? undefined,
-        single_purchase_price_cents: data.class.program.single_purchase_price_cents ?? undefined
+        audience_scope: data.class.program.audience_scope ?? 'youth',
+        engagement_type: data.class.program.engagement_type ?? 'program',
+        min_capacity: data.class.program.min_capacity ?? undefined,
+        single_purchase_price: data.class.program.single_purchase_price_cents != null ? fromCents(data.class.program.single_purchase_price_cents) : undefined,
+        subscription_monthly_price: data.class.program.subscription_monthly_price_cents != null ? fromCents(data.class.program.subscription_monthly_price_cents) : undefined,
+        subscription_yearly_price: data.class.program.subscription_yearly_price_cents != null ? fromCents(data.class.program.subscription_yearly_price_cents) : undefined,
       }
     }
   };

@@ -44,8 +44,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     seminarData = await getSeminarWithSeries(program.id, supabaseServer);
   }
 
+  const seminar = seminarData ? serializeSeminarForClient(seminarData) : null;
+
   // Find the specific series
-  const series = seminarData?.classes?.find((c: { id: string }) => c.id === seriesId);
+  const series = seminar?.classes?.find((c: { id: string }) => c.id === seriesId);
   if (!series) {
     throw new Response("Series not found", { status: 404 });
   }
@@ -86,7 +88,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     .order('title');
 
   return json({
-    seminar: seminarData,
+    seminar,
     series,
     user,
     profile,
@@ -537,6 +539,51 @@ export default function SeminarRegister() {
                   </div>
                 </div>
               )}
+              {series.min_capacity && !series.max_capacity && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Capacity</p>
+                  <div className="flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    <p className="text-sm">Minimum {series.min_capacity} participants</p>
+                  </div>
+                </div>
+              )}
+              {series.session_duration_minutes && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Session Length</p>
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    <p className="text-sm">{series.session_duration_minutes} minutes</p>
+                  </div>
+                </div>
+              )}
+              {series.sessions_per_week_override && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Weekly Cadence</p>
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    <p className="text-sm">{series.sessions_per_week_override} sessions per week</p>
+                  </div>
+                </div>
+              )}
+              {series.allow_self_enrollment && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Registration</p>
+                  <div className="flex items-center gap-1 text-green-600 dark:text-green-300">
+                    <Users className="h-4 w-4" />
+                    <p className="text-sm">Self-registration available</p>
+                  </div>
+                </div>
+              )}
+              {series.on_demand && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Format</p>
+                  <div className="flex items-center gap-1 text-blue-600 dark:text-blue-300">
+                    <Clock className="h-4 w-4" />
+                    <p className="text-sm">On-demand access</p>
+                  </div>
+                </div>
+              )}
               <Separator />
               <div>
                 <p className="text-sm text-muted-foreground">Total Fee</p>
@@ -550,4 +597,36 @@ export default function SeminarRegister() {
       </div>
     </div>
   );
+}
+
+function serializeSeminarForClient(seminar: NonNullable<Awaited<ReturnType<typeof getSeminarWithSeries>>>) {
+  const {
+    monthly_fee,
+    registration_fee,
+    yearly_fee,
+    individual_session_fee,
+    single_purchase_price,
+    subscription_monthly_price,
+    subscription_yearly_price,
+    classes = [],
+    ...rest
+  } = seminar;
+
+  return {
+    ...rest,
+    monthly_fee_cents: monthly_fee ? toCents(monthly_fee) : null,
+    registration_fee_cents: registration_fee ? toCents(registration_fee) : null,
+    yearly_fee_cents: yearly_fee ? toCents(yearly_fee) : null,
+    individual_session_fee_cents: individual_session_fee ? toCents(individual_session_fee) : null,
+    single_purchase_price_cents: single_purchase_price ? toCents(single_purchase_price) : null,
+    subscription_monthly_price_cents: subscription_monthly_price ? toCents(subscription_monthly_price) : null,
+    subscription_yearly_price_cents: subscription_yearly_price ? toCents(subscription_yearly_price) : null,
+    classes: classes.map((cls) => ({
+      ...cls,
+      class_sessions: (cls.class_sessions || []).map((session) => ({
+        ...session,
+        sequence_number: session.sequence_number ?? null,
+      })),
+    })),
+  };
 }

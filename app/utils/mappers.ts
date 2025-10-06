@@ -1,6 +1,7 @@
 import type {Database} from '~/types/database.types';
 import type {AttendanceRecord, Family, Guardian, Payment, Student, Waiver, WaiverSignature} from '~/types/models';
 import { centsFromRow } from "~/utils/database-money";
+import { fromCents } from "~/utils/money";
 import type {Program, Class, ClassSession} from '~/types/multi-class';
 import {PaymentStatus} from "~/types/models"; // Import the enum
 
@@ -16,7 +17,20 @@ export function nullToUndefined<T extends Record<string, unknown>>(obj: T): { [K
 // Utility function to map program object with null-to-undefined conversion
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapProgramNullToUndefined(program: any): Program {
-  return nullToUndefined(program) as Program;
+  const mapped = nullToUndefined(program) as Program;
+  return {
+    ...mapped,
+    engagement_type: mapped.engagement_type ?? 'program',
+    audience_scope: mapped.audience_scope ?? 'youth',
+    min_capacity: mapped.min_capacity ?? undefined,
+    monthly_fee: program.monthly_fee_cents != null ? fromCents(program.monthly_fee_cents) : mapped.monthly_fee,
+    registration_fee: program.registration_fee_cents != null ? fromCents(program.registration_fee_cents) : mapped.registration_fee,
+    yearly_fee: program.yearly_fee_cents != null ? fromCents(program.yearly_fee_cents) : mapped.yearly_fee,
+    individual_session_fee: program.individual_session_fee_cents != null ? fromCents(program.individual_session_fee_cents) : mapped.individual_session_fee,
+    single_purchase_price: program.single_purchase_price_cents != null ? fromCents(program.single_purchase_price_cents) : mapped.single_purchase_price,
+    subscription_monthly_price: program.subscription_monthly_price_cents != null ? fromCents(program.subscription_monthly_price_cents) : mapped.subscription_monthly_price,
+    subscription_yearly_price: program.subscription_yearly_price_cents != null ? fromCents(program.subscription_yearly_price_cents) : mapped.subscription_yearly_price,
+  };
 }
 
 // Utility function to map instructor object with null-to-undefined conversion
@@ -53,6 +67,7 @@ export function mapEnrollmentProgramNullToUndefined(program: Program) {
     ...program,
     description: program.description ?? undefined,
     max_capacity: program.max_capacity ?? undefined,
+    min_capacity: program.min_capacity ?? undefined,
     belt_rank_required: program.belt_rank_required ?? false,
     gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') ?? undefined,
     individual_session_fee: program.individual_session_fee ?? undefined,
@@ -61,6 +76,9 @@ export function mapEnrollmentProgramNullToUndefined(program: Program) {
     max_sessions_per_week: program.max_sessions_per_week ?? undefined,
     monthly_fee: program.monthly_fee ?? undefined,
     registration_fee: program.registration_fee ?? undefined,
+    single_purchase_price: program.single_purchase_price ?? undefined,
+    subscription_monthly_price: program.subscription_monthly_price ?? undefined,
+    subscription_yearly_price: program.subscription_yearly_price ?? undefined,
     min_belt_rank: program.min_belt_rank ?? undefined,
     max_belt_rank: program.max_belt_rank ?? undefined,
     sessions_per_week: program.sessions_per_week ?? undefined,
@@ -70,7 +88,6 @@ export function mapEnrollmentProgramNullToUndefined(program: Program) {
     prerequisite_programs: program.prerequisite_programs ?? undefined,
     duration_minutes: program.duration_minutes ?? undefined,
     ability_category: program.ability_category ?? undefined,
-    single_purchase_price_cents: program.single_purchase_price_cents ?? undefined,
   };
 }
 

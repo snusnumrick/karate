@@ -30,7 +30,13 @@ type UpcomingEventRow = Pick<EventRow,
   'late_registration_fee_cents' |
   'registration_deadline' |
   'external_url' |
-  'visibility'
+  'visibility' |
+  'min_capacity' |
+  'slot_one_start' |
+  'slot_one_end' |
+  'slot_two_start' |
+  'slot_two_end' |
+  'allow_self_participants'
 >;
 
 export type UpcomingEvent = Omit<UpcomingEventRow, 'registration_fee' | 'late_registration_fee'> & EventMoneyFields & {
@@ -117,6 +123,12 @@ export class EventService {
         registration_deadline,
         external_url,
         visibility,
+        min_capacity,
+        slot_one_start,
+        slot_one_end,
+        slot_two_start,
+        slot_two_end,
+        allow_self_participants,
         event_type:event_types(
           name,
           display_name,
@@ -217,6 +229,12 @@ export class EventService {
         registration_deadline,
         external_url,
         visibility,
+        min_capacity,
+        slot_one_start,
+        slot_one_end,
+        slot_two_start,
+        slot_two_end,
+        allow_self_participants,
         event_type:event_types(
           name,
           display_name,

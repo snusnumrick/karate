@@ -144,11 +144,38 @@ export async function loader({ request }: LoaderFunctionArgs) {
     individual_session_fee: program.individual_session_fee ? toCents(program.individual_session_fee) : null,
   }));
 
-  return json({ programs: programsWithCents, seminars, events, classes, scheduleSummary });
+  const seminarsSerialized = seminars.map((seminar) => {
+    const {
+      monthly_fee,
+      registration_fee,
+      yearly_fee,
+      individual_session_fee,
+      single_purchase_price,
+      subscription_monthly_price,
+      subscription_yearly_price,
+      ...rest
+    } = seminar;
+
+    return {
+      ...rest,
+      monthly_fee_cents: monthly_fee ? toCents(monthly_fee) : null,
+      registration_fee_cents: registration_fee ? toCents(registration_fee) : null,
+      yearly_fee_cents: yearly_fee ? toCents(yearly_fee) : null,
+      individual_session_fee_cents: individual_session_fee ? toCents(individual_session_fee) : null,
+      single_purchase_price_cents: single_purchase_price ? toCents(single_purchase_price) : null,
+      subscription_monthly_price_cents: subscription_monthly_price ? toCents(subscription_monthly_price) : null,
+      subscription_yearly_price_cents: subscription_yearly_price ? toCents(subscription_yearly_price) : null,
+    };
+  });
+
+  return json({ programs: programsWithCents, seminars: seminarsSerialized, events, classes, scheduleSummary });
 }
 
 export default function CurriculumIndex() {
   const { programs, seminars, events, classes, scheduleSummary } = useLoaderData<typeof loader>();
+
+  const formatCents = (value: number | null | undefined) =>
+    value != null ? formatMoney(fromCents(value), { showCurrency: true, trimTrailingZeros: true }) : null;
 
   // Helper function to format day names
   const formatDayName = (day: string) => {
@@ -741,14 +768,41 @@ export default function CurriculumIndex() {
                         <span className="ml-2 text-gray-900 dark:text-white">{seminar.duration_minutes} minutes</span>
                       </div>
                     )}
-                    {seminar.single_purchase_price_cents && (
+                    {seminar.single_purchase_price_cents != null && (
                       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                         <div className="flex justify-between items-center">
                           <span className="text-gray-700 dark:text-gray-300 font-medium">Price:</span>
                           <span className="text-green-600 dark:text-green-400 font-bold text-lg">
-                            ${(seminar.single_purchase_price_cents / 100).toFixed(2)}
+                            {formatCents(seminar.single_purchase_price_cents)}
                           </span>
                         </div>
+                      </div>
+                    )}
+                    {seminar.subscription_monthly_price_cents != null && (
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-700 dark:text-gray-300 font-medium">Monthly Subscription:</span>
+                          <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                            {formatCents(seminar.subscription_monthly_price_cents)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {seminar.subscription_yearly_price_cents != null && (
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-700 dark:text-gray-300 font-medium">Yearly Subscription:</span>
+                          <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                            {formatCents(seminar.subscription_yearly_price_cents)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {seminar.min_capacity != null && (
+                      <div className="flex items-center text-gray-700 dark:text-gray-300">
+                        <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                        <span className="font-medium">Minimum Enrollment:</span>
+                        <span className="ml-2 text-gray-900 dark:text-white">{seminar.min_capacity} students</span>
                       </div>
                     )}
                   </div>

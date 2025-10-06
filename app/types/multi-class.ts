@@ -18,13 +18,13 @@ export interface Program {
   description?: string;
   duration_minutes?: number;
   // Seminar-specific fields (from migration 025)
-  engagement_type?: 'program' | 'seminar';
+  engagement_type: 'program' | 'seminar';
   ability_category?: 'able' | 'adaptive' | null; // Database enum
   delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory' | null;
-  audience_scope?: 'youth' | 'adults' | 'mixed';
+  audience_scope: 'youth' | 'adults' | 'mixed';
   slug?: string | null;
-  single_purchase_price_cents?: number | null;
   // Capacity constraints
+  min_capacity?: number | null;
   max_capacity?: number;
   // Frequency constraints
   sessions_per_week?: number;
@@ -46,6 +46,9 @@ export interface Program {
   registration_fee?: Money;
   yearly_fee?: Money;
   individual_session_fee?: Money;
+  single_purchase_price?: Money;
+  subscription_monthly_price?: Money;
+  subscription_yearly_price?: Money;
   // System fields
   is_active: boolean;
   created_at: string;
@@ -140,7 +143,13 @@ export interface CreateProgramData {
   name: string;
   description?: string;
   duration_minutes?: number;
+  engagement_type?: 'program' | 'seminar';
+  ability_category?: 'able' | 'adaptive';
+  delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory';
+  audience_scope?: 'youth' | 'adults' | 'mixed';
+  slug?: string;
   // Capacity constraints
+  min_capacity?: number;
   max_capacity?: number;
   // Frequency constraints
   sessions_per_week?: number;
@@ -162,6 +171,9 @@ export interface CreateProgramData {
   registration_fee?: Money;
   yearly_fee?: Money;
   individual_session_fee?: Money;
+  single_purchase_price?: Money;
+  subscription_monthly_price?: Money;
+  subscription_yearly_price?: Money;
   // System fields
   is_active?: boolean;
 }
