@@ -389,11 +389,18 @@ export async function getInvoiceById(
   const invoiceTotalTax = Object.values(taxesByLineItem).reduce((sum, itemTaxes) => {
     return itemTaxes.reduce((innerSum, tax) => addMoney(innerSum, tax.tax_amount || ZERO_MONEY), sum);
   }, ZERO_MONEY);
-  
+
+  // Calculate correct total_amount: subtotal - discount + computed_tax
+  const subtotal = (convertedInvoice as { subtotal: Money }).subtotal;
+  const discountAmount = (convertedInvoice as { discount_amount: Money }).discount_amount;
+  const correctTotalAmount = addMoney(subtractMoney(subtotal, discountAmount), invoiceTotalTax);
+
   return {
     ...convertedInvoice,
     // Override tax_amount to reflect sum of all applied taxes across line items
     tax_amount: invoiceTotalTax,
+    // Override total_amount to reflect correct calculation with computed tax
+    total_amount: correctTotalAmount,
     service_period_start: invoice.service_period_start || undefined,
     service_period_end: invoice.service_period_end || undefined,
     currency: invoice.currency || siteConfig.localization.currency,
@@ -532,8 +539,21 @@ export async function getInvoices(
     `, { count: 'exact' });
 
   // Apply filters
-  if (filters.status && filters.status.length > 0) {
-    query = query.in('status', filters.status);
+  // Handle "overdue" as a special computed status
+  const hasOverdueFilter = filters.status?.includes('overdue' as InvoiceStatus);
+  const dbStatuses = filters.status?.filter(s => s !== 'overdue');
+
+  // If we have overdue filter, we need to fetch all unpaid invoices and filter by date
+  // If we also have specific statuses, we need to fetch both sets
+  if (hasOverdueFilter && (!dbStatuses || dbStatuses.length === 0)) {
+    // Only overdue filter - get all unpaid invoices, will filter by date after query
+    query = query.neq('status', 'paid').neq('status', 'cancelled');
+  } else if (hasOverdueFilter && dbStatuses && dbStatuses.length > 0) {
+    // Both overdue and specific statuses - get unpaid OR specific statuses
+    query = query.or(`status.in.(${dbStatuses.join(',')}),and(status.neq.paid,status.neq.cancelled)`);
+  } else if (dbStatuses && dbStatuses.length > 0) {
+    // Only specific statuses
+    query = query.in('status', dbStatuses);
   }
   
   if (filters.entity_id) {
@@ -572,18 +592,63 @@ export async function getInvoices(
   // Order by creation date (newest first)
   query = query.order('created_at', { ascending: false });
 
-  const { data: invoices, error, count } = await query;
+  const { data: invoices, error } = await query;
 
   if (error) {
     console.error('[Service/getInvoices] Error fetching invoices:', error);
     throw new Response(`Error fetching invoices: ${error.message}`, { status: 500 });
   }
 
-  const total = count || 0;
+  // Fetch tax data for all line items across all invoices
+  const allLineItemIds = (invoices || []).flatMap(inv =>
+    (inv.invoice_line_items || []).map(item => item.id)
+  );
+
+  let taxesByLineItem: Record<string, InvoiceLineItemTax[]> = {};
+
+  if (allLineItemIds.length > 0) {
+    const { data: lineItemTaxes_db, error: taxError } = await client
+      .from('invoice_line_item_taxes')
+      .select('*')
+      .in('invoice_line_item_id', allLineItemIds);
+
+    if (taxError) {
+      console.error(`[Service/getInvoices] Error fetching tax data:`, taxError);
+    } else {
+      // Group tax data by line item ID
+      taxesByLineItem = (lineItemTaxes_db || []).reduce((acc, tax_db) => {
+        if (!acc[tax_db.invoice_line_item_id]) {
+          acc[tax_db.invoice_line_item_id] = [];
+        }
+        if (tax_db.created_at) {
+          acc[tax_db.invoice_line_item_id].push({
+            ...tax_db,
+            tax_amount: moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax_db as unknown as Record<string, unknown>)
+          } as InvoiceLineItemTax);
+        }
+        return acc;
+      }, {} as Record<string, InvoiceLineItemTax[]>);
+    }
+  }
+
+  // Filter by overdue status if requested (post-query filtering)
+  let filteredInvoices = invoices || [];
+  if (hasOverdueFilter) {
+    const today = new Date().toISOString().split('T')[0];
+    filteredInvoices = filteredInvoices.filter(inv => {
+      const isOverdue = inv.status !== 'paid' && inv.due_date < today;
+      // Check if invoice matches other requested statuses (excluding 'overdue' which is computed)
+      const matchesOtherStatuses = dbStatuses && dbStatuses.length > 0 ? dbStatuses.some(s => s === inv.status) : false;
+      // Include if overdue OR matches other requested statuses
+      return isOverdue || matchesOtherStatuses;
+    });
+  }
+
+  const total = filteredInvoices.length; // Use filtered count
   const totalPages = Math.ceil(total / limit);
 
   // Convert monetary fields to Money objects
-  const convertedInvoicesUnknown = convertRowsToMoney('invoices', invoices || []) ?? [];
+  const convertedInvoicesUnknown = convertRowsToMoney('invoices', filteredInvoices) ?? [];
 
   const invoicesWithDetails: InvoiceWithDetails[] = convertedInvoicesUnknown.map((inv) => {
     const invoice = inv as Record<string, unknown> & {
@@ -592,8 +657,24 @@ export async function getInvoices(
       invoice_payments?: Database['public']['Tables']['invoice_payments']['Row'][];
       families?: Database['public']['Tables']['families']['Row'];
     };
+
+    // Compute total tax amount from line item taxes
+    const lineItemIds = (invoice.invoice_line_items || []).map(item => item.id);
+    const invoiceTaxes = lineItemIds.flatMap(itemId => taxesByLineItem[itemId] || []);
+    const computedTaxAmount = invoiceTaxes.reduce((sum, tax) =>
+      addMoney(sum, tax.tax_amount || ZERO_MONEY), ZERO_MONEY
+    );
+
+    // Calculate correct total: subtotal - discount + computed_tax
+    const subtotal = (invoice as { subtotal?: Money }).subtotal || ZERO_MONEY;
+    const discountAmount = (invoice as { discount_amount?: Money }).discount_amount || ZERO_MONEY;
+    const computedTotalAmount = addMoney(subtractMoney(subtotal, discountAmount), computedTaxAmount);
+
     return {
       ...(invoice as object),
+      // Override with computed values
+      tax_amount: computedTaxAmount,
+      total_amount: computedTotalAmount,
       status: (invoice.status as InvoiceStatus) || 'draft',
       service_period_start: (invoice.service_period_start as string | null) || undefined,
       service_period_end: (invoice.service_period_end as string | null) || undefined,
@@ -949,14 +1030,60 @@ export async function getInvoiceStats(
   
   console.log('[Service/getInvoiceStats] Fetching invoice statistics');
 
+  // Fetch invoices with line items and their taxes to compute correct totals
   const { data : invoices_db, error } = await client
     .from('invoices')
-    .select('status, total_amount_cents, amount_paid_cents, due_date')
+    .select(`
+      id,
+      status,
+      due_date,
+      subtotal_cents,
+      subtotal,
+      discount_amount_cents,
+      discount_amount,
+      amount_paid_cents,
+      amount_paid,
+      invoice_line_items(id)
+    `)
     .neq('status', 'cancelled');
 
   if (error) {
     console.error('[Service/getInvoiceStats] Error fetching invoice stats:', error);
     throw new Response(`Error fetching invoice statistics: ${error.message}`, { status: 500 });
+  }
+
+  // Fetch tax data for all line items to compute correct totals
+  const allLineItemIds = (invoices_db || []).flatMap(inv =>
+    (inv.invoice_line_items || []).map(item => item.id)
+  );
+
+  const taxesByInvoice: Record<string, Money> = {};
+
+  if (allLineItemIds.length > 0) {
+    const { data: lineItemTaxes_db, error: taxError } = await client
+      .from('invoice_line_item_taxes')
+      .select('invoice_line_item_id, tax_amount_cents, tax_amount')
+      .in('invoice_line_item_id', allLineItemIds);
+
+    if (taxError) {
+      console.error(`[Service/getInvoiceStats] Error fetching tax data:`, taxError);
+    } else {
+      // Group taxes by invoice
+      const lineItemToInvoice: Record<string, string> = {};
+      (invoices_db || []).forEach(inv => {
+        (inv.invoice_line_items || []).forEach(item => {
+          lineItemToInvoice[item.id] = inv.id;
+        });
+      });
+
+      (lineItemTaxes_db || []).forEach(tax_db => {
+        const invoiceId = lineItemToInvoice[tax_db.invoice_line_item_id];
+        if (invoiceId) {
+          const taxAmount = moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax_db as unknown as Record<string, unknown>);
+          taxesByInvoice[invoiceId] = addMoney(taxesByInvoice[invoiceId] || ZERO_MONEY, taxAmount);
+        }
+      });
+    }
   }
 
   const stats = {
@@ -969,9 +1096,25 @@ export async function getInvoiceStats(
 
   const today = new Date().toISOString().split('T')[0];
 
-    invoices_db?.forEach((invoice_db) => {
-    const inv = invoice_db as unknown as { total_amount_cents?: number; total_amount?: number; amount_paid_cents?: number; amount_paid?: number; status: string; due_date: string };
-    const totalAmount = moneyFromRow('invoices', 'total_amount', inv as unknown as Record<string, unknown>);
+  invoices_db?.forEach((invoice_db) => {
+    const inv = invoice_db as unknown as {
+      id: string;
+      subtotal_cents?: number;
+      subtotal?: number;
+      discount_amount_cents?: number;
+      discount_amount?: number;
+      amount_paid_cents?: number;
+      amount_paid?: number;
+      status: string;
+      due_date: string
+    };
+
+    // Calculate correct total: subtotal - discount + computed_tax
+    const subtotal = moneyFromRow('invoices', 'subtotal', inv as unknown as Record<string, unknown>);
+    const discountAmount = moneyFromRow('invoices', 'discount_amount', inv as unknown as Record<string, unknown>);
+    const computedTax = taxesByInvoice[inv.id] || ZERO_MONEY;
+    const totalAmount = addMoney(subtractMoney(subtotal, discountAmount), computedTax);
+
     const paidAmount = moneyFromRow('invoices', 'amount_paid', inv as unknown as Record<string, unknown>);
     
     stats.total_amount = addMoney(stats.total_amount, totalAmount);
