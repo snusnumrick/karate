@@ -22,7 +22,6 @@ import {
     isPositive,
     isZero,
     ZERO_MONEY,
-    fromCents,
     toDollars,
     type Money
 } from "~/utils/money";
@@ -257,7 +256,7 @@ export default function InvoiceDetailPage() {
       line_total: moneyFromRow('invoice_line_items', 'line_total', item as unknown as Record<string, unknown>),
       tax_amount: item.tax_amount ? moneyFromRow('invoice_line_items', 'tax_amount', item as unknown as Record<string, unknown>) : undefined,
       discount_amount: moneyFromRow('invoice_line_items', 'discount_amount', item as unknown as Record<string, unknown>),
-      total_tax_amount: item.total_tax_amount ? fromCents(item.total_tax_amount as number) : undefined,
+      total_tax_amount: item.total_tax_amount ? moneyFromRow('invoice_line_items', 'total_tax_amount', item as unknown as Record<string, unknown>) : undefined,
       taxes: item.taxes?.map((tax: RawTaxItem) => ({
         ...tax,
         tax_amount: moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax as unknown as Record<string, unknown>),
@@ -266,7 +265,7 @@ export default function InvoiceDetailPage() {
     payments: (rawInvoice.payments as unknown as RawPayment[]).map((payment) => ({
       ...payment,
       amount: moneyFromRow('invoice_payments', 'amount', payment as unknown as Record<string, unknown>),
-      total_tax_amount: payment.total_tax_amount ? fromCents(payment.total_tax_amount as number) : undefined,
+      total_tax_amount: payment.total_tax_amount ? moneyFromRow('invoice_payments', 'total_tax_amount', payment as unknown as Record<string, unknown>) : undefined,
       taxes: payment.taxes?.map((tax: RawTaxItem) => ({
         ...tax,
         tax_amount: moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax as unknown as Record<string, unknown>),
