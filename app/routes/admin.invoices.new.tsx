@@ -10,7 +10,7 @@ import { sendInvoiceEmail } from "~/services/invoice-email.server";
 import { getActiveTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
-import {isNegative, ZERO_MONEY, toCents, fromCents} from "~/utils/money";
+import {isNegative, ZERO_MONEY, toCents, fromCents, deserializeMoney, type MoneyJSON} from "~/utils/money";
 
 interface ActionData {
   errors?: {
@@ -131,7 +131,13 @@ export async function action({ request }: ActionFunctionArgs) {
     let line_items: CreateInvoiceLineItemData[] = [];
     try {
       if (line_items_json) {
-        line_items = JSON.parse(line_items_json);
+        type ParsedLineItem = Omit<CreateInvoiceLineItemData, 'unit_price'> & { unit_price: MoneyJSON };
+        const parsed: ParsedLineItem[] = JSON.parse(line_items_json);
+        // Convert MoneyJSON objects to Money objects
+        line_items = parsed.map((item) => ({
+          ...item,
+          unit_price: deserializeMoney(item.unit_price)
+        }));
       }
       
       if (requiresFullValidation) {

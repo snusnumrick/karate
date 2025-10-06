@@ -9,7 +9,7 @@ import { getInvoiceById, getInvoiceByNumber, updateInvoice } from "~/services/in
 import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
-import { isNegative, toCents, fromCents } from "~/utils/money";
+import { isNegative, toCents, fromCents, deserializeMoney, type MoneyJSON } from "~/utils/money";
 
 interface ActionData {
   errors?: {
@@ -220,7 +220,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     let line_items: CreateInvoiceLineItemData[] = [];
     try {
-      line_items = JSON.parse(line_items_json);
+      type ParsedLineItem = Omit<CreateInvoiceLineItemData, 'unit_price'> & { unit_price: MoneyJSON };
+      const parsed: ParsedLineItem[] = JSON.parse(line_items_json);
+      // Convert MoneyJSON objects to Money objects
+      line_items = parsed.map((item) => ({
+        ...item,
+        unit_price: deserializeMoney(item.unit_price)
+      }));
       if (!isDraft) {
         if (!line_items || line_items.length === 0) {
           errors.line_items = "At least one line item is required";
