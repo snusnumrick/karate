@@ -19,9 +19,8 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Im
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // Import Badge
 import {Database} from "~/types/database.types";
-import {formatDate} from "~/utils/misc"; // For formatting dates
+import {formatDate, getTodayLocalDateString} from "~/utils/misc"; // For formatting dates
 import {beltColorMap} from "~/utils/constants"; // Import belt color mapping
-import {getTodayLocalDateString} from "~/components/calendar/utils";
 import {useClientEffect} from "~/hooks/use-client-effect";
 import {OfflineErrorBoundary} from "~/components/OfflineErrorBoundary";
 import {cacheAttendanceData, cacheFamilyData, cacheUpcomingClasses} from "~/utils/offline-cache";

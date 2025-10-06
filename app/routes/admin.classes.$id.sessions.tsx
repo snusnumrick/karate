@@ -18,14 +18,13 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Calendar, Clock, Plus, Edit2, Trash2, ExternalLink } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { siteConfig } from "~/config/site";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getClassById, getClassSessions, generateClassSessions, deleteClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { BulkSessionGeneration } from "~/types/multi-class";
 import { useState } from "react";
-import { formatDate, formatTime } from "~/utils/misc";
-import { getTodayLocalDateString, formatLocalDate } from "~/components/calendar/utils";
+import { formatDate, formatTime, getTodayLocalDateString  } from "~/utils/misc";
+import { formatLocalDate } from "~/components/calendar/utils";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 

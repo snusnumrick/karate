@@ -18,7 +18,8 @@
       "Bash(cut:*)",
       "Bash(timeout 15 npm run typecheck)",
       "Bash(timeout 20 npm run typecheck)",
-      "Read(///**)"
+      "Bash(find:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

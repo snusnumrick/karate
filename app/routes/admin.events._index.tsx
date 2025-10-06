@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Calendar, Plus, Users, DollarSign, MapPin, Clock, Filter, Trash2, ExternalLink } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { format, parseISO } from "date-fns";
+import { formatDate } from "~/utils/misc";
 import type { Database } from "~/types/database.types";
 import { getEventTypeOptions } from "~/utils/event-helpers.server";
 import { csrf } from "~/utils/csrf.server";
@@ -261,8 +262,8 @@ export default function AdminEventsIndex() {
     return <Badge className="bg-blue-100 text-blue-800">{option?.label || type}</Badge>;
   };
 
-  const formatDate = (dateString: string) => {
-    return format(parseISO(dateString), 'MMM d, yyyy');
+  const formatEventDate = (dateString: string) => {
+    return formatDate(dateString, { formatString: 'MMM d, yyyy' });
   };
 
   // formatTime is now imported from ~/utils/misc
@@ -457,9 +458,9 @@ export default function AdminEventsIndex() {
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                     <span>
-                      {formatDate(event.start_date)}
-                      {event.end_date && event.end_date !== event.start_date && 
-                        ` - ${formatDate(event.end_date)}`
+                      {formatEventDate(event.start_date)}
+                      {event.end_date && event.end_date !== event.start_date &&
+                        ` - ${formatEventDate(event.end_date)}`
                       }
                     </span>
                   </div>

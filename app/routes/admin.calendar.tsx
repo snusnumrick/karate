@@ -3,6 +3,7 @@ import { Link, useLoaderData, useSearchParams, useNavigate } from "@remix-run/re
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { parseLocalDate, birthdaysToCalendarEvents, expandMultiDayEvents } from "~/components/calendar/utils";
+import { formatDate } from "~/utils/misc";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { requireAdminUser } from "~/utils/auth.server";
 import { Badge } from "~/components/ui/badge";
@@ -611,7 +612,7 @@ export default function AdminCalendar() {
                 <div>
                   <h4 className="font-semibold mb-2">Session Details</h4>
                   <div className="space-y-2 text-sm">
-                    <div>Date: {format(selectedEvent.date, 'PPP')}</div>
+                    <div>Date: {formatDate(selectedEvent.date, { formatString: 'PPP' })}</div>
                     <div>Time: {selectedEvent.startTime} - {selectedEvent.endTime}</div>
                     <div>Program: {selectedEvent.programName}</div>
                     <div>Instructor: {selectedEvent.instructorName || 'Not assigned'}</div>

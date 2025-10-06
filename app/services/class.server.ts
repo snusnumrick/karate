@@ -16,8 +16,8 @@ import type {
   CalendarEvent,
   WeeklySchedule
 } from '~/types/multi-class';
-import { formatLocalDate, getTodayLocalDateString } from '~/components/calendar/utils';
-import { formatDate } from '~/utils/misc';
+import { formatLocalDate } from '~/components/calendar/utils';
+import { formatDate, getTodayLocalDateString } from '~/utils/misc';
 
 /**
  * Get all instructors (profiles with instructor role)

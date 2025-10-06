@@ -7,7 +7,7 @@ import {
     getFamilyPaymentEligibilityData,
     type PaymentEligibilityData
 } from "~/services/payment-eligibility.server";
-import {getTodayLocalDateString} from "~/components/calendar/utils";
+import {getTodayLocalDateString} from "~/utils/misc";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {CreditCardIcon, Link} from "lucide-react";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";

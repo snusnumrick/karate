@@ -22,7 +22,7 @@ import {
     isPositive,
     isZero,
     ZERO_MONEY,
-    toDollars,
+    toMoney,
     type Money
 } from "~/utils/money";
 import { moneyFromRow } from "~/utils/database-money";
@@ -121,29 +121,45 @@ export async function action({ request, params }: ActionFunctionArgs) {
         }
         
         const remainingBalance = subtractMoney(invoice.total_amount, invoice.amount_paid);
-        
+
         if (isPositive(remainingBalance)) {
           // Create a payment record for the remaining balance
           const { getSupabaseAdminClient } = await import("~/utils/supabase.server");
+          const { toDollars } = await import("~/utils/money");
           const supabase = getSupabaseAdminClient();
-          
+
           const { error: paymentError } = await supabase
             .from('invoice_payments')
             .insert({
               invoice_id: id,
-              amount: toDollars(remainingBalance),
               amount_cents: remainingBalance.getAmount(),
               payment_date: new Date().toISOString().split('T')[0], // Today's date
               payment_method: 'other', // Default method when marked as paid
               notes: 'Marked as paid via admin interface'
             });
-            
+
           if (paymentError) {
             console.error('Error creating payment record:', paymentError);
             return json({ error: "Failed to create payment record" }, { status: 500 });
           }
+
+          // Update the invoice's amount_paid to reflect the new payment
+          const newAmountPaid = invoice.total_amount; // Full amount since we're marking as fully paid
+          const { error: updateError } = await supabase
+            .from('invoices')
+            .update({
+              amount_paid: toDollars(newAmountPaid),
+              amount_paid_cents: newAmountPaid.getAmount(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+          if (updateError) {
+            console.error('Error updating invoice amount_paid:', updateError);
+            return json({ error: "Failed to update invoice payment status" }, { status: 500 });
+          }
         }
-        
+
         await updateInvoiceStatus(id, "paid");
         return json({ success: true, message: "Invoice marked as paid" });
       }
@@ -238,12 +254,14 @@ export default function InvoiceDetailPage() {
   const rawInvoice = loaderData.invoice;
   
   // Convert serialized money values using proper database money conversion
+  // Note: tax_amount and total_amount are already correctly computed on the server
+  // from line item taxes, so we just deserialize them (don't re-read from denormalized DB fields)
   const invoice: InvoiceWithDetails = {
     ...rawInvoice,
     subtotal: moneyFromRow('invoices', 'subtotal', rawInvoice as unknown as Record<string, unknown>),
-    tax_amount: moneyFromRow('invoices', 'tax_amount', rawInvoice as unknown as Record<string, unknown>),
+    tax_amount: toMoney(rawInvoice.tax_amount as unknown),
     discount_amount: moneyFromRow('invoices', 'discount_amount', rawInvoice as unknown as Record<string, unknown>),
-    total_amount: moneyFromRow('invoices', 'total_amount', rawInvoice as unknown as Record<string, unknown>),
+    total_amount: toMoney(rawInvoice.total_amount as unknown),
     amount_paid: moneyFromRow('invoices', 'amount_paid', rawInvoice as unknown as Record<string, unknown>),
     amount_due: moneyFromRow('invoices', 'amount_due', rawInvoice as unknown as Record<string, unknown>),
     entity: {

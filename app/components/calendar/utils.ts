@@ -140,6 +140,7 @@ export function formatLocalDate(date: Date | string): string {
 /**
  * Get today's date as a local date string (YYYY-MM-DD)
  * This avoids timezone issues when comparing with database dates
+ * @deprecated Use getTodayLocalDateString from ~/utils/misc instead
  */
 export function getTodayLocalDateString(): string {
   return formatLocalDate(new Date());

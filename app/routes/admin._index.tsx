@@ -2,7 +2,7 @@ import {json, type LoaderFunctionArgs} from "@remix-run/node"; // Keep json, Loa
 import {Link, useFetcher, useLoaderData} from "@remix-run/react"; // Remove useRouteError
 import {getSupabaseAdminClient} from "~/utils/supabase.server";
 import {PaymentStatus} from "~/types/models"; // Import the enum
-import {getTodayLocalDateString} from "~/components/calendar/utils";
+import {getTodayLocalDateString} from "~/utils/misc";
 import {getInvoiceStats} from "~/services/invoice.server";
 import {getInvoiceEntities} from "~/services/invoice-entity.server";
 import {formatMoney, fromCents, ZERO_MONEY, toMoney, type Money} from "~/utils/money";

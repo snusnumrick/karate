@@ -3,6 +3,7 @@ import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { parseLocalDate } from "~/components/calendar/utils";
+import { formatDate } from "~/utils/misc";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -386,7 +387,7 @@ export default function AdminCalendar() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Calendar</h1>
-          <p className="text-sm text-muted-foreground">{format(currentDate, 'MMMM yyyy')}</p>
+          <p className="text-sm text-muted-foreground">{formatDate(currentDate, { formatString: 'MMMM yyyy' })}</p>
         </div>
       </div>
 
@@ -479,7 +480,7 @@ export default function AdminCalendar() {
       {/* Month/Year Header */}
       <div className="text-center py-2">
         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-          {format(currentDate, 'MMMM yyyy')} Overview
+          {formatDate(currentDate, { formatString: 'MMMM yyyy' })} Overview
         </h2>
       </div>
 
@@ -541,7 +542,7 @@ export default function AdminCalendar() {
                 <div>
                   <h4 className="font-semibold mb-2">Session Details</h4>
                   <div className="space-y-2 text-sm">
-                    <div>Date: {format(selectedEvent.date, 'PPP')}</div>
+                    <div>Date: {formatDate(selectedEvent.date, { formatString: 'PPP' })}</div>
                     <div>Time: {selectedEvent.startTime} - {selectedEvent.endTime}</div>
                     <div>Program: {selectedEvent.programName}</div>
                     <div>Instructor: {selectedEvent.instructorName || 'Not assigned'}</div>

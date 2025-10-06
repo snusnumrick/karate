@@ -14,9 +14,20 @@ DO $$
 $$;
 
 -- Normalize existing data before altering the column
-UPDATE profiles
-SET role = 'user'
-WHERE role IS NULL OR trim(role) = '' OR role NOT IN ('user', 'instructor', 'admin');
+DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_name = 'profiles'
+              AND column_name = 'role'
+              AND data_type = 'text'
+        ) THEN
+            UPDATE profiles
+            SET role = 'user'
+            WHERE role IS NULL OR trim(role) = '' OR role NOT IN ('user', 'instructor', 'admin');
+        END IF;
+    END $$;
 
 -- Drop policies that reference profiles.role so we can alter the type safely
 DROP POLICY IF EXISTS "Allow admins to manage products" ON public.products;
@@ -61,25 +72,25 @@ DROP POLICY IF EXISTS "Users can view invoice line item taxes for accessible inv
 DROP POLICY IF EXISTS "Admins can manage invoice line item taxes" ON public.invoice_line_item_taxes;
 
 DO $$
-DECLARE
-    pol RECORD;
-BEGIN
-    FOR pol IN
-        SELECT p.polname AS policyname,
-               n.nspname AS schemaname,
-               c.relname AS tablename,
-               pg_get_expr(p.polqual, p.polrelid) AS using_clause,
-               pg_get_expr(p.polwithcheck, p.polrelid) AS check_clause
-        FROM pg_policy p
-        JOIN pg_class c ON c.oid = p.polrelid
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-    LOOP
-        IF (COALESCE(pol.using_clause, '') LIKE '%profiles.role%'
-            OR COALESCE(pol.check_clause, '') LIKE '%profiles.role%') THEN
-            EXECUTE format('DROP POLICY %I ON %I.%I', pol.policyname, pol.schemaname, pol.tablename);
-        END IF;
-    END LOOP;
-END $$;
+    DECLARE
+        pol RECORD;
+    BEGIN
+        FOR pol IN
+            SELECT p.polname AS policyname,
+                   n.nspname AS schemaname,
+                   c.relname AS tablename,
+                   pg_get_expr(p.polqual, p.polrelid) AS using_clause,
+                   pg_get_expr(p.polwithcheck, p.polrelid) AS check_clause
+            FROM pg_policy p
+                     JOIN pg_class c ON c.oid = p.polrelid
+                     JOIN pg_namespace n ON n.oid = c.relnamespace
+            LOOP
+                IF (COALESCE(pol.using_clause, '') LIKE '%profiles.role%'
+                    OR COALESCE(pol.check_clause, '') LIKE '%profiles.role%') THEN
+                    EXECUTE format('DROP POLICY %I ON %I.%I', pol.policyname, pol.schemaname, pol.tablename);
+                END IF;
+            END LOOP;
+    END $$;
 
 -- Final sweep: drop any remaining policies whose definition still references profiles.role
 
@@ -109,31 +120,31 @@ COMMENT ON COLUMN profiles.role IS 'Access role constrained by profile_role enum
 
 -- Recreate policies that depend on profiles.role now that the enum is in place
 CREATE POLICY "Admin can manage all event registrations" ON public.event_registrations
-            FOR ALL USING (
-                EXISTS (
-                    SELECT 1 FROM profiles 
-                    WHERE profiles.id = auth.uid() 
-                    AND profiles.role = 'admin'::profile_role
-                )
-            );
+    FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'admin'::profile_role
+    )
+    );
 
 CREATE POLICY "Admin can manage all events" ON public.events
-            FOR ALL USING (
-                EXISTS (
-                    SELECT 1 FROM profiles 
-                    WHERE profiles.id = auth.uid() 
-                    AND profiles.role = 'admin'::profile_role
-                )
-            );
+    FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'admin'::profile_role
+    )
+    );
 
 CREATE POLICY "Admin can manage event waivers" ON public.event_waivers
-            FOR ALL USING (
-                EXISTS (
-                    SELECT 1 FROM profiles 
-                    WHERE profiles.id = auth.uid() 
-                    AND profiles.role = 'admin'::profile_role
-                )
-            );
+    FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'admin'::profile_role
+    )
+    );
 
 CREATE POLICY "Admins can manage all attendance" ON public.attendance
     FOR ALL TO authenticated
@@ -148,17 +159,17 @@ CREATE POLICY "Admins can manage all attendance" ON public.attendance
 
 CREATE POLICY "Allow admins to manage attendance" ON public.attendance
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM profiles
-            WHERE profiles.id = auth.uid()
-              AND profiles.role = 'admin'::profile_role
-        )
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'admin'::profile_role
+    )
     ) WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM profiles
-            WHERE profiles.id = auth.uid()
-              AND profiles.role = 'admin'::profile_role
-        )
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'admin'::profile_role
+    )
     );
 
 CREATE POLICY "Admins can manage all families" ON public.families
@@ -362,18 +373,18 @@ CREATE POLICY "Allow admins to manage enrollments" ON public.enrollments
     );
 
 CREATE POLICY "Allow admins to manage order items" ON public.order_items
-                FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-                ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-                );
+    FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    );
 
 CREATE POLICY "Allow admins to manage orders" ON public.orders
-                FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-                ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-                );
+    FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    );
 
 CREATE POLICY "Allow admins to manage payment taxes" ON public.payment_taxes
     FOR ALL USING (
@@ -389,18 +400,18 @@ CREATE POLICY "Allow admins to manage payment taxes" ON public.payment_taxes
     );
 
 CREATE POLICY "Allow admins to manage products" ON public.products
-                FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-                ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-                );
+    FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    );
 
 CREATE POLICY "Allow admins to manage product variants" ON public.product_variants
-                FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-                ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-                );
+    FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    );
 
 CREATE POLICY "Allow admins to manage programs" ON public.programs
     FOR ALL USING (
@@ -416,39 +427,39 @@ CREATE POLICY "Allow admins to manage programs" ON public.programs
     );
 
 CREATE POLICY "Users can view invoice line item taxes for accessible invoices" ON public.invoice_line_item_taxes
-            FOR SELECT USING (
-                invoice_line_item_id IN (
-                    SELECT id FROM invoice_line_items WHERE 
-                        invoice_id IN (
-                            SELECT id FROM invoices WHERE 
-                                family_id IN (
-                                    SELECT family_id FROM profiles WHERE id = auth.uid()
-                                ) OR auth.role() = 'service_role'
-                        )
-                )
-            );
+    FOR SELECT USING (
+    invoice_line_item_id IN (
+        SELECT id FROM invoice_line_items WHERE
+            invoice_id IN (
+                SELECT id FROM invoices WHERE
+                    family_id IN (
+                        SELECT family_id FROM profiles WHERE id = auth.uid()
+                    ) OR auth.role() = 'service_role'
+            )
+    )
+    );
 
 CREATE POLICY "Admins can manage invoice line item taxes" ON public.invoice_line_item_taxes
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM profiles
-            WHERE profiles.id = auth.uid()
-              AND profiles.role = 'admin'::profile_role
-        )
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'admin'::profile_role
+    )
     ) WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM profiles
-            WHERE profiles.id = auth.uid()
-              AND profiles.role = 'admin'::profile_role
-        )
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'admin'::profile_role
+    )
     );
 
 CREATE POLICY "Allow admins to manage push subscriptions" ON public.push_subscriptions
-            FOR ALL USING (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-            ) WITH CHECK (
-                EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
-            );
+    FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'::profile_role)
+    );
 
 CREATE POLICY "Allow admins to manage session usage" ON public.one_on_one_session_usage
     FOR ALL USING (
@@ -539,15 +550,15 @@ CREATE POLICY "Instructors can manage attendance for their sessions" ON public.a
                           AND cs.id = attendance.class_session_id));
 
 CREATE POLICY "Instructors can view and manage their events" ON public.events
-            FOR ALL USING (
-                instructor_id = auth.uid() OR
-                created_by = auth.uid() OR
-                EXISTS (
-                    SELECT 1 FROM profiles 
-                    WHERE profiles.id = auth.uid() 
-                    AND profiles.role IN ('admin'::profile_role, 'instructor'::profile_role)
-                )
-            );
+    FOR ALL USING (
+    instructor_id = auth.uid() OR
+    created_by = auth.uid() OR
+    EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role IN ('admin'::profile_role, 'instructor'::profile_role)
+    )
+    );
 
 CREATE POLICY "Profiles viewable by user, admin, or instructor" ON public.profiles
     FOR SELECT USING (

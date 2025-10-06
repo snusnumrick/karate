@@ -1,6 +1,7 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, useFetcher, Link, useSearchParams } from "@remix-run/react";
-import { format, parseISO, addDays } from "date-fns";
+import { format, addDays } from "date-fns";
+import { formatDate } from "~/utils/misc";
 import { Trash2, Calendar, Clock, Users, AlertTriangle, Edit2, Plus } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -490,7 +491,7 @@ export default function AdminSessions() {
                     <div className="flex items-center gap-6 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        {format(parseISO(session.session_date), 'EEEE, MMMM d, yyyy')}
+                        {formatDate(session.session_date, { formatString: 'EEEE, MMMM d, yyyy' })}
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
@@ -543,7 +544,7 @@ export default function AdminSessions() {
                       onClick={() => handleDelete(session)}
                       disabled={fetcher.state === "submitting"}
                       tabIndex={0}
-                      aria-label={`Delete session for ${session.class.program.name} - ${session.class.name} on ${format(parseISO(session.session_date), 'EEEE, MMMM d, yyyy')}`}
+                      aria-label={`Delete session for ${session.class.program.name} - ${session.class.name} on ${formatDate(session.session_date, { formatString: 'EEEE, MMMM d, yyyy' })}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -569,7 +570,7 @@ export default function AdminSessions() {
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the session for
               <span className="font-semibold"> {sessionToDelete?.class.program.name} - {sessionToDelete?.class.name}</span> on
-              <span className="font-semibold"> {sessionToDelete && format(parseISO(sessionToDelete.session_date), 'EEEE, MMMM d, yyyy')}</span> and remove all associated data.
+              <span className="font-semibold"> {sessionToDelete && formatDate(sessionToDelete.session_date, { formatString: 'EEEE, MMMM d, yyyy' })}</span> and remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

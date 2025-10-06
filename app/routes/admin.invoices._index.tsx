@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { getInvoices, getInvoiceStats } from "~/services/invoice.server";
+import { getInvoices } from "~/services/invoice.server";
 import { formatMoney, toCents, fromCents } from "~/utils/money";
 import { requireUserId } from "~/utils/auth.server";
 import { Plus, Search, FileText, Calendar, DollarSign, Users } from "lucide-react";
@@ -17,32 +17,41 @@ import { siteConfig } from "~/config/site";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserId(request);
-  
+
   const url = new URL(request.url);
   const search = url.searchParams.get("search") || "";
   const statusParam = url.searchParams.get("status") || "";
   const sortBy = url.searchParams.get("sortBy") || "created_at";
   const sortOrder = url.searchParams.get("sortOrder") || "desc";
-  
+
+  // Parse comma-separated status values
+  const statusArray = statusParam
+    ? statusParam.split(',').map(s => s.trim()).filter(Boolean) as InvoiceStatus[]
+    : undefined;
+
   try {
-    const [result, invoiceStats] = await Promise.all([
-      getInvoices({
-        search,
-        status: statusParam ? [statusParam as InvoiceStatus] : undefined,
-      }),
-      getInvoiceStats()
-    ]);
-    
+    const result = await getInvoices({
+      search,
+      status: statusArray,
+    });
+
     const invoices = result.invoices;
-    
-    // Use server-side statistics for consistency
+
+    // Calculate stats based on filtered invoices for consistency with displayed data
     const stats = {
-      total: invoiceStats.total_invoices,
+      total: invoices.length,
       pending: invoices.filter((inv: InvoiceWithDetails) => inv.status === "sent" || inv.status === "viewed").length,
       paid: invoices.filter((inv: InvoiceWithDetails) => inv.status === "paid").length,
-      overdue: invoiceStats.overdue_count,
-      totalAmount: invoiceStats.total_amount ? toCents(invoiceStats.total_amount) : 0,
-      pendingAmount: invoiceStats.outstanding_amount ? toCents(invoiceStats.outstanding_amount) : 0
+      overdue: invoices.filter((inv: InvoiceWithDetails) => {
+        const today = new Date().toISOString().split('T')[0];
+        return inv.status !== 'paid' && inv.due_date < today;
+      }).length,
+      totalAmount: invoices.reduce((sum, inv) => sum + (inv.total_amount ? toCents(inv.total_amount) : 0), 0),
+      pendingAmount: invoices.reduce((sum, inv) => {
+        const totalCents = inv.total_amount ? toCents(inv.total_amount) : 0;
+        const paidCents = inv.amount_paid ? toCents(inv.amount_paid) : 0;
+        return sum + (totalCents - paidCents);
+      }, 0)
     };
     
     // Serialize Money types for invoices
