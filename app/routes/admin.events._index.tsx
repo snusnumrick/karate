@@ -10,15 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
 import { Calendar, Plus, Users, DollarSign, MapPin, Clock, Filter, Trash2, ExternalLink } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { format, parseISO } from "date-fns";
-import { formatDate } from "~/utils/misc";
+import { formatDate, formatTime } from "~/utils/misc";
 import type { Database } from "~/types/database.types";
 import { getEventTypeOptions } from "~/utils/event-helpers.server";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import {moneyFromRow} from "~/utils/database-money";
 import { addMoney, multiplyMoney, ZERO_MONEY, type Money, type MoneyJSON, formatMoney, serializeMoney, deserializeMoney } from "~/utils/money";
-import { formatTime } from "~/utils/misc";
 
 
 type Event = {

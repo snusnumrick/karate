@@ -55,11 +55,10 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
   try {
     // Parse registration data
     const registrationData = JSON.parse(formData.get("registrationData") as string || '{}');
-    const students: Array<Record<string, any>> = Array.isArray(registrationData.students) ? registrationData.students : [];
+    const students: Array<Record<string, unknown>> = Array.isArray(registrationData.students) ? registrationData.students : [];
     const registerSelf: boolean = Boolean(registrationData.registerSelf);
     const selfParticipant: { firstName?: string; lastName?: string; email?: string } | undefined = registrationData.selfParticipant;
     let selfParticipantStudentId: string | undefined = registrationData.selfParticipantStudentId || undefined;
-    const submittedFamilyType: string | undefined = registrationData.familyType || undefined;
 
     // Get user session
     const { data: { user } } = await supabaseServer.auth.getUser();
@@ -172,7 +171,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     const studentIdsForPayment: string[] = [];
 
     for (const student of students) {
-      const existingStudentId: string | undefined = student.id || student.existingStudentId;
+      const existingStudentId = (student.id || student.existingStudentId) as string | undefined;
 
       if (student.isExistingStudent && existingStudentId) {
         registrationParticipants.push({ studentId: existingStudentId });
@@ -180,22 +179,25 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         continue;
       }
 
-      if (!student.firstName || !student.lastName) {
+      const firstName = student.firstName as string | undefined;
+      const lastName = student.lastName as string | undefined;
+
+      if (!firstName || !lastName) {
         console.warn('Skipping student without required name fields');
         continue;
       }
 
       const studentData: StudentInsert = {
         family_id: familyIdStr,
-        first_name: student.firstName,
-        last_name: student.lastName,
-        birth_date: student.dateOfBirth || null,
-        gender: student.gender || 'other',
-        school: student.school || null,
-        cell_phone: student.emergencyContactPhone || null,
+        first_name: firstName,
+        last_name: lastName,
+        birth_date: (student.dateOfBirth as string | undefined) || null,
+        gender: (student.gender as string | undefined) || 'other',
+        school: (student.school as string | undefined) || null,
+        cell_phone: (student.emergencyContactPhone as string | undefined) || null,
         t_shirt_size: 'AM' as Database['public']['Enums']['t_shirt_size_enum'],
-        allergies: student.allergies || null,
-        medications: student.medicalConditions || null,
+        allergies: (student.allergies as string | undefined) || null,
+        medications: (student.medicalConditions as string | undefined) || null,
         email: null,
       };
 

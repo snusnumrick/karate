@@ -232,14 +232,14 @@ export function EventRegistrationForm({
     if (fetcher.data) {
       const response = fetcher.data;
       console.log('Registration response received:', response);
-      
+
       // Prevent processing the same response multiple times
       const responseId = response.registrationId || response.paymentId || JSON.stringify(response);
       if (processedResponseId === responseId) {
         console.log('Response already processed, skipping');
         return;
       }
-      
+
       if (response.success && response.registrationId) {
         setProcessedResponseId(responseId);
         if (response.paymentRequired && response.paymentId) {
@@ -302,25 +302,25 @@ export function EventRegistrationForm({
       } else if (response.error) {
         // Handle specific errors
         if (response.error.includes('already registered')) {
-          setErrors({ 
-            general: 'One or more students are already registered for this event. Please check your existing registrations or contact us if you need assistance.' 
+          setErrors({
+            general: 'One or more students are already registered for this event. Please check your existing registrations or contact us if you need assistance.'
           });
         } else if (response.waiverValidationFailed) {
           // Handle waiver validation error - show specific message with missing waivers
           const missingWaiverTitles = response.missingWaivers?.map((w: { id: string; title: string }) => w.title).join(', ') || 'required waivers';
-          setErrors({ 
+          setErrors({
             general: `Please sign the following waivers before registering: ${missingWaiverTitles}. You can sign them in the waiver requirements section above.`
           });
         } else {
           setErrors({ general: response.error });
         }
       }
-      
+
       if (response.fieldErrors) {
         setErrors(response.fieldErrors);
       }
     }
-  }, [fetcher.data, formData.students, event.registration_fee, onSuccess, familyData?.familyId, processedResponseId]);
+  }, [fetcher.data, formData.students, event.registration_fee, onSuccess, familyData?.familyId, processedResponseId, activeStudents, existingSelfStudentId, formData.registerSelf, formData.selfParticipant?.firstName, formData.selfParticipant?.lastName, profileInfo?.firstName, profileInfo?.lastName]);
 
   // Add a new student to the registration
   const addStudent = () => {
