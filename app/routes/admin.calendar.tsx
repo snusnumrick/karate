@@ -1,9 +1,10 @@
-import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams, useNavigate } from "@remix-run/react";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { parseLocalDate, birthdaysToCalendarEvents, expandMultiDayEvents } from "~/components/calendar/utils";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { requireAdminUser } from "~/utils/auth.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -84,30 +85,14 @@ type LoaderData = {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  // Require admin authentication
+  await requireAdminUser(request);
 
   // Create a service role client directly for admin-level data fetching
   const supabaseAdmin = getSupabaseAdminClient();
 
-
-
   const { supabaseServer, response } = getSupabaseServerClient(request);
   const headers = response.headers;
-  const { data: { user } } = await supabaseServer.auth.getUser();
-
-  if (!user) {
-    return redirect("/login?redirectTo=/admin/calendar", { headers });
-  }
-
-  // Check if user is admin
-  const { data: profile } = await supabaseServer
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin') {
-    return redirect("/", { headers });
-  }
 
   const url = new URL(request.url);
   const monthParam = url.searchParams.get('month');
