@@ -24,7 +24,7 @@ import { getClassById, getClassSessions, generateClassSessions, deleteClassSessi
 import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { BulkSessionGeneration } from "~/types/multi-class";
 import { useState } from "react";
-import { formatDate } from "~/utils/misc";
+import { formatDate, formatTime } from "~/utils/misc";
 import { getTodayLocalDateString, formatLocalDate } from "~/components/calendar/utils";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
@@ -136,13 +136,7 @@ export default function ClassSessions() {
 
 
 
-  const formatTime = (timeString: string) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString(siteConfig.localization.locale, {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  // formatTime is now imported from ~/utils/misc
 
   const getStatusColor = (status: string) => {
     switch (status) {

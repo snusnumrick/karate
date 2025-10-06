@@ -9,10 +9,11 @@ import { EventRegistrationForm } from '~/components/EventRegistrationForm';
 import { getSupabaseServerClient, getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database, TablesInsert } from '~/types/database.types';
 import { Calendar, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
-import { formatDate } from '~/utils/misc';
+import { formatDate, formatTime } from '~/utils/misc';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import { multiplyMoney, type Money, addMoney, isPositive, toCents, ZERO_MONEY, formatMoney, serializeMoney, deserializeMoney, type MoneyJSON } from '~/utils/money';
 import { moneyFromRow } from '~/utils/database-money';
+import { createSelfRegistrant } from '~/services/self-registration.server';
 
 // Extended Event type for registration with additional properties
 type EventWithRegistrationInfo = EventWithEventType & {
@@ -125,36 +126,39 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
 
     let familyId: string | null = profile?.family_id || null;
 
-    if (!familyId && registerSelf) {
+    // Use the self-registration service for consistent family creation/reuse
+    if (registerSelf && !selfParticipantStudentId) {
       const participantFirstName = selfParticipant?.firstName || profile?.first_name || user.user_metadata?.first_name || 'Self';
       const participantLastName = selfParticipant?.lastName || profile?.last_name || user.user_metadata?.last_name || 'Participant';
       const primaryPhone = typeof registrationData.parentPhone === 'string' ? registrationData.parentPhone : '';
-      const familyName = `${participantFirstName} ${participantLastName}`.trim() || 'Self Participant';
-      const { data: newFamily, error: createFamilyError } = await supabaseServer
-        .from('families')
-        .insert({
-          name: familyName,
-          email: selfParticipant?.email ?? user.email ?? '',
-          primary_phone: primaryPhone,
-          family_type: 'self',
-        })
-        .select('id')
-        .single();
 
-      if (createFamilyError || !newFamily) {
-        console.error('Error creating self family:', createFamilyError);
+      try {
+        const selfRegistrant = await createSelfRegistrant({
+          profileId: user.id,
+          firstName: participantFirstName,
+          lastName: participantLastName,
+          email: selfParticipant?.email ?? user.email ?? '',
+          phone: primaryPhone,
+        }, supabaseAdmin);
+
+        familyId = selfRegistrant.family.id;
+        selfParticipantStudentId = selfRegistrant.student.id;
+      } catch (error) {
+        console.error('Error creating self-registrant:', error);
         return json({ error: 'Unable to prepare account for registration' }, { status: 500 });
       }
+    } else if (registerSelf && selfParticipantStudentId) {
+      // If we already have a self participant student ID, get their family
+      if (!familyId) {
+        const { data: existingStudent } = await supabaseServer
+          .from('students')
+          .select('family_id')
+          .eq('id', selfParticipantStudentId)
+          .single();
 
-      familyId = newFamily.id;
-
-      const { error: updateProfileError } = await supabaseServer
-        .from('profiles')
-        .update({ family_id: familyId })
-        .eq('id', user.id);
-
-      if (updateProfileError) {
-        console.error('Error linking profile to self family:', updateProfileError);
+        if (existingStudent?.family_id) {
+          familyId = existingStudent.family_id;
+        }
       }
     }
 
@@ -213,31 +217,6 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     if (registerSelf) {
       if (!familyId) {
         return json({ error: 'Unable to determine account family for self registration.' }, { status: 400 });
-      }
-
-      if (!selfParticipantStudentId) {
-        const participantFirstName = selfParticipant?.firstName || profile?.first_name || user.user_metadata?.first_name || 'Self';
-        const participantLastName = selfParticipant?.lastName || profile?.last_name || user.user_metadata?.last_name || 'Participant';
-
-        const { data: selfStudent, error: selfStudentError } = await supabaseServer
-          .from('students')
-          .insert({
-            family_id: familyIdStr,
-            first_name: participantFirstName,
-            last_name: participantLastName,
-            is_adult: true,
-            profile_id: user.id,
-            gender: 'other',
-          })
-          .select('id')
-          .single();
-
-        if (selfStudentError || !selfStudent) {
-          console.error('Error creating self participant student record:', selfStudentError);
-          return json({ error: 'Failed to create participant record' }, { status: 500 });
-        }
-
-        selfParticipantStudentId = selfStudent.id;
       }
 
       if (!selfParticipantStudentId) {
@@ -303,7 +282,9 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         : 'confirmed') as Database['public']['Enums']['registration_status_enum'],
     }));
 
-    const { data: createdRegistrations_db, error: registrationError } = await supabaseServer
+    // Use admin client to bypass RLS for newly created families
+    // (RLS check may not see the just-updated profile.family_id due to transaction isolation)
+    const { data: createdRegistrations_db, error: registrationError } = await supabaseAdmin
       .from('event_registrations')
       .insert(registrations)
       .select('id');
@@ -385,7 +366,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
           .from('event_registrations')
           .update({
             payment_id: paymentRecord.id,
-            payment_amount: toCents(registrationFee), // Convert to cents
+            payment_amount_cents: toCents(registrationFee), // Store in cents
             payment_required: true
           })
           .eq('event_id', eventId)
@@ -427,10 +408,10 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     } else {
       // Free event - update registrations with payment info
       if (registrationIds.length > 0) {
-        const { error: updateError } = await supabaseServer
+        const { error: updateError } = await supabaseAdmin
           .from('event_registrations')
           .update({
-            payment_amount: 0,
+            payment_amount_cents: 0,
             payment_required: false
           })
           .eq('event_id', eventId)
@@ -742,13 +723,10 @@ export default function EventRegistration() {
 
 
 
-  const formatTime = (time: string | null) => {
-    if (!time) return null;
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-CA', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+  // formatTime is now imported from ~/utils/misc
+  const formatTimeOrNull = (time: string | null) => {
+    const formatted = formatTime(time);
+    return formatted || null;
   };
 
   const slotTimeRanges = [
@@ -804,8 +782,8 @@ export default function EventRegistration() {
                       <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                         <Clock className="h-4 w-4" />
                         <span>
-                          {formatTime(event.start_time)}
-                          {event.end_time && ` - ${formatTime(event.end_time)}`}
+                          {formatTimeOrNull(event.start_time)}
+                          {event.end_time && ` - ${formatTimeOrNull(event.end_time)}`}
                         </span>
                       </div>
                     )}
@@ -825,8 +803,8 @@ export default function EventRegistration() {
                         <ul className="space-y-1">
                           {slotTimeRanges.map(([start, end], index) => (
                             <li key={index}>
-                              {start ? formatTime(start) : 'TBD'}
-                              {end ? ` - ${formatTime(end)}` : ''}
+                              {start ? formatTimeOrNull(start) : 'TBD'}
+                              {end ? ` - ${formatTimeOrNull(end)}` : ''}
                             </li>
                           ))}
                         </ul>

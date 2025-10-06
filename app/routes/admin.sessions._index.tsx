@@ -10,6 +10,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { formatTime } from "~/utils/misc";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -244,16 +245,7 @@ export default function AdminSessions() {
     }
   };
 
-  const formatTime = (time: string) => {
-    try {
-      const [hours, minutes] = time.split(':');
-      const date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes));
-      return format(date, 'h:mm a');
-    } catch {
-      return time;
-    }
-  };
+  // formatTime is now imported from ~/utils/misc
 
   const handleDelete = (session: SessionWithClass) => {
     setSessionToDelete(session);

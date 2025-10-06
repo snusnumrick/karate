@@ -17,6 +17,7 @@ import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import {moneyFromRow} from "~/utils/database-money";
 import { addMoney, multiplyMoney, ZERO_MONEY, type Money, type MoneyJSON, formatMoney, serializeMoney, deserializeMoney } from "~/utils/money";
+import { formatTime } from "~/utils/misc";
 
 
 type Event = {
@@ -264,10 +265,7 @@ export default function AdminEventsIndex() {
     return format(parseISO(dateString), 'MMM d, yyyy');
   };
 
-  const formatTime = (timeString: string | null) => {
-    if (!timeString) return '';
-    return format(parseISO(`2000-01-01T${timeString}`), 'h:mm a');
-  };
+  // formatTime is now imported from ~/utils/misc
 
   return (
     <div className="container mx-auto p-6 space-y-6">

@@ -1,6 +1,6 @@
 import type { Database } from "~/types/database.types";
 import { parseLocalDate } from "~/components/calendar/utils";
-import { formatDate } from "~/utils/misc";
+import { formatDate, formatTime } from "~/utils/misc";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 
 // Type definitions
@@ -25,14 +25,9 @@ export const formatDayName = (day: string) => {
     return dayMap[day.toLowerCase()] || day;
 };
 
-// Helper function to format time
-export const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes} ${ampm}`;
-};
+// Re-export formatTime from misc.ts for backward compatibility
+// (This can be removed once all imports are updated to use ~/utils/misc directly)
+export { formatTime };
 
 // Convert a 24-hour time string ("HH:MM") to minutes
 const timeStringToMinutes = (time: string) => {

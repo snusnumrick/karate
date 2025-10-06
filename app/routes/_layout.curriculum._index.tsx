@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { formatMoney, fromCents, toCents } from "~/utils/money";
 import { siteConfig } from "~/config/site";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
+import { formatTime } from "~/utils/misc";
 
 type ClassWithSchedule = {
     id: string;
@@ -191,14 +192,7 @@ export default function CurriculumIndex() {
     return dayMap[day.toLowerCase()] || day;
   };
 
-  // Helper function to format time
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+  // formatTime is now imported from ~/utils/misc
 
   // Get age range from programs or classes
   const getAgeRange = () => {

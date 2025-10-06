@@ -26,7 +26,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<TypedResp
 
     // Construct the redirect URL for the password reset link
     const url = new URL(request.url);
-    const resetRedirectTo = `${url.origin}/reset-password`;
+    const resetRedirectTo = `${url.origin}/reset-password?email=${encodeURIComponent(email)}`;
 
     const { error } = await supabaseServer.auth.resetPasswordForEmail(email, {
         redirectTo: resetRedirectTo,

@@ -99,7 +99,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     // 1. Get the user's profile to find their family_id
     const {data: profileData, error: profileError} = await supabaseServer
         .from('profiles')
-        .select('family_id') // Only fetch family_id, as names are not on this table
+        .select('family_id, role') // Fetch family and role to decide onboarding path
         .eq('id', user.id)
         .single();
 
@@ -111,12 +111,17 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         }, {status: 500, headers});
     }
 
+    if (profileData.role === 'admin') {
+        return redirect('/admin', {headers});
+    }
+
+    if (profileData.role === 'instructor') {
+        return redirect('/instructor', {headers});
+    }
+
     if (!profileData.family_id) {
-        // User is logged in but not associated with a family yet. Redirect to setup.
-        // This might happen after registration but before family creation/linking
-        console.warn("User authenticated but no family_id found. Redirecting to /family/setup");
-        // Note: Ensure the /family/setup route exists or adjust the target URL.
-        return redirect("/family/setup", {headers});
+        console.warn("User authenticated but no family_id found. Redirecting to onboarding");
+        return redirect("/onboarding", {headers});
     }
 
     // 2. Fetch the family data *and* its related students and guardians (without payments initially)

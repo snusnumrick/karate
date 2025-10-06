@@ -166,6 +166,14 @@ export function EventRegistrationForm({
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<'registration' | 'payment' | 'success'>('registration');
   const defaultRegisterSelf = selfRegistrationAllowed && (!familyData?.students?.length || familyType === 'self');
+  const defaultSelfParticipant = useMemo(
+    () => ({
+      firstName: profileInfo?.firstName?.trim() ?? '',
+      lastName: profileInfo?.lastName?.trim() ?? '',
+      email: profileInfo?.email ?? '',
+    }),
+    [profileInfo]
+  );
 
   const [formData, setFormData] = useState<RegistrationFormData>({
     students: [{
@@ -188,13 +196,7 @@ export function EventRegistrationForm({
     marketingOptIn: false,
     specialRequests: '',
     registerSelf: defaultRegisterSelf,
-    selfParticipant: profileInfo
-      ? {
-          firstName: profileInfo.firstName,
-          lastName: profileInfo.lastName,
-          email: profileInfo.email,
-        }
-      : undefined,
+    selfParticipant: defaultRegisterSelf ? { ...defaultSelfParticipant } : undefined,
     selfParticipantStudentId: existingSelfStudentId,
     familyType: familyType ?? null,
   });
@@ -217,6 +219,9 @@ export function EventRegistrationForm({
       ),
     [formData.students]
   );
+  const hasExistingFamilyStudents = Boolean(familyData?.students?.length);
+  const hasManualStudents = activeStudents.length > 0;
+  const showStudentInfoCard = !formData.registerSelf || hasExistingFamilyStudents || hasManualStudents;
 
   // Check for missing waivers
   const missingWaivers = requiredWaivers.filter(waiver => !signedWaiverIds.includes(waiver.id));
@@ -422,14 +427,28 @@ export function EventRegistrationForm({
       ...prev,
       registerSelf: isChecked,
       selfParticipant: isChecked
-        ? prev.selfParticipant || (profileInfo
-            ? {
-                firstName: profileInfo.firstName,
-                lastName: profileInfo.lastName,
-                email: profileInfo.email,
-              }
-            : prev.selfParticipant)
+        ? { ...(prev.selfParticipant ?? defaultSelfParticipant) }
         : prev.selfParticipant,
+    }));
+  };
+
+  const handleSelfParticipantChange = (
+    field: 'firstName' | 'lastName' | 'email',
+    value: string
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      selfParticipant: {
+        ...(prev.selfParticipant ?? defaultSelfParticipant),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleAddAnotherParticipant = () => {
+    setFormData((prev) => ({
+      ...prev,
+      registerSelf: false,
     }));
   };
 
@@ -492,6 +511,26 @@ export function EventRegistrationForm({
       newErrors.students = 'Please add at least one participant.';
     }
 
+    if (formData.registerSelf) {
+      const first = formData.selfParticipant?.firstName?.trim();
+      const last = formData.selfParticipant?.lastName?.trim();
+      const email = formData.selfParticipant?.email?.trim();
+
+      if (!first) {
+        newErrors.selfParticipantFirstName = 'Your first name is required';
+      }
+
+      if (!last) {
+        newErrors.selfParticipantLastName = 'Your last name is required';
+      }
+
+      if (!email) {
+        newErrors.selfParticipantEmail = 'A contact email is required';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.selfParticipantEmail = 'Please provide a valid email address';
+      }
+    }
+
     // Validate waiver acceptance
     // Check if all required waivers are signed
     if (requiredWaivers.length > 0 && !hasAllRequiredWaivers) {
@@ -513,9 +552,18 @@ export function EventRegistrationForm({
     // Prepare form data for submission
     const submitData = new FormData();
     submitData.append('intent', 'register');
+    const cleanedSelfParticipant = formData.selfParticipant
+      ? {
+          firstName: formData.selfParticipant.firstName.trim(),
+          lastName: formData.selfParticipant.lastName.trim(),
+          email: formData.selfParticipant.email.trim(),
+        }
+      : undefined;
+
     const payload: RegistrationFormData = {
       ...formData,
       students: activeStudents,
+      selfParticipant: formData.registerSelf ? cleanedSelfParticipant : undefined,
     };
 
     submitData.append('registrationData', JSON.stringify(payload));
@@ -767,12 +815,66 @@ export function EventRegistrationForm({
                     {profileInfo?.firstName || 'Self'} {profileInfo?.lastName || ''}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    We’ll use your account details to create the registration record.
+                    We’ll start with your account details—update them below if anything needs to change.
                   </p>
                 </Label>
               </div>
+
+              {formData.registerSelf && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="selfFirstName">First name</Label>
+                    <Input
+                      id="selfFirstName"
+                      value={formData.selfParticipant?.firstName ?? ''}
+                      onChange={(e) => handleSelfParticipantChange('firstName', e.target.value)}
+                      aria-invalid={Boolean(errors.selfParticipantFirstName)}
+                      className="input-custom-styles"
+                    />
+                    {errors.selfParticipantFirstName && (
+                      <p className="text-sm text-destructive">{errors.selfParticipantFirstName}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="selfLastName">Last name</Label>
+                    <Input
+                      id="selfLastName"
+                      value={formData.selfParticipant?.lastName ?? ''}
+                      onChange={(e) => handleSelfParticipantChange('lastName', e.target.value)}
+                      aria-invalid={Boolean(errors.selfParticipantLastName)}
+                      className="input-custom-styles"
+                    />
+                    {errors.selfParticipantLastName && (
+                      <p className="text-sm text-destructive">{errors.selfParticipantLastName}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="selfEmail">Email</Label>
+                    <Input
+                      id="selfEmail"
+                      type="email"
+                      value={formData.selfParticipant?.email ?? ''}
+                      onChange={(e) => handleSelfParticipantChange('email', e.target.value)}
+                      aria-invalid={Boolean(errors.selfParticipantEmail)}
+                      className="input-custom-styles"
+                    />
+                    {errors.selfParticipantEmail && (
+                      <p className="text-sm text-destructive">{errors.selfParticipantEmail}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
+        )}
+
+        {!showStudentInfoCard && (
+          <div className="flex items-center justify-between rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+            <span>Need to register someone else?</span>
+            <Button type="button" variant="outline" size="sm" onClick={handleAddAnotherParticipant}>
+              Add participant
+            </Button>
+          </div>
         )}
 
         {/* Parent Information (for guest users) */}
@@ -847,6 +949,7 @@ export function EventRegistrationForm({
         )}
 
         {/* Student Information */}
+        {showStudentInfoCard && (
         <Card>
           <CardHeader>
             <CardTitle>Student Information</CardTitle>
@@ -860,7 +963,7 @@ export function EventRegistrationForm({
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{errors.students}</AlertDescription>
               </Alert>
-            )}
+        )}
             {formData.students.map((student, index) => (
               <div key={index} className="space-y-4 p-4 border rounded-lg">
                 <div className="flex justify-between items-center">
@@ -939,10 +1042,10 @@ export function EventRegistrationForm({
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
                 </div>
+              </div>
 
-                <Separator />
+              <Separator />
 
                 <div className="space-y-4">
                   <h4 className="font-medium">Emergency Contact</h4>
@@ -1033,6 +1136,7 @@ export function EventRegistrationForm({
             </Button>
           </CardContent>
         </Card>
+        )}
 
         {/* Additional Information */}
         <Card>

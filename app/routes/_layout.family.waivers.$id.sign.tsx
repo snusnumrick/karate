@@ -21,33 +21,37 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         return redirect('/login?redirectTo=/family/waivers');
     }
 
-    // Fetch user profile to get family_id
     const {data: profile, error: profileError} = await supabaseServer
         .from('profiles')
-        .select('family_id')
+        .select('family_id, first_name, last_name')
         .eq('id', user.id)
         .single();
 
-    if (profileError || !profile || !profile.family_id) {
-        console.error('Error fetching profile or family_id for user:', user.id, profileError);
-        // Handle appropriately - maybe redirect to a profile setup page or show an error
-        // For now, throw an error indicating profile issue
-        throw new Response("User profile or family association not found.", {status: 404});
+    if (profileError || !profile) {
+        console.error('Error fetching profile for user:', user.id, profileError);
+        throw new Response("User profile not found.", {status: 404});
     }
 
-    // Fetch the first guardian associated with the family to get the name
-    // Assumption: The logged-in user is one of the guardians. We take the first one found.
-    const {data: guardian, error: guardianError} = await supabaseServer
-        .from('guardians')
-        .select('first_name, last_name')
-        .eq('family_id', profile.family_id)
-        .limit(1) // Get the first guardian listed for the family
-        .single();
+    let signerFirstName = profile.first_name || user.user_metadata?.first_name || '';
+    let signerLastName = profile.last_name || user.user_metadata?.last_name || '';
 
-    if (guardianError || !guardian) {
-        console.error('Error fetching guardian for family_id:', profile.family_id, guardianError);
-        // Handle appropriately - maybe show an error
-        throw new Response("Guardian information not found for this family.", {status: 404});
+    if (profile.family_id) {
+        const {data: guardian} = await supabaseServer
+            .from('guardians')
+            .select('first_name, last_name')
+            .eq('family_id', profile.family_id)
+            .limit(1)
+            .maybeSingle();
+
+        if (guardian) {
+            signerFirstName = guardian.first_name || signerFirstName;
+            signerLastName = guardian.last_name || signerLastName;
+        }
+    }
+
+    if (!signerFirstName && !signerLastName) {
+        const fallback = user.email?.split('@')[0] ?? 'Participant';
+        signerFirstName = fallback;
     }
 
     // Check if waiver exists
@@ -80,8 +84,8 @@ export async function loader({request, params}: LoaderFunctionArgs) {
     return json({
         waiver,
         userId: user.id,
-        firstName: guardian.first_name,
-        lastName: guardian.last_name,
+        firstName: signerFirstName,
+        lastName: signerLastName,
         redirectTo
     });
 }

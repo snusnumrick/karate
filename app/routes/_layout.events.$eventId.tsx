@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
-import { formatDate } from "~/utils/misc";
+import { formatDate, formatTime } from "~/utils/misc";
 import { formatMoney, isPositive, toDollars, serializeMoney, deserializeMoney, type MoneyJSON } from "~/utils/money";
 import { isLoggedIn as userIsLoggedIn } from "~/utils/auth.server";
 
@@ -89,13 +89,10 @@ export default function EventDetail() {
     });
   };
 
-  const formatTime = (time: string | null) => {
-    if (!time) return null;
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-CA', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+  // formatTime is now imported from ~/utils/misc
+  const formatTimeOrNull = (time: string | null) => {
+    const formatted = formatTime(time);
+    return formatted || null;
   };
 
   const isRegistrationOpen = event.status === 'registration_open';
@@ -229,8 +226,8 @@ export default function EventDetail() {
                       <div>
                         {event.start_time && (
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {formatTime(event.start_time)}
-                            {event.end_time && ` - ${formatTime(event.end_time)}`}
+                            {formatTimeOrNull(event.start_time)}
+                            {event.end_time && ` - ${formatTimeOrNull(event.end_time)}`}
                           </p>
                         )}
                       </div>
@@ -239,15 +236,15 @@ export default function EventDetail() {
                   {slotTimeRanges.length > 0 && (
                     <div className="mt-4">
                       <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                        Additional Time Slots
+                        Available Time Slots
                       </p>
                       <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
                         {slotTimeRanges.map(([start, end], index) => (
                           <li key={index} className="flex items-center gap-2">
                             <Clock className="h-4 w-4" />
                             <span>
-                              {start ? formatTime(start) : 'TBD'}
-                              {end ? ` - ${formatTime(end)}` : ''}
+                              {start ? formatTimeOrNull(start) : 'TBD'}
+                              {end ? ` - ${formatTimeOrNull(end)}` : ''}
                             </span>
                           </li>
                         ))}

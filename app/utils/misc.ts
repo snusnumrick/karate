@@ -136,3 +136,67 @@ export function formatDate(
         return 'Invalid Date';
     }
 }
+
+/**
+ * Formats a time string to a localized time format.
+ * - Accepts time strings in various formats: 'HH:MM', 'HH:MM:SS', or ISO datetime strings
+ * - If `options.formatString` is provided, it uses `date-fns/format`.
+ * - Otherwise, it uses `Intl.DateTimeFormat` for locale-aware formatting.
+ *
+ * @param time The time string (e.g., '14:30', '14:30:00', '2024-01-01T14:30:00Z') or null/undefined.
+ * @param options Optional configuration for formatting.
+ * @param options.locale Optional. Locale for formatting (e.g., 'en-US'). Defaults to `siteConfig.locale`.
+ * @param options.formatString Optional. A `date-fns` format string (e.g., 'h:mm a', 'HH:mm').
+ *                             If provided, this takes precedence over default formatting.
+ * @param options.hour12 Optional. Whether to use 12-hour format. Defaults to true.
+ * @returns The formatted time string, or an empty string if input is null/undefined.
+ */
+export function formatTime(
+    time: string | null | undefined,
+    options?: {
+        locale?: string;
+        formatString?: string;
+        hour12?: boolean;
+    }
+): string {
+    if (!time) {
+        return '';
+    }
+
+    const currentLocale = options?.locale || (typeof siteConfig !== 'undefined' && siteConfig?.localization?.locale) || 'en-CA';
+    const hour12 = options?.hour12 ?? true;
+
+    try {
+        let dateObj: Date;
+
+        // Check if it's an ISO datetime string
+        if (/^\d{4}-\d{2}-\d{2}T/.test(time)) {
+            dateObj = parseISO(time);
+        } else {
+            // Assume it's a time string (HH:MM or HH:MM:SS)
+            // Use a dummy date to parse the time
+            dateObj = parseISO(`2000-01-01T${time}`);
+        }
+
+        if (isNaN(dateObj.getTime())) {
+            throw new Error('Invalid time value');
+        }
+
+        if (options?.formatString) {
+            // Use date-fns format if custom format string is provided
+            const dfnsLocale = currentLocale === 'en-CA' ? enCA : undefined;
+            return fnsFormat(dateObj, options.formatString, { locale: dfnsLocale });
+        } else {
+            // Use Intl.DateTimeFormat for locale-aware formatting
+            const intlOptions: Intl.DateTimeFormatOptions = {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: hour12,
+            };
+            return new Intl.DateTimeFormat(currentLocale, intlOptions).format(dateObj);
+        }
+    } catch (error) {
+        console.error(`Error formatting time (locale: ${currentLocale}):`, error);
+        return '';
+    }
+}

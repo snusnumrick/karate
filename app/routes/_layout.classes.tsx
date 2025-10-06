@@ -9,6 +9,7 @@ import { JsonLd } from "~/components/JsonLd";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 import { buildScheduleSummaryFromClasses } from "~/services/class.server";
 import { formatMoney, fromCents, toDollars, toCents } from "~/utils/money";
+import { formatTime } from "~/utils/misc";
 
 type ClassWithSchedule = {
     id: string;
@@ -241,14 +242,7 @@ export default function ClassesPage() {
         return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : time;
     };
 
-    // Helper function to format time
-    const formatTime = (time: string) => {
-        const [hours, minutes] = time.split(':');
-        const hour = parseInt(hours);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-        return `${displayHour}:${minutes} ${ampm}`;
-    };
+    // formatTime is now imported from ~/utils/misc
 
     // Get age range from programs or classes
     const getAgeRange = () => {

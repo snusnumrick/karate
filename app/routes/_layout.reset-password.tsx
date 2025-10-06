@@ -21,9 +21,40 @@ interface LoaderData {
 export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const url = new URL(request.url);
     const tokenHash = url.searchParams.get("token_hash");
+    const otpToken = url.searchParams.get("token");
+    const accessToken = url.searchParams.get("access_token");
+    const refreshToken = url.searchParams.get("refresh_token");
+    const authCode = url.searchParams.get("code");
+    const rawEmail = url.searchParams.get("email");
+    const emailParam = rawEmail ? decodeURIComponent(rawEmail) : null;
     const type = url.searchParams.get("type");
     const { supabaseServer, response } = getSupabaseServerClient(request);
     const headers = response.headers;
+
+    // Debug logging
+    console.log("Reset password loader - URL params:", {
+        tokenHash,
+        otpToken,
+        accessToken: accessToken ? "present" : "missing",
+        refreshToken: refreshToken ? "present" : "missing",
+        authCode,
+        email: emailParam,
+        type,
+        fullUrl: url.toString()
+    });
+
+    const ensureSession = async () => {
+        const { data: { user } } = await supabaseServer.auth.getUser();
+        if (!user) {
+            return json({ isValidSession: false, error: "Failed to authenticate reset session." }, { headers });
+        }
+        return json({ isValidSession: true }, { headers });
+    };
+
+    const { data: { user } } = await supabaseServer.auth.getUser();
+    if (user) {
+        return json({ isValidSession: true }, { headers });
+    }
 
     // If there's a token_hash and type=recovery, verify the OTP (password recovery flow)
     if (tokenHash && type === "recovery") {
@@ -36,24 +67,41 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<TypedResp
             console.error("Password reset verification error:", error.message);
             return json({ isValidSession: false, error: "Invalid or expired reset link." }, { headers });
         }
-        
-        // Check if user is now authenticated
-        const { data: { user } } = await supabaseServer.auth.getUser();
-        
-        if (!user) {
-            return json({ isValidSession: false, error: "Failed to authenticate reset session." }, { headers });
+        return ensureSession();
+    }
+
+    // Handle PKCE flow - token parameter (used by Supabase email links)
+    if (otpToken && type === "recovery") {
+        const { error } = await supabaseServer.auth.exchangeCodeForSession(otpToken);
+        if (error) {
+            console.error("Password reset PKCE exchangeCode error:", error.message);
+            return json({ isValidSession: false, error: "Invalid or expired reset link." }, { headers });
         }
-        
-        return json({ isValidSession: true }, { headers });
+        return ensureSession();
     }
-    
-    // If no token_hash, check if user is already authenticated (direct navigation)
-    const { data: { user } } = await supabaseServer.auth.getUser();
-    
-    if (user) {
-        return json({ isValidSession: true }, { headers });
+
+    // Handle auth code (PKCE flow) - type parameter may not be present after redirect
+    if (authCode) {
+        const { error } = await supabaseServer.auth.exchangeCodeForSession(authCode);
+        if (error) {
+            console.error("Password reset exchangeCode error:", error.message);
+            return json({ isValidSession: false, error: "Invalid or expired reset link." }, { headers });
+        }
+        return ensureSession();
     }
-    
+
+    if (accessToken && refreshToken && type === "recovery") {
+        const { error } = await supabaseServer.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+        });
+        if (error) {
+            console.error("Password reset setSession error:", error.message);
+            return json({ isValidSession: false, error: "Invalid or expired reset link." }, { headers });
+        }
+        return ensureSession();
+    }
+
     return json({ isValidSession: false, error: "Invalid or expired reset link." }, { headers });
 }
 
