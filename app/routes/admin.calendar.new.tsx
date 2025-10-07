@@ -1,7 +1,7 @@
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
 import { useState } from "react";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { parseLocalDate } from "~/components/calendar/utils";
 import { formatDate } from "~/utils/misc";
 import { getSupabaseServerClient } from "~/utils/supabase.server";
@@ -104,7 +104,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   try {
     // Get date range for the month view
-    const monthStart = startOfMonth(parseISO(currentMonth + '-01'));
+    const monthStart = startOfMonth(parseLocalDate(currentMonth + '-01'));
     const monthEnd = endOfMonth(monthStart);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
@@ -310,7 +310,7 @@ export default function AdminCalendar() {
   const [selectedEvent, setSelectedEvent] = useState<AdminCalendarEvent | null>(null);
   const [currentDate, setCurrentDate] = useState(() => {
     const month = searchParams.get('month');
-    return month ? parseISO(month + '-01') : new Date();
+    return month ? parseLocalDate(month + '-01') : new Date();
   });
   
   const handleDateChange = (date: Date) => {

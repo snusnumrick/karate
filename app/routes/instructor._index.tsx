@@ -1,6 +1,6 @@
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
 import { Form, Link, useLoaderData, useNavigate, useSearchParams, useSubmit } from '@remix-run/react';
-import { addDays, format, parseISO } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { useMemo, type ComponentType } from 'react';
 import type { UserRole } from '~/types/auth';
 import {
@@ -413,10 +413,21 @@ function EmptyState({
   );
 }
 
+/**
+ * Parse a local datetime string (YYYY-MM-DDTHH:mm:ss) as a local Date
+ * This avoids timezone conversion issues
+ */
+function parseLocalDateTime(dateTimeString: string): Date {
+  const [datePart, timePart] = dateTimeString.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes, seconds = 0] = timePart.split(':').map(Number);
+  return new Date(year, month - 1, day, hours, minutes, seconds);
+}
+
 function formatSessionTimeRange(start: string | null, end: string | null): string {
   if (!start) return 'Time TBD';
-  const startDate = parseISO(start);
-  const endDate = end ? parseISO(end) : null;
+  const startDate = parseLocalDateTime(start);
+  const endDate = end ? parseLocalDateTime(end) : null;
 
   const dayPart = formatDate(startDate, { formatString: 'EEE MMM d' });
   const startPart = formatDate(startDate, { formatString: 'h:mm a' });

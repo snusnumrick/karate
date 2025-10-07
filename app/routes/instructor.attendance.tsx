@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { Form, Link, useFetcher, useLoaderData, useSearchParams, useSubmit } from '@remix-run/react';
-import { addDays, addMinutes, format, isAfter, parseISO } from 'date-fns';
+import { addDays, addMinutes, format, isAfter } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { UserRole } from '~/types/auth';
 import {
@@ -360,7 +360,7 @@ export default function InstructorAttendancePage() {
     );
   }
 
-  const lateThreshold = session.start ? addMinutes(parseISO(session.start), LATE_THRESHOLD_MINUTES) : null;
+  const lateThreshold = session.start ? addMinutes(parseLocalDateTime(session.start), LATE_THRESHOLD_MINUTES) : null;
 
   const selectedSessionId = searchParams.get('sessionId') ?? session.id;
   const buildModeLink = (mode: 'record' | 'roster') => {
@@ -1068,10 +1068,21 @@ function buildSessionOptionLabel(session: InstructorSessionPayload): string {
   return `${timeRange} · ${session.className}`;
 }
 
+/**
+ * Parse a local datetime string (YYYY-MM-DDTHH:mm:ss) as a local Date
+ * This avoids timezone conversion issues
+ */
+function parseLocalDateTime(dateTimeString: string): Date {
+  const [datePart, timePart] = dateTimeString.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes, seconds = 0] = timePart.split(':').map(Number);
+  return new Date(year, month - 1, day, hours, minutes, seconds);
+}
+
 function formatSessionTimeRange(start: string | null, end: string | null): string {
   if (!start) return 'Time TBD';
-  const startDate = parseISO(start);
-  const endDate = end ? parseISO(end) : null;
+  const startDate = parseLocalDateTime(start);
+  const endDate = end ? parseLocalDateTime(end) : null;
   const dayPart = formatDate(startDate, { formatString: 'EEE MMM d' });
   const startPart = formatDate(startDate, { formatString: 'h:mm a' });
   if (!endDate) {
@@ -1086,12 +1097,12 @@ function findCurrentOrNextSession(sessions: InstructorSessionPayload[]): Instruc
   const now = new Date();
   const sorted = [...sessions].sort((a, b) => {
     if (!a.start || !b.start) return 0;
-    return parseISO(a.start).getTime() - parseISO(b.start).getTime();
+    return parseLocalDateTime(a.start).getTime() - parseLocalDateTime(b.start).getTime();
   });
 
   for (const session of sorted) {
     if (!session.start) continue;
-    const startDate = parseISO(session.start);
+    const startDate = parseLocalDateTime(session.start);
     if (isAfter(startDate, now) || Math.abs(startDate.getTime() - now.getTime()) <= 60 * 60 * 1000) {
       return session;
     }
