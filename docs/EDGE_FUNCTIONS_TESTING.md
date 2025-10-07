@@ -4,10 +4,11 @@ This guide covers how to test your deployed Supabase Edge Functions in the karat
 
 ## Available Edge Functions
 
-Your project has three Supabase Edge Functions:
+Your project has four Supabase Edge Functions:
 - `payment-reminder` - Sends payment reminders to families with expired student eligibility
 - `missing-waiver-reminder` - Sends reminders to families missing required waiver signatures
 - `sync-pending-payments` - Synchronizes pending payment data
+- `monthly-revenue-report` - Generates and emails monthly revenue reports for session payments
 
 ## 1. Direct HTTP Testing with curl
 
@@ -31,6 +32,20 @@ curl -X POST \
 # Test sync-pending-payments function
 curl -X POST \
   https://YOUR_PROJECT_REF.supabase.co/functions/v1/sync-pending-payments \
+  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Test monthly-revenue-report function (last calendar month)
+curl -X POST \
+  https://YOUR_PROJECT_REF.supabase.co/functions/v1/monthly-revenue-report \
+  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Test monthly-revenue-report function with custom period (e.g., September 2025)
+curl -X POST \
+  "https://YOUR_PROJECT_REF.supabase.co/functions/v1/monthly-revenue-report?period=2025-09" \
   -H "Authorization: Bearer YOUR_ANON_KEY" \
   -H "Content-Type: application/json" \
   -d '{}'
@@ -59,6 +74,7 @@ curl -X POST http://localhost:54321/functions/v1/payment-reminder \
 supabase functions invoke payment-reminder --project-ref YOUR_PROJECT_REF
 supabase functions invoke missing-waiver-reminder --project-ref YOUR_PROJECT_REF
 supabase functions invoke sync-pending-payments --project-ref YOUR_PROJECT_REF
+supabase functions invoke monthly-revenue-report --project-ref YOUR_PROJECT_REF
 ```
 
 ## 3. Browser Testing
@@ -104,6 +120,32 @@ fetch('https://YOUR_PROJECT_REF.supabase.co/functions/v1/sync-pending-payments',
 .then(response => response.text())
 .then(data => console.log(data))
 .catch(error => console.error('Error:', error));
+
+// Test monthly-revenue-report function (last calendar month)
+fetch('https://YOUR_PROJECT_REF.supabase.co/functions/v1/monthly-revenue-report', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_ANON_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({})
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+
+// Test monthly-revenue-report with custom period
+fetch('https://YOUR_PROJECT_REF.supabase.co/functions/v1/monthly-revenue-report?period=2025-09', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_ANON_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({})
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
 ```
 
 ## 4. Monitoring and Logs
@@ -119,9 +161,11 @@ fetch('https://YOUR_PROJECT_REF.supabase.co/functions/v1/sync-pending-payments',
 supabase functions logs payment-reminder --project-ref YOUR_PROJECT_REF
 supabase functions logs missing-waiver-reminder --project-ref YOUR_PROJECT_REF
 supabase functions logs sync-pending-payments --project-ref YOUR_PROJECT_REF
+supabase functions logs monthly-revenue-report --project-ref YOUR_PROJECT_REF
 
 # Follow logs in real-time
 supabase functions logs payment-reminder --project-ref YOUR_PROJECT_REF --follow
+supabase functions logs monthly-revenue-report --project-ref YOUR_PROJECT_REF --follow
 ```
 
 ## 5. Scheduled Function Testing
@@ -161,6 +205,19 @@ SELECT cron.schedule('manual-waiver-reminder', '* * * * *',
 SELECT cron.unschedule('manual-waiver-reminder');
 ```
 
+```sql
+-- Manually run the monthly revenue report
+SELECT cron.schedule('manual-revenue-report', '* * * * *',
+  'SELECT net.http_post(
+    url:=''https://YOUR_PROJECT_REF.supabase.co/functions/v1/monthly-revenue-report'',
+    headers:=''{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}''
+  );'
+);
+
+-- Remove the manual job after testing
+SELECT cron.unschedule('manual-revenue-report');
+```
+
 ## 6. Environment Variables Testing
 
 Ensure your functions have the required secrets set:
@@ -176,7 +233,10 @@ supabase secrets set FROM_EMAIL="Your Name <you@yourdomain.com>" --project-ref Y
 supabase secrets set STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key --project-ref YOUR_PROJECT_REF
 supabase secrets set SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co --project-ref YOUR_PROJECT_REF
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key --project-ref YOUR_PROJECT_REF
+supabase secrets set REVENUE_REPORT_RECIPIENTS="admin@example.com,finance@example.com" --project-ref YOUR_PROJECT_REF
 ```
+
+**Note**: The `REVENUE_REPORT_RECIPIENTS` variable is required for the `monthly-revenue-report` function. It should contain a comma-separated list of email addresses that will receive the monthly revenue reports.
 
 ## 7. Integration Testing Script
 
@@ -191,7 +251,7 @@ async function testEdgeFunctions() {
     'Content-Type': 'application/json'
   };
 
-  const functions = ['payment-reminder', 'missing-waiver-reminder', 'sync-pending-payments'];
+  const functions = ['payment-reminder', 'missing-waiver-reminder', 'sync-pending-payments', 'monthly-revenue-report'];
   
   console.log('🧪 Testing Edge Functions...');
   console.log('================================');
@@ -248,7 +308,7 @@ echo "Project URL: $(supabase status | grep 'API URL' | awk '{print $3}')"
 echo "Anon Key: $(supabase status | grep 'anon key' | awk '{print $3}')"
 
 # Test all functions in sequence
-for func in payment-reminder missing-waiver-reminder sync-pending-payments; do
+for func in payment-reminder missing-waiver-reminder sync-pending-payments monthly-revenue-report; do
   echo "\n🧪 Testing $func..."
   curl -s -X POST "https://YOUR_PROJECT_REF.supabase.co/functions/v1/$func" \
     -H "Authorization: Bearer YOUR_ANON_KEY" \
@@ -324,7 +384,7 @@ echo "Load test completed"
 ### Response Time Monitoring
 ```bash
 # Test response times
-for func in payment-reminder missing-waiver-reminder sync-pending-payments; do
+for func in payment-reminder missing-waiver-reminder sync-pending-payments monthly-revenue-report; do
   echo "Testing $func response time..."
   time curl -s -X POST "https://YOUR_PROJECT_REF.supabase.co/functions/v1/$func" \
     -H "Authorization: Bearer YOUR_ANON_KEY" \

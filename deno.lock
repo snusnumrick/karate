@@ -93,6 +93,7 @@
         "npm:rollup@^4.44.2",
         "npm:square@41",
         "npm:stripe@^17.7.0",
+        "npm:supabase@^2.48.3",
         "npm:tailwind-merge@^3.0.2",
         "npm:tailwindcss-animate@^1.0.7",
         "npm:tailwindcss@^3.3.5",

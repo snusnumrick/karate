@@ -61,7 +61,16 @@ app/
 supabase/
 ├── functions/           # Edge functions (serverless)
 │   ├── _shared/         # Shared code between functions
-│   └── ...
+│   │   ├── supabase.ts       # Supabase client setup
+│   │   ├── email.ts          # Email sending utilities
+│   │   ├── email-templates.ts # Email template generation
+│   │   ├── eligibility.ts    # Student eligibility checking
+│   │   ├── cors.ts           # CORS headers
+│   │   └── database.types.ts # Database type definitions
+│   ├── payment-reminder/     # Payment reminder automation
+│   ├── missing-waiver-reminder/ # Waiver reminder automation
+│   ├── sync-pending-payments/   # Payment sync automation
+│   └── monthly-revenue-report/  # Monthly revenue reporting
 ├── migrations/          # Database migrations
 └── config.toml          # Supabase configuration
 ```
@@ -228,8 +237,19 @@ Versioned REST API for external consumption:
 
 ### Deployment Architecture
 - **Edge Functions**: Supabase Edge Functions for serverless backend logic
+  - `payment-reminder` - Automated payment eligibility reminders
+  - `missing-waiver-reminder` - Automated waiver completion reminders
+  - `sync-pending-payments` - Payment data synchronization
+  - `monthly-revenue-report` - Monthly revenue reporting and analysis
 - **CDN**: Vercel/Netlify CDN for static asset delivery
 - **Database**: Supabase managed PostgreSQL with global distribution
+
+### Automated Reporting
+The system includes automated reporting capabilities via Supabase Edge Functions:
+- **Revenue Reports**: Monthly session revenue summaries with payment type breakdowns
+- **Payment Reminders**: Automated eligibility and expiration notifications
+- **Waiver Tracking**: Missing waiver signature reminders
+- **Configurable Recipients**: Email distribution lists via environment variables
 
 ## Development Workflow
 

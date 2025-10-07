@@ -145,6 +145,10 @@ Add the following environment variables in your deployment platform:
 - `RESEND_API_KEY`: Resend API key for transactional emails
 - `FROM_EMAIL`: Sender email address (e.g., `"Your Name <you@yourdomain.com>"`)
 
+### Reporting & Automation
+
+- `REVENUE_REPORT_RECIPIENTS`: Comma-separated email addresses for monthly revenue reports (e.g., `"admin@example.com,finance@example.com"`)
+
 ### AI Features
 
 - `GEMINI_API_KEY`: Required for Admin DB Chat feature
@@ -219,6 +223,7 @@ npx web-push generate-vapid-keys
    supabase functions deploy payment-reminder
    supabase functions deploy missing-waiver-reminder
    supabase functions deploy sync-pending-payments
+   supabase functions deploy monthly-revenue-report
    ```
 
 4. **Configure Payment Provider Secrets for Edge Functions:**
@@ -253,9 +258,31 @@ npx web-push generate-vapid-keys
      '0 9 * * *',
      'SELECT net.http_post(url:=''https://your-project-ref.supabase.co/functions/v1/payment-reminder'', headers:=''{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.jwt_secret') || '"}''::jsonb) as request_id;'
    );
+
+   -- Schedule monthly revenue report (1st of each month at 8 AM)
+   SELECT cron.schedule(
+     'monthly-revenue-report',
+     '0 8 1 * *',
+     'SELECT net.http_post(url:=''https://your-project-ref.supabase.co/functions/v1/monthly-revenue-report'', headers:=''{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.jwt_secret') || '"}''::jsonb) as request_id;'
+   );
    ```
 
-6. **Authentication Settings:**
+6. **Configure Edge Function Secrets:**
+
+   Set required environment variables for all edge functions:
+   ```bash
+   # Required for all functions
+   supabase secrets set VITE_SITE_URL=https://your-domain.com
+   supabase secrets set RESEND_API_KEY=your_resend_key
+   supabase secrets set FROM_EMAIL="Your School Name <noreply@yourdomain.com>"
+   supabase secrets set SUPABASE_URL=https://your-project-ref.supabase.co
+   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+   # Required for monthly-revenue-report function
+   supabase secrets set REVENUE_REPORT_RECIPIENTS="admin@example.com,finance@example.com"
+   ```
+
+7. **Authentication Settings:**
    - Ensure "Confirm email" is **enabled** for production
    - Set up database backups
 
