@@ -63,7 +63,6 @@ interface AdminCalendarEvent {
 
 type LoaderData = {
   events: AdminCalendarEvent[];
-  birthdayEvents: CalendarEvent[];
   programs: Array<{ id: string; name: string; color?: string }>;
   instructors: Array<{ id: string; name: string }>;
   filters: {
@@ -81,7 +80,7 @@ type LoaderData = {
     id: string;
     first_name: string;
     last_name: string;
-    birth_date: string;
+    birth_date: string | null;
   }>;
 };
 
@@ -395,14 +394,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       return e.enrollmentStats.enrolled / capacity;
     });
 
-    const avgCapacityPercentage = totalCapacityPercentages.length > 0 
+    const avgCapacityPercentage = totalCapacityPercentages.length > 0
       ? totalCapacityPercentages.reduce((sum, percentage) => sum + percentage, 0) / totalCapacityPercentages.length
       : 0;
-
-    // Convert student birthdays to calendar events
-    // Use current date to create a 12-month rolling window of birthdays
-    const studentsWithBirthDates = students.filter(s => s.birth_date);
-    const birthdayEvents = birthdaysToCalendarEvents(studentsWithBirthDates, new Date());
 
     const stats = {
       totalSessions: events.length,
@@ -413,7 +407,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     return json({
       events,
-      birthdayEvents,
+      students, // Return students so component can generate birthday events
       programs,
       instructors,
       filters: {
@@ -428,7 +422,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.error('Error loading admin calendar:', error);
     return json({
       events: [],
-      birthdayEvents: [],
+      students: [],
       programs: [],
       instructors: [],
       filters: {},
@@ -438,7 +432,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function AdminCalendar() {
-  const { events, birthdayEvents, programs, instructors, filters } = useLoaderData<LoaderData>();
+  const { events, students, programs, instructors, filters } = useLoaderData<LoaderData>();
   const [searchParams] = useSearchParams();
   const [selectedEvent, setSelectedEvent] = useState<AdminCalendarEvent | null>(null);
   const navigate = useNavigate();
@@ -446,6 +440,9 @@ export default function AdminCalendar() {
     const month = searchParams.get('month');
     return month ? parseLocalDate(month + '-01') : new Date();
   });
+
+  // Generate birthday events on the client side to avoid timezone serialization issues
+  const birthdayEvents = birthdaysToCalendarEvents(students, currentDate);
   
   const handleDateChange = (date: Date) => {
     // Store current scroll position
