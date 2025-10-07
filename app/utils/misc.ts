@@ -110,10 +110,13 @@ export function formatDate(
         // Use parseLocalDate for date-only strings (YYYY-MM-DD) to avoid timezone issues
         // Use parseISO for datetime strings with time components
         let dateObj: Date;
+        let isDateOnly = false;
+
         if (typeof date === 'string') {
             // Check if it's a date-only string (YYYY-MM-DD format)
             if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
                 dateObj = parseLocalDate(date);
+                isDateOnly = true;
             } else {
                 // For datetime strings or other formats, use parseISO
                 dateObj = parseISO(date);
@@ -130,6 +133,21 @@ export function formatDate(
             // Map currentLocale to a date-fns locale object for date-fns/format.
             // This is a simplified mapping; a more robust one might be needed for more locales.
             const dfnsLocale = currentLocale === 'en-CA' ? enCA : undefined;
+
+            // For date-only formats (like 'yyyy-MM-dd'), ensure we format in local timezone
+            // by manually extracting the components instead of relying on date-fns UTC interpretation
+            if (isDateOnly || options.formatString === 'yyyy-MM-dd') {
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(dateObj.getDate()).padStart(2, '0');
+
+                // Handle common format strings manually to preserve local date
+                if (options.formatString === 'yyyy-MM-dd') {
+                    return `${year}-${month}-${day}`;
+                }
+                // For other formats, use date-fns but it should work correctly with local Date objects
+            }
+
             return fnsFormat(dateObj, options.formatString, { locale: dfnsLocale });
         } else {
             let intlOptions: Intl.DateTimeFormatOptions;
