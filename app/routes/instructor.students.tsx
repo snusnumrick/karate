@@ -1,6 +1,6 @@
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
 import { Link, useLoaderData } from '@remix-run/react';
-import { addDays, format, isAfter, parseISO } from 'date-fns';
+import { addDays, format, isAfter } from 'date-fns';
 import type { UserRole } from '~/types/auth';
 import {
   getInstructorSessionsWithDetails,
@@ -32,6 +32,17 @@ export const handle: InstructorRouteHandle = {
   breadcrumb: () => [{ label: 'Students', href: '/instructor/students' }],
 };
 
+/**
+ * Parse a local datetime string (YYYY-MM-DDTHH:mm:ss) as a local Date
+ * This avoids timezone conversion issues
+ */
+function parseLocalDateTime(dateTimeString: string): Date {
+  const [datePart, timePart] = dateTimeString.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes, seconds = 0] = timePart.split(':').map(Number);
+  return new Date(year, month - 1, day, hours, minutes, seconds);
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers } = context;
@@ -51,7 +62,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const studentMap = new Map<string, StudentSummary>();
 
   for (const session of serialized) {
-    const sessionStart = session.start ? parseISO(session.start) : null;
+    const sessionStart = session.start ? parseLocalDateTime(session.start) : null;
     const isPastOrCompleted = session.status === 'completed' || (sessionStart && !isAfter(sessionStart, today));
 
     for (const entry of session.roster) {
@@ -162,7 +173,7 @@ function EmptyState() {
 function pickMoreRecent(existing: string | null, candidate: string | null): string | null {
   if (!candidate) return existing;
   if (!existing) return candidate;
-  const existingDate = parseISO(existing);
-  const candidateDate = parseISO(candidate);
+  const existingDate = parseLocalDateTime(existing);
+  const candidateDate = parseLocalDateTime(candidate);
   return candidateDate > existingDate ? candidate : existing;
 }

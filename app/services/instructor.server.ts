@@ -291,6 +291,20 @@ function combineDateAndTime(date: string, time?: string | null): Date | null {
   }
 }
 
+/**
+ * Format a Date object as a local datetime string (YYYY-MM-DDTHH:mm:ss)
+ * This avoids timezone conversion issues when serializing dates
+ */
+function formatDateTimeLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
 export function formatSessionTimeRange(start: Date | null, end: Date | null): string {
   if (!start) return 'Time TBD';
 
@@ -336,8 +350,8 @@ export function serializeInstructorSessionSummary(summary: InstructorSessionSumm
     programName: summary.session.class?.program?.name ?? null,
     programDescription: summary.session.class?.program?.description ?? null,
     sessionDate: summary.session.session_date,
-    start: summary.startDateTime ? summary.startDateTime.toISOString() : null,
-    end: summary.endDateTime ? summary.endDateTime.toISOString() : null,
+    start: summary.startDateTime ? formatDateTimeLocal(summary.startDateTime) : null,
+    end: summary.endDateTime ? formatDateTimeLocal(summary.endDateTime) : null,
     status: summary.session.status,
     notes: summary.session.notes ?? null,
     attendanceSummary: summary.attendanceSummary,

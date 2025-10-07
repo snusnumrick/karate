@@ -1,7 +1,7 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams, useNavigate } from "@remix-run/react";
 import { useState } from "react";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { parseLocalDate, birthdaysToCalendarEvents, expandMultiDayEvents } from "~/components/calendar/utils";
 import { formatDate } from "~/utils/misc";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
@@ -104,10 +104,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   try {
     // Get date range for the month view using local date formatting
-    const monthStart = startOfMonth(parseISO(currentMonth + '-01'));
+    const monthStart = startOfMonth(parseLocalDate(currentMonth + '-01'));
     const monthEnd = endOfMonth(monthStart);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
+
+    console.log('Admin Calendar - Date range calculation:', {
+      currentMonth,
+      monthStartParsed: parseLocalDate(currentMonth + '-01'),
+      monthStart,
+      calendarStart,
+      calendarEnd,
+      calendarStartFormatted: formatDate(calendarStart, { formatString: 'yyyy-MM-dd' }),
+      calendarEndFormatted: formatDate(calendarEnd, { formatString: 'yyyy-MM-dd' })
+    });
 
     // Fetch programs for filtering
     const { data: programsData } = await supabaseServer
@@ -165,8 +175,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
           )
         )
       `)
-      .gte('session_date', format(calendarStart, 'yyyy-MM-dd'))
-      .lte('session_date', format(calendarEnd, 'yyyy-MM-dd'))
+      .gte('session_date', formatDate(calendarStart, { formatString: 'yyyy-MM-dd' }))
+      .lte('session_date', formatDate(calendarEnd, { formatString: 'yyyy-MM-dd' }))
       .order('session_date')
       .order('start_time');
 
@@ -177,7 +187,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     const sessions = sessionsData || [];
-    console.log('Fetched sessions:', sessions.length, 'sessions in date range', format(calendarStart, 'yyyy-MM-dd'), 'to', format(calendarEnd, 'yyyy-MM-dd'));
+    console.log('Fetched sessions:', sessions.length, 'sessions in date range', formatDate(calendarStart, { formatString: 'yyyy-MM-dd' }), 'to', formatDate(calendarEnd, { formatString: 'yyyy-MM-dd' }));
 
     // Debug: Check if there are any sessions at all
 /*    const { count: totalSessionsCount } = await supabaseServer
@@ -247,8 +257,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
           last_name
         )
       `)
-      .gte('start_date', format(calendarStart, 'yyyy-MM-dd'))
-      .lte('start_date', format(calendarEnd, 'yyyy-MM-dd'))
+      .gte('start_date', formatDate(calendarStart, { formatString: 'yyyy-MM-dd' }))
+      .lte('start_date', formatDate(calendarEnd, { formatString: 'yyyy-MM-dd' }))
       .order('start_date')
       .order('start_time');
 
@@ -273,10 +283,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
         const instructorData = classData.instructor;
         const enrollmentData = enrollmentCounts[session.class_id] || { enrolled: 0, waitlist: 0 };
 
+        const parsedDate = parseLocalDate(session.session_date);
+        console.log('Admin Calendar - Parsing session:', {
+          sessionId: session.id,
+          sessionDateString: session.session_date,
+          parsedDate,
+          parsedDateISOString: parsedDate.toISOString(),
+          parsedDateLocalString: parsedDate.toLocaleDateString(),
+          className: classData.name
+        });
+
         return {
           id: session.id,
           title: classData.name,
-          date: parseLocalDate(session.session_date),
+          date: parsedDate,
           type: 'session' as const,
           status: session.status as 'scheduled' | 'completed' | 'cancelled',
           className: classData.name,
@@ -428,7 +448,7 @@ export default function AdminCalendar() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(() => {
     const month = searchParams.get('month');
-    return month ? parseISO(month + '-01') : new Date();
+    return month ? parseLocalDate(month + '-01') : new Date();
   });
   
   const handleDateChange = (date: Date) => {

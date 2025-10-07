@@ -7,12 +7,11 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import { 
-  startOfMonth, 
-  endOfMonth, 
-  startOfWeek, 
-  endOfWeek, 
-  parseISO
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek
 } from "date-fns";
 import { Calendar } from "~/components/calendar/Calendar";
 import { CalendarLayout } from "~/components/calendar/CalendarLayout";
@@ -191,7 +190,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     // Get date range for the month view (including surrounding weeks)
-    const monthStart = startOfMonth(parseISO(currentMonth + '-01'));
+    const monthStart = startOfMonth(parseLocalDate(currentMonth + '-01'));
     const monthEnd = endOfMonth(monthStart);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
@@ -480,7 +479,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function FamilyCalendarPage() {
   const { students, sessions, attendance, enrollments, events, familyName, currentMonth } = useLoaderData<LoaderData>();
-  const [currentDate, setCurrentDate] = useState(() => parseISO(currentMonth + '-01'));
+  const [currentDate, setCurrentDate] = useState(() => parseLocalDate(currentMonth + '-01'));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const scrollPositionRef = useRef<number>(0);
