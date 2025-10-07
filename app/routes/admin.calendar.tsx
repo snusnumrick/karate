@@ -448,21 +448,13 @@ export default function AdminCalendar() {
   };
 
   const handleFilterChange = (key: string, value: string) => {
-    // Store current scroll position
-    const currentScrollY = window.scrollY;
-    
-    // Update URL without triggering navigation
     const newParams = new URLSearchParams(searchParams);
     if (value === 'all' || !value) {
       newParams.delete(key);
     } else {
       newParams.set(key, value);
     }
-    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-    window.history.replaceState(null, '', newUrl);
-    
-    // Restore scroll position immediately
-    window.scrollTo(0, currentScrollY);
+    navigate(`?${newParams.toString()}`, { replace: true });
   };
 
   const handleEventClick = (event: CalendarEvent) => {
