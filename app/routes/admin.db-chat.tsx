@@ -399,7 +399,7 @@ Natural Language Query: "${query}"
     try {
         const generationConfig = {
             // temperature: 0.7, // Adjust creativity vs. precision
-            maxOutputTokens: 500, // Limit output length
+            maxOutputTokens: 1000, // Limit output length
         };
 
         const safetySettings = [

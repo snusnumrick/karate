@@ -193,8 +193,8 @@ export const siteConfig = {
     ai: {
         models: {
             primary: "gemini-2.5-pro",
-            backup: "gemini-1.5-pro",
-            summary: "gemini-2.0-flash"
+            backup: "gemini-2.5-flash",
+            summary: "gemini-2.5-flash"
         }
     },
     // Territory Acknowledgement

@@ -19,7 +19,8 @@
       "Bash(timeout 15 npm run typecheck)",
       "Bash(timeout 20 npm run typecheck)",
       "Bash(find:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "WebFetch(domain:ai.google.dev)"
     ],
     "deny": [],
     "ask": []
