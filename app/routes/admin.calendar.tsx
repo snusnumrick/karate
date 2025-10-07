@@ -442,7 +442,11 @@ export default function AdminCalendar() {
     });
 
     // Generate birthday events on the client side to avoid timezone serialization issues
-    const birthdayEvents = birthdaysToCalendarEvents(students, currentDate);
+    // Filter students with non-null birth_date before passing to birthdaysToCalendarEvents
+    const studentsWithBirthdays = students.filter((s): s is typeof s & { birth_date: string } =>
+        s.birth_date !== null
+    );
+    const birthdayEvents = birthdaysToCalendarEvents(studentsWithBirthdays, currentDate);
 
     const handleDateChange = (date: Date) => {
         // Store current scroll position
