@@ -241,33 +241,61 @@ npx web-push generate-vapid-keys
 
    The Square Web Payments SDK still needs `SQUARE_APPLICATION_ID` and `SQUARE_LOCATION_ID` in your hosting environment (Vercel, etc.), but the sync function only requires the access token and environment.
 
-5. **Schedule Functions using pg_cron:**
-   
-   Set up automated scheduling for reminder and sync functions:
+5. **Enable Required Extensions:**
+
+   Before scheduling cron jobs, enable the necessary extensions in your Supabase SQL editor:
+   ```sql
+   -- Enable pg_net for HTTP requests from cron jobs (creates net schema automatically)
+   CREATE EXTENSION IF NOT EXISTS pg_net;
+
+   -- Enable pg_cron for scheduled jobs (usually pre-enabled)
+   CREATE EXTENSION IF NOT EXISTS pg_cron;
+   ```
+
+6. **Schedule Functions using pg_cron:**
+
+   Set up automated scheduling for reminder and sync functions. Replace `your-project-ref` with your Supabase project reference and `YOUR_SERVICE_ROLE_KEY` with your service role key:
    ```sql
    -- Schedule sync-pending-payments to run every 15 minutes
    SELECT cron.schedule(
      'sync-pending-payments',
      '*/15 * * * *',
-     'SELECT net.http_post(url:=''https://your-project-ref.supabase.co/functions/v1/sync-pending-payments'', headers:=''{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.jwt_secret') || '"}''::jsonb) as request_id;'
+     $$
+     SELECT net.http_post(
+       url:='https://your-project-ref.supabase.co/functions/v1/sync-pending-payments',
+       headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb
+     ) as request_id;
+     $$
    );
-   
+
    -- Schedule payment reminders (daily at 9 AM)
    SELECT cron.schedule(
      'payment-reminder',
      '0 9 * * *',
-     'SELECT net.http_post(url:=''https://your-project-ref.supabase.co/functions/v1/payment-reminder'', headers:=''{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.jwt_secret') || '"}''::jsonb) as request_id;'
+     $$
+     SELECT net.http_post(
+       url:='https://your-project-ref.supabase.co/functions/v1/payment-reminder',
+       headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb
+     ) as request_id;
+     $$
    );
 
    -- Schedule monthly revenue report (1st of each month at 8 AM)
    SELECT cron.schedule(
      'monthly-revenue-report',
      '0 8 1 * *',
-     'SELECT net.http_post(url:=''https://your-project-ref.supabase.co/functions/v1/monthly-revenue-report'', headers:=''{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.jwt_secret') || '"}''::jsonb) as request_id;'
+     $$
+     SELECT net.http_post(
+       url:='https://your-project-ref.supabase.co/functions/v1/monthly-revenue-report',
+       headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb
+     ) as request_id;
+     $$
    );
    ```
 
-6. **Configure Edge Function Secrets:**
+   **Security Note:** The service role key grants full database access. Keep it secure and never commit it to version control.
+
+7. **Configure Edge Function Secrets:**
 
    Set required environment variables for all edge functions:
    ```bash
@@ -282,7 +310,7 @@ npx web-push generate-vapid-keys
    supabase secrets set REVENUE_REPORT_RECIPIENTS="admin@example.com,finance@example.com"
    ```
 
-7. **Authentication Settings:**
+8. **Authentication Settings:**
    - Ensure "Confirm email" is **enabled** for production
    - Set up database backups
 

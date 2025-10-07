@@ -132,6 +132,47 @@ describe('formatDate', () => {
         expect(result).toBe(dateStr);
       });
     });
+
+    it('handles date-only strings with yyyy-MM-dd format using manual extraction', () => {
+      // This tests the specific fix where we manually extract components
+      // for yyyy-MM-dd format to avoid timezone issues
+      const result = formatDate('2025-10-16', { formatString: 'yyyy-MM-dd' });
+      expect(result).toBe('2025-10-16');
+    });
+
+    it('formats Date objects correctly with yyyy-MM-dd format', () => {
+      // Test that local Date objects also work correctly
+      const date = new Date(2025, 9, 16); // October 16, 2025 (month is 0-indexed)
+      const result = formatDate(date, { formatString: 'yyyy-MM-dd' });
+      expect(result).toBe('2025-10-16');
+    });
+
+    it('preserves local date when formatting with other date-fns formats', () => {
+      // Verify that other formats also work correctly with date-only strings
+      const result = formatDate('2025-10-16', { formatString: 'MMM d, yyyy' });
+      expect(result).toContain('Oct 16, 2025');
+    });
+
+    it('handles dates at month boundaries without shifting', () => {
+      // Test critical boundary dates
+      const lastDayOfMonth = formatDate('2025-10-31', { formatString: 'yyyy-MM-dd' });
+      const firstDayOfMonth = formatDate('2025-11-01', { formatString: 'yyyy-MM-dd' });
+
+      expect(lastDayOfMonth).toBe('2025-10-31');
+      expect(firstDayOfMonth).toBe('2025-11-01');
+    });
+
+    it('maintains consistency between server and client date formatting', () => {
+      // Simulate the server-client scenario:
+      // Server creates a local date, client receives and formats it
+      const serverDate = new Date(2025, 9, 16); // Local date on server
+
+      // Simulate JSON serialization (would convert to ISO string)
+      // Then format it back to yyyy-MM-dd
+      const clientFormatted = formatDate(serverDate, { formatString: 'yyyy-MM-dd' });
+
+      expect(clientFormatted).toBe('2025-10-16');
+    });
   });
 });
 

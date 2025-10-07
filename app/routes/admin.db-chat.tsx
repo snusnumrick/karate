@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react'; // Import useEffect and useRef
-import {ActionFunctionArgs, json} from "@vercel/remix";
+import {ActionFunctionArgs, json, LoaderFunctionArgs} from "@vercel/remix";
 // Import useSubmit
-import {Form, useActionData, useNavigation, useSubmit} from "@remix-run/react";
+import {Form, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
 import {Button} from "~/components/ui/button";
 import {Textarea} from "~/components/ui/textarea";
 
@@ -121,6 +121,18 @@ async function getAndCacheSchemaDescription(): Promise<string> {
 
 // --- End Schema Fetch Function ---
 
+// Loader function to provide CSRF token
+export async function loader({request}: LoaderFunctionArgs) {
+    const [token, cookieHeader] = await csrf.commitToken(request);
+    return json(
+        { csrfToken: token },
+        cookieHeader ? {
+            headers: {
+                "Set-Cookie": cookieHeader,
+            },
+        } : undefined
+    );
+}
 
 // The action function to process the query and generate a summary
 export async function action({request}: ActionFunctionArgs): Promise<Response> {
@@ -387,7 +399,7 @@ Natural Language Query: "${query}"
     try {
         const generationConfig = {
             // temperature: 0.7, // Adjust creativity vs. precision
-            maxOutputTokens: 500, // Limit output length
+            maxOutputTokens: 1000, // Limit output length
         };
 
         const safetySettings = [
@@ -719,6 +731,7 @@ export default function AdminDbChat() {
         executionTime?: number; // Add execution time here
     }[]>([]);
 
+    const loaderData = useLoaderData<typeof loader>();
     const actionData = useActionData<ActionResponse>();
     const navigation = useNavigation();
     const submit = useSubmit(); // Initialize useSubmit
@@ -829,7 +842,7 @@ export default function AdminDbChat() {
                                                 addQueryToHistory(q); // Add to history optimistically
                                                 // Use useSubmit to send data directly, bypassing form serialization timing issues
                                                 submit(
-                                                    {query: q}, // Explicitly send the question
+                                                    {query: q, csrf: loaderData.csrfToken}, // Include CSRF token
                                                     {method: "post", action: "/admin/db-chat"}
                                                 );
                                             }}

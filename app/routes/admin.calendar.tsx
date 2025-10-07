@@ -21,7 +21,7 @@ interface AdminCalendarEvent {
   // Base CalendarEvent properties
   id: string;
   title: string;
-  date: Date;
+  date: string; // YYYY-MM-DD format to avoid timezone serialization issues
   type: 'session' | 'attendance' | 'event';
   status: 'scheduled' | 'completed' | 'cancelled';
   className?: string;
@@ -283,20 +283,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
         const instructorData = classData.instructor;
         const enrollmentData = enrollmentCounts[session.class_id] || { enrolled: 0, waitlist: 0 };
 
-        const parsedDate = parseLocalDate(session.session_date);
         console.log('Admin Calendar - Parsing session:', {
           sessionId: session.id,
           sessionDateString: session.session_date,
-          parsedDate,
-          parsedDateISOString: parsedDate.toISOString(),
-          parsedDateLocalString: parsedDate.toLocaleDateString(),
           className: classData.name
         });
 
         return {
           id: session.id,
           title: classData.name,
-          date: parsedDate,
+          date: session.session_date, // Keep as string to avoid timezone issues
           type: 'session' as const,
           status: session.status as 'scheduled' | 'completed' | 'cancelled',
           className: classData.name,
@@ -351,7 +347,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         return {
           id: `event-${event.id}`,
           title: event.title,
-          date: parseLocalDate(event.start_date),
+          date: event.start_date, // Keep as string to avoid timezone issues
           type: 'event' as const,
           eventType: event.event_type_id,
           status: (event.status === 'completed' ? 'completed' : 
@@ -596,11 +592,11 @@ export default function AdminCalendar() {
         <div className="p-6">
           <Calendar
             events={expandMultiDayEvents([
-              // Session events
+              // Session events - parse date strings to Date objects
               ...events.map(event => ({
                 id: event.id,
                 title: event.title,
-                date: event.date,
+                date: parseLocalDate(event.date), // Parse YYYY-MM-DD string to local Date
                 type: event.type,
                 status: event.status, // Pass the session status for color coding
                 className: event.className,
@@ -634,7 +630,7 @@ export default function AdminCalendar() {
                 <div>
                   <h4 className="font-semibold mb-2">Session Details</h4>
                   <div className="space-y-2 text-sm">
-                    <div>Date: {formatDate(selectedEvent.date, { formatString: 'PPP' })}</div>
+                    <div>Date: {formatDate(parseLocalDate(selectedEvent.date), { formatString: 'PPP' })}</div>
                     <div>Time: {selectedEvent.startTime} - {selectedEvent.endTime}</div>
                     <div>Program: {selectedEvent.programName}</div>
                     <div>Instructor: {selectedEvent.instructorName || 'Not assigned'}</div>
