@@ -1,5 +1,6 @@
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths } from 'date-fns';
 import type { CalendarDay, CalendarEvent } from './types';
+import { formatDate } from '~/utils/misc';
 
 /**
  * Convert student birthdays to calendar events
@@ -79,15 +80,22 @@ export function generateCalendarDays(date: Date): CalendarDay[] {
  */
 export function groupEventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
   const grouped = new Map<string, CalendarEvent[]>();
-  
+
   events.forEach(event => {
-    const dateKey = format(event.date, 'yyyy-MM-dd');
+    const dateKey = formatDate(event.date, { formatString: 'yyyy-MM-dd' });
+    console.log('groupEventsByDate:', {
+      eventId: event.id,
+      eventTitle: event.title,
+      eventDate: event.date,
+      eventDateToString: event.date.toString(),
+      dateKey
+    });
     if (!grouped.has(dateKey)) {
       grouped.set(dateKey, []);
     }
     grouped.get(dateKey)!.push(event);
   });
-  
+
   return grouped;
 }
 
@@ -96,11 +104,18 @@ export function groupEventsByDate(events: CalendarEvent[]): Map<string, Calendar
  */
 export function assignEventsToCalendarDays(days: CalendarDay[], events: CalendarEvent[]): CalendarDay[] {
   const eventsByDate = groupEventsByDate(events);
-  
+
   return days.map(day => {
-    const dateKey = format(day.date, 'yyyy-MM-dd');
+    const dateKey = formatDate(day.date, { formatString: 'yyyy-MM-dd' });
     const dayEvents = eventsByDate.get(dateKey) || [];
-    
+
+    console.log('assignEventsToCalendarDays:', {
+      dayDate: day.date,
+      dayDateToString: day.date.toString(),
+      dateKey,
+      eventsCount: dayEvents.length
+    });
+
     return {
       ...day,
       events: dayEvents

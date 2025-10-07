@@ -109,6 +109,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
 
+    console.log('Admin Calendar - Date range calculation:', {
+      currentMonth,
+      monthStartParsed: parseLocalDate(currentMonth + '-01'),
+      monthStart,
+      calendarStart,
+      calendarEnd,
+      calendarStartFormatted: formatDate(calendarStart, { formatString: 'yyyy-MM-dd' }),
+      calendarEndFormatted: formatDate(calendarEnd, { formatString: 'yyyy-MM-dd' })
+    });
+
     // Fetch programs for filtering
     const { data: programsData } = await supabaseServer
       .from('programs')
@@ -273,10 +283,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
         const instructorData = classData.instructor;
         const enrollmentData = enrollmentCounts[session.class_id] || { enrolled: 0, waitlist: 0 };
 
+        const parsedDate = parseLocalDate(session.session_date);
+        console.log('Admin Calendar - Parsing session:', {
+          sessionId: session.id,
+          sessionDateString: session.session_date,
+          parsedDate,
+          parsedDateISOString: parsedDate.toISOString(),
+          parsedDateLocalString: parsedDate.toLocaleDateString(),
+          className: classData.name
+        });
+
         return {
           id: session.id,
           title: classData.name,
-          date: parseLocalDate(session.session_date),
+          date: parsedDate,
           type: 'session' as const,
           status: session.status as 'scheduled' | 'completed' | 'cancelled',
           className: classData.name,

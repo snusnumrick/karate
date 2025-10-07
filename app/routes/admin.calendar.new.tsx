@@ -157,8 +157,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
           )
         )
       `)
-      .gte('session_date', format(calendarStart, 'yyyy-MM-dd'))
-      .lte('session_date', format(calendarEnd, 'yyyy-MM-dd'))
+      .gte('session_date', formatDate(calendarStart, { formatString: 'yyyy-MM-dd' }))
+      .lte('session_date', formatDate(calendarEnd, { formatString: 'yyyy-MM-dd' }))
       .order('session_date')
       .order('start_time');
 
