@@ -171,9 +171,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
       .order('start_time');
 
     const { data: sessionsData, error: sessionsError } = await sessionsQuery;
-    if (sessionsError) throw sessionsError;
+    if (sessionsError) {
+      console.error('Error fetching sessions:', sessionsError);
+      throw sessionsError;
+    }
 
     const sessions = sessionsData || [];
+    console.log('Fetched sessions:', sessions.length, 'sessions in date range', format(calendarStart, 'yyyy-MM-dd'), 'to', format(calendarEnd, 'yyyy-MM-dd'));
+
+    // Debug: Check if there are any sessions at all
+/*    const { count: totalSessionsCount } = await supabaseServer
+      .from('class_sessions')
+      .select('*', { count: 'exact', head: true });
+    console.log('Total sessions in database:', totalSessionsCount);*/
 
     // Get enrollment counts for each class
     const classIds = [...new Set(sessions.map(s => s.class_id))];
@@ -438,21 +448,13 @@ export default function AdminCalendar() {
   };
 
   const handleFilterChange = (key: string, value: string) => {
-    // Store current scroll position
-    const currentScrollY = window.scrollY;
-    
-    // Update URL without triggering navigation
     const newParams = new URLSearchParams(searchParams);
     if (value === 'all' || !value) {
       newParams.delete(key);
     } else {
       newParams.set(key, value);
     }
-    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-    window.history.replaceState(null, '', newUrl);
-    
-    // Restore scroll position immediately
-    window.scrollTo(0, currentScrollY);
+    navigate(`?${newParams.toString()}`, { replace: true });
   };
 
   const handleEventClick = (event: CalendarEvent) => {
