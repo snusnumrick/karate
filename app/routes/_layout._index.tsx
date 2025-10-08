@@ -343,9 +343,9 @@ export default function Index() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
                             <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
                                 <Clock className="h-8 w-8 text-green-400 mx-auto mb-3" />
-                                <h3 className="font-bold text-lg mb-2">Class Schedule</h3>
-                                <p className="text-sm">{displaySchedule.days}</p>
-                                <p className="text-sm">{displaySchedule.timeRange}</p>
+                                <h3 className="font-bold text-lg mb-2">Flexible Training Times</h3>
+                                <p className="text-sm">Multiple weekly sessions</p>
+                                <p className="text-sm">See <Link to="/classes" className="underline hover:text-green-200">Programs</Link> for schedule</p>
                             </div>
                             <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-20">
                                 <Users className="h-8 w-8 text-green-400 mx-auto mb-3" />
@@ -511,7 +511,7 @@ export default function Index() {
                             </li>
                             <li className="flex items-center">
                                 <Clock className="mr-2 h-5 w-5 flex-shrink-0 text-blue-500 dark:text-blue-400" aria-hidden="true" />
-                                <span>{displaySchedule.days} at {displaySchedule.timeRange}</span>
+                                <span>Multiple sessions weekly - see <Link to="/classes" className="underline hover:text-green-600 dark:hover:text-green-400">Programs</Link> for schedule</span>
                             </li>
                             <li className="flex items-center">
                                 <Users className="mr-2 h-5 w-5 flex-shrink-0 text-purple-500 dark:text-purple-400" aria-hidden="true" />
