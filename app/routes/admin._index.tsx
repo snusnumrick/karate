@@ -471,7 +471,7 @@ export default function AdminDashboard() {
 
                 {/* Total Payments Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
-                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Payments (Completed)</h2>
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Payments</h2>
                     {/* Divide by 100 to convert cents to dollars */}
                     <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{formatMoney(data.totalPayments)}</p>
                     <Link to="/admin/payments"
