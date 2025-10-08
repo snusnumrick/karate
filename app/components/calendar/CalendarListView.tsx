@@ -4,6 +4,12 @@ import { Calendar as CalendarIcon, Clock, Users, MapPin } from 'lucide-react';
 import { Card, CardContent } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import type { CalendarEvent } from './types';
+import {
+  getSessionStatusColors,
+  getBirthdayColors,
+  getEventColors,
+  getAttendanceStatusVariant
+} from './utils';
 
 interface CalendarListViewProps {
   events: CalendarEvent[];
@@ -24,36 +30,36 @@ export function CalendarListView({ events, currentDate, onEventClick }: Calendar
   })).filter(dayData => dayData.events.length > 0);
 
   const getEventTypeColor = (event: CalendarEvent) => {
-    switch (event.type) {
-      case 'session':
-        return 'bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200';
-      case 'attendance':
-        return event.status === 'present' 
-          ? 'bg-green-100 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200'
-          : 'bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200';
-      case 'birthday':
-        return 'bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700 text-pink-800 dark:text-pink-200';
-      case 'event':
-        return 'bg-purple-100 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700 text-purple-800 dark:text-purple-200';
-      default:
-        return 'bg-muted border-border text-muted-foreground';
+    if (event.type === 'session') {
+      const colors = getSessionStatusColors(event.status);
+      return `${colors.background} ${colors.border} ${colors.text}`;
     }
+    if (event.type === 'birthday') {
+      const colors = getBirthdayColors();
+      return `${colors.background} ${colors.border} ${colors.text}`;
+    }
+    if (event.type === 'event') {
+      const colors = getEventColors();
+      return `${colors.background} ${colors.border} ${colors.text}`;
+    }
+    if (event.type === 'attendance') {
+      // For attendance, use colors based on status
+      if (event.status === 'present') {
+        return 'bg-green-100 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200';
+      }
+      if (event.status === 'absent') {
+        return 'bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200';
+      }
+      if (event.status === 'late') {
+        return 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200';
+      }
+      if (event.status === 'excused') {
+        return 'bg-gray-100 dark:bg-gray-900/30 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200';
+      }
+    }
+    return 'bg-muted border-border text-muted-foreground';
   };
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'present':
-        return 'default';
-      case 'absent':
-        return 'destructive';
-      case 'excused':
-        return 'secondary';
-      case 'late':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
 
   if (eventsByDay.length === 0) {
     return (
@@ -119,7 +125,7 @@ export function CalendarListView({ events, currentDate, onEventClick }: Calendar
                          event.type === 'birthday' ? 'Birthday' : 'Event'}
                       </Badge>
                       {event.status && (
-                        <Badge variant={getStatusBadgeVariant(event.status)} className="text-xs">
+                        <Badge variant={event.type === 'attendance' ? getAttendanceStatusVariant(event.status) : 'outline'} className="text-xs">
                           {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
                         </Badge>
                       )}

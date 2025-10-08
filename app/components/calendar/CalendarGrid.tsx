@@ -3,10 +3,67 @@ import { formatDate } from '~/utils/misc';
 import { CalendarEvent } from './CalendarEvent';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { Button } from '~/components/ui/button';
+import { Badge } from '~/components/ui/badge';
 import { Calendar as CalendarIcon, Clock, Users } from 'lucide-react';
 import type { CalendarGridProps, CalendarEvent as CalendarEventType } from './types';
+import {
+  getSessionStatusColors,
+  getBirthdayColors,
+  getEventColors,
+  getAttendanceStatusVariant
+} from './utils';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Helper function to get event colors based on type and status
+const getEventModalColors = (event: CalendarEventType) => {
+  if (event.type === 'session') {
+    return getSessionStatusColors(event.status);
+  }
+  if (event.type === 'birthday') {
+    return getBirthdayColors();
+  }
+  if (event.type === 'event') {
+    return getEventColors();
+  }
+  if (event.type === 'attendance') {
+    // For attendance, use colors based on status
+    if (event.status === 'present') {
+      return {
+        background: 'bg-green-50 dark:bg-green-900/20',
+        border: 'border-green-200 dark:border-green-800',
+        text: 'text-green-900 dark:text-green-100'
+      };
+    }
+    if (event.status === 'absent') {
+      return {
+        background: 'bg-red-50 dark:bg-red-900/20',
+        border: 'border-red-200 dark:border-red-800',
+        text: 'text-red-900 dark:text-red-100'
+      };
+    }
+    if (event.status === 'late') {
+      return {
+        background: 'bg-yellow-50 dark:bg-yellow-900/20',
+        border: 'border-yellow-200 dark:border-yellow-800',
+        text: 'text-yellow-900 dark:text-yellow-100'
+      };
+    }
+    if (event.status === 'excused') {
+      return {
+        background: 'bg-gray-50 dark:bg-gray-900/20',
+        border: 'border-gray-200 dark:border-gray-800',
+        text: 'text-gray-900 dark:text-gray-100'
+      };
+    }
+  }
+  // Default colors
+  return {
+    background: 'bg-muted',
+    border: 'border-border',
+    text: 'text-foreground'
+  };
+};
 
 // Day Events Modal Component
 const DayEventsModal = ({
@@ -46,10 +103,12 @@ const DayEventsModal = ({
                   No events scheduled for this day
                 </div>
             ) : (
-                events.map((event) => (
+                events.map((event) => {
+                  const colors = getEventModalColors(event);
+                  return (
                     <div
                         key={event.id}
-                        className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                        className={`${colors.background} border ${colors.border} rounded-lg p-4 cursor-pointer hover:opacity-80 transition-opacity`}
                         onClick={() => {
                           if (onEventClick) {
                             onEventClick(event);
@@ -71,32 +130,37 @@ const DayEventsModal = ({
                     >
                       {/* Event title and type */}
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-medium text-blue-900 dark:text-blue-100 text-base">
+                        <h3 className={`font-medium ${colors.text} text-base`}>
                           {event.className || event.title}
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                            event.type === 'session'
-                                ? 'bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
-                                : event.status === 'present'
-                                    ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200'
-                                    : event.status === 'absent'
-                                        ? 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200'
-                                        : 'bg-muted text-muted-foreground'
-                        }`}>
-                    {event.type === 'session' ? 'Session' : event.status?.toUpperCase()}
-                  </span>
+                        <div className="flex gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            {event.type === 'session' ? 'Session' :
+                             event.type === 'attendance' ? 'Attendance' :
+                             event.type === 'birthday' ? 'Birthday' :
+                             event.type === 'event' ? 'Event' : event.type}
+                          </Badge>
+                          {event.status && event.type !== 'birthday' && (
+                            <Badge
+                              variant={event.type === 'attendance' ? getAttendanceStatusVariant(event.status) : 'outline'}
+                              className="text-xs"
+                            >
+                              {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
 
                       {/* Program name */}
                       {event.programName && (
-                          <p className="text-blue-700 dark:text-blue-300 text-sm mb-2">
+                          <p className={`${colors.text} text-sm mb-2 opacity-80`}>
                             {event.programName}
                           </p>
                       )}
 
                       {/* Time */}
                       {(event.startTime || event.endTime) && (
-                          <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 text-sm mb-2">
+                          <div className={`flex items-center space-x-1 ${colors.text} text-sm mb-2 opacity-80`}>
                             <Clock className="h-4 w-4" />
                             <span>
                       {event.startTime && event.endTime
@@ -109,7 +173,7 @@ const DayEventsModal = ({
 
                       {/* Students */}
                       {event.studentNames && event.studentNames.length > 0 && (
-                          <div className="flex items-start space-x-1 text-blue-600 dark:text-blue-400 text-sm">
+                          <div className={`flex items-start space-x-1 ${colors.text} text-sm opacity-80`}>
                             <Users className="h-4 w-4 mt-0.5 flex-shrink-0" />
                             <div>
                               <span className="font-medium">Students: </span>
@@ -120,13 +184,14 @@ const DayEventsModal = ({
 
                       {/* Single student for attendance events */}
                       {event.studentName && event.type === 'attendance' && (
-                          <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 text-sm">
+                          <div className={`flex items-center space-x-1 ${colors.text} text-sm opacity-80`}>
                             <Users className="h-4 w-4" />
                             <span>Student: {event.studentName}</span>
                           </div>
                       )}
                     </div>
-                ))
+                  );
+                })
             )}
           </div>
 
