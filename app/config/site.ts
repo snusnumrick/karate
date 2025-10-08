@@ -200,7 +200,7 @@ export const siteConfig = {
     // Territory Acknowledgement
     territoryAcknowledgement: {
         title: "Territory Acknowledgement",
-        text: "At GREENEGIN KARATE, we acknowledge we live, work, and train on the traditional territories of the Coast Salish: T’Sou-ke Nation, SĆIȺNEW (Beecher Bay) Nation, and the Nuu-chah-nulth: Paaʔčiidʔatḥ(Pacheedaht) Nation. We are grateful for their care of this territory and honour their ongoing connection to it. As martial artists, we commit to respect, humility, and integrity in our relationships with this territory and its peoples."
+        text: "At GREENEGIN KARATE, we acknowledge we live, work, and train on the traditional lands of the Songhees, Esquimalt, T’Sou-ke and  SĆIȺNEW Nations. We are grateful for their care of this land and honour their ongoing connection to it. We commit to respect, humility, and integrity in our relationships with this land and its peoples."
     },
     // Analytics and Tracking
     analytics: {
