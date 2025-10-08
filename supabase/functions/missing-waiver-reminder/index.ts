@@ -4,6 +4,7 @@ import { Database } from '../_shared/database.types.ts';
 import { sendEmail } from '../_shared/email.ts';
 import { createWaiverReminderEmail } from '../_shared/email-templates.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { RateLimiter } from '../_shared/rate-limiter.ts';
 
 console.log('Missing Waiver Reminder Function Initializing');
 
@@ -100,6 +101,9 @@ serve(async (req: Request) => {
     let emailsSent = 0;
     let errorsEncountered = 0;
 
+    // Initialize rate limiter (500ms between emails = max 2 req/sec)
+    const rateLimiter = new RateLimiter(500);
+
     for (const profile of profiles as ProfileWithFamily[]) {
       // This check should be redundant due to the query, but good practice
       if (!profile.families || !profile.families.email) continue;
@@ -125,10 +129,13 @@ serve(async (req: Request) => {
             siteUrl,
           });
 
-          const emailSent = await sendEmail({
-            to: profile.families.email,
-            subject: emailTemplate.subject,
-            html: emailTemplate.html,
+          // Use rate limiter to prevent hitting API limits
+          const emailSent = await rateLimiter.execute(async () => {
+            return await sendEmail({
+              to: profile.families.email,
+              subject: emailTemplate.subject,
+              html: emailTemplate.html,
+            });
           });
 
           if (emailSent) {

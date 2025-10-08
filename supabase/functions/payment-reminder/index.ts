@@ -6,6 +6,7 @@ import {sendEmail} from '../_shared/email.ts'; // Shared email utility for funct
 import {createPaymentReminderEmail} from '../_shared/email-templates.ts'; // Email template system
 import {checkStudentEligibility, EligibilityStatus} from '../_shared/eligibility.ts'; // Shared eligibility logic for functions
 import {corsHeaders} from '../_shared/cors.ts';
+import {RateLimiter} from '../_shared/rate-limiter.ts';
 
 console.log('Payment Reminder Function Initializing');
 
@@ -64,6 +65,9 @@ serve(async (req: Request) => {
     // 5. Iterate through families and students, check eligibility, send emails
     let emailsSent = 0;
     let errorsEncountered = 0;
+
+    // Initialize rate limiter (500ms between emails = max 2 req/sec)
+    const rateLimiter = new RateLimiter(500);
 
     for (const family of families as FamilyWithStudents[]) {
       if (!family.email) {
@@ -161,10 +165,13 @@ expired list.`,
             siteUrl,
           });
 
-          const emailSent = await sendEmail({
-            to: family.email,
-            subject: emailTemplate.subject,
-            html: emailTemplate.html,
+          // Use rate limiter to prevent hitting API limits
+          const emailSent = await rateLimiter.execute(async () => {
+            return await sendEmail({
+              to: family.email,
+              subject: emailTemplate.subject,
+              html: emailTemplate.html,
+            });
           });
 
           if (emailSent) {
