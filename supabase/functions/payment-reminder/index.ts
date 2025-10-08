@@ -93,6 +93,10 @@ serve(async (req: Request) => {
               })`,
             );
             studentsToExpire.push({ name: `${student.first_name} ${student.last_name}` });
+          } else if (eligibility.reason === 'Not Enrolled') {
+            console.log(
+              `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} has no active enrollments. Skipping reminder.`,
+            );
           } else if (
             (eligibility.reason === 'Paid - Monthly' || eligibility.reason === 'Paid - Yearly') &&
             eligibility.lastPaymentDate &&
@@ -134,7 +138,7 @@ expired list.`,
               }
             }
           }
-          // Note: 'Trial' students are ignored by this reminder logic.
+          // Note: 'Trial' and 'Not Enrolled' students are ignored by this reminder logic.
         } catch (eligibilityError) {
           console.error(
             `Error checking eligibility for student ${student.id} in family ${family.id}:`,
