@@ -249,23 +249,12 @@ deploy_templates() {
 # Deploy Supabase functions
 deploy_functions() {
     local functions=("$@")
-    
+
     log_info "Deploying Supabase functions..."
-    
+
     local project_root="$(dirname "$0")/.."
     cd "$project_root"
-    
-    # Check if supabase is linked
-    if [ ! -f ".supabase/config.toml" ]; then
-        log_warning "Supabase project not linked. Attempting to link..."
-        if [ "$DRY_RUN" = "true" ]; then
-            log_info "[DRY RUN] Would link Supabase project: $SUPABASE_PROJECT_REF"
-        else
-            supabase link --project-ref "$SUPABASE_PROJECT_REF"
-            log_success "Supabase project linked"
-        fi
-    fi
-    
+
     if [ ${#functions[@]} -gt 0 ]; then
         # Deploy specific functions
         for func in "${functions[@]}"; do
@@ -273,7 +262,7 @@ deploy_functions() {
             if [ "$DRY_RUN" = "true" ]; then
                 log_info "[DRY RUN] Would deploy function: $func"
             else
-                supabase functions deploy "$func"
+                supabase functions deploy "$func" --project-ref "$SUPABASE_PROJECT_REF"
                 log_success "Function deployed: $func"
             fi
         done
@@ -282,11 +271,11 @@ deploy_functions() {
         if [ "$DRY_RUN" = "true" ]; then
             log_info "[DRY RUN] Would deploy all functions"
         else
-            supabase functions deploy
+            supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
             log_success "All functions deployed"
         fi
     fi
-    
+
     cd - > /dev/null
 }
 
