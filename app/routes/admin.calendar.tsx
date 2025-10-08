@@ -433,7 +433,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function AdminCalendar() {
     const { events, students, programs, instructors, filters } = useLoaderData<LoaderData>();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [selectedEvent, setSelectedEvent] = useState<AdminCalendarEvent | null>(null);
     const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(() => {
@@ -449,19 +449,12 @@ export default function AdminCalendar() {
     const birthdayEvents = birthdaysToCalendarEvents(studentsWithBirthdays, currentDate);
 
     const handleDateChange = (date: Date) => {
-        // Store current scroll position
-        const currentScrollY = window.scrollY;
-
         setCurrentDate(date);
 
-        // Update URL without triggering navigation
+        // Update URL and trigger navigation to reload events
         const newParams = new URLSearchParams(searchParams);
         newParams.set('month', format(date, 'yyyy-MM'));
-        const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-        window.history.replaceState(null, '', newUrl);
-
-        // Restore scroll position immediately
-        window.scrollTo(0, currentScrollY);
+        setSearchParams(newParams);
     };
 
     const handleFilterChange = (key: string, value: string) => {
