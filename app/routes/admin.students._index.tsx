@@ -158,7 +158,7 @@ export default function StudentsAdminPage() {
                                 <TableRow key={student.id}>
                                     <TableCell
                                         className="font-medium">{`${student.first_name} ${student.last_name}`}</TableCell>
-                                    <TableCell>{student.families?.name ?? 'N/A'}</TableCell>
+                                    <TableCell>{student.families?.name ?? ''}</TableCell>
                                     <TableCell>
                                         {student.currentBeltRank ? (
                                             <div className="flex items-center">
@@ -167,14 +167,14 @@ export default function StudentsAdminPage() {
                                                 <span className="capitalize">{student.currentBeltRank}</span>
                                             </div>
                                         ) : (
-                                            'N/A'
+                                            ''
                                         )}
                                     </TableCell>
 
                                     <TableCell> {/* New cell for Gi purchase date */}
                                         {student.lastGiPurchaseDate
                                             ? formatDate(student.lastGiPurchaseDate, { formatString: 'yyyy-MM-dd' })
-                                            : 'N/A'}
+                                            : ''}
                                     </TableCell>
                                     <TableCell className="space-x-2 whitespace-nowrap">
                                         {/* Use onClick with navigate instead of asChild/Link */}
