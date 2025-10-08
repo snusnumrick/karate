@@ -61,7 +61,7 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
                                 <NavLink to="/instructor">Instructor Portal</NavLink>
                             )}
                             {showAdminPanel && (
-                                <NavLink to="/admin">Admin Panel</NavLink>
+                                <NavLink to="/admin">Admin Portal</NavLink>
                             )}
                         </nav>
 
@@ -163,7 +163,7 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
                                                     )}
                                                     {showAdminPanel && (
                                                         <MobileNavLink to="/admin" onClick={() => setIsOpen(false)}>
-                                                            Admin Panel
+                                                            Admin Portal
                                                         </MobileNavLink>
                                                     )}
                                                     <Form action="/logout" method="post" className="mt-2">
