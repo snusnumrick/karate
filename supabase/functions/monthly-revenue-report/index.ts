@@ -5,6 +5,7 @@ import {Database} from '../_shared/database.types.ts';
 import {sendEmail} from '../_shared/email.ts';
 import {createMonthlyRevenueReportEmail} from '../_shared/email-templates.ts';
 import {corsHeaders} from '../_shared/cors.ts';
+import {RateLimiter} from '../_shared/rate-limiter.ts';
 
 console.log('Monthly Revenue Report Function Initializing');
 
@@ -146,12 +147,18 @@ serve(async (req: Request) => {
     let emailsSent = 0;
     let emailsFailed = 0;
 
+    // Initialize rate limiter (500ms between emails = max 2 req/sec)
+    const rateLimiter = new RateLimiter(500);
+
     for (const recipient of recipients) {
       try {
-        const emailSent = await sendEmail({
-          to: recipient,
-          subject: emailTemplate.subject,
-          html: emailTemplate.html,
+        // Use rate limiter to prevent hitting API limits
+        const emailSent = await rateLimiter.execute(async () => {
+          return await sendEmail({
+            to: recipient,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html,
+          });
         });
 
         if (emailSent) {

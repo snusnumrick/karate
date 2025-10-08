@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState, useMemo} from 'react';
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, type TypedResponse,} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useNavigation, useRouteError} from "@remix-run/react";
 import {AuthenticityTokenInput} from "remix-utils/csrf/react";
@@ -16,15 +16,23 @@ import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 import {getTodayLocalDateString} from "~/utils/misc";
 import { formatMoney, fromCents } from "~/utils/money";
 import { getPaymentProvider } from '~/services/payments/index.server';
+import { getApplicableTaxRatesForStorePurchase } from '~/services/tax-rates.server';
 
 type FamilyInfo = Pick<Database['public']['Tables']['families']['Row'], 'id' | 'name'>;
 type StudentInfo = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'first_name' | 'last_name' | 'family_id'>;
 type TaxRateInfo = Pick<Database['public']['Tables']['tax_rates']['Row'], 'id' | 'name' | 'rate' | 'description'>; // Add type for tax rates
+type ProductRow = Database['public']['Tables']['products']['Row'];
+type ProductVariantRow = Database['public']['Tables']['product_variants']['Row'];
+
+type ProductWithVariants = ProductRow & {
+    product_variants: ProductVariantRow[];
+};
 
 type LoaderData = {
     families: FamilyInfo[];
     students: StudentInfo[];
     taxRates: TaxRateInfo[]; // Add tax rates to loader data
+    products: ProductWithVariants[]; // Add products for store purchases
     paymentProvider: {
         id: string;
         name: string;
@@ -37,12 +45,14 @@ type ActionData = {
     fieldErrors?: {
         familyId?: string;
         studentIds?: string;
+        studentId?: string; // For store_purchase single student selection
         subtotalAmount?: string; // Changed from amount
         paymentDate?: string;
         paymentMethod?: string;
         status?: string;
         type?: string; // Use 'type'
-        quantity?: string; // Added for one_on_one session quantity
+        quantity?: string; // Added for one_on_one session quantity and store purchases
+        productVariantId?: string; // For store_purchase product selection
     };
 };
 
@@ -96,14 +106,40 @@ export async function loader({request}: LoaderFunctionArgs) {
         }
         // console.log(`Admin new payment loader: Fetched ${taxRatesData?.length ?? 0} active tax rates.`);
 
+        // Fetch products with variants for store purchases
+        // console.log("Admin new payment loader: Fetching products with variants...");
+        const { data: productsData, error: productsError } = await supabaseAdmin
+            .from('products')
+            .select(`
+                *,
+                product_variants (*)
+            `)
+            .eq('is_active', true)
+            .eq('product_variants.is_active', true)
+            .order('name');
+
+        if (productsError) {
+            console.error("Error fetching products:", productsError.message);
+            // Continue without products but log the error
+        }
+
+        // Filter out products with no active variants or variants with zero stock
+        const availableProducts = productsData
+            ?.map(p => ({
+                ...p,
+                product_variants: p.product_variants.filter(v => v.is_active && v.stock_quantity > 0)
+            }))
+            .filter(p => p.product_variants.length > 0) || [];
+        // console.log(`Admin new payment loader: Fetched ${availableProducts.length} available products.`);
 
         // Get payment provider info for the frontend
         const paymentProvider = getPaymentProvider();
-        
+
         return json<LoaderData>({
             families: families || [],
             students: students || [],
             taxRates: taxRatesData || [], // Return fetched tax rates (or empty array)
+            products: availableProducts, // Return available products
             paymentProvider: {
                 id: paymentProvider.id,
                 name: paymentProvider.displayName
@@ -134,6 +170,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
     const familyId = formData.get("familyId") as string;
     const studentIdsString = formData.get("studentIds") as string;
+    const studentId = formData.get("studentId") as string | null; // Single student for store_purchase
     const subtotalAmountStr = formData.get("subtotalAmount") as string; // Changed from amount
     let paymentDate = formData.get("paymentDate") as string | null;
     const paymentMethod = formData.get("paymentMethod") as string;
@@ -143,8 +180,9 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const status = requiresOnlineProcessing ? 'pending' : 'succeeded';
     const notes = formData.get("notes") as string | null;
     const type = formData.get("type") as string || 'monthly_group'; // Use 'type' variable
-    const quantityStr = formData.get("quantity") as string; // Get quantity for one_on_one session
+    const quantityStr = formData.get("quantity") as string; // Get quantity for one_on_one session and store purchases
     const selectedTaxRateIdsString = formData.get("selectedTaxRateIds") as string; // Get selected tax rate IDs
+    const productVariantId = formData.get("productVariantId") as string | null; // For store_purchase
 
     // --- Validation ---
     const fieldErrors: ActionData['fieldErrors'] = {};
@@ -153,12 +191,29 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     if ((type === 'monthly_group' || type === 'yearly_group') && studentIds.length === 0) {
         fieldErrors.studentIds = "Please select at least one student for group payments.";
     }
+
+    // Validate store_purchase specific fields
+    if (type === 'store_purchase') {
+        if (!studentId) {
+            fieldErrors.studentId = "Please select a student for the store purchase.";
+        }
+        if (!productVariantId) {
+            fieldErrors.productVariantId = "Please select a product.";
+        }
+        if (!quantityStr || isNaN(parseInt(quantityStr)) || parseInt(quantityStr) <= 0) {
+            fieldErrors.quantity = "A valid positive quantity is required for store purchases.";
+        }
+    }
+
     // Validate subtotal amount
     let subtotalAmount = 0;
-    if (!subtotalAmountStr || isNaN(parseFloat(subtotalAmountStr)) || parseFloat(subtotalAmountStr) < 0) { // Allow 0 subtotal? Check requirements. Let's assume >= 0
-        fieldErrors.subtotalAmount = "A valid non-negative subtotal amount is required.";
-    } else {
-        subtotalAmount = parseFloat(subtotalAmountStr); // Keep as float for now
+    // For store purchases, subtotal will be calculated from product price, so we allow it to be optional
+    if (type !== 'store_purchase') {
+        if (!subtotalAmountStr || isNaN(parseFloat(subtotalAmountStr)) || parseFloat(subtotalAmountStr) < 0) {
+            fieldErrors.subtotalAmount = "A valid non-negative subtotal amount is required.";
+        } else {
+            subtotalAmount = parseFloat(subtotalAmountStr); // Keep as float for now
+        }
     }
 
     if (!requiresOnlineProcessing) {
@@ -173,7 +228,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     if (!paymentMethod) fieldErrors.paymentMethod = "Payment method is required.";
     // Status validation removed as it's hardcoded
     // Use the actual enum values for type validation
-    if (!type || !['monthly_group', 'yearly_group', 'individual_session', 'other'].includes(type)) { // Check 'type' variable
+    if (!type || !['monthly_group', 'yearly_group', 'individual_session', 'other', 'store_purchase'].includes(type)) { // Check 'type' variable
         fieldErrors.type = "Invalid payment type selected."; // Use 'type' key
     }
     let quantity: number | null = null;
@@ -181,6 +236,11 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
         if (!quantityStr || isNaN(parseInt(quantityStr)) || parseInt(quantityStr) <= 0) {
             fieldErrors.quantity = "A valid positive quantity is required for Individual Sessions.";
         } else {
+            quantity = parseInt(quantityStr);
+        }
+    }
+    if (type === 'store_purchase') { // Parse quantity for store purchases
+        if (quantityStr && !isNaN(parseInt(quantityStr)) && parseInt(quantityStr) > 0) {
             quantity = parseInt(quantityStr);
         }
     }
@@ -194,58 +254,183 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     }
     // --- End Validation ---
 
-    // Convert subtotal to cents
-    const subtotalAmountInCents = Math.round(subtotalAmount * 100);
-
     const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
     const supabaseAdmin = getSupabaseAdminClient();
 
     try {
+        let subtotalAmountInCents = 0;
+        let orderId: string | null = null;
+
+        // --- Handle Store Purchase ---
+        if (type === 'store_purchase' && productVariantId && studentId && quantity) {
+            // Fetch product variant details (price, stock check)
+            const { data: variantData, error: variantError } = await supabaseAdmin
+                .from('product_variants')
+                .select('id, price_in_cents, stock_quantity, is_active, products(id, is_active)')
+                .eq('id', productVariantId)
+                .single();
+
+            if (variantError || !variantData) {
+                console.error(`[Admin Payment Action] Error fetching variant ${productVariantId}:`, variantError?.message);
+                return json<ActionData>({ error: "Selected product variant not found." }, { status: 404, headers: Object.fromEntries(headers) });
+            }
+
+            // Check if variant and product are active and in stock
+            if (!variantData.is_active || !variantData.products?.is_active) {
+                return json<ActionData>({ error: "Selected product is no longer available." }, { status: 400, headers: Object.fromEntries(headers) });
+            }
+            if (variantData.stock_quantity < quantity) {
+                return json<ActionData>({ error: "Insufficient stock for the selected product." }, { status: 400, headers: Object.fromEntries(headers) });
+            }
+
+            const pricePerItem = variantData.price_in_cents;
+            subtotalAmountInCents = pricePerItem * quantity;
+
+            // Calculate Taxes using store purchase tax logic (handles PST exemption)
+            let taxRatesData = [];
+            try {
+                taxRatesData = await getApplicableTaxRatesForStorePurchase(studentId, supabaseAdmin);
+            } catch (error) {
+                console.error('[Admin Payment Action] Error fetching tax rates for store purchase:', error);
+                return json<ActionData>({ error: "Could not retrieve tax information." }, { status: 500, headers: Object.fromEntries(headers) });
+            }
+
+            const applicableTaxes = taxRatesData?.map(t => ({ name: t.name, rate: Number(t.rate), description: t.description })) || [];
+            const totalTaxAmount = applicableTaxes.reduce((acc, tax) => {
+                return acc + Math.round(subtotalAmountInCents * tax.rate);
+            }, 0);
+            const finalTotalAmountCents = subtotalAmountInCents + totalTaxAmount;
+
+            // Create Order record
+            // Set order_date to match payment_date for proper tracking
+            // Since order_date is TIMESTAMPTZ, we need to pass a full ISO timestamp, not just a date
+            // to avoid timezone interpretation issues
+            let orderDate: string;
+            if (paymentDate) {
+                // Convert YYYY-MM-DD to ISO timestamp at noon local time to avoid date boundary issues
+                orderDate = new Date(`${paymentDate}T12:00:00`).toISOString();
+            } else {
+                // Use current timestamp
+                orderDate = new Date().toISOString();
+            }
+
+            const orderInsert = {
+                family_id: familyId,
+                student_id: studentId,
+                status: (requiresOnlineProcessing ? 'pending_payment' : 'paid_pending_pickup') as Database['public']['Enums']['order_status'],
+                total_amount_cents: finalTotalAmountCents,
+                order_date: orderDate, // Full ISO timestamp to avoid timezone issues
+            };
+
+            const { data: orderData, error: orderError } = await supabaseAdmin
+                .from('orders')
+                .insert(orderInsert)
+                .select('id')
+                .single();
+
+            if (orderError || !orderData) {
+                console.error(`[Admin Payment Action] Error creating order for family ${familyId}:`, orderError?.message);
+                return json<ActionData>({ error: "Failed to create order record." }, { status: 500, headers: Object.fromEntries(headers) });
+            }
+            orderId = orderData.id;
+
+            // Create Order Item record
+            const orderItemInsert = {
+                order_id: orderId,
+                product_variant_id: productVariantId,
+                quantity: quantity,
+                price_per_item_cents: pricePerItem,
+            };
+
+            const { error: orderItemError } = await supabaseAdmin
+                .from('order_items')
+                .insert(orderItemInsert);
+
+            if (orderItemError) {
+                console.error(`[Admin Payment Action] Error creating order item for order ${orderId}:`, orderItemError.message);
+                // Cleanup order on failure
+                await supabaseAdmin.from('orders').delete().eq('id', orderId);
+                return json<ActionData>({ error: "Failed to create order item record." }, { status: 500, headers: Object.fromEntries(headers) });
+            }
+
+            console.log(`[Admin Payment Action] Created order ${orderId} with total ${finalTotalAmountCents} cents`);
+        } else {
+            // For non-store purchases, convert subtotal to cents
+            subtotalAmountInCents = Math.round(subtotalAmount * 100);
+        }
+
         // --- Multi-Tax Calculation ---
-        const selectedTaxRateIds = selectedTaxRateIdsString ? selectedTaxRateIdsString.split(',').filter(id => id.trim() !== '') : [];
-        
-        let taxRatesData = null;
-        let taxRatesError = null;
-        
-        // Only fetch tax rates if some are selected
-        if (selectedTaxRateIds.length > 0) {
-            const result = await supabaseAdmin
-                .from('tax_rates')
-                .select('id, name, rate, description') // Fetch description as well
-                .in('id', selectedTaxRateIds)
-                .eq('is_active', true);
-            taxRatesData = result.data;
-            taxRatesError = result.error;
-        }
-
-        if (taxRatesError) {
-            throw new Error(`Failed to fetch tax rates: ${taxRatesError.message}`);
-        }
-
+        // Skip manual tax calculation for store purchases (already calculated above)
         let totalTaxAmountInCents = 0;
         const paymentTaxesToInsert: Array<{
             tax_rate_id: string;
             tax_amount: number;
             tax_rate_snapshot: number;
             tax_name_snapshot: string;
-            tax_description_snapshot: string | null; // Add description snapshot
+            tax_description_snapshot: string | null;
         }> = [];
 
-        if (taxRatesData) {
-            for (const taxRate of taxRatesData) {
-                const rate = Number(taxRate.rate);
-                if (isNaN(rate)) continue;
-                const taxAmountForThisRate = Math.round(subtotalAmountInCents * rate);
-                totalTaxAmountInCents += taxAmountForThisRate;
-                paymentTaxesToInsert.push({
-                    tax_rate_id: taxRate.id,
-                    tax_amount: taxAmountForThisRate,
-                    tax_rate_snapshot: rate,
-                    tax_name_snapshot: taxRate.name,
-                    tax_description_snapshot: taxRate.description, // Store description
-                });
+        if (type !== 'store_purchase') {
+            const selectedTaxRateIds = selectedTaxRateIdsString ? selectedTaxRateIdsString.split(',').filter(id => id.trim() !== '') : [];
+
+            let taxRatesData = null;
+            let taxRatesError = null;
+
+            // Only fetch tax rates if some are selected
+            if (selectedTaxRateIds.length > 0) {
+                const result = await supabaseAdmin
+                    .from('tax_rates')
+                    .select('id, name, rate, description') // Fetch description as well
+                    .in('id', selectedTaxRateIds)
+                    .eq('is_active', true);
+                taxRatesData = result.data;
+                taxRatesError = result.error;
+            }
+
+            if (taxRatesError) {
+                throw new Error(`Failed to fetch tax rates: ${taxRatesError.message}`);
+            }
+
+            if (taxRatesData) {
+                for (const taxRate of taxRatesData) {
+                    const rate = Number(taxRate.rate);
+                    if (isNaN(rate)) continue;
+                    const taxAmountForThisRate = Math.round(subtotalAmountInCents * rate);
+                    totalTaxAmountInCents += taxAmountForThisRate;
+                    paymentTaxesToInsert.push({
+                        tax_rate_id: taxRate.id,
+                        tax_amount: taxAmountForThisRate,
+                        tax_rate_snapshot: rate,
+                        tax_name_snapshot: taxRate.name,
+                        tax_description_snapshot: taxRate.description, // Store description
+                    });
+                }
+            }
+        } else {
+            // For store purchases, tax was already calculated and included in order total
+            // We need to extract tax info from the order to create payment_taxes records
+            if (orderId && studentId) {
+                try {
+                    const taxRatesData = await getApplicableTaxRatesForStorePurchase(studentId, supabaseAdmin);
+                    const applicableTaxes = taxRatesData?.map(t => ({ name: t.name, rate: Number(t.rate), description: t.description, id: t.id })) || [];
+                    for (const tax of applicableTaxes) {
+                        const taxAmountForThisRate = Math.round(subtotalAmountInCents * tax.rate);
+                        totalTaxAmountInCents += taxAmountForThisRate;
+                        paymentTaxesToInsert.push({
+                            tax_rate_id: tax.id,
+                            tax_amount: taxAmountForThisRate,
+                            tax_rate_snapshot: tax.rate,
+                            tax_name_snapshot: tax.name,
+                            tax_description_snapshot: tax.description || null,
+                        });
+                    }
+                } catch (error) {
+                    console.error('[Admin Payment Action] Error fetching tax rates for payment_taxes:', error);
+                    // Continue without tax breakdown - order already has total
+                }
             }
         }
+
         const totalAmountInCents = subtotalAmountInCents + totalTaxAmountInCents;
         // --- End Multi-Tax Calculation ---
 
@@ -263,13 +448,19 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
                 payment_method: paymentMethod,
                 status: status as Database['public']['Enums']['payment_status'],
                 type: type as Database['public']['Enums']['payment_type_enum'],
-                notes: notes
+                notes: notes,
+                order_id: orderId, // Link to order for store purchases
             })
             .select('id')
             .single();
 
         if (insertPaymentError || !paymentData?.id) {
             console.error("Error inserting payment:", insertPaymentError?.message);
+            // Cleanup order if payment creation failed
+            if (orderId) {
+                await supabaseAdmin.from('order_items').delete().eq('order_id', orderId);
+                await supabaseAdmin.from('orders').delete().eq('id', orderId);
+            }
             return json<ActionData>({error: `Failed to record payment: ${insertPaymentError?.message || 'Could not retrieve payment ID'}`}, {
                 status: 500,
                 headers: Object.fromEntries(headers)
@@ -374,7 +565,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
 export default function AdminNewPaymentPage() {
     // Combined declaration for loader data
-    const {families, students, taxRates, paymentProvider} = useLoaderData<typeof loader>(); // Get families, taxRates, and paymentProvider
+    const {families, students, taxRates, products, paymentProvider} = useLoaderData<typeof loader>(); // Get families, taxRates, products, and paymentProvider
     // Single declaration for action data
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
@@ -387,11 +578,14 @@ export default function AdminNewPaymentPage() {
     const [selectedFamily, setSelectedFamily] = useState<string | undefined>(undefined);
     const [familyStudents, setFamilyStudents] = useState<StudentInfo[]>([]);
     const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+    const [selectedStudentId, setSelectedStudentId] = useState<string | undefined>(undefined); // Single student for store purchase
     const [selectedMethod, setSelectedMethod] = useState<string | undefined>(undefined);
     // selectedStatus state removed
     const [selectedType, setSelectedType] = useState<string>('monthly_group'); // Use selectedType state
     const [subtotalStr, setSubtotalStr] = useState<string>(''); // State for subtotal input string
     const [selectedTaxRateIds, setSelectedTaxRateIds] = useState<Set<string>>(new Set()); // State for selected tax rates
+    const [selectedProductVariantId, setSelectedProductVariantId] = useState<string | undefined>(undefined); // For store purchases
+    const [storePurchaseQuantity, setStorePurchaseQuantity] = useState<string>('1'); // For store purchases
 
     // Focus on family field when component mounts
     useEffect(() => {
@@ -430,37 +624,68 @@ export default function AdminNewPaymentPage() {
 
     // Client-side calculation for display
     const calculateDisplayAmounts = () => {
-        const subtotalNum = parseFloat(subtotalStr);
-        if (isNaN(subtotalNum) || subtotalNum < 0) {
-            return { subtotal: 0, taxes: [], total: 0 };
-        }
-        const subtotalCents = Math.round(subtotalNum * 100);
+        let subtotalCents = 0;
         let totalTaxCents = 0;
         const calculatedTaxes: Array<{ name: string; description: string | null; amount: number }> = [];
 
-        // Use only selected tax rates from loader data
-        if (taxRates && taxRates.length > 0) {
-            for (const taxRate of taxRates) {
-                // Only calculate tax if this tax rate is selected
-                if (selectedTaxRateIds.has(taxRate.id)) {
-                    const rate = Number(taxRate.rate);
-                    if (!isNaN(rate)) {
-                        const taxAmountForThisRate = Math.round(subtotalCents * rate);
-                        totalTaxCents += taxAmountForThisRate;
-                        calculatedTaxes.push({
-                            name: taxRate.name,
-                            description: taxRate.description,
-                            amount: taxAmountForThisRate,
-                        });
+        // For store purchases, calculate based on product price and quantity
+        if (selectedType === 'store_purchase') {
+            if (selectedProductVariantId) {
+                // Find the selected product variant
+                let selectedVariant: ProductVariantRow | undefined;
+                for (const product of products) {
+                    const variant = product.product_variants.find(v => v.id === selectedProductVariantId);
+                    if (variant) {
+                        selectedVariant = variant;
+                        break;
+                    }
+                }
+
+                if (selectedVariant) {
+                    const quantity = parseInt(storePurchaseQuantity) || 1;
+                    subtotalCents = selectedVariant.price_in_cents * quantity;
+
+                    // Note: For store purchases, tax is calculated server-side based on student age
+                    // We show a note instead of calculating tax client-side
+                    // This is because PST exemption logic is complex and depends on student birth date
+                }
+            }
+        } else {
+            // For other payment types, use the subtotal amount input
+            const subtotalNum = parseFloat(subtotalStr);
+            if (isNaN(subtotalNum) || subtotalNum < 0) {
+                return { subtotal: 0, taxes: [], total: 0 };
+            }
+            subtotalCents = Math.round(subtotalNum * 100);
+
+            // Use only selected tax rates from loader data
+            if (taxRates && taxRates.length > 0) {
+                for (const taxRate of taxRates) {
+                    // Only calculate tax if this tax rate is selected
+                    if (selectedTaxRateIds.has(taxRate.id)) {
+                        const rate = Number(taxRate.rate);
+                        if (!isNaN(rate)) {
+                            const taxAmountForThisRate = Math.round(subtotalCents * rate);
+                            totalTaxCents += taxAmountForThisRate;
+                            calculatedTaxes.push({
+                                name: taxRate.name,
+                                description: taxRate.description,
+                                amount: taxAmountForThisRate,
+                            });
+                        }
                     }
                 }
             }
         }
+
         const totalCents = subtotalCents + totalTaxCents;
         return { subtotal: subtotalCents, taxes: calculatedTaxes, total: totalCents };
     };
 
-    const { subtotal: calculatedSubtotalCents, taxes: calculatedTaxes, total: calculatedTotalCents } = calculateDisplayAmounts();
+    const { subtotal: calculatedSubtotalCents, taxes: calculatedTaxes, total: calculatedTotalCents } = useMemo(
+        () => calculateDisplayAmounts(),
+        [selectedType, selectedProductVariantId, storePurchaseQuantity, subtotalStr, selectedTaxRateIds, products, taxRates]
+    );
 
     // console.log("Rendering AdminNewPaymentPage component...");
     // console.log("Action Data:", actionData);
@@ -531,6 +756,7 @@ export default function AdminNewPaymentPage() {
                                     <SelectItem value="yearly_group"
                                                 disabled={!!(selectedFamily && familyStudents.length === 0)}>Yearly Group Class</SelectItem>
                                     <SelectItem value="individual_session">Individual Session</SelectItem>
+                                    <SelectItem value="store_purchase">Store Purchase</SelectItem>
                                     <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -589,73 +815,153 @@ export default function AdminNewPaymentPage() {
                             </div>
                         )}
 
-                        {/* Subtotal Amount */}
-                        <div>
-                            <Label htmlFor="subtotalAmount">Subtotal Amount ($)</Label>
-                            <Input
-                                id="subtotalAmount"
-                                name="subtotalAmount" // Changed name
-                                type="number"
-                                step="0.01"
-                                min="0.00"
-                                placeholder="e.g., 150.00"
-                                required
-                                className="mt-1"
-                                value={subtotalStr} // Control input value
-                                onChange={(e) => setSubtotalStr(e.target.value)} // Update state on change
-                                tabIndex={4}
-                            />
-                            {actionData?.fieldErrors?.subtotalAmount && (
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.subtotalAmount}</p>
-                            )}
-                        </div>
+                        {/* Conditionally show Store Purchase fields */}
+                        {selectedType === 'store_purchase' && selectedFamily && (
+                            <div className="border p-4 rounded-md mt-4 bg-gray-50/50 dark:bg-gray-700/50 dark:border-gray-600 space-y-4">
+                                {/* Single Student Selection */}
+                                <div>
+                                    <Label htmlFor="studentId">Student</Label>
+                                    <Select
+                                        name="studentId"
+                                        value={selectedStudentId}
+                                        onValueChange={setSelectedStudentId}
+                                        required={selectedType === 'store_purchase'}
+                                    >
+                                        <SelectTrigger id="studentId" className="input-custom-styles">
+                                            <SelectValue placeholder="Select a student"/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {familyStudents.map((student) => (
+                                                <SelectItem key={student.id} value={student.id}>
+                                                    {student.first_name} {student.last_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {actionData?.fieldErrors?.studentId && (
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.studentId}</p>
+                                    )}
+                                </div>
 
-                        {/* Tax Rates Selection */}
-                        <div>
-                            <Label className="block text-sm font-medium mb-1">
-                                Tax Rates
-                            </Label>
-                            <div className="space-y-2 mt-2">
-                                {taxRates.length > 0 ? (
-                                    taxRates.map((taxRate) => (
-                                        <div key={taxRate.id} className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id={`tax-${taxRate.id}`}
-                                                checked={selectedTaxRateIds.has(taxRate.id)}
-                                                onCheckedChange={(checked) => {
-                                                    setSelectedTaxRateIds(prev => {
-                                                        const newIds = new Set(prev);
-                                                        if (checked) {
-                                                            newIds.add(taxRate.id);
-                                                        } else {
-                                                            newIds.delete(taxRate.id);
-                                                        }
-                                                        return newIds;
-                                                    });
-                                                }}
-                                            />
-                                            <Label
-                                                htmlFor={`tax-${taxRate.id}`}
-                                                className="text-sm font-normal cursor-pointer"
-                                            >
-                                                {taxRate.name} ({(taxRate.rate * 100).toFixed(2)}%)
-                                                {taxRate.description && (
-                                                    <span className="text-muted-foreground ml-1">- {taxRate.description}</span>
-                                                )}
-                                            </Label>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">No tax rates available</p>
+                                {/* Product Variant Selection */}
+                                <div>
+                                    <Label htmlFor="productVariantId">Product</Label>
+                                    <Select
+                                        name="productVariantId"
+                                        value={selectedProductVariantId}
+                                        onValueChange={setSelectedProductVariantId}
+                                        required={selectedType === 'store_purchase'}
+                                    >
+                                        <SelectTrigger id="productVariantId" className="input-custom-styles">
+                                            <SelectValue placeholder="Select a product"/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {products.map((product) => (
+                                                product.product_variants.map((variant) => (
+                                                    <SelectItem key={variant.id} value={variant.id}>
+                                                        {product.name} - {variant.size} ({formatMoney(fromCents(variant.price_in_cents))})
+                                                    </SelectItem>
+                                                ))
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {actionData?.fieldErrors?.productVariantId && (
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.productVariantId}</p>
+                                    )}
+                                </div>
+
+                                {/* Quantity */}
+                                <div>
+                                    <Label htmlFor="storePurchaseQuantity">Quantity</Label>
+                                    <Input
+                                        id="storePurchaseQuantity"
+                                        name="quantity"
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={storePurchaseQuantity}
+                                        onChange={(e) => setStorePurchaseQuantity(e.target.value)}
+                                        required={selectedType === 'store_purchase'}
+                                        className="mt-1"
+                                    />
+                                    {actionData?.fieldErrors?.quantity && (
+                                        <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.quantity}</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Subtotal Amount - Hide for store purchases as it's calculated automatically */}
+                        {selectedType !== 'store_purchase' && (
+                            <div>
+                                <Label htmlFor="subtotalAmount">Subtotal Amount ($)</Label>
+                                <Input
+                                    id="subtotalAmount"
+                                    name="subtotalAmount" // Changed name
+                                    type="number"
+                                    step="0.01"
+                                    min="0.00"
+                                    placeholder="e.g., 150.00"
+                                    required={selectedType !== 'store_purchase'}
+                                    className="mt-1"
+                                    value={subtotalStr} // Control input value
+                                    onChange={(e) => setSubtotalStr(e.target.value)} // Update state on change
+                                    tabIndex={4}
+                                />
+                                {actionData?.fieldErrors?.subtotalAmount && (
+                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.subtotalAmount}</p>
                                 )}
                             </div>
-                            {/* Hidden input to submit selected tax rate IDs */}
-                            <input
-                                type="hidden"
-                                name="selectedTaxRateIds"
-                                value={Array.from(selectedTaxRateIds).join(',')}
-                            />
-                        </div>
+                        )}
+
+                        {/* Tax Rates Selection - Hide for store purchases as tax is automatic */}
+                        {selectedType !== 'store_purchase' && (
+                            <div>
+                                <Label className="block text-sm font-medium mb-1">
+                                    Tax Rates
+                                </Label>
+                                <div className="space-y-2 mt-2">
+                                    {taxRates.length > 0 ? (
+                                        taxRates.map((taxRate) => (
+                                            <div key={taxRate.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`tax-${taxRate.id}`}
+                                                    checked={selectedTaxRateIds.has(taxRate.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        setSelectedTaxRateIds(prev => {
+                                                            const newIds = new Set(prev);
+                                                            if (checked) {
+                                                                newIds.add(taxRate.id);
+                                                            } else {
+                                                                newIds.delete(taxRate.id);
+                                                            }
+                                                            return newIds;
+                                                        });
+                                                    }}
+                                                />
+                                                <Label
+                                                    htmlFor={`tax-${taxRate.id}`}
+                                                    className="text-sm font-normal cursor-pointer"
+                                                >
+                                                    {taxRate.name} ({(taxRate.rate * 100).toFixed(2)}%)
+                                                    {taxRate.description && (
+                                                        <span className="text-muted-foreground ml-1">- {taxRate.description}</span>
+                                                    )}
+                                                </Label>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">No tax rates available</p>
+                                    )}
+                                </div>
+                                {/* Hidden input to submit selected tax rate IDs */}
+                                <input
+                                    type="hidden"
+                                    name="selectedTaxRateIds"
+                                    value={Array.from(selectedTaxRateIds).join(',')}
+                                />
+                            </div>
+                        )}
 
                         {/* Display Calculated Tax and Total */}
                         {calculatedSubtotalCents > 0 && (
@@ -664,14 +970,20 @@ export default function AdminNewPaymentPage() {
                                     <span>Subtotal:</span>
                                     <span>{formatMoney(fromCents(calculatedSubtotalCents))}</span>
                                 </p>
-                                {calculatedTaxes.map((tax, index) => (
-                                    <p key={index} className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
-                                        <span>{tax.description || tax.name}:</span>
-                                        <span>{formatMoney(fromCents(tax.amount))}</span>
+                                {selectedType === 'store_purchase' ? (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                                        Tax will be calculated based on student age (PST exemption applies for students under 15)
                                     </p>
-                                ))}
+                                ) : (
+                                    calculatedTaxes.map((tax, index) => (
+                                        <p key={index} className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
+                                            <span>{tax.description || tax.name}:</span>
+                                            <span>{formatMoney(fromCents(tax.amount))}</span>
+                                        </p>
+                                    ))
+                                )}
                                 <p className="text-md font-semibold text-gray-800 dark:text-gray-100 flex justify-between border-t pt-2 mt-2 dark:border-gray-500">
-                                    <span>Total Amount:</span>
+                                    <span>{selectedType === 'store_purchase' ? 'Subtotal (taxes added at checkout):' : 'Total Amount:'}</span>
                                     <span>{formatMoney(fromCents(calculatedTotalCents))}</span>
                                 </p>
                             </div>

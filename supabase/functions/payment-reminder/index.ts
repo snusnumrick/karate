@@ -6,6 +6,7 @@ import {sendEmail} from '../_shared/email.ts'; // Shared email utility for funct
 import {createPaymentReminderEmail} from '../_shared/email-templates.ts'; // Email template system
 import {checkStudentEligibility, EligibilityStatus} from '../_shared/eligibility.ts'; // Shared eligibility logic for functions
 import {corsHeaders} from '../_shared/cors.ts';
+import {RateLimiter} from '../_shared/rate-limiter.ts';
 
 console.log('Payment Reminder Function Initializing');
 
@@ -65,6 +66,9 @@ serve(async (req: Request) => {
     let emailsSent = 0;
     let errorsEncountered = 0;
 
+    // Initialize rate limiter (500ms between emails = max 2 req/sec)
+    const rateLimiter = new RateLimiter(500);
+
     for (const family of families as FamilyWithStudents[]) {
       if (!family.email) {
         console.warn(`Family ${family.name} (ID: ${family.id}) has no email address. Skipping.`);
@@ -93,6 +97,10 @@ serve(async (req: Request) => {
               })`,
             );
             studentsToExpire.push({ name: `${student.first_name} ${student.last_name}` });
+          } else if (eligibility.reason === 'Not Enrolled') {
+            console.log(
+              `Student ${student.first_name} ${student.last_name} (ID: ${student.id}) in family ${family.name} has no active enrollments. Skipping reminder.`,
+            );
           } else if (
             (eligibility.reason === 'Paid - Monthly' || eligibility.reason === 'Paid - Yearly') &&
             eligibility.lastPaymentDate &&
@@ -134,7 +142,7 @@ expired list.`,
               }
             }
           }
-          // Note: 'Trial' students are ignored by this reminder logic.
+          // Note: 'Trial' and 'Not Enrolled' students are ignored by this reminder logic.
         } catch (eligibilityError) {
           console.error(
             `Error checking eligibility for student ${student.id} in family ${family.id}:`,
@@ -157,10 +165,13 @@ expired list.`,
             siteUrl,
           });
 
-          const emailSent = await sendEmail({
-            to: family.email,
-            subject: emailTemplate.subject,
-            html: emailTemplate.html,
+          // Use rate limiter to prevent hitting API limits
+          const emailSent = await rateLimiter.execute(async () => {
+            return await sendEmail({
+              to: family.email,
+              subject: emailTemplate.subject,
+              html: emailTemplate.html,
+            });
           });
 
           if (emailSent) {

@@ -332,7 +332,7 @@ export default function Index() {
                                 Join us! OSS!
                             </Link>
                             <Link
-                                to="/contact"
+                                to="/classes"
                                 className="inline-block bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 font-bold py-4 px-10 rounded-lg text-lg transition-all duration-300 transform hover:scale-105"
                             >
                                 Learn More

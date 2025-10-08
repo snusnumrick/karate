@@ -339,11 +339,13 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     // --- Create Order & Order Item ---
     // 1. Create Order record
+    // Set order_date explicitly to avoid timezone issues (order_date is TIMESTAMPTZ)
     const orderInsert: OrderInsert = {
         family_id: familyId,
         student_id: studentId,
         status: 'pending_payment', // Initial status
         total_amount_cents: finalTotalAmountCents, // Use calculated total
+        order_date: new Date().toISOString(), // Explicitly set to current time to avoid timezone interpretation issues
     };
 
     // --- Log the exact data being inserted ---

@@ -47,7 +47,7 @@ export function FamilyLoadingScreen() {
 export function AdminLoadingScreen() {
   return (
     <LoadingScreen 
-      title="Loading Admin Panel"
+      title="Loading Admin Portal"
       message="Please wait while we load the administration interface."
     />
   );

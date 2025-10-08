@@ -4,7 +4,7 @@ import {Database} from './database.types.ts';
 
 export type EligibilityStatus = {
   eligible: boolean;
-  reason: 'Trial' | 'Paid - Monthly' | 'Paid - Yearly' | 'Expired'; // More specific reasons
+  reason: 'Trial' | 'Paid - Monthly' | 'Paid - Yearly' | 'Expired' | 'Not Enrolled'; // More specific reasons
   lastPaymentDate?: string; // Optional: ISO date string of the last successful payment
   paymentType?: Database['public']['Enums']['payment_type_enum']; // Added payment type
   paidUntil?: string;
@@ -34,7 +34,7 @@ export async function checkStudentEligibility(
 
   if (!enrollments || enrollments.length === 0) {
     console.log(`No active enrollments found for student ${studentId}.`);
-    return { eligible: false, reason: 'Expired' };
+    return { eligible: false, reason: 'Not Enrolled' };
   }
 
   // For simplicity, we'll check if *any* enrollment makes the student eligible.

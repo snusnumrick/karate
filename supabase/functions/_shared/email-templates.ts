@@ -119,13 +119,20 @@ interface EmailTemplate {
 // Base email template using the generated template
 function createBaseTemplate(data: EmailTemplateData): string {
   // Use the generated EMAIL_TEMPLATE and replace placeholders
-  return EMAIL_TEMPLATE
+  let html = EMAIL_TEMPLATE
     .replace(/\$\{subject\}/g, data.subject || '')
     .replace(/\$\{content\}/g, data.content || '')
     .replace(/\$\{ctaText\}/g, data.ctaText || '')
     .replace(/\$\{ctaUrl\}/g, data.ctaUrl || '')
     .replace(/\$\{familyName\}/g, data.familyName || '')
     .replace(/\$\{siteUrl\}/g, data.siteUrl);
+
+  // Remove CTA button section if ctaUrl or ctaText is empty
+  if (!data.ctaUrl || !data.ctaText) {
+    html = html.replace(/<div class="highlight">[\s\S]*?<\/div>/m, '');
+  }
+
+  return html;
 }
 
 // Payment reminder email template
@@ -267,15 +274,12 @@ export function createMonthlyRevenueReportEmail(data: {
 
     <p style="margin-top: 30px; color: #64748b; font-size: 14px;">
       This report includes revenue from session payments only (monthly, yearly, and individual sessions).
-      Store purchases, events, seminars, and invoices are excluded.
     </p>
   `;
 
   const html = createBaseTemplate({
     subject,
     content,
-    ctaText: 'View Dashboard',
-    ctaUrl: `${siteUrl}/admin`,
     siteUrl,
   });
 

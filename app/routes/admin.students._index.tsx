@@ -50,27 +50,37 @@ export async function loader() {
             throw new Response("Failed to load student data.", {status: 500});
         }
 
-        // Fetch all gi purchases (invoice line items with type 'product' and description containing 'gi')
-        // We need to join through enrollments to get student_id
+        // Fetch all gi purchases from orders table
+        // Join through order_items and product_variants to get products with 'gi' in the name
         const {data: giPurchases, error: giError} = await supabaseAdmin
-            .from('invoice_line_items')
+            .from('orders')
             .select(`
         id,
-        description,
-        created_at,
-        invoice_id,
-        enrollments!inner (
-          student_id
+        student_id,
+        order_date,
+        order_items!inner (
+          product_variant_id,
+          product_variants!inner (
+            product_id,
+            products!inner (
+              name
+            )
+          )
         )
       `)
-            .eq('item_type', 'product')
-            .ilike('description', '%gi%')
-            .not('enrollment_id', 'is', null);
+            .not('student_id', 'is', null);
 
         if (giError) {
             console.error("Error fetching gi purchases:", giError.message);
             // Don't throw, just log and continue without gi data
         }
+
+        // Filter orders that contain gi products
+        const giOrdersWithStudents = giPurchases?.filter(order =>
+            order.order_items?.some(item =>
+                item.product_variants?.products?.name?.toLowerCase().includes('gi')
+            )
+        ) || [];
 
         // Process students to add current belt rank and last gi purchase date
         const studentsWithData = students?.map(student => {
@@ -80,14 +90,14 @@ export async function loader() {
             ) || [];
             const currentBeltRank = sortedBelts[0]?.type || null;
 
-            // Find the most recent gi purchase for this student
-            const studentGiPurchases = giPurchases?.filter(purchase =>
-                purchase.enrollments?.student_id === student.id
+            // Find the most recent gi purchase for this student from orders
+            const studentGiOrders = giOrdersWithStudents?.filter(order =>
+                order.student_id === student.id
             ) || [];
-            const sortedGiPurchases = studentGiPurchases.sort((a, b) =>
-                new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+            const sortedGiOrders = studentGiOrders.sort((a, b) =>
+                new Date(b.order_date || 0).getTime() - new Date(a.order_date || 0).getTime()
             );
-            const lastGiPurchaseDate = sortedGiPurchases[0]?.created_at || null;
+            const lastGiPurchaseDate = sortedGiOrders[0]?.order_date || null;
 
             return {
                 ...student,
