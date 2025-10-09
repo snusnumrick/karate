@@ -53,7 +53,7 @@ Run this SQL query in Supabase to identify data integrity issues:
 **Files Modified:**
 - `app/entry.server.tsx` - Server-side Sentry initialization
 - `app/entry.client.tsx` - Client-side Sentry initialization
-- `app/root.tsx` - Environment variable exposure
+- `app/root.tsx` - Environment variable exposure and performance monitoring
 - `.env.example` - Sentry DSN documentation
 - `package.json` - @sentry/remix dependency added
 
@@ -61,6 +61,7 @@ Run this SQL query in Supabase to identify data integrity issues:
 - Automatic error capture on both client and server
 - **Console Integration**: Automatically captures all `console.error()` calls
 - **Explicit Exception Capture**: Critical payment errors tracked with full context
+- **Performance Monitoring**: Tracks server-side request duration and database query times
 - Error grouping and deduplication
 - Stack trace with source maps
 - Custom tags for filtering (payment ID, family ID, provider)
@@ -107,23 +108,25 @@ The implementation automatically redacts:
 
 ### Sentry Integration Patterns
 
-The implementation uses three Sentry patterns for comprehensive error tracking:
+The implementation uses four Sentry patterns for comprehensive error tracking:
 
-#### 1. Console Integration (Automatic)
-All `console.error()` calls are automatically captured and sent to Sentry. This means the detailed logging we added flows directly into your error monitoring dashboard.
+#### 1. Console Integration (Automatic - Client-Side Only)
+All `console.error()` calls in the **browser** are automatically captured and sent to Sentry.
 
 ```typescript
-// In entry.client.tsx and entry.server.tsx
-Sentry.consoleIntegration({ levels: ['error'] })
+// In entry.client.tsx
+Sentry.captureConsoleIntegration({ levels: ['error'] })
 ```
 
+**Note:** Server-side console integration doesn't work reliably in Remix/Node.js. For server errors, use explicit `Sentry.captureException()` instead (see pattern #2 below).
+
 **Benefits:**
-- Zero code changes required
-- All existing error logs captured
+- Zero code changes required for client-side errors
+- All browser error logs captured automatically
 - Preserves original logging for local development
 
-#### 2. Explicit Exception Capture (Critical Paths)
-Important try/catch blocks use `Sentry.captureException()` with custom context:
+#### 2. Explicit Exception Capture (Server-Side Errors with Custom Context)
+For errors that don't crash the page but should be monitored, use `Sentry.captureException()` with custom context:
 
 **Location: Payment Loader - Individual Session Pricing**
 ```typescript
@@ -188,7 +191,7 @@ try {
 - Additional context specific to the error
 - Track non-fatal errors that don't crash the app
 
-#### 3. ErrorBoundary Integration (Unhandled Errors)
+#### 3. ErrorBoundary Integration (Unhandled React Errors)
 React ErrorBoundaries automatically catch unhandled component errors. Our implementation logs them with full context including payment IDs from the URL.
 
 **Where This Helps:**
@@ -196,6 +199,32 @@ React ErrorBoundaries automatically catch unhandled component errors. Our implem
 - Catches unhandled promise rejections
 - Provides fallback UI to users
 - Logs payment ID for correlation
+
+#### 4. Performance Monitoring (Server-Side)
+The root App component is wrapped with `withSentry()` to enable performance tracking:
+
+```typescript
+// In app/root.tsx
+import { withSentry } from "@sentry/remix";
+
+export default withSentry(function App() {
+  return <Outlet/>;
+});
+```
+
+**What It Tracks:**
+- Server-side request duration
+- Loader execution time (including payment page loaders)
+- Database query performance
+- Payment provider API call latency (Square/Stripe)
+- Slow requests that might timeout
+
+**Benefits:**
+- Identify slow payment page loads before they become errors
+- Detect slow database queries in `getFamilyPaymentOptions`
+- Monitor payment provider API performance
+- See performance trends over time
+- Alert when requests exceed thresholds
 
 ### 4. Resilient Error Handling ✅
 

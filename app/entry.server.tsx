@@ -26,12 +26,9 @@ if (process.env.SENTRY_DSN) {
         dsn: process.env.SENTRY_DSN,
         environment: process.env.NODE_ENV || 'development',
         tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-        integrations: [
-            // Automatically capture console.error calls
-            Sentry.consoleIntegration({
-                levels: ['error'] // Only capture console.error, not log/warn
-            }),
-        ],
+        // Note: Console integration doesn't work on server-side in Remix
+        // Server errors are captured via handleError export and explicit Sentry.captureException calls
+        integrations: [],
         beforeSend(event) {
             // Strip sensitive data from error reports
             if (event.request) {
@@ -71,6 +68,34 @@ if (process.env.SENTRY_DSN) {
             return event;
         },
     });
+}
+
+/**
+ * Handle server-side errors from loaders and actions
+ * Ensures errors are both logged to console AND sent to Sentry
+ */
+export function handleError(
+    error: unknown,
+    { request }: { request: Request }
+): void {
+    // Log to console for server logs
+    console.error(error);
+
+    // Only send to Sentry if DSN is configured
+    // Wrap in try/catch to prevent infinite loops if Sentry itself errors
+    if (process.env.SENTRY_DSN) {
+        try {
+            if (error instanceof Error) {
+                Sentry.captureRemixServerException(error, "remix.server", request);
+            } else {
+                // For non-Error objects, convert to string and capture
+                Sentry.captureException(error);
+            }
+        } catch (sentryError) {
+            // If Sentry fails, log it but don't let it crash the app
+            console.error('Failed to send error to Sentry:', sentryError);
+        }
+    }
 }
 
 /**
@@ -264,7 +289,11 @@ function handleBotRequest(
                 onShellError: reject,
                 onError(error: unknown) {
                     responseStatusCode = 500;
-                    if (shellRendered) console.error(error);
+                    if (shellRendered) {
+                        console.error(error);
+                        // Explicitly capture server-side rendering errors
+                        Sentry.captureException(error);
+                    }
                 },
             }
         );
@@ -304,7 +333,11 @@ function handleBrowserRequest(
                 onShellError: reject,
                 onError(error: unknown) {
                     responseStatusCode = 500;
-                    if (shellRendered) console.error(error);
+                    if (shellRendered) {
+                        console.error(error);
+                        // Explicitly capture server-side rendering errors
+                        Sentry.captureException(error);
+                    }
                 },
             }
         );

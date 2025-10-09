@@ -13,6 +13,7 @@ import {
     LoaderFunctionArgs,
     MetaFunction
 } from "@remix-run/node";
+import { withSentry } from "@sentry/remix";
 import {ThemeProvider} from "~/components/theme-provider";
 import {siteConfig} from "~/config/site";
 import { NonceProvider } from "~/context/nonce";
@@ -186,8 +187,8 @@ export function Layout({children}: { children: React.ReactNode }) {
     );
 }
 
-export default function App() {
+export default withSentry(function App() {
     return (
         <Outlet/>
     );
-}
+});

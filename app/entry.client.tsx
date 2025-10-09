@@ -38,7 +38,7 @@ if (typeof window !== 'undefined' && window.ENV?.SENTRY_DSN) {
                 useMatches,
             }),
             // Automatically capture console.error calls
-            Sentry.consoleIntegration({
+            Sentry.captureConsoleIntegration({
                 levels: ['error'] // Only capture console.error, not log/warn
             }),
         ],
