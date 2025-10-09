@@ -173,9 +173,22 @@ export function formatDate(
 /**
  * Get today's date as a local date string (YYYY-MM-DD)
  * This avoids timezone issues when comparing with database dates
- * @returns Today's date in YYYY-MM-DD format in local timezone
+ * @param timezone Optional timezone (e.g., 'America/Vancouver'). If not provided, uses siteConfig timezone or system timezone
+ * @returns Today's date in YYYY-MM-DD format in the specified timezone
  */
-export function getTodayLocalDateString(): string {
+export function getTodayLocalDateString(timezone?: string): string {
+    const tz = timezone || (typeof siteConfig !== 'undefined' && siteConfig?.businessHours?.timezone) || undefined;
+    const locale = (typeof siteConfig !== 'undefined' && siteConfig?.localization?.locale) || 'en-CA';
+
+    if (tz) {
+        // Get the date in the specified timezone
+        const now = new Date();
+        const dateStr = now.toLocaleString(locale, { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+        // toLocaleString with en-CA returns YYYY-MM-DD format
+        return dateStr.split(',')[0]; // Extract just the date part
+    }
+
+    // Fallback to system timezone
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
