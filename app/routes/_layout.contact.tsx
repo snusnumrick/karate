@@ -364,7 +364,7 @@ export default function ContactPage() {
                                     <p className="text-foreground">
                                         <span className="font-semibold">Q: What&apos;s the class schedule?</span>
                                         <br/>
-                                        A: Classes are on {scheduleInfo.days}, {scheduleInfo.times}. See our <a href="/classes" className="underline hover:text-green-700 dark:hover:text-green-400">Programs</a> page for complete schedule details.
+                                        A: Multiple weekly sessions. See our <a href="/classes" className="underline hover:text-green-700 dark:hover:text-green-400">Programs</a> page for complete schedule details.
                                     </p>
                                 </CardContent>
                             </Card>
