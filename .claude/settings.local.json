@@ -21,7 +21,8 @@
       "Bash(find:*)",
       "Bash(npm test:*)",
       "WebFetch(domain:ai.google.dev)",
-      "Read(//Users/antont/Downloads/**)"
+      "Read(//Users/antont/Downloads/**)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

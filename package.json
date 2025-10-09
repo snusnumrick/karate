@@ -46,6 +46,7 @@
     "@remix-run/node": "2.16.7",
     "@remix-run/react": "2.16.7",
     "@remix-run/serve": "2.16.7",
+    "@sentry/remix": "^10.19.0",
     "@square/web-sdk": "^2.0.1",
     "@stripe/react-stripe-js": "^3.6.0",
     "@stripe/stripe-js": "^6.1.0",

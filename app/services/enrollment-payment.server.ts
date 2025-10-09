@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { fromCents, type Money } from '~/utils/money';
+import * as Sentry from '@sentry/remix';
 
 // Types for enrollment-based payment system
 export interface EnrollmentPaymentOption {
@@ -90,6 +91,7 @@ export async function getStudentPaymentOptions(
     .single();
 
   if (studentError || !student) {
+    console.error(`[getStudentPaymentOptions] Failed to fetch student ${studentId}:`, studentError?.message);
     throw new Error(`Failed to fetch student: ${studentError?.message}`);
   }
 
@@ -118,7 +120,19 @@ export async function getStudentPaymentOptions(
     .in('status', ['active', 'trial']);
 
   if (enrollmentsError) {
+    console.error(`[getStudentPaymentOptions] Failed to fetch enrollments for student ${studentId}:`, enrollmentsError.message);
     throw new Error(`Failed to fetch enrollments: ${enrollmentsError.message}`);
+  }
+
+  // Validate enrollment data structure
+  if (enrollments_db) {
+    enrollments_db.forEach((enrollment) => {
+      if (!enrollment.class) {
+        console.warn(`[getStudentPaymentOptions] Enrollment ${enrollment.id} for student ${studentId} has no class reference`);
+      } else if (!enrollment.class.program) {
+        console.warn(`[getStudentPaymentOptions] Class ${enrollment.class_id} for enrollment ${enrollment.id} has no program reference`);
+      }
+    });
   }
 
   // Check for active subscriptions
@@ -131,7 +145,7 @@ export async function getStudentPaymentOptions(
     .gte('created_at', new Date(Date.now() - 32 * 24 * 60 * 60 * 1000).toISOString()); // Last 32 days
 
   if (paymentsError) {
-    console.warn('Failed to fetch active payments:', paymentsError.message);
+    console.warn(`[getStudentPaymentOptions] Failed to fetch active payments for student ${studentId}:`, paymentsError.message);
   }
 
   const hasActiveMonthly = activePayments?.some(p => p.type === 'monthly_group') || false;
@@ -139,7 +153,16 @@ export async function getStudentPaymentOptions(
   const hasAnyActiveSubscription = hasActiveMonthly || hasActiveYearly;
 
   // Process enrollments into payment options
-  const enrollmentOptions: EnrollmentPaymentOption[] = (enrollments_db || []).map(enrollment_db => {
+  // Filter out enrollments with broken references first
+  const validEnrollments = (enrollments_db || []).filter(enrollment_db => {
+    if (!enrollment_db.class || !enrollment_db.class.program) {
+      console.error(`[getStudentPaymentOptions] Skipping enrollment ${enrollment_db.id} due to broken class/program reference`);
+      return false;
+    }
+    return true;
+  });
+
+  const enrollmentOptions: EnrollmentPaymentOption[] = validEnrollments.map(enrollment_db => {
     const program_db = enrollment_db.class.program;
     const supportedPaymentTypes = getSupportedPaymentTypes(program_db);
 
@@ -187,6 +210,8 @@ export async function getFamilyPaymentOptions(
   familyId: string,
   supabaseClient: ReturnType<typeof getSupabaseAdminClient>
 ): Promise<StudentPaymentOptions[]> {
+  console.log(`[getFamilyPaymentOptions] Fetching payment options for family ${familyId}`);
+
   // Fetch all students in the family
   const { data: students, error: studentsError } = await supabaseClient
     .from('students')
@@ -194,13 +219,59 @@ export async function getFamilyPaymentOptions(
     .eq('family_id', familyId);
 
   if (studentsError) {
+    console.error(`[getFamilyPaymentOptions] Failed to fetch students for family ${familyId}:`, studentsError.message);
     throw new Error(`Failed to fetch family students: ${studentsError.message}`);
   }
 
-  // Get payment options for each student
-  const studentPaymentOptions = await Promise.all(
-    (students || []).map(student => getStudentPaymentOptions(student.id, supabaseClient))
-  );
+  if (!students || students.length === 0) {
+    console.warn(`[getFamilyPaymentOptions] No students found for family ${familyId}`);
+    return [];
+  }
+
+  console.log(`[getFamilyPaymentOptions] Found ${students.length} students for family ${familyId}`);
+
+  // Get payment options for each student, with resilient error handling
+  const studentPaymentOptionsPromises = students.map(async (student) => {
+    try {
+      return await getStudentPaymentOptions(student.id, supabaseClient);
+    } catch (error) {
+      console.error(`[getFamilyPaymentOptions] Failed to get payment options for student ${student.id}:`, error instanceof Error ? error.message : String(error));
+
+      // Capture in Sentry for tracking data issues
+      Sentry.captureException(error, {
+        tags: {
+          familyId: familyId,
+          studentId: student.id
+        },
+        level: 'warning', // Not critical - family page still loads with other students
+        contexts: {
+          studentLookup: {
+            familyId: familyId,
+            studentId: student.id,
+            totalStudentsInFamily: students.length
+          }
+        }
+      });
+
+      // Return a minimal StudentPaymentOptions object instead of failing entirely
+      return {
+        studentId: student.id,
+        studentName: 'Unknown Student',
+        enrollments: [],
+        hasAnyActiveSubscription: false,
+      } as StudentPaymentOptions;
+    }
+  });
+
+  const studentPaymentOptions = await Promise.all(studentPaymentOptionsPromises);
+
+  // Filter out any failed student lookups (those with 'Unknown Student')
+  const validOptions = studentPaymentOptions.filter(opt => opt.studentName !== 'Unknown Student');
+
+  if (validOptions.length === 0 && studentPaymentOptions.length > 0) {
+    console.error(`[getFamilyPaymentOptions] All student lookups failed for family ${familyId}`);
+    // If all students failed, still return the partial data rather than throwing
+  }
 
   return studentPaymentOptions;
 }

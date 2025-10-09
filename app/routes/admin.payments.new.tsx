@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState, useMemo} from 'react';
+import {useEffect, useRef, useState, useMemo, useCallback} from 'react';
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, type TypedResponse,} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useNavigation, useRouteError} from "@remix-run/react";
 import {AuthenticityTokenInput} from "remix-utils/csrf/react";
@@ -623,7 +623,7 @@ export default function AdminNewPaymentPage() {
     };
 
     // Client-side calculation for display
-    const calculateDisplayAmounts = () => {
+    const calculateDisplayAmounts = useCallback(() => {
         let subtotalCents = 0;
         let totalTaxCents = 0;
         const calculatedTaxes: Array<{ name: string; description: string | null; amount: number }> = [];
@@ -680,11 +680,11 @@ export default function AdminNewPaymentPage() {
 
         const totalCents = subtotalCents + totalTaxCents;
         return { subtotal: subtotalCents, taxes: calculatedTaxes, total: totalCents };
-    };
+    }, [selectedType, selectedProductVariantId, storePurchaseQuantity, subtotalStr, selectedTaxRateIds, products, taxRates]);
 
     const { subtotal: calculatedSubtotalCents, taxes: calculatedTaxes, total: calculatedTotalCents } = useMemo(
         () => calculateDisplayAmounts(),
-        [selectedType, selectedProductVariantId, storePurchaseQuantity, subtotalStr, selectedTaxRateIds, products, taxRates]
+        [calculateDisplayAmounts]
     );
 
     // console.log("Rendering AdminNewPaymentPage component...");

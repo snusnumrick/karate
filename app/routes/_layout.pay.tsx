@@ -657,13 +657,40 @@ export default function PaymentPage() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  console.error("[PaymentPage ErrorBoundary]", error);
+
+  // Extract payment ID from URL if available
+  const url = typeof window !== 'undefined' ? window.location.pathname : '';
+  const paymentIdMatch = url.match(/\/pay\/([^/]+)/);
+  const paymentId = paymentIdMatch ? paymentIdMatch[1] : 'unknown';
+
+  // Log comprehensive error details
+  console.error("[PaymentPage ErrorBoundary] Payment page error caught:", {
+    paymentId,
+    url,
+    error: error instanceof Error ? {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    } : error,
+    timestamp: new Date().toISOString()
+  });
+
+  // Additional logging for better debugging
+  if (error instanceof Error) {
+    console.error(`[PaymentPage ErrorBoundary] Error name: ${error.name}`);
+    console.error(`[PaymentPage ErrorBoundary] Error message: ${error.message}`);
+    console.error(`[PaymentPage ErrorBoundary] Error stack:`, error.stack);
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <Alert variant="destructive">
         <AlertTitle>Payment Page Error</AlertTitle>
         <AlertDescription>
           Sorry, something went wrong while loading the payment page. Please try again later or contact support.
+          {paymentId !== 'unknown' && (
+            <span className="block mt-2 text-sm font-mono">Reference ID: {paymentId}</span>
+          )}
         </AlertDescription>
       </Alert>
       <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">

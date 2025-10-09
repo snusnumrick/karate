@@ -5,6 +5,7 @@ import PaymentForm from "~/components/payment/PaymentForm";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import type {Database} from "~/types/database.types";
+import * as Sentry from "@sentry/remix";
 import {
     formatMoney,
     toCents,
@@ -141,6 +142,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     const renderConfig = paymentProvider.getClientRenderConfig();
 
     if (!paymentProvider.isConfigured()) {
+        console.error('[Payment Loader] Payment provider not configured:', paymentProviderId);
         return json({
             error: "Payment gateway configuration error.",
             paymentProviderId,
@@ -150,13 +152,15 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     const paymentId = params.paymentId;
     if (!paymentId) {
-        console.error("Payment ID is required");
+        console.error("[Payment Loader] Payment ID is required but not provided");
         return json({
             error: "Payment ID is required",
             paymentProviderId,
             providerConfig: renderConfig,
         }, {status: 400});
     }
+
+    console.log(`[Payment Loader] Starting loader for payment ID: ${paymentId}`);
 
     if (paymentId === 'event-payment-success') {
         console.log("Redirecting from event-payment-success to events page");
@@ -184,23 +188,22 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         .eq('id', paymentId)
         .maybeSingle(); // Use maybeSingle to handle not found
 
-    // console.log(`[Loader] Fetching payment details for ID ${paymentId}... - ${payment}, ${error}`);
-
     if (error) {
-        // Log the specific database error message
-        console.error(`[Loader] Error fetching payment details for ID ${paymentId}:`, error.message);
-        // Return a more specific error message including the DB error
+        console.error(`[Payment Loader] Database error fetching payment ${paymentId}:`, {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+        });
         return json<LoaderData>({
             error: `Failed to load payment details: ${error.message}`,
             paymentProviderId,
             providerConfig: renderConfig,
         }, {status: 500, headers: response.headers});
     }
-    // console.log('paymentId loader payment: ', payment);
 
     if (!payment) {
-        // Return error in JSON to handle in component
-        console.error("Payment not found:", paymentId);
+        console.error(`[Payment Loader] Payment not found: ${paymentId}`);
         return json<LoaderData>({
             error: "Payment record not found.",
             paymentProviderId,
@@ -211,28 +214,64 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         });
     }
 
+    // Validate payment data structure
+    console.log(`[Payment Loader] Payment ${paymentId} loaded:`, {
+        type: payment.type,
+        familyId: payment.family_id,
+        status: payment.status,
+        hasFamily: !!payment.family,
+        studentCount: payment.payment_students?.length ?? 0,
+        taxCount: payment.payment_taxes?.length ?? 0,
+        subtotalAmount: payment.subtotal_amount,
+        totalAmount: payment.total_amount
+    });
+
+    if (!payment.family) {
+        console.warn(`[Payment Loader] Warning: Payment ${paymentId} has no associated family record (family_id: ${payment.family_id})`);
+    }
+
+    if (!payment.type) {
+        console.error(`[Payment Loader] Critical: Payment ${paymentId} missing payment type`);
+        return json<LoaderData>({
+            error: "Payment data is incomplete (missing type).",
+            paymentProviderId,
+            providerConfig: renderConfig,
+        }, {status: 500, headers: response.headers});
+    }
+
     let individualSessionUnitAmountCents: number | null = null;
     let individualSessionQuantity: number | null = null;
 
     if (payment.type === 'individual_session') {
+        console.log(`[Payment Loader] Processing individual session pricing for payment ${paymentId}, family ${payment.family_id}`);
         try {
+            const studentIds = payment.payment_students?.map(ps => ps.student_id) ?? [];
+            console.log(`[Payment Loader] Payment students for ${paymentId}:`, studentIds);
+
+            if (studentIds.length === 0) {
+                console.warn(`[Payment Loader] No students associated with individual session payment ${paymentId}`);
+            }
+
             const familyPaymentOptions = await getFamilyPaymentOptions(payment.family_id, supabaseAdmin);
+            console.log(`[Payment Loader] Retrieved ${familyPaymentOptions.length} student payment options for family ${payment.family_id}`);
+
             const pricingByStudent = new Map<string, EnrollmentPaymentOption[]>(
                 familyPaymentOptions.map(option => [option.studentId, option.enrollments])
             );
-            const studentIds = payment.payment_students?.map(ps => ps.student_id) ?? [];
 
             const resolveIndividualAmountCents = (): number | null => {
                 for (const studentId of studentIds) {
                     const enrollments = pricingByStudent.get(studentId) ?? [];
                     const match = enrollments.find(enrollment => enrollment.individualSessionAmount);
                     if (match?.individualSessionAmount) {
+                        console.log(`[Payment Loader] Found individual session amount for student ${studentId}: ${toCents(match.individualSessionAmount)} cents`);
                         return toCents(match.individualSessionAmount);
                     }
                 }
                 for (const option of familyPaymentOptions) {
                     const match = option.enrollments.find(enrollment => enrollment.individualSessionAmount);
                     if (match?.individualSessionAmount) {
+                        console.log(`[Payment Loader] Found individual session amount in fallback search: ${toCents(match.individualSessionAmount)} cents`);
                         return toCents(match.individualSessionAmount);
                     }
                 }
@@ -244,10 +283,37 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
                 individualSessionUnitAmountCents = unitAmountCents;
                 if (payment.subtotal_amount) {
                     individualSessionQuantity = Math.round(payment.subtotal_amount / unitAmountCents);
+                    console.log(`[Payment Loader] Calculated quantity for payment ${paymentId}: ${individualSessionQuantity} sessions`);
                 }
+            } else {
+                console.warn(`[Payment Loader] Could not resolve individual session pricing for payment ${paymentId}`);
             }
         } catch (pricingError) {
-            console.error('[Loader] Unable to derive individual session pricing:', pricingError);
+            console.error(`[Payment Loader] Error deriving individual session pricing for payment ${paymentId}:`, {
+                error: pricingError instanceof Error ? pricingError.message : String(pricingError),
+                stack: pricingError instanceof Error ? pricingError.stack : undefined,
+                familyId: payment.family_id,
+                paymentId: paymentId
+            });
+
+            // Capture in Sentry with context for tracking
+            Sentry.captureException(pricingError, {
+                tags: {
+                    paymentId: paymentId,
+                    familyId: payment.family_id,
+                    paymentType: payment.type
+                },
+                level: 'warning', // Not critical - page still loads with fallback
+                contexts: {
+                    payment: {
+                        type: payment.type,
+                        studentCount: payment.payment_students?.length ?? 0,
+                        hasSubtotal: !!payment.subtotal_amount
+                    }
+                }
+            });
+
+            // Don't fail the entire page load - continue with null pricing
         }
     }
 
@@ -320,6 +386,22 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             // For other statuses we leave the record as pending and allow the UI to render the existing state.
         } catch (providerError) {
             console.error(`[Loader] Error retrieving payment intent ${paymentIntentId}:`, providerError instanceof Error ? providerError.message : providerError);
+
+            // Capture provider API errors in Sentry
+            Sentry.captureException(providerError, {
+                tags: {
+                    paymentId: paymentId,
+                    paymentIntentId: paymentIntentId,
+                    provider: paymentProvider.id
+                },
+                level: 'error', // This is more critical - payment status verification failed
+                contexts: {
+                    payment: {
+                        status: paymentWithDerived.status,
+                        type: paymentWithDerived.type
+                    }
+                }
+            });
         }
     }
     // --- End provider status check ---
@@ -758,7 +840,30 @@ export default function PaymentPage() {
 // Optional: Add ErrorBoundary for route-level errors
 export function ErrorBoundary() {
     const error = useRouteError(); // Use this hook to get the error
-    console.error("[PaymentPage ErrorBoundary] Caught error:", error); // Log the caught error
+
+    // Extract payment ID from URL if available
+    const url = typeof window !== 'undefined' ? window.location.pathname : '';
+    const paymentIdMatch = url.match(/\/pay\/([^/]+)/);
+    const paymentId = paymentIdMatch ? paymentIdMatch[1] : 'unknown';
+
+    // Log comprehensive error details
+    console.error("[PaymentPage ErrorBoundary] Payment page error caught:", {
+        paymentId,
+        url,
+        error: error instanceof Error ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        } : error,
+        timestamp: new Date().toISOString()
+    });
+
+    // Additional logging for better debugging
+    if (error instanceof Error) {
+        console.error(`[PaymentPage ErrorBoundary] Error name: ${error.name}`);
+        console.error(`[PaymentPage ErrorBoundary] Error message: ${error.message}`);
+        console.error(`[PaymentPage ErrorBoundary] Error stack:`, error.stack);
+    }
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -767,6 +872,9 @@ export function ErrorBoundary() {
                 <AlertDescription>
                     Sorry, something went wrong while loading the payment page. Please try again later or contact
                     support.
+                    {paymentId !== 'unknown' && (
+                        <span className="block mt-2 text-sm font-mono">Reference ID: {paymentId}</span>
+                    )}
                 </AlertDescription>
             </Alert>
             <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">Return Home</Link>
