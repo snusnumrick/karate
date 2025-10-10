@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Calendar, Plus, Users, DollarSign, MapPin, Clock, Filter, Trash2, ExternalLink } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { format, parseISO } from "date-fns";
-import { formatDate } from "~/utils/misc";
+import { formatDate, getCurrentDateTimeInTimezone } from "~/utils/misc";
 import type { Database } from "~/types/database.types";
 import { getEventTypeOptions } from "~/utils/event-helpers.server";
 import { csrf } from "~/utils/csrf.server";
@@ -150,7 +150,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // Calculate stats
     const totalEvents = events.length;
     const upcomingEvents = events.filter(e => 
-      new Date(e.start_date) >= new Date() && 
+      new Date(e.start_date) >= getCurrentDateTimeInTimezone() && 
       e.status !== 'cancelled'
     ).length;
     const totalRegistrations = Array.from(registrationCountMap.values()).reduce((sum, count) => sum + count, 0);

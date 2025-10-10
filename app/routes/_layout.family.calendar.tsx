@@ -20,7 +20,7 @@ import { CalendarFilters } from "~/components/calendar/CalendarFilters";
 import { CalendarLegend } from "~/components/calendar/CalendarLegend";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents, filterEventsByStudent } from "~/components/calendar/utils";
-import { formatDate } from "~/utils/misc";
+import { formatDate, getTodayLocalDateString } from "~/utils/misc";
 import { requireUserId } from "~/utils/auth.server";
 import { breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
@@ -150,7 +150,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const familyId = profile.family_id;
     const url = new URL(request.url);
     const monthParam = url.searchParams.get('month');
-    const currentMonth = monthParam || formatDate(new Date(), { formatString: 'yyyy-MM' });
+    const currentMonth = monthParam || getTodayLocalDateString().substring(0, 7);
     // console.log('Family Calendar Loader: Current month:', currentMonth);
 
     // Fetch family name

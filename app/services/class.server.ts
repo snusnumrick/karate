@@ -17,7 +17,7 @@ import type {
   WeeklySchedule
 } from '~/types/multi-class';
 import { formatLocalDate } from '~/components/calendar/utils';
-import { formatDate, getTodayLocalDateString } from '~/utils/misc';
+import { formatDate, getTodayLocalDateString, getCurrentDateTimeInTimezone } from '~/utils/misc';
 
 /**
  * Get all instructors (profiles with instructor role)
@@ -373,31 +373,31 @@ export async function getClassById(
   // If no actual session found, calculate next occurrence from schedule
   let nextScheduledTime = null;
   if (!nextSession && schedules.length > 0) {
-    const now = new Date();
+    const now = getCurrentDateTimeInTimezone();
     const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
+
     // Map day_of_week enum to JavaScript day numbers
     const dayMap: { [key: string]: number } = {
       'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
       'thursday': 4, 'friday': 5, 'saturday': 6
     };
-    
+
     let earliestSchedule = null;
     let earliestDaysFromNow = 8; // More than a week
-    
+
     // Check all schedules and find the earliest upcoming one
     for (const schedule of schedules) {
       const scheduleDay = dayMap[schedule.day_of_week];
-      
+
       // Calculate days from now to this schedule
       let daysFromNow = (scheduleDay - currentDay + 7) % 7;
-      
+
       // If it's today (daysFromNow === 0), check if the time hasn't passed yet
       if (daysFromNow === 0) {
         const [hours, minutes] = schedule.start_time.split(':').map(Number);
         const scheduleTime = new Date(now);
         scheduleTime.setHours(hours, minutes, 0, 0);
-        
+
         if (scheduleTime <= now) {
           // Time has passed today, so next occurrence is next week
           daysFromNow = 7;

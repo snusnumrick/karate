@@ -12,6 +12,7 @@ import {Badge} from "~/components/ui/badge";
 // Separator removed as it's unused
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {getSupabaseAdminClient} from "~/utils/supabase.server";
+import { getTodayLocalDateString } from "~/utils/misc";
 import {
     FinishReason,
     GenerativeModel,
@@ -95,7 +96,7 @@ async function getAndCacheSchemaDescription(): Promise<string> {
   - Assume PK/FK relationships exist where names suggest (e.g., family_id -> families.id).
   - Monetary amounts (amount, price) are stored in CENTS (integer). Divide by 100.0 for dollar values in SQL.
   - Dates are typically DATE or TIMESTAMPTZ.
-  - Current Date for relative calculations: ${new Date().toISOString().split('T')[0]}
+  - Current Date for relative calculations: ${getTodayLocalDateString()}
 
 -- Important Logic Notes:
   - Belt Ranks: To find a student's *current* belt rank, join 'students' with 'belt_awards' on 'student_id' and select the 'type' associated with the most recent 'awarded_date' for that student (e.g., using ROW_NUMBER() OVER (PARTITION BY student_id ORDER BY awarded_date DESC) as rn WHERE rn = 1).

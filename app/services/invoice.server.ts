@@ -28,6 +28,7 @@ import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { toCents, addMoney, subtractMoney, ZERO_MONEY, type Money } from "~/utils/money";
 import { convertRowToMoney, convertRowsToMoney, convertMoneyToRow, moneyFromRow } from "~/services/database-money.server";
+import { getTodayLocalDateString } from "~/utils/misc";
 
 /**
  * Calculate invoice totals from line items
@@ -612,7 +613,7 @@ export async function getInvoices(
   // Filter by overdue status if requested (post-query filtering)
   let filteredInvoices = invoices || [];
   if (hasOverdueFilter) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocalDateString();
     filteredInvoices = filteredInvoices.filter(inv => {
       const isOverdue = inv.status !== 'paid' && inv.due_date < today;
       // Check if invoice matches other requested statuses (excluding 'overdue' which is computed)
@@ -1006,7 +1007,7 @@ export async function getInvoiceStats(
     overdue_count: 0,
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayLocalDateString();
 
   invoices_db?.forEach((inv) => {
     const totalAmount = moneyFromRow('invoices', 'total_amount', inv as unknown as Record<string, unknown>);

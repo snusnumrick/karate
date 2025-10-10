@@ -13,7 +13,8 @@ import { recordSessionAttendance } from '~/services/attendance.server';
 import { updateClassSession } from '~/services/class.server';
 import { validateCSRF } from '~/utils/csrf.server';
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
-import { formatDate } from '~/utils/misc';
+import { formatDate, getTodayLocalDateString, getCurrentDateTimeInTimezone } from '~/utils/misc';
+import { parseLocalDate } from '~/components/calendar/utils';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
@@ -73,9 +74,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const requestedSessionId = searchParams.get('sessionId');
   const modeParam = searchParams.get('mode') === 'roster' ? 'roster' : 'record';
 
-  const today = new Date();
-  let startDate = format(today, 'yyyy-MM-dd');
-  let endDate = format(addDays(today, 1), 'yyyy-MM-dd');
+  let startDate = getTodayLocalDateString();
+  let endDate = format(addDays(parseLocalDate(startDate), 1), 'yyyy-MM-dd');
 
   if (requestedSessionId) {
     const { data: sessionRecords, error } = await supabaseAdmin
@@ -763,7 +763,7 @@ type ResolveStatusOptions = {
 };
 
 function resolveStatus(status: AttendanceStatus, { enforceLate, lateThreshold }: ResolveStatusOptions) {
-  if (status === 'present' && enforceLate && lateThreshold && isAfter(new Date(), lateThreshold)) {
+  if (status === 'present' && enforceLate && lateThreshold && isAfter(getCurrentDateTimeInTimezone(), lateThreshold)) {
     return { status: 'late' as AttendanceStatus, autoLate: true };
   }
 
@@ -1094,7 +1094,7 @@ function formatSessionTimeRange(start: string | null, end: string | null): strin
 }
 
 function findCurrentOrNextSession(sessions: InstructorSessionPayload[]): InstructorSessionPayload | null {
-  const now = new Date();
+  const now = getCurrentDateTimeInTimezone();
   const sorted = [...sessions].sort((a, b) => {
     if (!a.start || !b.start) return 0;
     return parseLocalDateTime(a.start).getTime() - parseLocalDateTime(b.start).getTime();

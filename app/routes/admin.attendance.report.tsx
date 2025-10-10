@@ -8,7 +8,7 @@ import {Label} from "~/components/ui/label";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "~/components/ui/table";
 import {Card, CardContent, CardHeader, CardTitle} from "~/components/ui/card";
 import {endOfMonth, format, isValid, parse, startOfMonth, subMonths} from 'date-fns'; // format is used by getDefaultDateRange
-import {formatDate} from "~/utils/misc";
+import {formatDate, getCurrentDateTimeInTimezone} from "~/utils/misc";
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
 
 // Define types
@@ -38,7 +38,7 @@ type LoaderData = {
 
 // Helper to get date range for the previous month
 function getDefaultDateRange(): { startDate: string, endDate: string } {
-    const today = new Date();
+    const today = getCurrentDateTimeInTimezone();
     const firstDayLastMonth = startOfMonth(subMonths(today, 1));
     const lastDayLastMonth = endOfMonth(subMonths(today, 1));
     return {

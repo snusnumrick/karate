@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { ArrowLeft, Search, Filter, Users, CheckCircle, Clock, XCircle } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { formatDate } from "~/utils/misc";
+import { formatDate, getCurrentDateTimeInTimezone } from "~/utils/misc";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
@@ -53,7 +53,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       } else if (status === 'used') {
         query = query.gte('discount_codes.current_uses', 1);
       } else if (status === 'expired') {
-        query = query.lt('expires_at', new Date().toISOString());
+        query = query.lt('expires_at', getCurrentDateTimeInTimezone().toISOString());
       }
     }
 
@@ -91,7 +91,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (!statsError && stats) {
       totalAssignments = stats.length;
-      const now = new Date();
+      const now = getCurrentDateTimeInTimezone();
       
       stats.forEach(assignment => {
         const discountCode = assignment.discount_codes as { is_active?: boolean; current_uses?: number } | null;
@@ -153,7 +153,7 @@ export default function DiscountAssignments() {
     expires_at?: string | null;
     discount_codes?: { is_active?: boolean; current_uses?: number } | null;
   }) => {
-    const now = new Date();
+    const now = getCurrentDateTimeInTimezone();
     const expiresAt = assignment.expires_at ? new Date(assignment.expires_at) : null;
     const isExpired = expiresAt && expiresAt < now;
     const isUsed = assignment.discount_codes?.current_uses && assignment.discount_codes.current_uses > 0;

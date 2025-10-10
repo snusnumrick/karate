@@ -9,6 +9,7 @@ import { getInvoiceEntities, getInvoiceEntityById } from "~/services/invoice-ent
 import { sendInvoiceEmail } from "~/services/invoice-email.server";
 import { getActiveTaxRates } from "~/services/tax-rates.server";
 import { requireUserId } from "~/utils/auth.server";
+import { getTodayLocalDateString } from "~/utils/misc";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
 import {isNegative, ZERO_MONEY, toCents, fromCents, deserializeMoney, type MoneyJSON} from "~/utils/money";
 
@@ -201,8 +202,8 @@ export async function action({ request }: ActionFunctionArgs) {
     const invoiceData: CreateInvoiceData = {
       entity_id: entity_id || '',
       family_id: family_id,
-      issue_date: issue_date || new Date().toISOString().split('T')[0],
-      due_date: due_date || new Date().toISOString().split('T')[0],
+      issue_date: issue_date || getTodayLocalDateString(),
+      due_date: due_date || getTodayLocalDateString(),
       service_period_start: formData.get("service_period_start") as string || undefined,
       service_period_end: formData.get("service_period_end") as string || undefined,
       terms: formData.get("terms") as string || undefined,

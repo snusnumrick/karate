@@ -195,3 +195,42 @@ export function getTodayLocalDateString(timezone?: string): string {
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
+
+/**
+ * Get the current date and time in a specific timezone as a Date object
+ * The returned Date object's components (year, month, day, hour, minute, second)
+ * represent the current time in the specified timezone
+ * @param timezone Optional timezone (e.g., 'America/Vancouver'). If not provided, uses siteConfig timezone or system timezone
+ * @returns Date object with components from the current time in the specified timezone
+ */
+export function getCurrentDateTimeInTimezone(timezone?: string): Date {
+    const tz = timezone || (typeof siteConfig !== 'undefined' && siteConfig?.businessHours?.timezone) || undefined;
+
+    if (tz) {
+        const now = new Date();
+        const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        }).formatToParts(now);
+
+        const get = (type: string) => parts.find(p => p.type === type)?.value || '0';
+
+        return new Date(
+            parseInt(get('year')),
+            parseInt(get('month')) - 1,
+            parseInt(get('day')),
+            parseInt(get('hour')),
+            parseInt(get('minute')),
+            parseInt(get('second'))
+        );
+    }
+
+    // Fallback to server's local time
+    return new Date();
+}

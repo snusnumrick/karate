@@ -15,7 +15,7 @@ import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { AlertTriangle, CalendarDays, ChevronRight, Clock, Users } from 'lucide-react';
 import type { InstructorRouteHandle } from '~/routes/instructor';
-import { formatDate } from '~/utils/misc';
+import { formatDate, getCurrentDateTimeInTimezone } from '~/utils/misc';
 
 type SerializableSession = InstructorSessionPayload;
 
@@ -51,7 +51,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     headers,
   } = await resolveInstructorPortalContext(request);
 
-  const today = new Date();
+  const today = getCurrentDateTimeInTimezone();
   const todayStr = format(today, 'yyyy-MM-dd');
   const upcomingStart = format(addDays(today, 1), 'yyyy-MM-dd');
   const upcomingEnd = format(addDays(today, 7), 'yyyy-MM-dd');
@@ -85,7 +85,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .filter((summary) => summary.startDateTime)
     .sort((a, b) => (a.startDateTime && b.startDateTime ? a.startDateTime.getTime() - b.startDateTime.getTime() : 0));
 
-  const now = new Date();
+  const now = getCurrentDateTimeInTimezone();
   const nextSummary = chronologicalSessions.find((summary) => summary.startDateTime && summary.startDateTime >= now);
   const nextSession = nextSummary ? serializeInstructorSessionSummary(nextSummary) : null;
 

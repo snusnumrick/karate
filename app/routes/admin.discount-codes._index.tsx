@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from '~/components/ui/alert-dialog';
 import { Plus } from 'lucide-react';
-import { formatDate } from '~/utils/misc';
+import { formatDate, getCurrentDateTimeInTimezone } from '~/utils/misc';
 import { formatMoney, toMoney } from '~/utils/money';
 import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import { csrf } from "~/utils/csrf.server";
@@ -181,7 +181,7 @@ export default function AdminDiscountCodes() {
                   </thead>
                   <tbody>
                   {discountCodes.map((code) => {
-                    const isExpired = code.valid_until && new Date() > new Date(code.valid_until);
+                    const isExpired = code.valid_until && getCurrentDateTimeInTimezone() > new Date(code.valid_until);
                     const status = isExpired ? 'expired' : code.is_active ? 'active' : 'inactive';
 
                     return (

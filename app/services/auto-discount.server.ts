@@ -3,6 +3,7 @@ import type { Database, Json } from '~/types/database.types';
 import { DiscountService } from './discount.server';
 import type { DiscountType, UsageType, DiscountScope, CreateDiscountCodeData, ApplicableTo } from '~/types/discount';
 import { fromDollars } from '~/utils/money';
+import { getCurrentDateTimeInTimezone } from '~/utils/misc';
 
 
 let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
@@ -83,8 +84,8 @@ export class AutoDiscountService {
       `)
       .eq('event_type', event.event_type)
       .eq('is_active', true)
-      .or('valid_from.is.null,valid_from.lte.' + new Date().toISOString())
-      .or('valid_until.is.null,valid_until.gte.' + new Date().toISOString());
+      .or('valid_from.is.null,valid_from.lte.' + getCurrentDateTimeInTimezone().toISOString())
+      .or('valid_until.is.null,valid_until.gte.' + getCurrentDateTimeInTimezone().toISOString());
 
     if (rulesError) {
       console.error('Error fetching automation rules:', rulesError);
@@ -267,7 +268,7 @@ export class AutoDiscountService {
         applicable_to: template_db.applicable_to as ApplicableTo,
         scope: template_db.scope as DiscountScope,
         max_uses: template_db.max_uses || undefined,
-        valid_from: new Date().toISOString(),
+        valid_from: getCurrentDateTimeInTimezone().toISOString(),
         valid_until: this.calculateValidUntil(rule),
       };
 
@@ -332,14 +333,14 @@ export class AutoDiscountService {
     }
 
     const birthDate = new Date(data.birth_date);
-    const today = new Date();
+    const today = getCurrentDateTimeInTimezone();
     const age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       return age - 1;
     }
-    
+
     return age;
   }
 

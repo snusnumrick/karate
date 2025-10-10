@@ -1,5 +1,5 @@
 import type { InvoiceItemType, CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
-import { formatDate } from "~/utils/misc";
+import { formatDate, getCurrentDateTimeInTimezone } from "~/utils/misc";
 import {
     multiplyMoney,
     addMoney,
@@ -295,7 +295,7 @@ export function formatServicePeriod(startDate?: string, endDate?: string): strin
  * Get default service period for current month
  */
 export function getDefaultServicePeriod(): { start: string; end: string } {
-  const now = new Date();
+  const now = getCurrentDateTimeInTimezone();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   

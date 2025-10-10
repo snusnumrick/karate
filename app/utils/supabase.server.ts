@@ -7,6 +7,7 @@ import type { UserRole } from '~/types/auth';
 import { isAdminRole } from '~/types/auth';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import {addMoney, Money, toCents} from "./money";
+import { getCurrentDateTimeInTimezone } from "./misc";
 
 // Re-export EligibilityStatus for other modules
 export type { EligibilityStatus };
@@ -293,7 +294,7 @@ export async function checkStudentEligibility(
     }
 
     // 3. Check active enrollments with paid_until dates
-    const today = new Date();
+    const today = getCurrentDateTimeInTimezone();
     const activeEnrollments = enrollments.filter(e => e.status === 'active');
 
     for (const enrollment of activeEnrollments) {
@@ -485,7 +486,7 @@ export async function updatePaymentStatus(
                         continue; // Move to next student
                     }
 
-                    const today = new Date();
+                    const today = getCurrentDateTimeInTimezone();
                     const currentPaidUntil = enrollment.paid_until ? new Date(enrollment.paid_until) : today;
                     // Start extending from today or the future paid_until date, whichever is later
                     const startDate = currentPaidUntil > today ? currentPaidUntil : today;

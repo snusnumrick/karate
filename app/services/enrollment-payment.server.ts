@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { fromCents, type Money } from '~/utils/money';
+import { getCurrentDateTimeInTimezone } from '~/utils/misc';
 import * as Sentry from '@sentry/remix';
 
 // Types for enrollment-based payment system
@@ -136,13 +137,16 @@ export async function getStudentPaymentOptions(
   }
 
   // Check for active subscriptions
+  const thirtyTwoDaysAgo = getCurrentDateTimeInTimezone();
+  thirtyTwoDaysAgo.setDate(thirtyTwoDaysAgo.getDate() - 32);
+
   const { data: activePayments, error: paymentsError } = await supabaseClient
     .from('payments')
     .select('id, type, status, payment_students!inner(student_id)')
     .eq('payment_students.student_id', studentId)
     .eq('status', 'succeeded')
     .in('type', ['monthly_group', 'yearly_group'])
-    .gte('created_at', new Date(Date.now() - 32 * 24 * 60 * 60 * 1000).toISOString()); // Last 32 days
+    .gte('created_at', thirtyTwoDaysAgo.toISOString()); // Last 32 days
 
   if (paymentsError) {
     console.warn(`[getStudentPaymentOptions] Failed to fetch active payments for student ${studentId}:`, paymentsError.message);

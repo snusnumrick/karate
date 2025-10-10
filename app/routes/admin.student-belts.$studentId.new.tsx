@@ -8,10 +8,10 @@ import {Label} from "~/components/ui/label";
 import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select"; // Import Select components
-import {format} from 'date-fns'; // For default date
 import {BELT_RANKS} from "~/utils/constants";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { getTodayLocalDateString } from "~/utils/misc";
 
 // Define types (assuming table renamed to 'belt_awards' and types regenerated)
 // Ensure app/types/database.types.ts has been regenerated after adding the enum in SQL
@@ -112,7 +112,7 @@ export default function AddAchievementPage() { // Function name can stay for now
     const params = useParams();
 
     const isSubmitting = navigation.state === "submitting";
-    const today = format(new Date(), 'yyyy-MM-dd'); // Default date
+    const today = getTodayLocalDateString(); // Default date
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-2xl">

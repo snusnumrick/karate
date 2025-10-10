@@ -3,6 +3,7 @@ import type { TaxRate, InvoiceItemType } from "~/types/invoice";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~/types/database.types";
 import {addMoney, Money, multiplyMoney, ZERO_MONEY} from "~/utils/money";
+import { getCurrentDateTimeInTimezone } from "~/utils/misc";
 
 /**
  * Get all active tax rates
@@ -154,14 +155,14 @@ async function hasStudentsUnder15(
     return false; // If we can't determine age, don't apply exemption
   }
 
-  const today = new Date();
-  
+  const today = getCurrentDateTimeInTimezone();
+
   for (const student of students) {
     if (student.birth_date) {
       const birthDate = new Date(student.birth_date);
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
-      
+
       let actualAge = age;
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         actualAge = age - 1;

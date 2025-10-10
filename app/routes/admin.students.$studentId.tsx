@@ -27,8 +27,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
-import { format } from 'date-fns'; // format is still used for new Date() formatting
-import { formatDate } from "~/utils/misc"; // Import formatDate utility
+import { formatDate, getTodayLocalDateString } from "~/utils/misc"; // Import formatDate utility
 import { beltColorMap } from "~/utils/constants";
 import {
     getStudentDetails,
@@ -116,7 +115,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
     // --- Handle "Record Individual Session Usage" Intent ---
     if (intent === "recordUsage") {
         const sessionPurchaseId = formData.get("sessionPurchaseId") as string;
-        const usageDate = formData.get("usageDate") as string || format(new Date(), 'yyyy-MM-dd');
+        const usageDate = formData.get("usageDate") as string || getTodayLocalDateString();
         const notes = formData.get("notes") as string | null;
 
         if (!sessionPurchaseId) {
@@ -529,7 +528,7 @@ export default function AdminStudentDetailPage() {
                                 </div>
                                 <div>
                                     <Label htmlFor="usageDate">Usage Date</Label>
-                                    <Input id="usageDate" name="usageDate" type="date" defaultValue={format(new Date(), 'yyyy-MM-dd')} required className="input-custom-styles" />
+                                    <Input id="usageDate" name="usageDate" type="date" defaultValue={getTodayLocalDateString()} required className="input-custom-styles" />
                                 </div>
                                 <div>
                                     <Label htmlFor="notes">Notes (Optional)</Label>

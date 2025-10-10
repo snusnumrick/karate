@@ -12,7 +12,7 @@ import { Badge } from '~/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import { AlertTriangle, CheckCircle2, Users } from 'lucide-react';
 import type { InstructorRouteHandle } from '~/routes/instructor';
-import { formatDate } from '~/utils/misc';
+import { formatDate, getCurrentDateTimeInTimezone } from '~/utils/misc';
 
 interface StudentSummary {
   studentId: string;
@@ -47,7 +47,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers } = context;
 
-  const today = new Date();
+  const today = getCurrentDateTimeInTimezone();
   const startDate = format(addDays(today, -90), 'yyyy-MM-dd');
   const endDate = format(addDays(today, 30), 'yyyy-MM-dd');
 
