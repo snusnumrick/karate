@@ -443,7 +443,7 @@ export default function InstructorAttendancePage() {
           <div className="flex flex-wrap gap-3">
             <SummaryPill icon={CheckCircle2} label="Present" value={counts.present} variant="success" />
             <SummaryPill icon={Clock} label="Late" value={counts.late} variant="warn" />
-            <SummaryPill icon={AlertTriangle} label="Absent" value={counts.absent} variant="absence" />
+            <SummaryPill icon={AlertTriangle} label="Absent" value={counts.absent} variant="destructive" />
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -785,11 +785,11 @@ function resolveStatus(status: AttendanceStatus, { enforceLate, lateThreshold }:
 function CheckInLegend() {
   return (
     <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-      <LegendSwatch label="Present" className="border-emerald-500 bg-emerald-500/10" />
-      <LegendSwatch label="Late" className="border-amber-500 bg-amber-500/10" />
-      <LegendSwatch label="Absent" className="border-purple-500 bg-purple-500/10" />
+      <LegendSwatch label="Present" className="attendance-present-border attendance-present-bg" />
+      <LegendSwatch label="Late" className="attendance-late-border attendance-late-bg" />
+      <LegendSwatch label="Absent" className="attendance-absent-border attendance-absent-bg" />
       <span className="inline-flex items-center gap-2">
-        <span className="h-3 w-3 rounded-full border border-red-500 ring-2 ring-red-500" />
+        <span className="h-3 w-3 rounded-full attendance-eligibility-border attendance-eligibility-ring" />
         Eligibility review needed
       </span>
     </div>
@@ -831,19 +831,19 @@ function CheckInGrid({
             className={cn(
               'relative flex h-28 flex-col items-center justify-center rounded-xl border-2 p-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900',
               getCheckInTileClass(status),
-              !eligible && 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900',
+              !eligible && 'attendance-eligibility-ring',
             )}
           >
             <span className="text-base font-semibold text-foreground">{entry.fullName}</span>
             {!eligible && (
-              <span className="mt-1 text-[0.625rem] font-semibold uppercase tracking-wide text-red-500">
+              <span className="mt-1 text-[0.625rem] font-semibold uppercase tracking-wide attendance-eligibility-text">
                 Eligibility hold
               </span>
             )}
             <span className={cn('mt-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide', getCheckInStatusTextColor(status))}>
               {statusLabel}
               {status === 'late' && autoLateFlags[entry.studentId] && (
-                <span className="inline-flex items-center gap-1 text-[0.7rem] text-amber-500">
+                <span className="inline-flex items-center gap-1 text-[0.7rem] attendance-late-text">
                   <Clock className="h-3 w-3" /> auto
                 </span>
               )}
@@ -857,10 +857,10 @@ function CheckInGrid({
 
 function getCheckInTileClass(status: AttendanceStatus) {
   const classes: Record<AttendanceStatus, string> = {
-    present: 'border-emerald-500 bg-emerald-500/5',
-    late: 'border-amber-500 bg-amber-500/5',
-    absent: 'border-purple-500 bg-purple-500/5',
-    excused: 'border-sky-500 bg-sky-500/5',
+    present: 'attendance-present-tile',
+    late: 'attendance-late-tile',
+    absent: 'attendance-absent-tile',
+    excused: 'attendance-excused-tile',
     unmarked: 'border-border bg-background',
   };
   return classes[status];
@@ -869,13 +869,13 @@ function getCheckInTileClass(status: AttendanceStatus) {
 function getCheckInStatusTextColor(status: AttendanceStatus) {
   switch (status) {
     case 'present':
-      return 'text-emerald-600 dark:text-emerald-300';
+      return 'attendance-present-text';
     case 'late':
-      return 'text-amber-600 dark:text-amber-300';
+      return 'attendance-late-text';
     case 'absent':
-      return 'text-purple-600 dark:text-purple-300';
+      return 'attendance-absent-text';
     case 'excused':
-      return 'text-sky-600 dark:text-sky-300';
+      return 'attendance-excused-text';
     default:
       return 'text-muted-foreground';
   }
@@ -913,14 +913,14 @@ function StudentCard({
         <div>
           <p className="text-lg font-semibold text-foreground">{entry.fullName}</p>
           {entry.eligibility && !entry.eligibility.eligible && (
-            <p className="text-sm text-amber-600">Eligibility: {entry.eligibility.reason}</p>
+            <p className="text-sm attendance-eligibility-text">Eligibility: {entry.eligibility.reason}</p>
           )}
         </div>
         <Badge variant={statusInfo.badgeVariant}>{statusInfo.label}</Badge>
       </div>
 
       {isAutoLate && (
-        <p className="mt-2 text-xs text-amber-600">
+        <p className="mt-2 text-xs attendance-late-text">
           Auto-marked late (after start). Override below if needed.
         </p>
       )}
@@ -997,10 +997,10 @@ function StatusButton({
 }) {
   const base = 'w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors';
   const variants: Record<typeof variant, string> = {
-    default: active ? 'bg-emerald-500 text-white border-transparent' : 'border-border bg-background hover:bg-emerald-500/10',
-    warn: active ? 'bg-amber-500 text-white border-transparent' : 'border-border bg-background hover:bg-amber-500/10',
-    destructive: active ? 'bg-red-500 text-white border-transparent' : 'border-border bg-background hover:bg-red-500/10',
-    info: active ? 'bg-sky-500 text-white border-transparent' : 'border-border bg-background hover:bg-sky-500/10',
+    default: active ? 'attendance-button-present-active' : 'border-border bg-background attendance-button-present-hover',
+    warn: active ? 'attendance-button-late-active' : 'border-border bg-background attendance-button-late-hover',
+    destructive: active ? 'attendance-button-absent-active' : 'border-border bg-background attendance-button-absent-hover',
+    info: active ? 'attendance-button-excused-active' : 'border-border bg-background attendance-button-excused-hover',
     ghost: active ? 'bg-muted text-foreground border-muted' : 'border-border bg-background hover:bg-muted/50',
   };
 
@@ -1020,12 +1020,12 @@ function SummaryPill({
   icon: ComponentType<{ className?: string }>;
   label: string;
   value: number;
-  variant: 'success' | 'warn' | 'absence' | 'info';
+  variant: 'success' | 'warn' | 'destructive' | 'info';
 }) {
   const variantStyles: Record<typeof variant, string> = {
     success: 'instructor-badge-success-styles',
     warn: 'instructor-badge-warn-styles',
-    absence: 'bg-purple-500/10 text-purple-600 dark:text-purple-300',
+    destructive: 'instructor-badge-error-styles',
     info: 'instructor-badge-info-styles',
   };
 
@@ -1051,13 +1051,13 @@ function EmptyState() {
 function getStatusInfo(status: AttendanceStatus) {
   switch (status) {
     case 'present':
-      return { label: 'Present', badgeVariant: 'outline' as const, containerClass: 'border-emerald-500/50 bg-emerald-500/5' };
+      return { label: 'Present', badgeVariant: 'outline' as const, containerClass: 'attendance-present-border attendance-present-bg' };
     case 'late':
-      return { label: 'Late', badgeVariant: 'secondary' as const, containerClass: 'border-amber-500/50 bg-amber-500/5' };
+      return { label: 'Late', badgeVariant: 'secondary' as const, containerClass: 'attendance-late-border attendance-late-bg' };
     case 'absent':
-      return { label: 'Absent', badgeVariant: 'secondary' as const, containerClass: 'border-purple-500/50 bg-purple-500/5' };
+      return { label: 'Absent', badgeVariant: 'secondary' as const, containerClass: 'attendance-absent-border attendance-absent-bg' };
     case 'excused':
-      return { label: 'Excused', badgeVariant: 'secondary' as const, containerClass: 'border-sky-500/50 bg-sky-500/5' };
+      return { label: 'Excused', badgeVariant: 'secondary' as const, containerClass: 'attendance-excused-border attendance-excused-bg' };
     default:
       return { label: 'Unmarked', badgeVariant: 'outline' as const, containerClass: 'border-border bg-background' };
   }

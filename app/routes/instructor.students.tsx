@@ -139,11 +139,11 @@ export default function InstructorStudentsPage() {
                     </TableCell>
                     <TableCell>
                       {student.isEligible ? (
-                        <Badge variant="outline" className="flex items-center gap-1 text-emerald-600 dark:text-emerald-300">
+                        <Badge variant="outline" className="flex items-center gap-1 attendance-present-text">
                           <CheckCircle2 className="h-4 w-4" /> {student.eligibilityReason ?? 'In good standing'}
                         </Badge>
                       ) : (
-                        <Badge variant="destructive" className="flex items-center gap-1">
+                        <Badge variant="outline" className="flex items-center gap-1 attendance-eligibility-text attendance-eligibility-border">
                           <AlertTriangle className="h-4 w-4" /> {student.eligibilityReason ?? 'Needs attention'}
                         </Badge>
                       )}

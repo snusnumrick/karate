@@ -303,8 +303,8 @@ function SessionCard({ session }: { session: SerializableSession }) {
         </div>
 
         {session.eligibilitySummary.flaggedStudents.length > 0 && (
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-            <p className="text-sm font-medium text-amber-600 dark:text-amber-300 flex items-center gap-2">
+          <div className="rounded-md attendance-eligibility-border attendance-eligibility-badge/50 p-3">
+            <p className="text-sm font-medium attendance-eligibility-text flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" /> Students needing attention
             </p>
             <ul className="mt-2 space-y-1 text-sm">
@@ -385,11 +385,11 @@ type AttendanceStatus = 'present' | 'absent' | 'excused' | 'late' | 'unmarked';
 
 function AttendanceStatusDot({ status }: { status: AttendanceStatus }) {
   const colors: Record<AttendanceStatus, string> = {
-    present: 'bg-emerald-500',
-    late: 'bg-amber-500',
-    excused: 'bg-sky-500',
-    absent: 'bg-red-500',
-    unmarked: 'bg-zinc-400',
+    present: 'attendance-present-dot',
+    late: 'attendance-late-dot',
+    excused: 'attendance-excused-dot',
+    absent: 'attendance-absent-dot',
+    unmarked: 'bg-zinc-400 dark:bg-zinc-500',
   };
 
   return <span className={`h-2.5 w-2.5 rounded-full ${colors[status]}`} aria-hidden="true" />;

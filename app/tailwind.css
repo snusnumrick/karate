@@ -88,20 +88,174 @@
         @apply flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 p-10 text-center text-muted-foreground;
     }
 
+    /* Attendance Status Styles - Consistent across admin and instructor */
+
+    /* Present Status */
+    .attendance-present-text {
+        @apply text-emerald-600 dark:text-emerald-400;
+    }
+
+    .attendance-present-badge {
+        @apply bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400;
+    }
+
+    .attendance-present-border {
+        @apply border-emerald-500 dark:border-emerald-400;
+    }
+
+    .attendance-present-bg {
+        @apply bg-emerald-500/5 dark:bg-emerald-500/10;
+    }
+
+    .attendance-present-tile {
+        @apply border-emerald-500 bg-emerald-500/5 dark:border-emerald-400 dark:bg-emerald-500/10;
+    }
+
+    /* Late Status */
+    .attendance-late-text {
+        @apply text-amber-600 dark:text-amber-400;
+    }
+
+    .attendance-late-badge {
+        @apply bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400;
+    }
+
+    .attendance-late-border {
+        @apply border-amber-500 dark:border-amber-400;
+    }
+
+    .attendance-late-bg {
+        @apply bg-amber-500/5 dark:bg-amber-500/10;
+    }
+
+    .attendance-late-tile {
+        @apply border-amber-500 bg-amber-500/5 dark:border-amber-400 dark:bg-amber-500/10;
+    }
+
+    /* Absent Status */
+    .attendance-absent-text {
+        @apply text-red-600 dark:text-red-400;
+    }
+
+    .attendance-absent-badge {
+        @apply bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400;
+    }
+
+    .attendance-absent-border {
+        @apply border-red-500 dark:border-red-400;
+    }
+
+    .attendance-absent-bg {
+        @apply bg-red-500/5 dark:bg-red-500/10;
+    }
+
+    .attendance-absent-tile {
+        @apply border-red-500 bg-red-500/5 dark:border-red-400 dark:bg-red-500/10;
+    }
+
+    /* Excused Status */
+    .attendance-excused-text {
+        @apply text-sky-600 dark:text-sky-400;
+    }
+
+    .attendance-excused-badge {
+        @apply bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400;
+    }
+
+    .attendance-excused-border {
+        @apply border-sky-500 dark:border-sky-400;
+    }
+
+    .attendance-excused-bg {
+        @apply bg-sky-500/5 dark:bg-sky-500/10;
+    }
+
+    .attendance-excused-tile {
+        @apply border-sky-500 bg-sky-500/5 dark:border-sky-400 dark:bg-sky-500/10;
+    }
+
+    /* Eligibility Warning */
+    .attendance-eligibility-text {
+        @apply text-orange-600 dark:text-orange-400;
+    }
+
+    .attendance-eligibility-badge {
+        @apply bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400;
+    }
+
+    .attendance-eligibility-border {
+        @apply border-orange-500 dark:border-orange-400;
+    }
+
+    .attendance-eligibility-ring {
+        @apply ring-2 ring-orange-500 ring-offset-2 dark:ring-orange-400 dark:ring-offset-gray-900;
+    }
+
+    /* Attendance Status Dots - for small indicators */
+    .attendance-present-dot {
+        @apply bg-emerald-500 dark:bg-emerald-400;
+    }
+
+    .attendance-late-dot {
+        @apply bg-amber-500 dark:bg-amber-400;
+    }
+
+    .attendance-absent-dot {
+        @apply bg-red-500 dark:bg-red-400;
+    }
+
+    .attendance-excused-dot {
+        @apply bg-sky-500 dark:bg-sky-400;
+    }
+
+    /* Attendance Button Styles - for interactive buttons */
+    .attendance-button-present-active {
+        @apply bg-emerald-500 text-white border-transparent dark:bg-emerald-600;
+    }
+
+    .attendance-button-present-hover {
+        @apply hover:bg-emerald-500/10 dark:hover:bg-emerald-500/20;
+    }
+
+    .attendance-button-late-active {
+        @apply bg-amber-500 text-white border-transparent dark:bg-amber-600;
+    }
+
+    .attendance-button-late-hover {
+        @apply hover:bg-amber-500/10 dark:hover:bg-amber-500/20;
+    }
+
+    .attendance-button-absent-active {
+        @apply bg-red-500 text-white border-transparent dark:bg-red-600;
+    }
+
+    .attendance-button-absent-hover {
+        @apply hover:bg-red-500/10 dark:hover:bg-red-500/20;
+    }
+
+    .attendance-button-excused-active {
+        @apply bg-sky-500 text-white border-transparent dark:bg-sky-600;
+    }
+
+    .attendance-button-excused-hover {
+        @apply hover:bg-sky-500/10 dark:hover:bg-sky-500/20;
+    }
+
+    /* Legacy instructor badge styles (kept for backwards compatibility) */
     .instructor-badge-success-styles {
-        @apply bg-emerald-500/10 text-emerald-600 dark:text-emerald-300;
+        @apply attendance-present-badge;
     }
 
     .instructor-badge-warn-styles {
-        @apply bg-amber-500/10 text-amber-600 dark:text-amber-300;
+        @apply attendance-late-badge;
     }
 
     .instructor-badge-error-styles {
-        @apply bg-red-500/10 text-red-600 dark:text-red-300;
+        @apply attendance-absent-badge;
     }
 
     .instructor-badge-info-styles {
-        @apply bg-sky-500/10 text-sky-600 dark:text-sky-300;
+        @apply attendance-excused-badge;
     }
 
     /* Fix calendar icon visibility in dark mode */
