@@ -742,14 +742,14 @@ export async function getClassSessions(
     .select(`
       *,
       class:classes(
-        id, 
-        name, 
-        description, 
-        program_id, 
-        instructor_id, 
-        max_capacity, 
-        is_active, 
-        created_at, 
+        id,
+        name,
+        description,
+        program_id,
+        instructor_id,
+        max_capacity,
+        is_active,
+        created_at,
         updated_at,
         program:programs(
           id,

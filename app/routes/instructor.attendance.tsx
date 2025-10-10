@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { Form, Link, useFetcher, useLoaderData, useSearchParams, useSubmit } from '@remix-run/react';
-import { addDays, addMinutes, format, isAfter } from 'date-fns';
+import { addDays, addMinutes, format, isAfter, subDays } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { UserRole } from '~/types/auth';
 import {
@@ -74,9 +74,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const requestedSessionId = searchParams.get('sessionId');
   const modeParam = searchParams.get('mode') === 'roster' ? 'roster' : 'record';
 
-  let startDate = getTodayLocalDateString();
-  let endDate = format(addDays(parseLocalDate(startDate), 1), 'yyyy-MM-dd');
+  const today = getTodayLocalDateString();
+  // Always show sessions from 7 days ago to tomorrow
+  const startDate = format(subDays(parseLocalDate(today), 7), 'yyyy-MM-dd');
+  const endDate = format(addDays(parseLocalDate(today), 1), 'yyyy-MM-dd');
+  const filterByStatus = true;
 
+  // Validate access to requested session if specified
   if (requestedSessionId) {
     const { data: sessionRecords, error } = await supabaseAdmin
       .from('class_sessions')
@@ -97,9 +101,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (role !== 'admin' && sessionInstructor && sessionInstructor !== context.userId) {
       throw json({ error: 'You do not have access to this session' }, { status: 403, headers });
     }
-
-    startDate = record.session_date;
-    endDate = record.session_date;
   }
 
   const summaries = await getInstructorSessionsWithDetails({
@@ -109,7 +110,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
     supabaseAdmin,
   });
 
-  const serialized = summaries.map(serializeInstructorSessionSummary);
+  let serialized = summaries.map(serializeInstructorSessionSummary);
+
+  // Filter out completed and cancelled sessions
+  if (filterByStatus) {
+    serialized = serialized.filter((session) =>
+      session.status !== 'completed' && session.status !== 'cancelled'
+    );
+  }
+
   const sessionOptions: SessionOption[] = serialized.map((session) => ({
     id: session.id,
     label: buildSessionOptionLabel(session),
