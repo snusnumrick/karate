@@ -346,7 +346,7 @@ export default function InstructorAttendancePage() {
   const headerTitle = viewMode === 'roster' ? 'Class Roster' : 'Record Attendance';
   const headerDescription = viewMode === 'roster'
     ? 'Instructor tools for reviewing eligibility and capturing attendance details.'
-    : 'Tap a student name to check in; tap again to mark them not here. Border colors display the current status at a glance.';
+    : 'Tap a student name to check in; tap again to mark them absent. Border colors display the current status at a glance.';
 
   if (!session) {
     return (
@@ -443,7 +443,7 @@ export default function InstructorAttendancePage() {
           <div className="flex flex-wrap gap-3">
             <SummaryPill icon={CheckCircle2} label="Present" value={counts.present} variant="success" />
             <SummaryPill icon={Clock} label="Late" value={counts.late} variant="warn" />
-            <SummaryPill icon={AlertTriangle} label="Not here" value={counts.absent} variant="absence" />
+            <SummaryPill icon={AlertTriangle} label="Absent" value={counts.absent} variant="absence" />
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -787,7 +787,7 @@ function CheckInLegend() {
     <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
       <LegendSwatch label="Present" className="border-emerald-500 bg-emerald-500/10" />
       <LegendSwatch label="Late" className="border-amber-500 bg-amber-500/10" />
-      <LegendSwatch label="Not here" className="border-purple-500 bg-purple-500/10" />
+      <LegendSwatch label="Absent" className="border-purple-500 bg-purple-500/10" />
       <span className="inline-flex items-center gap-2">
         <span className="h-3 w-3 rounded-full border border-red-500 ring-2 ring-red-500" />
         Eligibility review needed
@@ -938,7 +938,7 @@ function StudentCard({
           onClick={() => onSet('late')}
         />
         <StatusButton
-          label="Not here"
+          label="Absent"
           active={status === 'absent'}
           variant="destructive"
           onClick={() => onSet('absent')}
@@ -1055,7 +1055,7 @@ function getStatusInfo(status: AttendanceStatus) {
     case 'late':
       return { label: 'Late', badgeVariant: 'secondary' as const, containerClass: 'border-amber-500/50 bg-amber-500/5' };
     case 'absent':
-      return { label: 'Not here', badgeVariant: 'secondary' as const, containerClass: 'border-purple-500/50 bg-purple-500/5' };
+      return { label: 'Absent', badgeVariant: 'secondary' as const, containerClass: 'border-purple-500/50 bg-purple-500/5' };
     case 'excused':
       return { label: 'Excused', badgeVariant: 'secondary' as const, containerClass: 'border-sky-500/50 bg-sky-500/5' };
     default:
