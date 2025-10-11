@@ -239,6 +239,8 @@ export async function updateEnrollment(
   // payment_id field removed as it doesn't exist in enrollments table
   if (updates.notes !== undefined) updateData.notes = updates.notes;
 
+  console.log('updateEnrollment', updateData);
+
   const { data, error } = await supabase
     .from('enrollments')
     .update(updateData)

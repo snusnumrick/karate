@@ -410,6 +410,26 @@ export async function updatePaymentStatus(
     // Use the centralized admin client function
     const supabaseAdmin = getSupabaseAdminClient();
 
+    console.log(`[updatePaymentStatus] Called for payment ${supabasePaymentId} with status=${status}, paymentIntentId=${paymentIntentId || 'null'}`);
+
+    // Check if payment already succeeded to prevent duplicate processing
+    const { data: existingPayment, error: checkError } = await supabaseAdmin
+        .from('payments')
+        .select('id, status, payment_date, type')
+        .eq('id', supabasePaymentId)
+        .single();
+
+    if (checkError) {
+        console.error(`Failed to check payment status for ${supabasePaymentId}:`, checkError.message);
+        throw new Error(`Payment record not found for ID ${supabasePaymentId}.`);
+    }
+
+    // Idempotency: If payment already succeeded and we're trying to mark it as succeeded again, log and return
+    if (existingPayment.status === 'succeeded' && status === 'succeeded') {
+        console.warn(`[updatePaymentStatus] Payment ${supabasePaymentId} already succeeded at ${existingPayment.payment_date}. Skipping duplicate processing to prevent paid_until from advancing incorrectly.`);
+        return existingPayment;
+    }
+
 
     const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {
         status,
@@ -439,7 +459,7 @@ export async function updatePaymentStatus(
         updateData.receipt_url = null;
     }
 
-    // console.log(`[updatePaymentStatus] FINAL update data for payment ${supabasePaymentId}:`, JSON.stringify(updateData));
+    console.log(`[updatePaymentStatus] FINAL update data for payment ${supabasePaymentId}:`, JSON.stringify(updateData));
 
     const {data, error} = await supabaseAdmin
         .from('payments')
@@ -470,8 +490,14 @@ export async function updatePaymentStatus(
             if (studentLinkError) {
                 console.error(`Failed to fetch students for payment ${supabasePaymentId}:`, studentLinkError.message);
             } else if (studentLinks) {
-                for (const link of studentLinks) {
-                    const studentId = link.student_id;
+                // Deduplicate student IDs to prevent multiple updates for the same student
+                const uniqueStudentIds = [...new Set(studentLinks.map(link => link.student_id))];
+
+                if (uniqueStudentIds.length !== studentLinks.length) {
+                    console.warn(`[updatePaymentStatus] Payment ${supabasePaymentId} has duplicate student entries: ${studentLinks.length} total, ${uniqueStudentIds.length} unique. This may indicate a data issue.`);
+                }
+
+                for (const studentId of uniqueStudentIds) {
                     // Find the student's enrollment to update paid_until
                     const { data: enrollment, error: enrollmentError } = await supabaseAdmin
                         .from('enrollments')
@@ -486,17 +512,22 @@ export async function updatePaymentStatus(
                         continue; // Move to next student
                     }
 
-                    const today = getCurrentDateTimeInTimezone();
-                    const currentPaidUntil = enrollment.paid_until ? new Date(enrollment.paid_until) : today;
-                    // Start extending from today or the future paid_until date, whichever is later
-                    const startDate = currentPaidUntil > today ? currentPaidUntil : today;
+                    // Work in UTC to avoid timezone conversion issues
+                    const nowUTC = new Date();
+                    const currentPaidUntil = enrollment.paid_until ? new Date(enrollment.paid_until) : nowUTC;
 
+                    // Start extending from now or the future paid_until date, whichever is later
+                    const startDate = currentPaidUntil > nowUTC ? currentPaidUntil : nowUTC;
+
+                    // Perform date arithmetic using UTC methods to avoid timezone issues
                     const newPaidUntil = new Date(startDate);
                     if (type === 'monthly_group') {
-                        newPaidUntil.setMonth(newPaidUntil.getMonth() + 1);
+                        newPaidUntil.setUTCMonth(newPaidUntil.getUTCMonth() + 1);
                     } else { // yearly_group
-                        newPaidUntil.setFullYear(newPaidUntil.getFullYear() + 1);
+                        newPaidUntil.setUTCFullYear(newPaidUntil.getUTCFullYear() + 1);
                     }
+
+                    console.log(`[updatePaymentStatus] Payment ${supabasePaymentId}, Student ${studentId}, Enrollment ${enrollment.id}: Updating paid_until from ${enrollment.paid_until || 'null'} to ${newPaidUntil.toISOString()} (type: ${type})`);
 
                     const { error: updateEnrollmentError } = await supabaseAdmin
                         .from('enrollments')

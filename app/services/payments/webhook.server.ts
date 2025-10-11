@@ -2,6 +2,12 @@ import type { Database } from '~/types/database.types';
 import { updatePaymentStatus, getSupabaseAdminClient } from '~/utils/supabase.server';
 import { toCents } from '~/utils/money';
 import type { PaymentProvider, ParsedWebhookEvent } from './types.server';
+import {
+  checkWebhookIdempotency,
+  createWebhookEvent,
+  markWebhookEventSucceeded,
+  markWebhookEventFailed,
+} from './webhook-events.server';
 
 function parseInteger(metaValue: string | undefined): number | null {
   if (!metaValue) return null;
@@ -14,14 +20,19 @@ export async function handlePaymentWebhook(
   payload: string,
   headers: Headers,
   requestUrl: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; isDuplicate?: boolean }> {
+  const processingStartTime = Date.now();
+  let webhookEventId: string | undefined;
+
   try {
     const event = await provider.parseWebhookEvent(payload, headers, requestUrl);
     const { intent } = event;
     let metadata = intent.metadata ?? {};
 
-    if (provider.id === 'square') {
-      metadata = await enrichSquareMetadata(metadata, intent.id);
+    // Enrich metadata for Square (which has limited metadata support)
+    if (provider.id === 'square' && 'enrichWebhookMetadata' in provider) {
+      const squareProvider = provider as { enrichWebhookMetadata: (metadata: Record<string, string>, intentId: string) => Promise<Record<string, string>> };
+      metadata = await squareProvider.enrichWebhookMetadata(metadata, intent.id);
     }
 
     console.log(
@@ -29,30 +40,102 @@ export async function handlePaymentWebhook(
       `metadataKeys=${Object.keys(metadata).length ? Object.keys(metadata).join(',') : 'none'}`
     );
 
+    // Check idempotency - have we already processed this event?
+    const { isDuplicate, existingEvent } = await checkWebhookIdempotency(
+      provider.id,
+      intent.id
+    );
+
+    if (isDuplicate) {
+      console.warn(
+        `[Webhook ${provider.id}] Duplicate event ${intent.id} detected. ` +
+        `Original status: ${existingEvent?.status}. Skipping processing.`
+      );
+      return { success: true, isDuplicate: true };
+    }
+
+    // Create webhook event record
+    try {
+      const requestId = headers.get('x-vercel-id')
+        ?? headers.get('x-request-id')
+        ?? headers.get('traceparent');
+      const sourceIp = headers.get('x-real-ip')
+        ?? headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        ?? headers.get('cf-connecting-ip');
+
+      webhookEventId = await createWebhookEvent({
+        provider: provider.id,
+        eventId: intent.id,
+        eventType: event.type,
+        rawType: event.rawType,
+        rawPayload: JSON.parse(payload),
+        parsedMetadata: metadata,
+        requestId: requestId || undefined,
+        sourceIp: sourceIp || undefined,
+      });
+
+      console.log(`[Webhook ${provider.id}] Created webhook event record: ${webhookEventId}`);
+    } catch (createError) {
+      if (createError instanceof Error && createError.message === 'DUPLICATE_EVENT') {
+        // Race condition - another instance created it first
+        console.warn(`[Webhook ${provider.id}] Event ${intent.id} already being processed by another instance`);
+        return { success: true, isDuplicate: true };
+      }
+      // Non-fatal - log and continue
+      console.error(`[Webhook ${provider.id}] Failed to create webhook event record:`, createError);
+    }
+
+    // Process the webhook based on event type
+    let result: { success: boolean; error?: string };
+
     if (event.type === 'payment.succeeded') {
-      return await handlePaymentSuccess(provider, event, metadata);
-    }
-
-    if (event.type === 'payment.failed') {
-      return await handlePaymentFailure(provider, event, metadata);
-    }
-
-    if (event.type === 'payment.processing') {
+      result = await handlePaymentSuccess(provider, event, metadata);
+    } else if (event.type === 'payment.failed') {
+      result = await handlePaymentFailure(provider, event, metadata);
+    } else if (event.type === 'payment.processing') {
       console.log(`[Webhook ${provider.id}] Received processing event (${event.rawType}) for intent ${intent.id}. No action taken.`);
-      return { success: true };
-    }
-
-    // Handle additional events that don't require action but should be acknowledged
-    if (['mandate.updated', 'charge.succeeded', 'charge.updated'].includes(event.rawType)) {
+      result = { success: true };
+    } else if (['mandate.updated', 'charge.succeeded', 'charge.updated'].includes(event.rawType)) {
       console.log(`[Webhook ${provider.id}] Received ${event.rawType} event. No action required - acknowledged.`);
-      return { success: true };
+      result = { success: true };
+    } else {
+      console.log(`[Webhook ${provider.id}] Unhandled event type: ${event.rawType}`);
+      result = { success: true };
     }
 
-    console.log(`[Webhook ${provider.id}] Unhandled event type: ${event.rawType}`);
-    return { success: true };
+    // Update webhook event status
+    if (webhookEventId) {
+      if (result.success) {
+        await markWebhookEventSucceeded(
+          webhookEventId,
+          metadata.paymentId,
+          processingStartTime
+        );
+      } else {
+        await markWebhookEventFailed(
+          webhookEventId,
+          result.error || 'Unknown error',
+          undefined,
+          processingStartTime
+        );
+      }
+    }
+
+    return result;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[Webhook ${provider.id}] Error processing webhook:`, errorMessage);
+
+    // Mark webhook event as failed
+    if (webhookEventId) {
+      await markWebhookEventFailed(
+        webhookEventId,
+        errorMessage,
+        { stack: error instanceof Error ? error.stack : undefined },
+        processingStartTime
+      );
+    }
+
     return { success: false, error: errorMessage };
   }
 }
@@ -137,80 +220,6 @@ async function handlePaymentSuccess(
     console.error(`[Webhook ${provider.id}] Failed during post-payment processing for Supabase payment ${supabasePaymentId}:`, updateError instanceof Error ? updateError.message : updateError);
     return { success: false, error: "Database update or post-processing failed" };
   }
-}
-
-async function enrichSquareMetadata(
-  metadata: Record<string, string>,
-  providerIntentId: string
-): Promise<Record<string, string>> {
-  const enriched = { ...metadata };
-
-  type PaymentRecord = {
-    id: string;
-    family_id: string | null;
-    type: Database['public']['Enums']['payment_type_enum'] | null;
-    subtotal_amount: number | null;
-    total_amount: number | null;
-    order_id: string | null;
-  };
-
-  const supabaseAdmin = getSupabaseAdminClient();
-
-  const referenceId = enriched.referenceId;
-  let paymentRecord: PaymentRecord | null = null;
-
-  if (referenceId) {
-    const { data } = await supabaseAdmin
-      .from('payments')
-      .select('id, family_id, type, subtotal_amount, total_amount, order_id')
-      .eq('id', referenceId)
-      .single();
-    paymentRecord = (data ?? null) as PaymentRecord | null;
-  }
-
-  if (!paymentRecord) {
-    const { data } = await supabaseAdmin
-      .from('payments')
-      .select('id, family_id, type, subtotal_amount, total_amount, order_id')
-      .eq('payment_intent_id', providerIntentId)
-      .single();
-    paymentRecord = (data ?? null) as PaymentRecord | null;
-  }
-
-  if (!paymentRecord) {
-    console.error(`[Webhook square] Unable to locate payment record for intent ${providerIntentId}.`);
-    return enriched;
-  }
-
-  enriched.paymentId ??= paymentRecord.id;
-  if (paymentRecord.family_id) {
-    enriched.familyId ??= paymentRecord.family_id;
-  }
-  if (paymentRecord.type) {
-    enriched.type ??= paymentRecord.type;
-  }
-  const subtotal = paymentRecord.subtotal_amount ?? 0;
-  const total = paymentRecord.total_amount ?? 0;
-  enriched.subtotal_amount ??= String(subtotal);
-  enriched.total_amount ??= String(total);
-  if (!enriched.tax_amount) {
-    enriched.tax_amount = String(total - subtotal);
-  }
-  if (paymentRecord.order_id) {
-    enriched.orderId ??= paymentRecord.order_id;
-  }
-
-  if (!enriched.quantity && paymentRecord.type === 'individual_session') {
-    const { data: paymentStudents } = await supabaseAdmin
-      .from('payment_students')
-      .select('id')
-      .eq('payment_id', paymentRecord.id);
-    if (paymentStudents) {
-      enriched.quantity = String(paymentStudents.length || 0);
-    }
-  }
-
-  return enriched;
 }
 
 async function handlePaymentFailure(

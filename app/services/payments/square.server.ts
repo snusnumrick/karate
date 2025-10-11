@@ -525,26 +525,6 @@ export class SquarePaymentProvider extends PaymentProvider {
     }
   }
 
-  async handleWebhookEvent(event: WebhookEvent): Promise<void> {
-    // Implementation depends on specific webhook handling requirements
-    // This is a placeholder that can be extended based on business logic
-    console.log(`Handling Square webhook event: ${event.type}`);
-    
-    switch (event.type) {
-      case 'payment.updated':
-        // Handle payment updates
-        break;
-      case 'refund.updated':
-        // Handle refund updates
-        break;
-      case 'customer.created':
-        // Handle customer creation
-        break;
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
-    }
-  }
-
   isConfigured(): boolean {
     return !!(
       process.env.SQUARE_APPLICATION_ID &&
@@ -839,6 +819,89 @@ export class SquarePaymentProvider extends PaymentProvider {
       console.error(`[Square Webhook] Failed to parse webhook event: ${errorMessage}`);
       throw new Error(`Failed to parse Square webhook event: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Enrich Square webhook metadata by querying the database
+   * Square has limited metadata support, so we need to look up payment details
+   */
+  async enrichWebhookMetadata(
+    metadata: Record<string, string>,
+    providerIntentId: string
+  ): Promise<Record<string, string>> {
+    const enriched = { ...metadata };
+
+    type PaymentRecord = {
+      id: string;
+      family_id: string | null;
+      type: 'monthly_group' | 'yearly_group' | 'individual_session' | 'store_purchase' | 'event_registration' | null;
+      subtotal_amount: number | null;
+      total_amount: number | null;
+      order_id: string | null;
+    };
+
+    const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
+    const supabaseAdmin = getSupabaseAdminClient();
+
+    const referenceId = enriched.referenceId;
+    let paymentRecord: PaymentRecord | null = null;
+
+    // Try to find by reference ID first
+    if (referenceId) {
+      const { data } = await supabaseAdmin
+        .from('payments')
+        .select('id, family_id, type, subtotal_amount, total_amount, order_id')
+        .eq('id', referenceId)
+        .single();
+      paymentRecord = (data ?? null) as PaymentRecord | null;
+    }
+
+    // Fallback to payment_intent_id
+    if (!paymentRecord) {
+      const { data } = await supabaseAdmin
+        .from('payments')
+        .select('id, family_id, type, subtotal_amount, total_amount, order_id')
+        .eq('payment_intent_id', providerIntentId)
+        .single();
+      paymentRecord = (data ?? null) as PaymentRecord | null;
+    }
+
+    if (!paymentRecord) {
+      console.error(`[Square] Unable to locate payment record for intent ${providerIntentId}.`);
+      return enriched;
+    }
+
+    // Enrich metadata with payment details
+    enriched.paymentId ??= paymentRecord.id;
+    if (paymentRecord.family_id) {
+      enriched.familyId ??= paymentRecord.family_id;
+    }
+    if (paymentRecord.type) {
+      enriched.type ??= paymentRecord.type;
+    }
+    const subtotal = paymentRecord.subtotal_amount ?? 0;
+    const total = paymentRecord.total_amount ?? 0;
+    enriched.subtotal_amount ??= String(subtotal);
+    enriched.total_amount ??= String(total);
+    if (!enriched.tax_amount) {
+      enriched.tax_amount = String(total - subtotal);
+    }
+    if (paymentRecord.order_id) {
+      enriched.orderId ??= paymentRecord.order_id;
+    }
+
+    // Get quantity for individual sessions
+    if (!enriched.quantity && paymentRecord.type === 'individual_session') {
+      const { data: paymentStudents } = await supabaseAdmin
+        .from('payment_students')
+        .select('id')
+        .eq('payment_id', paymentRecord.id);
+      if (paymentStudents) {
+        enriched.quantity = String(paymentStudents.length || 0);
+      }
+    }
+
+    return enriched;
   }
 
   private mapSquareEventType(squareEventType: string): string {
