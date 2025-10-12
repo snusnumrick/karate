@@ -8,6 +8,7 @@ import { isAdminRole } from '~/types/auth';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import {addMoney, Money, toCents} from "./money";
 import { getCurrentDateTimeInTimezone } from "./misc";
+import { calculatePaidUntil } from '~/services/payments/paid-until-calculator.server';
 
 // Re-export EligibilityStatus for other modules
 export type { EligibilityStatus };
@@ -506,7 +507,7 @@ export async function updatePaymentStatus(
                     // Find the student's enrollment to update paid_until
                     const { data: enrollment, error: enrollmentError } = await supabaseAdmin
                         .from('enrollments')
-                        .select('id, paid_until') // select id for logging
+                        .select('id, student_id, paid_until, status')
                         .eq('student_id', studentId)
                         // Optional: add a filter for active enrollments if applicable
                         .eq('status', 'active')
@@ -531,26 +532,15 @@ export async function updatePaymentStatus(
                         }
                     }
 
-                    // Work in UTC to avoid timezone conversion issues
-                    const nowUTC = new Date();
-                    const currentPaidUntil = enrollment.paid_until ? new Date(enrollment.paid_until) : nowUTC;
+                    // Use the intelligent paid_until calculator
+                    const paymentDate = new Date();
+                    const calculation = await calculatePaidUntil(enrollment, paymentDate, type as 'monthly_group' | 'yearly_group');
 
-                    // Start extending from now or the future paid_until date, whichever is later
-                    const startDate = currentPaidUntil > nowUTC ? currentPaidUntil : nowUTC;
-
-                    // Perform date arithmetic using UTC methods to avoid timezone issues
-                    const newPaidUntil = new Date(startDate);
-                    if (type === 'monthly_group') {
-                        newPaidUntil.setUTCMonth(newPaidUntil.getUTCMonth() + 1);
-                    } else { // yearly_group
-                        newPaidUntil.setUTCFullYear(newPaidUntil.getUTCFullYear() + 1);
-                    }
-
-                    console.log(`[updatePaymentStatus] Payment ${supabasePaymentId}, Student ${studentId}, Enrollment ${enrollment.id}: Updating paid_until from ${enrollment.paid_until || 'null'} to ${newPaidUntil.toISOString()} (type: ${type})`);
+                    console.log(`[updatePaymentStatus] Payment ${supabasePaymentId}, Student ${studentId}, Enrollment ${enrollment.id}: Updating paid_until from ${enrollment.paid_until || 'null'} to ${calculation.newPaidUntil.toISOString()} (type: ${type}, rule: ${calculation.ruleApplied}, reason: ${calculation.reason})`);
 
                     const { error: updateEnrollmentError } = await supabaseAdmin
                         .from('enrollments')
-                        .update({ paid_until: newPaidUntil.toISOString() })
+                        .update({ paid_until: calculation.newPaidUntil.toISOString() })
                         .eq('id', enrollment.id);
 
                     if (updateEnrollmentError) {

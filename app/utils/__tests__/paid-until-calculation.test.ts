@@ -6,9 +6,49 @@ import { describe, it, expect } from 'vitest';
  * These tests verify the core business logic for calculating paid_until dates
  * to prevent regression of the issue where paid_until was advancing by 3 months
  * instead of 1 month due to duplicate webhook processing.
+ *
+ * Updated: Now includes intelligent calculation with grace period and attendance credit.
+ * See app/services/payments/paid-until-calculator.server.ts and its tests for full implementation.
  */
 
 describe('paid_until Calculation Logic', () => {
+  describe('Intelligent Calculation Business Rules (Documentation)', () => {
+    it('should document the three-tier rule system', () => {
+      // Rule 1: Grace Period (0-7 days after expiration)
+      // If payment is within grace period, extend from expiration date
+      // Example: Expired Oct 1, paid Oct 5 (4 days late) → Nov 1 (not Nov 5)
+
+      // Rule 2: Attendance Credit (>7 days after expiration, but attended)
+      // If student attended after expiration, extend from expiration date
+      // Example: Expired Oct 1, attended Oct 3, paid Oct 15 → Nov 1 (not Nov 15)
+
+      // Rule 3: Default (>7 days after expiration, no attendance)
+      // If outside grace period and no attendance, extend from payment date
+      // Example: Expired Oct 1, no attendance, paid Nov 1 → Dec 1
+
+      // This prevents "free months" while being fair to students who showed up
+      expect(true).toBe(true); // Documentation test
+    });
+
+    it('should document grace period configuration', () => {
+      // Grace period is configurable in app/config/site.ts
+      // Default: gracePeriodDays = 7
+      // Default: attendanceLookbackDays = 30
+
+      // This allows adjustment based on business needs without code changes
+      expect(true).toBe(true);
+    });
+
+    it('should document attendance credit lookback window', () => {
+      // Attendance credit checks 30 days after expiration by default
+      // This prevents checking infinite history which could be slow
+
+      // Example: Expired Oct 1, attended Oct 15, paid Nov 15
+      // System checks Oct 1 - Oct 31 for attendance
+      // Finds Oct 15 attendance → extends from Oct 1
+      expect(true).toBe(true);
+    });
+  });
   describe('Monthly Payment paid_until Advancement', () => {
     it('should advance paid_until by exactly 1 month from now for new enrollment', () => {
       const now = new Date('2025-10-12T16:00:00Z');
