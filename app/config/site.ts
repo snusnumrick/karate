@@ -255,6 +255,17 @@ export const siteConfig = {
             announcements: true,
             promotions: false,
         }
+    },
+    // Payment Business Rules
+    payment: {
+        // Grace period: Days after expiration where payment still credits from expiration date
+        // Example: expired Oct 1, paid Oct 5 (4 days late) → Nov 1 (not Nov 5)
+        gracePeriodDays: 7,
+
+        // Attendance lookback: Days to check for attendance after expiration
+        // If student attended after expiration, credit from expiration even if payment is late
+        // Example: expired Oct 1, attended Oct 3, paid Oct 15 → Nov 1 (not Nov 15)
+        attendanceLookbackDays: 30,
     }
 };
 
