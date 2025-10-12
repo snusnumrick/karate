@@ -417,10 +417,6 @@ export async function getEnrollments(
     completed_at: enrollment.completed_at ?? undefined,
     dropped_at: enrollment.dropped_at ?? undefined,
     notes: enrollment.notes ?? undefined,
-    student: enrollment.student ? {
-      ...enrollment.student,
-      birth_date: enrollment.student.birth_date || '',
-    } : undefined,
     class: mapEnrollmentClassNullToUndefined(enrollment.class),
     student: enrollment.student ? {
       ...enrollment.student,
