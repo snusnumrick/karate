@@ -201,7 +201,6 @@ export async function createInitialPaymentRecord(
             await supabaseAdmin.from('payments').delete().eq('id', paymentId);
             return { data: null, error: `Failed to record tax details: ${insertTaxesError.message}` };
         }
-        // console.log(`[createInitialPaymentRecord] Inserted ${taxesWithPaymentId_db.length} tax records for payment ${paymentId}.`);
     }
 
 
@@ -382,9 +381,6 @@ function getSiteUrl(): string {
         // Throw an error or return a default that makes it obvious something is wrong
         // Throwing an error might be better to prevent unexpected behavior.
         throw new Error("VITE_SITE_URL environment variable is not configured.");
-        // Or fallback to relative path if absolutely necessary, but log loudly:
-        // console.warn("VITE_SITE_URL environment variable is not set. Defaulting to relative paths for receipts, which might not work in emails.");
-        // return "";
     }
     // Ensure it doesn't end with a slash for clean joining
     return siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
@@ -566,12 +562,8 @@ export async function updatePaymentStatus(
         }
     }
 
-    // console.log(`Payment status updated successfully for Supabase payment ID ${supabasePaymentId} to ${status}.`); // Updated log message
-
     // If payment succeeded, type is individual_session, and quantity is provided, insert the session record
-    // console.log(`[updatePaymentStatus] Checking condition for individual session insert: status=${status}, type=${type}, quantity=${quantity}`); // Log updated
-    if (status === 'succeeded' && type === 'individual_session' && quantity && quantity > 0) { // Check against 'type' parameter
-        // console.log(`[updatePaymentStatus] Condition met for individual session insert for payment ${data.id}.`); // Removed log
+    if (status === 'succeeded' && type === 'individual_session' && quantity && quantity > 0) {
         // Use family_id from the updated payment record OR the passed familyId as fallback
         const targetFamilyId = data.family_id || familyId;
         if (!targetFamilyId) {
@@ -580,7 +572,6 @@ export async function updatePaymentStatus(
             return data;
         }
 
-        // console.log(`Recording ${quantity} Individual Session(s) for payment ${data.id}, family ${targetFamilyId}`); // Removed log
         const { error: sessionInsertError } = await supabaseAdmin
             .from('one_on_one_sessions') // Table name remains the same
             .insert({
@@ -596,10 +587,8 @@ export async function updatePaymentStatus(
             // Throw an error here to indicate the webhook handler should potentially return an error status to the payment provider.
             throw new Error(`Payment ${data.id} succeeded, but failed to record Individual Session credits: ${sessionInsertError.message}`);
         }
-        // console.log(`[updatePaymentStatus] Recorded Individual Session purchase for payment ${data.id}.`); // Simplified log
-    } else if (status === 'succeeded' && type === 'individual_session') { // Check against 'type' parameter
-        // Keep this warning for debugging potential future issues
-        console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${type}', Quantity='${quantity}'. Session record NOT created.`); // Log updated
+    } else if (status === 'succeeded' && type === 'individual_session') {
+        console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${type}', Quantity='${quantity}'. Session record NOT created.`);
     }
 
     return data; // Return the updated payment data
