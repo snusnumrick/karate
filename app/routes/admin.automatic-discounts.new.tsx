@@ -13,6 +13,7 @@ import { requireAdminUser } from "~/utils/auth.server";
 import type { Json } from "~/types/database.types";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { toMoney, formatDollars } from "~/utils/money";
+import { getCurrentDateTimeInTimezone } from "~/utils/misc";
 
 import { useState } from "react";
 import { Badge } from "~/components/ui/badge";
@@ -395,7 +396,7 @@ export default function NewAutomationRule() {
                   id="valid_from"
                   name="valid_from"
                   type="datetime-local"
-                  defaultValue={new Date().toISOString().slice(0, 16)}
+                  defaultValue={getCurrentDateTimeInTimezone().toISOString().slice(0, 16)}
                   tabIndex={6}
                   className="input-custom-styles"
                 />

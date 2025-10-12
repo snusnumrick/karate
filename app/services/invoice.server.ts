@@ -28,7 +28,7 @@ import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { toCents, addMoney, subtractMoney, ZERO_MONEY, type Money } from "~/utils/money";
 import { convertRowToMoney, convertRowsToMoney, convertMoneyToRow, moneyFromRow } from "~/services/database-money.server";
-import { getNum } from "~/utils/db-money";
+import { getTodayLocalDateString } from "~/utils/misc";
 
 /**
  * Calculate invoice totals from line items
@@ -272,28 +272,7 @@ export async function createInvoice(
     }
   }
 
-  // Denormalize totals onto invoices for easy querying and legacy compatibility
-  try {
-    const subtotalCents = lineItemsWithTotals_db.reduce((sum, li) => sum + (li.line_total_cents ?? 0), 0);
-    const discountCents = lineItemsWithTotals_db.reduce((sum, li) => sum + (li.discount_amount_cents ?? 0), 0);
-    const itemTaxCents = lineItemsWithTotals_db.reduce((sum, li) => sum + (li.tax_amount_cents ?? 0), 0);
-    const totalCents = subtotalCents - discountCents + itemTaxCents;
-    await client
-      .from('invoices')
-      .update({
-        subtotal_cents: subtotalCents,
-        subtotal: subtotalCents / 100,
-        discount_amount_cents: discountCents,
-        discount_amount: discountCents / 100,
-        tax_amount_cents: itemTaxCents,
-        tax_amount: itemTaxCents / 100,
-        total_amount_cents: totalCents,
-        total_amount: totalCents / 100,
-      })
-      .eq('id', invoice.id);
-  } catch (e) {
-    console.warn('[Service/createInvoice] Failed to denormalize invoice totals:', e);
-  }
+  // Denormalization of totals onto invoices for easy querying and legacy compatibility is done by DB trigger
 
   // Fetch the complete invoice with details
   return getInvoiceById(invoice.id, client);
@@ -634,7 +613,7 @@ export async function getInvoices(
   // Filter by overdue status if requested (post-query filtering)
   let filteredInvoices = invoices || [];
   if (hasOverdueFilter) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocalDateString();
     filteredInvoices = filteredInvoices.filter(inv => {
       const isOverdue = inv.status !== 'paid' && inv.due_date < today;
       // Check if invoice matches other requested statuses (excluding 'overdue' which is computed)
@@ -893,28 +872,7 @@ export async function updateInvoice(
       }
     }
 
-    // Denormalize totals after replacement
-    try {
-      const subtotalCents = lineItemsForDb.reduce((sum, li) => sum + (getNum(li, 'line_total_cents') ?? 0), 0);
-      const discountCents = lineItemsForDb.reduce((sum, li) => sum + (getNum(li, 'discount_amount_cents') ?? 0), 0);
-      const itemTaxCents = lineItemsForDb.reduce((sum, li) => sum + (getNum(li, 'tax_amount_cents') ?? 0), 0);
-      const totalCents = subtotalCents - discountCents + itemTaxCents;
-      await client
-        .from('invoices')
-        .update({
-          subtotal_cents: subtotalCents,
-          subtotal: subtotalCents / 100,
-          discount_amount_cents: discountCents,
-          discount_amount: discountCents / 100,
-          tax_amount_cents: itemTaxCents,
-          tax_amount: itemTaxCents / 100,
-          total_amount_cents: totalCents,
-          total_amount: totalCents / 100,
-        })
-        .eq('id', invoiceId);
-    } catch (e) {
-      console.warn('[Service/updateInvoice] Failed to denormalize invoice totals:', e);
-    }
+    // Denormalization of totals after replacement is done by DB trigger
   }
 
   // Fetch and return the updated invoice with details
@@ -1027,63 +985,18 @@ export async function getInvoiceStats(
   overdue_count: number;
 }> {
   const client = supabaseAdmin ?? getSupabaseAdminClient();
-  
+
   console.log('[Service/getInvoiceStats] Fetching invoice statistics');
 
-  // Fetch invoices with line items and their taxes to compute correct totals
-  const { data : invoices_db, error } = await client
+  // Use pre-computed totals from invoice table
+  const { data: invoices_db, error } = await client
     .from('invoices')
-    .select(`
-      id,
-      status,
-      due_date,
-      subtotal_cents,
-      subtotal,
-      discount_amount_cents,
-      discount_amount,
-      amount_paid_cents,
-      amount_paid,
-      invoice_line_items(id)
-    `)
+    .select('id, status, due_date, total_amount_cents, total_amount, amount_paid_cents, amount_paid')
     .neq('status', 'cancelled');
 
   if (error) {
     console.error('[Service/getInvoiceStats] Error fetching invoice stats:', error);
     throw new Response(`Error fetching invoice statistics: ${error.message}`, { status: 500 });
-  }
-
-  // Fetch tax data for all line items to compute correct totals
-  const allLineItemIds = (invoices_db || []).flatMap(inv =>
-    (inv.invoice_line_items || []).map(item => item.id)
-  );
-
-  const taxesByInvoice: Record<string, Money> = {};
-
-  if (allLineItemIds.length > 0) {
-    const { data: lineItemTaxes_db, error: taxError } = await client
-      .from('invoice_line_item_taxes')
-      .select('invoice_line_item_id, tax_amount_cents, tax_amount')
-      .in('invoice_line_item_id', allLineItemIds);
-
-    if (taxError) {
-      console.error(`[Service/getInvoiceStats] Error fetching tax data:`, taxError);
-    } else {
-      // Group taxes by invoice
-      const lineItemToInvoice: Record<string, string> = {};
-      (invoices_db || []).forEach(inv => {
-        (inv.invoice_line_items || []).forEach(item => {
-          lineItemToInvoice[item.id] = inv.id;
-        });
-      });
-
-      (lineItemTaxes_db || []).forEach(tax_db => {
-        const invoiceId = lineItemToInvoice[tax_db.invoice_line_item_id];
-        if (invoiceId) {
-          const taxAmount = moneyFromRow('invoice_line_item_taxes', 'tax_amount', tax_db as unknown as Record<string, unknown>);
-          taxesByInvoice[invoiceId] = addMoney(taxesByInvoice[invoiceId] || ZERO_MONEY, taxAmount);
-        }
-      });
-    }
   }
 
   const stats = {
@@ -1094,33 +1007,24 @@ export async function getInvoiceStats(
     overdue_count: 0,
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayLocalDateString();
 
-  invoices_db?.forEach((invoice_db) => {
-    const inv = invoice_db as unknown as {
-      id: string;
-      subtotal_cents?: number;
-      subtotal?: number;
-      discount_amount_cents?: number;
-      discount_amount?: number;
-      amount_paid_cents?: number;
-      amount_paid?: number;
-      status: string;
-      due_date: string
-    };
-
-    // Calculate correct total: subtotal - discount + computed_tax
-    const subtotal = moneyFromRow('invoices', 'subtotal', inv as unknown as Record<string, unknown>);
-    const discountAmount = moneyFromRow('invoices', 'discount_amount', inv as unknown as Record<string, unknown>);
-    const computedTax = taxesByInvoice[inv.id] || ZERO_MONEY;
-    const totalAmount = addMoney(subtractMoney(subtotal, discountAmount), computedTax);
-
+  invoices_db?.forEach((inv) => {
+    const totalAmount = moneyFromRow('invoices', 'total_amount', inv as unknown as Record<string, unknown>);
     const paidAmount = moneyFromRow('invoices', 'amount_paid', inv as unknown as Record<string, unknown>);
-    
+
     stats.total_amount = addMoney(stats.total_amount, totalAmount);
     stats.paid_amount = addMoney(stats.paid_amount, paidAmount);
-    stats.outstanding_amount = addMoney(stats.outstanding_amount, subtractMoney(totalAmount, paidAmount));
-    
+
+    // Only count outstanding for non-draft invoices (invoices that have been sent)
+    if (inv.status !== 'draft') {
+      const unpaidAmount = subtractMoney(totalAmount, paidAmount);
+      // Only add positive outstanding amounts (ignore overpayments)
+      if (toCents(unpaidAmount) > 0) {
+        stats.outstanding_amount = addMoney(stats.outstanding_amount, unpaidAmount);
+      }
+    }
+
     if (inv.status !== 'paid' && inv.due_date < today) {
       stats.overdue_count++;
     }

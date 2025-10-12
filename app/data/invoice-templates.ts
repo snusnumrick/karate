@@ -1,6 +1,7 @@
 import { InvoiceTemplate } from "~/types/invoice";
 import { createFeeLineItem, getDefaultServicePeriod } from "~/utils/line-item-helpers";
 import { fromDollars } from '~/utils/money';
+import { getCurrentDateTimeInTimezone } from '~/utils/misc';
 
 export const invoiceTemplates: InvoiceTemplate[] = [
   {
@@ -180,7 +181,11 @@ export const invoiceTemplates: InvoiceTemplate[] = [
         tax_rate: 0,
         discount_rate: 15, // 15% discount for annual payment
         service_period_start: getDefaultServicePeriod().start,
-        service_period_end: new Date(new Date().getFullYear() + 1, new Date().getMonth(), 0).toISOString().split('T')[0]
+        service_period_end: (() => {
+          const now = getCurrentDateTimeInTimezone();
+          const endDate = new Date(now.getFullYear() + 1, now.getMonth(), 0);
+          return endDate.toISOString().split('T')[0];
+        })()
       }
     ],
     defaultTerms: 'Annual membership is non-refundable but transferable. Membership includes all regular classes.',

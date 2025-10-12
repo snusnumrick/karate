@@ -20,7 +20,10 @@
       "Bash(timeout 20 npm run typecheck)",
       "Bash(find:*)",
       "Bash(npm test:*)",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "Read(//Users/antont/Downloads/**)",
+      "Bash(npm install:*)",
+      "WebFetch(domain:docs.sentry.io)"
     ],
     "deny": [],
     "ask": []

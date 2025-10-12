@@ -630,12 +630,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
           parentEmail: family.email || user.email || '',
           parentPhone: family.primary_phone || '',
           students: (students || [])
-            .filter(student => !registeredStudentIds.has(student.id))
+            .filter(student => !registeredStudentIds.has(student.id) && student.birth_date)
             .map(student => ({
               id: student.id,
               firstName: student.first_name,
               lastName: student.last_name,
-              dateOfBirth: student.birth_date,
+              dateOfBirth: student.birth_date!,
               beltRank: 'White'
             }))
         };

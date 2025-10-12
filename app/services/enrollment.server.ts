@@ -196,6 +196,10 @@ export async function enrollStudent(
     completed_at: data.completed_at || undefined,
     dropped_at: data.dropped_at || undefined,
     notes: data.notes || undefined,
+    student: data.student ? {
+      ...data.student,
+      birth_date: data.student.birth_date || '',
+    } : undefined,
     class: {
       ...data.class,
       description: data.class.description || undefined,
@@ -243,6 +247,8 @@ export async function updateEnrollment(
   // payment_id field removed as it doesn't exist in enrollments table
   if (updates.notes !== undefined) updateData.notes = updates.notes;
 
+  console.log('updateEnrollment', updateData);
+
   const { data, error } = await supabase
     .from('enrollments')
     .update(updateData)
@@ -277,6 +283,10 @@ export async function updateEnrollment(
     completed_at: data.completed_at || undefined,
     dropped_at: data.dropped_at || undefined,
     notes: data.notes || undefined,
+    student: data.student ? {
+      ...data.student,
+      birth_date: data.student.birth_date || '',
+    } : undefined,
     class: {
       ...data.class,
       description: data.class.description || undefined,
@@ -407,6 +417,10 @@ export async function getEnrollments(
     completed_at: enrollment.completed_at ?? undefined,
     dropped_at: enrollment.dropped_at ?? undefined,
     notes: enrollment.notes ?? undefined,
+    student: enrollment.student ? {
+      ...enrollment.student,
+      birth_date: enrollment.student.birth_date || '',
+    } : undefined,
     class: mapEnrollmentClassNullToUndefined(enrollment.class),
     student: enrollment.student ? {
       ...enrollment.student,
@@ -786,6 +800,10 @@ export async function getEnrollmentById(
     completed_at: data.completed_at || undefined,
     dropped_at: data.dropped_at || undefined,
     notes: data.notes || undefined,
+    student: data.student ? {
+      ...data.student,
+      birth_date: data.student.birth_date || '',
+    } : undefined,
     class: {
       ...data.class,
       description: data.class.description || undefined,

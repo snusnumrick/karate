@@ -342,13 +342,10 @@ export default function ContactPage() {
                                     <p className="font-medium mb-2">Children&apos;s Classes
                                         (Ages {ageRange})</p>
                                     <ul className="space-y-2">
-                                        <li className="flex items-center">
-                                            <span className="text-green-600 mr-2">•</span>
-                                            <span>{scheduleInfo.days}: {scheduleInfo.times}</span>
-                                        </li>
                                         {classes.length > 0 && (
-                                            <li className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                                                {classes.length} active class{classes.length !== 1 ? 'es' : ''} available
+                                            <li className="flex items-center">
+                                                <span className="text-green-600 mr-2">•</span>
+                                                <span>{classes.length} active class{classes.length !== 1 ? 'es' : ''} available</span>
                                             </li>
                                         )}
                                     </ul>
@@ -367,7 +364,7 @@ export default function ContactPage() {
                                     <p className="text-foreground">
                                         <span className="font-semibold">Q: What&apos;s the class schedule?</span>
                                         <br/>
-                                        A: Classes are on {scheduleInfo.days}, {scheduleInfo.times}.
+                                        A: Multiple weekly sessions. See our <a href="/classes" className="underline hover:text-green-700 dark:hover:text-green-400">Programs</a> page for complete schedule details.
                                     </p>
                                 </CardContent>
                             </Card>

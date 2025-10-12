@@ -16,6 +16,7 @@ import { getDiscountTemplateById } from "~/services/discount-template.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { PaymentTypeEnum, DiscountTemplate } from "~/types/discount";
 import { fromDollars, toDollars } from "~/utils/money";
+import { getCurrentDateTimeInTimezone } from "~/utils/misc";
 
 import { FileText, X } from "lucide-react";
 
@@ -190,7 +191,7 @@ export default function AdminNewDiscountCodePage() {
   
   // Set default valid from date to current date and time
   const getCurrentDateTime = () => {
-    const now = new Date();
+    const now = getCurrentDateTimeInTimezone();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');

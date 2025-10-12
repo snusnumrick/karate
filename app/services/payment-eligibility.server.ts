@@ -2,6 +2,7 @@ import { getSupabaseAdminClient , checkStudentEligibility } from '~/utils/supaba
 import {EligibilityStatus, StudentPaymentDetail} from '~/types/payment';
 import {ZERO_MONEY} from "~/utils/money";
 import {getFamilyPaymentOptions, type EnrollmentPaymentOption} from "~/services/enrollment-payment.server";
+import { getCurrentDateTimeInTimezone } from '~/utils/misc';
 
 // Types for the reusable payment eligibility service
 export interface IndividualSessionInfo {
@@ -244,7 +245,7 @@ export async function getFamilyPaymentEligibilityData(
       .select('id')
       .eq('is_active', true)
       .or(`family_id.eq.${familyId},family_id.is.null`)
-      .or('valid_until.is.null,valid_until.gte.' + new Date().toISOString())
+      .or('valid_until.is.null,valid_until.gte.' + getCurrentDateTimeInTimezone().toISOString())
       .limit(1);
 
     const hasAvailableDiscounts = !discountsError && availableDiscountsData && availableDiscountsData.length > 0;

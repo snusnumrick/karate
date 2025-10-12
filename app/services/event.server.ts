@@ -2,6 +2,7 @@ import type { Database } from "~/types/database.types";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import type { Money } from "~/utils/money";
 import { moneyFromRow } from "~/utils/database-money";
+import { getTodayLocalDateString } from "~/utils/misc";
 
 type EventRow = Database['public']['Tables']['events']['Row'];
 
@@ -93,14 +94,14 @@ export class EventService {
   static async getUpcomingEvents(): Promise<UpcomingEvent[]> {
     const cacheKey = 'upcoming_events';
     const now = Date.now();
-    
+
     // Check cache first
     const cached = eventCache.get(cacheKey);
     if (cached && (now - cached.timestamp) < CACHE_DURATION) {
       return cached.data;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocalDateString();
 
     const { data: events, error } = await getSupabase()
       .from('events')
@@ -199,14 +200,14 @@ export class EventService {
   static async getEventsForLoggedInUsers(): Promise<UpcomingEvent[]> {
     const cacheKey = 'logged_in_events';
     const now = Date.now();
-    
+
     // Check cache first
     const cached = eventCache.get(cacheKey);
     if (cached && (now - cached.timestamp) < CACHE_DURATION) {
       return cached.data;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocalDateString();
 
     const { data: events, error } = await getSupabase()
       .from('events')

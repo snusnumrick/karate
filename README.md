@@ -22,12 +22,21 @@ npm run dev
 
 ## 📚 Documentation
 
+### Setup & Deployment
 - **[Development Setup](docs/DEVELOPMENT.md)** - Complete development environment setup
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
-- **[Architecture Overview](docs/ARCHITECTURE.md)** - Technical architecture and database design
-- **[Instructor Portal Guide](docs/INSTRUCTOR_PORTAL.md)** - Instructor workflows, permissions, and attendance tools
-- **[API Documentation](docs/API.md)** - External API endpoints and integration
 - **[Customization Guide](docs/CUSTOMIZATION.md)** - How to customize the system for your school
+
+### Architecture & Technical
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - Technical architecture and database design
+- **[API Documentation](docs/API.md)** - External API endpoints and integration
+
+### Feature Guides
+- **[Instructor Portal Guide](docs/INSTRUCTOR_PORTAL.md)** - Instructor workflows, permissions, and attendance tools
+
+### Operations & Troubleshooting
+- **[Payment Error Monitoring](docs/PAYMENT_ERROR_MONITORING_SETUP.md)** - Error monitoring setup and payment issue diagnostics
+- **[Payment Diagnostic Query](docs/PAYMENT_DIAGNOSTIC_QUERY.sql)** - SQL query to identify payment data integrity issues
 
 ## ✨ Key Features
 
@@ -69,6 +78,7 @@ npm run dev
 - **Email**: Resend with custom templates
 - **AI**: Google Gemini API for database chat
 - **Notifications**: Web Push API with VAPID
+- **Error Monitoring**: Sentry (optional, for production error tracking)
 - **Deployment**: Vercel with Edge Functions
 
 ## 💰 Monetary System
@@ -93,12 +103,13 @@ See [MONETARY_STORAGE.md](docs/MONETARY_STORAGE.md) for detailed documentation a
 
 ## 📋 System Requirements
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Supabase account
 - Stripe account
 - Resend account (for emails)
 - Google Gemini API key (for AI features)
+- Sentry account (optional, for error monitoring)
 
 ## 🔧 Configuration
 

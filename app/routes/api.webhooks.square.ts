@@ -51,7 +51,13 @@ export async function action({ request }: ActionFunctionArgs) {
     );
     
     const result = await handlePaymentWebhook(paymentProvider, payload, request.headers, request.url);
-    
+
+    // Handle duplicate webhooks gracefully
+    if (result.isDuplicate) {
+        console.log(`[Square Webhook] Duplicate event acknowledged`);
+        return json({ received: true, duplicate: true }, { status: 200 });
+    }
+
     if (!result.success) {
         console.error(`[Square Webhook] Processing failed:`, result.error);
         return json({ error: result.error || 'Webhook processing failed' }, { status: 400 });

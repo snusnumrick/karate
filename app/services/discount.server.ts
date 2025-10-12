@@ -13,6 +13,7 @@ import type {
 } from '~/types/discount';
 import type {ExtendedSupabaseClient} from '~/types/supabase-extensions';
 import {getSupabaseAdminClient} from '~/utils/supabase.server';
+import { getCurrentDateTimeInTimezone } from '~/utils/misc';
 import {fromCents, fromDollars, type Money, toCents, toDollars} from '~/utils/money';
 
 // Interface for raw discount usage data from database
@@ -26,12 +27,13 @@ export class DiscountService {
      * Get all active discount codes (for users)
      */
     static async getActiveDiscountCodes(): Promise<DiscountCode[]> {
+        const now = getCurrentDateTimeInTimezone().toISOString();
         const {data, error} = await this.getSupabase()
             .from('discount_codes')
             .select('*')
             .eq('is_active', true)
-            .lte('valid_from', new Date().toISOString())
-            .or('valid_until.is.null,valid_until.gte.' + new Date().toISOString())
+            .lte('valid_from', now)
+            .or('valid_until.is.null,valid_until.gte.' + now)
             .order('created_at', {ascending: false});
 
         if (error) {
@@ -260,12 +262,12 @@ export class DiscountService {
             .from('discount_codes')
             .insert({
                 ...discountData,
-                discount_value: discountData.discount_type === 'fixed_amount' 
+                discount_value: discountData.discount_type === 'fixed_amount'
                     ? toDollars(discountData.discount_value as Money)
                     : discountData.discount_value as number,
                 created_by: createdBy,
                 created_automatically: !createdBy, // If no creator, it's automatic
-                valid_from: discountData.valid_from || new Date().toISOString()
+                valid_from: discountData.valid_from || getCurrentDateTimeInTimezone().toISOString()
             })
             .select()
             .single();

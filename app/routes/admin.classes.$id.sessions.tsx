@@ -23,7 +23,7 @@ import { getClassById, getClassSessions, generateClassSessions, deleteClassSessi
 import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { BulkSessionGeneration } from "~/types/multi-class";
 import { useState } from "react";
-import { formatDate, formatTime, getTodayLocalDateString  } from "~/utils/misc";
+import { formatDate, formatTime, getTodayLocalDateString , getCurrentDateTimeInTimezone } from "~/utils/misc";
 import { formatLocalDate } from "~/components/calendar/utils";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
@@ -148,14 +148,14 @@ export default function ClassSessions() {
   const upcomingSessions = sessions.filter(s => {
     const [year, month, day] = s.session_date.split('-').map(Number);
     const sessionDate = new Date(year, month - 1, day);
-    const today = new Date();
+    const today = getCurrentDateTimeInTimezone();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
     return sessionDate >= today;
   });
   const pastSessions = sessions.filter(s => {
     const [year, month, day] = s.session_date.split('-').map(Number);
     const sessionDate = new Date(year, month - 1, day);
-    const today = new Date();
+    const today = getCurrentDateTimeInTimezone();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
     return sessionDate < today;
   });
@@ -243,7 +243,7 @@ export default function ClassSessions() {
                     id="end_date"
                     name="end_date"
                     type="date"
-                    defaultValue={formatLocalDate(new Date(new Date().setFullYear(new Date().getFullYear() + 1)))}
+                    defaultValue={formatLocalDate(new Date(getCurrentDateTimeInTimezone().setFullYear(getCurrentDateTimeInTimezone().getFullYear() + 1)))}
                     required
                     className="input-custom-styles"
                   />

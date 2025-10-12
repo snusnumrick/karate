@@ -20,7 +20,7 @@ import { CalendarFilters } from "~/components/calendar/CalendarFilters";
 import { CalendarLegend } from "~/components/calendar/CalendarLegend";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents, filterEventsByStudent } from "~/components/calendar/utils";
-import { formatDate } from "~/utils/misc";
+import { formatDate, getTodayLocalDateString } from "~/utils/misc";
 import { requireUserId } from "~/utils/auth.server";
 import { breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
@@ -150,7 +150,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const familyId = profile.family_id;
     const url = new URL(request.url);
     const monthParam = url.searchParams.get('month');
-    const currentMonth = monthParam || formatDate(new Date(), { formatString: 'yyyy-MM' });
+    const currentMonth = monthParam || getTodayLocalDateString().substring(0, 7);
     // console.log('Family Calendar Loader: Current month:', currentMonth);
 
     // Fetch family name
@@ -507,8 +507,14 @@ export default function FamilyCalendarPage() {
     studentId: transformedAttendance.find(a => a.id === event.attendanceId)?.student_id
   }));
 
-  // Add birthday events
-  const birthdayEvents = birthdaysToCalendarEvents(students, currentDate);
+  // Add birthday events (filter students with valid birth dates)
+  const studentsWithBirthDates = students
+    .filter((s): s is typeof s & { birth_date: string } => s.birth_date !== null)
+    .map(s => ({
+      ...s,
+      birth_date: s.birth_date as string
+    }));
+  const birthdayEvents = birthdaysToCalendarEvents(studentsWithBirthDates, currentDate);
   
   // Transform events into CalendarEvent objects
   // console.log('Family Calendar: Raw events from loader:', events);

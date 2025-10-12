@@ -41,7 +41,6 @@ import { getFamilyPaymentOptions, type EnrollmentPaymentOption } from "~/service
 
 type PaymentColumns = Database["public"]["Tables"]["payments"]["Row"];
 type PaymentStudentRow = Database["public"]["Tables"]["payment_students"]["Row"];
-type FamilyRow = Database["public"]["Tables"]["families"]["Row"];
 type PaymentTaxRow = Database["public"]["Tables"]["payment_taxes"]["Row"];
 type TaxRateRow = Database["public"]["Tables"]["tax_rates"]["Row"];
 
@@ -54,7 +53,7 @@ type PaymentWithDetails = Omit<PaymentColumns, "amount" | "tax_amount" | "subtot
   subtotal_amount: Money;
   total_amount: Money;
   tax_amount: Money;
-  family: Pick<FamilyRow, "name" | "email" | "postal_code"> | null;
+  family: { name?: string; email?: string | undefined; postal_code?: string | undefined } | null;
   payment_taxes: PaymentTaxWithDescription[];
   payment_students: Array<Pick<PaymentStudentRow, "student_id">>;
   individualSessionUnitAmountCents?: number | null;
@@ -398,6 +397,11 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     subtotal_amount: subtotalMoney,
     total_amount: totalMoney,
     tax_amount: totalTaxMoney,
+    family: payment.family ? {
+      name: payment.family.name || undefined,
+      email: payment.family.email || undefined,
+      postal_code: payment.family.postal_code || undefined,
+    } : null,
     payment_taxes: paymentTaxesWithMoney,
     payment_students: payment.payment_students ?? [],
     individualSessionUnitAmountCents,
@@ -657,13 +661,40 @@ export default function PaymentPage() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  console.error("[PaymentPage ErrorBoundary]", error);
+
+  // Extract payment ID from URL if available
+  const url = typeof window !== 'undefined' ? window.location.pathname : '';
+  const paymentIdMatch = url.match(/\/pay\/([^/]+)/);
+  const paymentId = paymentIdMatch ? paymentIdMatch[1] : 'unknown';
+
+  // Log comprehensive error details
+  console.error("[PaymentPage ErrorBoundary] Payment page error caught:", {
+    paymentId,
+    url,
+    error: error instanceof Error ? {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    } : error,
+    timestamp: new Date().toISOString()
+  });
+
+  // Additional logging for better debugging
+  if (error instanceof Error) {
+    console.error(`[PaymentPage ErrorBoundary] Error name: ${error.name}`);
+    console.error(`[PaymentPage ErrorBoundary] Error message: ${error.message}`);
+    console.error(`[PaymentPage ErrorBoundary] Error stack:`, error.stack);
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <Alert variant="destructive">
         <AlertTitle>Payment Page Error</AlertTitle>
         <AlertDescription>
           Sorry, something went wrong while loading the payment page. Please try again later or contact support.
+          {paymentId !== 'unknown' && (
+            <span className="block mt-2 text-sm font-mono">Reference ID: {paymentId}</span>
+          )}
         </AlertDescription>
       </Alert>
       <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">

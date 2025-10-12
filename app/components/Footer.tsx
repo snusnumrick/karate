@@ -177,7 +177,7 @@ export default function Footer({ user }: { user?: Session['user'] | null }) {
                                 </a>
                                 {/* Class Time */}
                                 <div className="flex items-center justify-end">
-                                    <span>{`${scheduleData.days}: ${scheduleData.times}`}</span>
+                                    <span>Multiple Training Sessions Each Week</span>
                                     <Clock className="ml-2 h-5 w-5 flex-shrink-0 text-green-100" aria-hidden="true" />
                                 </div>
                             </div> {/* Closes Contact List div */}

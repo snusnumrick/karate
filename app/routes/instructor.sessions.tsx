@@ -1,7 +1,8 @@
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
 import { Form, Link, useLoaderData, useSearchParams, useSubmit } from '@remix-run/react';
 import { addDays, format } from 'date-fns';
-import { formatDate } from '~/utils/misc';
+import { formatDate, getTodayLocalDateString } from '~/utils/misc';
+import { parseLocalDate } from '~/components/calendar/utils';
 import { useMemo, type ComponentType } from 'react';
 import type { UserRole } from '~/types/auth';
 import {
@@ -35,9 +36,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, instructorOptions, headers, searchParams } = context;
 
-  const today = new Date();
-  const startDate = format(today, 'yyyy-MM-dd');
-  const endDate = format(addDays(today, 14), 'yyyy-MM-dd');
+  const startDate = getTodayLocalDateString();
+  const endDate = format(addDays(parseLocalDate(startDate), 14), 'yyyy-MM-dd');
 
   const sessions = await getInstructorSessionsWithDetails({
     instructorId: viewInstructorId,
@@ -55,7 +55,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     instructorOptions,
     sessions: serialized,
     focus,
-    rangeLabel: `${formatDate(today, { formatString: 'MMM d' })} – ${formatDate(addDays(today, 14), { formatString: 'MMM d' })}`,
+    rangeLabel: `${formatDate(parseLocalDate(startDate), { formatString: 'MMM d' })} – ${formatDate(addDays(parseLocalDate(startDate), 14), { formatString: 'MMM d' })}`,
   }, { headers });
 }
 

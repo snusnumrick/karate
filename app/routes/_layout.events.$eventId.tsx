@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Calendar, Clock, MapPin, ExternalLink, DollarSign, Users, AlertCircle, Shield, Package } from "lucide-react";
 import { siteConfig } from "~/config/site";
-import { formatDate, formatTime } from "~/utils/misc";
+import { formatDate, formatTime, getCurrentDateTimeInTimezone } from "~/utils/misc";
 import { formatMoney, isPositive, toDollars, serializeMoney, deserializeMoney, type MoneyJSON } from "~/utils/money";
 import { isLoggedIn as userIsLoggedIn } from "~/utils/auth.server";
 
@@ -96,8 +96,8 @@ export default function EventDetail() {
   };
 
   const isRegistrationOpen = event.status === 'registration_open';
-  const registrationDeadlinePassed = event.registration_deadline 
-    ? new Date(event.registration_deadline) < new Date() 
+  const registrationDeadlinePassed = event.registration_deadline
+    ? new Date(event.registration_deadline) < getCurrentDateTimeInTimezone()
     : false;
   
   // Registration is available if event is open AND (no deadline OR deadline hasn't passed)

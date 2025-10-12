@@ -391,26 +391,6 @@ export class StripePaymentProvider extends PaymentProvider {
     }
   }
 
-  async handleWebhookEvent(event: WebhookEvent): Promise<void> {
-    // Implementation depends on specific webhook handling requirements
-    // This is a placeholder that can be extended based on business logic
-    console.log(`Handling Stripe webhook event: ${event.type}`);
-    
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        // Handle successful payment
-        break;
-      case 'payment_intent.payment_failed':
-        // Handle failed payment
-        break;
-      case 'customer.created':
-        // Handle customer creation
-        break;
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
-    }
-  }
-
   isConfigured(): boolean {
     return !!process.env.STRIPE_SECRET_KEY && !!this.getPublishableKey();
   }

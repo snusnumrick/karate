@@ -108,11 +108,11 @@ export function mapStudentFromSupabase(row: Database['public']['Tables']['studen
         firstName: row.first_name,
         lastName: row.last_name,
         gender: row.gender,
-        birthDate: row.birth_date,  // Now allows null
+        birthDate: row.birth_date || '', // Handle null birth_date
         cellPhone: row.cell_phone || undefined,
         email: row.email || undefined,
-        tShirtSize: row.t_shirt_size,  // Now allows null
-        school: row.school,  // Now allows null
+        tShirtSize: row.t_shirt_size || '', // Handle null t_shirt_size
+        school: row.school || '', // Handle null school
         gradeLevel: row.grade_level || '',
         specialNeeds: row.special_needs || undefined,
         allergies: row.allergies || undefined,
@@ -171,11 +171,11 @@ export function mapFamilyFromSupabase(row: Database['public']['Tables']['familie
     return {
         id: row.id,
         name: row.name,
-        address: row.address,
-        city: row.city,
-        province: row.province,
-        postalCode: row.postal_code,
-        primaryPhone: row.primary_phone,
+        address: row.address || '', // Handle null address
+        city: row.city || '', // Handle null city
+        province: row.province || '', // Handle null province
+        postalCode: row.postal_code || '', // Handle null postal_code
+        primaryPhone: row.primary_phone || '', // Handle null primary_phone
         email: row.email,
         referralSource: row.referral_source || undefined,
         referralName: row.referral_name || undefined,

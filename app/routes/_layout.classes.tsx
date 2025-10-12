@@ -709,7 +709,7 @@ export default function ClassesPage() {
                                 </li>
                                 <li className="flex items-start">
                                     <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full mr-3 mt-2"></span>
-                                    <strong>Family discounts</strong> available for multiple children
+                                    <strong>Family discounts</strong>&nbsp; available for multiple children
                                 </li>
                             </ul>
                         </div>

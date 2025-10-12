@@ -12,7 +12,7 @@ import {
   updateInvoiceStatus,
   deleteInvoice,
 } from "~/services/invoice.server";
-import { formatDate } from "~/utils/misc";
+import { formatDate, getTodayLocalDateString } from "~/utils/misc";
 import { formatEntityAddress } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount } from "~/utils/line-item-helpers";
 import {
@@ -133,7 +133,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
             .insert({
               invoice_id: id,
               amount_cents: remainingBalance.getAmount(),
-              payment_date: new Date().toISOString().split('T')[0], // Today's date
+              payment_date: getTodayLocalDateString(), // Today's date
               payment_method: 'other', // Default method when marked as paid
               notes: 'Marked as paid via admin interface'
             });

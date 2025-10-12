@@ -12,6 +12,7 @@ import { Separator } from "~/components/ui/separator";
 import type { Database, Tables, TablesInsert } from "~/types/database.types";
 import type { TaxRate } from "~/types/invoice";
 import { fromCents, formatMoney } from "~/utils/money"; // dinero.js currency formatter
+import { getCurrentDateTimeInTimezone } from "~/utils/misc";
 // For tax calculation consistency
 import { Info } from 'lucide-react'; // Added Info icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -62,7 +63,7 @@ const ageToUniformSizeMap: Record<string, string> = {
 
 function calculateAge(birthDate: string): number {
     const birth = new Date(birthDate);
-    const today = new Date();
+    const today = getCurrentDateTimeInTimezone();
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
     

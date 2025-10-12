@@ -8,6 +8,7 @@ import { AppBreadcrumb } from "~/components/AppBreadcrumb";
 import { Users, DollarSign, FileText, ArrowLeft } from "lucide-react";
 import type { Database } from "~/types/database.types";
 import {fromCents, formatMoney} from "~/utils/money";
+import { getCurrentDateTimeInTimezone } from "~/utils/misc";
 
 type Event = Database['public']['Tables']['events']['Row'];
 type EventRegistration = Database['public']['Tables']['event_registrations']['Row'] & {
@@ -77,7 +78,7 @@ export async function loader({ params}: LoaderFunctionArgs) {
 
   const totalRegistrations = registrations?.length || 0;
   const confirmedRegistrations = registrations?.filter(reg => reg.registration_status === 'confirmed').length || 0;
-  const totalRevenueCents = registrations?.reduce((sum: number, reg: EventRegistration) => {
+  const totalRevenueCents = registrations?.reduce((sum: number, reg) => {
     if (reg.registration_status === 'confirmed') {
       return sum + (reg.payment_amount_cents ?? 0);
     }
@@ -121,7 +122,7 @@ function formatDate(dateString: string | null) {
 
 function calculateAge(birthDate: string | null) {
   if (!birthDate) return 'N/A';
-  const today = new Date();
+  const today = getCurrentDateTimeInTimezone();
   const birth = new Date(birthDate);
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();

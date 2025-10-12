@@ -11,6 +11,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoices } from "~/services/invoice.server";
 import { formatMoney, toCents, fromCents } from "~/utils/money";
 import { requireUserId } from "~/utils/auth.server";
+import { getTodayLocalDateString } from "~/utils/misc";
 import { Plus, Search, FileText, Calendar, DollarSign, Users } from "lucide-react";
 import type { InvoiceWithDetails, InvoiceStatus } from "~/types/invoice";
 import { siteConfig } from "~/config/site";
@@ -43,7 +44,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       pending: invoices.filter((inv: InvoiceWithDetails) => inv.status === "sent" || inv.status === "viewed").length,
       paid: invoices.filter((inv: InvoiceWithDetails) => inv.status === "paid").length,
       overdue: invoices.filter((inv: InvoiceWithDetails) => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodayLocalDateString();
         return inv.status !== 'paid' && inv.due_date < today;
       }).length,
       totalAmount: invoices.reduce((sum, inv) => sum + (inv.total_amount ? toCents(inv.total_amount) : 0), 0),

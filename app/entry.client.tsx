@@ -13,9 +13,10 @@ declare global {
   }
 }
 
-import {RemixBrowser} from "@remix-run/react";
-import {startTransition, StrictMode} from "react";
+import {RemixBrowser, useLocation, useMatches} from "@remix-run/react";
+import {startTransition, StrictMode, useEffect} from "react";
 import {hydrateRoot} from "react-dom/client";
+import * as Sentry from "@sentry/remix";
 
 // Only set dev tools in development (check for window to ensure client-side)
 if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
@@ -23,6 +24,65 @@ if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
         suppressHydrationWarning: true,
         suppressExtraHydrationErrors: true
     };
+}
+
+// Initialize Sentry for client-side error tracking
+if (typeof window !== 'undefined' && window.ENV?.SENTRY_DSN) {
+    Sentry.init({
+        dsn: window.ENV.SENTRY_DSN,
+        environment: window.ENV.NODE_ENV || 'development',
+        integrations: [
+            Sentry.browserTracingIntegration({
+                useEffect,
+                useLocation,
+                useMatches,
+            }),
+            // Automatically capture console.error calls
+            Sentry.captureConsoleIntegration({
+                levels: ['error'] // Only capture console.error, not log/warn
+            }),
+        ],
+        tracesSampleRate: window.ENV.NODE_ENV === 'production' ? 0.1 : 1.0,
+        replaysSessionSampleRate: 0, // Disable session replay to avoid recording sensitive data
+        replaysOnErrorSampleRate: 0, // Disable error replays
+        beforeSend(event) {
+            // Strip sensitive data from error reports
+            if (event.request) {
+                // Remove cookies and auth headers
+                delete event.request.cookies;
+                if (event.request.headers) {
+                    delete event.request.headers['authorization'];
+                    delete event.request.headers['cookie'];
+                }
+            }
+
+            // Redact user email and PII
+            if (event.user) {
+                if (event.user.email) {
+                    event.user.email = '[REDACTED]';
+                }
+                if (event.user.ip_address) {
+                    event.user.ip_address = '[REDACTED]';
+                }
+            }
+
+            // Remove payment-related sensitive data from contexts
+            if (event.contexts) {
+                Object.keys(event.contexts).forEach(key => {
+                    const context = event.contexts?.[key];
+                    if (context && typeof context === 'object') {
+                        ['amount', 'total', 'subtotal', 'tax', 'email', 'name', 'phone', 'address'].forEach(field => {
+                            if (field in context) {
+                                delete (context as Record<string, unknown>)[field];
+                            }
+                        });
+                    }
+                });
+            }
+
+            return event;
+        },
+    });
 }
 
 // Add error handling for hydration

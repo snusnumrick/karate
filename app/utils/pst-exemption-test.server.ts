@@ -37,8 +37,8 @@ export async function testHasStudentsUnder15() {
     }
     const birthDate = new Date(testStudent.birth_date);
     const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear() - 
-      (today.getMonth() < birthDate.getMonth() || 
+    const age = today.getFullYear() - birthDate.getFullYear() -
+      (today.getMonth() < birthDate.getMonth() ||
        (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
     
     const expectedResult = age < 15;
@@ -105,8 +105,8 @@ export async function testPSTExemptionLogic() {
     }
     const birthDate = new Date(testStudent.birth_date);
     const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear() - 
-      (today.getMonth() < birthDate.getMonth() || 
+    const age = today.getFullYear() - birthDate.getFullYear() -
+      (today.getMonth() < birthDate.getMonth() ||
        (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
     
     console.log(`📝 Test student: ${testStudent.first_name} ${testStudent.last_name} (age ${age})`);

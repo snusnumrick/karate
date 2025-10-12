@@ -1,7 +1,8 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, useFetcher, Link, useSearchParams } from "@remix-run/react";
 import { format, addDays } from "date-fns";
-import { formatDate, formatTime } from "~/utils/misc";
+import { formatDate, formatTime, getTodayLocalDateString  } from "~/utils/misc";
+import { parseLocalDate } from "~/components/calendar/utils";
 import { Trash2, Calendar, Clock, Users, AlertTriangle, Edit2, Plus } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -219,14 +220,14 @@ export default function AdminSessions() {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isCreateMakeupDialogOpen, setIsCreateMakeupDialogOpen] = useState(false);
   const [bulkDeleteForm, setBulkDeleteForm] = useState({
-    dateFrom: format(new Date(), 'yyyy-MM-dd'),
-    dateTo: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+    dateFrom: getTodayLocalDateString(),
+    dateTo: format(addDays(parseLocalDate(getTodayLocalDateString()), 7), 'yyyy-MM-dd'),
     classId: "all",
     status: "all"
   });
   const [makeupSessionForm, setMakeupSessionForm] = useState({
     classId: "",
-    sessionDate: format(new Date(), 'yyyy-MM-dd'),
+    sessionDate: getTodayLocalDateString(),
     startTime: "09:00",
     endTime: "10:00",
     notes: ""
@@ -291,7 +292,7 @@ export default function AdminSessions() {
     setIsCreateMakeupDialogOpen(false);
     setMakeupSessionForm({
       classId: "",
-      sessionDate: format(new Date(), 'yyyy-MM-dd'),
+      sessionDate: getTodayLocalDateString(),
       startTime: "09:00",
       endTime: "10:00",
       notes: ""
@@ -312,8 +313,8 @@ export default function AdminSessions() {
     );
     setIsBulkDeleteDialogOpen(false);
     setBulkDeleteForm({
-      dateFrom: format(new Date(), 'yyyy-MM-dd'),
-      dateTo: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+      dateFrom: getTodayLocalDateString(),
+      dateTo: format(addDays(parseLocalDate(getTodayLocalDateString()), 7), 'yyyy-MM-dd'),
       classId: "all",
       status: "all"
     });

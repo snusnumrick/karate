@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { BookOpen, ExternalLink, Notebook } from 'lucide-react';
 import type { InstructorRouteHandle } from '~/routes/instructor';
-import { formatDate } from '~/utils/misc';
+import { formatDate, getCurrentDateTimeInTimezone } from '~/utils/misc';
 
 interface ResourceSummary {
   programId?: string;
@@ -32,7 +32,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers } = context;
 
-  const today = new Date();
+  const today = getCurrentDateTimeInTimezone();
   const startDate = formatDate(today, { formatString: 'yyyy-MM-dd' });
   const endDate = formatDate(addDays(today, 14), { formatString: 'yyyy-MM-dd' });
 

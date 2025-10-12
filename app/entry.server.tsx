@@ -11,6 +11,7 @@ import { renderToPipeableStream } from "react-dom/server";
 import { createReadableStreamFromReadable, EntryContext } from "@remix-run/node";
 import { deriveNonceForRequest } from "./utils/nonce.server";
 import { getPaymentProvider } from "./services/payments/index.server";
+import * as Sentry from "@sentry/remix";
 
 // Extend EntryContext to include nonce property
 interface ExtendedEntryContext extends EntryContext {
@@ -18,6 +19,84 @@ interface ExtendedEntryContext extends EntryContext {
 }
 
 const ABORT_DELAY = 5_000;
+
+// Initialize Sentry for server-side error tracking
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'development',
+        tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+        // Note: Console integration doesn't work on server-side in Remix
+        // Server errors are captured via handleError export and explicit Sentry.captureException calls
+        integrations: [],
+        beforeSend(event) {
+            // Strip sensitive data from error reports
+            if (event.request) {
+                // Remove cookies and auth headers
+                delete event.request.cookies;
+                if (event.request.headers) {
+                    delete event.request.headers['authorization'];
+                    delete event.request.headers['cookie'];
+                }
+            }
+
+            // Redact user email and PII
+            if (event.user) {
+                if (event.user.email) {
+                    event.user.email = '[REDACTED]';
+                }
+                if (event.user.ip_address) {
+                    event.user.ip_address = '[REDACTED]';
+                }
+            }
+
+            // Remove any payment-related sensitive data from contexts
+            if (event.contexts) {
+                Object.keys(event.contexts).forEach(key => {
+                    const context = event.contexts?.[key];
+                    if (context && typeof context === 'object') {
+                        // Remove fields that might contain sensitive payment data
+                        ['amount', 'total', 'subtotal', 'tax', 'email', 'name', 'phone', 'address'].forEach(field => {
+                            if (field in context) {
+                                delete (context as Record<string, unknown>)[field];
+                            }
+                        });
+                    }
+                });
+            }
+
+            return event;
+        },
+    });
+}
+
+/**
+ * Handle server-side errors from loaders and actions
+ * Ensures errors are both logged to console AND sent to Sentry
+ */
+export function handleError(
+    error: unknown,
+    { request }: { request: Request }
+): void {
+    // Log to console for server logs
+    console.error(error);
+
+    // Only send to Sentry if DSN is configured
+    // Wrap in try/catch to prevent infinite loops if Sentry itself errors
+    if (process.env.SENTRY_DSN) {
+        try {
+            if (error instanceof Error) {
+                Sentry.captureRemixServerException(error, "remix.server", request);
+            } else {
+                // For non-Error objects, convert to string and capture
+                Sentry.captureException(error);
+            }
+        } catch (sentryError) {
+            // If Sentry fails, log it but don't let it crash the app
+            console.error('Failed to send error to Sentry:', sentryError);
+        }
+    }
+}
 
 /**
  * Get payment provider specific domains for CSP from the configured provider
@@ -56,6 +135,7 @@ function generateCsp(nonce: string) {
         "https://stats.g.doubleclick.net",
         ...providerDomains.connectSrc,
         "https://umami-two-lilac.vercel.app",
+        "https://*.sentry.io", // Sentry error reporting
         supabaseOrigin ? `${supabaseOrigin} wss://${supabaseHostname}` : '',
         devWebSockets,
         devHttpOrigins,
@@ -209,7 +289,11 @@ function handleBotRequest(
                 onShellError: reject,
                 onError(error: unknown) {
                     responseStatusCode = 500;
-                    if (shellRendered) console.error(error);
+                    if (shellRendered) {
+                        console.error(error);
+                        // Explicitly capture server-side rendering errors
+                        Sentry.captureException(error);
+                    }
                 },
             }
         );
@@ -249,7 +333,11 @@ function handleBrowserRequest(
                 onShellError: reject,
                 onError(error: unknown) {
                     responseStatusCode = 500;
-                    if (shellRendered) console.error(error);
+                    if (shellRendered) {
+                        console.error(error);
+                        // Explicitly capture server-side rendering errors
+                        Sentry.captureException(error);
+                    }
                 },
             }
         );

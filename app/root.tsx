@@ -13,6 +13,7 @@ import {
     LoaderFunctionArgs,
     MetaFunction
 } from "@remix-run/node";
+import { withSentry } from "@sentry/remix";
 import {ThemeProvider} from "~/components/theme-provider";
 import {siteConfig} from "~/config/site";
 import { NonceProvider } from "~/context/nonce";
@@ -24,22 +25,32 @@ import "./tailwind.css";
 declare global {
   interface Window {
     dataLayer: Array<Record<string, unknown>>;
+    ENV: {
+      NODE_ENV: string;
+      SENTRY_DSN: string;
+    };
   }
 }
 
 export async function loader({context, request}: LoaderFunctionArgs) {
     let nonce = (context as { nonce?: string } | undefined)?.nonce;
-    
+
     if (!nonce) {
         const { deriveNonceForRequest } = await import('~/utils/nonce.server');
         nonce = deriveNonceForRequest(request);
     }
-    
+
     // Use the incoming request so we reuse any existing CSRF token
     const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
-    
+
+    // Expose necessary environment variables to the client
+    const ENV = {
+        NODE_ENV: process.env.NODE_ENV,
+        SENTRY_DSN: process.env.SENTRY_DSN || '',
+    };
+
     return json(
-        { nonce, csrfToken },
+        { nonce, csrfToken, ENV },
         {
             headers: csrfCookieHeader ? { "Set-Cookie": csrfCookieHeader } : {},
         }
@@ -120,7 +131,7 @@ function ClientGTM({ nonce }: { nonce?: string }) {
 
 export function Layout({children}: { children: React.ReactNode }) {
     // In error elements, useLoaderData is not allowed. Use useRouteLoaderData('root').
-    const loaderData = useRouteLoaderData('root') as { nonce?: string; csrfToken?: string } | undefined;
+    const loaderData = useRouteLoaderData('root') as { nonce?: string; csrfToken?: string; ENV?: { NODE_ENV: string; SENTRY_DSN: string } } | undefined;
     const safeNonce = loaderData?.nonce;
 
     return (
@@ -133,13 +144,23 @@ export function Layout({children}: { children: React.ReactNode }) {
             <Links/>
 
             {safeNonce && <meta name="csp-nonce" content={safeNonce} />}
-            
+
             {safeNonce && (
                 <script
                     nonce={safeNonce}
                     suppressHydrationWarning
                     dangerouslySetInnerHTML={{
                         __html: `window.__vite_nonce__ = ${JSON.stringify(safeNonce)};`
+                    }}
+                />
+            )}
+
+            {safeNonce && loaderData?.ENV && (
+                <script
+                    nonce={safeNonce}
+                    suppressHydrationWarning
+                    dangerouslySetInnerHTML={{
+                        __html: `window.ENV = ${JSON.stringify(loaderData.ENV)};`
                     }}
                 />
             )}
@@ -166,8 +187,8 @@ export function Layout({children}: { children: React.ReactNode }) {
     );
 }
 
-export default function App() {
+export default withSentry(function App() {
     return (
         <Outlet/>
     );
-}
+});

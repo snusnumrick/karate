@@ -9,7 +9,7 @@ import { setRemixDevLoadContext } from "@remix-run/dev/dist/vite/plugin";
 
 const devServerHost = process.env.VITE_DEV_SERVER_HOST || "0.0.0.0";
 const devHmrHost = process.env.VITE_DEV_HMR_HOST || "localhost";
-const devHmrPort = process.env.VITE_DEV_HMR_PORT ? Number(process.env.VITE_DEV_HMR_PORT) : 5177;
+const devHmrPort = process.env.VITE_DEV_HMR_PORT ? Number(process.env.VITE_DEV_HMR_PORT) : 5176;
 
 const allowedHostsEnv = process.env.VITE_DEV_ALLOWED_HOSTS;
 const devAllowedHosts: true | string[] = allowedHostsEnv

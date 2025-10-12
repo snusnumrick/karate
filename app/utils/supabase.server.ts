@@ -7,6 +7,7 @@ import type { UserRole } from '~/types/auth';
 import { isAdminRole } from '~/types/auth';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import {addMoney, Money, toCents} from "./money";
+import { getCurrentDateTimeInTimezone } from "./misc";
 
 // Re-export EligibilityStatus for other modules
 export type { EligibilityStatus };
@@ -200,7 +201,6 @@ export async function createInitialPaymentRecord(
             await supabaseAdmin.from('payments').delete().eq('id', paymentId);
             return { data: null, error: `Failed to record tax details: ${insertTaxesError.message}` };
         }
-        // console.log(`[createInitialPaymentRecord] Inserted ${taxesWithPaymentId_db.length} tax records for payment ${paymentId}.`);
     }
 
 
@@ -293,7 +293,7 @@ export async function checkStudentEligibility(
     }
 
     // 3. Check active enrollments with paid_until dates
-    const today = new Date();
+    const today = getCurrentDateTimeInTimezone();
     const activeEnrollments = enrollments.filter(e => e.status === 'active');
 
     for (const enrollment of activeEnrollments) {
@@ -381,9 +381,6 @@ function getSiteUrl(): string {
         // Throw an error or return a default that makes it obvious something is wrong
         // Throwing an error might be better to prevent unexpected behavior.
         throw new Error("VITE_SITE_URL environment variable is not configured.");
-        // Or fallback to relative path if absolutely necessary, but log loudly:
-        // console.warn("VITE_SITE_URL environment variable is not set. Defaulting to relative paths for receipts, which might not work in emails.");
-        // return "";
     }
     // Ensure it doesn't end with a slash for clean joining
     return siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
@@ -409,52 +406,81 @@ export async function updatePaymentStatus(
     // Use the centralized admin client function
     const supabaseAdmin = getSupabaseAdminClient();
 
+    console.log(`[updatePaymentStatus] Called for payment ${supabasePaymentId} with status=${status}, paymentIntentId=${paymentIntentId || 'null'}`);
 
-    const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {
-        status,
-        // receipt_url: Don't store the provider receipt URL directly
-        payment_method: paymentMethod,
-        type: type || undefined, // Use 'type' parameter
-        payment_intent_id: paymentIntentId || undefined, // Generic payment intent ID for all providers
-        card_last4: cardLast4 || undefined, // Store card last 4 digits
-    };
-
-    // Set payment_date and generate our internal receipt_url when status becomes 'succeeded'
-    if (status === 'succeeded') {
-        updateData.payment_date = new Date().toISOString();
-        try {
-            const siteBaseUrl = getSiteUrl();
-            updateData.receipt_url = `${siteBaseUrl}/family/receipt/${supabasePaymentId}`;
-        } catch (e) {
-            console.error(`[updatePaymentStatus] Failed to generate receipt URL for ${supabasePaymentId} due to missing VITE_SITE_URL.`, e);
-            updateData.receipt_url = null;
-        }
-    } else if (status === 'failed') {
-        // Also set payment_date for failed payments, but no receipt URL
-        updateData.payment_date = new Date().toISOString();
-        updateData.receipt_url = null; // Ensure no receipt URL for failed payments
-    } else {
-        // For pending status, ensure receipt_url is null
-        updateData.receipt_url = null;
-    }
-
-    // console.log(`[updatePaymentStatus] FINAL update data for payment ${supabasePaymentId}:`, JSON.stringify(updateData));
-
-    const {data, error} = await supabaseAdmin
+    // Check if payment already succeeded to prevent duplicate payment status updates
+    const { data: existingPayment, error: checkError } = await supabaseAdmin
         .from('payments')
-        .update(updateData)
-        .eq('id', supabasePaymentId) // Find record using the Supabase Payment ID
-        .select('id, family_id, subtotal_amount, total_amount') // Select amounts for verification/logging
+        .select('id, status, payment_date, type, family_id, subtotal_amount, total_amount')
+        .eq('id', supabasePaymentId)
         .single();
 
-    if (error) {
-        console.error(`Payment update failed for Supabase payment ID ${supabasePaymentId}:`, error.message);
-        // Decide how to handle webhook errors - retry? log?
-        throw new Error(`Payment update failed: ${error.message}`);
+    if (checkError && checkError.code !== 'PGRST116') {
+        // Real database error (not just "no rows returned")
+        console.error(`[updatePaymentStatus] Database error checking payment ${supabasePaymentId}:`, checkError.message);
+        // Continue anyway - don't fail the whole update
     }
+
+    const paymentAlreadySucceeded = existingPayment?.status === 'succeeded' && status === 'succeeded';
+
+    let data = existingPayment;
+
+    // Only update payment status if it hasn't already succeeded
+    if (!paymentAlreadySucceeded) {
+        const updateData: Partial<Database['public']['Tables']['payments']['Update']> = {
+            status,
+            // receipt_url: Don't store the provider receipt URL directly
+            payment_method: paymentMethod,
+            type: type || undefined, // Use 'type' parameter
+            payment_intent_id: paymentIntentId || undefined, // Generic payment intent ID for all providers
+            card_last4: cardLast4 || undefined, // Store card last 4 digits
+        };
+
+        // Set payment_date and generate our internal receipt_url when status becomes 'succeeded'
+        if (status === 'succeeded') {
+            updateData.payment_date = new Date().toISOString();
+            try {
+                const siteBaseUrl = getSiteUrl();
+                updateData.receipt_url = `${siteBaseUrl}/family/receipt/${supabasePaymentId}`;
+            } catch (e) {
+                console.error(`[updatePaymentStatus] Failed to generate receipt URL for ${supabasePaymentId} due to missing VITE_SITE_URL.`, e);
+                updateData.receipt_url = null;
+            }
+        } else if (status === 'failed') {
+            // Also set payment_date for failed payments, but no receipt URL
+            updateData.payment_date = new Date().toISOString();
+            updateData.receipt_url = null; // Ensure no receipt URL for failed payments
+        } else {
+            // For pending status, ensure receipt_url is null
+            updateData.receipt_url = null;
+        }
+
+        console.log(`[updatePaymentStatus] FINAL update data for payment ${supabasePaymentId}:`, JSON.stringify(updateData));
+
+        const result = await supabaseAdmin
+            .from('payments')
+            .update(updateData)
+            .eq('id', supabasePaymentId) // Find record using the Supabase Payment ID
+            .select('id, family_id, subtotal_amount, total_amount, status, payment_date, type') // Select all needed fields
+            .single();
+
+        if (result.error) {
+            console.error(`Payment update failed for Supabase payment ID ${supabasePaymentId}:`, result.error.message);
+            // Decide how to handle webhook errors - retry? log?
+            throw new Error(`Payment update failed: ${result.error.message}`);
+        }
+        if (!result.data) {
+            console.error(`No payment record found for Supabase payment ID ${supabasePaymentId} during update.`);
+            throw new Error(`Payment record not found for ID ${supabasePaymentId}.`);
+        }
+        data = result.data;
+    } else {
+        console.warn(`[updatePaymentStatus] Payment ${supabasePaymentId} already succeeded at ${existingPayment.payment_date}. Skipping payment status update but will still check enrollments.`);
+    }
+
     if (!data) {
-        console.error(`No payment record found for Supabase payment ID ${supabasePaymentId} during update.`);
-        throw new Error(`Payment record not found for ID ${supabasePaymentId}.`);
+        console.error(`[updatePaymentStatus] No payment data available for ${supabasePaymentId}`);
+        throw new Error(`Payment data not found for ID ${supabasePaymentId}.`);
     }
 
     // Optional: Log/verify amounts from metadata against DB record
@@ -469,8 +495,14 @@ export async function updatePaymentStatus(
             if (studentLinkError) {
                 console.error(`Failed to fetch students for payment ${supabasePaymentId}:`, studentLinkError.message);
             } else if (studentLinks) {
-                for (const link of studentLinks) {
-                    const studentId = link.student_id;
+                // Deduplicate student IDs to prevent multiple updates for the same student
+                const uniqueStudentIds = [...new Set(studentLinks.map(link => link.student_id))];
+
+                if (uniqueStudentIds.length !== studentLinks.length) {
+                    console.warn(`[updatePaymentStatus] Payment ${supabasePaymentId} has duplicate student entries: ${studentLinks.length} total, ${uniqueStudentIds.length} unique. This may indicate a data issue.`);
+                }
+
+                for (const studentId of uniqueStudentIds) {
                     // Find the student's enrollment to update paid_until
                     const { data: enrollment, error: enrollmentError } = await supabaseAdmin
                         .from('enrollments')
@@ -485,17 +517,36 @@ export async function updatePaymentStatus(
                         continue; // Move to next student
                     }
 
-                    const today = new Date();
-                    const currentPaidUntil = enrollment.paid_until ? new Date(enrollment.paid_until) : today;
-                    // Start extending from today or the future paid_until date, whichever is later
-                    const startDate = currentPaidUntil > today ? currentPaidUntil : today;
+                    // Idempotency check for enrollment updates
+                    // If payment already succeeded and enrollment already has a future paid_until,
+                    // this payment likely already processed this enrollment
+                    if (paymentAlreadySucceeded && enrollment.paid_until && existingPayment?.payment_date) {
+                        const paymentDate = new Date(existingPayment.payment_date);
+                        const enrollmentPaidUntil = new Date(enrollment.paid_until);
 
+                        // If enrollment's paid_until is after the payment date, this payment likely already updated it
+                        if (enrollmentPaidUntil > paymentDate) {
+                            console.log(`[updatePaymentStatus] Enrollment ${enrollment.id} already has paid_until (${enrollment.paid_until}) after payment date (${existingPayment.payment_date}). Skipping duplicate enrollment update.`);
+                            continue;
+                        }
+                    }
+
+                    // Work in UTC to avoid timezone conversion issues
+                    const nowUTC = new Date();
+                    const currentPaidUntil = enrollment.paid_until ? new Date(enrollment.paid_until) : nowUTC;
+
+                    // Start extending from now or the future paid_until date, whichever is later
+                    const startDate = currentPaidUntil > nowUTC ? currentPaidUntil : nowUTC;
+
+                    // Perform date arithmetic using UTC methods to avoid timezone issues
                     const newPaidUntil = new Date(startDate);
                     if (type === 'monthly_group') {
-                        newPaidUntil.setMonth(newPaidUntil.getMonth() + 1);
+                        newPaidUntil.setUTCMonth(newPaidUntil.getUTCMonth() + 1);
                     } else { // yearly_group
-                        newPaidUntil.setFullYear(newPaidUntil.getFullYear() + 1);
+                        newPaidUntil.setUTCFullYear(newPaidUntil.getUTCFullYear() + 1);
                     }
+
+                    console.log(`[updatePaymentStatus] Payment ${supabasePaymentId}, Student ${studentId}, Enrollment ${enrollment.id}: Updating paid_until from ${enrollment.paid_until || 'null'} to ${newPaidUntil.toISOString()} (type: ${type})`);
 
                     const { error: updateEnrollmentError } = await supabaseAdmin
                         .from('enrollments')
@@ -511,12 +562,8 @@ export async function updatePaymentStatus(
         }
     }
 
-    // console.log(`Payment status updated successfully for Supabase payment ID ${supabasePaymentId} to ${status}.`); // Updated log message
-
     // If payment succeeded, type is individual_session, and quantity is provided, insert the session record
-    // console.log(`[updatePaymentStatus] Checking condition for individual session insert: status=${status}, type=${type}, quantity=${quantity}`); // Log updated
-    if (status === 'succeeded' && type === 'individual_session' && quantity && quantity > 0) { // Check against 'type' parameter
-        // console.log(`[updatePaymentStatus] Condition met for individual session insert for payment ${data.id}.`); // Removed log
+    if (status === 'succeeded' && type === 'individual_session' && quantity && quantity > 0) {
         // Use family_id from the updated payment record OR the passed familyId as fallback
         const targetFamilyId = data.family_id || familyId;
         if (!targetFamilyId) {
@@ -525,7 +572,6 @@ export async function updatePaymentStatus(
             return data;
         }
 
-        // console.log(`Recording ${quantity} Individual Session(s) for payment ${data.id}, family ${targetFamilyId}`); // Removed log
         const { error: sessionInsertError } = await supabaseAdmin
             .from('one_on_one_sessions') // Table name remains the same
             .insert({
@@ -541,10 +587,8 @@ export async function updatePaymentStatus(
             // Throw an error here to indicate the webhook handler should potentially return an error status to the payment provider.
             throw new Error(`Payment ${data.id} succeeded, but failed to record Individual Session credits: ${sessionInsertError.message}`);
         }
-        // console.log(`[updatePaymentStatus] Recorded Individual Session purchase for payment ${data.id}.`); // Simplified log
-    } else if (status === 'succeeded' && type === 'individual_session') { // Check against 'type' parameter
-        // Keep this warning for debugging potential future issues
-        console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${type}', Quantity='${quantity}'. Session record NOT created.`); // Log updated
+    } else if (status === 'succeeded' && type === 'individual_session') {
+        console.warn(`[updatePaymentStatus] Condition for individual session insert NOT met for payment ${data.id}. Status='${status}', Type='${type}', Quantity='${quantity}'. Session record NOT created.`);
     }
 
     return data; // Return the updated payment data

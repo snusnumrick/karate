@@ -2688,6 +2688,83 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          created_at: string
+          error_details: Json | null
+          error_message: string | null
+          event_id: string
+          event_type: string
+          id: string
+          parsed_metadata: Json | null
+          payment_id: string | null
+          processed_at: string | null
+          processing_duration_ms: number | null
+          provider: string
+          raw_payload: Json
+          raw_type: string | null
+          received_at: string
+          request_id: string | null
+          retry_count: number | null
+          signature_verified: boolean | null
+          source_ip: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          parsed_metadata?: Json | null
+          payment_id?: string | null
+          processed_at?: string | null
+          processing_duration_ms?: number | null
+          provider: string
+          raw_payload: Json
+          raw_type?: string | null
+          received_at?: string
+          request_id?: string | null
+          retry_count?: number | null
+          signature_verified?: boolean | null
+          source_ip?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          parsed_metadata?: Json | null
+          payment_id?: string | null
+          processed_at?: string | null
+          processing_duration_ms?: number | null
+          provider?: string
+          raw_payload?: Json
+          raw_type?: string | null
+          received_at?: string
+          request_id?: string | null
+          retry_count?: number | null
+          signature_verified?: boolean | null
+          source_ip?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       family_one_on_one_balance: {

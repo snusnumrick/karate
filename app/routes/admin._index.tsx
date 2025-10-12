@@ -2,7 +2,7 @@ import {json, type LoaderFunctionArgs} from "@remix-run/node"; // Keep json, Loa
 import {Link, useFetcher, useLoaderData} from "@remix-run/react"; // Remove useRouteError
 import {getSupabaseAdminClient} from "~/utils/supabase.server";
 import {PaymentStatus} from "~/types/models"; // Import the enum
-import {getTodayLocalDateString} from "~/utils/misc";
+import {getTodayLocalDateString, getCurrentDateTimeInTimezone} from "~/utils/misc";
 import {getInvoiceStats} from "~/services/invoice.server";
 import {getInvoiceEntities} from "~/services/invoice-entity.server";
 import {formatMoney, fromCents, ZERO_MONEY, toMoney, type Money} from "~/utils/money";
@@ -175,7 +175,7 @@ export async function loader(_: LoaderFunctionArgs) {
             // Parse date string as local date to avoid timezone issues
             const [year, month, day] = nextClass.session_date.split('-').map(Number);
             const sessionDate = new Date(year, month - 1, day);
-            const today = new Date();
+            const today = getCurrentDateTimeInTimezone();
             const isToday = sessionDate.toDateString() === today.toDateString();
             const timeStr = nextClass.start_time;
             const dateStr = isToday ? "Today" : sessionDate.toLocaleDateString();
@@ -286,7 +286,7 @@ export async function loader(_: LoaderFunctionArgs) {
             end_time: string
         }) => {
             if (s.status !== 'scheduled') return false;
-            const now = new Date();
+            const now = getCurrentDateTimeInTimezone();
             // Parse session date as local date to avoid timezone issues
             const [year, month, day] = s.session_date.split('-').map(Number);
             const sessionDate = new Date(year, month - 1, day);
@@ -304,7 +304,7 @@ export async function loader(_: LoaderFunctionArgs) {
             start_time: string
         }) => {
             if (s.status !== 'scheduled') return false;
-            const now = new Date();
+            const now = getCurrentDateTimeInTimezone();
             // Parse session date as local date to avoid timezone issues
             const [year, month, day] = s.session_date.split('-').map(Number);
             const sessionDate = new Date(year, month - 1, day);
@@ -471,7 +471,7 @@ export default function AdminDashboard() {
 
                 {/* Total Payments Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
-                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Payments (Completed)</h2>
+                    <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Payments</h2>
                     {/* Divide by 100 to convert cents to dollars */}
                     <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{formatMoney(data.totalPayments)}</p>
                     <Link to="/admin/payments"

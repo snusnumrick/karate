@@ -12,7 +12,7 @@ import { Badge } from '~/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
 import { AlertTriangle, CheckCircle2, Users } from 'lucide-react';
 import type { InstructorRouteHandle } from '~/routes/instructor';
-import { formatDate } from '~/utils/misc';
+import { formatDate, getCurrentDateTimeInTimezone } from '~/utils/misc';
 
 interface StudentSummary {
   studentId: string;
@@ -47,7 +47,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers } = context;
 
-  const today = new Date();
+  const today = getCurrentDateTimeInTimezone();
   const startDate = format(addDays(today, -90), 'yyyy-MM-dd');
   const endDate = format(addDays(today, 30), 'yyyy-MM-dd');
 
@@ -139,11 +139,11 @@ export default function InstructorStudentsPage() {
                     </TableCell>
                     <TableCell>
                       {student.isEligible ? (
-                        <Badge variant="outline" className="flex items-center gap-1 text-emerald-600 dark:text-emerald-300">
+                        <Badge variant="outline" className="flex items-center gap-1 attendance-present-text">
                           <CheckCircle2 className="h-4 w-4" /> {student.eligibilityReason ?? 'In good standing'}
                         </Badge>
                       ) : (
-                        <Badge variant="destructive" className="flex items-center gap-1">
+                        <Badge variant="outline" className="flex items-center gap-1 attendance-eligibility-text attendance-eligibility-border">
                           <AlertTriangle className="h-4 w-4" /> {student.eligibilityReason ?? 'Needs attention'}
                         </Badge>
                       )}

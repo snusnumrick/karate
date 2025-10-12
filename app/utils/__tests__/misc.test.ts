@@ -187,55 +187,161 @@ describe('getTodayLocalDateString', () => {
   });
 
   it('returns date in YYYY-MM-DD format', () => {
-    vi.setSystemTime(new Date(2024, 2, 15, 14, 30)); // March 15, 2024, 2:30 PM
-    const result = getTodayLocalDateString();
+    // Use ISO string with explicit time in PST to avoid timezone issues
+    vi.setSystemTime(new Date('2024-03-15T14:30:00-07:00')); // March 15, 2024, 2:30 PM PDT
+    const result = getTodayLocalDateString('America/Vancouver');
     expect(result).toBe('2024-03-15');
   });
 
   it('pads single-digit months with zero', () => {
-    vi.setSystemTime(new Date(2024, 0, 15)); // January (month 0)
-    const result = getTodayLocalDateString();
+    // Use ISO string with explicit time in PST to avoid timezone issues
+    vi.setSystemTime(new Date('2024-01-15T12:00:00-08:00'));
+    const result = getTodayLocalDateString('America/Vancouver');
     expect(result).toBe('2024-01-15');
   });
 
   it('pads single-digit days with zero', () => {
-    vi.setSystemTime(new Date(2024, 2, 5)); // March 5
-    const result = getTodayLocalDateString();
+    // Use ISO string with explicit time in PST to avoid timezone issues
+    vi.setSystemTime(new Date('2024-03-05T12:00:00-08:00'));
+    const result = getTodayLocalDateString('America/Vancouver');
     expect(result).toBe('2024-03-05');
   });
 
   it('handles start of year correctly', () => {
-    vi.setSystemTime(new Date(2024, 0, 1)); // January 1
-    const result = getTodayLocalDateString();
+    // Use ISO string with explicit time in PST to avoid timezone issues
+    vi.setSystemTime(new Date('2024-01-01T12:00:00-08:00'));
+    const result = getTodayLocalDateString('America/Vancouver');
     expect(result).toBe('2024-01-01');
   });
 
   it('handles end of year correctly', () => {
-    vi.setSystemTime(new Date(2024, 11, 31)); // December 31
-    const result = getTodayLocalDateString();
+    // Use ISO string with explicit time in PST to avoid timezone issues
+    vi.setSystemTime(new Date('2024-12-31T12:00:00-08:00'));
+    const result = getTodayLocalDateString('America/Vancouver');
     expect(result).toBe('2024-12-31');
   });
 
   it('handles leap year correctly', () => {
-    vi.setSystemTime(new Date(2024, 1, 29)); // February 29, 2024
-    const result = getTodayLocalDateString();
+    // Use ISO string with explicit time in PST to avoid timezone issues
+    vi.setSystemTime(new Date('2024-02-29T12:00:00-08:00'));
+    const result = getTodayLocalDateString('America/Vancouver');
     expect(result).toBe('2024-02-29');
   });
 
   it('returns local date regardless of time', () => {
-    // Test at midnight
-    vi.setSystemTime(new Date(2024, 2, 15, 0, 0, 0));
-    expect(getTodayLocalDateString()).toBe('2024-03-15');
+    // Test at midnight PDT (March 15 is during daylight time)
+    vi.setSystemTime(new Date('2024-03-15T00:00:00-07:00'));
+    expect(getTodayLocalDateString('America/Vancouver')).toBe('2024-03-15');
 
-    // Test at end of day
-    vi.setSystemTime(new Date(2024, 2, 15, 23, 59, 59));
-    expect(getTodayLocalDateString()).toBe('2024-03-15');
+    // Test at end of day PDT
+    vi.setSystemTime(new Date('2024-03-15T23:59:59-07:00'));
+    expect(getTodayLocalDateString('America/Vancouver')).toBe('2024-03-15');
   });
 
   it('generates format compatible with database queries', () => {
-    vi.setSystemTime(new Date(2024, 2, 15));
-    const result = getTodayLocalDateString();
+    // Use ISO string with explicit time in PST to avoid timezone issues
+    vi.setSystemTime(new Date('2024-03-15T12:00:00-07:00'));
+    const result = getTodayLocalDateString('America/Vancouver');
     // Should match YYYY-MM-DD format expected by database
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  describe('timezone handling', () => {
+    it('respects explicit timezone parameter', () => {
+      // Set system time to Oct 8, 2025, 10:42 PM PST
+      // This is Oct 9, 2025, 5:42 AM UTC
+      vi.setSystemTime(new Date('2025-10-09T05:42:00Z'));
+
+      // With Pacific timezone, should return Oct 8
+      const resultPST = getTodayLocalDateString('America/Vancouver');
+      expect(resultPST).toBe('2025-10-08');
+
+      // With UTC timezone, should return Oct 9
+      const resultUTC = getTodayLocalDateString('UTC');
+      expect(resultUTC).toBe('2025-10-09');
+    });
+
+    it('handles edge case when PST is yesterday but UTC is today', () => {
+      // Critical bug scenario: Late night PST vs early morning UTC
+      // Oct 8, 2025, 11:30 PM PST = Oct 9, 2025, 6:30 AM UTC
+      vi.setSystemTime(new Date('2025-10-09T06:30:00Z'));
+
+      const resultPST = getTodayLocalDateString('America/Vancouver');
+      expect(resultPST).toBe('2025-10-08');
+
+      const resultUTC = getTodayLocalDateString('UTC');
+      expect(resultUTC).toBe('2025-10-09');
+    });
+
+    it('handles timezone edge case at midnight UTC', () => {
+      // Midnight UTC = 4/5 PM previous day PST (depending on DST)
+      vi.setSystemTime(new Date('2025-10-09T00:00:00Z'));
+
+      const resultPST = getTodayLocalDateString('America/Vancouver');
+      const resultUTC = getTodayLocalDateString('UTC');
+
+      expect(resultPST).toBe('2025-10-08');
+      expect(resultUTC).toBe('2025-10-09');
+    });
+
+    it('handles different timezones across the world', () => {
+      // Jan 1, 2025, 2:00 AM UTC
+      vi.setSystemTime(new Date('2025-01-01T02:00:00Z'));
+
+      const tokyo = getTodayLocalDateString('Asia/Tokyo'); // UTC+9
+      const newYork = getTodayLocalDateString('America/New_York'); // UTC-5
+      const london = getTodayLocalDateString('Europe/London'); // UTC+0
+
+      expect(tokyo).toBe('2025-01-01'); // 11:00 AM
+      expect(newYork).toBe('2024-12-31'); // 9:00 PM previous day
+      expect(london).toBe('2025-01-01'); // 2:00 AM
+    });
+
+    it('handles DST transition - spring forward', () => {
+      // March 9, 2025, 2:00 AM PST -> 3:00 AM PDT (spring forward)
+      // Set time to 10:00 AM UTC on March 9 (2:00 AM PST, which becomes 3:00 AM PDT)
+      vi.setSystemTime(new Date('2025-03-09T10:00:00Z'));
+
+      const result = getTodayLocalDateString('America/Vancouver');
+      expect(result).toBe('2025-03-09');
+    });
+
+    it('handles DST transition - fall back', () => {
+      // November 2, 2025, 2:00 AM PDT -> 1:00 AM PST (fall back)
+      vi.setSystemTime(new Date('2025-11-02T09:00:00Z'));
+
+      const result = getTodayLocalDateString('America/Vancouver');
+      expect(result).toBe('2025-11-02');
+    });
+
+    it('fallback to system timezone when no timezone specified', () => {
+      // When no timezone is provided, it uses siteConfig timezone (America/Vancouver)
+      // Use ISO string to ensure consistent timezone handling
+      vi.setSystemTime(new Date('2025-03-15T14:30:00-07:00')); // March 15, 2025, 2:30 PM PDT
+
+      const result = getTodayLocalDateString();
+      expect(result).toBe('2025-03-15');
+    });
+
+    it('uses siteConfig locale for formatting', () => {
+      // The locale from siteConfig should be used
+      // This test ensures the function respects the locale setting
+      vi.setSystemTime(new Date('2025-03-15T12:00:00Z'));
+
+      const result = getTodayLocalDateString('America/Vancouver');
+      // Should return valid YYYY-MM-DD regardless of locale
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('handles year boundary with timezone difference', () => {
+      // Dec 31, 2024, 11:00 PM PST = Jan 1, 2025, 7:00 AM UTC
+      vi.setSystemTime(new Date('2025-01-01T07:00:00Z'));
+
+      const resultPST = getTodayLocalDateString('America/Vancouver');
+      const resultUTC = getTodayLocalDateString('UTC');
+
+      expect(resultPST).toBe('2024-12-31');
+      expect(resultUTC).toBe('2025-01-01');
+    });
   });
 });

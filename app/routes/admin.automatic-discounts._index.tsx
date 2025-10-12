@@ -23,6 +23,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { toMoney, formatDollars } from "~/utils/money";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { getCurrentDateTimeInTimezone } from "~/utils/misc";
 // Type definitions for assignment data with joins
 type AssignmentWithJoins = {
   id: string;
@@ -151,7 +152,7 @@ export default function AutomaticDiscountsIndex() {
             <div className="text-2xl font-bold">
               {assignments.filter(a => {
                 const assignedDate = new Date(a.assigned_at);
-                const weekAgo = new Date();
+                const weekAgo = getCurrentDateTimeInTimezone();
                 weekAgo.setDate(weekAgo.getDate() - 7);
                 return assignedDate > weekAgo;
               }).length}
