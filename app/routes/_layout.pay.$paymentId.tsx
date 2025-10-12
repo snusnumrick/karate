@@ -2,7 +2,7 @@ import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, Typed
 import { Link, useFetcher, useLoaderData, useRouteError } from "@remix-run/react";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import PaymentForm from "~/components/payment/PaymentForm";
-import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
+import {getSupabaseServerClient, getSupabaseAdminClient, updatePaymentStatus} from "~/utils/supabase.server";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import type {Database} from "~/types/database.types";
 import * as Sentry from "@sentry/remix";
@@ -24,7 +24,6 @@ import { getFamilyPaymentOptions, type EnrollmentPaymentOption } from "~/service
 // Import types for payment table columns
 type PaymentColumns = Database['public']['Tables']['payments']['Row'];
 type PaymentStudentRow = Database['public']['Tables']['payment_students']['Row'];
-type FamilyRow = Database['public']['Tables']['families']['Row'];
 type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row'];
 type TaxRateRow = Database['public']['Tables']['tax_rates']['Row']; // Add TaxRateRow type
 
@@ -38,7 +37,7 @@ type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount' | 'subtot
     subtotal_amount: Money;
     total_amount: Money;
     tax_amount: Money;
-    family: Pick<FamilyRow, 'name' | 'email' | 'postal_code'> | null;
+    family: { name?: string; email?: string | undefined; postal_code?: string | undefined } | null;
     type: Database['public']['Enums']['payment_type_enum'];
     payment_taxes: PaymentTaxWithDescription[];
     payment_students: Array<Pick<PaymentStudentRow, 'student_id'>>;
@@ -331,6 +330,11 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         subtotal_amount: subtotalMoney,
         total_amount: totalMoney,
         tax_amount: totalTaxMoney,
+        family: payment.family ? {
+            name: payment.family.name || undefined,
+            email: payment.family.email || undefined,
+            postal_code: payment.family.postal_code || undefined,
+        } : null,
         payment_taxes: paymentTaxesWithMoney,
         payment_students: payment.payment_students ?? [],
         individualSessionUnitAmountCents,
@@ -341,7 +345,6 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     const paymentIntentId = paymentWithDerived.payment_intent_id; // Generic payment intent ID for all providers
     if (paymentWithDerived.status === 'pending' && paymentIntentId) {
         console.log(`[Loader] DB status is pending for ${paymentId}. Checking provider intent status for ${paymentIntentId}...`);
-        const supabaseAdmin = getSupabaseAdminClient();
 
         try {
             const providerIntent = await paymentProvider.retrievePaymentIntent(paymentIntentId, {
@@ -350,37 +353,53 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             });
 
             if (providerIntent.status === 'succeeded') {
-                console.log(`[Loader] Provider intent ${providerIntent.id} already succeeded. Updating Supabase record ${paymentId} and redirecting.`);
+                console.log(`[Loader] Provider intent ${providerIntent.id} already succeeded. Calling updatePaymentStatus for ${paymentId}.`);
                 const receiptUrl = providerIntent.receiptUrl ?? null;
                 const paymentMethod = providerIntent.paymentMethodType ?? null;
+                const cardLast4 = providerIntent.cardLast4 ?? null;
 
-                const { error: updateError } = await supabaseAdmin
-                    .from('payments')
-                    .update({
-                        status: 'succeeded',
-                        payment_date: new Date().toISOString(),
-                        receipt_url: receiptUrl,
-                        payment_method: paymentMethod,
-                    })
-                    .eq('id', paymentId);
+                try {
+                    await updatePaymentStatus(
+                        paymentId,
+                        'succeeded',
+                        receiptUrl,
+                        paymentMethod,
+                        providerIntent.id, // paymentIntentId
+                        paymentWithDerived.type, // type
+                        paymentWithDerived.family_id, // familyId
+                        undefined, // quantity (will be fetched if needed)
+                        toCents(paymentWithDerived.subtotal_amount), // subtotalAmountFromMeta
+                        undefined, // taxAmountFromMeta (calculated as total - subtotal)
+                        toCents(paymentWithDerived.total_amount), // totalAmountFromMeta
+                        cardLast4
+                    );
 
-                if (updateError) {
-                    console.error(`[Loader] Failed to update Supabase record ${paymentId} to succeeded after provider check:`, updateError.message);
-                } else {
+                    console.log(`[Loader] Successfully updated payment ${paymentId} to succeeded via updatePaymentStatus`);
                     throw redirect(`/payment/success?payment_intent=${providerIntent.id}`, { headers: response.headers });
+                } catch (updateError) {
+                    console.error(`[Loader] Failed to update payment ${paymentId} to succeeded:`, updateError instanceof Error ? updateError.message : updateError);
                 }
             } else if (providerIntent.status === 'canceled') {
-                console.log(`[Loader] Provider intent ${providerIntent.id} status is terminal failure. Updating Supabase record ${paymentId} to failed.`);
-                const { error: updateError } = await supabaseAdmin
-                    .from('payments')
-                    .update({
-                        status: 'failed',
-                        payment_date: new Date().toISOString(),
-                    })
-                    .eq('id', paymentId);
+                console.log(`[Loader] Provider intent ${providerIntent.id} status is terminal failure. Calling updatePaymentStatus for ${paymentId}.`);
 
-                if (updateError) {
-                    console.error(`[Loader] Failed to update Supabase record ${paymentId} to failed after provider check:`, updateError.message);
+                try {
+                    await updatePaymentStatus(
+                        paymentId,
+                        'failed',
+                        null, // receiptUrl
+                        providerIntent.paymentMethodType ?? null,
+                        providerIntent.id, // paymentIntentId
+                        paymentWithDerived.type, // type
+                        paymentWithDerived.family_id, // familyId
+                        undefined, // quantity
+                        toCents(paymentWithDerived.subtotal_amount),
+                        undefined,
+                        toCents(paymentWithDerived.total_amount),
+                        null // cardLast4
+                    );
+                    console.log(`[Loader] Successfully updated payment ${paymentId} to failed via updatePaymentStatus`);
+                } catch (updateError) {
+                    console.error(`[Loader] Failed to update payment ${paymentId} to failed:`, updateError instanceof Error ? updateError.message : updateError);
                 }
             }
             // For other statuses we leave the record as pending and allow the UI to render the existing state.
@@ -468,23 +487,36 @@ export async function action({ request, params }: ActionFunctionArgs) {
                 // Store Square payment ID for webhook correlation
                 // Note: Status update will be handled by Square webhook
                 try {
-                    const { supabaseServer } = getSupabaseServerClient(request);
-                    console.log(`[Square] Storing Square payment ID ${result.id} for webhook correlation`);
-                    
-                    await supabaseServer
+                    const supabaseAdmin = getSupabaseAdminClient();
+                    console.log(`[Square] Storing Square payment ID ${result.id} for webhook correlation (payment record ${paymentId})`);
+
+                    const { error: updateError, count } = await supabaseAdmin
                         .from('payments')
-                        .update({ 
+                        .update({
                             payment_intent_id: result.id
                         })
-                        .eq('id', paymentIntentId);
+                        .eq('id', paymentId);
+
+                    if (updateError) {
+                        console.error('CRITICAL: Failed to update payment_intent_id:', updateError);
+                        return json({
+                            success: false,
+                            error: 'Database update failed: ' + updateError.message
+                        }, { status: 500 });
+                    }
+
+                    console.log(`[Square] Successfully updated payment ${paymentId} with Square ID ${result.id} (rows affected: ${count})`);
                 } catch (dbError) {
-                    console.error('Failed to store Square payment ID:', dbError);
-                    // Don't fail the payment if ID storage fails
+                    console.error('Exception storing Square payment ID:', dbError);
+                    return json({
+                        success: false,
+                        error: 'Database error: ' + (dbError instanceof Error ? dbError.message : String(dbError))
+                    }, { status: 500 });
                 }
-                
-                return json({ 
-                    success: true, 
-                    payment: result 
+
+                return json({
+                    success: true,
+                    payment: result
                 });
             } else if (result.status === 'failed') {
                 return json({ 

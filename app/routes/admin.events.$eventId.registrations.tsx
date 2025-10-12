@@ -78,7 +78,7 @@ export async function loader({ params}: LoaderFunctionArgs) {
 
   const totalRegistrations = registrations?.length || 0;
   const confirmedRegistrations = registrations?.filter(reg => reg.registration_status === 'confirmed').length || 0;
-  const totalRevenueCents = registrations?.reduce((sum: number, reg: EventRegistration) => {
+  const totalRevenueCents = registrations?.reduce((sum: number, reg) => {
     if (reg.registration_status === 'confirmed') {
       return sum + (reg.payment_amount_cents ?? 0);
     }

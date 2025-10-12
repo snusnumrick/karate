@@ -41,7 +41,6 @@ import { getFamilyPaymentOptions, type EnrollmentPaymentOption } from "~/service
 
 type PaymentColumns = Database["public"]["Tables"]["payments"]["Row"];
 type PaymentStudentRow = Database["public"]["Tables"]["payment_students"]["Row"];
-type FamilyRow = Database["public"]["Tables"]["families"]["Row"];
 type PaymentTaxRow = Database["public"]["Tables"]["payment_taxes"]["Row"];
 type TaxRateRow = Database["public"]["Tables"]["tax_rates"]["Row"];
 
@@ -54,7 +53,7 @@ type PaymentWithDetails = Omit<PaymentColumns, "amount" | "tax_amount" | "subtot
   subtotal_amount: Money;
   total_amount: Money;
   tax_amount: Money;
-  family: Pick<FamilyRow, "name" | "email" | "postal_code"> | null;
+  family: { name?: string; email?: string | undefined; postal_code?: string | undefined } | null;
   payment_taxes: PaymentTaxWithDescription[];
   payment_students: Array<Pick<PaymentStudentRow, "student_id">>;
   individualSessionUnitAmountCents?: number | null;
@@ -398,6 +397,11 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     subtotal_amount: subtotalMoney,
     total_amount: totalMoney,
     tax_amount: totalTaxMoney,
+    family: payment.family ? {
+      name: payment.family.name || undefined,
+      email: payment.family.email || undefined,
+      postal_code: payment.family.postal_code || undefined,
+    } : null,
     payment_taxes: paymentTaxesWithMoney,
     payment_students: payment.payment_students ?? [],
     individualSessionUnitAmountCents,

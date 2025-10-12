@@ -507,8 +507,14 @@ export default function FamilyCalendarPage() {
     studentId: transformedAttendance.find(a => a.id === event.attendanceId)?.student_id
   }));
 
-  // Add birthday events
-  const birthdayEvents = birthdaysToCalendarEvents(students, currentDate);
+  // Add birthday events (filter students with valid birth dates)
+  const studentsWithBirthDates = students
+    .filter((s): s is typeof s & { birth_date: string } => s.birth_date !== null)
+    .map(s => ({
+      ...s,
+      birth_date: s.birth_date as string
+    }));
+  const birthdayEvents = birthdaysToCalendarEvents(studentsWithBirthDates, currentDate);
   
   // Transform events into CalendarEvent objects
   // console.log('Family Calendar: Raw events from loader:', events);

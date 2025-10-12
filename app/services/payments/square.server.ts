@@ -631,7 +631,12 @@ export class SquarePaymentProvider extends PaymentProvider {
 
       const webhookSignatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
       if (!webhookSignatureKey) {
-        throw new Error('SQUARE_WEBHOOK_SIGNATURE_KEY environment variable not configured');
+        // Allow bypassing signature verification in development for testing
+        if (process.env.NODE_ENV === 'development' && signature === 'bypass') {
+          console.warn('[Square Webhook] DEVELOPMENT MODE: Bypassing signature verification');
+        } else {
+          throw new Error('SQUARE_WEBHOOK_SIGNATURE_KEY environment variable not configured');
+        }
       }
 
       const requestId = headers.get('x-vercel-id')
@@ -645,26 +650,31 @@ export class SquarePaymentProvider extends PaymentProvider {
       const canonicalProto = forwardedProto ?? url.protocol.replace(':', '');
       const canonicalUrl = `${canonicalProto}://${canonicalHost}${url.pathname}${url.search}`;
 
-      console.log(
-        `[Square Webhook] Verifying signature for payload length=${payload.length} ` +
-        `(reqId=${requestId ?? 'n/a'}) received=${signature.slice(0, 8)}... canonicalUrl=${canonicalUrl}`
-      );
-
-      const signatureValid = await WebhooksHelper.verifySignature({
-        requestBody: payload,
-        signatureHeader: signature,
-        signatureKey: webhookSignatureKey,
-        notificationUrl: canonicalUrl,
-      });
-
-      if (!signatureValid) {
-        console.error(
-          `[Square Webhook] Signature mismatch for reqId=${requestId ?? 'n/a'}. ` +
-          `notificationUrl=${canonicalUrl}`
-        );
-        throw new Error('Invalid Square webhook signature');
+      // Skip signature verification in development mode when bypass header is used
+      if (process.env.NODE_ENV === 'development' && signature === 'bypass') {
+        console.warn('[Square Webhook] DEVELOPMENT MODE: Skipping signature verification');
       } else {
-        console.log(`[Square Webhook] Signature verification passed (reqId=${requestId ?? 'n/a'})`);
+        console.log(
+          `[Square Webhook] Verifying signature for payload length=${payload.length} ` +
+          `(reqId=${requestId ?? 'n/a'}) received=${signature.slice(0, 8)}... canonicalUrl=${canonicalUrl}`
+        );
+
+        const signatureValid = await WebhooksHelper.verifySignature({
+          requestBody: payload,
+          signatureHeader: signature,
+          signatureKey: webhookSignatureKey!,
+          notificationUrl: canonicalUrl,
+        });
+
+        if (!signatureValid) {
+          console.error(
+            `[Square Webhook] Signature mismatch for reqId=${requestId ?? 'n/a'}. ` +
+            `notificationUrl=${canonicalUrl}`
+          );
+          throw new Error('Invalid Square webhook signature');
+        } else {
+          console.log(`[Square Webhook] Signature verification passed (reqId=${requestId ?? 'n/a'})`);
+        }
       }
 
       const event = JSON.parse(payload);

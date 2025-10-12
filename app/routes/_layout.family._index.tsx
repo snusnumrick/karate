@@ -380,7 +380,20 @@ export default function FamilyDashboard() {
     // Cache data for offline access when component mounts
     useClientEffect(() => {
         if (family) {
-            cacheFamilyData({family, allWaiversSigned: allWaiversSigned ?? false});
+            cacheFamilyData({
+                family: {
+                    id: family.id,
+                    name: family.name,
+                    address: family.address ?? undefined,
+                    city: family.city ?? undefined,
+                    province: family.province ?? undefined,
+                    postal_code: family.postal_code ?? undefined,
+                    primary_phone: family.primary_phone ?? undefined,
+                    email: family.email,
+                    students: family.students,
+                },
+                allWaiversSigned: allWaiversSigned ?? false
+            });
         }
         if (upcomingClasses) {
             cacheUpcomingClasses(upcomingClasses);

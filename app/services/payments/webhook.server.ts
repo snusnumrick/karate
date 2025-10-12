@@ -171,22 +171,30 @@ async function handlePaymentSuccess(
   let cardLast4: string | null = null;
   let totalAmountCharged = intent.amount;
 
-  try {
-    const enrichedIntent = await provider.retrievePaymentIntent(intent.id, {
-      includePaymentMethod: true,
-      includeLatestCharge: true,
-    });
-    receiptUrl = enrichedIntent.receiptUrl ?? null;
-    paymentMethodString = enrichedIntent.paymentMethodType ?? paymentMethodString;
-    cardLast4 = enrichedIntent.cardLast4 ?? null;
-    totalAmountCharged = toCents(enrichedIntent.amount);
-  } catch (retrieveError) {
-    console.error(`[Webhook ${provider.id}] Failed to retrieve payment intent ${intent.id} details:`, retrieveError instanceof Error ? retrieveError.message : retrieveError);
-  }
+  // Skip provider retrieval for test payments (local development)
+  const isTestPayment = intent.id.startsWith('test-');
 
-  if (totalAmountCharged !== undefined && totalAmountCharged !== totalAmountFromMeta) {
-    console.error(`[Webhook ${provider.id}] CRITICAL: Amount mismatch! Provider charged ${totalAmountCharged}, but metadata total was ${totalAmountFromMeta} for intent ${intent.id}.`);
-    return { success: false, error: "Amount mismatch detected" };
+  if (isTestPayment && process.env.NODE_ENV === 'development') {
+    console.warn(`[Webhook ${provider.id}] Test payment detected (${intent.id}), skipping provider verification`);
+    totalAmountCharged = totalAmountFromMeta; // Use metadata amount for test payments
+  } else {
+    try {
+      const enrichedIntent = await provider.retrievePaymentIntent(intent.id, {
+        includePaymentMethod: true,
+        includeLatestCharge: true,
+      });
+      receiptUrl = enrichedIntent.receiptUrl ?? null;
+      paymentMethodString = enrichedIntent.paymentMethodType ?? paymentMethodString;
+      cardLast4 = enrichedIntent.cardLast4 ?? null;
+      totalAmountCharged = toCents(enrichedIntent.amount);
+    } catch (retrieveError) {
+      console.error(`[Webhook ${provider.id}] Failed to retrieve payment intent ${intent.id} details:`, retrieveError instanceof Error ? retrieveError.message : retrieveError);
+    }
+
+    if (totalAmountCharged !== undefined && totalAmountCharged !== totalAmountFromMeta) {
+      console.error(`[Webhook ${provider.id}] CRITICAL: Amount mismatch! Provider charged ${totalAmountCharged}, but metadata total was ${totalAmountFromMeta} for intent ${intent.id}.`);
+      return { success: false, error: "Amount mismatch detected" };
+    }
   }
 
   try {
