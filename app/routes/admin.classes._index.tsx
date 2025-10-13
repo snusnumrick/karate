@@ -9,7 +9,7 @@ import { requireAdminUser } from "~/utils/auth.server";
 import { getClasses, getClassById } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import { getEnrollmentStats } from "~/services/enrollment.server";
-import type { EnrollmentStats, ClassWithDetails } from "~/types/multi-class";
+import type { EnrollmentStats, ClassWithDetails, ClassFilters } from "~/types/multi-class";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { formatDate } from "~/utils/misc";
 import { serializeMoney } from "~/utils/money";
@@ -23,9 +23,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const programId = url.searchParams.get("program");
+  const engagementParam = url.searchParams.get("engagement");
+  const engagementFilter = engagementParam === 'program' || engagementParam === 'seminar' ? engagementParam : null;
+
+  const classFilters: ClassFilters = {
+    is_active: true,
+    ...(programId ? { program_id: programId } : {}),
+    ...(engagementFilter ? { engagement_type: engagementFilter } : {}),
+  };
 
   const [classes, programs] = await Promise.all([
-    getClasses(programId ? { program_id: programId, is_active: true } : { is_active: true }),
+    getClasses(classFilters),
     getPrograms()
   ]);
 
@@ -52,11 +60,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
     individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
   }));
 
-  return json({ classes: classesWithStats, programs: serializedPrograms, selectedProgramId: programId });
+  return json({
+    classes: classesWithStats,
+    programs: serializedPrograms,
+    selectedProgramId: programId,
+    engagementFilter,
+  });
 }
 
 export default function AdminClassesIndex() {
-  const { classes, programs, selectedProgramId } = useLoaderData<typeof loader>();
+  const { classes, programs, selectedProgramId, engagementFilter } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Infer types from the loader data
@@ -84,6 +97,9 @@ export default function AdminClassesIndex() {
           <p className="text-muted-foreground">
             Manage class schedules, capacity, and enrollment.
           </p>
+          {engagementFilter === 'seminar' && (
+            <Badge variant="secondary" className="mt-2">Showing seminar series</Badge>
+          )}
         </div>
 
         <div className="flex gap-2">

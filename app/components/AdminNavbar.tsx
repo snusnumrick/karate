@@ -62,7 +62,6 @@ const billingNavItems = [
 const calendarAttendanceNavItems = [
     {to: "/admin/calendar", label: "Calendar", icon: Calendar},
     {to: "/admin/attendance", label: "Attendance", icon: CalendarCheck},
-    {to: "/admin/events", label: "Events", icon: Calendar},
 ];
 
 // Define People Management navigation items (Families, Students, Enrollments)
@@ -72,11 +71,32 @@ const peopleNavItems = [
     {to: "/admin/enrollments", label: "Enrollments", icon: ListOrdered},
 ];
 
-// Define Programs & Classes navigation items (Programs, Classes, Sessions)
-const programsClassesNavItems = [
-    {to: "/admin/programs", label: "Programs", icon: GraduationCap},
-    {to: "/admin/classes", label: "Classes", icon: CalendarCheck},
-    {to: "/admin/sessions", label: "Sessions", icon: Calendar},
+// Define Curriculum navigation sections (Programs, Seminars, Events)
+const curriculumNavSections = [
+    {
+        heading: "Programs",
+        icon: GraduationCap,
+        items: [
+            {to: "/admin/programs", label: "Programs", icon: GraduationCap},
+            {to: "/admin/classes", label: "Classes", icon: CalendarCheck},
+            {to: "/admin/sessions", label: "Sessions", icon: Calendar},
+        ],
+    },
+    {
+        heading: "Seminars",
+        icon: BookOpen,
+        items: [
+            {to: "/admin/programs?filter=seminar", label: "Seminar Templates", icon: BookOpen},
+            {to: "/admin/classes?engagement=seminar", label: "Seminar Series", icon: CalendarCheck},
+        ],
+    },
+    {
+        heading: "Events",
+        icon: Calendar,
+        items: [
+            {to: "/admin/events", label: "Events", icon: Calendar},
+        ],
+    },
 ];
 
 // Define Discount navigation items
@@ -298,13 +318,23 @@ export default function AdminNavbar() {
                                                         </button>
                                                     </div>
                                                     {isProgramsClassesMobileOpen && (
-                                                        <div className="pl-6 space-y-1 mb-2">
-                                                            {programsClassesNavItems.map((item) => (
-                                                                <AdminMobileNavLink key={item.to} to={item.to}
-                                                                                    onClick={() => setIsOpen(false)}>
-                                                                    <item.icon className="h-5 w-5 mr-2 inline-block"/>
-                                                                    {item.label}
-                                                                </AdminMobileNavLink>
+                                                        <div className="pl-6 space-y-4 mb-2">
+                                                            {curriculumNavSections.map((section) => (
+                                                                <div key={section.heading}>
+                                                                    <div className="flex items-center text-xs font-semibold uppercase text-muted-foreground mb-1">
+                                                                        <section.icon className="h-4 w-4 mr-2"/>
+                                                                        {section.heading}
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        {section.items.map((item) => (
+                                                                            <AdminMobileNavLink key={item.to} to={item.to}
+                                                                                                onClick={() => setIsOpen(false)}>
+                                                                                <item.icon className="h-5 w-5 mr-2 inline-block"/>
+                                                                                {item.label}
+                                                                            </AdminMobileNavLink>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
                                                             ))}
                                                         </div>
                                                     )}
@@ -641,7 +671,11 @@ function AdminPeopleDropdown() {
 // Programs & Classes Dropdown Component for Desktop (Icon Trigger + Tooltip)
 function AdminProgramsClassesDropdown() {
     const location = useLocation();
-    const isProgramsClassesActive = location.pathname.startsWith('/admin/programs') || location.pathname.startsWith('/admin/classes') || location.pathname.startsWith('/admin/sessions');
+    const isProgramsClassesActive =
+        location.pathname.startsWith('/admin/programs') ||
+        location.pathname.startsWith('/admin/classes') ||
+        location.pathname.startsWith('/admin/sessions') ||
+        location.pathname.startsWith('/admin/events');
     const [isOpen, setIsOpen] = useState(false);
     const [showTooltip, setShowTooltip] = useState(false);
     const [canShowTooltip, setCanShowTooltip] = useState(true);
@@ -693,17 +727,28 @@ function AdminProgramsClassesDropdown() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="mt-1 max-h-[calc(100vh-80px)] overflow-y-auto">
-                    {programsClassesNavItems.map((item) => (
-                        <DropdownMenuItem key={item.to} className="p-0">
-                            <Link
-                                to={item.to}
-                                onClick={() => setIsOpen(false)}
-                                className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
-                            >
-                                <item.icon className="h-4 w-4 mr-2"/>
-                                {item.label}
-                            </Link>
-                        </DropdownMenuItem>
+                    {curriculumNavSections.map((section, index) => (
+                        <div key={section.heading}>
+                            <div className="px-2 py-1.5 text-xs font-semibold uppercase text-muted-foreground flex items-center gap-2">
+                                <section.icon className="h-3.5 w-3.5"/>
+                                {section.heading}
+                            </div>
+                            {section.items.map((item) => (
+                                <DropdownMenuItem key={item.to} className="p-0">
+                                    <Link
+                                        to={item.to}
+                                        onClick={() => setIsOpen(false)}
+                                        className="flex items-center cursor-pointer w-full px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 rounded-sm"
+                                    >
+                                        <item.icon className="h-4 w-4 mr-2"/>
+                                        {item.label}
+                                    </Link>
+                                </DropdownMenuItem>
+                            ))}
+                            {index < curriculumNavSections.length - 1 && (
+                                <div className="my-1 border-b border-border"/>
+                            )}
+                        </div>
                     ))}
                 </DropdownMenuContent>
             </DropdownMenu>

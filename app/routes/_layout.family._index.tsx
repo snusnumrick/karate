@@ -466,6 +466,7 @@ export default function FamilyDashboard() {
         };
     }>;
     const isClientReady = useClientReady();
+    const isSelfFamily = family?.family_type === 'self';
 
     // Cache data for offline access when component mounts
     useClientEffect(() => {
@@ -525,7 +526,10 @@ export default function FamilyDashboard() {
 
     // Use the fetched family name or a generic fallback
     // We don't have profile.first_name here anymore
-    const familyDisplayName = family.name || `Your Family Portal`;
+    const familyDisplayName = family.name || (isSelfFamily ? 'Your Seminar Portal' : 'Your Family Portal');
+    const portalTagline = isSelfFamily
+        ? 'Welcome to your seminar portal. Manage your registrations, schedules, and waivers.'
+        : 'Welcome to your family portal. Manage students, view schedules, and track progress.';
 
     return (
         <OfflineErrorBoundary>
@@ -537,7 +541,7 @@ export default function FamilyDashboard() {
                             {familyDisplayName}
                         </h1>
                         <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
-                            Welcome to your family portal. Manage students, view schedules, and track progress.
+                            {portalTagline}
                         </p>
                     </div>
 
@@ -549,7 +553,9 @@ export default function FamilyDashboard() {
                                 <div className="p-2 bg-green-600 rounded-lg">
                                     <Users className="h-5 w-5 text-white"/>
                                 </div>
-                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">My Students</h2>
+                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                    {isSelfFamily ? 'Your Profile' : 'My Students'}
+                                </h2>
                             </div>
                             {/* Display students as cards or a message if none */}
                             {family.students && family.students.length > 0 ? (
@@ -644,19 +650,24 @@ export default function FamilyDashboard() {
                             ) : (
                                 <div className="text-center py-8">
                                     <Users className="h-12 w-12 text-gray-400 mx-auto mb-3"/>
-                                    <p className="text-gray-600 dark:text-gray-400 mb-4">No students registered yet.</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-500">Add your first student to
-                                        get started!</p>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                        {isSelfFamily ? 'Your seminar profile is almost ready.' : 'No students registered yet.'}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-500">
+                                        {isSelfFamily ? 'Complete your intake form details to get started.' : 'Add your first student to get started!'}
+                                    </p>
                                 </div>
                             )}
                             {/* Link to the new dedicated page for adding a student to the current family */}
-                            <Button asChild
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                                <Link to="/family/add-student" className="flex items-center justify-center gap-2">
-                                    <Plus className="h-5 w-5"/>
-                                    Add Student
-                                </Link>
-                            </Button>
+                            {!isSelfFamily && (
+                                <Button asChild
+                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                                    <Link to="/family/add-student" className="flex items-center justify-center gap-2">
+                                        <Plus className="h-5 w-5"/>
+                                        Add Student
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
 
                         {/* Next Classes Section */}
@@ -735,7 +746,7 @@ export default function FamilyDashboard() {
                             <div className="form-container-styles backdrop-blur-lg">
                                 <SeminarEnrollmentsCard
                                     enrollments={seminarEnrollments}
-                                    isAdult={family?.family_type === 'self'}
+                                    isAdult={isSelfFamily}
                                 />
                             </div>
                         )}
@@ -825,73 +836,75 @@ export default function FamilyDashboard() {
                         </div>
 
                         {/* Guardians Section */}
-                        <div
-                            className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-green-600 rounded-lg">
-                                    <Users className="h-5 w-5 text-white"/>
+                        {!isSelfFamily && (
+                            <div
+                                className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="p-2 bg-green-600 rounded-lg">
+                                        <Users className="h-5 w-5 text-white"/>
+                                    </div>
+                                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Guardians</h2>
                                 </div>
-                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Guardians</h2>
+                                {(!family.guardians || family.guardians.length < 1) && (
+                                    <Alert variant="destructive" className="mb-4">
+                                        <AlertCircle className="h-4 w-4"/>
+                                        <AlertTitle>No Guardians Found</AlertTitle>
+                                        <AlertDescription>
+                                            Please add at least one guardian to manage the family account.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                                {family.guardians && family.guardians.length > 0 ? (
+                                    <div className="space-y-3 mb-6">
+                                        {family.guardians.map((guardian) => (
+                                            <Link
+                                                key={guardian.id}
+                                                to={`/family/guardian/${guardian.id}`}
+                                                className="block p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300 group"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm">
+                                                        <Users className="h-4 w-4 text-green-600"/>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+                                                            {guardian.first_name} {guardian.last_name}
+                                                        </p>
+                                                        <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                                                            {guardian.relationship}
+                                                        </p>
+                                                    </div>
+                                                    <div
+                                                        className="text-green-600 group-hover:text-green-700 transition-colors">
+                                                        <Eye className="h-5 w-5"/>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 mb-6">
+                                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-3"/>
+                                        <p className="text-gray-600 dark:text-gray-400 mb-2">No guardians added yet.</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-500">Add a guardian to manage the
+                                            family account.</p>
+                                    </div>
+                                )}
+                                {/* Link to a future page for adding a guardian */}
+                                <Button asChild
+                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                                    <Link to="/family/add-guardian" className="flex items-center justify-center gap-2">
+                                        <Plus className="h-5 w-5"/>
+                                        Add Guardian
+                                    </Link>
+                                </Button>
+                                {family.guardians && family.guardians.length === 1 && (
+                                    <p className="text-sm text-muted-foreground mt-3">
+                                        Consider adding a second guardian for backup contact purposes.
+                                    </p>
+                                )}
                             </div>
-                            {(!family.guardians || family.guardians.length < 1) && (
-                                <Alert variant="destructive" className="mb-4">
-                                    <AlertCircle className="h-4 w-4"/>
-                                    <AlertTitle>No Guardians Found</AlertTitle>
-                                    <AlertDescription>
-                                        Please add at least one guardian to manage the family account.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                            {family.guardians && family.guardians.length > 0 ? (
-                                <div className="space-y-3 mb-6">
-                                    {family.guardians.map((guardian) => (
-                                        <Link
-                                            key={guardian.id}
-                                            to={`/family/guardian/${guardian.id}`}
-                                            className="block p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300 group"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-sm">
-                                                    <Users className="h-4 w-4 text-green-600"/>
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
-                                                        {guardian.first_name} {guardian.last_name}
-                                                    </p>
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
-                                                        {guardian.relationship}
-                                                    </p>
-                                                </div>
-                                                <div
-                                                    className="text-green-600 group-hover:text-green-700 transition-colors">
-                                                    <Eye className="h-5 w-5"/>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-6 mb-6">
-                                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-3"/>
-                                    <p className="text-gray-600 dark:text-gray-400 mb-2">No guardians added yet.</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-500">Add a guardian to manage the
-                                        family account.</p>
-                                </div>
-                            )}
-                            {/* Link to a future page for adding a guardian */}
-                            <Button asChild
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                                <Link to="/family/add-guardian" className="flex items-center justify-center gap-2">
-                                    <Plus className="h-5 w-5"/>
-                                    Add Guardian
-                                </Link>
-                            </Button>
-                            {family.guardians && family.guardians.length === 1 && (
-                                <p className="text-sm text-muted-foreground mt-3">
-                                    Consider adding a second guardian for backup contact purposes.
-                                </p>
-                            )}
-                        </div>
+                        )}
 
                         {/* Waivers Section */}
                         <div

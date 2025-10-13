@@ -236,6 +236,7 @@ export interface ClassFilters {
   instructor_id?: string;
   is_active?: boolean;
   search?: string;
+  engagement_type?: 'program' | 'seminar';
 }
 
 export interface EnrollmentFilters {

@@ -296,7 +296,7 @@ export async function getClasses(
     throw new Error(`Failed to fetch classes: ${error.message}`);
   }
 
-  return (data || []).map(item => {
+  const classes = (data || []).map(item => {
     const itemWithScope = item as typeof item & { audience_scope?: 'youth' | 'adults' | 'mixed' | null };
     return {
       ...item,
@@ -314,6 +314,12 @@ export async function getClasses(
       program: item.program ? mapProgramNullToUndefined(item.program) : item.program
     };
   });
+
+  if (filters.engagement_type) {
+    return classes.filter((classItem) => classItem.program?.engagement_type === filters.engagement_type);
+  }
+
+  return classes;
 }
 
 /**
