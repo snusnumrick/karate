@@ -10,7 +10,8 @@ import type {
 } from '~/types/discount';
 import { DiscountService } from './discount.server';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
-import {fromDollars, toDollars, type Money} from '~/utils/money';
+import type { Database } from '~/types/database.types';
+import {fromCents, fromDollars, toCents, toDollars, type Money} from '~/utils/money';
 
 let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
 
@@ -20,6 +21,52 @@ function getSupabase() {
   }
   return supabase;
 }
+
+type DiscountTemplateRow = Database['public']['Tables']['discount_templates']['Row'] & {
+  discount_value_cents?: number | null;
+};
+
+const toTemplateFixedAmountMoney = (value: Money | number): Money => {
+  if (typeof value === 'number') {
+    return fromDollars(value);
+  }
+  return value;
+};
+
+const buildTemplateDiscountValueWrite = (discountType: DiscountType, discountValue: Money | number) => {
+  if (discountType === 'fixed_amount') {
+    const moneyValue = toTemplateFixedAmountMoney(discountValue);
+    return {
+      discount_value: toDollars(moneyValue),
+      discount_value_cents: toCents(moneyValue)
+    };
+  }
+
+  return {
+    discount_value: discountValue as number,
+    discount_value_cents: 0
+  };
+};
+
+const normalizeDiscountTemplateRow = (row: DiscountTemplateRow): DiscountTemplate => {
+  const discountType = row.discount_type as DiscountType;
+  const fixedAmountCents = row.discount_value_cents ?? (discountType === 'fixed_amount'
+    ? Math.round((row.discount_value ?? 0) * 100)
+    : 0);
+
+  return {
+    ...row,
+    discount_value: discountType === 'fixed_amount'
+      ? fromCents(fixedAmountCents)
+      : row.discount_value ?? 0,
+    description: row.description ?? undefined,
+    max_uses: row.max_uses ?? undefined,
+    created_by: row.created_by ?? undefined,
+    discount_type: discountType,
+    usage_type: row.usage_type as UsageType,
+    scope: row.scope as DiscountScope
+  };
+};
 
 export class DiscountTemplateService {
   static async getAllTemplates(): Promise<DiscountTemplate[]> {
@@ -32,18 +79,7 @@ export class DiscountTemplateService {
       throw new Error(`Failed to fetch discount templates: ${error.message}`);
     }
 
-    return (data || []).map(template => ({
-      ...template,
-      discount_value: (template.discount_type as DiscountType) === 'fixed_amount'
-        ? fromDollars(template.discount_value || 0)
-        : (template.discount_value || 0),
-      description: template.description ?? undefined,
-      max_uses: template.max_uses ?? undefined,
-      created_by: template.created_by ?? undefined,
-      discount_type: template.discount_type as DiscountType,
-      usage_type: template.usage_type as UsageType,
-      scope: template.scope as DiscountScope
-    }));
+    return (data || []).map(normalizeDiscountTemplateRow);
   }
 
   static async getActiveTemplates(): Promise<DiscountTemplate[]> {
@@ -57,18 +93,7 @@ export class DiscountTemplateService {
       throw new Error(`Failed to fetch active discount templates: ${error.message}`);
     }
 
-    return (data || []).map(template => ({
-      ...template,
-      discount_value: (template.discount_type as DiscountType) === 'fixed_amount'
-        ? fromDollars(template.discount_value || 0)
-        : (template.discount_value || 0),
-      description: template.description ?? undefined,
-      max_uses: template.max_uses ?? undefined,
-      created_by: template.created_by ?? undefined,
-      discount_type: template.discount_type as DiscountType,
-      usage_type: template.usage_type as UsageType,
-      scope: template.scope as DiscountScope
-    }));
+    return (data || []).map(normalizeDiscountTemplateRow);
   }
 
   static async getTemplateById(id: string): Promise<DiscountTemplate | null> {
@@ -85,31 +110,21 @@ export class DiscountTemplateService {
       throw new Error(`Failed to fetch discount template: ${error.message}`);
     }
 
-    return {
-      ...data,
-      discount_value: data.discount_type === 'fixed_amount'
-        ? fromDollars(data.discount_value || 0) // Convert from cents stored in DB
-        : data.discount_value || 0, // Keep percentage as number
-      description: data.description ?? undefined,
-      max_uses: data.max_uses ?? undefined,
-      created_by: data.created_by ?? undefined,
-      discount_type: data.discount_type as DiscountType,
-      usage_type: data.usage_type as UsageType,
-      scope: data.scope as DiscountScope
-    };
+    return normalizeDiscountTemplateRow(data);
   }
 
   static async createTemplate(
     templateData: CreateDiscountTemplateData,
     createdBy?: string
   ): Promise<DiscountTemplate> {
+    const { discount_value, ...restData } = templateData;
+    const valueWrite = buildTemplateDiscountValueWrite(templateData.discount_type, discount_value);
+
     const { data, error } = await getSupabase()
       .from('discount_templates')
       .insert({
-        ...templateData,
-        discount_value: templateData.discount_type === 'fixed_amount' 
-          ? toDollars(templateData.discount_value as Money)
-          : templateData.discount_value as number, // Convert to cents for DB storage only for fixed amounts
+        ...restData,
+        ...valueWrite,
         created_by: createdBy
       })
       .select()
@@ -119,32 +134,35 @@ export class DiscountTemplateService {
       throw new Error(`Failed to create discount template: ${error.message}`);
     }
 
-    return {
-      ...data,
-      discount_value: (data.discount_type as DiscountType) === 'fixed_amount'
-        ? fromDollars(data.discount_value || 0)
-        : (data.discount_value || 0),
-      description: data.description ?? undefined,
-      max_uses: data.max_uses ?? undefined,
-      created_by: data.created_by ?? undefined,
-      discount_type: data.discount_type as DiscountType,
-      usage_type: data.usage_type as UsageType,
-      scope: data.scope as DiscountScope
-    };
+    return normalizeDiscountTemplateRow(data);
   }
 
   static async updateTemplate(
     id: string,
     updates: UpdateDiscountTemplateData
   ): Promise<DiscountTemplate> {
-    const updateData: Record<string, unknown> = {
-      ...updates
-    };
-    
-    if (updates.discount_value !== undefined) {
-      updateData.discount_value = updates.discount_type === 'fixed_amount'
-        ? toDollars(updates.discount_value as Money) // Convert to cents for DB storage
-        : updates.discount_value as number; // Keep percentage as number
+    const { discount_value, discount_type, ...restUpdates } = updates;
+    const updateData: Record<string, unknown> = { ...restUpdates };
+    let effectiveType = discount_type;
+
+    if (discount_type !== undefined) {
+      updateData.discount_type = discount_type;
+    }
+
+    if (discount_value !== undefined) {
+      if (!effectiveType) {
+        const existing = await this.getTemplateById(id);
+        if (!existing) {
+          throw new Error('Discount template not found');
+        }
+        effectiveType = existing.discount_type;
+      }
+
+      if (!effectiveType) {
+        throw new Error('Discount type is required when updating discount value');
+      }
+
+      Object.assign(updateData, buildTemplateDiscountValueWrite(effectiveType, discount_value));
     }
     
     const { data, error } = await getSupabase()
@@ -158,18 +176,7 @@ export class DiscountTemplateService {
       throw new Error(`Failed to update discount template: ${error.message}`);
     }
 
-    return {
-      ...data,
-      discount_value: (data.discount_type as DiscountType) === 'fixed_amount'
-        ? fromDollars(data.discount_value || 0)
-        : (data.discount_value || 0),
-      description: data.description ?? undefined,
-      max_uses: data.max_uses ?? undefined,
-      created_by: data.created_by ?? undefined,
-      discount_type: data.discount_type as DiscountType,
-      usage_type: data.usage_type as UsageType,
-      scope: data.scope as DiscountScope
-    };
+    return normalizeDiscountTemplateRow(data);
   }
 
   static async deleteTemplate(id: string): Promise<void> {

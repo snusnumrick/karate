@@ -30,7 +30,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const status = url.searchParams.get("status");
 
   const [enrollments, classes, programs] = await Promise.all([
-    getEnrollments({ class_id: classId || undefined, status: status as 'active' | 'waitlist' | 'dropped' | 'completed' | undefined }),
+    getEnrollments({ class_id: classId || undefined, status: status as 'active' | 'waitlist' | 'dropped' | 'completed' | 'pending_waivers' | undefined }),
     getClasses(),
     getPrograms()
   ]);
@@ -61,6 +61,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     active: enrollments.filter(e => e.status === 'active').length,
     trial: enrollments.filter(e => e.status === 'trial').length,
     waitlisted: enrollments.filter(e => e.status === 'waitlist').length,
+    pending_waivers: enrollments.filter(e => e.status === 'pending_waivers').length,
     dropped: enrollments.filter(e => e.status === 'dropped').length
   };
 
@@ -161,7 +162,7 @@ export default function AdminEnrollments() {
     const status = enrollment.status;
     const student = enrollment.student;
     const eligibility = student && 'eligibility' in student ? student.eligibility : undefined;
-    
+
     // For dropped or waitlisted enrollments, show simple status
     if (status === "dropped") {
       return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Dropped</Badge>;
@@ -169,7 +170,19 @@ export default function AdminEnrollments() {
     if (status === "waitlist") {
       return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Waitlisted</Badge>;
     }
-    
+    if (status === "pending_waivers") {
+      return (
+        <div className="space-y-1">
+          <Badge className="bg-amber-100 text-amber-800">
+            <AlertCircle className="h-3 w-3 mr-1" />Pending Waivers
+          </Badge>
+          <div className="text-xs text-muted-foreground">
+            Awaiting waiver completion
+          </div>
+        </div>
+      );
+    }
+
     // For active/trial enrollments, combine with eligibility info
     if (status === "trial") {
       return (
@@ -255,7 +268,7 @@ export default function AdminEnrollments() {
           </div>
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
           <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total</h3>
           <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.total}</p>
@@ -267,6 +280,10 @@ export default function AdminEnrollments() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-blue-600">
           <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Trial</h3>
           <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.trial}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-amber-600">
+          <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Pending Waivers</h3>
+          <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.pending_waivers}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-yellow-600">
           <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Waitlisted</h3>
@@ -326,6 +343,7 @@ export default function AdminEnrollments() {
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="pending_waivers">Pending Waivers</SelectItem>
                 <SelectItem value="waitlist">Waitlisted</SelectItem>
                 <SelectItem value="dropped">Dropped</SelectItem>
               </SelectContent>
@@ -462,6 +480,8 @@ export default function AdminEnrollments() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="trial">Trial</SelectItem>
+                    <SelectItem value="pending_waivers">Pending Waivers</SelectItem>
                     <SelectItem value="waitlist">Waitlisted</SelectItem>
                     <SelectItem value="dropped">Dropped</SelectItem>
                   </SelectContent>

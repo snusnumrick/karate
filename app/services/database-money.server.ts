@@ -4,6 +4,7 @@ import { getNum } from '~/utils/db-money';
 
 // Fields that should be converted to/from Money objects
 export const MONEY_FIELDS = {
+  discount_code_usage: ['discount_amount', 'final_amount', 'original_amount'],
   discount_applications: ['discount_amount', 'final_amount', 'original_amount'],
   event_registrations: ['payment_amount'],
   events: ['late_registration_fee', 'registration_fee'],

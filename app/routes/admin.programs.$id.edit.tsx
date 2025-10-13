@@ -2,6 +2,7 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type 
 import { Form, useActionData, useLoaderData, useNavigation, Link } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getProgramById, updateProgram } from "~/services/program.server";
+import { getProgramRequiredWaivers, addProgramWaiver, removeProgramWaiver, updateProgramWaiver } from "~/services/waiver.server";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
@@ -15,6 +16,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
 import type { CreateProgramData } from "~/types/multi-class";
 import {toMoney, isNegative, serializeMoney, type MoneyJSON} from "~/utils/money";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 
 type ActionData = {
@@ -54,6 +56,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Program not found", { status: 404 });
   }
 
+  // Get all available waivers
+  const supabaseAdmin = getSupabaseAdminClient();
+  const { data: allWaivers } = await supabaseAdmin
+    .from('waivers')
+    .select('*')
+    .order('title', { ascending: true });
+
+  // Get program-specific waivers
+  const programWaivers = await getProgramRequiredWaivers(programId);
+
   // Serialize Money objects for JSON transport
   return json({
     program: {
@@ -62,7 +74,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
       yearly_fee: program.yearly_fee ? serializeMoney(program.yearly_fee) : undefined,
       individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
-    }
+    },
+    allWaivers: allWaivers ?? [],
+    programWaivers: programWaivers,
   });
 }
 
@@ -195,6 +209,52 @@ export async function action({ request, params }: ActionFunctionArgs) {
     };
 
     await updateProgram(programId, programData);
+
+    // Handle waiver assignments
+    // Get all waivers to process their form data
+    const supabaseAdmin = getSupabaseAdminClient();
+    const { data: allWaivers } = await supabaseAdmin
+      .from('waivers')
+      .select('id')
+      .order('id');
+
+    if (allWaivers) {
+      for (const waiver of allWaivers) {
+        const waiverId = waiver.id;
+        const isRequired = formData.get(`waiver_required_${waiverId}`) === 'on';
+        const requiredForTrial = formData.get(`waiver_trial_${waiverId}`) === 'on';
+        const requiredForFull = formData.get(`waiver_full_${waiverId}`) === 'on';
+
+        // Check if this waiver is currently assigned to the program
+        const { data: existingAssignment } = await supabaseAdmin
+          .from('program_waivers')
+          .select('*')
+          .eq('program_id', programId)
+          .eq('waiver_id', waiverId)
+          .single();
+
+        if (isRequired) {
+          // Add or update the waiver assignment
+          if (existingAssignment) {
+            await updateProgramWaiver(programId, waiverId, {
+              is_required: true,
+              required_for_trial: requiredForTrial,
+              required_for_full_enrollment: requiredForFull,
+            });
+          } else {
+            await addProgramWaiver(programId, waiverId, {
+              is_required: true,
+              required_for_trial: requiredForTrial,
+              required_for_full_enrollment: requiredForFull,
+            });
+          }
+        } else if (existingAssignment) {
+          // Remove the waiver assignment if it exists but is no longer required
+          await removeProgramWaiver(programId, waiverId);
+        }
+      }
+    }
+
     return redirect("/admin/programs");
   } catch (error) {
     console.error("Error updating program:", error);
@@ -205,10 +265,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function EditProgram() {
-  const { program } = useLoaderData<typeof loader>();
+  const { program, allWaivers, programWaivers } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionData | undefined;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+
+  // Create a map of waiver_id -> program waiver settings for quick lookup
+  const programWaiverMap = new Map(
+    programWaivers.map(pw => [pw.waiver_id, pw])
+  );
 
   // Helper to convert MoneyJSON to dollar string for inputs
   const moneyToString = (money: MoneyJSON | undefined) => {
@@ -601,6 +666,80 @@ export default function EditProgram() {
               <p className="text-xs text-gray-500 mt-1">Drop-in session rate</p>
             </div>
           </div>
+          </AdminCardContent>
+        </AdminCard>
+
+        {/* Waiver Requirements Section */}
+        <AdminCard>
+          <AdminCardHeader>
+            <AdminCardTitle>Waiver Requirements</AdminCardTitle>
+          </AdminCardHeader>
+          <AdminCardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Select which waivers are required for this program. You can specify different requirements for trial vs full enrollment.
+              </p>
+
+              {allWaivers.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-4 px-3 bg-muted/30 rounded-lg">
+                  No waivers available. <Link to="/admin/waivers/new" className="text-primary hover:underline">Create a waiver</Link> first.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {allWaivers.map((waiver) => {
+                    const programWaiver = programWaiverMap.get(waiver.id);
+                    const isAssigned = !!programWaiver;
+
+                    return (
+                      <div key={waiver.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start space-x-3">
+                          <Checkbox
+                            id={`waiver_required_${waiver.id}`}
+                            name={`waiver_required_${waiver.id}`}
+                            defaultChecked={isAssigned}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <Label htmlFor={`waiver_required_${waiver.id}`} className="text-sm font-medium cursor-pointer">
+                              {waiver.title}
+                            </Label>
+                            {waiver.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{waiver.description}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Nested checkboxes for enrollment type */}
+                        <div className="ml-8 pl-4 border-l-2 space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`waiver_trial_${waiver.id}`}
+                              name={`waiver_trial_${waiver.id}`}
+                              defaultChecked={programWaiver?.required_for_trial ?? false}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor={`waiver_trial_${waiver.id}`} className="text-xs cursor-pointer">
+                              Required for trial enrollment
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`waiver_full_${waiver.id}`}
+                              name={`waiver_full_${waiver.id}`}
+                              defaultChecked={programWaiver?.required_for_full_enrollment ?? true}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor={`waiver_full_${waiver.id}`} className="text-xs cursor-pointer">
+                              Required for full enrollment
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </AdminCardContent>
         </AdminCard>
 

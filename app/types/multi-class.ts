@@ -91,11 +91,13 @@ export interface ClassEnrollment {
   class_id: string;
   student_id: string;
   program_id: string;
-  status: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial';
+  status: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial' | 'pending_waivers';
   enrolled_at: string;
   completed_at?: string;
   dropped_at?: string;
   notes?: string;
+  waivers_completed_at?: string | null;
+  paid_until?: string | null;
   created_at: string;
   updated_at: string;
   // Relations
@@ -199,7 +201,7 @@ export interface CreateEnrollmentData {
   class_id: string;
   student_id: string;
   program_id: string;
-  status?: 'active' | 'waitlist' | 'trial';
+  status?: 'active' | 'waitlist' | 'trial' | 'pending_waivers';
   notes?: string;
 }
 
@@ -207,7 +209,7 @@ export interface UpdateEnrollmentData {
   id: string;
   class_id?: string;
   student_id?: string;
-  status?: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial';
+  status?: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial' | 'pending_waivers';
   notes?: string;
 }
 
@@ -243,7 +245,7 @@ export interface EnrollmentFilters {
   class_id?: string;
   student_id?: string;
   family_id?: string;
-  status?: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial';
+  status?: 'active' | 'inactive' | 'dropped' | 'completed' | 'waitlist' | 'trial' | 'pending_waivers';
   enrollment_date_from?: string;
   enrollment_date_to?: string;
 }

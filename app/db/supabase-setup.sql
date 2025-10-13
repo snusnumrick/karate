@@ -328,6 +328,11 @@ CREATE TABLE IF NOT EXISTS families
 ALTER TABLE families
     ADD COLUMN IF NOT EXISTS notes text;
 
+-- Add columns for registration waiver tracking
+ALTER TABLE families
+    ADD COLUMN IF NOT EXISTS registration_waivers_complete boolean DEFAULT false,
+    ADD COLUMN IF NOT EXISTS registration_waivers_completed_at timestamptz;
+
 
 -- Guardians table
 CREATE TABLE IF NOT EXISTS guardians
@@ -953,6 +958,8 @@ CREATE TABLE IF NOT EXISTS waivers
     description text    NOT NULL,
     content     text    NOT NULL,
     required    boolean NOT NULL DEFAULT false,
+    required_for_registration boolean DEFAULT false,
+    required_for_trial boolean DEFAULT false,
     CONSTRAINT waivers_title_unique UNIQUE (title) -- Ensure title is unique for ON CONFLICT
 );
 
@@ -3749,6 +3756,11 @@ $$
             RAISE NOTICE 'Added program_id column to enrollments';
         END IF;
 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrollments' AND column_name = 'waivers_completed_at' AND table_schema = 'public') THEN
+            ALTER TABLE public.enrollments ADD COLUMN waivers_completed_at timestamptz NULL;
+            RAISE NOTICE 'Added waivers_completed_at column to enrollments';
+        END IF;
+
         -- Add unique constraint if it doesn't exist
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'enrollments_student_id_class_id_key' AND conrelid = 'public.enrollments'::regclass) THEN
             ALTER TABLE public.enrollments ADD CONSTRAINT enrollments_student_id_class_id_key UNIQUE (student_id, class_id);
@@ -5705,8 +5717,22 @@ CREATE TABLE IF NOT EXISTS event_waivers (
     event_id uuid REFERENCES events(id) ON DELETE CASCADE NOT NULL,
     waiver_id uuid REFERENCES waivers(id) ON DELETE CASCADE NOT NULL,
     is_required boolean DEFAULT true,
-    
+
     UNIQUE(event_id, waiver_id)
+);
+
+-- Program waivers junction table (for program-specific waiver requirements)
+CREATE TABLE IF NOT EXISTS program_waivers (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    program_id uuid REFERENCES programs(id) ON DELETE CASCADE NOT NULL,
+    waiver_id uuid REFERENCES waivers(id) ON DELETE CASCADE NOT NULL,
+    is_required boolean DEFAULT true,
+    required_for_trial boolean DEFAULT false,
+    required_for_full_enrollment boolean DEFAULT true,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now(),
+
+    UNIQUE(program_id, waiver_id)
 );
 
 -- Create indexes for performance
@@ -5757,9 +5783,17 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_event_waivers_event') THEN
         CREATE INDEX idx_event_waivers_event ON event_waivers(event_id);
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_event_waivers_waiver') THEN
         CREATE INDEX idx_event_waivers_waiver ON event_waivers(waiver_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_program_waivers_program') THEN
+        CREATE INDEX idx_program_waivers_program ON program_waivers(program_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_program_waivers_waiver') THEN
+        CREATE INDEX idx_program_waivers_waiver ON program_waivers(waiver_id);
     END IF;
 END
 $$;
@@ -5768,6 +5802,7 @@ $$;
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_waivers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE program_waivers ENABLE ROW LEVEL SECURITY;
 
 -- Events policies
 DO

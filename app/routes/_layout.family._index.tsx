@@ -74,11 +74,23 @@ interface StudentAttendance {
     attendance_status?: 'Present' | 'Absent' | 'Excused' | 'Late';
 }
 
+// Define type for pending waivers
+type PendingWaiver = {
+    waiver_id: string;
+    waiver_name: string;
+    program_name?: string;
+    student_name?: string;
+    enrollment_id?: string;
+};
+
 interface LoaderData {
     profile?: { familyId: string };
     family?: FamilyData;
     error?: string;
     allWaiversSigned?: boolean;
+    registrationWaiversComplete?: boolean;
+    missingRegistrationWaivers?: string[];
+    pendingWaivers?: PendingWaiver[];
     upcomingClasses?: UpcomingClassSession[];
     studentAttendanceData?: StudentAttendance[];
 }
@@ -220,33 +232,93 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // 5. Fetch required waivers and user's signatures to determine status
     let allWaiversSigned = false;
+    const pendingWaivers: PendingWaiver[] = [];
 
     try {
+        // Check general required waivers
         const {data: requiredWaivers, error: requiredWaiversError} = await supabaseServer
             .from('waivers')
-            .select('id')
+            .select('id, title')
             .eq('required', true);
 
         if (requiredWaiversError) throw requiredWaiversError;
 
-        // If there are no required waivers, consider them "signed"
+        // Get user's signed waivers
+        const {data: signedWaivers, error: signedWaiversError} = await supabaseServer
+            .from('waiver_signatures')
+            .select('waiver_id')
+            .eq('user_id', user.id);
+
+        if (signedWaiversError) throw signedWaiversError;
+
+        const signedWaiverIds = new Set(signedWaivers?.map(s => s.waiver_id) || []);
+
+        // Check general required waivers
         if (!requiredWaivers || requiredWaivers.length === 0) {
             allWaiversSigned = true;
         } else {
-            const {data: signedWaivers, error: signedWaiversError} = await supabaseServer
-                .from('waiver_signatures')
-                .select('waiver_id')
-                .eq('user_id', user.id);
-
-            if (signedWaiversError) throw signedWaiversError;
-
             const requiredWaiverIds = new Set(requiredWaivers.map(w => w.id));
-            const signedWaiverIds = new Set(signedWaivers.map(s => s.waiver_id));
-
-            // Check if every required waiver ID is present in the signed waiver IDs
             allWaiversSigned = [...requiredWaiverIds].every(id => signedWaiverIds.has(id));
+
+            // Add missing general waivers to pending list
+            requiredWaivers.forEach(waiver => {
+                if (!signedWaiverIds.has(waiver.id)) {
+                    pendingWaivers.push({
+                        waiver_id: waiver.id,
+                        waiver_name: waiver.title
+                    });
+                }
+            });
         }
 
+        // Check program-specific waivers for each student's enrollments
+        if (studentsWithEligibility.length > 0) {
+            for (const student of studentsWithEligibility) {
+                // Get active enrollments with program waiver requirements
+                const {data: enrollmentWaivers, error: enrollmentError} = await supabaseServer
+                    .from('enrollments')
+                    .select(`
+                        id,
+                        programs!inner(
+                            name,
+                            required_waiver:waivers(
+                                id,
+                                title
+                            )
+                        )
+                    `)
+                    .eq('student_id', student.id)
+                    .in('status', ['active', 'trial'])
+                    .not('programs.required_waiver_id', 'is', null);
+
+                if (enrollmentError) {
+                    console.error('Error fetching enrollment waivers:', enrollmentError);
+                    continue;
+                }
+
+                // Check each enrollment's required waiver
+                enrollmentWaivers?.forEach(enrollment => {
+                    // Supabase returns required_waiver as an array, so get the first element
+                    const waiverArray = enrollment.programs?.required_waiver;
+                    const waiver = Array.isArray(waiverArray) && waiverArray.length > 0 ? waiverArray[0] : null;
+
+                    if (waiver && !signedWaiverIds.has(waiver.id)) {
+                        // Add to pending list if not already there
+                        const exists = pendingWaivers.some(pw => pw.waiver_id === waiver.id && pw.enrollment_id === enrollment.id);
+                        if (!exists) {
+                            pendingWaivers.push({
+                                waiver_id: waiver.id,
+                                waiver_name: waiver.title,
+                                program_name: enrollment.programs?.name,
+                                student_name: `${student.first_name} ${student.last_name}`,
+                                enrollment_id: enrollment.id
+                            });
+                            allWaiversSigned = false;
+                        }
+                    }
+                });
+            }
+        }
 
     } catch (error: unknown) { // Outer catch handles errors from waiver or balance fetching
         if (error instanceof Error) {
@@ -416,6 +488,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         profile: {familyId: String(profileData.family_id)},
         family: finalFamilyData, // Use the combined data
         allWaiversSigned,
+        pendingWaivers,
         upcomingClasses,
         studentAttendanceData,
         seminarEnrollments
@@ -442,7 +515,7 @@ const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "defau
 export default function FamilyDashboard() {
     // Always call hooks at the top level
     const loaderData = useLoaderData<typeof loader>();
-    const {family, error, allWaiversSigned, upcomingClasses, studentAttendanceData} = loaderData;
+    const {family, error, allWaiversSigned, pendingWaivers, upcomingClasses, studentAttendanceData} = loaderData;
     const seminarEnrollments = ('seminarEnrollments' in loaderData ? loaderData.seminarEnrollments : []) as Array<{
         id: string;
         status: string;
@@ -927,20 +1000,51 @@ export default function FamilyDashboard() {
                                     </div>
                                 </div>
                             ) : (
-                                <Alert variant="destructive" className="mb-6 form-card-styles">
-                                    <AlertCircle className="h-4 w-4"/>
-                                    <AlertTitle>Action Required</AlertTitle>
-                                    <AlertDescription>
-                                        Please sign all required waivers to complete your registration.
-                                    </AlertDescription>
-                                </Alert>
+                                <>
+                                    <Alert variant="destructive" className="mb-4 form-card-styles">
+                                        <AlertCircle className="h-4 w-4"/>
+                                        <AlertTitle>Action Required</AlertTitle>
+                                        <AlertDescription>
+                                            {pendingWaivers && pendingWaivers.length > 0 ? (
+                                                <>You have {pendingWaivers.length} pending waiver{pendingWaivers.length > 1 ? 's' : ''} that need to be signed.</>
+                                            ) : (
+                                                <>Please sign all required waivers to complete your registration.</>
+                                            )}
+                                        </AlertDescription>
+                                    </Alert>
+                                    {/* Show list of pending waivers */}
+                                    {pendingWaivers && pendingWaivers.length > 0 && (
+                                        <div className="space-y-3 mb-6">
+                                            {pendingWaivers.map((waiver, index) => (
+                                                <div key={index}
+                                                     className="p-3 form-card-styles rounded-lg border-l-4 border-orange-500">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 rounded">
+                                                            <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400"/>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                                                                {waiver.waiver_name}
+                                                            </p>
+                                                            {waiver.program_name && waiver.student_name && (
+                                                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                                    Required for <span className="font-medium">{waiver.student_name}</span> - {waiver.program_name}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
                             )}
                             {/* Use asChild prop for correct Button/Link integration */}
                             <Button asChild
                                     className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
                                 <Link to="/family/waivers" className="flex items-center justify-center gap-2">
                                     <Shield className="h-5 w-5"/>
-                                    View/Sign Waivers
+                                    {allWaiversSigned ? 'View Waivers' : 'Sign Required Waivers'}
                                 </Link>
                             </Button>
                         </div>
