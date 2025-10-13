@@ -1,7 +1,8 @@
-import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
-import { Form, useActionData, useNavigation, Link } from "@remix-run/react";
+import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
+import { Form, useActionData, useLoaderData, useNavigation, Link } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
 import { createProgram } from "~/services/program.server";
+import { addProgramWaiver } from "~/services/waiver.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { csrf } from "~/utils/csrf.server";
 import { Button } from "~/components/ui/button";
@@ -15,6 +16,7 @@ import { Plus } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { CreateProgramData } from "~/types/multi-class";
 import {toMoney, isNegative} from "~/utils/money";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 type ActionData = {
   errors?: {
@@ -28,6 +30,21 @@ type ActionData = {
     general?: string;
   };
 };
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  await requireAdminUser(request);
+
+  // Get all available waivers
+  const supabaseAdmin = getSupabaseAdminClient();
+  const { data: allWaivers } = await supabaseAdmin
+    .from('waivers')
+    .select('*')
+    .order('title', { ascending: true });
+
+  return json({
+    allWaivers: allWaivers ?? [],
+  });
+}
 
 export async function action({ request }: ActionFunctionArgs) {
   await requireAdminUser(request);
@@ -140,7 +157,34 @@ export async function action({ request }: ActionFunctionArgs) {
       is_active: isActive,
     };
 
-    await createProgram(programData);
+    const newProgram = await createProgram(programData);
+
+    // Handle waiver assignments for new program
+    if (newProgram?.id) {
+      const supabaseAdmin = getSupabaseAdminClient();
+      const { data: allWaivers } = await supabaseAdmin
+        .from('waivers')
+        .select('id')
+        .order('id');
+
+      if (allWaivers) {
+        for (const waiver of allWaivers) {
+          const waiverId = waiver.id;
+          const isRequired = formData.get(`waiver_required_${waiverId}`) === 'on';
+          const requiredForTrial = formData.get(`waiver_trial_${waiverId}`) === 'on';
+          const requiredForFull = formData.get(`waiver_full_${waiverId}`) === 'on';
+
+          if (isRequired) {
+            await addProgramWaiver(newProgram.id, waiverId, {
+              is_required: true,
+              required_for_trial: requiredForTrial,
+              required_for_full_enrollment: requiredForFull,
+            });
+          }
+        }
+      }
+    }
+
     return redirect("/admin/programs");
   } catch (error) {
     console.error("Error creating program:", error);
@@ -151,6 +195,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function NewProgram() {
+  const { allWaivers } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -585,28 +630,83 @@ export default function NewProgram() {
               </div>
             </div>
 
+            {/* Waiver Requirements Section */}
+            <div className="space-y-6">
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-semibold text-foreground">Waiver Requirements</h3>
+                <p className="text-sm text-muted-foreground mt-1">Select which waivers are required for this program</p>
+              </div>
 
+              {allWaivers.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-4 px-3 bg-muted/30 rounded-lg">
+                  No waivers available. <Link to="/admin/waivers/new" className="text-primary hover:underline">Create a waiver</Link> first.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {allWaivers.map((waiver) => (
+                    <div key={waiver.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          id={`waiver_required_${waiver.id}`}
+                          name={`waiver_required_${waiver.id}`}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor={`waiver_required_${waiver.id}`} className="text-sm font-medium cursor-pointer">
+                            {waiver.title}
+                          </Label>
+                          {waiver.description && (
+                            <p className="text-xs text-muted-foreground mt-1">{waiver.description}</p>
+                          )}
+                        </div>
+                      </div>
 
-
-
-
+                      {/* Nested checkboxes for enrollment type */}
+                      <div className="ml-8 pl-4 border-l-2 space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`waiver_trial_${waiver.id}`}
+                            name={`waiver_trial_${waiver.id}`}
+                            className="h-4 w-4"
+                          />
+                          <Label htmlFor={`waiver_trial_${waiver.id}`} className="text-xs cursor-pointer">
+                            Required for trial enrollment
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`waiver_full_${waiver.id}`}
+                            name={`waiver_full_${waiver.id}`}
+                            defaultChecked={true}
+                            className="h-4 w-4"
+                          />
+                          <Label htmlFor={`waiver_full_${waiver.id}`} className="text-xs cursor-pointer">
+                            Required for full enrollment
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-4 pt-6 border-t">
-              <Button 
-                type="submit" 
-                disabled={isSubmitting} 
+              <Button
+                type="submit"
+                disabled={isSubmitting}
                 className="h-11 px-8"
                 tabIndex={13}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 {isSubmitting ? "Creating..." : "Create Program"}
               </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 className="h-11 px-8"
-                asChild 
+                asChild
                 tabIndex={14}
               >
                 <Link to="/admin/programs">Cancel</Link>

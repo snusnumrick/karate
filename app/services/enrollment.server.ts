@@ -13,6 +13,7 @@ import { checkProgramEligibility } from './program.server';
 import { recordStudentEnrollmentEvent } from '~/utils/auto-discount-events.server';
 import { mapEnrollmentClassNullToUndefined } from '~/utils/mappers';
 import { fromCents } from '~/utils/money';
+import { getFamilyRegistrationWaiverStatus, getProgramWaiverStatus } from './waiver.server';
 
 /**
  * Enroll a student in a class with validation
@@ -50,16 +51,65 @@ export async function enrollStudent(
     );
 
     if (hasConflicts) {
-      const conflictMessages = conflicts.map(c => 
+      const conflictMessages = conflicts.map(c =>
         `Conflicts with ${c.conflicting_class_name} on ${(c.conflict_days as string[]).join(', ')}`
       );
       throw new Error(`Schedule conflicts detected: ${conflictMessages.join('; ')}`);
+    }
+
+    // Check waiver requirements for re-enrollment
+    const { data: student } = await supabase
+      .from('students')
+      .select('family_id')
+      .eq('id', enrollmentData.student_id)
+      .single();
+
+    if (!student?.family_id) {
+      throw new Error('Student family information not found');
+    }
+
+    // Get user ID for waiver checks
+    const { data: familyProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('family_id', student.family_id)
+      .limit(1)
+      .single();
+
+    if (!familyProfile) {
+      throw new Error('Family profile not found');
+    }
+
+    // Check registration waivers
+    const registrationWaiverStatus = await getFamilyRegistrationWaiverStatus(
+      student.family_id,
+      supabase
+    );
+
+    if (!registrationWaiverStatus.is_complete) {
+      throw new Error(
+        `Registration waivers must be signed before re-enrollment. Missing: ${registrationWaiverStatus.missing_waivers.map(w => w.title).join(', ')}`
+      );
     }
 
     // Determine enrollment status based on capacity
     let enrollmentStatus = enrollmentData.status || 'active';
     if (!validation.capacity_available && enrollmentStatus === 'active') {
       enrollmentStatus = 'waitlist';
+    }
+
+    // Check program-specific waivers for active enrollments
+    if (enrollmentStatus === 'active') {
+      const programWaiverStatus = await getProgramWaiverStatus(
+        familyProfile.id,
+        enrollmentData.program_id,
+        'active',
+        supabase
+      );
+
+      if (!programWaiverStatus.is_complete) {
+        enrollmentStatus = 'pending_waivers';
+      }
     }
 
     // Update existing enrollment
@@ -140,16 +190,66 @@ export async function enrollStudent(
   );
 
   if (hasConflicts) {
-    const conflictMessages = conflicts.map(c => 
+    const conflictMessages = conflicts.map(c =>
       `Conflicts with ${c.conflicting_class_name} on ${(c.conflict_days as string[]).join(', ')}`
     );
     throw new Error(`Schedule conflicts detected: ${conflictMessages.join('; ')}`);
+  }
+
+  // Check waiver requirements
+  const { data: student } = await supabase
+    .from('students')
+    .select('family_id')
+    .eq('id', enrollmentData.student_id)
+    .single();
+
+  if (!student?.family_id) {
+    throw new Error('Student family information not found');
+  }
+
+  // Get user ID for waiver checks (first profile for the family)
+  const { data: familyProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('family_id', student.family_id)
+    .limit(1)
+    .single();
+
+  if (!familyProfile) {
+    throw new Error('Family profile not found');
+  }
+
+  // Check registration waivers (required for all enrollments including trials)
+  const registrationWaiverStatus = await getFamilyRegistrationWaiverStatus(
+    student.family_id,
+    supabase
+  );
+
+  if (!registrationWaiverStatus.is_complete) {
+    throw new Error(
+      `Registration waivers must be signed before enrollment. Missing: ${registrationWaiverStatus.missing_waivers.map(w => w.title).join(', ')}`
+    );
   }
 
   // Determine enrollment status based on capacity
   let enrollmentStatus = enrollmentData.status || 'active';
   if (!validation.capacity_available && enrollmentStatus === 'active') {
     enrollmentStatus = 'waitlist';
+  }
+
+  // Check program-specific waivers (only for active/pending_waivers enrollments, not trials)
+  if (enrollmentStatus === 'active') {
+    const programWaiverStatus = await getProgramWaiverStatus(
+      familyProfile.id,
+      enrollmentData.program_id,
+      'active',
+      supabase
+    );
+
+    // If program waivers are missing, set status to pending_waivers
+    if (!programWaiverStatus.is_complete) {
+      enrollmentStatus = 'pending_waivers';
+    }
   }
 
   const { data, error } = await supabase

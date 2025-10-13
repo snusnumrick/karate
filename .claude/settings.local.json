@@ -23,7 +23,8 @@
       "WebFetch(domain:ai.google.dev)",
       "Read(//Users/antont/Downloads/**)",
       "Bash(npm install:*)",
-      "WebFetch(domain:docs.sentry.io)"
+      "WebFetch(domain:docs.sentry.io)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

@@ -11,12 +11,72 @@ import type {
     UpdateDiscountCodeData,
     UsageType
 } from '~/types/discount';
+import type { Database } from '~/types/database.types';
 import type {ExtendedSupabaseClient} from '~/types/supabase-extensions';
 import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import { getCurrentDateTimeInTimezone } from '~/utils/misc';
+import { moneyFromRow } from '~/services/database-money.server';
 import {fromCents, fromDollars, type Money, toCents, toDollars} from '~/utils/money';
 
-// Interface for raw discount usage data from database
+type DiscountUsageRowWithCode = Database['public']['Tables']['discount_code_usage']['Row'] & {
+    discount_codes?: Database['public']['Tables']['discount_codes']['Row'] | null;
+};
+type DiscountCodeRow = Database['public']['Tables']['discount_codes']['Row'];
+
+const toFixedAmountMoney = (value: Money | number): Money => {
+    if (typeof value === 'number') {
+        return fromDollars(value);
+    }
+    return value;
+};
+
+const buildDiscountValueWrite = (discountType: DiscountType, discountValue: Money | number) => {
+    if (discountType === 'fixed_amount') {
+        const moneyValue = toFixedAmountMoney(discountValue);
+        return {
+            discount_value: toDollars(moneyValue),
+            discount_value_cents: toCents(moneyValue)
+        };
+    }
+
+    return {
+        discount_value: discountValue as number,
+        discount_value_cents: 0
+    };
+};
+
+const normalizeDiscountCodeRow = (row: DiscountCodeRow): DiscountCode => {
+    const discountType = row.discount_type as DiscountType;
+    const fixedAmountCents = row.discount_value_cents ?? (discountType === 'fixed_amount'
+        ? Math.round((row.discount_value ?? 0) * 100)
+        : 0);
+
+    return {
+        ...row,
+        description: row.description ?? undefined,
+        max_uses: row.max_uses ?? undefined,
+        valid_until: row.valid_until ?? undefined,
+        created_by: row.created_by ?? undefined,
+        family_id: row.family_id ?? undefined,
+        student_id: row.student_id ?? undefined,
+        discount_type: discountType,
+        usage_type: row.usage_type as UsageType,
+        applicable_to: row.applicable_to as ApplicableTo,
+        scope: row.scope as DiscountScope,
+        discount_value: discountType === 'fixed_amount'
+            ? fromCents(fixedAmountCents)
+            : row.discount_value ?? 0
+    };
+};
+
+const normalizeDiscountUsageJoin = (
+    joinedDiscount: DiscountUsageRowWithCode['discount_codes'] | null | undefined
+) => {
+    if (!joinedDiscount) return undefined;
+
+    // docs/MONETARY_STORAGE.md: prefer *_cents for fixed amounts while leaving percentage values numeric
+    return normalizeDiscountCodeRow(joinedDiscount as DiscountCodeRow);
+};
 
 export class DiscountService {
     private static getSupabase() {
@@ -41,20 +101,7 @@ export class DiscountService {
         }
 
         // Map null to undefined for optional properties
-        return (data || []).map(item => ({
-            ...item,
-            description: item.description ?? undefined,
-            max_uses: item.max_uses ?? undefined,
-            valid_until: item.valid_until ?? undefined,
-            created_by: item.created_by ?? undefined,
-            family_id: item.family_id ?? undefined,
-            student_id: item.student_id ?? undefined,
-            discount_type: item.discount_type as DiscountType,
-            usage_type: item.usage_type as UsageType,
-            applicable_to: item.applicable_to as ApplicableTo,
-            scope: item.scope as DiscountScope,
-            discount_value: item.discount_type === "fixed_amount" ? fromDollars(item.discount_value) : item.discount_value,
-        }));
+        return (data || []).map(normalizeDiscountCodeRow);
     }
 
     /**
@@ -100,18 +147,12 @@ export class DiscountService {
 
         // Map creators to codes
         const codesWithCreators = codes_db.map((code_db) => {
+            const normalized = normalizeDiscountCodeRow(code_db);
             const creator = creators.find(c => c.id === code_db.created_by);
             return {
-                ...code_db,
-                discount_value: (code_db.discount_type as DiscountType) === 'fixed_amount'
-                    ? fromDollars(code_db.discount_value || 0)
-                    : (code_db.discount_value || 0),
-                description: code_db.description ?? undefined,
-                max_uses: code_db.max_uses ?? undefined,
-                valid_until: code_db.valid_until ?? undefined,
-                created_by: code_db.created_by ?? undefined,
-                family_id: code_db.family_id ?? undefined,
-                student_id: code_db.student_id ?? undefined,
+                ...normalized,
+                families: code_db.families ?? null,
+                students: code_db.students ?? null,
                 creator: creator ? {
                     ...creator,
                     full_name: (() => {
@@ -150,15 +191,12 @@ export class DiscountService {
             const codeUsage_db = (usageData_db || []).filter((usage) => usage.discount_code_id === code.id);
             return {
                 ...code,
-                discount_type: code.discount_type as DiscountType,
-                usage_type: code.usage_type as UsageType,
-                scope: code.scope as DiscountScope,
                 usage_count: codeUsage_db.length,
-                recent_usage: codeUsage_db.slice(0, 5).map(usage_db => ({
-                    ...usage_db,
-                    discount_amount: fromCents(usage_db.discount_amount as number),
-                    original_amount: fromCents(usage_db.original_amount as number),
-                    final_amount: fromCents(usage_db.final_amount)
+                recent_usage: codeUsage_db.slice(0, 5).map(usageRow => ({
+                    ...usageRow,
+                    discount_amount: moneyFromRow('discount_code_usage', 'discount_amount', usageRow),
+                    original_amount: moneyFromRow('discount_code_usage', 'original_amount', usageRow),
+                    final_amount: moneyFromRow('discount_code_usage', 'final_amount', usageRow)
                 }))
             };
         });
@@ -181,23 +219,7 @@ export class DiscountService {
             throw new Error(`Failed to fetch discount code: ${error.message}`);
         }
 
-        // Map null to undefined for optional properties
-        return {
-            ...data,
-            description: data.description ?? undefined,
-            max_uses: data.max_uses ?? undefined,
-            valid_until: data.valid_until ?? undefined,
-            created_by: data.created_by ?? undefined,
-            family_id: data.family_id ?? undefined,
-            student_id: data.student_id ?? undefined,
-            discount_type: data.discount_type as DiscountType,
-            discount_value: (data.discount_type as DiscountType) === 'fixed_amount'
-                ? fromDollars(data.discount_value)
-                : data.discount_value,
-            usage_type: data.usage_type as UsageType,
-            applicable_to: data.applicable_to as ApplicableTo,
-            scope: data.scope as DiscountScope,
-        };
+        return normalizeDiscountCodeRow(data);
     }
 
     /**
@@ -218,23 +240,7 @@ export class DiscountService {
             throw new Error(`Failed to fetch discount code: ${error.message}`);
         }
 
-        // Map null to undefined for optional properties
-        return {
-            ...data,
-            description: data.description ?? undefined,
-            max_uses: data.max_uses ?? undefined,
-            valid_until: data.valid_until ?? undefined,
-            created_by: data.created_by ?? undefined,
-            family_id: data.family_id ?? undefined,
-            student_id: data.student_id ?? undefined,
-            discount_type: data.discount_type as DiscountType,
-            usage_type: data.usage_type as UsageType,
-            applicable_to: data.applicable_to as ApplicableTo,
-            scope: data.scope as DiscountScope,
-            discount_value: (data.discount_type as DiscountType) === 'fixed_amount'
-                ? fromDollars(data.discount_value)
-                : data.discount_value,
-        };
+        return normalizeDiscountCodeRow(data);
     }
 
     /**
@@ -258,16 +264,17 @@ export class DiscountService {
             throw new Error('Must specify either family_id or student_id');
         }
 
+        const {discount_value, valid_from, ...restData} = discountData;
+        const valueWrite = buildDiscountValueWrite(discountData.discount_type, discount_value);
+
         const {data, error} = await this.getSupabase()
             .from('discount_codes')
             .insert({
-                ...discountData,
-                discount_value: discountData.discount_type === 'fixed_amount'
-                    ? toDollars(discountData.discount_value as Money)
-                    : discountData.discount_value as number,
+                ...restData,
+                ...valueWrite,
                 created_by: createdBy,
                 created_automatically: !createdBy, // If no creator, it's automatic
-                valid_from: discountData.valid_from || getCurrentDateTimeInTimezone().toISOString()
+                valid_from: valid_from || getCurrentDateTimeInTimezone().toISOString()
             })
             .select()
             .single();
@@ -276,23 +283,7 @@ export class DiscountService {
             throw new Error(`Failed to create discount code: ${error.message}`);
         }
 
-        // Map null to undefined for optional properties
-        return {
-            ...data,
-            description: data.description ?? undefined,
-            max_uses: data.max_uses ?? undefined,
-            valid_until: data.valid_until ?? undefined,
-            created_by: data.created_by ?? undefined,
-            family_id: data.family_id ?? undefined,
-            student_id: data.student_id ?? undefined,
-            discount_type: data.discount_type as DiscountType,
-            usage_type: data.usage_type as UsageType,
-            applicable_to: data.applicable_to as ApplicableTo,
-            scope: data.scope as DiscountScope,
-            discount_value: (data.discount_type as DiscountType) === 'fixed_amount' 
-                ? fromDollars(data.discount_value)
-                : data.discount_value,
-        };
+        return normalizeDiscountCodeRow(data);
     }
 
     /**
@@ -302,16 +293,30 @@ export class DiscountService {
         id: string,
         updates: UpdateDiscountCodeData
     ): Promise<DiscountCode> {
-        const { discount_value, ...restUpdates } = updates;
-        const updateData = {
-            ...restUpdates,
-            ...(discount_value !== undefined && {
-                discount_value: updates.discount_type === 'fixed_amount' 
-                    ? toDollars(discount_value as Money)
-                    : discount_value as number
-            })
-        };
-        
+        const { discount_value, discount_type, ...restUpdates } = updates;
+        const updateData: Record<string, unknown> = { ...restUpdates };
+        let effectiveType = discount_type;
+
+        if (discount_type !== undefined) {
+            updateData.discount_type = discount_type;
+        }
+
+        if (discount_value !== undefined) {
+            if (!effectiveType) {
+                const existing = await this.getDiscountCodeById(id);
+                if (!existing) {
+                    throw new Error('Discount code not found');
+                }
+                effectiveType = existing.discount_type;
+            }
+
+            if (!effectiveType) {
+                throw new Error('Discount type is required when updating discount value');
+            }
+
+            Object.assign(updateData, buildDiscountValueWrite(effectiveType, discount_value));
+        }
+
         const {data, error} = await this.getSupabase()
             .from('discount_codes')
             .update(updateData)
@@ -323,23 +328,7 @@ export class DiscountService {
             throw new Error(`Failed to update discount code: ${error.message}`);
         }
 
-        // Map null to undefined for optional properties
-        return {
-            ...data,
-            description: data.description ?? undefined,
-            max_uses: data.max_uses ?? undefined,
-            valid_until: data.valid_until ?? undefined,
-            created_by: data.created_by ?? undefined,
-            family_id: data.family_id ?? undefined,
-            student_id: data.student_id ?? undefined,
-            discount_type: data.discount_type as DiscountType,
-            discount_value: data.discount_type === 'fixed_amount' 
-                ? fromDollars(data.discount_value)
-                : data.discount_value, // Convert from cents to Money only for fixed amounts
-            usage_type: data.usage_type as UsageType,
-            applicable_to: data.applicable_to as ApplicableTo,
-            scope: data.scope as DiscountScope,
-        };
+        return normalizeDiscountCodeRow(data);
     }
 
     /**
@@ -499,12 +488,7 @@ export class DiscountService {
             .from('discount_code_usage')
             .select(`
         *,
-        discount_codes(
-          code,
-          name,
-          discount_type,
-          discount_value
-        )
+        discount_codes(*)
       `)
             .eq('family_id', familyId)
             .order('used_at', {ascending: false});
@@ -514,21 +498,18 @@ export class DiscountService {
             throw new Error('Failed to fetch family discount usage');
         }
 
-        return (data || []).map((usage_db: Record<string, unknown>) => {
-            const dc = usage_db.discount_codes as { discount_value: number; discount_type?: string } | undefined;
-            return {
-                ...usage_db,
-                discount_amount: fromCents(usage_db.discount_amount as number),
-                original_amount: fromCents(usage_db.original_amount as number),
-                final_amount: fromCents(usage_db.final_amount as number),
-                discount_codes: dc ? {
-                    ...(usage_db.discount_codes as Record<string, unknown>),
-                    discount_value: dc.discount_type === 'fixed_amount'
-                        ? fromDollars(dc.discount_value)
-                        : dc.discount_value
-                } : undefined
-            } as unknown as DiscountCodeUsage;
-        }) as DiscountCodeUsage[];
+        const rawUsage = Array.isArray(data) ? (data as unknown[]) : [];
+        const usageRows = rawUsage.filter((usage): usage is DiscountUsageRowWithCode => {
+            return typeof usage === 'object' && usage !== null && 'discount_code_id' in usage;
+        });
+
+        return usageRows.map((usageRow) => ({
+            ...usageRow,
+            discount_amount: moneyFromRow('discount_code_usage', 'discount_amount', usageRow),
+            original_amount: moneyFromRow('discount_code_usage', 'original_amount', usageRow),
+            final_amount: moneyFromRow('discount_code_usage', 'final_amount', usageRow),
+            discount_codes: normalizeDiscountUsageJoin(usageRow.discount_codes)
+        }) as DiscountCodeUsage);
     }
 
     /**
@@ -539,12 +520,7 @@ export class DiscountService {
             .from('discount_code_usage')
             .select(`
         *,
-        discount_codes(
-          code,
-          name,
-          discount_type,
-          discount_value
-        )
+        discount_codes(*)
       `)
             .eq('student_id', studentId)
             .order('used_at', {ascending: false});
@@ -554,21 +530,18 @@ export class DiscountService {
             throw new Error('Failed to fetch student discount usage');
         }
 
-        return (data || []).map((usage_db: Record<string, unknown>) => {
-            const dc = usage_db.discount_codes as { discount_value: number; discount_type?: string } | undefined;
-            return {
-                ...usage_db,
-                discount_amount: fromCents(usage_db.discount_amount as number),
-                original_amount: fromCents(usage_db.original_amount as number),
-                final_amount: fromCents(usage_db.final_amount as number),
-                discount_codes: dc ? {
-                    ...(usage_db.discount_codes as Record<string, unknown>),
-                    discount_value: dc.discount_type === 'fixed_amount'
-                        ? fromDollars(dc.discount_value)
-                        : dc.discount_value
-                } : undefined
-            } as unknown as DiscountCodeUsage;
-        }) as DiscountCodeUsage[];
+        const rawUsage = Array.isArray(data) ? (data as unknown[]) : [];
+        const usageRows = rawUsage.filter((usage): usage is DiscountUsageRowWithCode => {
+            return typeof usage === 'object' && usage !== null && 'discount_code_id' in usage;
+        });
+
+        return usageRows.map((usageRow) => ({
+            ...usageRow,
+            discount_amount: moneyFromRow('discount_code_usage', 'discount_amount', usageRow),
+            original_amount: moneyFromRow('discount_code_usage', 'original_amount', usageRow),
+            final_amount: moneyFromRow('discount_code_usage', 'final_amount', usageRow),
+            discount_codes: normalizeDiscountUsageJoin(usageRow.discount_codes)
+        }) as DiscountCodeUsage);
     }
 
     /**
