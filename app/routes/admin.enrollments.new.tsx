@@ -14,6 +14,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getClasses } from "~/services/class.server";
 import { enrollStudent, getEnrollments } from "~/services/enrollment.server";
 import { getPrograms } from "~/services/program.server";
+import { getFamilyRegistrationWaiverStatus, getProgramRequiredWaivers } from "~/services/waiver.server";
 import { requireAdminUser } from "~/utils/auth.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { formatDate } from "~/utils/misc";
@@ -32,6 +33,12 @@ type FamilyWithStudents = {
     gender: string;
     special_needs: string | null;
   }[];
+};
+
+type FamilyWaiverInfo = {
+  family_id: string;
+  registration_waivers_complete: boolean;
+  missing_waivers: string[];
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -65,12 +72,38 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   const families = familiesResult.data as FamilyWithStudents[];
+  const filteredFamilies = families.filter(f => f.students && f.students.length > 0);
 
-  return json({ 
-    classes: classes.filter(c => c.is_active), 
-    programs, 
-    families: families.filter(f => f.students && f.students.length > 0),
-    enrollments
+  // Get waiver status for all families
+  const familyWaiverInfo: FamilyWaiverInfo[] = await Promise.all(
+    filteredFamilies.map(async (family) => {
+      const waiverStatus = await getFamilyRegistrationWaiverStatus(family.id);
+      return {
+        family_id: family.id,
+        registration_waivers_complete: waiverStatus.is_complete,
+        missing_waivers: waiverStatus.missing_waivers.map(w => w.title),
+      };
+    })
+  );
+
+  // Get program waivers for all programs
+  const programWaivers = await Promise.all(
+    programs.map(async (program) => {
+      const waivers = await getProgramRequiredWaivers(program.id);
+      return {
+        program_id: program.id,
+        waivers: waivers,
+      };
+    })
+  );
+
+  return json({
+    classes: classes.filter(c => c.is_active),
+    programs,
+    families: filteredFamilies,
+    enrollments,
+    familyWaiverInfo,
+    programWaivers,
   });
 }
 
@@ -118,7 +151,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function NewEnrollmentPage() {
-  const { classes, programs, families, enrollments } = useLoaderData<typeof loader>();
+  const { classes, programs, families, enrollments, familyWaiverInfo, programWaivers } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
@@ -134,10 +167,17 @@ export default function NewEnrollmentPage() {
   // Get enrolled student IDs for quick lookup
   const enrolledStudentIds = useMemo(() => new Set(enrollments.map(e => e.student_id)), [enrollments]);
 
+  // Get waiver info for selected family
+  const selectedFamilyWaiverInfo = useMemo(() =>
+    familyWaiverInfo.find(w => w.family_id === selectedFamilyId),
+    [familyWaiverInfo, selectedFamilyId]
+  );
+
   const getClassInfo = (classId: string) => {
     const classItem = classes.find(c => c.id === classId);
     const program = classItem ? programs.find(p => p.id === classItem.program_id) : null;
-    return { class: classItem, program };
+    const programWaiverInfo = program ? programWaivers.find(pw => pw.program_id === program.id) : null;
+    return { class: classItem, program, programWaivers: programWaiverInfo?.waivers || [] };
   };
 
   // Update eligible classes when student changes
@@ -260,6 +300,27 @@ export default function NewEnrollmentPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Registration Waiver Warning */}
+                {selectedFamilyId && selectedFamilyWaiverInfo && !selectedFamilyWaiverInfo.registration_waivers_complete && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="font-semibold mb-1">Registration Waivers Required</div>
+                      <div className="text-sm">
+                        This family has not completed required registration waivers. The enrollment will be blocked until these waivers are signed:
+                      </div>
+                      <ul className="list-disc list-inside text-sm mt-2">
+                        {selectedFamilyWaiverInfo.missing_waivers.map((waiver, idx) => (
+                          <li key={idx}>{waiver}</li>
+                        ))}
+                      </ul>
+                      <div className="text-sm mt-2 font-medium">
+                        Please direct the family to sign these waivers before enrollment.
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="space-y-3">
                   <Label htmlFor="student_id" className="text-sm font-medium flex items-center gap-2">
@@ -416,7 +477,10 @@ export default function NewEnrollmentPage() {
             )}
 
           {selectedClassId && (() => {
-            const { class: classItem, program } = getClassInfo(selectedClassId);
+            const { class: classItem, program, programWaivers } = getClassInfo(selectedClassId);
+            const hasTrialWaivers = programWaivers.some(w => w.required_for_trial);
+            const hasFullWaivers = programWaivers.some(w => w.required_for_full_enrollment);
+
             return (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -446,6 +510,49 @@ export default function NewEnrollmentPage() {
                       <Badge variant="outline">Capacity: {classItem.max_capacity}</Badge>
                     )}
                   </div>
+
+                  {/* Program Waiver Information */}
+                  {programWaivers.length > 0 && (
+                    <div className="pt-3 border-t">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Required Waivers</span>
+                      </div>
+                      <Alert>
+                        <AlertDescription className="text-xs">
+                          <div className="space-y-2">
+                            {hasTrialWaivers && (
+                              <div>
+                                <div className="font-semibold mb-1">For trial enrollment:</div>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {programWaivers
+                                    .filter(w => w.required_for_trial)
+                                    .map((waiver, idx) => (
+                                      <li key={idx}>{waiver.waiver_title}</li>
+                                    ))}
+                                </ul>
+                              </div>
+                            )}
+                            {hasFullWaivers && (
+                              <div>
+                                <div className="font-semibold mb-1">For full enrollment:</div>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {programWaivers
+                                    .filter(w => w.required_for_full_enrollment)
+                                    .map((waiver, idx) => (
+                                      <li key={idx}>{waiver.waiver_title}</li>
+                                    ))}
+                                </ul>
+                              </div>
+                            )}
+                            <div className="text-muted-foreground mt-2 italic">
+                              If waivers are incomplete, enrollment will be set to &ldquo;pending waivers&rdquo; status.
+                            </div>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
                 </div>
               </div>
             );

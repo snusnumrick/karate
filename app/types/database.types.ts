@@ -713,6 +713,7 @@ export type Database = {
           description: string | null
           discount_type: Database["public"]["Enums"]["discount_type_enum"]
           discount_value: number
+          discount_value_cents: number
           id: string
           is_active: boolean
           max_uses: number | null
@@ -728,6 +729,7 @@ export type Database = {
           description?: string | null
           discount_type: Database["public"]["Enums"]["discount_type_enum"]
           discount_value: number
+          discount_value_cents?: number
           id?: string
           is_active?: boolean
           max_uses?: number | null
@@ -743,6 +745,7 @@ export type Database = {
           description?: string | null
           discount_type?: Database["public"]["Enums"]["discount_type_enum"]
           discount_value?: number
+          discount_value_cents?: number
           id?: string
           is_active?: boolean
           max_uses?: number | null
@@ -767,6 +770,7 @@ export type Database = {
           status: Database["public"]["Enums"]["enrollment_status"]
           student_id: string
           updated_at: string
+          waivers_completed_at: string | null
         }
         Insert: {
           class_id: string
@@ -781,6 +785,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["enrollment_status"]
           student_id: string
           updated_at?: string
+          waivers_completed_at?: string | null
         }
         Update: {
           class_id?: string
@@ -795,6 +800,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["enrollment_status"]
           student_id?: string
           updated_at?: string
+          waivers_completed_at?: string | null
         }
         Relationships: [
           {
@@ -1181,6 +1187,8 @@ export type Database = {
           province: string | null
           referral_name: string | null
           referral_source: string | null
+          registration_waivers_complete: boolean | null
+          registration_waivers_completed_at: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1199,6 +1207,8 @@ export type Database = {
           province?: string | null
           referral_name?: string | null
           referral_source?: string | null
+          registration_waivers_complete?: boolean | null
+          registration_waivers_completed_at?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1217,6 +1227,8 @@ export type Database = {
           province?: string | null
           referral_name?: string | null
           referral_source?: string | null
+          registration_waivers_complete?: boolean | null
+          registration_waivers_completed_at?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1487,8 +1499,22 @@ export type Database = {
             foreignKeyName: "invoice_line_items_enrollment_id_fkey"
             columns: ["enrollment_id"]
             isOneToOne: false
+            referencedRelation: "enrollment_waiver_status"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
+            foreignKeyName: "invoice_line_items_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
             referencedRelation: "enrollments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_items_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "pending_waiver_enrollments"
+            referencedColumns: ["enrollment_id"]
           },
           {
             foreignKeyName: "invoice_line_items_invoice_id_fkey"
@@ -2350,6 +2376,61 @@ export type Database = {
           },
         ]
       }
+      program_waivers: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_required: boolean | null
+          program_id: string
+          required_for_full_enrollment: boolean | null
+          required_for_trial: boolean | null
+          updated_at: string | null
+          waiver_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_required?: boolean | null
+          program_id: string
+          required_for_full_enrollment?: boolean | null
+          required_for_trial?: boolean | null
+          updated_at?: string | null
+          waiver_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_required?: boolean | null
+          program_id?: string
+          required_for_full_enrollment?: boolean | null
+          required_for_trial?: boolean | null
+          updated_at?: string | null
+          waiver_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_waivers_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_waivers_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs_with_belt_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_waivers_waiver_id_fkey"
+            columns: ["waiver_id"]
+            isOneToOne: false
+            referencedRelation: "waivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programs: {
         Row: {
           ability_category:
@@ -2381,6 +2462,7 @@ export type Database = {
           prerequisite_programs: string[] | null
           registration_fee: number | null
           registration_fee_cents: number
+          required_waiver_id: string | null
           sessions_per_week: number
           single_purchase_price_cents: number | null
           slug: string | null
@@ -2423,6 +2505,7 @@ export type Database = {
           prerequisite_programs?: string[] | null
           registration_fee?: number | null
           registration_fee_cents?: number
+          required_waiver_id?: string | null
           sessions_per_week?: number
           single_purchase_price_cents?: number | null
           slug?: string | null
@@ -2465,6 +2548,7 @@ export type Database = {
           prerequisite_programs?: string[] | null
           registration_fee?: number | null
           registration_fee_cents?: number
+          required_waiver_id?: string | null
           sessions_per_week?: number
           single_purchase_price_cents?: number | null
           slug?: string | null
@@ -2475,7 +2559,15 @@ export type Database = {
           yearly_fee?: number | null
           yearly_fee_cents?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "programs_required_waiver_id_fkey"
+            columns: ["required_waiver_id"]
+            isOneToOne: false
+            referencedRelation: "waivers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -2670,6 +2762,8 @@ export type Database = {
           description: string
           id: string
           required: boolean
+          required_for_registration: boolean | null
+          required_for_trial: boolean | null
           title: string
         }
         Insert: {
@@ -2677,6 +2771,8 @@ export type Database = {
           description: string
           id?: string
           required?: boolean
+          required_for_registration?: boolean | null
+          required_for_trial?: boolean | null
           title: string
         }
         Update: {
@@ -2684,6 +2780,8 @@ export type Database = {
           description?: string
           id?: string
           required?: boolean
+          required_for_registration?: boolean | null
+          required_for_trial?: boolean | null
           title?: string
         }
         Relationships: []
@@ -2767,6 +2865,58 @@ export type Database = {
       }
     }
     Views: {
+      enrollment_waiver_status: {
+        Row: {
+          enrollment_id: string | null
+          family_id: string | null
+          program_id: string | null
+          program_name: string | null
+          required_waiver_id: string | null
+          required_waiver_name: string | null
+          signed_at: string | null
+          signed_by_user_id: string | null
+          student_id: string | null
+          student_name: string | null
+          waiver_signed: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs_with_belt_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programs_required_waiver_id_fkey"
+            columns: ["required_waiver_id"]
+            isOneToOne: false
+            referencedRelation: "waivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       family_one_on_one_balance: {
         Row: {
           family_id: string | null
@@ -2799,6 +2949,57 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_waiver_enrollments: {
+        Row: {
+          enrollment_id: string | null
+          family_email: string | null
+          family_id: string | null
+          family_name: string | null
+          program_id: string | null
+          program_name: string | null
+          required_waiver_id: string | null
+          required_waiver_name: string | null
+          student_id: string | null
+          student_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs_with_belt_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programs_required_waiver_id_fkey"
+            columns: ["required_waiver_id"]
+            isOneToOne: false
+            referencedRelation: "waivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
             referencedColumns: ["id"]
           },
         ]
@@ -2904,8 +3105,20 @@ export type Database = {
         Args: { p_event_id: string; p_student_id: string }
         Returns: Json
       }
+      check_family_registration_waivers: {
+        Args: { p_family_id: string }
+        Returns: boolean
+      }
       check_program_eligibility: {
         Args: { program_id_param: string; student_id_param: string }
+        Returns: boolean
+      }
+      check_program_waivers_complete: {
+        Args: {
+          p_enrollment_type?: string
+          p_program_id: string
+          p_user_id: string
+        }
         Returns: boolean
       }
       complete_new_user_registration: {
@@ -3003,6 +3216,18 @@ export type Database = {
         Args: { p_family_id: string }
         Returns: number
       }
+      get_missing_program_waivers: {
+        Args: {
+          p_enrollment_type?: string
+          p_program_id: string
+          p_user_id: string
+        }
+        Returns: {
+          waiver_description: string
+          waiver_id: string
+          waiver_title: string
+        }[]
+      }
       get_other_event_type_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -3051,6 +3276,10 @@ export type Database = {
       }
       recalc_invoice_totals: {
         Args: { p_invoice_id: string }
+        Returns: undefined
+      }
+      refresh_enrollment_waiver_status: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       validate_discount_code: {
@@ -3133,6 +3362,7 @@ export type Database = {
         | "dropped"
         | "waitlist"
         | "trial"
+        | "pending_waivers"
       entity_type_enum:
         | "family"
         | "school"
@@ -3399,6 +3629,7 @@ export const Constants = {
         "dropped",
         "waitlist",
         "trial",
+        "pending_waivers",
       ],
       entity_type_enum: [
         "family",
