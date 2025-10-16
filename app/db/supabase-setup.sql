@@ -255,6 +255,36 @@ $$
     END
 $$;
 
+-- Seminar type for distinguishing skill levels (migration 026)
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'seminar_type') THEN
+            CREATE TYPE seminar_type AS ENUM ('introductory', 'intermediate', 'advanced');
+        END IF;
+    END
+$$;
+
+-- Series status for tracking seminar series lifecycle (migration 026)
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'series_status') THEN
+            CREATE TYPE series_status AS ENUM ('tentative', 'confirmed', 'cancelled', 'in_progress', 'completed');
+        END IF;
+    END
+$$;
+
+-- Registration status for managing enrollment (migration 026)
+DO
+$$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'registration_status') THEN
+            CREATE TYPE registration_status AS ENUM ('open', 'closed', 'waitlisted');
+        END IF;
+    END
+$$;
+
 -- Migrate existing t_shirt_size data from text to enum
 DO
 $$
@@ -3651,6 +3681,8 @@ CREATE TABLE IF NOT EXISTS public.programs (
     audience_scope audience_scope NOT NULL DEFAULT 'youth',
     min_capacity integer NULL CHECK (min_capacity > 0),
     slug text NULL UNIQUE,
+    -- Seminar type from migration 026
+    seminar_type seminar_type NULL,
     -- System fields
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -3680,6 +3712,13 @@ CREATE TABLE IF NOT EXISTS public.classes (
     allow_self_enrollment boolean NOT NULL DEFAULT false,
     min_capacity integer NULL CHECK (min_capacity > 0),
     on_demand boolean NOT NULL DEFAULT false,
+    -- Series management fields from migration 026
+    topic text NULL,
+    series_status series_status NOT NULL DEFAULT 'tentative',
+    registration_status registration_status NOT NULL DEFAULT 'closed',
+    -- Series pricing overrides from migration 027
+    price_override_cents INT4 NULL CHECK (price_override_cents >= 0),
+    registration_fee_override_cents INT4 NULL CHECK (registration_fee_override_cents >= 0),
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -3856,6 +3895,10 @@ END IF;
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_audience_scope') THEN
 CREATE INDEX idx_programs_audience_scope ON public.programs (audience_scope);
 END IF;
+-- Indexes from migration 026
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_programs_seminar_type') THEN
+CREATE INDEX idx_programs_seminar_type ON public.programs (seminar_type) WHERE seminar_type IS NOT NULL;
+END IF;
 END $$;
 
 -- Add indexes for classes
@@ -4015,6 +4058,13 @@ CREATE INDEX idx_class_sessions_class_sequence ON public.class_sessions (class_i
 END IF;
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_class_sessions_session_date_time') THEN
 CREATE INDEX idx_class_sessions_session_date_time ON public.class_sessions (session_date, start_time);
+END IF;
+-- Indexes from migration 026
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_classes_series_status') THEN
+CREATE INDEX idx_classes_series_status ON public.classes (series_status);
+END IF;
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_classes_registration_status') THEN
+CREATE INDEX idx_classes_registration_status ON public.classes (registration_status);
 END IF;
 END $$;
 

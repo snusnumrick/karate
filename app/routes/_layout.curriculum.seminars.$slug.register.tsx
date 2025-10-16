@@ -18,12 +18,15 @@ import { useState } from 'react';
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const { slug } = params;
+  console.log('[Seminar Register] Loading registration page with slug:', slug);
+
   if (!slug) {
     throw new Response("Not Found", { status: 404 });
   }
 
   const url = new URL(request.url);
   const seriesId = url.searchParams.get('seriesId');
+  console.log('[Seminar Register] Series ID from query:', seriesId);
 
   if (!seriesId) {
     throw new Response("Series ID required", { status: 400 });
@@ -34,20 +37,29 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   // Get seminar details
   const program = await getProgramBySlug(slug, supabaseServer);
+  console.log('[Seminar Register] Program by slug:', program ? program.id : 'not found');
+
   let seminarData;
   if (!program) {
     seminarData = await getSeminarWithSeries(slug, supabaseServer);
+    console.log('[Seminar Register] Seminar by ID:', seminarData ? seminarData.id : 'not found');
     if (!seminarData) {
       throw new Response("Seminar not found", { status: 404 });
     }
   } else {
     seminarData = await getSeminarWithSeries(program.id, supabaseServer);
+    console.log('[Seminar Register] Seminar from program:', seminarData ? seminarData.id : 'not found');
   }
 
   const seminar = seminarData ? serializeSeminarForClient(seminarData) : null;
+  console.log('[Seminar Register] Serialized seminar:', seminar ? seminar.id : 'null');
+  console.log('[Seminar Register] Number of classes:', seminar?.classes?.length ?? 0);
 
   // Find the specific series
   const series = seminar?.classes?.find((c: { id: string }) => c.id === seriesId);
+  console.log('[Seminar Register] Found series:', series ? series.id : 'not found');
+  console.log('[Seminar Register] All class IDs:', seminar?.classes?.map((c: { id: string }) => c.id));
+
   if (!series) {
     throw new Response("Series not found", { status: 404 });
   }

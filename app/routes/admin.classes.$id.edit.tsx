@@ -39,6 +39,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Class ID is required", { status: 400 });
   }
 
+  const url = new URL(request.url);
+  const typeParam = url.searchParams.get('type');
+
   const [classData, programs, instructors, schedules] = await Promise.all([
     getClassById(classId),
     getPrograms(),
@@ -50,6 +53,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Class not found", { status: 404 });
   }
 
+  // Determine if this is a series by checking the program's engagement type
+  const program = programs.find(p => p.id === classData.program_id);
+  const isSeries = typeParam === 'series' || program?.engagement_type === 'seminar';
+
   // Serialize Money objects in programs
   const serializedPrograms = programs.map(program => ({
     ...program,
@@ -59,7 +66,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
   }));
 
-  return json({ classData, programs: serializedPrograms, instructors, schedules });
+  return json({ classData, programs: serializedPrograms, instructors, schedules, isSeries });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -82,13 +89,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const intent = formData.get("intent") as string;
 
     if (intent === "delete") {
+      // Get class to determine if it's a series
+      const classData = await getClassById(classId);
+      const programs = await getPrograms();
+      const program = programs.find(p => p.id === classData?.program_id);
+      const isSeries = program?.engagement_type === 'seminar';
+
       await deleteClass(classId);
-      return redirect("/admin/classes");
+      return redirect(isSeries ? "/admin/classes?engagement=seminar" : "/admin/classes");
     }
 
     if (intent === "update") {
       const programId = formData.get("program_id") as string;
       const className = formData.get("name") as string;
+      const topic = formData.get("topic") as string;
 
       // Get program data to use program name as default if class name is empty
       const [programs] = await Promise.all([getPrograms()]);
@@ -101,6 +115,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         );
       }
 
+      const isSeries = selectedProgram.engagement_type === 'seminar';
       const classDescription = formData.get("description") as string;
       const instructorId = formData.get("instructor_id") as string;
 
@@ -142,6 +157,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
         is_active: formData.get("is_active") === "on",
         max_capacity: maxCapacity,
         instructor_id: instructorId === "none" ? undefined : instructorId || undefined,
+        // Series-specific fields for seminars
+        ...(isSeries && {
+          topic: topic || undefined,
+          series_status: (formData.get("series_status") as 'tentative' | 'confirmed' | 'cancelled' | 'in_progress' | 'completed') || 'tentative',
+          registration_status: (formData.get("registration_status") as 'open' | 'closed' | 'waitlisted') || 'closed',
+          allow_self_enrollment: formData.get("allow_self_enrollment") === "on",
+        }),
       };
 
       // Update class and schedules
@@ -150,7 +172,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         updateClassSchedules(classId, schedules)
       ]);
 
-      return redirect("/admin/classes");
+      return redirect(isSeries ? "/admin/classes?engagement=seminar" : "/admin/classes");
     }
 
     return json({ error: "Invalid intent" }, { status: 400 });
@@ -163,7 +185,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function EditClass() {
-  const { classData, programs, instructors, schedules } = useLoaderData<typeof loader>();
+  const { classData, programs, instructors, schedules, isSeries } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -231,9 +253,14 @@ export default function EditClass() {
 
       <div className="flex items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Edit Class</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isSeries ? 'Edit Series' : 'Edit Class'}
+          </h1>
           <p className="text-muted-foreground">
-            Update class details, schedule, and capacity.
+            {isSeries
+              ? 'Update series details, topic, schedule, and registration.'
+              : 'Update class details, schedule, and capacity.'
+            }
           </p>
         </div>
       </div>
@@ -247,7 +274,7 @@ export default function EditClass() {
       <div className="space-y-6">
         <Card className="shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Class Details</CardTitle>
+            <CardTitle className="text-xl">{isSeries ? 'Series Details' : 'Class Details'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
           <Form method="post" className="space-y-8">
@@ -259,15 +286,15 @@ export default function EditClass() {
               <h3 className="text-lg font-medium text-foreground border-b pb-2">Basic Information</h3>
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="program_id" className="text-sm font-medium">Program *</Label>
-                  <Select 
-                    name="program_id" 
+                  <Label htmlFor="program_id" className="text-sm font-medium">{isSeries ? 'Seminar' : 'Program'} *</Label>
+                  <Select
+                    name="program_id"
                     value={selectedProgramId}
                     onValueChange={setSelectedProgramId}
                     required
                   >
                     <SelectTrigger className="h-10 input-custom-styles">
-                      <SelectValue placeholder="Select program" />
+                      <SelectValue placeholder={isSeries ? 'Select seminar' : 'Select program'} />
                     </SelectTrigger>
                     <SelectContent>
                       {programs.filter((p: ProgramType) => p.is_active).map((program: ProgramType) => (
@@ -285,16 +312,30 @@ export default function EditClass() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium">Class Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    defaultValue={classData.name}
-                    placeholder="Leave empty to use program name"
-                    className="h-10 input-custom-styles"
-                  />
-                </div>
+                {isSeries ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="topic" className="text-sm font-medium">Topic *</Label>
+                    <Input
+                      id="topic"
+                      name="topic"
+                      defaultValue={classData.topic || ''}
+                      placeholder="e.g., Self-Defense Fundamentals"
+                      required
+                      className="h-10 input-custom-styles"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-sm font-medium">Class Name</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      defaultValue={classData.name}
+                      placeholder="Leave empty to use program name"
+                      className="h-10 input-custom-styles"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity *</Label>
@@ -336,7 +377,55 @@ export default function EditClass() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {isSeries && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="series_status" className="text-sm font-medium">Series Status *</Label>
+                      <Select name="series_status" defaultValue={classData.series_status || 'tentative'}>
+                        <SelectTrigger className="h-10 input-custom-styles">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tentative">Tentative</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="registration_status" className="text-sm font-medium">Registration Status *</Label>
+                      <Select name="registration_status" defaultValue={classData.registration_status || 'closed'}>
+                        <SelectTrigger className="h-10 input-custom-styles">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">Open</SelectItem>
+                          <SelectItem value="closed">Closed</SelectItem>
+                          <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
               </div>
+
+              {isSeries && (
+                <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
+                  <Checkbox id="allow_self_enrollment" name="allow_self_enrollment" defaultChecked={classData.allow_self_enrollment || false} className="h-4 w-4" />
+                  <div className="space-y-1">
+                    <Label htmlFor="allow_self_enrollment" className="text-sm font-medium cursor-pointer">
+                      Allow Self-Registration
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Enable online registration for this seminar series
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-sm font-medium">Description</Label>
@@ -353,8 +442,12 @@ export default function EditClass() {
               <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
                 <Checkbox id="is_active" name="is_active" defaultChecked={classData.is_active} className="h-4 w-4" />
                 <div className="space-y-1">
-                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">Active Class</Label>
-                  <p className="text-xs text-muted-foreground">Students can enroll in active classes</p>
+                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">
+                    {isSeries ? 'Active Series' : 'Active Class'}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {isSeries ? 'Students can register for active series' : 'Students can enroll in active classes'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -387,12 +480,16 @@ export default function EditClass() {
               </Alert>
             )}
 
-            {/* Class Schedule Section */}
+            {/* Class/Series Schedule Section */}
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b pb-2">
                 <div>
-                  <h3 className="text-lg font-medium text-foreground">Class Schedule</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Set up weekly recurring sessions for this class</p>
+                  <h3 className="text-lg font-medium text-foreground">
+                    {isSeries ? 'Series Schedule' : 'Class Schedule'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Set up weekly recurring sessions for this {isSeries ? 'series' : 'class'}
+                  </p>
                   {selectedProgram && (
                     <p className="text-xs text-muted-foreground mt-1">
                       {getSessionFrequencyDescription(selectedProgram)}
@@ -502,12 +599,12 @@ export default function EditClass() {
                 </Button>
               </div>
               <div className="sm:ml-auto">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isSubmitting || !validationResult.isValid}
                   className="h-10 px-8"
                 >
-                  {isSubmitting ? "Updating..." : "Update Class"}
+                  {isSubmitting ? "Updating..." : (isSeries ? "Update Series" : "Update Class")}
                 </Button>
               </div>
             </div>
@@ -523,7 +620,7 @@ export default function EditClass() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Once you delete a class, there is no going back. Please be certain.
+              Once you delete {isSeries ? 'a series' : 'a class'}, there is no going back. Please be certain.
             </p>
             <Button
               type="button"
@@ -533,7 +630,7 @@ export default function EditClass() {
               tabIndex={0}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Deleting..." : "Delete Class"}
+              {isSubmitting ? "Deleting..." : (isSeries ? "Delete Series" : "Delete Class")}
             </Button>
           </CardContent>
         </Card>
@@ -544,8 +641,8 @@ export default function EditClass() {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the class
-                <span className="font-semibold"> {classData.name}</span> and remove all associated data from our servers.
+                This action cannot be undone. This will permanently delete the {isSeries ? 'series' : 'class'}
+                <span className="font-semibold"> {isSeries && classData.topic ? classData.topic : classData.name}</span> and remove all associated data from our servers.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -561,7 +658,7 @@ export default function EditClass() {
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 tabIndex={0}
               >
-                {isSubmitting ? 'Deleting...' : 'Delete Class'}
+                {isSubmitting ? 'Deleting...' : (isSeries ? 'Delete Series' : 'Delete Class')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

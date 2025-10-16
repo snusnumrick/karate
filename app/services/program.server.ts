@@ -18,6 +18,7 @@ function mapProgramRow(row: ProgramRow): Program {
     engagement_type: row.engagement_type ?? 'program',
     ability_category: row.ability_category ?? undefined,
     delivery_format: row.delivery_format ?? undefined,
+    seminar_type: row.seminar_type ?? undefined,
     audience_scope: row.audience_scope ?? 'youth',
     slug: row.slug ?? undefined,
     min_capacity: row.min_capacity ?? undefined,
@@ -60,6 +61,7 @@ export async function createProgram(
     engagement_type: programData.engagement_type ?? 'program',
     ability_category: programData.ability_category ?? null,
     delivery_format: programData.delivery_format ?? null,
+    seminar_type: programData.seminar_type ?? null,
     audience_scope: programData.audience_scope ?? 'youth',
     slug: programData.slug ?? null,
     // Capacity constraints
@@ -127,6 +129,7 @@ export async function updateProgram(
   if (updates.engagement_type !== undefined) updateData.engagement_type = updates.engagement_type;
   if (updates.ability_category !== undefined) updateData.ability_category = updates.ability_category ?? null;
   if (updates.delivery_format !== undefined) updateData.delivery_format = updates.delivery_format ?? null;
+  if (updates.seminar_type !== undefined) updateData.seminar_type = updates.seminar_type ?? null;
   if (updates.audience_scope !== undefined) updateData.audience_scope = updates.audience_scope;
   if (updates.slug !== undefined) updateData.slug = updates.slug || null;
   // Capacity constraints
@@ -266,6 +269,7 @@ export async function getProgramById(
     engagement_type: data.engagement_type,
     ability_category: data.ability_category || undefined,
     delivery_format: data.delivery_format || undefined,
+    seminar_type: data.seminar_type || undefined,
     audience_scope: data.audience_scope ?? 'youth',
     slug: data.slug || undefined,
     min_capacity: data.min_capacity ?? undefined,
@@ -441,12 +445,43 @@ export async function getSeminars(
     is_active?: boolean;
     search?: string;
     ability_category?: 'able' | 'adaptive';
-    delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory';
+    seminar_type?: 'introductory' | 'intermediate' | 'advanced';
     audience_scope?: 'youth' | 'adults' | 'mixed';
   } = {},
   supabase = getSupabaseAdminClient()
 ): Promise<Program[]> {
-  return getPrograms({ ...filters, engagement_type: 'seminar' }, supabase);
+  let query = supabase.from('programs').select('*').eq('engagement_type', 'seminar');
+
+  // Apply filters
+  if (filters.is_active !== undefined) {
+    query = query.eq('is_active', filters.is_active);
+  }
+
+  if (filters.ability_category) {
+    query = query.eq('ability_category', filters.ability_category);
+  }
+
+  if (filters.seminar_type) {
+    query = query.eq('seminar_type', filters.seminar_type);
+  }
+
+  if (filters.audience_scope) {
+    query = query.eq('audience_scope', filters.audience_scope);
+  }
+
+  if (filters.search) {
+    query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+  }
+
+  query = query.order('name');
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to fetch seminars: ${error.message}`);
+  }
+
+  return (data || []).map(row => mapProgramRow(row as ProgramRow));
 }
 
 /**
@@ -464,12 +499,17 @@ export async function getSeminarWithSeries(
         id,
         name,
         description,
+        topic,
         series_label,
+        series_status,
+        registration_status,
         series_start_on,
         series_end_on,
         sessions_per_week_override,
         session_duration_minutes,
         series_session_quota,
+        price_override_cents,
+        registration_fee_override_cents,
         allow_self_enrollment,
         min_capacity,
         max_capacity,
@@ -514,12 +554,17 @@ export async function getSeminarWithSeries(
     return {
       ...cls,
       description: cls.description ?? undefined,
+      topic: cls.topic ?? undefined,
       series_label: cls.series_label ?? undefined,
+      series_status: cls.series_status ?? 'tentative',
+      registration_status: cls.registration_status ?? 'closed',
       series_start_on: cls.series_start_on ?? undefined,
       series_end_on: cls.series_end_on ?? undefined,
       sessions_per_week_override: cls.sessions_per_week_override ?? undefined,
       session_duration_minutes: cls.session_duration_minutes ?? undefined,
       series_session_quota: cls.series_session_quota ?? undefined,
+      price_override_cents: cls.price_override_cents ?? undefined,
+      registration_fee_override_cents: cls.registration_fee_override_cents ?? undefined,
       min_capacity: cls.min_capacity ?? undefined,
       max_capacity: cls.max_capacity ?? undefined,
       allow_self_enrollment: cls.allow_self_enrollment ?? false,

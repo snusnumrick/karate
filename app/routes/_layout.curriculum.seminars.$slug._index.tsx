@@ -10,6 +10,8 @@ import { formatMoney, fromCents, toCents } from "~/utils/money";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const { slug } = params;
+  console.log('[Seminar Detail] Loading seminar with slug:', slug);
+
   if (!slug) {
     throw new Response("Not Found", { status: 404 });
   }
@@ -19,16 +21,19 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   // Try to get program by slug first
   const program = await getProgramBySlug(slug, supabaseServer);
+  console.log('[Seminar Detail] Program by slug:', program ? program.id : 'not found');
 
   // If not found by slug, try by ID
   let seminarData;
   if (!program) {
     seminarData = await getSeminarWithSeries(slug, supabaseServer);
+    console.log('[Seminar Detail] Seminar by ID:', seminarData ? seminarData.id : 'not found');
     if (!seminarData) {
       throw new Response("Seminar not found", { status: 404 });
     }
   } else {
     seminarData = await getSeminarWithSeries(program.id, supabaseServer);
+    console.log('[Seminar Detail] Seminar from program:', seminarData ? seminarData.id : 'not found');
   }
 
   const seminar = seminarData
@@ -49,9 +54,7 @@ export default function SeminarDetail() {
   const formatCurrency = (value?: number | null) =>
     value != null ? formatMoney(fromCents(value), { showCurrency: true }) : null;
 
-  const primaryPrice = formatCurrency(seminar.single_purchase_price_cents);
-  const monthlySubscription = formatCurrency(seminar.subscription_monthly_price_cents);
-  const yearlySubscription = formatCurrency(seminar.subscription_yearly_price_cents);
+  const defaultSeminarPrice = formatCurrency(seminar.single_purchase_price_cents);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -74,9 +77,9 @@ export default function SeminarDetail() {
                   {seminar.ability_category}
                 </Badge>
               )}
-              {seminar.delivery_format && (
+              {seminar.seminar_type && (
                 <Badge variant="secondary" className="text-sm">
-                  {seminar.delivery_format.replace(/_/g, ' ')}
+                  {seminar.seminar_type.charAt(0).toUpperCase() + seminar.seminar_type.slice(1)}
                 </Badge>
               )}
               {seminar.audience_scope && (
@@ -127,40 +130,14 @@ export default function SeminarDetail() {
           </Card>
         )}
 
-        {primaryPrice && (
+        {defaultSeminarPrice && (
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 text-primary flex items-center justify-center text-2xl">$</div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Price</p>
-                  <p className="text-xl font-semibold">{primaryPrice}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {monthlySubscription && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 text-primary flex items-center justify-center text-2xl">$</div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Monthly Subscription</p>
-                  <p className="text-xl font-semibold">{monthlySubscription}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {yearlySubscription && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 text-primary flex items-center justify-center text-2xl">$</div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Yearly Subscription</p>
-                  <p className="text-xl font-semibold">{yearlySubscription}</p>
+                  <p className="text-sm text-muted-foreground">Default Price</p>
+                  <p className="text-xl font-semibold">{defaultSeminarPrice}</p>
                 </div>
               </div>
             </CardContent>
@@ -178,9 +155,15 @@ export default function SeminarDetail() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
+                      {series.topic && (
+                        <p className="text-sm text-muted-foreground mb-1">Topic</p>
+                      )}
                       <CardTitle>
-                        {series.series_label || series.name || 'Seminar Series'}
+                        {series.topic || series.series_label || series.name || 'Seminar Series'}
                       </CardTitle>
+                      {series.series_label && series.topic && (
+                        <p className="text-sm text-muted-foreground mt-1">{series.series_label}</p>
+                      )}
                       {series.description && (
                         <CardDescription className="mt-2">
                           {series.description}
@@ -188,16 +171,33 @@ export default function SeminarDetail() {
                       )}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant={series.is_active ? 'default' : 'secondary'}>
-                        {getSeriesStatus(series)}
+                      <Badge variant={getSeriesStatusVariant(series)}>
+                        {formatSeriesStatus(series.series_status)}
                       </Badge>
-                      <Badge variant={series.allow_self_enrollment ? 'default' : 'secondary'}>
-                        {getRegistrationStatus(series)}
+                      <Badge variant={getRegistrationStatusVariant(series)}>
+                        {formatRegistrationStatus(series.registration_status)}
                       </Badge>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Series Pricing */}
+                  {(series.price_override_cents != null || seminar.single_purchase_price_cents != null) && (
+                    <div className="mb-4 p-3 bg-primary/5 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Price:</span>
+                        <span className="text-lg font-semibold">
+                          {formatCurrency(series.price_override_cents ?? seminar.single_purchase_price_cents)}
+                        </span>
+                      </div>
+                      {series.price_override_cents != null && series.price_override_cents !== seminar.single_purchase_price_cents && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Series-specific pricing (default: {formatCurrency(seminar.single_purchase_price_cents)})
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
                     {series.series_start_on && series.series_end_on && (
                       <div className="flex items-center gap-2 text-sm">
@@ -281,17 +281,19 @@ export default function SeminarDetail() {
 
                   {series.is_active && series.allow_self_enrollment && (
                     <div className="flex gap-2">
-                      <Button asChild className="flex-1">
-                        {user ? (
+                      {user ? (
+                        <Button asChild>
                           <Link to={`/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`}>
                             Register Now
                           </Link>
-                        ) : (
-                          <Link to={`/login?redirectTo=/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`}>
+                        </Button>
+                      ) : (
+                        <Button asChild>
+                          <Link to={`/login?redirectTo=${encodeURIComponent(`/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`)}`}>
                             Sign In to Register
                           </Link>
-                        )}
-                      </Button>
+                        </Button>
+                      )}
                     </div>
                   )}
                   {(!series.allow_self_enrollment || !series.is_active) && (
@@ -376,30 +378,37 @@ function deserializeSeminarForClient(seminar: LoaderSeminar): SerializedSeminar 
   } as SerializedSeminar;
 }
 
-function getSeriesStatus(series: SerializedSeries): string {
-  if (!series.is_active) {
-    return 'Cancelled';
-  }
-
-  const today = new Date();
-  const start = series.series_start_on ? new Date(series.series_start_on) : null;
-  const end = series.series_end_on ? new Date(series.series_end_on) : null;
-
-  if (start && start > today) {
-    return 'Scheduled';
-  }
-
-  if (end && end < today) {
-    return 'Completed';
-  }
-
-  return series.on_demand ? 'On-demand' : 'In Progress';
+function formatSeriesStatus(status: string): string {
+  const statusMap: Record<string, string> = {
+    'tentative': 'Tentative',
+    'confirmed': 'Confirmed',
+    'cancelled': 'Cancelled',
+    'in_progress': 'In Progress',
+    'completed': 'Completed',
+  };
+  return statusMap[status] || status;
 }
 
-function getRegistrationStatus(series: SerializedSeries): string {
-  if (!series.is_active) {
-    return 'Registration Closed';
-  }
+function formatRegistrationStatus(status: string): string {
+  const statusMap: Record<string, string> = {
+    'open': 'Registration Open',
+    'closed': 'Registration Closed',
+    'waitlisted': 'Waitlist Available',
+  };
+  return statusMap[status] || status;
+}
 
-  return series.allow_self_enrollment ? 'Registration Open' : 'Registration Closed';
+function getSeriesStatusVariant(series: SerializedSeries): 'default' | 'secondary' | 'destructive' | 'outline' {
+  const status = series.series_status || 'tentative';
+  if (status === 'cancelled') return 'destructive';
+  if (status === 'completed') return 'secondary';
+  if (status === 'confirmed' || status === 'in_progress') return 'default';
+  return 'outline';
+}
+
+function getRegistrationStatusVariant(series: SerializedSeries): 'default' | 'secondary' | 'outline' {
+  const status = series.registration_status || 'closed';
+  if (status === 'open') return 'default';
+  if (status === 'waitlisted') return 'outline';
+  return 'secondary';
 }

@@ -1,8 +1,8 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, Link } from "@remix-run/react";
 import { requireAdminUser } from "~/utils/auth.server";
-import { createProgram } from "~/services/program.server";
-import { addProgramWaiver } from "~/services/waiver.server";
+import { getProgramById, updateProgram } from "~/services/program.server";
+import { getProgramRequiredWaivers, addProgramWaiver, removeProgramWaiver, updateProgramWaiver } from "~/services/waiver.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { csrf } from "~/utils/csrf.server";
 import { Button } from "~/components/ui/button";
@@ -14,26 +14,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Checkbox } from "~/components/ui/checkbox";
 import { BookOpen } from "lucide-react";
 import { AppBreadcrumb } from "~/components/AppBreadcrumb";
-import { type CreateProgramData } from "~/types/multi-class";
-import { toMoney, isNegative, ZERO_MONEY } from "~/utils/money";
+import type { UpdateProgramData } from "~/types/multi-class";
+import { toMoney, isNegative, serializeMoney } from "~/utils/money";
+import type { MoneyJSON } from "~/utils/money";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 type ActionData = {
   errors?: {
     name?: string;
     slug?: string;
-    duration_minutes?: string;
     min_age?: string;
     max_age?: string;
     single_purchase_price?: string;
-    subscription_monthly_price?: string;
-    subscription_yearly_price?: string;
     general?: string;
   };
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
   await requireAdminUser(request);
+  const { id } = params;
+
+  if (!id) {
+    throw new Response("Not Found", { status: 404 });
+  }
+
+  const seminar = await getProgramById(id);
+
+  if (!seminar || seminar.engagement_type !== 'seminar') {
+    throw new Response("Seminar not found", { status: 404 });
+  }
 
   // Get all available waivers
   const supabaseAdmin = getSupabaseAdminClient();
@@ -42,32 +51,51 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .select('*')
     .order('title', { ascending: true });
 
+  // Get seminar-specific waivers
+  const seminarWaivers = await getProgramRequiredWaivers(id);
+
   return json({
+    seminar: {
+      ...seminar,
+      monthly_fee: seminar.monthly_fee ? serializeMoney(seminar.monthly_fee) : undefined,
+      registration_fee: seminar.registration_fee ? serializeMoney(seminar.registration_fee) : undefined,
+      yearly_fee: seminar.yearly_fee ? serializeMoney(seminar.yearly_fee) : undefined,
+      individual_session_fee: seminar.individual_session_fee ? serializeMoney(seminar.individual_session_fee) : undefined,
+      single_purchase_price: seminar.single_purchase_price ? serializeMoney(seminar.single_purchase_price) : undefined,
+      subscription_monthly_price: seminar.subscription_monthly_price ? serializeMoney(seminar.subscription_monthly_price) : undefined,
+      subscription_yearly_price: seminar.subscription_yearly_price ? serializeMoney(seminar.subscription_yearly_price) : undefined,
+    },
     allWaivers: allWaivers ?? [],
+    seminarWaivers: seminarWaivers,
   });
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, params }: ActionFunctionArgs) {
   await requireAdminUser(request);
   await csrf.validate(request);
+  const { id } = params;
+
+  if (!id) {
+    throw new Response("Not Found", { status: 404 });
+  }
+
   const formData = await request.formData();
 
   const name = formData.get("name") as string;
   const slug = formData.get("slug") as string;
   const description = formData.get("description") as string;
-  const durationMinutes = 60; // Default for seminars, actual duration set at series level
 
   // Seminar-specific fields
   const abilityCategory = formData.get("ability_category") as string || undefined;
   const seminarType = formData.get("seminar_type") as string || undefined;
-  const audienceScope = formData.get("audience_scope") as string || "youth";
+  const audienceScope = formData.get("audience_scope") as string || undefined;
 
   // Capacity
   const minCapacity = formData.get("min_capacity") ? parseInt(formData.get("min_capacity") as string) : undefined;
   const maxCapacity = formData.get("max_capacity") ? parseInt(formData.get("max_capacity") as string) : undefined;
 
   // Session frequency
-  const sessionsPerWeek = formData.get("sessions_per_week") ? parseInt(formData.get("sessions_per_week") as string) : 1;
+  const sessionsPerWeek = formData.get("sessions_per_week") ? parseInt(formData.get("sessions_per_week") as string) : undefined;
 
   // Belt requirements
   const beltRankRequired = formData.get("belt_rank_required") === "on";
@@ -77,12 +105,14 @@ export async function action({ request }: ActionFunctionArgs) {
   // Age constraints
   const minAge = formData.get("min_age") ? parseInt(formData.get("min_age") as string) : undefined;
   const maxAge = formData.get("max_age") ? parseInt(formData.get("max_age") as string) : undefined;
-  const genderRestriction = formData.get("gender_restriction") as string || "none";
+  const genderRestriction = formData.get("gender_restriction") as string || undefined;
   const specialNeedsSupport = formData.get("special_needs_support") === "on";
 
   // Pricing
-  const seminarPrice = formData.get("seminar_price") ? toMoney(formData.get("seminar_price")) : undefined;
-  const registrationFee = formData.get("registration_fee") ? toMoney(formData.get("registration_fee")) : ZERO_MONEY;
+  const seminarPriceValue = formData.get("seminar_price") as string;
+  const seminarPrice = seminarPriceValue ? toMoney(seminarPriceValue) : undefined;
+  const registrationFeeValue = formData.get("registration_fee") as string;
+  const registrationFee = registrationFeeValue ? toMoney(registrationFeeValue) : undefined;
 
   const isActive = formData.get("is_active") === "on";
 
@@ -118,15 +148,13 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const programData = {
+    const updateData: Partial<UpdateProgramData> = {
       name,
       description: description || undefined,
-      duration_minutes: durationMinutes,
       // Seminar-specific
-      engagement_type: 'seminar',
-      ability_category: abilityCategory,
-      seminar_type: seminarType,
-      audience_scope: audienceScope,
+      ability_category: abilityCategory as 'able' | 'adaptive' | undefined,
+      seminar_type: seminarType as 'introductory' | 'intermediate' | 'advanced' | undefined,
+      audience_scope: audienceScope as 'youth' | 'adults' | 'mixed' | undefined,
       slug: slug || undefined,
       // Capacity constraints
       min_capacity: minCapacity,
@@ -135,66 +163,90 @@ export async function action({ request }: ActionFunctionArgs) {
       sessions_per_week: sessionsPerWeek,
       // Belt requirements
       belt_rank_required: beltRankRequired,
-      min_belt_rank: minBeltRank,
-      max_belt_rank: maxBeltRank,
+      min_belt_rank: minBeltRank as 'white' | 'yellow' | 'orange' | 'green' | 'blue' | 'purple' | 'red' | 'brown' | 'black' | undefined,
+      max_belt_rank: maxBeltRank as 'white' | 'yellow' | 'orange' | 'green' | 'blue' | 'purple' | 'red' | 'brown' | 'black' | undefined,
       // Age and demographic constraints
       min_age: minAge,
       max_age: maxAge,
-      gender_restriction: genderRestriction as 'male' | 'female' | 'none',
+      gender_restriction: genderRestriction as 'male' | 'female' | 'none' | undefined,
       special_needs_support: specialNeedsSupport,
       // Pricing structure
       single_purchase_price: seminarPrice,
       registration_fee: registrationFee,
-      // Set unused pricing fields to zero for seminars
-      monthly_fee: ZERO_MONEY,
-      yearly_fee: ZERO_MONEY,
-      individual_session_fee: ZERO_MONEY,
       // System fields
       is_active: isActive,
-    } as CreateProgramData;
+    };
 
-    const newSeminar = await createProgram(programData);
+    await updateProgram(id, updateData);
 
-    // Handle waiver assignments for new seminar
-    if (newSeminar?.id) {
-      const supabaseAdmin = getSupabaseAdminClient();
-      const { data: allWaivers } = await supabaseAdmin
-        .from('waivers')
-        .select('id')
-        .order('id');
+    // Handle waiver assignments
+    const supabaseAdmin = getSupabaseAdminClient();
+    const { data: allWaivers } = await supabaseAdmin
+      .from('waivers')
+      .select('id')
+      .order('id');
 
-      if (allWaivers) {
-        for (const waiver of allWaivers) {
-          const waiverId = waiver.id;
-          const isRequired = formData.get(`waiver_required_${waiverId}`) === 'on';
-          const requiredForTrial = formData.get(`waiver_trial_${waiverId}`) === 'on';
-          const requiredForFull = formData.get(`waiver_full_${waiverId}`) === 'on';
+    if (allWaivers) {
+      for (const waiver of allWaivers) {
+        const waiverId = waiver.id;
+        const isRequired = formData.get(`waiver_required_${waiverId}`) === 'on';
+        const requiredForTrial = formData.get(`waiver_trial_${waiverId}`) === 'on';
+        const requiredForFull = formData.get(`waiver_full_${waiverId}`) === 'on';
 
-          if (isRequired) {
-            await addProgramWaiver(newSeminar.id, waiverId, {
+        // Check if this waiver is currently assigned to the seminar
+        const { data: existingAssignment } = await supabaseAdmin
+          .from('program_waivers')
+          .select('*')
+          .eq('program_id', id)
+          .eq('waiver_id', waiverId)
+          .single();
+
+        if (isRequired) {
+          // Add or update the waiver assignment
+          if (existingAssignment) {
+            await updateProgramWaiver(id, waiverId, {
+              is_required: true,
+              required_for_trial: requiredForTrial,
+              required_for_full_enrollment: requiredForFull,
+            });
+          } else {
+            await addProgramWaiver(id, waiverId, {
               is_required: true,
               required_for_trial: requiredForTrial,
               required_for_full_enrollment: requiredForFull,
             });
           }
+        } else if (existingAssignment) {
+          // Remove the waiver assignment if it exists but is no longer required
+          await removeProgramWaiver(id, waiverId);
         }
       }
     }
 
     return redirect("/admin/programs?filter=seminar");
   } catch (error) {
-    console.error("Error creating seminar:", error);
+    console.error("Error updating seminar:", error);
     return json<ActionData>({
-      errors: { general: "Failed to create seminar. Please try again." }
+      errors: { general: "Failed to update seminar. Please try again." }
     }, { status: 500 });
   }
 }
 
-export default function NewSeminar() {
-  const { allWaivers } = useLoaderData<typeof loader>();
+export default function EditSeminar() {
+  const { seminar, allWaivers, seminarWaivers } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+
+  const moneyToString = (money: MoneyJSON | undefined) => {
+    if (!money) return "";
+    return (money.amount / 100).toString();
+  };
+
+  // Create a map of waiver_id -> seminar waiver settings for quick lookup
+  const seminarWaiverMap = new Map(
+    seminarWaivers.map(pw => [pw.waiver_id, pw])
+  );
 
   return (
     <div className="space-y-6">
@@ -202,16 +254,16 @@ export default function NewSeminar() {
         items={[
           { label: "Admin", href: "/admin" },
           { label: "Programs", href: "/admin/programs" },
-          { label: "New Seminar" }
+          { label: seminar.name }
         ]}
         className="mb-6"
       />
 
       <div className="flex items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Create Seminar</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Seminar</h1>
           <p className="text-muted-foreground">
-            Set up a new seminar template for multi-session training programs
+            Update seminar template settings and configuration
           </p>
         </div>
       </div>
@@ -252,6 +304,7 @@ export default function NewSeminar() {
                   <Input
                     id="name"
                     name="name"
+                    defaultValue={seminar.name}
                     placeholder="e.g., Instructor Certification Seminar"
                     required
                   />
@@ -265,6 +318,7 @@ export default function NewSeminar() {
                   <Input
                     id="slug"
                     name="slug"
+                    defaultValue={seminar.slug || ''}
                     placeholder="e.g., instructor-certification"
                   />
                   {actionData?.errors?.slug && (
@@ -281,6 +335,7 @@ export default function NewSeminar() {
                 <Textarea
                   id="description"
                   name="description"
+                  defaultValue={seminar.description || ''}
                   placeholder="Describe the seminar content, objectives, and what participants will learn..."
                   rows={4}
                 />
@@ -300,7 +355,7 @@ export default function NewSeminar() {
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="ability_category">Ability Category</Label>
-                  <Select name="ability_category">
+                  <Select name="ability_category" defaultValue={seminar.ability_category || undefined}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category..." />
                     </SelectTrigger>
@@ -313,7 +368,7 @@ export default function NewSeminar() {
 
                 <div className="space-y-2">
                   <Label htmlFor="seminar_type">Seminar Type</Label>
-                  <Select name="seminar_type">
+                  <Select name="seminar_type" defaultValue={seminar.seminar_type || undefined}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type..." />
                     </SelectTrigger>
@@ -327,7 +382,7 @@ export default function NewSeminar() {
 
                 <div className="space-y-2">
                   <Label htmlFor="audience_scope">Target Audience *</Label>
-                  <Select name="audience_scope" defaultValue="youth">
+                  <Select name="audience_scope" defaultValue={seminar.audience_scope || 'youth'}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -355,6 +410,7 @@ export default function NewSeminar() {
                     name="min_capacity"
                     type="number"
                     min="1"
+                    defaultValue={seminar.min_capacity || ''}
                     placeholder="e.g., 5"
                   />
                 </div>
@@ -366,6 +422,7 @@ export default function NewSeminar() {
                     name="max_capacity"
                     type="number"
                     min="1"
+                    defaultValue={seminar.max_capacity || ''}
                     placeholder="e.g., 20"
                   />
                 </div>
@@ -377,7 +434,7 @@ export default function NewSeminar() {
                     name="sessions_per_week"
                     type="number"
                     min="1"
-                    defaultValue="1"
+                    defaultValue={seminar.sessions_per_week || 1}
                   />
                 </div>
               </div>
@@ -397,6 +454,7 @@ export default function NewSeminar() {
                     name="min_age"
                     type="number"
                     min="0"
+                    defaultValue={seminar.min_age || ''}
                   />
                 </div>
 
@@ -407,19 +465,24 @@ export default function NewSeminar() {
                     name="max_age"
                     type="number"
                     min="0"
+                    defaultValue={seminar.max_age || ''}
                   />
                 </div>
               </div>
 
               <div className="flex items-center space-x-2">
-                <Checkbox id="belt_rank_required" name="belt_rank_required" />
+                <Checkbox
+                  id="belt_rank_required"
+                  name="belt_rank_required"
+                  defaultChecked={seminar.belt_rank_required || false}
+                />
                 <Label htmlFor="belt_rank_required">Require specific belt rank</Label>
               </div>
 
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="gender_restriction">Gender Restriction</Label>
-                  <Select name="gender_restriction" defaultValue="none">
+                  <Select name="gender_restriction" defaultValue={seminar.gender_restriction || 'none'}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -433,7 +496,11 @@ export default function NewSeminar() {
 
                 <div className="space-y-2 md:col-span-2">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="special_needs_support" name="special_needs_support" />
+                    <Checkbox
+                      id="special_needs_support"
+                      name="special_needs_support"
+                      defaultChecked={seminar.special_needs_support || false}
+                    />
                     <Label htmlFor="special_needs_support">Offers special needs support</Label>
                   </div>
                 </div>
@@ -456,6 +523,7 @@ export default function NewSeminar() {
                     type="number"
                     step="0.01"
                     min="0"
+                    defaultValue={moneyToString(seminar.single_purchase_price)}
                     placeholder="0.00"
                   />
                   <p className="text-sm text-muted-foreground">
@@ -471,6 +539,7 @@ export default function NewSeminar() {
                     type="number"
                     step="0.01"
                     min="0"
+                    defaultValue={moneyToString(seminar.registration_fee)}
                     placeholder="0.00"
                   />
                   <p className="text-sm text-muted-foreground">
@@ -484,7 +553,9 @@ export default function NewSeminar() {
             <div className="space-y-6">
               <div className="border-b pb-4">
                 <h3 className="text-lg font-semibold">Waiver Requirements</h3>
-                <p className="text-sm text-muted-foreground">Select which waivers are required for this seminar</p>
+                <p className="text-sm text-muted-foreground">
+                  Select which waivers are required for this seminar. You can specify different requirements for trial vs full enrollment.
+                </p>
               </div>
 
               {allWaivers.length === 0 ? (
@@ -493,50 +564,57 @@ export default function NewSeminar() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {allWaivers.map((waiver) => (
-                    <div key={waiver.id} className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-start space-x-3">
-                        <Checkbox
-                          id={`waiver_required_${waiver.id}`}
-                          name={`waiver_required_${waiver.id}`}
-                          className="mt-1"
-                        />
-                        <div className="flex-1">
-                          <Label htmlFor={`waiver_required_${waiver.id}`} className="text-sm font-medium cursor-pointer">
-                            {waiver.title}
-                          </Label>
-                          {waiver.description && (
-                            <p className="text-xs text-muted-foreground mt-1">{waiver.description}</p>
-                          )}
-                        </div>
-                      </div>
+                  {allWaivers.map((waiver) => {
+                    const seminarWaiver = seminarWaiverMap.get(waiver.id);
+                    const isAssigned = !!seminarWaiver;
 
-                      {/* Nested checkboxes for enrollment type */}
-                      <div className="ml-8 pl-4 border-l-2 space-y-2">
-                        <div className="flex items-center space-x-2">
+                    return (
+                      <div key={waiver.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start space-x-3">
                           <Checkbox
-                            id={`waiver_trial_${waiver.id}`}
-                            name={`waiver_trial_${waiver.id}`}
-                            className="h-4 w-4"
+                            id={`waiver_required_${waiver.id}`}
+                            name={`waiver_required_${waiver.id}`}
+                            defaultChecked={isAssigned}
+                            className="mt-1"
                           />
-                          <Label htmlFor={`waiver_trial_${waiver.id}`} className="text-xs cursor-pointer">
-                            Required for trial enrollment
-                          </Label>
+                          <div className="flex-1">
+                            <Label htmlFor={`waiver_required_${waiver.id}`} className="text-sm font-medium cursor-pointer">
+                              {waiver.title}
+                            </Label>
+                            {waiver.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{waiver.description}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`waiver_full_${waiver.id}`}
-                            name={`waiver_full_${waiver.id}`}
-                            defaultChecked={true}
-                            className="h-4 w-4"
-                          />
-                          <Label htmlFor={`waiver_full_${waiver.id}`} className="text-xs cursor-pointer">
-                            Required for full enrollment
-                          </Label>
+
+                        {/* Nested checkboxes for enrollment type */}
+                        <div className="ml-8 pl-4 border-l-2 space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`waiver_trial_${waiver.id}`}
+                              name={`waiver_trial_${waiver.id}`}
+                              defaultChecked={seminarWaiver?.required_for_trial ?? false}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor={`waiver_trial_${waiver.id}`} className="text-xs cursor-pointer">
+                              Required for trial enrollment
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`waiver_full_${waiver.id}`}
+                              name={`waiver_full_${waiver.id}`}
+                              defaultChecked={seminarWaiver?.required_for_full_enrollment ?? true}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor={`waiver_full_${waiver.id}`} className="text-xs cursor-pointer">
+                              Required for full enrollment
+                            </Label>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -544,7 +622,11 @@ export default function NewSeminar() {
             {/* Status */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <Checkbox id="is_active" name="is_active" defaultChecked />
+                <Checkbox
+                  id="is_active"
+                  name="is_active"
+                  defaultChecked={seminar.is_active}
+                />
                 <Label htmlFor="is_active">Active (visible to users)</Label>
               </div>
             </div>
@@ -552,7 +634,7 @@ export default function NewSeminar() {
             {/* Submit */}
             <div className="flex gap-4">
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Seminar"}
+                {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
               <Button type="button" variant="outline" onClick={() => window.history.back()}>
                 Cancel

@@ -29,6 +29,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     yearly_fee: program.yearly_fee ? serializeMoney(program.yearly_fee) : undefined,
     individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
     registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
+    single_purchase_price: program.single_purchase_price ? serializeMoney(program.single_purchase_price) : undefined,
+    subscription_monthly_price: program.subscription_monthly_price ? serializeMoney(program.subscription_monthly_price) : undefined,
+    subscription_yearly_price: program.subscription_yearly_price ? serializeMoney(program.subscription_yearly_price) : undefined,
   }));
 
   return json({ programs: serializedPrograms, showInactive, filter: filter || 'all' });
@@ -144,45 +147,67 @@ export default function ProgramsIndex() {
               <Users className="h-12 w-12 text-muted-foreground mb-4" />
             )}
             <h3 className="text-lg font-semibold mb-2">
-              {showInactive ? "No programs found" : "No active programs found"}
+              {showInactive
+                ? `No ${filter === 'seminar' ? 'seminars' : filter === 'program' ? 'programs' : 'programs or seminars'} found`
+                : `No active ${filter === 'seminar' ? 'seminars' : filter === 'program' ? 'programs' : 'programs or seminars'} found`
+              }
             </h3>
             <p className="text-muted-foreground text-center mb-4">
               {showInactive
-                ? "Create your first program to start managing classes and enrollments"
-                : "All programs are currently inactive, or create your first program to get started"
+                ? `Create your first ${filter === 'seminar' ? 'seminar' : filter === 'program' ? 'program' : 'program or seminar'} to start managing classes and enrollments`
+                : `All ${filter === 'seminar' ? 'seminars are' : filter === 'program' ? 'programs are' : 'programs and seminars are'} currently inactive, or create your first one to get started`
               }
             </p>
             <div className="flex gap-2">
               {!showInactive && (
                 <Button variant="outline" onClick={() => handleToggleInactive(true)}>
                   <Archive className="h-4 w-4 mr-2" />
-                  Show Inactive Programs
+                  Show Inactive {filter === 'seminar' ? 'Seminars' : filter === 'program' ? 'Programs' : 'Programs & Seminars'}
                 </Button>
               )}
-              <Button asChild>
-                <Link to="/admin/programs/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Program
-                </Link>
-              </Button>
+              {filter !== 'program' && (
+                <Button asChild>
+                  <Link to="/admin/seminars/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Seminar
+                  </Link>
+                </Button>
+              )}
+              {filter !== 'seminar' && (
+                <Button asChild variant={filter === 'program' ? 'default' : 'outline'}>
+                  <Link to="/admin/programs/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Program
+                  </Link>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {programs.map((program) => {
+            const isSeminar = program.engagement_type === 'seminar';
             const monthlyFee = formatProgramFee(program.monthly_fee);
             const yearlyFee = formatProgramFee(program.yearly_fee);
             const sessionFee = formatProgramFee(program.individual_session_fee);
+            const seminarPrice = formatProgramFee(program.single_purchase_price);
 
             return (
               <Card key={program.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{program.name}</CardTitle>
-                    <Badge variant={program.is_active ? "default" : "secondary"}>
-                      {program.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    <div className="flex gap-2">
+                      {isSeminar && program.seminar_type && (
+                        <Badge variant="outline" className="text-xs">
+                          {program.seminar_type.charAt(0).toUpperCase() + program.seminar_type.slice(1)}
+                        </Badge>
+                      )}
+                      <Badge variant={program.is_active ? "default" : "secondary"}>
+                        {program.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
                   </div>
                   {program.description && (
                     <CardDescription>{program.description}</CardDescription>
@@ -190,30 +215,52 @@ export default function ProgramsIndex() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground flex items-center">
-                        {monthlyFee && isPositive(monthlyFee) ? 'Monthly Fee:' :
-                         yearlyFee && isPositive(yearlyFee) ? 'Yearly Fee:' :
-                         sessionFee && isPositive(sessionFee) ? 'Session Fee:' : 'Monthly Fee:'}
-                      </span>
-                      <span>
-                        {monthlyFee && isPositive(monthlyFee) ? formatMoney(monthlyFee, { showCurrency: true, trimTrailingZeros: true }) :
-                         yearlyFee && isPositive(yearlyFee) ? formatMoney(yearlyFee, { showCurrency: true, trimTrailingZeros: true }) :
-                         sessionFee && isPositive(sessionFee) ? formatMoney(sessionFee, { showCurrency: true, trimTrailingZeros: true }) : 'Not set'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        Duration:
-                      </span>
-                      <span>{program.duration_minutes} minutes</span>
-                    </div>
-
+                    {isSeminar ? (
+                      // Seminar-specific display
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Price:</span>
+                          <span>
+                            {seminarPrice && isPositive(seminarPrice)
+                              ? formatMoney(seminarPrice, { showCurrency: true, trimTrailingZeros: true })
+                              : 'Free'}
+                          </span>
+                        </div>
+                        {program.audience_scope && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Audience:</span>
+                            <span className="capitalize">{program.audience_scope}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      // Program-specific display
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground flex items-center">
+                            {monthlyFee && isPositive(monthlyFee) ? 'Monthly Fee:' :
+                             yearlyFee && isPositive(yearlyFee) ? 'Yearly Fee:' :
+                             sessionFee && isPositive(sessionFee) ? 'Session Fee:' : 'Monthly Fee:'}
+                          </span>
+                          <span>
+                            {monthlyFee && isPositive(monthlyFee) ? formatMoney(monthlyFee, { showCurrency: true, trimTrailingZeros: true }) :
+                             yearlyFee && isPositive(yearlyFee) ? formatMoney(yearlyFee, { showCurrency: true, trimTrailingZeros: true }) :
+                             sessionFee && isPositive(sessionFee) ? formatMoney(sessionFee, { showCurrency: true, trimTrailingZeros: true }) : 'Not set'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            Duration:
+                          </span>
+                          <span>{program.duration_minutes} minutes</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="flex gap-2 mt-4">
                     <Button asChild size="sm" variant="outline" className="flex-1">
-                      <Link to={`/admin/programs/${program.id}/edit`}>
+                      <Link to={isSeminar ? `/admin/seminars/${program.id}/edit` : `/admin/programs/${program.id}/edit`}>
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </Link>

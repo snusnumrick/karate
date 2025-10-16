@@ -17,10 +17,11 @@ export interface Program {
   name: string;
   description?: string;
   duration_minutes?: number;
-  // Seminar-specific fields (from migration 025)
+  // Seminar-specific fields (from migration 025 and 026)
   engagement_type: 'program' | 'seminar';
   ability_category?: 'able' | 'adaptive' | null; // Database enum
   delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory' | null;
+  seminar_type?: 'introductory' | 'intermediate' | 'advanced' | null;
   audience_scope: 'youth' | 'adults' | 'mixed';
   slug?: string | null;
   // Capacity constraints
@@ -65,15 +66,20 @@ export interface Class {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  // Seminar series fields (from migration 025)
+  // Seminar series fields (from migration 025 and 026)
+  topic?: string | null;
   series_label?: string | null;
+  series_status: 'tentative' | 'confirmed' | 'cancelled' | 'in_progress' | 'completed';
+  registration_status: 'open' | 'closed' | 'waitlisted';
   series_start_on?: string | null;
   series_end_on?: string | null;
   sessions_per_week_override?: number | null;
   session_duration_minutes?: number | null;
   series_session_quota?: number | null;
+  price_override_cents?: number | null;
+  registration_fee_override_cents?: number | null;
   min_capacity?: number | null;
-  allow_self_enrollment?: boolean;
+  allow_self_enrollment: boolean;
   on_demand?: boolean;
   audience_scope?: 'youth' | 'adults' | 'mixed' | null;
   // Relations
@@ -148,6 +154,7 @@ export interface CreateProgramData {
   engagement_type?: 'program' | 'seminar';
   ability_category?: 'able' | 'adaptive';
   delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory';
+  seminar_type?: 'introductory' | 'intermediate' | 'advanced';
   audience_scope?: 'youth' | 'adults' | 'mixed';
   slug?: string;
   // Capacity constraints
@@ -188,9 +195,23 @@ export interface CreateClassData {
   program_id: string; // Required
   name: string;
   description?: string;
+  topic?: string;
   max_capacity?: number;
   instructor_id?: string;
   is_active?: boolean;
+  series_status?: 'tentative' | 'confirmed' | 'cancelled' | 'in_progress' | 'completed';
+  registration_status?: 'open' | 'closed' | 'waitlisted';
+  allow_self_enrollment?: boolean;
+  series_label?: string;
+  series_start_on?: string;
+  series_end_on?: string;
+  sessions_per_week_override?: number;
+  session_duration_minutes?: number;
+  series_session_quota?: number;
+  price_override_cents?: number;
+  registration_fee_override_cents?: number;
+  min_capacity?: number;
+  on_demand?: boolean;
 }
 
 export interface UpdateClassData extends Partial<CreateClassData> {

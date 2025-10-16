@@ -16,9 +16,7 @@ export const createSeminarSchema = z.object({
   // Engagement and marketing fields
   engagement_type: z.literal('seminar'),
   ability_category: z.enum(['able', 'adaptive']).optional(),
-  delivery_format: z
-    .enum(['group', 'private', 'competition_individual', 'competition_team', 'introductory'])
-    .optional(),
+  seminar_type: z.enum(['introductory', 'intermediate', 'advanced']).optional(),
   audience_scope: z.enum(['youth', 'adults', 'mixed']).default('youth'),
 
   // Duration and capacity
@@ -81,7 +79,7 @@ export const updateSeminarSchema = z.object({
     }
   ).optional(),
   ability_category: z.enum(['able', 'adaptive']).optional(),
-  delivery_format: z.enum(['individual', 'small_group', 'group']).optional(),
+  seminar_type: z.enum(['introductory', 'intermediate', 'advanced']).optional(),
   audience_scope: z.enum(['youth', 'adults', 'mixed']).optional(),
   min_age: z.number().int().min(0).optional(),
   max_age: z.number().int().min(0).optional(),
@@ -104,7 +102,10 @@ export const createSeminarSeriesSchema = z.object({
   description: z.string().optional(),
 
   // Series-specific fields
+  topic: z.string().min(1, 'Topic is required').max(255).optional(),
   series_label: z.string().min(1, 'Series label is required').max(100),
+  series_status: z.enum(['tentative', 'confirmed', 'cancelled', 'in_progress', 'completed']).default('tentative'),
+  registration_status: z.enum(['open', 'closed', 'waitlisted']).default('closed'),
   series_start_on: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid start date',
   }),
@@ -120,6 +121,10 @@ export const createSeminarSeriesSchema = z.object({
   // Capacity
   min_capacity: z.number().int().min(1).optional(),
   max_capacity: z.number().int().min(1).optional(),
+
+  // Pricing overrides (in cents)
+  price_override_cents: z.number().int().min(0).optional(),
+  registration_fee_override_cents: z.number().int().min(0).optional(),
 
   // Registration settings
   allow_self_enrollment: z.boolean().default(false),
@@ -160,7 +165,10 @@ export const createSeminarSeriesSchema = z.object({
 export const updateSeminarSeriesSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255).optional(),
   description: z.string().optional(),
+  topic: z.string().min(1, 'Topic is required').max(255).optional(),
   series_label: z.string().min(1, 'Series label is required').max(100).optional(),
+  series_status: z.enum(['tentative', 'confirmed', 'cancelled', 'in_progress', 'completed']).optional(),
+  registration_status: z.enum(['open', 'closed', 'waitlisted']).optional(),
   series_start_on: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid start date',
   }).optional(),
@@ -172,6 +180,8 @@ export const updateSeminarSeriesSchema = z.object({
   series_session_quota: z.number().int().min(1, 'Must have at least one session').optional(),
   min_capacity: z.number().int().min(1).optional(),
   max_capacity: z.number().int().min(1).optional(),
+  price_override_cents: z.number().int().min(0).optional(),
+  registration_fee_override_cents: z.number().int().min(0).optional(),
   allow_self_enrollment: z.boolean().optional(),
   on_demand: z.boolean().optional(),
   instructor_id: z.string().uuid().optional(),

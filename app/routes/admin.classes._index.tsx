@@ -93,37 +93,123 @@ export default function AdminClassesIndex() {
 
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Classes</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {engagementFilter === 'seminar' ? 'Series' : engagementFilter === 'program' ? 'Classes' : 'Classes & Series'}
+          </h1>
           <p className="text-muted-foreground">
-            Manage class schedules, capacity, and enrollment.
+            {engagementFilter === 'seminar'
+              ? 'Manage seminar series, topics, and registration.'
+              : engagementFilter === 'program'
+              ? 'Manage class schedules, capacity, and enrollment.'
+              : 'Manage all class schedules and seminar series.'
+            }
           </p>
-          {engagementFilter === 'seminar' && (
-            <Badge variant="secondary" className="mt-2">Showing seminar series</Badge>
-          )}
         </div>
 
         <div className="flex gap-2">
           <Select value={selectedProgramId || "all"} onValueChange={handleProgramFilter}>
             <SelectTrigger className="w-48 input-custom-styles">
-              <SelectValue placeholder="Filter by program" />
+              <SelectValue placeholder={
+                engagementFilter === 'seminar' ? 'Filter by seminar' :
+                engagementFilter === 'program' ? 'Filter by program' :
+                'Filter by program/seminar'
+              } />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Programs</SelectItem>
-              {programs.map((program: ProgramType) => (
-                <SelectItem key={program.id} value={program.id}>
-                  {program.name}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">
+                {engagementFilter === 'seminar' ? 'All Seminars' :
+                 engagementFilter === 'program' ? 'All Programs' :
+                 'All Programs & Seminars'}
+              </SelectItem>
+              {programs
+                .filter((p: ProgramType) =>
+                  !engagementFilter ||
+                  (engagementFilter === 'seminar' && p.engagement_type === 'seminar') ||
+                  (engagementFilter === 'program' && p.engagement_type === 'program')
+                )
+                .map((program: ProgramType) => (
+                  <SelectItem key={program.id} value={program.id}>
+                    {program.name}
+                  </SelectItem>
+                ))
+              }
             </SelectContent>
           </Select>
 
-          <Button asChild>
-            <Link to="/admin/classes/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Class
-            </Link>
-          </Button>
+          {engagementFilter === 'seminar' ? (
+            <Button asChild>
+              <Link to="/admin/classes/new?engagement=seminar">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Series
+              </Link>
+            </Button>
+          ) : engagementFilter === 'program' ? (
+            <Button asChild>
+              <Link to="/admin/classes/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Class
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="outline">
+                <Link to="/admin/classes/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Class
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link to="/admin/classes/new?engagement=seminar">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Series
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2 border-b mb-6">
+        <button
+          onClick={() => {
+            searchParams.delete('engagement');
+            setSearchParams(searchParams);
+          }}
+          className={`px-4 py-2 border-b-2 transition-colors ${
+            !engagementFilter
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => {
+            searchParams.set('engagement', 'program');
+            setSearchParams(searchParams);
+          }}
+          className={`px-4 py-2 border-b-2 transition-colors ${
+            engagementFilter === 'program'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Classes
+        </button>
+        <button
+          onClick={() => {
+            searchParams.set('engagement', 'seminar');
+            setSearchParams(searchParams);
+          }}
+          className={`px-4 py-2 border-b-2 transition-colors ${
+            engagementFilter === 'seminar'
+              ? 'border-primary text-primary font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Series
+        </button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -134,10 +220,33 @@ export default function AdminClassesIndex() {
             <Card key={classItem.id} className="relative">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{classItem.name}</CardTitle>
-                  <Badge variant={classItem.is_active ? "default" : "secondary"}>
-                    {classItem.is_active ? "Active" : "Inactive"}
-                  </Badge>
+                  <CardTitle className="text-lg">
+                    {engagementFilter === 'seminar' && classItem.topic ? classItem.topic : classItem.name}
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    {engagementFilter === 'seminar' && classItem.series_status && (
+                      <Badge variant={
+                        classItem.series_status === 'cancelled' ? 'destructive' :
+                        classItem.series_status === 'completed' ? 'secondary' :
+                        classItem.series_status === 'confirmed' || classItem.series_status === 'in_progress' ? 'default' :
+                        'outline'
+                      }>
+                        {classItem.series_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </Badge>
+                    )}
+                    {engagementFilter === 'seminar' && classItem.registration_status && (
+                      <Badge variant={
+                        classItem.registration_status === 'open' ? 'default' :
+                        classItem.registration_status === 'waitlisted' ? 'secondary' :
+                        'outline'
+                      }>
+                        {classItem.registration_status.replace(/\b\w/g, l => l.toUpperCase())}
+                      </Badge>
+                    )}
+                    <Badge variant={classItem.is_active ? "default" : "secondary"}>
+                      {classItem.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
                 </div>
                 <CardDescription>
                   {program?.name} • {classItem.description}
@@ -182,19 +291,19 @@ export default function AdminClassesIndex() {
                 
                 <div className="flex gap-2 mt-4">
                   <Button asChild variant="outline" size="sm">
-                    <Link to={`/admin/classes/${classItem.id}/edit`}>
+                    <Link to={`/admin/classes/${classItem.id}/edit${program?.engagement_type === 'seminar' ? '?type=series' : ''}`}>
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Link>
                   </Button>
-                  
+
                   <Button asChild variant="outline" size="sm">
                     <Link to={`/admin/classes/${classItem.id}/sessions`}>
                       <Calendar className="h-4 w-4 mr-1" />
                       Sessions
                     </Link>
                   </Button>
-                  
+
                   <Button asChild variant="outline" size="sm">
                     <Link to={`/admin/enrollments?class=${classItem.id}`}>
                       <Users className="h-4 w-4 mr-1" />
@@ -212,19 +321,62 @@ export default function AdminClassesIndex() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No classes found</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {engagementFilter === 'seminar'
+                ? 'No series found'
+                : engagementFilter === 'program'
+                ? 'No classes found'
+                : 'No classes or series found'
+              }
+            </h3>
             <p className="text-muted-foreground text-center mb-4">
-              {selectedProgramId 
-                ? "No classes found for the selected program."
-                : "Get started by creating your first class."
+              {selectedProgramId
+                ? (engagementFilter === 'seminar'
+                    ? "No series found for the selected seminar."
+                    : engagementFilter === 'program'
+                    ? "No classes found for the selected program."
+                    : "No classes or series found for the selected program/seminar.")
+                : (engagementFilter === 'seminar'
+                    ? "Get started by creating your first series."
+                    : engagementFilter === 'program'
+                    ? "Get started by creating your first class."
+                    : "Get started by creating your first class or series.")
               }
             </p>
-            <Button asChild>
-              <Link to="/admin/classes/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Class
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              {!engagementFilter && (
+                <>
+                  <Button asChild variant="outline">
+                    <Link to="/admin/classes/new">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Class
+                    </Link>
+                  </Button>
+                  <Button asChild>
+                    <Link to="/admin/classes/new?engagement=seminar">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Series
+                    </Link>
+                  </Button>
+                </>
+              )}
+              {engagementFilter === 'program' && (
+                <Button asChild>
+                  <Link to="/admin/classes/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Class
+                  </Link>
+                </Button>
+              )}
+              {engagementFilter === 'seminar' && (
+                <Button asChild>
+                  <Link to="/admin/classes/new?engagement=seminar">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Series
+                  </Link>
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

@@ -150,16 +150,33 @@ export async function createClass(
   supabase = getSupabaseAdminClient()
 ): Promise<ClassWithDetails> {
   // First create the class
+  const insertData = {
+    program_id: classData.program_id,
+    name: classData.name,
+    description: classData.description ?? null,
+    max_capacity: classData.max_capacity ?? null,
+    instructor_id: classData.instructor_id ?? null,
+    is_active: classData.is_active ?? true,
+    // Add series-specific fields
+    topic: classData.topic ?? null,
+    series_status: classData.series_status ?? 'tentative',
+    registration_status: classData.registration_status ?? 'closed',
+    allow_self_enrollment: classData.allow_self_enrollment ?? false,
+    series_label: classData.series_label ?? null,
+    series_start_on: classData.series_start_on ?? null,
+    series_end_on: classData.series_end_on ?? null,
+    sessions_per_week_override: classData.sessions_per_week_override ?? null,
+    session_duration_minutes: classData.session_duration_minutes ?? null,
+    series_session_quota: classData.series_session_quota ?? null,
+    price_override_cents: classData.price_override_cents ?? null,
+    registration_fee_override_cents: classData.registration_fee_override_cents ?? null,
+    min_capacity: classData.min_capacity ?? null,
+    on_demand: classData.on_demand ?? false,
+  };
+
   const { data: newClass, error: classError } = await supabase
     .from('classes')
-    .insert({
-      program_id: classData.program_id,
-      name: classData.name,
-      description: classData.description,
-      max_capacity: classData.max_capacity,
-      instructor_id: classData.instructor_id,
-      is_active: classData.is_active ?? true,
-    })
+    .insert(insertData)
     .select(`
       *,
       program:programs(*)
@@ -198,6 +215,12 @@ export async function updateClass(
   if (updates.max_capacity !== undefined) updateData.max_capacity = updates.max_capacity;
   if (updates.instructor_id !== undefined) updateData.instructor_id = updates.instructor_id;
   if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
+
+  // Series-specific fields for seminars
+  if (updates.topic !== undefined) updateData.topic = updates.topic;
+  if (updates.series_status !== undefined) updateData.series_status = updates.series_status;
+  if (updates.registration_status !== undefined) updateData.registration_status = updates.registration_status;
+  if (updates.allow_self_enrollment !== undefined) updateData.allow_self_enrollment = updates.allow_self_enrollment;
 
   const { error } = await supabase
     .from('classes')

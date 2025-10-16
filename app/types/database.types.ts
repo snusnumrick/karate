@@ -251,13 +251,18 @@ export type Database = {
           min_capacity: number | null
           name: string
           on_demand: boolean
+          price_override_cents: number | null
           program_id: string
+          registration_fee_override_cents: number | null
+          registration_status: Database["public"]["Enums"]["registration_status"]
           series_end_on: string | null
           series_label: string | null
           series_session_quota: number | null
           series_start_on: string | null
+          series_status: Database["public"]["Enums"]["series_status"]
           session_duration_minutes: number | null
           sessions_per_week_override: number | null
+          topic: string | null
           updated_at: string
         }
         Insert: {
@@ -271,13 +276,18 @@ export type Database = {
           min_capacity?: number | null
           name: string
           on_demand?: boolean
+          price_override_cents?: number | null
           program_id: string
+          registration_fee_override_cents?: number | null
+          registration_status?: Database["public"]["Enums"]["registration_status"]
           series_end_on?: string | null
           series_label?: string | null
           series_session_quota?: number | null
           series_start_on?: string | null
+          series_status?: Database["public"]["Enums"]["series_status"]
           session_duration_minutes?: number | null
           sessions_per_week_override?: number | null
+          topic?: string | null
           updated_at?: string
         }
         Update: {
@@ -291,13 +301,18 @@ export type Database = {
           min_capacity?: number | null
           name?: string
           on_demand?: boolean
+          price_override_cents?: number | null
           program_id?: string
+          registration_fee_override_cents?: number | null
+          registration_status?: Database["public"]["Enums"]["registration_status"]
           series_end_on?: string | null
           series_label?: string | null
           series_session_quota?: number | null
           series_start_on?: string | null
+          series_status?: Database["public"]["Enums"]["series_status"]
           session_duration_minutes?: number | null
           sessions_per_week_override?: number | null
+          topic?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2463,6 +2478,7 @@ export type Database = {
           registration_fee: number | null
           registration_fee_cents: number
           required_waiver_id: string | null
+          seminar_type: Database["public"]["Enums"]["seminar_type"] | null
           sessions_per_week: number
           single_purchase_price_cents: number | null
           slug: string | null
@@ -2506,6 +2522,7 @@ export type Database = {
           registration_fee?: number | null
           registration_fee_cents?: number
           required_waiver_id?: string | null
+          seminar_type?: Database["public"]["Enums"]["seminar_type"] | null
           sessions_per_week?: number
           single_purchase_price_cents?: number | null
           slug?: string | null
@@ -2549,6 +2566,7 @@ export type Database = {
           registration_fee?: number | null
           registration_fee_cents?: number
           required_waiver_id?: string | null
+          seminar_type?: Database["public"]["Enums"]["seminar_type"] | null
           sessions_per_week?: number
           single_purchase_price_cents?: number | null
           slug?: string | null
@@ -3415,11 +3433,19 @@ export type Database = {
         | "store_purchase"
         | "event_registration"
       profile_role: "user" | "instructor" | "admin"
+      registration_status: "open" | "closed" | "waitlisted"
       registration_status_enum:
         | "pending"
         | "confirmed"
         | "cancelled"
         | "waitlist"
+      seminar_type: "introductory" | "intermediate" | "advanced"
+      series_status:
+        | "tentative"
+        | "confirmed"
+        | "cancelled"
+        | "in_progress"
+        | "completed"
       t_shirt_size_enum:
         | "YXXS"
         | "YXS"
@@ -3690,11 +3716,20 @@ export const Constants = {
         "event_registration",
       ],
       profile_role: ["user", "instructor", "admin"],
+      registration_status: ["open", "closed", "waitlisted"],
       registration_status_enum: [
         "pending",
         "confirmed",
         "cancelled",
         "waitlist",
+      ],
+      seminar_type: ["introductory", "intermediate", "advanced"],
+      series_status: [
+        "tentative",
+        "confirmed",
+        "cancelled",
+        "in_progress",
+        "completed",
       ],
       t_shirt_size_enum: [
         "YXXS",

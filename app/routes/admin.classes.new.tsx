@@ -24,8 +24,14 @@ import { serializeMoney } from "~/utils/money";
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
 
+  const url = new URL(request.url);
+  const engagementParam = url.searchParams.get('engagement');
+  const isSeminarMode = engagementParam === 'seminar';
+
   const [programs, instructors] = await Promise.all([
-    getPrograms(),
+    getPrograms({
+      engagement_type: isSeminarMode ? 'seminar' : 'program'
+    }),
     getInstructors()
   ]);
 
@@ -38,7 +44,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
   }));
 
-  return json({ programs: serializedPrograms, instructors });
+  return json({ programs: serializedPrograms, instructors, isSeminarMode });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -53,6 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const programId = formData.get("program_id") as string;
     const className = formData.get("name") as string;
+    const topic = formData.get("topic") as string;
 
     // Get program data to use program name as default if class name is empty
     const [programs] = await Promise.all([getPrograms()]);
@@ -65,6 +72,7 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
+    const isSeminar = selectedProgram.engagement_type === 'seminar';
     const classDescription = formData.get("description") as string;
 
     // Parse schedules from form data
@@ -107,6 +115,13 @@ export async function action({ request }: ActionFunctionArgs) {
       max_capacity: maxCapacity,
       instructor_id: instructorIdValue || undefined,
       is_active: formData.get("is_active") === "on", // Checkbox sends "on" when checked
+      // Series-specific fields for seminars
+      ...(isSeminar && {
+        topic: topic || undefined,
+        series_status: (formData.get("series_status") as 'tentative' | 'confirmed' | 'cancelled' | 'in_progress' | 'completed') || 'tentative',
+        registration_status: (formData.get("registration_status") as 'open' | 'closed' | 'waitlisted') || 'closed',
+        allow_self_enrollment: formData.get("allow_self_enrollment") === "on",
+      }),
     };
 
     const newClass = await createClass(classData);
@@ -122,7 +137,7 @@ export async function action({ request }: ActionFunctionArgs) {
        }
      }
 
-    return redirect("/admin/classes");
+    return redirect(isSeminar ? "/admin/classes?engagement=seminar" : "/admin/classes");
   } catch (error) {
     return json(
       { error: error instanceof Error ? error.message : "Failed to create class" },
@@ -132,7 +147,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function NewClass() {
-  const { programs, instructors } = useLoaderData<typeof loader>();
+  const { programs, instructors, isSeminarMode } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const actionData = useActionData<typeof action>();
   const isSubmitting = navigation.state === "submitting";
@@ -231,9 +246,14 @@ export default function NewClass() {
 
       <div className="flex items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Create New Class</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isSeminarMode ? 'Create New Series' : 'Create New Class'}
+          </h1>
           <p className="text-muted-foreground">
-            Set up a new class with schedule and capacity limits.
+            {isSeminarMode
+              ? 'Set up a new seminar series with topic, schedule, and registration settings.'
+              : 'Set up a new class with schedule and capacity limits.'
+            }
           </p>
         </div>
       </div>
@@ -246,7 +266,7 @@ export default function NewClass() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Class Details</CardTitle>
+          <CardTitle>{isSeminarMode ? 'Series Details' : 'Class Details'}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form method="post" className="space-y-4">
@@ -254,7 +274,7 @@ export default function NewClass() {
             {/* Compact grid layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="program_id">Program *</Label>
+                <Label htmlFor="program_id">{isSeminarMode ? 'Seminar' : 'Program'} *</Label>
                 <Select
                   name="program_id"
                   required
@@ -262,7 +282,7 @@ export default function NewClass() {
                   onValueChange={setSelectedProgramId}
                 >
                   <SelectTrigger className="input-custom-styles">
-                    <SelectValue placeholder="Select program" />
+                    <SelectValue placeholder={isSeminarMode ? 'Select seminar' : 'Select program'} />
                   </SelectTrigger>
                   <SelectContent>
                     {programs.filter((p: ProgramType) => p.is_active).map((program: ProgramType) => (
@@ -280,14 +300,26 @@ export default function NewClass() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Class Name (Optional)</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="Leave empty to use program name"
-                />
-              </div>
+              {isSeminarMode ? (
+                <div className="space-y-2">
+                  <Label htmlFor="topic">Topic *</Label>
+                  <Input
+                    id="topic"
+                    name="topic"
+                    placeholder="e.g., Self-Defense Fundamentals"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Class Name (Optional)</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder="Leave empty to use program name"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="instructor_id">Instructor</Label>
@@ -321,11 +353,59 @@ export default function NewClass() {
                 {selectedProgram?.max_capacity && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Info className="h-3 w-3" />
-                    Program maximum: {selectedProgram.max_capacity} students
+                    {isSeminarMode ? 'Seminar' : 'Program'} maximum: {selectedProgram.max_capacity} students
                   </p>
                 )}
               </div>
+
+              {isSeminarMode && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="series_status">Series Status *</Label>
+                    <Select name="series_status" defaultValue="tentative">
+                      <SelectTrigger className="input-custom-styles">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tentative">Tentative</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="registration_status">Registration Status *</Label>
+                    <Select name="registration_status" defaultValue="closed">
+                      <SelectTrigger className="input-custom-styles">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                        <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
             </div>
+
+            {isSeminarMode && (
+              <div className="flex items-center space-x-2 p-4 bg-muted/30 rounded-lg">
+                <Checkbox id="allow_self_enrollment" name="allow_self_enrollment" defaultChecked={false} />
+                <div className="space-y-1">
+                  <Label htmlFor="allow_self_enrollment" className="text-sm font-medium cursor-pointer">
+                    Allow Self-Registration
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Enable online registration for this seminar series
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="description">Description (Optional)</Label>
@@ -355,12 +435,14 @@ export default function NewClass() {
               </div>
             )}
 
-            {/* Class Schedule Section */}
+            {/* Class/Series Schedule Section */}
             <div className="space-y-4">
               <div className="border-t pt-4">
-                <h3 className="text-lg font-medium mb-3">Class Schedule</h3>
+                <h3 className="text-lg font-medium mb-3">
+                  {isSeminarMode ? 'Series Schedule' : 'Class Schedule'}
+                </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Add weekly schedule slots for this class. Duration is taken from the program.
+                  Add weekly schedule slots for this {isSeminarMode ? 'series' : 'class'}. Duration is taken from the {isSeminarMode ? 'seminar' : 'program'}.
                   {selectedProgram && (
                     <span className="block mt-1 font-medium">
                       {getSessionFrequencyDescription(selectedProgram)}
@@ -463,13 +545,16 @@ export default function NewClass() {
 
               <div className="flex gap-3">
                 <Button type="button" variant="outline" asChild>
-                  <Link to="/admin/classes">Cancel</Link>
+                  <Link to={isSeminarMode ? "/admin/classes?engagement=seminar" : "/admin/classes"}>Cancel</Link>
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isSubmitting || !validationResult.isValid}
                 >
-                  {isSubmitting ? "Creating..." : "Create Class"}
+                  {isSubmitting
+                    ? "Creating..."
+                    : (isSeminarMode ? "Create Series" : "Create Class")
+                  }
                 </Button>
               </div>
             </div>
