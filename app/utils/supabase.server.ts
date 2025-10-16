@@ -157,6 +157,70 @@ export async function createInitialPaymentRecord(
     const totalAmount = addMoney(subtotalAmount, totalTaxAmount);
     // --- End Multi-Tax Calculation ---
 
+    // --- Check for Duplicate Pending Payments ---
+    // Look for existing pending payments created within the last 60 minutes
+    // for the same family, type, and students to prevent duplicate payment frustration
+    const oneHourAgo = new Date();
+    oneHourAgo.setMinutes(oneHourAgo.getMinutes() - 60);
+
+    const duplicatePaymentQuery = supabaseAdmin
+        .from('payments')
+        .select('id, created_at, total_amount, discount_code_id')
+        .eq('family_id', familyId)
+        .eq('type', type)
+        .eq('status', 'pending')
+        .gte('created_at', oneHourAgo.toISOString());
+
+    // For group payments, also check if students match
+    if ((type === 'monthly_group' || type === 'yearly_group') && studentIds && studentIds.length > 0) {
+        // We need to check payment_students junction table
+        const { data: recentPendingPayments } = await duplicatePaymentQuery;
+
+        if (recentPendingPayments && recentPendingPayments.length > 0) {
+            // Check each pending payment to see if it has the same students
+            for (const pendingPayment of recentPendingPayments) {
+                const { data: pendingStudents } = await supabaseAdmin
+                    .from('payment_students')
+                    .select('student_id')
+                    .eq('payment_id', pendingPayment.id);
+
+                if (pendingStudents) {
+                    const pendingStudentIds = pendingStudents.map(ps => ps.student_id).sort();
+                    const currentStudentIds = [...studentIds].sort();
+
+                    // Check if student arrays match
+                    if (pendingStudentIds.length === currentStudentIds.length &&
+                        pendingStudentIds.every((id, index) => id === currentStudentIds[index])) {
+                        // Found a duplicate pending payment for the same students
+                        console.log(`[createInitialPaymentRecord] Found duplicate pending payment ${pendingPayment.id} for family ${familyId}, type ${type}, created at ${pendingPayment.created_at}`);
+                        return {
+                            data: null,
+                            error: 'DUPLICATE_PENDING_PAYMENT',
+                            duplicatePaymentId: pendingPayment.id,
+                            duplicatePaymentAmount: pendingPayment.total_amount,
+                            duplicatePaymentCreatedAt: pendingPayment.created_at
+                        };
+                    }
+                }
+            }
+        }
+    } else {
+        // For non-group payments (store, event, individual), just check family and type
+        const { data: duplicatePayments } = await duplicatePaymentQuery.limit(1);
+
+        if (duplicatePayments && duplicatePayments.length > 0) {
+            const duplicate = duplicatePayments[0];
+            console.log(`[createInitialPaymentRecord] Found duplicate pending payment ${duplicate.id} for family ${familyId}, type ${type}, created at ${duplicate.created_at}`);
+            return {
+                data: null,
+                error: 'DUPLICATE_PENDING_PAYMENT',
+                duplicatePaymentId: duplicate.id,
+                duplicatePaymentAmount: duplicate.total_amount,
+                duplicatePaymentCreatedAt: duplicate.created_at
+            };
+        }
+    }
+    // --- End Duplicate Check ---
 
     // 4. Create the main payment record in Supabase (without tax_amount column)
     const { data: paymentRecord, error: insertPaymentError } = await supabaseAdmin
@@ -243,7 +307,10 @@ export async function createInitialPaymentRecord(
 
         if (!discountResult.success) {
             console.error('Failed to record discount usage:', discountResult.error);
-            // Don't fail the payment creation, just log the error
+            // Critical: Delete the payment record if discount recording fails
+            // This prevents payments from being created without proper discount tracking
+            await supabaseAdmin.from('payments').delete().eq('id', paymentId);
+            return { data: null, error: `Failed to apply discount: ${discountResult.error}` };
         }
     }
 

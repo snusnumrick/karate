@@ -309,7 +309,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
         // Create the initial payment record
         // console.log("[Action] Calling createInitialPaymentRecord with subtotal...");
-        const {data: paymentRecord, error: createError} = await createInitialPaymentRecord(
+        const paymentCreationResult = await createInitialPaymentRecord(
             familyId,
             finalSubtotal, // Pass the final subtotal after discount
             studentIds, // Pass selected student IDs (empty for individual)
@@ -318,6 +318,22 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             discountCodeId, // Pass discount code ID
             discountAmount // Pass discount amount
         );
+
+        // Check for duplicate pending payment
+        if (paymentCreationResult.error === 'DUPLICATE_PENDING_PAYMENT') {
+            console.log(`[Action] Duplicate pending payment detected: ${paymentCreationResult.duplicatePaymentId}`);
+            return json({
+                error: 'DUPLICATE_PENDING_PAYMENT',
+                duplicatePaymentId: paymentCreationResult.duplicatePaymentId,
+                duplicatePaymentAmount: paymentCreationResult.duplicatePaymentAmount,
+                duplicatePaymentCreatedAt: paymentCreationResult.duplicatePaymentCreatedAt
+            }, {
+                status: 409, // Conflict status code
+                headers: response.headers
+            });
+        }
+
+        const {data: paymentRecord, error: createError} = paymentCreationResult;
         // console.log(`[Action] createInitialPaymentRecord result: data=${JSON.stringify(paymentRecord)}, error=${createError}`);
 
         if (createError || !paymentRecord?.id) {

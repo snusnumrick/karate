@@ -26,7 +26,8 @@ import {
     percentageOf,
     compareMoney,
     serializeMoney,
-    toMoney
+    toMoney,
+    fromCents
 } from '~/utils/money';
 
 // Payment options type
@@ -65,6 +66,10 @@ interface ActionResponse {
   zeroPayment?: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
+  // Duplicate payment fields
+  duplicatePaymentId?: string;
+  duplicatePaymentAmount?: number;
+  duplicatePaymentCreatedAt?: string;
 }
 
 interface PaymentSetupFormProps {
@@ -128,8 +133,26 @@ export function PaymentSetupForm({
   const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(true);
   const [isSuccessHandled, setIsSuccessHandled] = useState(false);
+  const [isDuplicateHandled, setIsDuplicateHandled] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<{
+    paymentId: string;
+    createdAt: string;
+    totalAmount: number;
+    discountAmount?: number | null;
+    type?: string;
+    studentNames?: string;
+  } | null>(null);
 
   const discountsFetcher = useFetcher<AvailableDiscountsResponse>();
+  const pendingPaymentFetcher = useFetcher<{
+    hasPendingPayment: boolean;
+    paymentId?: string;
+    createdAt?: string;
+    totalAmount?: number;
+    discountAmount?: number | null;
+    type?: string;
+    studentNames?: string;
+  }>();
 
   // Rehydrate Money for studentPaymentDetails coming over the wire as JSON
   const rehydratedDetails = useMemo(() => {
@@ -190,10 +213,11 @@ export function PaymentSetupForm({
     return ZERO_MONEY;
   }, [defaultIndividualSessionAmount]);
 
-  // Reset success handled state on new submission
+  // Reset success and duplicate handled states on new submission
   useEffect(() => {
     if (fetcher.state === 'submitting') {
       setIsSuccessHandled(false);
+      setIsDuplicateHandled(false);
     }
   }, [fetcher.state]);
 
@@ -267,6 +291,36 @@ export function PaymentSetupForm({
   const currentSubtotalDisplay = formatMoney(currentSubtotal);
   const currentDiscountDisplay = appliedDiscount ? formatMoney(currentDiscountAmount) : null;
   const currentTotalDisplay = formatMoney(currentTotal);
+
+  // Helper to format pending payment message
+  const formatPendingPaymentMessage = useCallback(() => {
+    if (!pendingPayment) return '';
+
+    // Format product name
+    let productName = '';
+    if (pendingPayment.type === 'monthly_group') {
+      productName = 'Monthly Group Classes';
+    } else if (pendingPayment.type === 'yearly_group') {
+      productName = 'Yearly Group Classes';
+    } else if (pendingPayment.type === 'individual_session') {
+      productName = 'Individual Session(s)';
+    } else {
+      productName = 'payment';
+    }
+
+    // Format student names
+    const studentPart = pendingPayment.studentNames ? `for ${pendingPayment.studentNames} ` : '';
+
+    // Format amount
+    const totalAmount = formatMoney(fromCents(pendingPayment.totalAmount));
+
+    // Format discount if present
+    const discountPart = pendingPayment.discountAmount
+      ? ` with discount of ${formatMoney(fromCents(pendingPayment.discountAmount))}`
+      : '';
+
+    return `${studentPart}${productName} at the amount of ${totalAmount}${discountPart}`;
+  }, [pendingPayment]);
 
   // Event handlers
   const handleCheckboxChange = (studentId: string, checked: boolean | 'indeterminate') => {
@@ -417,6 +471,46 @@ export function PaymentSetupForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- availableDiscounts, enrollmentPricing, studentPaymentDetails
   }, [selectedDiscountId, applyDiscount, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity, computeRawSubtotal]);
 
+  // Proactive check for pending payments
+  useEffect(() => {
+    // Only check if we have valid payment selection (students selected or individual quantity set)
+    const hasValidSelection = (paymentOption === 'individual' && oneOnOneQuantity > 0) ||
+                             ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size > 0);
+
+    if (!hasValidSelection) {
+      setPendingPayment(null);
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.set('familyId', familyId);
+    params.set('type', paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group');
+    if ((paymentOption === 'monthly' || paymentOption === 'yearly') && selectedStudentIds.size > 0) {
+      params.set('studentIds', Array.from(selectedStudentIds).join(','));
+    }
+
+    pendingPaymentFetcher.load(`/api/check-pending-payment?${params.toString()}`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- pendingPaymentFetcher
+  }, [familyId, paymentOption, selectedStudentIds, oneOnOneQuantity]);
+
+  // Handle pending payment check response
+  useEffect(() => {
+    if (pendingPaymentFetcher.data && pendingPaymentFetcher.state === 'idle') {
+      if (pendingPaymentFetcher.data.hasPendingPayment && pendingPaymentFetcher.data.paymentId) {
+        setPendingPayment({
+          paymentId: pendingPaymentFetcher.data.paymentId,
+          createdAt: pendingPaymentFetcher.data.createdAt || '',
+          totalAmount: pendingPaymentFetcher.data.totalAmount || 0,
+          discountAmount: pendingPaymentFetcher.data.discountAmount,
+          type: pendingPaymentFetcher.data.type,
+          studentNames: pendingPaymentFetcher.data.studentNames
+        });
+      } else {
+        setPendingPayment(null);
+      }
+    }
+  }, [pendingPaymentFetcher.data, pendingPaymentFetcher.state]);
+
   // Form visibility control
   useEffect(() => {
     // console.log(`Payment form visibility control ${fetcher.state}`);
@@ -481,14 +575,22 @@ export function PaymentSetupForm({
         console.warn('[PaymentForm] Success but no supabasePaymentId in response');
       }
     } else if (fetcher.data.error) {
-      console.warn('[PaymentForm] Error in response:', fetcher.data.error);
+      // Special handling for duplicate pending payment
+      if (fetcher.data.error === 'DUPLICATE_PENDING_PAYMENT' && fetcher.data.duplicatePaymentId && !isDuplicateHandled) {
+        setIsDuplicateHandled(true);
+        const duplicateId = fetcher.data.duplicatePaymentId;
+        console.log('[PaymentForm] Duplicate pending payment detected, redirecting to:', duplicateId);
+        navigate(`/pay/${duplicateId}`);
+      } else if (fetcher.data.error !== 'DUPLICATE_PENDING_PAYMENT') {
+        console.warn('[PaymentForm] Error in response:', fetcher.data.error);
+      }
     }
-  }, [fetcher.state, fetcher.data, navigate, onSuccess, isSuccessHandled]);
+  }, [fetcher.state, fetcher.data, navigate, onSuccess, isSuccessHandled, isDuplicateHandled]);
 
   return (
     <div className={className}>
       {/* Display errors */}
-      {fetcher.data?.error && (
+      {fetcher.data?.error && fetcher.data.error !== 'DUPLICATE_PENDING_PAYMENT' && (
         <Alert variant="destructive" className="mb-4">
           <ExclamationTriangleIcon className="h-4 w-4"/>
           <AlertTitle>Error</AlertTitle>
@@ -500,6 +602,46 @@ export function PaymentSetupForm({
               ))}
             </ul>
           )}
+        </Alert>
+      )}
+
+      {/* Display duplicate payment info */}
+      {fetcher.data?.error === 'DUPLICATE_PENDING_PAYMENT' && fetcher.data.duplicatePaymentId && (
+        <Alert className="mb-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+          <CheckCircledIcon className="h-4 w-4 text-blue-600 dark:text-blue-400"/>
+          <AlertTitle className="text-blue-800 dark:text-blue-200">Pending Payment Found</AlertTitle>
+          <AlertDescription className="text-blue-700 dark:text-blue-300">
+            You already have a pending payment for this. Redirecting you to complete it...
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Display proactive pending payment warning */}
+      {pendingPayment && (
+        <Alert className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700">
+          <ExclamationTriangleIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400"/>
+          <AlertTitle className="text-yellow-800 dark:text-yellow-200">Existing Pending Payment</AlertTitle>
+          <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+            You have a pending payment {formatPendingPaymentMessage()} that was started recently. Would you like to complete it instead?
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => navigate(`/pay/${pendingPayment.paymentId}`)}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              >
+                Complete Existing Payment
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPendingPayment(null)}
+                className="border-yellow-600 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-500 dark:text-yellow-300 dark:hover:bg-yellow-900/30"
+              >
+                Create New Payment
+              </Button>
+            </div>
+          </AlertDescription>
         </Alert>
       )}
 

@@ -6224,3 +6224,53 @@ COMMENT ON COLUMN webhook_events.event_id IS 'Unique event identifier from the p
 COMMENT ON COLUMN webhook_events.raw_payload IS 'Full webhook payload as received from provider';
 COMMENT ON COLUMN webhook_events.parsed_metadata IS 'Extracted metadata (paymentId, familyId, type, etc.)';
 COMMENT ON COLUMN webhook_events.processing_duration_ms IS 'Time taken to process the webhook in milliseconds';
+
+-- ========================================
+-- DISCOUNT CODE RESTORATION ON PAYMENT FAILURE
+-- ========================================
+-- When a payment fails, we need to restore the discount code usage
+-- so the user can try again with the same discount.
+
+CREATE OR REPLACE FUNCTION public.restore_discount_on_payment_failure()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- Only proceed if payment transitioned to 'failed' and had a discount applied
+    IF NEW.status = 'failed' AND OLD.status = 'pending' AND NEW.discount_code_id IS NOT NULL THEN
+
+        -- Log the restoration for debugging
+        RAISE NOTICE 'Restoring discount code % for failed payment %', NEW.discount_code_id, NEW.id;
+
+        -- Decrement the usage count on the discount code
+        UPDATE public.discount_codes
+        SET current_uses = GREATEST(0, current_uses - 1),  -- Prevent negative usage
+            updated_at = now()
+        WHERE id = NEW.discount_code_id;
+
+        -- Delete the usage record (CASCADE will handle this automatically)
+        -- This allows the family/student to use the discount again
+        DELETE FROM public.discount_code_usage
+        WHERE payment_id = NEW.id;
+
+        RAISE NOTICE 'Successfully restored discount code % (deleted usage record for payment %)', NEW.discount_code_id, NEW.id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+-- Create trigger on payments table
+DROP TRIGGER IF EXISTS trigger_restore_discount_on_payment_failure ON public.payments;
+CREATE TRIGGER trigger_restore_discount_on_payment_failure
+    AFTER UPDATE ON public.payments
+    FOR EACH ROW
+    WHEN (NEW.status = 'failed' AND OLD.status = 'pending' AND NEW.discount_code_id IS NOT NULL)
+    EXECUTE FUNCTION public.restore_discount_on_payment_failure();
+
+-- Grant necessary permissions
+GRANT EXECUTE ON FUNCTION public.restore_discount_on_payment_failure() TO service_role;
+
+COMMENT ON FUNCTION public.restore_discount_on_payment_failure IS 'Automatically restores discount code usage when a payment transitions from pending to failed. Allows users to retry payment with the same discount.';
+COMMENT ON TRIGGER trigger_restore_discount_on_payment_failure ON public.payments IS 'Fires after a payment status changes to failed, restoring the associated discount code for reuse.';
