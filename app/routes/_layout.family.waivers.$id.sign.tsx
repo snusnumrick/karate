@@ -1,7 +1,7 @@
 import React, {useRef, useState} from 'react';
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useSubmit} from "@remix-run/react";
-import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Button} from "~/components/ui/button";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Label} from "~/components/ui/label";
@@ -112,8 +112,9 @@ export async function action({request, params}: ActionFunctionArgs) {
         });
     }
 
-    // Save the signature
-    const {error} = await supabaseServer
+    // Save the signature using admin client to bypass RLS and materialized view permissions
+    const supabaseAdmin = getSupabaseAdminClient();
+    const {error} = await supabaseAdmin
         .from('waiver_signatures')
         .insert({
             waiver_id: waiverId,

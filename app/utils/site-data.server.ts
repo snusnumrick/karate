@@ -53,14 +53,37 @@ let siteDataCache: SiteData | null = null;
 let cacheExpiry: Date | null = null;
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
+// Debug: Track call frequency to detect loops
+let callCount = 0;
+let lastCallTime = Date.now();
+let callTimestamps: number[] = [];
+
 /**
  * Get comprehensive site data with dynamic schedule information
  * Uses caching to avoid repeated database queries
  */
 export async function getSiteData(forceRefresh = false): Promise<SiteData> {
+  // Debug: Track call frequency
+  const now = Date.now();
+  callCount++;
+  callTimestamps.push(now);
+
+  // Keep only last 10 seconds of timestamps
+  callTimestamps = callTimestamps.filter(t => now - t < 10000);
+
+  // Detect rapid calls (more than 5 calls in 10 seconds)
+  if (callTimestamps.length > 5) {
+    const timeSinceFirst = now - callTimestamps[0];
+    console.warn(`[getSiteData] POTENTIAL LOOP DETECTED: ${callTimestamps.length} calls in ${timeSinceFirst}ms`);
+    console.warn(`[getSiteData] Call stack:`, new Error().stack);
+  }
+
+  const timeSinceLastCall = now - lastCallTime;
+  lastCallTime = now;
+
   // Return cached data if valid and not forcing refresh
   if (!forceRefresh && isCacheValid()) {
-    console.log("[getSiteData] using cache");
+    console.log(`[getSiteData] using cache (call #${callCount}, ${timeSinceLastCall}ms since last call)`);
     return siteDataCache!; // Non-null assertion: isCacheValid() ensures siteDataCache is not null
   }
 
@@ -93,7 +116,7 @@ export async function getSiteData(forceRefresh = false): Promise<SiteData> {
     };
 
     // Update cache
-    // console.log("[getSiteData] updating cache",siteData);
+    console.log(`[getSiteData] updating cache (call #${callCount}, ${timeSinceLastCall}ms since last call)`);
     siteDataCache = siteData;
     cacheExpiry = new Date(Date.now() + CACHE_DURATION_MS);
 

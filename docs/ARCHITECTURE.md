@@ -31,7 +31,7 @@ app/
 │   ├── ConversationList.tsx
 │   ├── MessageView.tsx
 │   ├── InvoiceForm.tsx
-│   ├── DiscountCodeSelector.tsx
+│   ├── DiscountSelector.tsx
 │   └── ...
 ├── routes/              # Remix routes (pages and API endpoints)
 │   ├── _layout.family.*  # Family-facing routes

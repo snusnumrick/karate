@@ -24,7 +24,10 @@
       "Read(//Users/antont/Downloads/**)",
       "Bash(npm install:*)",
       "WebFetch(domain:docs.sentry.io)",
-      "Bash(sed:*)"
+      "Bash(timeout 30 npx tsc:*)",
+      "WebFetch(domain:remix.run)",
+      "WebFetch(domain:v2.remix.run)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

@@ -4,7 +4,7 @@ import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { AppBreadcrumb } from "~/components/AppBreadcrumb";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Users, DollarSign, FileText, ArrowLeft } from "lucide-react";
 import type { Database } from "~/types/database.types";
 import {fromCents, formatMoney} from "~/utils/money";
@@ -136,16 +136,9 @@ function calculateAge(birthDate: string) {
 export default function EventRegistrationsPage() {
   const { event, registrations, totalRegistrations, confirmedRegistrations, totalRevenueCents } = useLoaderData<LoaderData>();
 
-  const breadcrumbItems = [
-    { label: 'Admin', href: '/admin' },
-    { label: 'Events', href: '/admin/events' },
-    { label: event.title, href: `/admin/events/${event.id}/edit` },
-    { label: 'Registrations' },
-  ];
-
   return (
     <div className="container mx-auto py-6">
-      <AppBreadcrumb items={breadcrumbItems} />
+      <AppBreadcrumb items={breadcrumbPatterns.adminEventRegistrations(event.title, event.id)} />
       
       <div className="flex items-center justify-between mb-6">
         <div>

@@ -39,8 +39,8 @@ self.addEventListener('message', (event) => {
 
 
 // --- Constants ---
-const STATIC_CACHE_NAME = 'greenegin-karate-static-v1';
-const DYNAMIC_CACHE_NAME = 'greenegin-karate-dynamic-v1';
+const STATIC_CACHE_NAME = 'greenegin-karate-static-v2';
+const DYNAMIC_CACHE_NAME = 'greenegin-karate-dynamic-v2';
 const DB_NAME = 'greenegin-pwa-db';
 const DB_VERSION = 1;
 const REPLY_STORE_NAME = 'queued-replies';
@@ -242,6 +242,40 @@ self.addEventListener('fetch', (event) => {
                         return caches.match('/offline.html');
                     });
                 })
+        );
+        return;
+    }
+
+    // Remix build assets and route modules: Cache-first with aggressive caching
+    if (url.pathname.startsWith('/build/') || url.pathname.startsWith('/assets/')) {
+        event.respondWith(
+            caches.match(request).then((cachedResponse) => {
+                // Return cached version immediately if available
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+
+                // Fetch from network and cache aggressively
+                return fetch(request).then((response) => {
+                    if (response.ok) {
+                        const responseClone = response.clone();
+                        caches.open(DYNAMIC_CACHE_NAME).then((cache) => {
+                            cache.put(request, responseClone);
+                        });
+                    }
+                    return response;
+                }).catch((error) => {
+                    // If route module fails to load, try to return from cache one more time
+                    // (handles race conditions during deployment)
+                    return caches.match(request).then((retryCache) => {
+                        if (retryCache) {
+                            return retryCache;
+                        }
+                        // No cache available - return error so Remix can trigger reload
+                        throw error;
+                    });
+                });
+            })
         );
         return;
     }

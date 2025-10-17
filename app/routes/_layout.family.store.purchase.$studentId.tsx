@@ -1,23 +1,27 @@
 import { useState, useMemo, useEffect } from 'react';
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
-import { Form, useActionData, useLoaderData, useNavigation, useParams } from "@remix-run/react";
+import { Form, useActionData, useLoaderData, useNavigation, useParams, useFetcher, useNavigate } from "@remix-run/react";
 import { getSupabaseServerClient, createInitialPaymentRecord, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { getApplicableTaxRatesForStorePurchase } from "~/services/tax-rates.server";
+import { DiscountService } from "~/services/discount.server";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import type { Database, Tables, TablesInsert } from "~/types/database.types";
 import type { TaxRate } from "~/types/invoice";
-import { fromCents, formatMoney } from "~/utils/money"; // dinero.js currency formatter
+import { fromCents, formatMoney, toCents, toMoney, type Money } from "~/utils/money"; // dinero.js currency formatter
 import { getCurrentDateTimeInTimezone } from "~/utils/misc";
 // For tax calculation consistency
 import { Info } from 'lucide-react'; // Added Info icon
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
+import { DiscountSelector } from "~/components/DiscountSelector";
+import type { DiscountValidationResult } from "~/types/discount";
 
 // --- Helper Function for Size Recommendation ---
 const tShirtToUniformSizeMap: Record<Database['public']['Enums']['t_shirt_size_enum'], string> = {
@@ -137,6 +141,7 @@ type LoaderData = {
     student: Pick<StudentRow, 'id' | 'first_name' | 'last_name' | 't_shirt_size' | 'birth_date' | 'height'>;
     products: ProductWithVariants[];
     applicableTaxes: Array<{ name: string; rate: number }>; // Pass calculated tax rates
+    familyId: string; // Added for discount selector
 };
 
 type ActionData = {
@@ -243,6 +248,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         student: studentData,
         products: availableProducts,
         applicableTaxes: applicableTaxes,
+        familyId: studentFamilyData.family_id,
     }, { headers });
 }
 
@@ -258,6 +264,7 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     const formData = await request.formData();
     const productVariantId = formData.get('productVariantId') as string;
+    const discountCode = formData.get('discountCode') as string | null;
     const quantity = 1; // Hardcoded to 1 for now, as basket isn't needed
 
     const { supabaseServer, response } = getSupabaseServerClient(request);
@@ -321,7 +328,41 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
     const pricePerItem = variantData.price_in_cents;
     const subtotalAmount = pricePerItem * quantity;
 
-    // --- Calculate Taxes using centralized exemption logic ---
+    // --- Validate and Apply Discount ---
+    let discountValidation: { discountCodeId?: string; discountAmount: Money } | null = null;
+
+    if (discountCode && discountCode.trim()) {
+        try {
+            const validation = await DiscountService.validateDiscountCode({
+                code: discountCode.toUpperCase(),
+                family_id: familyId,
+                student_id: studentId,
+                subtotal_amount: fromCents(subtotalAmount),
+                applicable_to: 'store_purchase'
+            });
+
+            if (!validation.is_valid) {
+                return json({
+                    error: validation.error_message || "Invalid discount code.",
+                    fieldErrors: { discountCode: validation.error_message || "Invalid discount code." }
+                }, { status: 400, headers });
+            }
+
+            discountValidation = {
+                discountCodeId: validation.discount_code_id!,
+                discountAmount: validation.discount_amount
+            };
+        } catch (error) {
+            console.error('[Purchase Action] Error validating discount code:', error);
+            return json({ error: "Failed to validate discount code." }, { status: 500, headers });
+        }
+    }
+
+    // Calculate discounted subtotal
+    const discountAmountCents = discountValidation ? toCents(discountValidation.discountAmount) : 0;
+    const discountedSubtotal = Math.max(0, subtotalAmount - discountAmountCents);
+
+    // --- Calculate Taxes using centralized exemption logic (on discounted amount) ---
     let taxRatesData: TaxRate[] = [];
     try {
         taxRatesData = await getApplicableTaxRatesForStorePurchase(studentId, supabaseAdmin);
@@ -332,10 +373,10 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     const applicableTaxes = taxRatesData?.map(t => ({ name: t.name, rate: Number(t.rate) })) || [];
     const totalTaxAmount = applicableTaxes.reduce((acc, tax) => {
-        // Ensure tax calculation matches createInitialPaymentRecord (e.g., rounding)
-        return acc + Math.round(subtotalAmount * tax.rate);
+        // Tax calculated on discounted amount
+        return acc + Math.round(discountedSubtotal * tax.rate);
     }, 0);
-    const finalTotalAmountCents = subtotalAmount + totalTaxAmount;
+    const finalTotalAmountCents = discountedSubtotal + totalTaxAmount;
 
 
     // --- Create Order & Order Item ---
@@ -386,13 +427,29 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
     // --- Create Initial Payment Record ---
     // This function calculates tax and the final total_amount
-    const { data: paymentData, error: paymentError } = await createInitialPaymentRecord(
+    // Pass the discounted subtotal amount for payment creation
+    const paymentCreationResult = await createInitialPaymentRecord(
         familyId,
-        fromCents(subtotalAmount),
+        fromCents(discountedSubtotal), // Use discounted subtotal
         [studentId], // Pass student ID for PST exemption logic
         'store_purchase', // Payment type
-        orderId // Pass the order ID to link
+        orderId, // Pass the order ID to link
+        discountValidation?.discountCodeId || null, // Pass discount code ID
+        discountValidation?.discountAmount || null // Pass discount amount
     );
+
+    // Check for duplicate pending payment
+    if (paymentCreationResult.error === 'DUPLICATE_PENDING_PAYMENT') {
+        console.log(`[Purchase Action] Duplicate pending payment detected: ${paymentCreationResult.duplicatePaymentId}`);
+        // Clean up the order we just created since we're using the existing payment
+        await supabaseAdmin.from('order_items').delete().eq('order_id', orderId);
+        await supabaseAdmin.from('orders').delete().eq('id', orderId);
+
+        // Redirect to the existing pending payment
+        return redirect(`/pay/${paymentCreationResult.duplicatePaymentId}`, { headers });
+    }
+
+    const { data: paymentData, error: paymentError } = paymentCreationResult;
 
     if (paymentError || !paymentData?.id) {
         console.error(`[Purchase Action] Error creating initial payment record for order ${orderId}:`, paymentError);
@@ -409,13 +466,37 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
 
 // --- Component ---
 export default function PurchaseGiPage() {
-    const { student, products, applicableTaxes } = useLoaderData<LoaderData>();
+    const { student, products, applicableTaxes, familyId } = useLoaderData<LoaderData>();
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
+    const navigate = useNavigate();
     const params = useParams(); // Get studentId from params for the form action URL
 
     // Keep RadioGroup controlled for its lifetime
     const [selectedVariantId, setSelectedVariantId] = useState<string>("");
+
+    // Discount state
+    const [appliedDiscount, setAppliedDiscount] = useState<DiscountValidationResult | null>(null);
+
+    // Pending payment state
+    const [pendingPayment, setPendingPayment] = useState<{
+        paymentId: string;
+        createdAt: string;
+        totalAmount: number;
+        discountAmount?: number | null;
+        type?: string;
+        studentNames?: string;
+    } | null>(null);
+
+    const pendingPaymentFetcher = useFetcher<{
+        hasPendingPayment: boolean;
+        paymentId?: string;
+        createdAt?: string;
+        totalAmount?: number;
+        discountAmount?: number | null;
+        type?: string;
+        studentNames?: string;
+    }>();
 
     const isSubmitting = navigation.state === "submitting";
 
@@ -470,18 +551,73 @@ export default function PurchaseGiPage() {
 
     const subtotal = selectedVariant ? selectedVariant.price_in_cents : 0;
 
-    const { totalAmount } = useMemo(() => { // Removed unused totalTax
+    // Memoize subtotal as Money to prevent infinite loop in DiscountSelector
+    const subtotalMoney = useMemo(() => fromCents(subtotal), [subtotal]);
+
+    // Calculate discount amount, discounted subtotal, tax, and total
+    const { discountAmount, discountedSubtotal, totalAmount } = useMemo(() => {
+        // appliedDiscount.discount_amount comes from JSON API, need to deserialize it
+        let discount = 0;
+        if (appliedDiscount?.discount_amount) {
+            try {
+                // Convert from serialized JSON to Money object, then to cents
+                const discountMoney = toMoney(appliedDiscount.discount_amount);
+                discount = toCents(discountMoney);
+            } catch (error) {
+                console.error('Error converting discount amount:', error);
+                discount = 0;
+            }
+        }
+        const afterDiscount = Math.max(0, subtotal - discount);
+
         let calculatedTax = 0;
-        if (subtotal > 0 && applicableTaxes.length > 0) {
+        if (afterDiscount > 0 && applicableTaxes.length > 0) {
             calculatedTax = applicableTaxes.reduce((acc, tax) => {
-                return acc + Math.round(subtotal * tax.rate);
+                return acc + Math.round(afterDiscount * tax.rate);
             }, 0);
         }
+
         return {
+            discountAmount: discount,
+            discountedSubtotal: afterDiscount,
             totalTax: calculatedTax,
-            totalAmount: subtotal + calculatedTax,
+            totalAmount: afterDiscount + calculatedTax,
         };
-    }, [subtotal, applicableTaxes]);
+    }, [subtotal, appliedDiscount, applicableTaxes]);
+
+    // Proactive check for pending payments
+    useEffect(() => {
+        // Only check if variant is selected
+        if (!selectedVariantId) {
+            setPendingPayment(null);
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.set('familyId', familyId);
+        params.set('type', 'store_purchase');
+
+        pendingPaymentFetcher.load(`/api/check-pending-payment?${params.toString()}`);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [familyId, selectedVariantId]);
+
+    // Handle pending payment check response
+    useEffect(() => {
+        if (pendingPaymentFetcher.data && pendingPaymentFetcher.state === 'idle') {
+            if (pendingPaymentFetcher.data.hasPendingPayment && pendingPaymentFetcher.data.paymentId) {
+                setPendingPayment({
+                    paymentId: pendingPaymentFetcher.data.paymentId,
+                    createdAt: pendingPaymentFetcher.data.createdAt || '',
+                    totalAmount: pendingPaymentFetcher.data.totalAmount || 0,
+                    discountAmount: pendingPaymentFetcher.data.discountAmount,
+                    type: pendingPaymentFetcher.data.type,
+                    studentNames: pendingPaymentFetcher.data.studentNames
+                });
+            } else {
+                setPendingPayment(null);
+            }
+        }
+    }, [pendingPaymentFetcher.data, pendingPaymentFetcher.state]);
 
     // Removed: const product = products?.[0]; - We will map over products now.
 
@@ -507,6 +643,36 @@ export default function PurchaseGiPage() {
                 </Alert>
             )}
 
+            {/* Display proactive pending payment warning */}
+            {pendingPayment && (
+                <Alert className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700">
+                    <ExclamationTriangleIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <AlertTitle className="text-yellow-800 dark:text-yellow-200">Existing Pending Payment</AlertTitle>
+                    <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+                        You have a pending store purchase payment for {student.first_name} that was started recently at the amount of {formatMoney(fromCents(pendingPayment.totalAmount))}
+                        {pendingPayment.discountAmount ? ` with discount of ${formatMoney(fromCents(pendingPayment.discountAmount))}` : ''}. Would you like to complete it instead?
+                        <div className="mt-3 flex gap-2">
+                            <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => navigate(`/pay/${pendingPayment.paymentId}`)}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                            >
+                                Complete Existing Payment
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setPendingPayment(null)}
+                                className="border-yellow-600 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-500 dark:text-yellow-300 dark:hover:bg-yellow-900/30"
+                            >
+                                Create New Payment
+                            </Button>
+                        </div>
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {products.length === 0 && ( // Check if the products array is empty
                  <Alert variant="default" className="mb-4">
                     <AlertTitle>No Products Available</AlertTitle>
@@ -520,6 +686,8 @@ export default function PurchaseGiPage() {
             {products.length > 0 && (
                  <Form method="post" action={`/family/store/purchase/${params.studentId}`}>
                     <AuthenticityTokenInput />
+                    {/* Hidden input for discount code */}
+                    <input type="hidden" name="discountCode" value={appliedDiscount?.code || ''} />
                     {/* Map over each product */}
                     {products.map((product) => (
                         <Card key={product.id} className="mb-6"> {/* Added margin-bottom */}
@@ -605,6 +773,20 @@ export default function PurchaseGiPage() {
                         </Card>
                     ))}
 
+                    {/* Discount Code Selector */}
+                    {selectedVariantId && (
+                        <DiscountSelector
+                            familyId={familyId}
+                            studentId={student.id}
+                            subtotalAmount={subtotalMoney}
+                            applicableTo="store_purchase"
+                            onDiscountApplied={setAppliedDiscount}
+                            disabled={isSubmitting}
+                            showToggle={false}
+                            autoSelectBest={true}
+                        />
+                    )}
+
                     {/* Moved Totals and Submit Button outside the product map */}
                     <Card className="mt-6">
                         <CardHeader>
@@ -616,10 +798,22 @@ export default function PurchaseGiPage() {
                                     <span>Subtotal:</span>
                                     <span>{formatMoney(fromCents(subtotal))}</span>
                                 </div>
+                                {discountAmount > 0 && (
+                                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                                        <span>Discount:</span>
+                                        <span>-{formatMoney(fromCents(discountAmount))}</span>
+                                    </div>
+                                )}
+                                {discountAmount > 0 && (
+                                    <div className="flex justify-between font-medium">
+                                        <span>Subtotal after discount:</span>
+                                        <span>{formatMoney(fromCents(discountedSubtotal))}</span>
+                                    </div>
+                                )}
                                 {applicableTaxes.map(tax => (
                                     <div key={tax.name} className="flex justify-between text-gray-600 dark:text-gray-400">
                                         <span>{tax.name} ({ (tax.rate * 100).toFixed(0) }%):</span>
-                                        <span>{formatMoney(fromCents(Math.round(subtotal * tax.rate)))}</span>
+                                        <span>{formatMoney(fromCents(Math.round(discountedSubtotal * tax.rate)))}</span>
                                     </div>
                                 ))}
                                 <Separator className="my-1" />

@@ -282,11 +282,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
                 const instructorData = classData.instructor;
                 const enrollmentData = enrollmentCounts[session.class_id] || { enrolled: 0, waitlist: 0 };
 
-                console.log('Admin Calendar - Parsing session:', {
+                /*                console.log('Admin Calendar - Parsing session:', {
                     sessionId: session.id,
                     sessionDateString: session.session_date,
                     className: classData.name
-                });
+                });*/
 
                 return {
                     id: session.id,
@@ -468,12 +468,37 @@ export default function AdminCalendar() {
     };
 
     const handleEventClick = (event: CalendarEvent) => {
+        console.log('handleEventClick - Event clicked:', {
+            eventId: event.id,
+            eventType: event.type,
+            originalEventId: event.originalEventId,
+            isMultiDay: event.isMultiDay
+        });
+
         if (event.type === 'session') {
             // Handle session events for the modal
             const adminEvent = events.find(e => e.id === event.id);
             if (adminEvent) {
                 setSelectedEvent(adminEvent);
             }
+        } else if (event.type === 'event') {
+            // Navigate to event detail page when event is clicked
+            // Multi-day events have IDs like "event-{uuid}-day-0", so we need to extract the UUID
+            // Use originalEventId if available (for multi-day events), otherwise extract from id
+            let eventId: string;
+            if (event.originalEventId) {
+                // Multi-day event: originalEventId is "event-{uuid}", so remove "event-" prefix
+                eventId = event.originalEventId.replace(/^event-/, '');
+            } else {
+                // Single-day event: id is "event-{uuid}", so remove "event-" prefix
+                eventId = event.id.replace(/^event-/, '').replace(/-day-\d+$/, '');
+            }
+            console.log('handleEventClick - Navigating to event:', {
+                originalId: event.id,
+                extractedEventId: eventId,
+                url: `/admin/events/${eventId}`
+            });
+            navigate(`/admin/events/${eventId}`);
         } else if (event.type === 'birthday' && event.studentId) {
             // Navigate to student page when birthday event is clicked
             navigate(`/admin/students/${event.studentId}`);
@@ -614,7 +639,7 @@ export default function AdminCalendar() {
 
             {/* Event Detail Modal */}
             <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl form-container-styles">
                     <DialogHeader>
                         <DialogTitle>{selectedEvent?.title}</DialogTitle>
                     </DialogHeader>
@@ -644,25 +669,25 @@ export default function AdminCalendar() {
                             </div>
 
                             <div>
-                                <h4 className="font-semibold mb-2">Administrative Status</h4>
-                                <div className="space-y-2 text-sm">
-                                    <div>Attendance Recorded: {selectedEvent.attendanceRecorded ? '✅ Yes' : '❌ No'}</div>
-                                    <div>Session Generated: {selectedEvent.sessionGenerated ? '✅ Yes' : '❌ No'}</div>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 pt-4 border-t">
-                                <Button asChild size="sm">
-                                    <Link to={"/admin/classes/" + selectedEvent.classId + "/sessions"}>Manage Sessions</Link>
-                                </Button>
-                                <Button asChild variant="outline" size="sm">
-                                    <Link to={"/admin/enrollments?class=" + selectedEvent.classId}>View Enrollments</Link>
-                                </Button>
-                                {selectedEvent.adminActions.canRecordAttendance && (
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link to={"/admin/attendance/record?session=" + selectedEvent.sessionId}>Record Attendance</Link>
+                                <h4 className="font-semibold mb-2">Quick Actions</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button asChild size="sm" variant="default">
+                                        <Link to={"/admin/attendance/record?session=" + selectedEvent.sessionId}>
+                                            {selectedEvent.attendanceRecorded ? '✓ View' : 'Record'} Attendance
+                                        </Link>
                                     </Button>
-                                )}
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link to={"/admin/classes/" + selectedEvent.classId + "/sessions"}>
+                                            {selectedEvent.status === 'scheduled' ? 'Complete' : 'Manage'} Session
+                                        </Link>
+                                    </Button>
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link to={"/admin/enrollments?class=" + selectedEvent.classId}>View Enrollments</Link>
+                                    </Button>
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link to={"/admin/sessions/" + selectedEvent.sessionId}>Full Details</Link>
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     )}

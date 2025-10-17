@@ -198,15 +198,16 @@ CREATE TABLE discount_assignments
 **Database Schema**: All core discount tables created with proper RLS policies and indexes
 **Backend Services**: Complete discount validation and application logic
 **Admin UI**: Full CRUD interface for manual discount code management
-**User UI**: Discount code selector component integrated into payment flow
+**User UI**: Advanced discount selector component with dropdown selection and auto-validation
 **API Endpoints**: RESTful APIs for validation, management, and usage tracking
 
 #### Key Files Implemented:
 
 - `app/services/discount.server.ts` - Core discount validation and application service
 - `app/routes/api.discount-codes.validate.tsx` - Real-time validation API
+- `app/routes/api.available-discounts.$familyId.tsx` - API to fetch available discounts
 - `app/routes/admin.discount-codes._index.tsx` - Admin discount management interface
-- `app/components/DiscountCodeSelector.tsx` - User-facing discount code input component
+- `app/components/DiscountSelector.tsx` - Advanced dropdown-based discount selector with auto-validation
 
 ### ✅ COMPLETED: Phase 2 - Automatic Discount System
 
@@ -311,9 +312,9 @@ const discountMenuItems = [
 
 ### User-Facing Components
 
-#### DiscountCodeSelector Component
+#### DiscountSelector Component
 
-Located in `app/components/DiscountCodeSelector.tsx`:
+Located in `app/components/DiscountSelector.tsx`:
 
 - Real-time discount code validation
 - Visual feedback for applied discounts

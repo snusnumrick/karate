@@ -1,5 +1,4 @@
 import { Badge } from '~/components/ui/badge';
-import { Link } from '@remix-run/react';
 import {
   formatEventTime,
   getAttendanceStatusVariant,
@@ -130,11 +129,14 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
       text: 'text-purple-900 dark:text-purple-100',
       hover: 'hover:bg-purple-200 dark:hover:bg-purple-900/50'
     };
-    
+
     return (
-      <Link
-        to={`/events/${event.id}`}
-        className={`block p-0.5 sm:p-1 landscape-tablet:p-0.5 mb-0.5 sm:mb-1 landscape-tablet:mb-0 ${colors.background} border-l-2 sm:border-l-4 landscape-tablet:border-l-2 ${colors.border} rounded ${colors.hover} transition-colors`}
+      <div
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        className={`block p-0.5 sm:p-1 landscape-tablet:p-0.5 mb-0.5 sm:mb-1 landscape-tablet:mb-0 ${colors.background} border-l-2 sm:border-l-4 landscape-tablet:border-l-2 ${colors.border} rounded ${colors.hover} transition-colors cursor-pointer`}
         aria-label={`View event: ${event.title}${event.eligibilityStatus ? ` (${event.eligibilityStatus.replace('_', ' ')})` : ''}`}
       >
         <div className="flex items-center gap-1">
@@ -159,7 +161,7 @@ export function CalendarEvent({ event, onClick, compact = false }: CalendarEvent
             {event.eligibilityStatus === 'not_eligible' && 'Not eligible'}
           </div>
         )}
-      </Link>
+      </div>
     );
   }
 

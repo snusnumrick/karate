@@ -83,13 +83,13 @@ export function groupEventsByDate(events: CalendarEvent[]): Map<string, Calendar
 
   events.forEach(event => {
     const dateKey = formatDate(event.date, { formatString: 'yyyy-MM-dd' });
-    console.log('groupEventsByDate:', {
+/*    console.log('groupEventsByDate:', {
       eventId: event.id,
       eventTitle: event.title,
       eventDate: event.date,
       eventDateToString: event.date.toString(),
       dateKey
-    });
+    });*/
     if (!grouped.has(dateKey)) {
       grouped.set(dateKey, []);
     }
@@ -109,12 +109,12 @@ export function assignEventsToCalendarDays(days: CalendarDay[], events: Calendar
     const dateKey = formatDate(day.date, { formatString: 'yyyy-MM-dd' });
     const dayEvents = eventsByDate.get(dateKey) || [];
 
-    console.log('assignEventsToCalendarDays:', {
+/*    console.log('assignEventsToCalendarDays:', {
       dayDate: day.date,
       dayDateToString: day.date.toString(),
       dateKey,
       eventsCount: dayEvents.length
-    });
+    });*/
 
     return {
       ...day,
