@@ -15,7 +15,38 @@ import InstructorNavbar from "~/components/InstructorNavbar";
 import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
 
 
+// Debug: Track loader calls to detect loops
+const loaderCalls = new Map<string, { count: number; lastCall: number; timestamps: number[] }>();
+
 export async function loader({ request }: LoaderFunctionArgs) {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    const requestId = `${pathname}${url.search}`;
+    const now = Date.now();
+
+    // Track this loader call
+    const existing = loaderCalls.get(requestId);
+    if (existing) {
+        existing.count++;
+        existing.timestamps.push(now);
+        // Keep only last 10 seconds
+        existing.timestamps = existing.timestamps.filter(t => now - t < 10000);
+
+        const timeSinceLastCall = now - existing.lastCall;
+        existing.lastCall = now;
+
+        // Detect rapid loader calls (more than 5 in 10 seconds)
+        if (existing.timestamps.length > 5) {
+            const timeSinceFirst = now - existing.timestamps[0];
+            console.warn(`[_layout loader] POTENTIAL LOOP DETECTED for ${requestId}: ${existing.timestamps.length} calls in ${timeSinceFirst}ms`);
+        }
+
+        console.log(`[_layout loader] Call #${existing.count} for ${requestId} (${timeSinceLastCall}ms since last)`);
+    } else {
+        loaderCalls.set(requestId, { count: 1, lastCall: now, timestamps: [now] });
+        console.log(`[_layout loader] First call for ${requestId}`);
+    }
+
     const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
     const { data: { session } } = await supabaseServer.auth.getSession();
     let userRole: UserRole | null = null;
@@ -24,10 +55,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
     const isAdmin = isAdminRole(userRole);
     const isInstructor = isInstructorRole(userRole) || isAdmin;
-    
+
     // Fetch site data for consistent information across all pages
     const siteData = await getSiteData();
-    
+
     return json({ session, ENV, userRole, isAdmin, isInstructor, siteData }, { headers });
 }
 
