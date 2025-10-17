@@ -555,8 +555,15 @@ export const breadcrumbPatterns = {
   adminEventEdit: (eventTitle: string, eventId: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Events", href: "/admin/events" },
-    { label: eventTitle, href: `/admin/events/${eventId}/edit` },
+    { label: eventTitle, href: `/admin/events/${eventId}` },
     { label: "Edit", current: true },
+  ],
+
+  adminEventRegistrations: (eventTitle: string, eventId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Events", href: "/admin/events" },
+    { label: eventTitle, href: `/admin/events/${eventId}` },
+    { label: "Registrations", current: true },
   ],
 
   // Invoice breadcrumb patterns
