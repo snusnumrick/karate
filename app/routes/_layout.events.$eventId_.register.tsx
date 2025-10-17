@@ -65,47 +65,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       return redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
     }
 
-    // Check waiver requirements for authenticated users
-    if (user) {
-      // Get event's required waiver IDs
-      const { data: eventWaiverIds, error: eventWaiversError } = await supabaseServer
-        .from('event_waivers')
-        .select('waiver_id')
-        .eq('event_id', eventId);
-
-      if (eventWaiversError) {
-        console.error('Error fetching event waivers:', eventWaiversError);
-        return json({ error: 'Failed to check waiver requirements' }, { status: 500 });
-      }
-
-      if (eventWaiverIds && eventWaiverIds.length > 0) {
-        const requiredWaiverIds = eventWaiverIds.map(ew => ew.waiver_id);
-        
-        // Check which waivers the user has signed
-        const { data: signedWaivers } = await supabaseServer
-          .from('waiver_signatures')
-          .select('waiver_id')
-          .eq('user_id', user.id)
-          .in('waiver_id', requiredWaiverIds);
-
-        const signedWaiverIds = signedWaivers?.map(sw => sw.waiver_id) || [];
-        const missingWaiverIds = requiredWaiverIds.filter(id => !signedWaiverIds.includes(id));
-
-        if (missingWaiverIds.length > 0) {
-          // Get waiver details for missing waivers
-          const { data: missingWaiverDetails } = await supabaseServer
-            .from('waivers')
-            .select('id, title')
-            .in('id', missingWaiverIds);
-          
-          return json({ 
-            error: 'Required waivers must be signed before registration',
-            missingWaivers: missingWaiverDetails || [],
-            waiverValidationFailed: true
-          }, { status: 400 });
-        }
-      }
-    }
+    // Waiver requirements are now checked in the loader before user reaches registration page
 
     // For authenticated users, get their family ID
     const { data: profile, error: profileError } = await supabaseServer
@@ -276,7 +236,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         .from('event_registrations')
         .update({
           payment_id: paymentRecord.id,
-          payment_amount: toCents(registrationFee), // Convert to cents
+          payment_amount_cents: toCents(registrationFee), // Payment amount in cents
           payment_required: true
         })
         .eq('event_id', eventId)
@@ -315,7 +275,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       const { error: updateError } = await supabaseServer
         .from('event_registrations')
         .update({
-          payment_amount: 0,
+          payment_amount_cents: 0,
           payment_required: false
         })
         .eq('event_id', eventId)
@@ -455,6 +415,23 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const requiredWaivers = eventWaivers?.map(ew => ew.waivers).filter(Boolean) || [];
 
+  // Check if user has signed all required waivers BEFORE allowing registration access
+  if (requiredWaivers.length > 0) {
+    const { data: signatures } = await supabaseServer
+      .from('waiver_signatures')
+      .select('waiver_id')
+      .eq('user_id', user.id)
+      .in('waiver_id', requiredWaivers.map(w => w.id));
+
+    const signedWaiverIds = signatures?.map(s => s.waiver_id) || [];
+    const missingWaivers = requiredWaivers.filter(w => !signedWaiverIds.includes(w.id));
+
+    // If any waivers are missing, redirect to the waivers page which handles all missing waivers
+    if (missingWaivers.length > 0) {
+      throw redirect(`/events/${eventId}/register/waivers`);
+    }
+  }
+
   // Get family data
   
   let familyData = undefined;
@@ -530,17 +507,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     }
   }
 
-  // Check for existing waiver signatures if user is authenticated
-  let signedWaiverIds: string[] = [];
-  if (user && requiredWaivers.length > 0) {
-    const { data: signatures } = await supabaseServer
-      .from('waiver_signatures')
-      .select('waiver_id')
-      .eq('user_id', user.id)
-      .in('waiver_id', requiredWaivers.map(w => w.id));
-    
-    signedWaiverIds = signatures?.map(s => s.waiver_id) || [];
-  }
+  // At this point, all required waivers are signed (checked above in loader)
 
   // Add missing properties to event object
   const eventWithProperties: EventWithRegistrationInfo = {
@@ -559,19 +526,17 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const addStudentUrl = `/family/add-student?redirectTo=${encodeURIComponent(redirectTo)}`;
   const requiresStudentProfile = !hasExistingStudents;
 
-  return json({ 
-    event: serializedEvent, 
-    isAuthenticated, 
+  return json({
+    event: serializedEvent,
+    isAuthenticated,
     familyData,
-    requiredWaivers,
-    signedWaiverIds,
     requiresStudentProfile,
     addStudentUrl
   });
 }
 
 export default function EventRegistration() {
-  const { event: serializedEvent, isAuthenticated, familyData, requiredWaivers, signedWaiverIds, requiresStudentProfile, addStudentUrl } = useLoaderData<typeof loader>();
+  const { event: serializedEvent, isAuthenticated, familyData, requiresStudentProfile, addStudentUrl } = useLoaderData<typeof loader>();
   const event: EventWithRegistrationInfo = {
     ...serializedEvent,
     registration_fee: deserializeMoney(serializedEvent.registration_fee),
@@ -682,12 +647,10 @@ export default function EventRegistration() {
                 )}
 
                 {/* Registration Form */}
-                <EventRegistrationForm 
+                <EventRegistrationForm
                   event={event}
                   isAuthenticated={isAuthenticated}
                   familyData={familyData}
-                  requiredWaivers={requiredWaivers}
-                  signedWaiverIds={signedWaiverIds}
                   onSuccess={handleRegistrationSuccess}
                 />
 
