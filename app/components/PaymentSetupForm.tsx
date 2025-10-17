@@ -8,11 +8,10 @@ import { Checkbox } from '~/components/ui/checkbox';
 import { formatDate } from '~/utils/misc';
 import { RadioGroup, RadioGroupItem } from '~/components/ui/radio-group';
 import { Label } from '~/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
-import type { AvailableDiscountCode, AvailableDiscountsResponse } from '~/routes/api.available-discounts.$familyId';
 import type { DiscountValidationResult } from '~/types/discount';
 import {StudentPaymentDetail} from "~/types/payment";
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
+import { DiscountSelector } from '~/components/DiscountSelector';
 import {
     formatMoney,
     multiplyMoney,
@@ -23,9 +22,6 @@ import {
     maxMoney,
     isPositive,
     toCents,
-    percentageOf,
-    compareMoney,
-    serializeMoney,
     toMoney,
     fromCents
 } from '~/utils/money';
@@ -127,10 +123,6 @@ export function PaymentSetupForm({
   );
   const [oneOnOneQuantity, setOneOnOneQuantity] = useState(1);
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountValidationResult | null>(null);
-  const [applyDiscount, setApplyDiscount] = useState(true);
-  const [selectedDiscountId, setSelectedDiscountId] = useState<string>('');
-  const [availableDiscounts, setAvailableDiscounts] = useState<AvailableDiscountCode[]>([]);
-  const [isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(true);
   const [isSuccessHandled, setIsSuccessHandled] = useState(false);
   const [isDuplicateHandled, setIsDuplicateHandled] = useState(false);
@@ -143,7 +135,6 @@ export function PaymentSetupForm({
     studentNames?: string;
   } | null>(null);
 
-  const discountsFetcher = useFetcher<AvailableDiscountsResponse>();
   const pendingPaymentFetcher = useFetcher<{
     hasPendingPayment: boolean;
     paymentId?: string;
@@ -276,17 +267,6 @@ export function PaymentSetupForm({
     return { subtotal, discountAmount, total: discountedSubtotal };
   }, [computeRawSubtotal, appliedDiscount]);
 
-  // Helper functions
-  const calculatePercentageSavings = (discount: AvailableDiscountCode, subtotal: Money): string => {
-    if (discount.discount_type === 'percentage' && typeof discount.discount_value === 'number') {
-      const savingsAmount = percentageOf(subtotal, discount.discount_value);
-      return formatMoney(savingsAmount);
-    }
-    const dv = discount.discount_value as unknown;
-    const discountMoney: Money = toMoney(dv);
-    return formatMoney(discountMoney); // Convert dollars to cents
-  };
-
   const { subtotal: currentSubtotal, discountAmount: currentDiscountAmount, total: currentTotal } = calculateAmounts();
   const currentSubtotalDisplay = formatMoney(currentSubtotal);
   const currentDiscountDisplay = appliedDiscount ? formatMoney(currentDiscountAmount) : null;
@@ -338,138 +318,10 @@ export function PaymentSetupForm({
     setAppliedDiscount(null);
   };
 
-  // Reset discount when payment option changes
+  // Reset discount when payment option or quantity changes
   useEffect(() => {
     setAppliedDiscount(null);
-  }, [paymentOption]);
-
-  // Reset discount when one-on-one quantity changes
-  useEffect(() => {
-    if (paymentOption === 'individual') {
-      setAppliedDiscount(null);
-    }
-  }, [oneOnOneQuantity, paymentOption]);
-
-  // Fetch available discounts
-  useEffect(() => {
-    if (applyDiscount && hasAvailableDiscounts) {
-      const subtotal = computeRawSubtotal();
-
-      if (isPositive(subtotal)) {
-        setIsLoadingDiscounts(true);
-        const params = new URLSearchParams();
-        if (selectedStudentIds.size === 1) {
-          params.set('studentId', Array.from(selectedStudentIds)[0]);
-        }
-        const applicableTo = paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group';
-        params.set('applicableTo', applicableTo);
-        params.set('subtotalAmount', JSON.stringify(serializeMoney(subtotal)));
-        if (enrollmentId) {
-          params.set('enrollmentId', enrollmentId);
-        }
-
-        discountsFetcher.load(`/api/available-discounts/${familyId}?${params.toString()}`);
-      }
-    } else if (!applyDiscount) {
-      setAvailableDiscounts([]);
-      setSelectedDiscountId('');
-      setAppliedDiscount(null);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- discountsFetcher, enrollmentId, studentPaymentDetails
-  }, [applyDiscount, hasAvailableDiscounts, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity, computeRawSubtotal]);
-
-  // Handle discounts fetcher response
-  useEffect(() => {
-    if (discountsFetcher.data && discountsFetcher.state === 'idle') {
-      const discounts = discountsFetcher.data.discounts || [];
-      
-      // Calculate current subtotal for proper percentage discount comparison
-      const { subtotal: currentSubtotal } = calculateAmounts();
-      
-      const sortedDiscounts = discounts.sort((a, b) => {
-        // Calculate actual discount value for comparison
-        let aValue: Money;
-        let bValue: Money;
-        
-        if (a.discount_type === 'percentage') {
-          // For percentage discounts, discount_value should be a number (percentage)
-          const percentageValue = typeof a.discount_value === 'number' ? a.discount_value : 0;
-          aValue = percentageOf(currentSubtotal, percentageValue);
-        } else {
-          const adv = a.discount_value as unknown;
-          aValue = toMoney(adv);
-        }
-        
-        if (b.discount_type === 'percentage') {
-          // For percentage discounts, discount_value should be a number (percentage)
-          const percentageValue = typeof b.discount_value === 'number' ? b.discount_value : 0;
-          bValue = percentageOf(currentSubtotal, percentageValue);
-        } else {
-          const bdv = b.discount_value as unknown;
-          bValue = toMoney(bdv);
-        }
-        
-        return compareMoney(bValue, aValue);
-      });
-      setAvailableDiscounts(sortedDiscounts);
-      if (sortedDiscounts.length > 0) {
-        setSelectedDiscountId(sortedDiscounts[0].id);
-      }
-      setIsLoadingDiscounts(false);
-    }
-  }, [calculateAmounts, discountsFetcher.data, discountsFetcher.state]);
-
-  // Validate discount when selected
-  useEffect(() => {
-    // console.log('Validate discount');
-    // console.log('Validate discount:', selectedDiscountId, applyDiscount, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity, studentPaymentDetails, enrollmentPricing);
-    if (selectedDiscountId && applyDiscount) {
-      const selectedDiscount = availableDiscounts.find(d => d.id === selectedDiscountId);
-      if (selectedDiscount) {
-        const validateDiscount = async () => {
-          try {
-            const subtotal = computeRawSubtotal();
-
-            const response = await fetch('/api/discount-codes/validate', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                code: selectedDiscount.code,
-                family_id: familyId,
-                student_id: selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : '',
-                subtotal_amount: subtotal,
-                applicable_to: paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group'
-              })
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              if (data.is_valid) {
-                setAppliedDiscount({
-                  ...data,
-                  discount_amount: toMoney(data.discount_amount as unknown),
-                });
-              } else {
-                setAppliedDiscount(null);
-              }
-            } else {
-              setAppliedDiscount(null);
-            }
-          } catch (error) {
-            console.error('Error validating discount:', error);
-            setAppliedDiscount(null);
-          }
-        };
-
-        validateDiscount();
-      }
-    }
-    // Note: These dependencies are intentionally omitted to prevent infinite loop as they are recreated on every render.
-    // The validation only needs to run when discount selection or payment params change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- availableDiscounts, enrollmentPricing, studentPaymentDetails
-  }, [selectedDiscountId, applyDiscount, familyId, selectedStudentIds, paymentOption, oneOnOneQuantity, computeRawSubtotal]);
+  }, [paymentOption, oneOnOneQuantity, selectedStudentIds]);
 
   // Proactive check for pending payments
   useEffect(() => {
@@ -763,81 +615,18 @@ export function PaymentSetupForm({
           )}
 
           {/* Discount Code Section */}
-          {isPositive(currentSubtotal) && hasAvailableDiscounts && (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <Checkbox
-                  id="apply-discount"
-                  checked={applyDiscount}
-                  onCheckedChange={(checked) => setApplyDiscount(checked === true)}
-                  disabled={fetcher.state !== 'idle'}
-                  tabIndex={6}
-                />
-                <Label htmlFor="apply-discount" className="text-lg font-semibold">
-                  Apply Discount Code
-                </Label>
-              </div>
-
-              {applyDiscount && (
-                <div className="space-y-4">
-                  {isLoadingDiscounts ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <ReloadIcon className="h-4 w-4 animate-spin" />
-                      Loading available discounts...
-                    </div>
-                  ) : availableDiscounts.length > 0 ? (
-                    <div>
-                      <Label htmlFor="discount-select" className="text-sm font-medium mb-2 block">
-                        Select Discount Code
-                      </Label>
-                      <Select value={selectedDiscountId} onValueChange={setSelectedDiscountId} disabled={fetcher.state !== 'idle'}>
-                        <SelectTrigger className="w-full" tabIndex={7}>
-                          <SelectValue placeholder="Choose a discount code" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableDiscounts.map((discount) => {
-                            const savingsDisplay = calculatePercentageSavings(discount, currentSubtotal);
-                            const displayText = discount.discount_type === 'percentage' 
-                              ? `${discount.code} - ${discount.discount_value}% off (Save ${savingsDisplay})`
-                              : `${discount.code} - ${savingsDisplay} off`;
-                            return (
-                              <SelectItem key={discount.id} value={discount.id}>
-                                {displayText}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-
-                      {appliedDiscount && (
-                        <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 mt-4">
-                          <CheckCircledIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          <AlertDescription className="text-green-800 dark:text-green-200">
-                            <strong>Discount Applied: {appliedDiscount.name || appliedDiscount.code}</strong>
-                            <div className="text-sm mt-1">
-                              Discount: {formatMoney(appliedDiscount.discount_amount)}
-                            </div>
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No discount codes are currently available for this payment.
-                    </p>
-                  )}
-
-                  {discountsFetcher.data?.error && (
-                    <Alert variant="destructive">
-                      <ExclamationTriangleIcon className="h-4 w-4" />
-                      <AlertDescription>
-                        {discountsFetcher.data.error}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              )}
-            </div>
+          {hasAvailableDiscounts && (
+            <DiscountSelector
+              familyId={familyId}
+              studentId={selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : undefined}
+              enrollmentId={enrollmentId}
+              subtotalAmount={currentSubtotal}
+              applicableTo={paymentOption === 'individual' ? 'individual_session' : paymentOption === 'yearly' ? 'yearly_group' : 'monthly_group'}
+              onDiscountApplied={setAppliedDiscount}
+              disabled={fetcher.state !== 'idle'}
+              showToggle={true}
+              autoSelectBest={true}
+            />
           )}
 
           {/* Total & Pricing Info Section */}
