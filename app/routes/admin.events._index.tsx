@@ -410,8 +410,8 @@ export default function AdminEventsIndex() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-xl">
-                        <Link 
-                          to={`/admin/events/${event.id}/edit`}
+                        <Link
+                          to={`/admin/events/${event.id}`}
                           className="hover:underline"
                         >
                           {event.title}

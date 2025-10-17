@@ -334,7 +334,13 @@ export const breadcrumbPatterns = {
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Session Management", current: true },
   ],
-  
+
+  adminSessionDetail: (sessionId: string, className: string, sessionDate: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Calendar", href: "/admin/calendar" },
+    { label: `${className} - ${sessionDate}`, current: true },
+  ],
+
   adminDbChat: () => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Database Assistant", current: true },
