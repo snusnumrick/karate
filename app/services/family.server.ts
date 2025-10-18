@@ -58,15 +58,17 @@ export async function getFamilyDetails(
             students (*)
         `) // Removed comments causing parse error
         .eq('id', familyId)
-        .single<FamilyWithStudents>(); // Explicitly type the expected result
+        .maybeSingle<FamilyWithStudents>(); // Use maybeSingle() to handle 0 or 1 rows gracefully
 
     console.log('[Service/getFamilyDetails] Supabase query result:', { familyData, familyError });
 
+    // Check for database errors (not including "not found")
     if (familyError) {
         console.error(`[Service/getFamilyDetails] Supabase error fetching family ${familyId}:`, familyError.message);
         throw new Response(`Database error: ${familyError.message}`, { status: 500 });
     }
 
+    // Check if family exists (maybeSingle returns null if not found)
     if (!familyData) {
         console.warn(`[Service/getFamilyDetails] No family data found for ID: ${familyId}. Throwing 404.`);
         throw new Response("Family not found", { status: 404 });
