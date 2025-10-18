@@ -1,19 +1,51 @@
-# Allow all user agents
+# robots.txt for Karate Management System
 User-agent: *
 
-# Disallow crawling of admin and family sections
+# Disallow all authentication-protected areas
 Disallow: /admin/
 Disallow: /family/
-# Add any other paths you want to disallow
+Disallow: /instructor/
 
-# Allow crawling of specific necessary resources if needed, e.g.:
-# Allow: /assets/
+# Disallow authentication pages (prevent redirect chains)
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /onboarding
+Disallow: /auth/
 
-# Point to the sitemap
-# IMPORTANT: The URL below MUST match the VITE_SITE_URL environment variable used in the application.
-# Since this is a static file, it needs to be updated manually or via a build/deployment script
-# if the VITE_SITE_URL changes.
+# Disallow payment and transaction pages
+Disallow: /pay/
+Disallow: /payment/
+
+# Disallow debug and test pages
+Disallow: /debug-notifications
+Disallow: /notification-test
+Disallow: /pwa
+
+# Disallow API endpoints
+Disallow: /api/
+
+# Disallow logout endpoint
+Disallow: /logout
+
+# Allow public pages (explicitly for clarity)
+Allow: /$
+Allow: /about
+Allow: /contact
+Allow: /classes
+Allow: /events/
+
+# Allow static assets
+Allow: /assets/
+Allow: /images/
+Allow: /icons/
+Allow: /*.css
+Allow: /*.js
+Allow: /*.svg
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.webp
+
+# Sitemap location
 Sitemap: https://www.karate.greenegin.ca/sitemap.xml
-
-# Allow everything else (implicitly allowed if not disallowed)
-Allow: /

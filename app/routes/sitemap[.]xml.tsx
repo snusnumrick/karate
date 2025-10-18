@@ -1,50 +1,85 @@
-import { siteConfig } from "~/config/site"; // Import siteConfig
+import { siteConfig } from "~/config/site";
+import { EventService } from "~/services/event.server";
 
 // List your public-facing static routes here
+// NOTE: Only include pages that are publicly accessible without authentication
 const staticRoutes = [
     "/",
     "/about",
     "/contact",
-    "/classes", // Public classes overview
+    "/classes",
     // Introductory program landing pages
     "/intro/adaptive",
     "/intro/elementary",
     "/intro/daycare",
     // Tooling page (public but non-sensitive)
     "/intro/builder",
-    // Auth pages (optional to include; can help searchers)
-    "/login",
-    "/register",
-    // Add other static public routes as needed
+    // DO NOT include auth pages - they create redirect chains for crawlers
+    // DO NOT include /login, /register, /family/, /admin/, /instructor/
 ];
 
-// You could potentially fetch dynamic routes (e.g., blog posts) here if needed
-// const getDynamicRoutes = async () => {
-//   // Fetch data...
-//   return ["/blog/post-1", "/blog/post-2"];
-// }
+// Fetch public events dynamically
+const getDynamicEventRoutes = async (): Promise<string[]> => {
+    try {
+        const eventService = new EventService();
+        // Fetch all published events (adjust based on your visibility rules)
+        const events = await eventService.getAllEvents();
 
-export async function loader() { // Removed unused LoaderFunctionArgs and empty pattern
-    // const dynamicRoutes = await getDynamicRoutes();
-    // const allRoutes = [...staticRoutes, ...dynamicRoutes];
-    const allRoutes = [...staticRoutes]; // Using only static for now
+        // Only include future or recent past events (not ancient history)
+        const now = new Date();
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(now.getMonth() - 6);
 
-    const sitemap = `
-    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-      ${allRoutes
-        .map((route) =>
-            `
-        <url>
-          <loc>${siteConfig.url}${route}</loc>
-          <lastmod>${new Date().toISOString().split("T")[0]}</lastmod>
-          <changefreq>weekly</changefreq> 
-          <priority>${route === "/" ? "1.0" : "0.8"}</priority> 
-        </url>
-      `.trim()
-        )
-        .join("")}
-    </urlset>
-  `.trim();
+        return events
+            .filter(event => {
+                const eventDate = new Date(event.end_date);
+                // Include events that haven't ended yet or ended within the last 6 months
+                return eventDate >= sixMonthsAgo;
+            })
+            .map(event => `/events/${event.id}`);
+    } catch (error) {
+        console.error('Error fetching events for sitemap:', error);
+        return [];
+    }
+};
+
+export async function loader() {
+    const dynamicEventRoutes = await getDynamicEventRoutes();
+    const allRoutes = [...staticRoutes, ...dynamicEventRoutes];
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allRoutes
+    .map((route) => {
+        // Determine priority and change frequency based on route type
+        let priority = "0.8";
+        let changefreq = "weekly";
+
+        if (route === "/") {
+            priority = "1.0";
+            changefreq = "daily";
+        } else if (route.startsWith("/events/")) {
+            priority = "0.7";
+            changefreq = "daily"; // Events change frequently
+        } else if (["/about", "/contact", "/classes"].includes(route)) {
+            priority = "0.9";
+            changefreq = "monthly";
+        } else if (route.startsWith("/intro/")) {
+            priority = "0.8";
+            changefreq = "monthly";
+        }
+
+        return `  <url>
+    <loc>${siteConfig.url}${route}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+    })
+    .join("\n")}
+</urlset>`.trim();
 
     return new Response(sitemap, {
         status: 200,
