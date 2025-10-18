@@ -11,7 +11,6 @@ import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {BELT_RANKS} from "~/utils/constants"; // Assuming this constant file exists
 import invariant from "tiny-invariant";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
@@ -77,7 +76,6 @@ export async function action({request, params}: ActionFunctionArgs) {
     const medications = formData.get("medications") as string | null;
     const immunizationsUpToDate = formData.get("immunizationsUpToDate") as string | null;
     const immunizationNotes = formData.get("immunizationNotes") as string | null;
-    const beltRank = formData.get("beltRank") as string | null;
     const email = formData.get("email") as string | null;
     const cellPhone = formData.get("cellPhone") as string | null;
 
@@ -120,7 +118,6 @@ export async function action({request, params}: ActionFunctionArgs) {
             medications: medications || null,
             immunizations_up_to_date: immunizationsUpToDate || null,
             immunization_notes: immunizationNotes || null,
-            belt_rank: beltRank as typeof BELT_RANKS[number] | null, // Cast belt rank
             email: email || null,
             cell_phone: cellPhone || null,
             // Add other fields as necessary, ensure they match your DB schema
@@ -316,61 +313,45 @@ export default function AdminAddStudentPage() {
                         <h3 className="text-lg font-semibold text-foreground mt-6 mb-4 pb-2 border-b">Optional
                             Information</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Belt Rank */}
-                            <div className="space-y-1">
-                                <Label htmlFor="beltRank">Starting Belt Rank</Label>
-                                <Select name="beltRank" defaultValue={getFormData('beltRank')}>
-                                    <SelectTrigger id="beltRank" className="input-custom-styles" tabIndex={8}>
-                                        <SelectValue placeholder="Select belt rank (usually White)"/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {BELT_RANKS.map((rank) => (
-                                            <SelectItem key={rank} value={rank} className="capitalize">
-                                                {rank}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
                             {/* Student Email */}
                             <div className="space-y-1">
                                 <Label htmlFor="email">Student Email</Label>
-                                <Input type="email" id="email" name="email" autoComplete="email" className="input-custom-styles" defaultValue={getFormData('email')} tabIndex={9}/>
+                                <Input type="email" id="email" name="email" autoComplete="email" className="input-custom-styles" defaultValue={getFormData('email')} tabIndex={8}/>
                             </div>
                             {/* Student Cell Phone */}
                             <div className="space-y-1">
                                 <Label htmlFor="cellPhone">Student Cell #</Label>
                                 <Input type="tel" id="cellPhone" name="cellPhone" autoComplete="mobile tel"
                                        className="input-custom-styles"
-                                       defaultValue={getFormData('cellPhone')} tabIndex={10}/>
+                                       defaultValue={getFormData('cellPhone')} tabIndex={9}/>
                             </div>
                             {/* Special Needs */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="specialNeeds">Special Needs (Leave blank if NONE)</Label>
                                 <Input type="text" id="specialNeeds" name="specialNeeds"
                                        className="input-custom-styles"
-                                       defaultValue={getFormData('specialNeeds')} tabIndex={11}/>
+                                       defaultValue={getFormData('specialNeeds')} tabIndex={10}/>
                             </div>
                             {/* Allergies */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="allergies">Allergies (Leave blank if NONE)</Label>
                                 <Textarea id="allergies" name="allergies" rows={3}
                                           className="input-custom-styles"
-                                          defaultValue={getFormData('allergies')} tabIndex={12}/>
+                                          defaultValue={getFormData('allergies')} tabIndex={11}/>
                             </div>
                             {/* Medications */}
                             <div className="space-y-1 md:col-span-2">
                                 <Label htmlFor="medications">Medications (Leave blank if NONE)</Label>
                                 <Textarea id="medications" name="medications" rows={3}
                                           className="input-custom-styles"
-                                          defaultValue={getFormData('medications')} tabIndex={13}/>
+                                          defaultValue={getFormData('medications')} tabIndex={12}/>
                             </div>
                             {/* Immunizations Up To Date */}
                             <div className="space-y-1">
                                 <Label htmlFor="immunizationsUpToDate">Immunizations Up To Date?</Label>
                                 <Select name="immunizationsUpToDate"
                                         defaultValue={getFormData('immunizationsUpToDate')}>
-                                    <SelectTrigger id="immunizationsUpToDate" className="input-custom-styles" tabIndex={14}>
+                                    <SelectTrigger id="immunizationsUpToDate" className="input-custom-styles" tabIndex={13}>
                                         <SelectValue placeholder="Select option"/>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -385,7 +366,7 @@ export default function AdminAddStudentPage() {
                                 <Label htmlFor="immunizationNotes">Immunization Notes</Label>
                                 <Textarea id="immunizationNotes" name="immunizationNotes" rows={3}
                                           className="input-custom-styles"
-                                          defaultValue={getFormData('immunizationNotes')} tabIndex={15}/>
+                                          defaultValue={getFormData('immunizationNotes')} tabIndex={14}/>
                             </div>
                         </div>
 
@@ -400,14 +381,14 @@ export default function AdminAddStudentPage() {
 
 
                         <div className="flex justify-end mt-6">
-                            <Button type="button" variant="outline" asChild className="mr-2" tabIndex={16}>
+                            <Button type="button" variant="outline" asChild className="mr-2" tabIndex={15}>
                                 <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={isSubmitting}
                                 className="bg-blue-600 text-white hover:bg-blue-700"
-                                tabIndex={17}
+                                tabIndex={16}
                             >
                                 {isSubmitting ? "Adding Student..." : "Add Student"}
                             </Button>

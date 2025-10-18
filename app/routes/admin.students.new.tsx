@@ -11,7 +11,6 @@ import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {BELT_RANKS} from "~/utils/constants";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -65,7 +64,6 @@ export async function action({request}: ActionFunctionArgs) {
     const medications = formData.get("medications") as string | null;
     const immunizationsUpToDate = formData.get("immunizationsUpToDate") as string | null;
     const immunizationNotes = formData.get("immunizationNotes") as string | null;
-    const beltRank = formData.get("beltRank") as string | null;
     const email = formData.get("email") as string | null;
     const cellPhone = formData.get("cellPhone") as string | null;
 
@@ -111,7 +109,6 @@ export async function action({request}: ActionFunctionArgs) {
             medications: medications || null,
             immunizations_up_to_date: immunizationsUpToDate || null,
             immunization_notes: immunizationNotes || null,
-            belt_rank: beltRank as typeof BELT_RANKS[number] | null,
             email: email || null,
             cell_phone: cellPhone || null,
         }).select().single();
@@ -336,24 +333,6 @@ export default function AdminAddStudentPage() {
                                 {getFieldError("height") && (
                                     <p className="text-sm text-red-600">{getFieldError("height")}</p>
                                 )}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="beltRank">Current Belt Rank</Label>
-                                <Select name="beltRank" defaultValue={getFormData("beltRank")}>
-                                    <SelectTrigger className="input-custom-styles">
-                                        <SelectValue placeholder="Select belt rank" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {BELT_RANKS.map((rank) => (
-                                            <SelectItem key={rank} value={rank}>
-                                                {rank.charAt(0).toUpperCase() + rank.slice(1)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
                             </div>
                         </div>
 
