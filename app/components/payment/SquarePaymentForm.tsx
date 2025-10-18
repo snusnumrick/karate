@@ -6,6 +6,7 @@ import { useNonce } from "~/context/nonce";
 import { useFetcher } from "@remix-run/react";
 import type { ClientRenderConfig } from '~/services/payments/types.server';
 import { formatMoney, type Money } from "~/utils/money";
+import * as Sentry from "@sentry/remix";
 
 // Import Square Web SDK from npm package
 interface SquareCardElement {
@@ -39,7 +40,7 @@ interface SquarePaymentFormProps {
   onError?: (message: string) => void;
 }
 
-export default function SquarePaymentForm({ 
+export default function SquarePaymentForm({
   payment,
   providerConfig,
   onError
@@ -54,6 +55,8 @@ export default function SquarePaymentForm({
   const loadAttempted = useRef(false);
   const initAttempted = useRef(false);
   const nonce = useNonce();
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 2;
 
   useEffect(() => {
     if (!nonce || typeof document === 'undefined') {
@@ -106,9 +109,15 @@ export default function SquarePaymentForm({
         }
 
         console.log('Loading Square SDK from npm package...');
+        console.log('Browser info:', {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          vendor: navigator.vendor
+        });
+
         const { payments } = await import('@square/web-sdk');
         Square = { payments }; // Square SDK exports { payments } function
-        
+
         if (Square) {
           console.log('Square SDK loaded successfully from npm package');
           setSdkLoaded(true);
@@ -117,7 +126,48 @@ export default function SquarePaymentForm({
         }
       } catch (error) {
         console.error('Failed to load Square SDK from npm package:', error);
-        const errorMsg = 'Failed to load Square payment system. Please try refreshing the page.';
+        console.error('Error details:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          browser: navigator.userAgent
+        });
+
+        // Capture error in Sentry with detailed context
+        Sentry.captureException(error, {
+          tags: {
+            component: 'SquarePaymentForm',
+            error_type: 'sdk_load_failure',
+            payment_provider: 'square',
+            browser_platform: navigator.platform,
+            is_ios: /iPhone|iPad|iPod/.test(navigator.userAgent).toString(),
+          },
+          contexts: {
+            payment: {
+              payment_id: payment.id,
+              family_id: payment.family_id,
+            },
+            browser: {
+              user_agent: navigator.userAgent,
+              platform: navigator.platform,
+              vendor: navigator.vendor,
+              language: navigator.language,
+            },
+            config: {
+              environment: providerConfig.environment,
+              has_application_id: !!providerConfig.applicationId,
+              has_location_id: !!providerConfig.locationId,
+            }
+          },
+          level: 'error',
+        });
+
+        // Provide more helpful error message for iOS users
+        const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+        const errorMsg = isIOS
+          ? 'Unable to load payment system on this device. Please try: (1) Refreshing the page, (2) Clearing your browser cache, (3) Using Safari in regular mode (not Private Browsing), or (4) Try a different browser.'
+          : 'Failed to load Square payment system. Please try refreshing the page or contact support if the issue persists.';
+
         setSdkError(errorMsg);
         onError?.(errorMsg);
       }
@@ -252,6 +302,36 @@ export default function SquarePaymentForm({
         console.log('Square Web Payments SDK initialized successfully');
       } catch (error) {
         console.error('Square initialization failed:', error);
+
+        // Capture initialization errors in Sentry
+        Sentry.captureException(error, {
+          tags: {
+            component: 'SquarePaymentForm',
+            error_type: 'sdk_init_failure',
+            payment_provider: 'square',
+            browser_platform: navigator.platform,
+            is_ios: /iPhone|iPad|iPod/.test(navigator.userAgent).toString(),
+          },
+          contexts: {
+            payment: {
+              payment_id: payment.id,
+              family_id: payment.family_id,
+            },
+            browser: {
+              user_agent: navigator.userAgent,
+              platform: navigator.platform,
+              vendor: navigator.vendor,
+              language: navigator.language,
+            },
+            config: {
+              environment: providerConfig.environment,
+              has_application_id: !!providerConfig.applicationId,
+              has_location_id: !!providerConfig.locationId,
+            }
+          },
+          level: 'error',
+        });
+
         if (error instanceof Error) {
           onError?.(`Failed to initialize Square payment form: ${error.message}`);
         } else {
@@ -343,12 +423,42 @@ export default function SquarePaymentForm({
 
   const formatAmount = (amount: Money) => formatMoney(amount);
 
+  const handleRetry = () => {
+    if (retryCount < maxRetries) {
+      console.log(`Retrying Square SDK load (attempt ${retryCount + 1}/${maxRetries})...`);
+      setRetryCount(retryCount + 1);
+      setSdkError(null);
+      loadAttempted.current = false;
+      initAttempted.current = false;
+      Square = null;
+    }
+  };
+
   if (sdkError) {
     return (
       <div className="space-y-4">
         <Alert variant="destructive">
           <AlertTitle>Payment System Unavailable</AlertTitle>
-          <AlertDescription>{sdkError}</AlertDescription>
+          <AlertDescription>
+            <div className="space-y-2">
+              <p>{sdkError}</p>
+              {retryCount < maxRetries && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetry}
+                  className="mt-2"
+                >
+                  Retry Loading Payment Form
+                </Button>
+              )}
+              {retryCount >= maxRetries && (
+                <p className="text-sm mt-2">
+                  If the problem persists, please contact support or try making a payment from a different device.
+                </p>
+              )}
+            </div>
+          </AlertDescription>
         </Alert>
       </div>
     );
