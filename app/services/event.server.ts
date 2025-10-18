@@ -129,6 +129,7 @@ export class EventService {
       `)
       .eq('visibility', 'public')
       .in('status', ['published', 'registration_open'])
+      .or(`end_date.gte.${today},end_date.is.null`)
       .gte('start_date', today)
       .order('start_date', { ascending: true })
       .limit(6);
@@ -229,6 +230,7 @@ export class EventService {
       `)
       .in('visibility', ['public', 'internal'])
       .in('status', ['published', 'registration_open'])
+      .or(`end_date.gte.${today},end_date.is.null`)
       .gte('start_date', today)
       .order('start_date', { ascending: true })
       .limit(6);
