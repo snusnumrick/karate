@@ -666,7 +666,7 @@ export default function PurchaseGiPage() {
                                 onClick={() => setPendingPayment(null)}
                                 className="border-yellow-600 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-500 dark:text-yellow-300 dark:hover:bg-yellow-900/30"
                             >
-                                Create New Payment
+                                Dismiss and Continue
                             </Button>
                         </div>
                     </AlertDescription>
@@ -682,8 +682,8 @@ export default function PurchaseGiPage() {
                 </Alert>
             )}
 
-            {/* Render form only if there are products */}
-            {products.length > 0 && (
+            {/* Render form only if there are products and no pending payment */}
+            {products.length > 0 && !pendingPayment && (
                  <Form method="post" action={`/family/store/purchase/${params.studentId}`}>
                     <AuthenticityTokenInput />
                     {/* Hidden input for discount code */}
