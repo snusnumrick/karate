@@ -21,22 +21,11 @@ const staticRoutes = [
 // Fetch public events dynamically
 const getDynamicEventRoutes = async (): Promise<string[]> => {
     try {
-        const eventService = new EventService();
-        // Fetch all published events (adjust based on your visibility rules)
-        const events = await eventService.getAllEvents();
+        // Fetch upcoming public events for sitemap
+        const events = await EventService.getUpcomingEvents();
 
-        // Only include future or recent past events (not ancient history)
-        const now = new Date();
-        const sixMonthsAgo = new Date(now);
-        sixMonthsAgo.setMonth(now.getMonth() - 6);
-
-        return events
-            .filter(event => {
-                const eventDate = new Date(event.end_date);
-                // Include events that haven't ended yet or ended within the last 6 months
-                return eventDate >= sixMonthsAgo;
-            })
-            .map(event => `/events/${event.id}`);
+        // Map to event URLs
+        return events.map((event) => `/events/${event.id}`);
     } catch (error) {
         console.error('Error fetching events for sitemap:', error);
         return [];

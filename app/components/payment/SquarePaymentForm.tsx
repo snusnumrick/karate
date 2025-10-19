@@ -174,7 +174,10 @@ export default function SquarePaymentForm({
     };
 
     loadSquareSDK();
-  }, [onError]);
+  // This effect should only run once on mount to load the SDK
+  // payment/providerConfig values are only used for error context, not logic
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Initialize Square Web Payments SDK
   useEffect(() => {
