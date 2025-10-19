@@ -101,6 +101,7 @@ This provides optimal performance through targeted indexing while maintaining fl
 - `families` - Family information and contact details
 - `students` - Student profiles and medical information
 - `guardians` - Guardian/parent contact information
+- `profiles` - User profile records linking Supabase auth users to families
 
 #### Program Management
 - `programs` - Training program definitions with curricula
@@ -176,6 +177,32 @@ Comprehensive program and class management featuring:
 - **Real-time Messaging**: Supabase real-time for instant message delivery
 - **Push Notifications**: Browser-based notifications with customizable preferences
 - **Email Integration**: Automated email notifications via Resend
+
+### User Onboarding Flows
+
+#### Self-Registration (Family Portal)
+Families can register themselves through the public registration page:
+1. Family submits registration form with guardian and student information
+2. Supabase auth user is created with email/password
+3. Family, guardian, and profile records are created in the database
+4. Email confirmation is sent (if configured)
+5. User can immediately log in to the family portal
+
+#### Admin-Created Families
+Administrators can create families directly through the admin panel:
+1. Admin submits family creation form with guardian and optional student information
+2. Family and guardian records are created in the database
+3. Supabase auth user is automatically created for the primary guardian
+4. Profile record is created linking the auth user to the family
+5. Password setup email is automatically sent to the guardian's email address
+6. Guardian clicks the password reset link to set their own password
+7. Guardian can then access the family portal
+
+**Security Benefits of Admin-Created Flow:**
+- Admin never knows the guardian's password
+- Guardian controls their own credentials from the start
+- Uses the existing, tested password reset infrastructure
+- Automatic, professional email delivery from the system
 
 ### Security Architecture
 

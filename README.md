@@ -32,6 +32,7 @@ npm run dev
 - **[API Documentation](docs/API.md)** - External API endpoints and integration
 
 ### Feature Guides
+- **[Admin Operations Guide](docs/ADMIN_OPERATIONS.md)** - Family creation, portal access, and administrative workflows
 - **[Instructor Portal Guide](docs/INSTRUCTOR_PORTAL.md)** - Instructor workflows, permissions, and attendance tools
 
 ### Operations & Troubleshooting
@@ -51,6 +52,7 @@ npm run dev
 
 ### For Administrators
 - **Comprehensive Dashboard** - Overview of families, students, payments, and programs
+- **Family Management** - Create families with automatic portal access and welcome emails
 - **Program Management** - Create and manage multi-class training programs
 - **Attendance Tracking** - Digital attendance recording and reporting
 - **Payment Processing** - Manual payment recording and Stripe integration
