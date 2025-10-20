@@ -89,6 +89,20 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const hasRequiredWaivers = (eventWaivers?.length || 0) > 0;
 
+  // Check if user has already signed all required waivers
+  let allWaiversSigned = false;
+  if (hasRequiredWaivers) {
+    const waiverIds = eventWaivers?.map(w => w.waiver_id) || [];
+    const { data: signatures } = await supabaseServer
+      .from('waiver_signatures')
+      .select('waiver_id')
+      .eq('user_id', user.id)
+      .in('waiver_id', waiverIds);
+
+    const signedWaiverIds = signatures?.map(s => s.waiver_id) || [];
+    allWaiversSigned = waiverIds.every(id => signedWaiverIds.includes(id));
+  }
+
   // Get error from query params (if redirected back due to error)
   const url = new URL(request.url);
   const error = url.searchParams.get('error');
@@ -112,13 +126,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     students: students || [],
     registeredStudentIds,
     hasRequiredWaivers,
+    allWaiversSigned,
     error: errorMessage,
   });
 }
 
 export default function EventStudentSelection() {
   const loaderData = useLoaderData<typeof loader>();
-  const { event: serializedEvent, students, registeredStudentIds, hasRequiredWaivers, error } = loaderData;
+  const { event: serializedEvent, students, registeredStudentIds, hasRequiredWaivers, allWaiversSigned, error } = loaderData;
   const event = {
     ...serializedEvent,
     registration_fee: deserializeMoney(serializedEvent.registration_fee),
@@ -226,13 +241,25 @@ export default function EventStudentSelection() {
                 Select Students
               </CardTitle>
               <CardDescription>
-                {hasRequiredWaivers
+                {hasRequiredWaivers && !allWaiversSigned
                   ? 'After selecting students, you\'ll be asked to sign required waivers before completing registration.'
+                  : hasRequiredWaivers && allWaiversSigned
+                  ? 'You have already signed the required waivers. Select students to complete registration.'
                   : 'Select the students you want to register for this event.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Form method="post" className="space-y-6">
+                {/* Waivers Already Signed Notice */}
+                {hasRequiredWaivers && allWaiversSigned && (
+                  <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                    <AlertCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-900 dark:text-green-100">
+                      ✓ All required waivers have been signed. You can proceed directly to registration.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {/* Available Students */}
                 <div className="space-y-4">
                   <Label className="text-base font-semibold">Available Students</Label>
@@ -332,7 +359,9 @@ export default function EventStudentSelection() {
                     size="lg"
                     disabled={selectedStudents.size === 0}
                   >
-                    {hasRequiredWaivers ? 'Continue to Waiver' : 'Continue to Registration'}
+                    {hasRequiredWaivers && !allWaiversSigned
+                      ? 'Continue to Waiver'
+                      : 'Continue to Registration'}
                     →
                   </Button>
                 </div>
