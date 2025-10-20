@@ -2,20 +2,14 @@ import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunctio
 import {Form, Link, useActionData, useLoaderData, useNavigation, useParams} from "@remix-run/react";
 import {getSupabaseAdminClient} from "~/utils/supabase.server";
 import { csrf } from "~/utils/csrf.server";
-import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import {Database} from "~/types/database.types";
 
 import {Button} from "~/components/ui/button";
-import {Input} from "~/components/ui/input";
-import {Label} from "~/components/ui/label";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
-import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
-import {BELT_RANKS} from "~/utils/constants"; // Assuming this constant file exists
 import invariant from "tiny-invariant";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "~/components/ui/card";
 import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
-import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
+import { StudentFormFields } from "~/components/StudentFormFields";
 
 
 // Loader to get family ID and name for context
@@ -77,7 +71,6 @@ export async function action({request, params}: ActionFunctionArgs) {
     const medications = formData.get("medications") as string | null;
     const immunizationsUpToDate = formData.get("immunizationsUpToDate") as string | null;
     const immunizationNotes = formData.get("immunizationNotes") as string | null;
-    const beltRank = formData.get("beltRank") as string | null;
     const email = formData.get("email") as string | null;
     const cellPhone = formData.get("cellPhone") as string | null;
 
@@ -120,7 +113,6 @@ export async function action({request, params}: ActionFunctionArgs) {
             medications: medications || null,
             immunizations_up_to_date: immunizationsUpToDate || null,
             immunization_notes: immunizationNotes || null,
-            belt_rank: beltRank as typeof BELT_RANKS[number] | null, // Cast belt rank
             email: email || null,
             cell_phone: cellPhone || null,
             // Add other fields as necessary, ensure they match your DB schema
@@ -154,21 +146,15 @@ export async function action({request, params}: ActionFunctionArgs) {
 }
 
 export default function AdminAddStudentPage() {
-    const {familyName} = useLoaderData<typeof loader>();
+    const {familyId, familyName} = useLoaderData<typeof loader>();
     const actionData = useActionData<{
         error: string;
         fieldErrors: Record<string, string>;
         formData: Record<string, string>;
     }>();
     const navigation = useNavigation();
-    const params = useParams(); // Use params to get familyId for the cancel link
+    const params = useParams();
     const isSubmitting = navigation.state === "submitting";
-
-    // Helper to get default value from actionData if available
-    const getFormData: (key: string) => string = (key: string) => (actionData && 'formData' in actionData ? (actionData.formData as Record<string, string>)[key] : '');
-    const getFieldError: (key: string) => string | undefined = (key: string) => actionData?.fieldErrors?.[key];
-    //const getFieldErrorsNumber: () => number = () => actionData?.fieldErrors ? Object.keys(actionData.fieldErrors).length : 0;
-
 
     return (
         <div className="space-y-6">
@@ -192,226 +178,28 @@ export default function AdminAddStudentPage() {
                             <AlertDescription>{actionData.error}</AlertDescription>
                         </Alert>
                     )}
-                    <Form method="post" className="space-y-6">
-                        <AuthenticityTokenInput />
-                        {/* Hidden input for familyId might not be needed as it's in the action's params */}
-                        {/* <input type="hidden" name="familyId" value={familyId} /> */}
 
-                        <h3 className="text-lg font-semibold text-foreground mb-4 pb-2 border-b">Required
-                            Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* First Name */}
-                            <div className="space-y-1">
-                                <Label htmlFor="firstName">First Name<span className="text-destructive">*</span></Label>
-                                <Input type="text" id="firstName" name="firstName" autoComplete="given-name" required
-                                       className="input-custom-styles"
-                                       defaultValue={getFormData('firstName')}
-                                       aria-invalid={!!getFieldError('firstName')} aria-describedby="firstName-error"
-                                       tabIndex={1}/>
-                                {getFieldError('firstName') && <p id="firstName-error"
-                                                                  className="text-sm text-destructive">{getFieldError('firstName')}</p>}
-                            </div>
-                            {/* Last Name */}
-                            <div className="space-y-1">
-                                <Label htmlFor="lastName">Last Name<span className="text-destructive">*</span></Label>
-                                <Input type="text" id="lastName" name="lastName" autoComplete="family-name" required
-                                       className="input-custom-styles"
-                                       defaultValue={getFormData('lastName')} aria-invalid={!!getFieldError('lastName')}
-                                       aria-describedby="lastName-error" tabIndex={2}/>
-                                {getFieldError('lastName') && <p id="lastName-error"
-                                                                 className="text-sm text-destructive">{getFieldError('lastName')}</p>}
-                            </div>
-                            {/* Birth Date */}
-                            <div className="space-y-1">
-                                <Label htmlFor="birthDate">Birth Date<span className="text-destructive">*</span></Label>
-                                <Input type="date" id="birthDate" name="birthDate" required
-                                       className="input-custom-styles dark:[color-scheme:dark]"
-                                       defaultValue={getFormData('birthDate')}
-                                       aria-invalid={!!getFieldError('birthDate')} aria-describedby="birthDate-error"
-                                       tabIndex={3}/>
-                                {getFieldError('birthDate') && <p id="birthDate-error"
-                                                                  className="text-sm text-destructive">{getFieldError('birthDate')}</p>}
-                            </div>
-                            {/* Gender */}
-                            <div className="space-y-1">
-                                <Label htmlFor="gender">Gender<span className="text-destructive">*</span></Label>
-                                <Select name="gender" required defaultValue={getFormData('gender')}>
-                                    <SelectTrigger id="gender" className="input-custom-styles" aria-invalid={!!getFieldError('gender')}
-                                                   aria-describedby="gender-error" tabIndex={4}>
-                                        <SelectValue placeholder="Select gender"/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Male">Male</SelectItem>
-                                        <SelectItem value="Female">Female</SelectItem>
-                                        <SelectItem value="Other">Other</SelectItem>
-                                        <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {getFieldError('gender') && <p id="gender-error"
-                                                               className="text-sm text-destructive">{getFieldError('gender')}</p>}
-                            </div>
-                            {/* T-Shirt Size */}
-                            <div className="space-y-1">
-                                <Label htmlFor="tShirtSize">T-Shirt Size<span
-                                    className="text-destructive">*</span></Label>
-                                <Select name="tShirtSize" required defaultValue={getFormData('tShirtSize')}>
-                                    <SelectTrigger id="tShirtSize" className="input-custom-styles" aria-invalid={!!getFieldError('tShirtSize')}
-                                                   aria-describedby="tShirtSize-error" tabIndex={5}>
-                                        <SelectValue placeholder="Select size"/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {T_SHIRT_SIZE_OPTIONS.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {getFieldError('tShirtSize') && <p id="tShirtSize-error"
-                                                                   className="text-sm text-destructive">{getFieldError('tShirtSize')}</p>}
-                            </div>
-                            {/* School */}
-                            <div className="space-y-1">
-                                <Label htmlFor="school">School<span className="text-destructive">*</span></Label>
-                                <Input type="text" id="school" name="school" required
-                                       className="input-custom-styles"
-                                       defaultValue={getFormData('school')} aria-invalid={!!getFieldError('school')}
-                                       aria-describedby="school-error" tabIndex={6}/>
-                                {getFieldError('school') && <p id="school-error"
-                                                               className="text-sm text-destructive">{getFieldError('school')}</p>}
-                            </div>
-                            {/* Grade Level */}
-                            <div className="space-y-1">
-                                <Label htmlFor="gradeLevel">Grade Level<span
-                                    className="text-destructive">*</span></Label>
-                                <Select name="gradeLevel" required defaultValue={getFormData('gradeLevel')}>
-                                    <SelectTrigger id="gradeLevel" className="input-custom-styles" aria-invalid={!!getFieldError('gradeLevel')}
-                                                   aria-describedby="gradeLevel-error" tabIndex={7}>
-                                        <SelectValue placeholder="Select grade"/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Pre-K">Pre-Kindergarten</SelectItem>
-                                        <SelectItem value="K">Kindergarten</SelectItem>
-                                        <SelectItem value="1">1st Grade</SelectItem>
-                                        <SelectItem value="2">2nd Grade</SelectItem>
-                                        <SelectItem value="3">3rd Grade</SelectItem>
-                                        <SelectItem value="4">4th Grade</SelectItem>
-                                        <SelectItem value="5">5th Grade</SelectItem>
-                                        <SelectItem value="6">6th Grade</SelectItem>
-                                        <SelectItem value="7">7th Grade</SelectItem>
-                                        <SelectItem value="8">8th Grade</SelectItem>
-                                        <SelectItem value="9">9th Grade</SelectItem>
-                                        <SelectItem value="10">10th Grade</SelectItem>
-                                        <SelectItem value="11">11th Grade</SelectItem>
-                                        <SelectItem value="12">12th Grade</SelectItem>
-                                        <SelectItem value="Post-Secondary">Post-Secondary</SelectItem>
-                                        <SelectItem value="N/A">Not Applicable</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {getFieldError('gradeLevel') && <p id="gradeLevel-error"
-                                                                   className="text-sm text-destructive">{getFieldError('gradeLevel')}</p>}
-                            </div>
-                        </div>
+                    {/* Display general error if fieldErrors exist */}
+                    {actionData?.error && actionData.fieldErrors && Object.keys(actionData.fieldErrors).length > 0 && (
+                        <Alert variant="destructive" className="mb-4">
+                            <ExclamationTriangleIcon className="h-4 w-4"/>
+                            <AlertTitle>Validation Error</AlertTitle>
+                            <AlertDescription>{actionData.error}</AlertDescription>
+                        </Alert>
+                    )}
 
-                        <h3 className="text-lg font-semibold text-foreground mt-6 mb-4 pb-2 border-b">Optional
-                            Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Belt Rank */}
-                            <div className="space-y-1">
-                                <Label htmlFor="beltRank">Starting Belt Rank</Label>
-                                <Select name="beltRank" defaultValue={getFormData('beltRank')}>
-                                    <SelectTrigger id="beltRank" className="input-custom-styles" tabIndex={8}>
-                                        <SelectValue placeholder="Select belt rank (usually White)"/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {BELT_RANKS.map((rank) => (
-                                            <SelectItem key={rank} value={rank} className="capitalize">
-                                                {rank}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {/* Student Email */}
-                            <div className="space-y-1">
-                                <Label htmlFor="email">Student Email</Label>
-                                <Input type="email" id="email" name="email" autoComplete="email" className="input-custom-styles" defaultValue={getFormData('email')} tabIndex={9}/>
-                            </div>
-                            {/* Student Cell Phone */}
-                            <div className="space-y-1">
-                                <Label htmlFor="cellPhone">Student Cell #</Label>
-                                <Input type="tel" id="cellPhone" name="cellPhone" autoComplete="mobile tel"
-                                       className="input-custom-styles"
-                                       defaultValue={getFormData('cellPhone')} tabIndex={10}/>
-                            </div>
-                            {/* Special Needs */}
-                            <div className="space-y-1 md:col-span-2">
-                                <Label htmlFor="specialNeeds">Special Needs (Leave blank if NONE)</Label>
-                                <Input type="text" id="specialNeeds" name="specialNeeds"
-                                       className="input-custom-styles"
-                                       defaultValue={getFormData('specialNeeds')} tabIndex={11}/>
-                            </div>
-                            {/* Allergies */}
-                            <div className="space-y-1 md:col-span-2">
-                                <Label htmlFor="allergies">Allergies (Leave blank if NONE)</Label>
-                                <Textarea id="allergies" name="allergies" rows={3}
-                                          className="input-custom-styles"
-                                          defaultValue={getFormData('allergies')} tabIndex={12}/>
-                            </div>
-                            {/* Medications */}
-                            <div className="space-y-1 md:col-span-2">
-                                <Label htmlFor="medications">Medications (Leave blank if NONE)</Label>
-                                <Textarea id="medications" name="medications" rows={3}
-                                          className="input-custom-styles"
-                                          defaultValue={getFormData('medications')} tabIndex={13}/>
-                            </div>
-                            {/* Immunizations Up To Date */}
-                            <div className="space-y-1">
-                                <Label htmlFor="immunizationsUpToDate">Immunizations Up To Date?</Label>
-                                <Select name="immunizationsUpToDate"
-                                        defaultValue={getFormData('immunizationsUpToDate')}>
-                                    <SelectTrigger id="immunizationsUpToDate" className="input-custom-styles" tabIndex={14}>
-                                        <SelectValue placeholder="Select option"/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Yes">Yes</SelectItem>
-                                        <SelectItem value="No">No</SelectItem>
-                                        <SelectItem value="Unknown">Unknown</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {/* Immunization Notes */}
-                            <div className="space-y-1 md:col-span-2">
-                                <Label htmlFor="immunizationNotes">Immunization Notes</Label>
-                                <Textarea id="immunizationNotes" name="immunizationNotes" rows={3}
-                                          className="input-custom-styles"
-                                          defaultValue={getFormData('immunizationNotes')} tabIndex={15}/>
-                            </div>
-                        </div>
-
-                        {/* Display general error if fieldErrors exist */}
-                        {actionData?.error && actionData.fieldErrors && Object.keys(actionData.fieldErrors).length > 0 && (
-                            <Alert variant="destructive" className="mt-4">
-                                <ExclamationTriangleIcon className="h-4 w-4"/>
-                                <AlertTitle>Validation Error</AlertTitle>
-                                <AlertDescription>{actionData.error}</AlertDescription>
-                            </Alert>
-                        )}
-
-
-                        <div className="flex justify-end mt-6">
-                            <Button type="button" variant="outline" asChild className="mr-2" tabIndex={16}>
-                                <Link to={`/admin/families/${params.familyId}`}>Cancel</Link>
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="bg-blue-600 text-white hover:bg-blue-700"
-                                tabIndex={17}
-                            >
-                                {isSubmitting ? "Adding Student..." : "Add Student"}
-                            </Button>
-                        </div>
+                    <Form method="post">
+                        <StudentFormFields
+                            mode="create"
+                            variant="admin"
+                            familyId={familyId}
+                            familyName={familyName}
+                            actionData={actionData}
+                            cancelPath={`/admin/families/${params.familyId}`}
+                            submitButtonText="Add Student"
+                            submitButtonVariant="blue"
+                            isSubmitting={isSubmitting}
+                        />
                     </Form>
                 </CardContent>
             </Card>

@@ -10,7 +10,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { Calendar, MapPin, Users, DollarSign, FileText, AlertCircle } from "lucide-react";
+import { Calendar, MapPin, DollarSign, FileText, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import type { Database } from "~/types/database.types";
 import { getEventTypeOptions } from "~/utils/event-helpers.server";
@@ -170,7 +170,13 @@ export async function action({ params, request }: ActionFunctionArgs) {
   const startTime = formData.get("start_time") as string;
   const endTime = formData.get("end_time") as string;
   const location = formData.get("location") as string;
+  const location_name = formData.get("location_name") as string;
+  const street_address = formData.get("street_address") as string;
   const address = formData.get("address") as string;
+  const locality = formData.get("locality") as string;
+  const region = formData.get("region") as string;
+  const postal_code = formData.get("postal_code") as string;
+  const country = formData.get("country") as string;
   const maxParticipants = formData.get("max_participants") as string;
   const registrationFee = formData.get("registration_fee") as string;
   const registrationDeadline = formData.get("registration_deadline") as string;
@@ -223,7 +229,13 @@ export async function action({ params, request }: ActionFunctionArgs) {
         start_time: startTime || null,
         end_time: endTime || null,
         location: location?.trim() || null,
+        location_name: location_name?.trim() || null,
+        street_address: street_address?.trim() || null,
         address: address?.trim() || null,
+        locality: locality?.trim() || null,
+        region: region?.trim() || null,
+        postal_code: postal_code?.trim() || null,
+        country: country?.trim() || null,
         max_participants: maxParticipants ? parseInt(maxParticipants) : null,
         registration_fee: registrationFee ? parseFloat(registrationFee) : 0,
         registration_deadline: registrationDeadline || null,
@@ -468,15 +480,15 @@ export default function EditEvent() {
             </div>
           </div>
 
-          {/* Location */}
+          {/* Location & Capacity */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Location
+              Location & Capacity
             </h2>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="location">Venue Name</Label>
+                <Label htmlFor="location">Location Name</Label>
                 <Input
                   id="location"
                   name="location"
@@ -485,46 +497,133 @@ export default function EditEvent() {
                   className="input-custom-styles"
                   tabIndex={11}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  General location name or venue name
+                </p>
               </div>
-              
+
               <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  name="address"
-                  defaultValue={event.address || ''}
-                  placeholder="Full address including city, province, postal code"
+                <Label htmlFor="location_name">Specific Location Name</Label>
+                <Input
+                  id="location_name"
+                  name="location_name"
+                  defaultValue={event.location_name || ''}
+                  placeholder="e.g., Toronto Karate Academy - Main Hall"
                   className="input-custom-styles"
                   tabIndex={12}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Detailed venue name for metadata and SEO
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="street_address">Street Address</Label>
+                  <Input
+                    id="street_address"
+                    name="street_address"
+                    defaultValue={event.street_address || ''}
+                    placeholder="e.g., 123 Main Street"
+                    className="input-custom-styles"
+                    tabIndex={13}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="address">Full Address (Legacy)</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    defaultValue={event.address || ''}
+                    placeholder="Complete address for display"
+                    className="input-custom-styles"
+                    tabIndex={14}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Fallback address if structured fields are empty
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="locality">City/Locality</Label>
+                  <Input
+                    id="locality"
+                    name="locality"
+                    defaultValue={event.locality || ''}
+                    placeholder="e.g., Toronto"
+                    className="input-custom-styles"
+                    tabIndex={15}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="region">Province/State</Label>
+                  <Input
+                    id="region"
+                    name="region"
+                    defaultValue={event.region || ''}
+                    placeholder="e.g., ON"
+                    className="input-custom-styles"
+                    tabIndex={16}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="postal_code">Postal Code</Label>
+                  <Input
+                    id="postal_code"
+                    name="postal_code"
+                    defaultValue={event.postal_code || ''}
+                    placeholder="e.g., M5V 3A8"
+                    className="input-custom-styles"
+                    tabIndex={17}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    name="country"
+                    defaultValue={event.country || ''}
+                    placeholder="e.g., Canada"
+                    className="input-custom-styles"
+                    tabIndex={18}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="max_participants">Maximum Participants</Label>
+                  <Input
+                    id="max_participants"
+                    name="max_participants"
+                    type="number"
+                    min="1"
+                    defaultValue={event.max_participants?.toString() || ''}
+                    placeholder="e.g., 50"
+                    className="input-custom-styles"
+                    tabIndex={19}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Leave empty for unlimited capacity
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Registration & Capacity */}
+          {/* Registration & Payment */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Registration & Capacity
+              <DollarSign className="w-5 h-5" />
+              Registration & Payment
             </h2>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="max_participants">Maximum Participants</Label>
-                <Input
-                  id="max_participants"
-                  name="max_participants"
-                  type="number"
-                  min="1"
-                  defaultValue={event.max_participants?.toString() || ''}
-                  placeholder="Leave empty for unlimited"
-                  className="input-custom-styles"
-                  tabIndex={13}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Maximum number of students who can register
-                </p>
-              </div>
-              
               <div>
                 <Label htmlFor="registration_fee">Registration Fee ($)</Label>
                 <Input
@@ -535,17 +634,17 @@ export default function EditEvent() {
                   step="0.01"
                   defaultValue={event.registration_fee?.toString() || '0'}
                   className="input-custom-styles"
-                  tabIndex={14}
+                  tabIndex={20}
                 />
                 {actionData?.fieldErrors?.registration_fee && (
                   <p className="text-sm text-destructive mt-1">{actionData.fieldErrors.registration_fee}</p>
                 )}
               </div>
-              
+
               <div>
                 <Label htmlFor="instructor_id">Instructor</Label>
                 <Select name="instructor_id" defaultValue={event.instructor_id || 'none'}>
-                  <SelectTrigger className="input-custom-styles" tabIndex={15}>
+                  <SelectTrigger className="input-custom-styles" tabIndex={21}>
                     <SelectValue placeholder="Select instructor (optional)" />
                   </SelectTrigger>
                   <SelectContent>

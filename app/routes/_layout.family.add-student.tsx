@@ -1,19 +1,12 @@
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
-import {useEffect, useRef} from "react";
-import {AuthenticityTokenInput} from "remix-utils/csrf/react";
 import {csrf} from "~/utils/csrf.server";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import type {Database} from "~/types/database.types";
 
-import {Button} from "~/components/ui/button";
-import {Input} from "~/components/ui/input";
-import {Label} from "~/components/ui/label";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
-import {Textarea} from "~/components/ui/textarea";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {AppBreadcrumb, breadcrumbPatterns} from "~/components/AppBreadcrumb";
-import {T_SHIRT_SIZE_OPTIONS} from "~/constants/tShirtSizes";
+import { StudentFormFields } from "~/components/StudentFormFields";
 
 type ActionData = {
     success?: boolean;
@@ -64,7 +57,16 @@ export async function loader({request}: LoaderFunctionArgs) {
         headers.append('Set-Cookie', csrfCookieHeader);
     }
 
-    return json({familyId: profileData.family_id, familyName: familyData?.name || 'Your Family', csrfToken}, {headers});
+    // Get returnTo parameter for event registration flow
+    const url = new URL(request.url);
+    const returnTo = url.searchParams.get('returnTo');
+
+    return json({
+        familyId: profileData.family_id,
+        familyName: familyData?.name || 'Your Family',
+        csrfToken,
+        returnTo: returnTo || null
+    }, {headers});
 }
 
 
@@ -168,8 +170,12 @@ export async function action({request}: ActionFunctionArgs): Promise<Response> {
         }
 
 
-        // Redirect back to the family portal on success
-        return redirect("/family", {headers});
+        // Check for returnTo parameter (for event registration flow)
+        const url = new URL(request.url);
+        const returnTo = url.searchParams.get('returnTo');
+
+        // Redirect to returnTo if provided, otherwise go to family portal
+        return redirect(returnTo || "/family", {headers});
 
     } catch (error: unknown) {
         console.error('Add student error:', error);
@@ -180,23 +186,10 @@ export async function action({request}: ActionFunctionArgs): Promise<Response> {
 }
 
 export default function AddStudentPage() {
-    const {familyName} = useLoaderData<typeof loader>();
+    const {familyId, familyName} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
-
-    // Ref for the first input field to enable focus
-    const firstInputRef = useRef<HTMLInputElement>(null);
-
-    // Focus on the first input field when the component mounts
-    useEffect(() => {
-        if (firstInputRef.current) {
-            firstInputRef.current.focus();
-        }
-    }, []);
-
-    // State for family name (if needed for pre-filling last name)
-    // const [studentLastName, setStudentLastName] = useState(familyName.split(' ').pop() || ''); // Basic attempt to get last name
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -205,220 +198,26 @@ export default function AddStudentPage() {
             <h1 className="text-3xl font-bold mb-2">Add Student to {familyName}</h1>
             <p className="text-muted-foreground mb-6">Enter the details for the new student.</p>
 
+            {actionData?.error && (
+                <Alert variant="destructive" className="mb-4">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{actionData.error}</AlertDescription>
+                </Alert>
+            )}
+
             <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md border dark:border-gray-700">
-                <Form method="post" className="space-y-6">
-                    <AuthenticityTokenInput/>
-                    {/* Hidden input for familyId might not be needed if fetched in action */}
-                    {/* <input type="hidden" name="familyId" value={familyId} /> */}
-
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border dark:border-gray-700">Student
-                        Information</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Required Fields */}
-                        <div>
-                            <Label htmlFor="firstName" className="block text-sm font-medium mb-1">
-                                First Name<span className="text-red-500">*</span>
-                            </Label>
-                            <Input type="text" id="firstName" name="firstName" required
-                                   ref={firstInputRef}
-                                   autoComplete="given-name"
-                                   className="input-custom-styles focus:ring-green-500" tabIndex={1}/>
-                        </div>
-                        <div>
-                            <Label htmlFor="lastName" className="block text-sm font-medium mb-1">
-                                Last Name<span className="text-red-500">*</span>
-                            </Label>
-                            <Input type="text" id="lastName" name="lastName" required
-                                   autoComplete="family-name"
-                                   className="input-custom-styles focus:ring-green-500"
-                                   tabIndex={2} /* defaultValue={studentLastName} */ />
-                        </div>
-                        <div>
-                            <Label htmlFor="birthDate" className="block text-sm font-medium mb-1">
-                                Birth Date<span className="text-red-500">*</span>
-                            </Label>
-                            <Input type="date" id="birthDate" name="birthDate" required
-                                   className="input-custom-styles focus:ring-green-500 dark:[color-scheme:dark]"
-                                   tabIndex={3}/>
-                        </div>
-                        <div>
-                            <Label htmlFor="gender" className="block text-sm font-medium mb-1">
-                                Gender<span className="text-red-500">*</span>
-                            </Label>
-                            <Select name="gender" required>
-                                <SelectTrigger id="gender"
-                                               className="input-custom-styles w-full"
-                                               tabIndex={4}> {/* Applied custom style, removed redundant */}
-                                    <SelectValue placeholder="Select gender"/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Male">Male</SelectItem>
-                                    <SelectItem value="Female">Female</SelectItem>
-                                    <SelectItem value="Other">Other</SelectItem>
-                                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label htmlFor="tShirtSize" className="block text-sm font-medium mb-1">
-                                T-Shirt Size<span className="text-red-500">*</span>
-                            </Label>
-                            <Select name="tShirtSize" required>
-                                <SelectTrigger id="tShirtSize"
-                                               className="input-custom-styles w-full"
-                                               tabIndex={5}> {/* Applied custom style, removed redundant */}
-                                    <SelectValue placeholder="Select size"/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {T_SHIRT_SIZE_OPTIONS.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label htmlFor="height" className="block text-sm font-medium mb-1">
-                                Height (cm)
-                            </Label>
-                            <Input
-                                type="number"
-                                id="height"
-                                name="height"
-                                min="50"
-                                max="250"
-                                className="input-custom-styles focus:ring-green-500"
-                                tabIndex={6}
-                                placeholder="e.g., 150"
-                            />
-                            {actionData?.fieldErrors?.height && (
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.height}</p>
-                            )}
-                        </div>
-                        <div>
-                            <Label htmlFor="school" className="block text-sm font-medium mb-1">
-                                School<span className="text-red-500">*</span>
-                            </Label>
-                            <Input type="text" id="school" name="school" required
-                                   className="input-custom-styles focus:ring-green-500" tabIndex={7}/>
-                        </div>
-                        <div>
-                            <Label htmlFor="gradeLevel" className="block text-sm font-medium mb-1">
-                                Grade Level<span className="text-red-500">*</span>
-                            </Label>
-                            <Select name="gradeLevel" required>
-                                <SelectTrigger id="gradeLevel"
-                                               className="input-custom-styles"
-                                               aria-describedby="gradeLevel-error"
-                                               tabIndex={8}>
-                                    <SelectValue placeholder="Select grade"/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Pre-K">Pre-Kindergarten</SelectItem>
-                                    <SelectItem value="K">Kindergarten</SelectItem>
-                                    <SelectItem value="1">1st Grade</SelectItem>
-                                    <SelectItem value="2">2nd Grade</SelectItem>
-                                    <SelectItem value="3">3rd Grade</SelectItem>
-                                    <SelectItem value="4">4th Grade</SelectItem>
-                                    <SelectItem value="5">5th Grade</SelectItem>
-                                    <SelectItem value="6">6th Grade</SelectItem>
-                                    <SelectItem value="7">7th Grade</SelectItem>
-                                    <SelectItem value="8">8th Grade</SelectItem>
-                                    <SelectItem value="9">9th Grade</SelectItem>
-                                    <SelectItem value="10">10th Grade</SelectItem>
-                                    <SelectItem value="11">11th Grade</SelectItem>
-                                    <SelectItem value="12">12th Grade</SelectItem>
-                                    <SelectItem value="Post-Secondary">Post-Secondary</SelectItem>
-                                    <SelectItem value="N/A">Not Applicable</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        {/* Belt Rank Select Removed - Managed via belt_awards table */}
-                    </div>
-
-                    <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border dark:border-gray-700">Optional
-                        Information</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <Label htmlFor="email" className="block text-sm font-medium mb-1">
-                                Student Email
-                            </Label>
-                            <Input type="email" id="email" name="email" autoComplete="email"
-                                   className="input-custom-styles focus:ring-green-500" tabIndex={8}/>
-                        </div>
-                        <div>
-                            <Label htmlFor="cellPhone" className="block text-sm font-medium mb-1">
-                                Student Cell #
-                            </Label>
-                            <Input type="tel" id="cellPhone" name="cellPhone" autoComplete="mobile tel"
-                                   className="input-custom-styles focus:ring-green-500" tabIndex={9}/>
-                        </div>
-                        <div className="md:col-span-2">
-                            <Label htmlFor="specialNeeds" className="block text-sm font-medium mb-1">
-                                Special Needs (Leave blank if NONE)
-                            </Label>
-                            <Input type="text" id="specialNeeds" name="specialNeeds"
-                                   className="input-custom-styles focus:ring-green-500" tabIndex={10}/>
-                        </div>
-                        <div className="md:col-span-2">
-                            <Label htmlFor="allergies" className="block text-sm font-medium mb-1">
-                                Allergies (Leave blank if NONE)
-                            </Label>
-                            <Textarea id="allergies" name="allergies" rows={3}
-                                      className="input-custom-styles focus:ring-green-500" tabIndex={11}/>
-                        </div>
-                        <div className="md:col-span-2">
-                            <Label htmlFor="medications" className="block text-sm font-medium mb-1">
-                                Medications (Leave blank if NONE)
-                            </Label>
-                            <Textarea id="medications" name="medications" rows={3}
-                                      className="input-custom-styles focus:ring-green-500" tabIndex={12}/>
-                        </div>
-                        <div>
-                            <Label htmlFor="immunizationsUpToDate" className="block text-sm font-medium mb-1">
-                                Immunizations Up To Date?
-                            </Label>
-                            <Select name="immunizationsUpToDate">
-                                <SelectTrigger id="immunizationsUpToDate"
-                                               className="input-custom-styles"
-                                               aria-describedby="immunizationsUpToDate-error"
-                                               tabIndex={13}>
-                                    <SelectValue placeholder="Select status"/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Yes">Yes</SelectItem>
-                                    <SelectItem value="No">No</SelectItem>
-                                    <SelectItem value="Unknown">Unknown</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="md:col-span-2">
-                            <Label htmlFor="immunizationNotes" className="block text-sm font-medium mb-1">
-                                Immunization Notes
-                            </Label>
-                            <Textarea id="immunizationNotes" name="immunizationNotes" rows={3}
-                                      className="input-custom-styles focus:ring-green-500" tabIndex={14}/>
-                        </div>
-                    </div>
-
-                    {actionData?.error && (
-                        <Alert variant="destructive" className="mt-4">
-                            <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{actionData.error}</AlertDescription>
-                        </Alert>
-                    )}
-
-                    <div className="flex justify-end mt-8">
-                        <Button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-                            tabIndex={15}
-                        >
-                            {isSubmitting ? "Adding Student..." : "Add Student"}
-                        </Button>
-                    </div>
+                <Form method="post">
+                    <StudentFormFields
+                        mode="create"
+                        variant="family"
+                        familyId={familyId}
+                        familyName={familyName}
+                        actionData={actionData}
+                        submitButtonText="Add Student"
+                        submitButtonVariant="green"
+                        enableAutoFocus={true}
+                        isSubmitting={isSubmitting}
+                    />
                 </Form>
             </div>
         </div>

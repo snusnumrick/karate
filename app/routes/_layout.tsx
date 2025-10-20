@@ -139,16 +139,21 @@ export default function Layout() {
     }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, serverSession?.access_token, serverSession?.refresh_token]);
 
 
+    // Use a ref to track the access token without causing effect re-runs
+    const lastAccessTokenRef = React.useRef(serverSession?.access_token);
+
     React.useEffect(() => {
         if (!supabase) return;
-        
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
                 if (event === 'PASSWORD_RECOVERY') {
                     navigate('/reset-password');
                     return;
                 }
-                if (session?.access_token !== serverSession?.access_token) {
+                // Compare with the ref value instead of serverSession prop
+                if (session?.access_token !== lastAccessTokenRef.current) {
+                    lastAccessTokenRef.current = session?.access_token;
                     revalidator.revalidate();
                 }
             }
@@ -157,7 +162,7 @@ export default function Layout() {
         return () => {
             subscription?.unsubscribe();
         };
-    }, [serverSession, supabase, revalidator, navigate]);
+    }, [supabase, revalidator, navigate]);
 
 
     const user = serverSession?.user;

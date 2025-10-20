@@ -514,6 +514,27 @@ export default function FamilyDashboard() {
         <OfflineErrorBoundary>
             <div className="min-h-screen page-background-styles text-foreground">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {/* No Students Banner - Show when family has no students */}
+                    {family.students && family.students.length === 0 && (
+                        <Alert className="mb-6 bg-green-50 dark:bg-green-900/20 border-green-500">
+                            <Users className="h-5 w-5 text-green-600 dark:text-green-400"/>
+                            <AlertTitle className="text-green-900 dark:text-green-100 font-semibold">
+                                Almost there! Add your first student
+                            </AlertTitle>
+                            <AlertDescription className="text-green-700 dark:text-green-300 mt-2">
+                                <p className="mb-3">
+                                    To enroll in classes and access the full family portal, you&apos;ll need to add at least one student to your family account.
+                                </p>
+                                <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                                    <Link to="/family/add-student" className="inline-flex items-center gap-2">
+                                        <Plus className="h-4 w-4"/>
+                                        Add Student Now
+                                    </Link>
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     {/* Header Section */}
                     <div className="text-center mb-12">
                         <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">

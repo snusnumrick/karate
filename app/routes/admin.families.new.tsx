@@ -72,6 +72,11 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     if (!guardian1CellPhone) fieldErrors.guardian1CellPhone = "Guardian 1 cell phone is required.";
     if (!guardian1Email) fieldErrors.guardian1Email = "Guardian 1 email is required.";
 
+    // Validate email confirmation match
+    if (guardian1Email && familyEmail && guardian1Email !== familyEmail) {
+        fieldErrors.familyEmail = "Email addresses do not match.";
+    }
+
     // --- Guardian 2 Conditional Validation ---
     const hasGuardian2Data = [
         guardian2FirstName, guardian2LastName, guardian2Relationship,
@@ -130,7 +135,72 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
         if (guardian1Error) throw new Error(`Failed to create guardian 1: ${guardian1Error.message}`);
 
-        // 3. Insert Guardian 2 (if data provided)
+        // 3. Create Supabase Auth User for Guardian 1 (for portal access)
+        console.log(`[Admin Family Creation] Creating auth user for: ${guardian1Email}`);
+
+        // Generate a random secure password (user will set their own via password reset)
+        const tempPassword = crypto.randomUUID() + crypto.randomUUID(); // Strong random password
+
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: guardian1Email,
+            password: tempPassword,
+            email_confirm: false, // Will be confirmed when they set their password
+            user_metadata: {
+                first_name: guardian1FirstName,
+                last_name: guardian1LastName,
+                created_by_admin: true,
+            }
+        });
+
+        if (authError) {
+            console.error(`[Admin Family Creation] Failed to create auth user for ${guardian1Email}:`, authError.message);
+            throw new Error(`Failed to create portal login for guardian: ${authError.message}`);
+        }
+
+        if (!authData.user) {
+            throw new Error('Auth user creation succeeded but no user object returned');
+        }
+
+        const userId = authData.user.id;
+        console.log(`[Admin Family Creation] Successfully created auth user ${userId} for: ${guardian1Email}`);
+
+        // 4. Create Profile Record (Link Auth User to Family)
+        console.log(`[Admin Family Creation] Creating profile record for User ID: ${userId}, Family ID: ${familyId}`);
+
+        const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+                id: userId,
+                family_id: familyId,
+                email: guardian1Email,
+                role: 'user', // Default role for family portal access
+            });
+
+        if (profileError) {
+            console.error(`[Admin Family Creation] Failed to create profile for user ${userId}:`, profileError.message);
+            throw new Error(`Failed to link user to family: ${profileError.message}`);
+        }
+        console.log(`[Admin Family Creation] Successfully created profile record for User ID: ${userId}`);
+
+        // 5. Send Password Reset Email (Acts as Welcome Email)
+        console.log(`[Admin Family Creation] Sending password setup email to: ${guardian1Email}`);
+
+        const url = new URL(request.url);
+        const resetRedirectTo = `${url.origin}/reset-password`;
+
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(guardian1Email, {
+            redirectTo: resetRedirectTo,
+        });
+
+        if (resetError) {
+            console.error(`[Admin Family Creation] Failed to send password setup email to ${guardian1Email}:`, resetError.message);
+            // Don't throw here - the account is created, admin can manually resend
+            console.warn(`[Admin Family Creation] Family created successfully but password setup email failed. Admin may need to manually trigger password reset.`);
+        } else {
+            console.log(`[Admin Family Creation] Successfully sent password setup email to: ${guardian1Email}`);
+        }
+
+        // 6. Insert Guardian 2 (if data provided)
         if (hasGuardian2Data && guardian2FirstName && guardian2LastName && guardian2Relationship) { // Ensure required fields are present
             const {error: guardian2Error} = await supabaseAdmin
                 .from('guardians')
@@ -147,7 +217,7 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
             if (guardian2Error) throw new Error(`Failed to create guardian 2: ${guardian2Error.message}`);
         }
 
-        // 4. Insert Students (if any provided)
+        // 7. Insert Students (if any provided)
         const studentFirstNames = formData.getAll("studentFirstName[]") as string[];
         const studentLastNames = formData.getAll("studentLastName[]") as string[];
         const studentDobs = formData.getAll("studentDob[]") as string[];

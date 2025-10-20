@@ -1,21 +1,16 @@
-import { useEffect, useState, useRef } from "react";
-// Response is globally available or comes from web fetch API, not @remix-run/node
+import { useEffect, useState } from "react";
 import { type ActionFunctionArgs, json, type LoaderFunctionArgs, TypedResponse } from "@remix-run/node";
-import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation, useRouteError, isRouteErrorResponse } from "@remix-run/react"; // Added isRouteErrorResponse
+import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
-// createClient is only needed for admin actions until fully refactored
-// Removed unused createClient import
 import { getSupabaseServerClient } from "~/utils/supabase.server";
-import { Database } from "~/types/database.types";
-// Removed unused Database import
+import type { Database } from "~/types/database.types";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {Label} from "~/components/ui/label"; // Import Label
-import {Textarea} from "~/components/ui/textarea"; // Import Textarea
-import {Checkbox} from "~/components/ui/checkbox"; // Import Checkbox
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select"; // Import Select components
-import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Import Alert components
+import {Label} from "~/components/ui/label";
+import {Textarea} from "~/components/ui/textarea";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,17 +22,17 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
-import { formatDate, getTodayLocalDateString } from "~/utils/misc"; // Import formatDate utility
+import { formatDate, getTodayLocalDateString } from "~/utils/misc";
 import { beltColorMap } from "~/utils/constants";
 import {
     getStudentDetails,
     updateStudent,
     recordIndividualSessionUsage,
-    type StudentDetails, // Import service types
+    type StudentDetails,
     type StudentUpdateData
-} from "~/services/student.server"; // Import service functions
-import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb"; // Import breadcrumb component
-import { T_SHIRT_SIZE_OPTIONS } from "~/constants/tShirtSizes";
+} from "~/services/student.server";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { StudentFormFields } from "~/components/StudentFormFields";
 
 // Define types using imported service types
 type LoaderData = {
@@ -50,7 +45,7 @@ type ActionData = {
     success?: boolean;
     message?: string;
     error?: string;
-    fieldErrors?: { [key: string]: string | undefined };
+    fieldErrors?: Record<string, string>;
     newBalance?: number | null; // Add field for remaining balance after usage
 };
 
@@ -211,9 +206,8 @@ export default function AdminStudentDetailPage() {
     const {student} = useLoaderData<LoaderData>();
     const actionData = useActionData<ActionData>();
     const navigation = useNavigation();
-    const navigate = useNavigate(); // Get navigate function
-    const [isEditing, setIsEditing] = useState(false); // State for edit mode
-    const firstNameRef = useRef<HTMLInputElement>(null);
+    const navigate = useNavigate();
+    const [isEditing, setIsEditing] = useState(false);
 
     const isSubmitting = navigation.state === "submitting";
 
@@ -223,13 +217,6 @@ export default function AdminStudentDetailPage() {
             setIsEditing(false);
         }
     }, [actionData, isEditing, navigation.state]);
-
-    // Focus first name field when entering edit mode
-    useEffect(() => {
-        if (isEditing && firstNameRef.current) {
-            firstNameRef.current.focus();
-        }
-    }, [isEditing]);
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -268,160 +255,17 @@ export default function AdminStudentDetailPage() {
 
             {isEditing ? (
                 // --- Edit Form ---
-                <Form method="post" className="space-y-6">
-                    <AuthenticityTokenInput />
-                    <input type="hidden" name="intent" value="edit"/>
-
-                    {/* Information Section */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Edit Information</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="first_name">First Name <span className="text-red-500">*</span></Label>
-                                <Input ref={firstNameRef} id="first_name" name="first_name" autoComplete="given-name" defaultValue={student.first_name} required tabIndex={1} className="input-custom-styles"/>
-                                {actionData?.fieldErrors?.first_name &&
-                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.first_name}</p>}
-                            </div>
-                            <div>
-                                <Label htmlFor="last_name">Last Name <span className="text-red-500">*</span></Label>
-                                <Input id="last_name" name="last_name" autoComplete="family-name" defaultValue={student.last_name} required tabIndex={2} className="input-custom-styles"/>
-                                {actionData?.fieldErrors?.last_name &&
-                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.last_name}</p>}
-                            </div>
-                            <div>
-                                <Label htmlFor="gender">Gender <span className="text-red-500">*</span></Label>
-                                <Select name="gender" defaultValue={student.gender} required>
-                                    <SelectTrigger id="gender" tabIndex={3} className="input-custom-styles"><SelectValue
-                                        placeholder="Select gender"/></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="male">Male</SelectItem>
-                                        <SelectItem value="female">Female</SelectItem>
-                                        <SelectItem value="other">Other</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {actionData?.fieldErrors?.gender &&
-                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.gender}</p>}
-                            </div>
-                            <div>
-                                <Label htmlFor="birth_date">Birth Date <span className="text-red-500">*</span></Label>
-                                <Input id="birth_date" name="birth_date" type="date" defaultValue={student.birth_date || ''}
-                                       required tabIndex={4} className="input-custom-styles"/>
-                                {actionData?.fieldErrors?.birth_date &&
-                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.birth_date}</p>}
-                            </div>
-                            {/* Belt Rank Select Removed */}
-                            <div>
-                                <Label htmlFor="t_shirt_size">T-Shirt Size <span
-                                    className="text-red-500">*</span></Label>
-                                <Select name="t_shirt_size" defaultValue={student.t_shirt_size || undefined} required>
-                                    <SelectTrigger id="t_shirt_size" tabIndex={5} className="input-custom-styles"><SelectValue
-                                        placeholder="Select size"/></SelectTrigger>
-                                    <SelectContent>
-                                        {T_SHIRT_SIZE_OPTIONS.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {actionData?.fieldErrors?.t_shirt_size &&
-                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.t_shirt_size}</p>}
-                            </div>
-                            <div>
-                                <Label htmlFor="height">Height (cm)</Label>
-                                <Input id="height" name="height" type="number" min="50" max="250" 
-                                       defaultValue={student.height || ''} tabIndex={6} className="input-custom-styles"
-                                       placeholder="e.g. 150"/>
-                                {actionData?.fieldErrors?.height &&
-                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.height}</p>}
-                            </div>
-                            <div>
-                                <Label htmlFor="school">School <span className="text-red-500">*</span></Label>
-                                <Input id="school" name="school" defaultValue={student.school || ''} required tabIndex={7} className="input-custom-styles"/>
-                                {actionData?.fieldErrors?.school &&
-                                    <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.school}</p>}
-                            </div>
-                            <div>
-                                <Label htmlFor="grade_level">Grade Level</Label>
-                                <Select name="grade_level" defaultValue={student.grade_level || ''}>
-                                    <SelectTrigger id="grade_level" tabIndex={8} className="input-custom-styles"><SelectValue
-                                        placeholder="Select grade"/></SelectTrigger>
-                                    <SelectContent>
-                                        {/* Removed SelectItem with value="" */}
-                                        <SelectItem value="K">Kindergarten</SelectItem>
-                                        <SelectItem value="1">1st Grade</SelectItem>
-                                        <SelectItem value="2">2nd Grade</SelectItem>
-                                        <SelectItem value="3">3rd Grade</SelectItem>
-                                        <SelectItem value="4">4th Grade</SelectItem>
-                                        <SelectItem value="5">5th Grade</SelectItem>
-                                        <SelectItem value="6">6th Grade</SelectItem>
-                                        <SelectItem value="7">7th Grade</SelectItem>
-                                        <SelectItem value="8">8th Grade</SelectItem>
-                                        <SelectItem value="9">9th Grade</SelectItem>
-                                        <SelectItem value="10">10th Grade</SelectItem>
-                                        <SelectItem value="11">11th Grade</SelectItem>
-                                        <SelectItem value="12">12th Grade</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label htmlFor="cell_phone">Cell Phone</Label>
-                                <Input id="cell_phone" name="cell_phone" type="tel" autoComplete="mobile tel"
-                                       defaultValue={student.cell_phone || ''} tabIndex={9} className="input-custom-styles"/>
-                            </div>
-                            <div>
-                                <Label htmlFor="email">Email</Label>
-                                <Input id="email" name="email" type="email" autoComplete="email" defaultValue={student.email || ''} tabIndex={9} className="input-custom-styles"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Health Information Section */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-                        <h2 className="text-xl font-semibold mb-4 border-b pb-2">Edit Health Information</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="immunizations_up_to_date"
-                                    name="immunizations_up_to_date"
-                                    defaultChecked={student.immunizations_up_to_date === 'true'}
-                                    tabIndex={10}
-                                />
-                                <Label htmlFor="immunizations_up_to_date">Immunizations Up-to-Date?</Label>
-                            </div>
-                            <div className="md:col-span-2">
-                                <Label htmlFor="immunization_notes">Immunization Notes</Label>
-                                <Textarea id="immunization_notes" name="immunization_notes"
-                                          defaultValue={student.immunization_notes || ''} rows={2} tabIndex={11} className="input-custom-styles"/>
-                            </div>
-                            <div className="md:col-span-2">
-                                <Label htmlFor="allergies">Allergies</Label>
-                                <Textarea id="allergies" name="allergies" defaultValue={student.allergies || ''}
-                                          rows={2} tabIndex={12} className="input-custom-styles"/>
-                            </div>
-                            <div className="md:col-span-2">
-                                <Label htmlFor="medications">Medications</Label>
-                                <Textarea id="medications" name="medications" defaultValue={student.medications || ''}
-                                          rows={2} tabIndex={13} className="input-custom-styles"/>
-                            </div>
-                            <div className="md:col-span-2">
-                                <Label htmlFor="special_needs">Special Needs</Label>
-                                <Textarea id="special_needs" name="special_needs"
-                                          defaultValue={student.special_needs || ''} rows={2} tabIndex={14} className="input-custom-styles"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex justify-end gap-4 mt-6">
-                        <Button type="button" variant="outline" onClick={() => setIsEditing(false)}
-                                disabled={isSubmitting} tabIndex={15}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting} tabIndex={16}>
-                            {isSubmitting ? 'Saving...' : 'Save Changes'}
-                        </Button>
-                    </div>
+                <Form method="post">
+                    <StudentFormFields
+                        mode="edit"
+                        variant="admin"
+                        student={student}
+                        actionData={actionData}
+                        onCancel={() => setIsEditing(false)}
+                        submitButtonText="Save Changes"
+                        enableAutoFocus={true}
+                        isSubmitting={isSubmitting}
+                    />
                 </Form>
             ) : (
                 // --- View Mode ---

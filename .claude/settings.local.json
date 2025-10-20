@@ -27,7 +27,13 @@
       "Bash(timeout 30 npx tsc:*)",
       "WebFetch(domain:remix.run)",
       "WebFetch(domain:v2.remix.run)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(cat /Users/antont/WebstormProjects/karate/package.json)",
+      "Bash(timeout 30 npm run typecheck)",
+      "Bash(curl -s http://localhost:5178/sitemap.xml)",
+      "Bash(curl -s http://localhost:5176/sitemap.xml)",
+      "Bash(curl -s http://localhost:5176/robots.txt)",
+      "Bash(npx shadcn@latest add sonner)"
     ],
     "deny": [],
     "ask": []

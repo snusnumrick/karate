@@ -243,38 +243,62 @@ export default function EventDetail() {
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Location</h2>
                 </div>
                 <div>
+                  {/* Display location name with fallback to legacy location field or site name */}
                   <p className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                     {event.location || siteConfig.name}
                   </p>
-                  {event.location ? (
+
+                  {/* Build structured address if available, otherwise use legacy address field */}
+                  {(event.street_address || event.locality || event.region || event.postal_code) ? (
                     <>
-                      {event.address ? (
-                        <>
-                          <p className="text-gray-600 dark:text-gray-300 mb-3">
-                            {event.address}
+                      <div className="text-gray-600 dark:text-gray-300 mb-3 space-y-1">
+                        {event.street_address && <p>{event.street_address}</p>}
+                        {(event.locality || event.region || event.postal_code) && (
+                          <p>
+                            {[event.locality, event.region, event.postal_code].filter(Boolean).join(', ')}
                           </p>
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
-                          >
-                            View on Google Maps
-                            <ExternalLink className="ml-1 h-4 w-4" />
-                          </a>
-                        </>
-                      ) : (
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
-                        >
-                          View on Google Maps
-                          <ExternalLink className="ml-1 h-4 w-4" />
-                        </a>
-                      )}
+                        )}
+                        {event.country && <p>{event.country}</p>}
+                      </div>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          [event.street_address, event.locality, event.region, event.postal_code, event.country]
+                            .filter(Boolean)
+                            .join(', ')
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                      >
+                        View on Google Maps
+                        <ExternalLink className="ml-1 h-4 w-4" />
+                      </a>
                     </>
+                  ) : event.address ? (
+                    <>
+                      <p className="text-gray-600 dark:text-gray-300 mb-3">
+                        {event.address}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                      >
+                        View on Google Maps
+                        <ExternalLink className="ml-1 h-4 w-4" />
+                      </a>
+                    </>
+                  ) : event.location ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                    >
+                      View on Google Maps
+                      <ExternalLink className="ml-1 h-4 w-4" />
+                    </a>
                   ) : (
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.location.address)}`}

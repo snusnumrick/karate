@@ -1,5 +1,5 @@
 import invariant from "tiny-invariant";
-import { type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
+import { type ActionFunctionArgs, json, type LoaderFunctionArgs, type MetaFunction, redirect } from "@remix-run/node";
 import {
     isRouteErrorResponse,
     Link,
@@ -9,13 +9,25 @@ import {
     useOutlet,
     useParams,
     useRouteError,
+    Form,
+    useNavigation,
 } from "@remix-run/react";
-import React from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { Edit, Plus } from "lucide-react";
 import { formatDate } from "~/utils/misc";
-import { getFamilyDetails, type FamilyDetails } from "~/services/family.server";
+import { getFamilyDetails, type FamilyDetails, deleteFamily } from "~/services/family.server";
 import { getGuardiansByFamily } from "~/services/guardian.server";
 import { deleteStudent } from "~/services/student.server";
 import { requireAdminUser } from "~/utils/auth.server";
@@ -105,43 +117,125 @@ export async function action({request, params}: ActionFunctionArgs) {
         }
     }
 
+    if (intent === "deleteFamily") {
+        console.log(`[Action] Attempting to delete family ${familyId}`);
+
+        try {
+            await deleteFamily(familyId);
+
+            console.log(`[Action] Successfully deleted family ${familyId}`);
+            // Redirect to families list after successful deletion
+            return redirect("/admin/families");
+
+        } catch (error) {
+            console.error(`[Action Delete Family] Error deleting family ${familyId}:`, error);
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+            return json({ error: `Failed to delete family: ${errorMessage}` }, { status: 500 });
+        }
+    }
+
     // Handle other intents or return error if intent is unknown
     return json({error: `Unknown intent: ${intent}`}, {status: 400});
 }
 
-// Helper component for the delete button/form
+// Helper component for the delete student button/form
 function DeleteStudentButton({studentId, studentName}: { studentId: string, studentName: string }) {
     const fetcher = useFetcher<{ error?: string }>();
     const isDeleting = fetcher.state !== 'idle';
 
-    const handleDelete = (event: React.MouseEvent<HTMLButtonElement>) => {
-        console.log('[handleDelete] Clicked delete button.'); // Add log
-        if (!window.confirm(`Are you sure you want to delete ${studentName}? This cannot be undone.`)) {
-            console.log('[handleDelete] User cancelled. Preventing default.'); // Add log
-            event.preventDefault(); // Prevent form submission if user cancels
-        } else {
-            // If user confirms, default submission proceeds.
-            console.log('[handleDelete] User confirmed. Allowing default submission.'); // Add log
-        }
-    };
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={isDeleting}
+                >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Student</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Are you sure you want to delete <strong>{studentName}</strong>? This action cannot be undone.
+                        All enrollments, attendance records, and belt awards for this student will also be removed.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <fetcher.Form method="post" id={`delete-student-${studentId}`}>
+                        <AuthenticityTokenInput />
+                        <input type="hidden" name="intent" value="deleteStudent"/>
+                        <input type="hidden" name="studentId" value={studentId}/>
+                        <AlertDialogAction
+                            type="submit"
+                            form={`delete-student-${studentId}`}
+                            disabled={isDeleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete Student'}
+                        </AlertDialogAction>
+                    </fetcher.Form>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+            {/* Display fetcher errors outside dialog */}
+            {fetcher.data?.error && <p className="text-xs text-destructive mt-1">{fetcher.data.error}</p>}
+        </AlertDialog>
+    );
+}
+
+// Helper component for the delete family button/form
+function DeleteFamilyButton({familyName}: { familyId: string, familyName: string }) {
+    const navigation = useNavigation();
+    const isDeleting = navigation.state === 'submitting' && navigation.formData?.get('intent') === 'deleteFamily';
 
     return (
-        <fetcher.Form method="post">
-            <AuthenticityTokenInput />
-            <input type="hidden" name="intent" value="deleteStudent"/>
-            <input type="hidden" name="studentId" value={studentId}/>
-            <Button
-                type="submit"
-                variant="destructive"
-                size="sm"
-                onClick={handleDelete}
-                disabled={isDeleting}
-            >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-            {/* Optionally display fetcher errors */}
-            {fetcher.data?.error && <p className="text-xs text-destructive mt-1">{fetcher.data.error}</p>}
-        </fetcher.Form>
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={isDeleting}
+                >
+                    {isDeleting ? 'Deleting...' : 'Delete Family'}
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Family</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Are you sure you want to delete the family <strong>{familyName}</strong>? This action cannot be undone.
+                        <br /><br />
+                        <strong className="text-red-600">All associated data will be permanently deleted:</strong>
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                            <li>All students and their records</li>
+                            <li>All guardians</li>
+                            <li>Enrollments and attendance</li>
+                            <li>Payment history</li>
+                            <li>Invoices and orders</li>
+                        </ul>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <Form method="post" id="delete-family-form">
+                        <AuthenticityTokenInput />
+                        <input type="hidden" name="intent" value="deleteFamily"/>
+                        <AlertDialogAction
+                            type="submit"
+                            form="delete-family-form"
+                            disabled={isDeleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeleting ? 'Deleting Family...' : 'Delete Family'}
+                        </AlertDialogAction>
+                    </Form>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }
 
@@ -161,16 +255,23 @@ export default function FamilyDetailPage() {
             {!outlet && (
                 <>
                     <AppBreadcrumb items={breadcrumbPatterns.adminFamilyDetail(family.name)} className="mb-6" />
-                    
+
                     {/* Updated header to match standard site styling */}
-                    <div className="text-center mb-10">
-                        {/* Adjusted header classes to match payments page */}
-                        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 sm:text-4xl">
-                            Family: {family.name}
-                        </h1>
-                        <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
-                            View and manage family details, students, and balances.
-                        </p>
+                    <div className="mb-10">
+                        <div className="flex justify-between items-start">
+                            <div className="text-center flex-1">
+                                {/* Adjusted header classes to match payments page */}
+                                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 sm:text-4xl">
+                                    Family: {family.name}
+                                </h1>
+                                <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                                    View and manage family details, students, and balances.
+                                </p>
+                            </div>
+                            <div className="flex-shrink-0">
+                                <DeleteFamilyButton familyId={family.id} familyName={family.name} />
+                            </div>
+                        </div>
                     </div>
                     {/* Removed original header div */}
 

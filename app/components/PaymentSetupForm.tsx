@@ -468,35 +468,6 @@ export function PaymentSetupForm({
         </Alert>
       )}
 
-      {/* Display proactive pending payment warning */}
-      {pendingPayment && (
-        <Alert className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700">
-          <ExclamationTriangleIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400"/>
-          <AlertTitle className="text-yellow-800 dark:text-yellow-200">Existing Pending Payment</AlertTitle>
-          <AlertDescription className="text-yellow-700 dark:text-yellow-300">
-            You have a pending payment {formatPendingPaymentMessage()} that was started recently. Would you like to complete it instead?
-            <div className="mt-3 flex gap-2">
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => navigate(`/pay/${pendingPayment.paymentId}`)}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white"
-              >
-                Complete Existing Payment
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPendingPayment(null)}
-                className="border-yellow-600 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-500 dark:text-yellow-300 dark:hover:bg-yellow-900/30"
-              >
-                Create New Payment
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
       {showPaymentForm ? (
         <>
           {/* Payment Option Selection */}
@@ -554,8 +525,37 @@ export function PaymentSetupForm({
             )}
           </div>
 
+          {/* Display proactive pending payment warning - positioned after selection for context */}
+          {pendingPayment && (
+            <Alert className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700">
+              <ExclamationTriangleIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400"/>
+              <AlertTitle className="text-yellow-800 dark:text-yellow-200">Existing Pending Payment</AlertTitle>
+              <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+                You have a pending payment {formatPendingPaymentMessage()} that was started recently. Would you like to complete it instead?
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => navigate(`/pay/${pendingPayment.paymentId}`)}
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                  >
+                    Complete Existing Payment
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPendingPayment(null)}
+                    className="border-yellow-600 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-500 dark:text-yellow-300 dark:hover:bg-yellow-900/30"
+                  >
+                    Dismiss and Continue
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Student Selection (only for family mode and group payments) */}
-          {mode === 'family' && (paymentOption === 'monthly' || paymentOption === 'yearly') && studentPaymentDetails.length > 0 && (
+          {!pendingPayment && mode === 'family' && (paymentOption === 'monthly' || paymentOption === 'yearly') && studentPaymentDetails.length > 0 && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
               <h2 className="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-600">
                 {paymentOption === 'yearly' ? 'Select Students for Yearly Payment' : 'Select Students for Monthly Payment'}
@@ -615,7 +615,7 @@ export function PaymentSetupForm({
           )}
 
           {/* Discount Code Section */}
-          {hasAvailableDiscounts && (
+          {!pendingPayment && hasAvailableDiscounts && (
             <DiscountSelector
               familyId={familyId}
               studentId={selectedStudentIds.size === 1 ? Array.from(selectedStudentIds)[0] : undefined}
@@ -630,6 +630,7 @@ export function PaymentSetupForm({
           )}
 
           {/* Total & Pricing Info Section */}
+          {!pendingPayment && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-6">
             <div className="space-y-2 border-b pb-4 mb-4 dark:border-gray-600">
               <div className="flex justify-between items-center text-md">
@@ -648,8 +649,10 @@ export function PaymentSetupForm({
               </div>
             </div>
           </div>
+          )}
 
           {/* Payment Form */}
+          {!pendingPayment && (
           <fetcher.Form method="post" ref={formRef} id="payment-setup-form" action={actionEndpoint}>
             <AuthenticityTokenInput />
             <input type="hidden" name="familyId" value={familyId}/>
@@ -687,6 +690,7 @@ export function PaymentSetupForm({
               </Button>
             </div>
           </fetcher.Form>
+          )}
         </>
       ) : (
         <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow text-center">

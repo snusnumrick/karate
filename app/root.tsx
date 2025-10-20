@@ -19,6 +19,8 @@ import {siteConfig} from "~/config/site";
 import { NonceProvider } from "~/context/nonce";
 import { AuthenticityTokenProvider } from "remix-utils/csrf/react";
 import { csrf } from "~/utils/csrf.server";
+import { ClientOnly } from "~/components/client-only";
+import { ToasterWrapper } from "~/components/toaster-wrapper";
 
 import "./tailwind.css";
 
@@ -187,8 +189,15 @@ export function Layout({children}: { children: React.ReactNode }) {
     );
 }
 
-export default withSentry(function App() {
+function App() {
     return (
-        <Outlet/>
+        <>
+            <Outlet/>
+            <ClientOnly>
+                {() => <ToasterWrapper />}
+            </ClientOnly>
+        </>
     );
-});
+}
+
+export default withSentry(App);

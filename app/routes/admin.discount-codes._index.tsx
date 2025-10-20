@@ -1,6 +1,7 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from '@remix-run/node';
 import { useLoaderData, Link } from "@remix-run/react";
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { DiscountService } from '~/services/discount.server';
 import type { DiscountCodeWithUsage } from '~/types/discount';
 import { Button } from '~/components/ui/button';
@@ -355,15 +356,16 @@ export default function AdminDiscountCodes() {
                         if (response.ok) {
                           console.log('Action successful, reloading page');
                           closeDialog();
+                          toast.success('Action completed successfully');
                           window.location.reload();
                         } else {
                           const errorText = await response.text();
                           console.error('Server error:', response.status, errorText);
-                          alert(`Error: ${response.status} - ${errorText}`);
+                          toast.error(`Error: ${response.status} - ${errorText}`);
                         }
                       } catch (error) {
                         console.error('Network error:', error);
-                        alert('Network error occurred. Please try again.');
+                        toast.error('Network error occurred. Please try again.');
                       }
                     } else {
                       console.error('Missing dialog state:', dialogState);

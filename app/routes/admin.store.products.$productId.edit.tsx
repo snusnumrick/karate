@@ -6,6 +6,7 @@ import { Button, buttonVariants } from "~/components/ui/button"; // Import butto
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { useState } from 'react'; // Import useState
+import { toast } from 'sonner';
 import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node"; // Added redirect
@@ -427,7 +428,7 @@ export default function EditProductPage() {
                                     // Disable file input?
                                     const fileInput = document.getElementById('image') as HTMLInputElement | null;
                                     if (fileInput) fileInput.value = ''; // Clear file input
-                                    alert('Image marked for removal. Save changes to confirm.'); // Simple feedback
+                                    toast.info('Image marked for removal. Save changes to confirm.');
                                 }}
                             >
                                 <Trash2 className="h-4 w-4" />
